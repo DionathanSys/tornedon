@@ -15,12 +15,16 @@ return new class extends Migration
             $table->id();
             $table->string('name')
                 ->unique();
-            $table->string('address');
+            $table->json('address');
             $table->string('phone')
                 ->nullable();
             $table->string('email')
                 ->nullable();
             $table->string('certificate')
+                ->nullable();
+            $table->string('municipal_tax_id')
+                ->nullable();
+            $table->string('state_tax_id')
                 ->nullable();
             $table->boolean('is_active')
                 ->default(true);

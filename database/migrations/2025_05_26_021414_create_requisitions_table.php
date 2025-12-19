@@ -17,19 +17,18 @@ return new class extends Migration
                 ->unique();
             $table->foreignId('customer_id')                        // Cliente que comprou (obrigatório)
                 ->constrained('partners');
-            $table->foreignId('company_id')                         // Empresa vendedora
-                ->nullable()
+            $table->foreignId('company_id')                         // Empresa prestadora
                 ->constrained('companies')
+                ->cascadeOnDelete();
+            $table->foreignId('service_order_id')                     // Ordem de serviço vinculada
+                ->nullable()
+                ->constrained('service_orders')
                 ->nullOnDelete();
             $table->date('sale_date');                              // Data da venda
             $table->string('status');
-            $table->decimal('total_amount', 15, 2)                  // Valor total da venda
-                ->default(0.00);
             $table->decimal('discount_amount', 15, 2)               // Desconto aplicado
                 ->default(0.00)
                 ->nullable();
-            $table->decimal('final_amount', 15, 2)                  // Valor final (com desconto)
-                ->default(0.00);
             $table->string('payment_method')                        // Forma de pagamento
                 ->nullable();
             $table->string('payment_condition')                     // Condição de pagamento (à vista, prazo)
@@ -50,9 +49,10 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestamp('invoiced_at')                        // Data/hora do faturamento
                 ->nullable();
-            $table->decimal('invoice_threshold')                    // Valor mínimo para faturar (por cliente)
-                ->default(0.00)
-                ->nullable();
+            $table->foreignId('equipment_id')                       // Equipamento atendido
+                ->nullable()
+                ->constrained('equipments')
+                ->nullOnDelete();
             $table->boolean('stock_consumed')                       // Estoque já foi consumido?
                 ->default(true);
             $table->json('additional_info')                         // Informações adicionais (JSON)
@@ -71,6 +71,7 @@ return new class extends Migration
             // Índices para otimizar consultas
             $table->index(['customer_id', 'status']);               // Vendas por cliente e status
             $table->index(['status', 'sale_date']);                 // Vendas por status e período
+            $table->index(['company_id', 'status']);                // Vendas por empresa e status
             $table->index(['salesperson_id', 'status']);            // Vendas por vendedor
             $table->index('invoice_id');                            // Relação com nota fiscal
             $table->index(['stock_consumed', 'status']);            // Controle de estoque

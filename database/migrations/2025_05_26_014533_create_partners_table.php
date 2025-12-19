@@ -23,11 +23,12 @@ return new class extends Migration
                 ->unique();
             $table->boolean('is_active')
                 ->default(true);
-            $table->string('state_registration')                    // Inscrição Estadual
+            $table->string('state_tax_id')                      // Inscrição Estadual
                 ->nullable();
-            $table->string('state_registration_indicator')          // Indicador da IE
+            $table->string('state_tax_indicator')               // Indicador da IE
                 ->nullable();
-            $table->string('municipal_registration')->nullable();   // Inscrição Municipal
+            $table->string('municipal_tax_id')                  // Inscrição Municipal
+                ->nullable();
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')

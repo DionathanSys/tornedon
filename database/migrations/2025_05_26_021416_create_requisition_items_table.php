@@ -27,8 +27,10 @@ return new class extends Migration
                 ->default(0.00);
             $table->decimal('discount_amount', 15, 2)               // Desconto em valor no item
                 ->default(0.00);
-            $table->decimal('subtotal', 15, 2);                     // Subtotal (qty × unit_price)
-            $table->decimal('total_amount', 15, 2);                 // Total final (subtotal - desconto)
+            $table->decimal('subtotal', 15, 2)
+                ->virtualAs('quantity * unit_price');               // Subtotal (qty × unit_price)
+            $table->decimal('total_amount', 15, 2)
+                ->virtualAs('subtotal - discount_amount');          // Total final (subtotal - desconto)
             $table->boolean('stock_consumed')                       // Estoque foi baixado?
                 ->default(true);
             $table->timestamp('stock_consumed_at')                  // Quando o estoque foi baixado
@@ -37,17 +39,7 @@ return new class extends Migration
                 ->default(0.00)
                 ->nullable();
             $table->decimal('commission_amount', 15, 2)             // Valor da comissão
-                ->default(0.00)
-                ->nullable();
-            //TODO Validar necessidade de incluir no item da requisição
-            // $table->string('tax_classification')                    // Classificação fiscal (NCM, CFOP)
-            //     ->nullable();
-            // $table->decimal('tax_rate', 5, 2)                       // Alíquota de imposto (%)
-            //     ->default(0.00)
-            //     ->nullable();
-            // $table->decimal('tax_amount', 15, 2)                    // Valor do imposto
-            //     ->default(0.00)
-            //     ->nullable();
+                ->virtualAs('(total_amount * commission_percentage) / 100');
             $table->text('observations')                            // Observações do item
                 ->nullable();
             $table->json('additional_info')                         // Informações adicionais (JSON)

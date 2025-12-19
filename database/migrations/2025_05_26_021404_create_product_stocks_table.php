@@ -26,7 +26,11 @@ return new class extends Migration
             $table->decimal('average_cost', 15, 4)                  // Custo médio unitário
                 ->default(0.0000)
                 ->nullable();
+            $table->decimal('total_cost', 15, 4)                    // Custo total do estoque
+                ->virtualAs('quantity_available * average_cost');
             $table->decimal('last_cost', 15, 4)                     // Último custo de compra
+                ->nullable();
+            $table->decimal('last_sale_price', 15, 4)               // Último preço de venda
                 ->nullable();
             $table->date('last_movement_date')                      // Data do último movimento
                 ->nullable();
@@ -46,11 +50,15 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
+            $table->foreignId('company_id')
+                ->constrained('companies')
+                ->cascadeOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
             $table->softDeletes();                                  // Data de exclusão (soft delete)
 
             // Índices para otimizar consultas
-            $table->index('product_id');
+            $table->index(['product_id', 'company_id']);
+            $table->index(['company_id']);
             $table->unique('product_id');
         });
     }

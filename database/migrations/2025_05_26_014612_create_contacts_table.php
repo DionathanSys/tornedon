@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('contacts', function (Blueprint $table) {
             $table->id();                                           // ID único do contato
             $table->foreignId('partner_id')                         // ID do parceiro (obrigatório)
-                ->constrained('partners');
+                ->constrained('partners')
+                ->cascadeOnDelete();
             $table->string('email')                                 // E-mail do contato (único)
                 ->unique();
             $table->string('phone')                                 // Telefone fixo

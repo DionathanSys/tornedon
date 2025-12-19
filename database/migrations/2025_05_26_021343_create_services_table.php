@@ -43,6 +43,9 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
+            $table->foreignId('company_id')
+                ->constrained('companies')
+                ->cascadeOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
             $table->softDeletes();                                  // Data de exclusão (soft delete)
         });

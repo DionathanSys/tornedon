@@ -13,16 +13,34 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->string('product_code', 60)->unique()->nullable();
+            $table->string('product_code', 60)
+                ->unique()
+                ->nullable();
             $table->string('name');
-            $table->string('description')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->string('description')
+                ->nullable();
+            $table->string('category')                              // Categoria do serviço
+                ->nullable();
+            $table->boolean('is_active')
+                ->default(true);
             $table->string('unit', 2);
-            $table->json('alternative_units')->nullable();
-            $table->decimal('profit_margin', 12)->default(0);
-            $table->decimal('min_sale_price', 12)->default(0);
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->json('alternative_units')
+                ->nullable();
+            $table->decimal('profit_margin', 12)
+                ->default(0);
+            $table->decimal('min_sale_price', 12)
+                ->default(0);
+            $table->foreignId('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+            $table->foreignId('updated_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+            $table->foreignId('company_id')
+                ->constrained('companies')
+                ->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

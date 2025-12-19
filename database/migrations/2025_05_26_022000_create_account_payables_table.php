@@ -13,7 +13,34 @@ return new class extends Migration
     {
         Schema::create('account_payables', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('supplier_id')
+                ->constrained('partners');
+            $table->foreignId('company_id')
+                ->constrained('companies')
+                ->cascadeOnDelete();
+            $table->foreignId('fiscal_document_id')
+                ->constrained('fiscal_documents')
+                ->cascadeOnDelete();
+            $table->string('sequence_number', 2);
+            $table->string('status');
+            $table->date('due_date');
+            $table->date('paid_date');
+            $table->decimal('due_amount', 15, 4);
+            $table->decimal('paid_amount', 15, 4);
+            $table->string('document_number')
+                ->nullable();
+            $table->string('description')
+                ->nullable();
+            $table->boolean('paid')
+                ->default(false);
+            $table->string('type')
+                ->nullable();
+            $table->string('payment_method')
+                ->nullable();
             $table->timestamps();
+
+            $table->index(['company_id', 'supplier_id']);
+            $table->index(['company_id', 'status']);
         });
     }
 
