@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\Partners\Pages;
+namespace App\Filament\Clusters\Partners\Resources\Partners\Pages;
 
-use App\Filament\Resources\Partners\PartnerResource;
+use App\Filament\Clusters\Partners\Resources\Partners\PartnerResource;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreatePartner extends CreateRecord
