@@ -10,26 +10,22 @@ trait HandlesServiceResponse
     protected array $errors = [];
     protected int $status = 200;
 
-    public function success(string $message = '', array $data = [], int $status = 200): array
+    public function setSuccess(string $message = '', array $data = [], int $status = 200): void
     {
-        $this->success = true;
-        $this->message = $message;
-        $this->data = $data;
-        $this->errors = [];
-        $this->status = $status;
-
-        return $this->toArray();
+        $this->success  = true;
+        $this->message  = $message;
+        $this->data     = $data;
+        $this->errors   = [];
+        $this->status   = $status;
     }
 
-    public function error(string $message = '', array $errors = [], int $status = 422): array
+    public function setError(string $message = '', array $errors = [], int $status = 422): void
     {
-        $this->success = false;
-        $this->message = $message;
-        $this->errors = $errors;
-        $this->data = [];
-        $this->status = $status;
-
-        return $this->toArray();
+        $this->success  = false;
+        $this->message  = $message;
+        $this->errors   = $errors;
+        $this->data     = [];
+        $this->status   = $status;
     }
 
     public function setData(array $data): self
@@ -38,27 +34,14 @@ trait HandlesServiceResponse
         return $this;
     }
 
-    public function setErrors(array $errors): self
-    {
-        $this->errors = $errors;
-        return $this;
-    }
-
-    public function setMessage(string $message): self
-    {
-        $this->message = $message;
-        return $this;
-    }
-
-    public function setStatus(int $status): self
-    {
-        $this->status = $status;
-        return $this;
-    }
-
     public function isSuccess(): bool
     {
         return $this->success;
+    }
+
+    public function hasError(): bool
+    {
+        return !empty($this->errors);
     }
 
     public function getMessage(): string

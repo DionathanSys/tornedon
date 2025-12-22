@@ -5,13 +5,27 @@ namespace App\Models;
 use App\Enum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Partner extends Model
 {
     use SoftDeletes;
-    
+
+    protected $fillable = [
+        'name',
+        'type',
+        'document_type',
+        'document_number',
+        'is_active',
+        'state_tax_id',
+        'state_tax_indicator',
+        'municipal_tax_id',
+        'created_by',
+        'updated_by',
+    ];
+
     protected $casts = [
         'type' => 'array',
         'is_active' => 'boolean',
@@ -37,5 +51,9 @@ class Partner extends Model
     {
         return $this->hasMany(Contact::class);
     }
-    
+
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
+    }
 }
