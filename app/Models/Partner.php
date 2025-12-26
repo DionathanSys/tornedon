@@ -27,7 +27,7 @@ class Partner extends Model
     ];
 
     protected $casts = [
-        'type' => 'array',
+        'type'      => 'array',
         'is_active' => 'boolean',
         'state_tax_indicator' => Enum\Tax\StateTaxIndicator::class,
     ];

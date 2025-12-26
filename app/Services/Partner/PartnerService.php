@@ -4,6 +4,7 @@ namespace App\Services\Partner;
 
 use App\Models\Partner;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Support\Facades\Log;
 
 class PartnerService
 {
@@ -20,6 +21,10 @@ class PartnerService
                     message: 'Erro ao registrar parceiro',
                     errors: $action->getErrors()
                 );
+                Log::error(__METHOD__ . '@' . __LINE__, [
+                    'message'   => 'Erro ao registrar parceiro',
+                    'errors'    => $action->getErrors(),
+                ]);
                 return null;
             }
 

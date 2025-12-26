@@ -46,6 +46,7 @@ class PartnerForm
                     ->required(),
                 Document::make('document_number')
                     ->label('Nº do Doc.')
+                    ->autocomplete(false)
                     ->columnSpan(['md' => 2, 'lg' => 3])
                     ->dynamic(),
                 TextInput::make('state_tax_id')

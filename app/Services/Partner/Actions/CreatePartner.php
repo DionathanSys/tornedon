@@ -3,13 +3,22 @@
 namespace App\Services\Partner\Actions;
 
 use App\Models\Partner;
+use App\Enum;
 use App\Traits\HandlesActionResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class CreatePartner
 {
     use HandlesActionResponse;
+
+    private array $fillableFields;
+
+    public function __construct()
+    {
+        $this->fillableFields = (new Partner())->getFillable();
+    }
 
     public function execute(array $data): ?Partner
     {
@@ -26,8 +35,7 @@ class CreatePartner
             return $partner;
         }
 
-        //TODO: Remover campos que não pertencem ao parceiro
-        
+        $data = Arr::only($data, $this->fillableFields);        
         $partner = Partner::create($data);
         $this->setSuccess();
         return $partner;
@@ -42,9 +50,9 @@ class CreatePartner
     {
         $validate = Validator::make($data, [
             'name'                  => 'required|string|max:255',
-            'type'                  => 'required|string|in:cnpj,cpf',
-            'document_type'         => 'required|array|min:1',
-            'document_type.*'       => 'string|in:cliente, fornecedor',
+            'type'                  => 'required|array|min:1',
+            'type.*'                => 'required|string|in:'.implode(Enum\Partner\Type::toSelectArray()),
+            'document_type'         => 'required|string|in:cnpj,cpf',
             'document_number'       => 'required|string|min:14|max:18',
             'is_active'             => 'required|boolean',
             'state_tax_id'          => 'nullable|string|max:50',
@@ -62,6 +70,10 @@ class CreatePartner
             ]);
         }
 
+        Log::info(__METHOD__ . '@' . __LINE__, [
+            'message'   => 'Validação realizada com sucesso',
+        ]);
+        
         return;
     }
 }
