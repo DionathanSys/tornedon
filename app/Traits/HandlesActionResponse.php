@@ -5,7 +5,6 @@ namespace App\Traits;
 trait HandlesActionResponse
 {
     protected bool $success = false;
-    protected bool $error = false;
     protected array $errors = [];
 
     public function setSuccess(): void
@@ -27,7 +26,7 @@ trait HandlesActionResponse
 
     public function hasError(): bool
     {
-        return $this->error;
+        return !empty($this->errors);
     }
 
     public function getErrors(): array

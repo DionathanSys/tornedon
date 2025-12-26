@@ -16,7 +16,10 @@ class PartnerService
             $action = new Actions\CreatePartner();
             $result = $action->execute($data);
 
+            ds($action)->label('ds na Action::class');
+            
             if($action->hasError()) {
+                ds($action->getErrors())->label('Error creating partner in ' . __METHOD__ . '@' . __LINE__);
                 $this->setError(
                     message: 'Erro ao registrar parceiro',
                     errors: $action->getErrors()
