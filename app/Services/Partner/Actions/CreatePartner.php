@@ -24,10 +24,17 @@ class CreatePartner
     {
         $this->validate($data);
 
-        if ($this->hasError()) return null;
+        if ($this->hasError()) {
+            ds($this->hasError())->label(__METHOD__.'@'.__LINE__.'hasError()');
+            return null;
+        }
 
-        if (($partner = $this->exists($data))) {
+        ds('Não teve erro durante valdação');
+
+        $partner = $this->exists($data);
+        if ($partner) {
             $this->setSuccess();
+            ds('parceiro já existe');
             Log::info(__METHOD__ . '@' . __LINE__, [
                 'message'           => 'Parceiro já cadastrado',
                 'document_number'   => $data['document_number'],
@@ -77,13 +84,14 @@ class CreatePartner
         ]);
 
         if ($validate->fails()) {
-            ds($data)->label('Validation data in ' . __METHOD__ . '@' . __LINE__);
+            ds($validate->errors()->all())->label('All - Validation errors in ' . __METHOD__ . '@' . __LINE__);
             ds($validate->errors()->toArray())->label('Validation errors in ' . __METHOD__ . '@' . __LINE__);
             $this->setError($validate->errors()->toArray());
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Falha de validação',
                 'errors'    => $validate->errors()->toArray(),
             ]);
+            ds($this->isSuccess(), $this->hasError())->label('Validando trait response'.__LINE__);
             return;
         }
 

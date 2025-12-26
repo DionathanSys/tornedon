@@ -16,8 +16,6 @@ class PartnerService
             $action = new Actions\CreatePartner();
             $result = $action->execute($data);
 
-            ds($action)->label('ds na Action::class');
-            
             if($action->hasError()) {
                 ds($action->getErrors())->label('Error creating partner in ' . __METHOD__ . '@' . __LINE__);
                 $this->setError(
@@ -33,6 +31,7 @@ class PartnerService
 
             $this->associatePartnerCompany($result->id, $data['company_id']);
 
+            ds($result)->label('resultado service retorno');
             return $result;
 
         } catch (\Exception $e) {
@@ -42,9 +41,11 @@ class PartnerService
 
     public function associatePartnerCompany(int $partnerId, int $companyId): void
     {
+        ds('testet'.__METHOD__."@".__LINE__);
         Partner::query()
             ->find($partnerId)
             ->companies()
             ->syncWithoutDetaching([$companyId]);
+        return;
     }
 }

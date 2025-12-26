@@ -24,11 +24,12 @@ class CreatePartner extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        ds($data)->label('Creating partner with data in ' . __METHOD__ . '@' . __LINE__);
+        ds($data)->label('Dados para cadastro Front -> Back');
 
         $service = app(PartnerService::class);
         $result = $service->registerPartner($data);
 
+        ds($service->isSuccess())->label('isSuccsec no front');
         if($service->hasError()) {
             ds('Erro encontrado em service');
             Notification::make()
@@ -36,7 +37,7 @@ class CreatePartner extends CreateRecord
                 ->danger()
                 ->body(implode("\n", $service->getErrors()))
                 ->send();
-            $this->halt();
+            $this->cancel();
         }
 
         return $result;
