@@ -11,7 +11,7 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "leandrocfe/filament-ptbr-form-fields": "4.0",
-        "opcodesio/log-viewer": "^3.17"
+        "opcodesio/log-viewer": "^3.21"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
