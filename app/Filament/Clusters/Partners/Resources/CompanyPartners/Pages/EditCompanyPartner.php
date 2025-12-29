@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages;
 
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
+use App\Models\Partner;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -22,8 +23,7 @@ class EditCompanyPartner extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $partner = $this->record->partner();
-
+        $partner = Partner::find($this->record->partner_id);
         $data['name'] = $partner->name;
         $data['document_type'] = $partner->document_type;
         $data['document_number'] = $partner->document_number;
