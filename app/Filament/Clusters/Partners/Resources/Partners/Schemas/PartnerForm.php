@@ -2,12 +2,13 @@
 
 namespace App\Filament\Clusters\Partners\Resources\Partners\Schemas;
 
-use App\Enum;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
-use Leandrocfe\FilamentPtbrFormFields\Document;
+    use App\Enum;
+    use Filament\Forms\Components\Repeater;
+    use Filament\Forms\Components\Select;
+    use Filament\Forms\Components\TextInput;
+    use Filament\Forms\Components\Toggle;
+    use Filament\Schemas\Schema;
+    use Leandrocfe\FilamentPtbrFormFields\Document;
 
 class PartnerForm
 {
@@ -24,15 +25,6 @@ class PartnerForm
                     ->label('Nome')
                     ->autocomplete(false)
                     ->columnSpanFull()
-                    ->required(),
-                Select::make('type')
-                    ->label('Tipo')
-                    ->columnStart(1)
-                    ->columnSpan(['md' => 2, 'lg' => 2])
-                    ->options(Enum\Partner\Type::toSelectArray())
-                    ->native(false)
-                    ->multiple()
-                    ->default(Enum\Partner\Type::CUSTOMER->value)
                     ->required(),
                 Select::make('document_type')
                     ->label('Tipo de Doc.')
@@ -71,6 +63,25 @@ class PartnerForm
                     ->default(true)
                     ->columnStart(1)
                     ->required(),
+                Repeater::make('companies')
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 6,
+                    ])
+                    ->columnSpanFull()
+                    ->columnStart(1)
+                    ->schema([
+                        Select::make('type')
+                            ->label('Tipo')
+                            ->columnStart(1)
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->options(Enum\Partner\Type::toSelectArray())
+                            ->native(false)
+                            ->multiple()
+                            ->default(Enum\Partner\Type::CUSTOMER->value)
+                            ->required(),
+                    ])
             ]);
     }
 }

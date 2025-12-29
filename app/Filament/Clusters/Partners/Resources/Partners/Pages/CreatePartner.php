@@ -3,8 +3,9 @@
 namespace App\Filament\Clusters\Partners\Resources\Partners\Pages;
 
 use App\Filament\Clusters\Partners\Resources\Partners\PartnerResource;
+use App\Models\User;
+use App\Notification\NotifyService as notify;
 use App\Services\Partner\PartnerService;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -17,27 +18,37 @@ class CreatePartner extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['created_by'] = Auth::id();
-        $data['updated_by'] = Auth::id();
+        $data['company_id'] = User::find(Auth::id())
+            ->companies()
+            ->first()
+            ->id;
+
+        $data['type'] = $data['companies'][0]['type'];
+        unset($data['companies']);
 
         return $data;
     }
 
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Parceiro registrado';
+    }
+
     protected function handleRecordCreation(array $data): Model
     {
-        ds($data)->label('Dados para cadastro Front -> Back');
 
-        $service = app(PartnerService::class);
+        Log::debug(__METHOD__ . '-' . __LINE__, [
+            'data' => $data,
+        ]);
+
+        ds($data)->label(__METHOD__.'@'.__LINE__);
+
+        $service = new PartnerService();
         $result = $service->registerPartner($data);
 
-        ds($service->isSuccess())->label('isSuccsec no front');
-        if($service->hasError()) {
-            ds('Erro encontrado em service');
-            Notification::make()
-                ->title('Erro ao criar parceiro')
-                ->danger()
-                ->body(implode("\n", $service->getErrors()))
-                ->send();
-            $this->cancel();
+        if($service->hasError()){
+            notify::error();
+            $this->halt();
         }
 
         return $result;

@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('partner_id')                         // ID do parceiro (obrigatório)
                 ->constrained('partners')
                 ->cascadeOnDelete();
+            $table->foreignId('company_id')
+                ->constrained('companies')
+                ->cascadeOnDelete();
             $table->string('email')                                 // E-mail do contato (único)
                 ->unique();
             $table->string('phone')                                 // Telefone fixo

@@ -1,51 +1,102 @@
-<?php 
+<?php
 
 namespace App\Services\Partner;
 
+use App\Models\CompanyPartner;
 use App\Models\Partner;
+use App\Enum;
+use App\Services\Partner\Actions\AssociatePartnerCompany;
+use App\Services\Partner\Actions\EditPartner;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class PartnerService
 {
     use HandlesServiceResponse;
 
-    public function registerPartner(array $data): ?Partner
+    public function createPartner(array $data): ?Partner
     {
         try {
             $action = new Actions\CreatePartner();
             $result = $action->execute($data);
 
-            if($action->hasError()) {
-                ds($action->getErrors())->label('Error creating partner in ' . __METHOD__ . '@' . __LINE__);
-                $this->setError(
-                    message: 'Erro ao registrar parceiro',
-                    errors: $action->getErrors()
-                );
+            if ($action->hasError()) {
+                $this->setError($action->getMessage(), $action->getErrors());
                 Log::error(__METHOD__ . '@' . __LINE__, [
-                    'message'   => 'Erro ao registrar parceiro',
-                    'errors'    => $action->getErrors(),
+                    'message'           => 'Erro identificado durante execução da Action para edição do Parceiro',
+                    'action_message'    => $action->getMessage(),
+                    'errors'            => $action->getErrors(),
                 ]);
                 return null;
             }
 
-            $this->associatePartnerCompany($result->id, $data['company_id']);
-
-            ds($result)->label('resultado service retorno');
+            $this->setSuccess('Parceiro cadastrado com sucesso');
             return $result;
-
         } catch (\Exception $e) {
+            $this->setError('Erro ao cadastrar parceiro', $action->getErrors());
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro ao cadastrar parceiro',
+                'errors' => $e->getMessage(),
+            ]);
             return null;
         }
     }
 
-    public function associatePartnerCompany(int $partnerId, int $companyId): void
+    public function associatePartnerCompany(int $partnerId, int $companyId, array $data): ?CompanyPartner
     {
-        ds('testet'.__METHOD__."@".__LINE__);
-        Partner::query()
-            ->find($partnerId)
-            ->companies()
-            ->syncWithoutDetaching([$companyId]);
-        return;
+        try {
+            $action = new AssociatePartnerCompany();
+            $result = $action->execute($partnerId, $companyId, $data);
+
+            if($action->hasError()){
+                $this->setError($action->getMessage(), $action->getErrors());
+                Log::error(__METHOD__ . '@' . __LINE__, [
+                    'message'           => 'Erro identificado durante execução da Action para associação do Parceiro com Empresa',
+                    'action_message'    => $action->getMessage(),
+                    'errors'            => $action->getErrors(),
+                ]);
+                return null;
+            }
+
+            $this->setSuccess('Parceiro Associado com sucesso');
+            return $result;
+
+         } catch (\Exception $e) {
+            $this->setError('Erro ao vincular parceiro e empresa');
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message'   => 'Erro ao vincular parceiro e empresa',
+                'errors'    => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    public function editPartner(array $data): ?Partner
+    {
+        try {
+            $action = new EditPartner();
+            $result = $action->execute($data);
+
+            if ($action->hasError()) {
+                $this->setError($action->getMessage(), $action->getErrors());
+                Log::error(__METHOD__ . '@' . __LINE__, [
+                    'message'           => 'Erro identificado durante execução da Action para edição do Parceiro',
+                    'action_message'    => $action->getMessage(),
+                    'errors'            => $action->getErrors(),
+                ]);
+                return null;
+            }
+
+            $this->setSuccess();
+            return $result;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao editar parceiro');
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro ao editar parceiro',
+                'errors' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 }

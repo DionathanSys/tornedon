@@ -5,12 +5,12 @@ namespace App\Traits;
 trait HandlesServiceResponse
 {
     protected bool $success = false;
-    protected string $message = '';
+    protected ?string $message = null;
     protected array $data = [];
     protected array $errors = [];
     protected int $status = 200;
 
-    public function setSuccess(string $message = '', array $data = [], int $status = 200): void
+    public function setSuccess(string|null $message = null, array $data = [], int $status = 200): void
     {
         $this->success  = true;
         $this->message  = $message;
@@ -19,7 +19,7 @@ trait HandlesServiceResponse
         $this->status   = $status;
     }
 
-    public function setError(string $message = '', array $errors = [], int $status = 422): void
+    public function setError(string|null $message = null, array $errors = [], int $status = 422): void
     {
         $this->success  = false;
         $this->message  = $message;

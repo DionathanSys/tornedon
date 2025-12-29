@@ -61,6 +61,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Remover constraint que referencia invoices antes de dropar a tabela
+        Schema::table('fiscal_documents', function (\Illuminate\Database\Schema\Blueprint $table) {
+            $table->dropForeign(['invoice_id']); // ou $table->dropForeign('fiscal_documents_invoice_id_foreign');
+        });
+        
         Schema::dropIfExists('invoices');
     }
 };

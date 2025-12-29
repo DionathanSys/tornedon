@@ -28,7 +28,9 @@ class AddressResource extends Resource
 
     protected static ?string $cluster = PartnersCluster::class;
 
-     protected static ?string $modelLabel = 'Endereço';
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $modelLabel = 'Endereço';
 
     protected static ?string $pluralModelLabel = 'Endereços';
 

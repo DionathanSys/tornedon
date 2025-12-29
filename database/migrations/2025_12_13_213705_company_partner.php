@@ -19,9 +19,12 @@ return new class extends Migration
             $table->foreignId('partner_id')
                 ->constrained('partners')
                 ->cascadeOnDelete();
+            $table->json('type');
             $table->decimal('invoice_threshold')                // Valor mínimo para faturar (por cliente)  !!-> threshold = limite
                 ->default(0.00)
                 ->nullable();
+            $table->boolean('is_active')
+                ->default(true);
             $table->timestamps();
             $table->unique(['company_id', 'partner_id']);
         });

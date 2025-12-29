@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Partners\Resources\Partners\Tables;
 
+use App\Models\Partner;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -29,6 +30,9 @@ class PartnersTable
                 TextColumn::make('name')
                     ->label('Nome')
                     ->searchable(),
+                TextColumn::make('type')
+                    ->label('Tipo')
+                    ->badge(),
                 TextColumn::make('document_type')
                     ->label('Tipo de Doc.')
                     ->formatStateUsing(fn(string $state): string => strtoupper($state))
@@ -52,9 +56,11 @@ class PartnersTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('createdBy.name')
-                    ->label('Criado por'),
+                    ->label('Criado por')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updatedBy.name')
-                    ->label('Atualizado por'),
+                    ->label('Atualizado por')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -80,7 +86,7 @@ class PartnersTable
                     EditAction::make(),
                     DeleteAction::make(),
                     ForceDeleteAction::make()
-                        ->visible(fn ():bool => Auth::user()->is_admin),
+                        ->visible(fn (Partner $record):bool => Auth::user()->is_admin && $record->trashed()),
                     RestoreAction::make(),
                 ])->button(),
 

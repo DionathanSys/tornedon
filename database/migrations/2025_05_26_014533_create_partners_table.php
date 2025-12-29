@@ -17,12 +17,9 @@ return new class extends Migration
             $table->id();
             $table->string('name')
                 ->unique();
-            $table->json('type');
             $table->string('document_type');
             $table->string('document_number')
                 ->unique();
-            $table->boolean('is_active')
-                ->default(true);
             $table->string('state_tax_id')                      // Inscrição Estadual
                 ->nullable();
             $table->string('state_tax_indicator')               // Indicador da IE

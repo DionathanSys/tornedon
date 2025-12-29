@@ -21,6 +21,8 @@ class PartnerResource extends Resource
 {
     protected static ?string $model = Partner::class;
 
+    protected static bool $isScopedToTenant = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
 
     protected static ?string $cluster = PartnersCluster::class;
@@ -29,7 +31,7 @@ class PartnerResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Parceiros';
 
-    // protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'name';
 

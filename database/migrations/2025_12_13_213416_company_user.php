@@ -20,6 +20,8 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
             $table->string('role');
+            $table->boolean('is_active')
+                ->default(true);
             $table->timestamps();
         });
     }
