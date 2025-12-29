@@ -21,13 +21,17 @@ class EditCompanyPartner extends EditRecord
         ];
     }
 
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        $partner = Partner::find($this->record->partner_id);
-        $data['name'] = $partner->name;
-        $data['document_type'] = $partner->document_type;
-        $data['document_number'] = $partner->document_number;
+        protected function mutateFormDataBeforeFill(array $data): array
+        {
+            $data = parent::mutateFormDataBeforeFill($data);
+            
+            $partner = Partner::find($this->record->partner_id);
+            $data['name'] = $partner->name;
+            $data['document_type'] = $partner->document_type;
+            $data['document_number'] = $partner->document_number;
 
-        return $data;
-    }
+             
+
+            return $data;
+        }
 }
