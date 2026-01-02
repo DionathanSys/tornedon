@@ -28,9 +28,7 @@ class EditCompanyPartner extends EditRecord
             $partner = Partner::find($this->record->partner_id);
             $data['name'] = $partner->name;
             $data['document_type'] = $partner->document_type;
-            $data['document_number'] = $partner->document_number;
-
-             
+            $data['document_number'] = $partner->document_number;         
 
             return $data;
         }

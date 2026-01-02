@@ -6,6 +6,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use App\Enum;
+use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Leandrocfe\FilamentPtbrFormFields\Document;
@@ -25,11 +26,6 @@ class CompanyPartnerForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('name')
-                            ->label('Nome')
-                            ->autocomplete(false)
-                            ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->required(),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -41,12 +37,12 @@ class CompanyPartnerForm
                             ->disabledOn('edit')
                             ->native(false)
                             ->required(),
-                        Document::make('document_number')
-                            ->label('Nº do Doc.')
+                        DocumentNumberInput::make(),
+                        TextInput::make('name')
+                            ->label('Nome')
                             ->autocomplete(false)
-                            ->disabledOn('edit')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->dynamic(),
+                            ->columnSpan(['md' => 4, 'lg' => 8])
+                            ->required(),
                         TextInput::make('state_tax_id')
                             ->label('Inscrição Estadual')
                             ->columnStart(1)
