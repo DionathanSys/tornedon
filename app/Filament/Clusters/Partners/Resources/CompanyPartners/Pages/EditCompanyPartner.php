@@ -7,6 +7,7 @@ use App\Models\Partner;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class EditCompanyPartner extends EditRecord
@@ -21,15 +22,29 @@ class EditCompanyPartner extends EditRecord
         ];
     }
 
-        protected function mutateFormDataBeforeFill(array $data): array
-        {
-            $data = parent::mutateFormDataBeforeFill($data);
-            
-            $partner = Partner::find($this->record->partner_id);
-            $data['name'] = $partner->name;
-            $data['document_type'] = $partner->document_type;
-            $data['document_number'] = $partner->document_number;         
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data = parent::mutateFormDataBeforeFill($data);
 
-            return $data;
-        }
+        $partner = Partner::find($this->record->partner_id);
+        $data['name'] = $partner->name;
+        $data['document_type'] = $partner->document_type;
+        $data['document_number'] = $partner->document_number;
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data = $data['company_partner'];
+
+        return $data;
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        $record->update($data);
+
+        return $record;
+    }
 }

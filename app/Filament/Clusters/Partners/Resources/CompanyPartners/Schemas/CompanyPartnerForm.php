@@ -11,6 +11,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class CompanyPartnerForm
 {
@@ -19,6 +20,7 @@ class CompanyPartnerForm
         return $schema
             ->components([
                 Section::make('Parceiro')
+                    ->disabledOn('edit')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -34,7 +36,6 @@ class CompanyPartnerForm
                                 'cnpj' => 'CNPJ',
                             ])
                             ->default('cnpj')
-                            ->disabledOn('edit')
                             ->native(false)
                             ->required(),
                         DocumentNumberInput::make(),
@@ -78,11 +79,9 @@ class CompanyPartnerForm
                             ->multiple()
                             ->default(Enum\Partner\Type::CUSTOMER->value)
                             ->required(),
-                        TextInput::make('company_partner.invoice_threshold')
+                        Money::make('company_partner.invoice_threshold')
                             ->label('Vlr. Mín p/ Fatura')
                             ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->numeric()
-                            ->prefix("R$")
                             ->default(0),
                         Toggle::make('company_partner.is_active')
                             ->label('Ativo')

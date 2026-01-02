@@ -18,7 +18,6 @@ class DocumentNumberInput
         return Document::make('document_number')
             ->label('Nº do Doc.')
             ->autocomplete(false)
-            ->disabledOn('edit')
             ->columnSpan(['md' => 2, 'lg' => 3])
             ->dynamic()
             ->live(onBlur: true)

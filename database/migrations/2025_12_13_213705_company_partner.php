@@ -20,7 +20,7 @@ return new class extends Migration
                 ->constrained('partners')
                 ->cascadeOnDelete();
             $table->json('type');
-            $table->decimal('invoice_threshold')                // Valor mínimo para faturar (por cliente)  !!-> threshold = limite
+            $table->decimal('invoice_threshold', 12, 8)                // Valor mínimo para faturar (por cliente)  !!-> threshold = limite
                 ->default(0.00)
                 ->nullable();
             $table->boolean('is_active')
