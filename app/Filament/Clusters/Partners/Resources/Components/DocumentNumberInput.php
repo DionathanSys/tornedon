@@ -17,27 +17,29 @@ class DocumentNumberInput
     {
         return Document::make('document_number')
             ->label('Nº do Doc.')
-            ->afterLabel('teste')
-            ->belowContent([
-                Icon::make(Heroicon::InformationCircle),
-                'This is the user\'s full name.',
-                Action::make('generate'),
-            ])
             ->autocomplete(false)
             ->disabledOn('edit')
             ->columnSpan(['md' => 2, 'lg' => 3])
             ->dynamic()
             ->live(onBlur: true)
             ->afterStateUpdated(function (Set $set, Field $component, $state) {
-                // ds($state);
-                if($state){
-                    $partner = Partner::where('document_number', $state);
-                    // ds($partner);
-                    if($partner){
-                        $component->afterLabel([Icon::make(Heroicon::CheckCircle),'Parceiro com cadastrado']);
-                    } else {
-                        $component->afterLabel([Icon::make(Heroicon::CheckCircle),'Parceiro sem cadastrado']);
+                if ($state) {
+                    $partner = Partner::where('document_number', $state)->get()->first();
+                    if ($partner) {
+                        $component->afterLabel([Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']);
+                        $set('document_type', $partner->document_type);
+                        $set('name', $partner->name);
+                        $set('state_tax_id', $partner->state_tax_id ?? '');
+                        $set('municipal_tax_id', $partner->municipal_tax_id ?? '');
+                        $set('state_tax_indicator', $partner->state_tax_indicator ?? '');
+
+                        return;
                     }
+
+                    $set('name', null);
+                    $set('state_tax_id', null);
+                    $set('municipal_tax_id', null);
+                    $set('state_tax_indicator', null);
                 }
             });
     }
