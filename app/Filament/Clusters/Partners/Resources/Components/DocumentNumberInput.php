@@ -9,6 +9,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Document;
 use Livewire\Component;
 
@@ -26,6 +27,8 @@ class DocumentNumberInput
                 if ($state) {
                     $partner = Partner::where('document_number', $state)->get()->first();
                     if ($partner) {
+
+                        //TODO: Verificar se existe vinculo entre parceiro e empresa
                         $component->afterLabel([Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']);
                         $component->belowContent(self::clearFields());
                         $set('document_type', $partner->document_type);
@@ -52,6 +55,8 @@ class DocumentNumberInput
 
     private static function clearFields(): Action
     {
+        Log::debug(__METHOD__);
+
         return Action::make('clear-fields')
             ->label('Limpar campos')
             ->action(function (Set $set, Field $component) {
