@@ -47,7 +47,7 @@ class CompanyPartnerForm
                             ->autocomplete(false)
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->required()
-                            ->disabled(fn(Get $get): bool => $get('partner_exists')),
+                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false),
                         TextInput::make('state_tax_id')
                             ->label('Inscrição Estadual')
                             ->placeholder('Não definido')
