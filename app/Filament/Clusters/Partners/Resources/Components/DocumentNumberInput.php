@@ -40,6 +40,7 @@ class DocumentNumberInput
                     $set('state_tax_id', null);
                     $set('municipal_tax_id', null);
                     $set('state_tax_indicator', null);
+                    $set('partner_exists', false);
                 }
             });
     }
