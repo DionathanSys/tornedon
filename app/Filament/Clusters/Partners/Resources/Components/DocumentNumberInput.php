@@ -22,11 +22,12 @@ class DocumentNumberInput
             ->columnSpan(['md' => 2, 'lg' => 3])
             ->dynamic()
             ->live(onBlur: true)
-            ->afterStateUpdated(function (Set $set, Field $component, Component $livewire, $state) {
+            ->afterStateUpdated(function (Set $set, Field $component, $state) {
                 if ($state) {
                     $partner = Partner::where('document_number', $state)->get()->first();
                     if ($partner) {
                         $component->afterLabel([Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']);
+                        $component->belowContent(self::clearFields());
                         $set('document_type', $partner->document_type);
                         $set('name', $partner->name);
                         $set('state_tax_id', $partner->state_tax_id ?? '');
@@ -35,13 +36,32 @@ class DocumentNumberInput
                         $set('partner_exists', true);
                         return;
                     }
-
-                    $set('name', null);
-                    $set('state_tax_id', null);
-                    $set('municipal_tax_id', null);
-                    $set('state_tax_indicator', null);
-                    $set('partner_exists', false);
                 }
+
+                $set('name', null);
+                $set('state_tax_id', null);
+                $set('municipal_tax_id', null);
+                $set('state_tax_indicator', null);
+                $set('partner_exists', false);
+
+                $component->afterLabel(null);
+                $component->belowContent(null);
+
+            });
+    }
+
+    private static function clearFields(): Action
+    {
+        return Action::make('clear-fields')
+            ->label('Limpar campos')
+            ->action(function (Set $set, Field $component) {
+                $set('name', null);
+                $set('state_tax_id', null);
+                $set('municipal_tax_id', null);
+                $set('state_tax_indicator', null);
+                $set('partner_exists', false);
+                $component->afterLabel(null);
+                $component->belowContent(null);
             });
     }
 }
