@@ -16,12 +16,12 @@ class CompanyPartnersTable
     {
         return $table
             ->columns([
-                TextColumn::make('company.name')
-                    ->label('Empresa')
-                    ->sortable(),
                 TextColumn::make('partner.name')
                     ->label('Parceiro')
                     ->sortable(),
+                TextColumn::make('company.document_number')
+                    ->label('CPF/CNPJ')
+                    ->searchable(),
                 TextColumn::make('invoice_threshold')
                     ->label('Vlr. Mín Fatura')
                     ->money('BRL')

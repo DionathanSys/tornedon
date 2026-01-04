@@ -10,6 +10,7 @@ use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Document;
+use Livewire\Component;
 
 class DocumentNumberInput
 {
@@ -21,7 +22,7 @@ class DocumentNumberInput
             ->columnSpan(['md' => 2, 'lg' => 3])
             ->dynamic()
             ->live(onBlur: true)
-            ->afterStateUpdated(function (Set $set, Field $component, $state) {
+            ->afterStateUpdated(function (Set $set, Field $component, Component $livewire, $state) {
                 if ($state) {
                     $partner = Partner::where('document_number', $state)->get()->first();
                     if ($partner) {
@@ -31,7 +32,7 @@ class DocumentNumberInput
                         $set('state_tax_id', $partner->state_tax_id ?? '');
                         $set('municipal_tax_id', $partner->municipal_tax_id ?? '');
                         $set('state_tax_indicator', $partner->state_tax_indicator ?? '');
-
+                        $set('partner_exists', true);
                         return;
                     }
 

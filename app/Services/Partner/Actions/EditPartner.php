@@ -36,17 +36,10 @@ class EditPartner
         return $partner;
     }
 
-    private function exists(array $data): ?Partner
-    {
-        return Partner::where('document_number', $data['document_number'])->first();
-    }
-
     private function validate(array $data): void
     {
         $validate = Validator::make($data, [
             'name'                  => 'required|string|max:255',
-            'type'                  => 'required|array|min:1',
-            'type.*'                => 'required|string|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Partner\Type::cases())),
             'document_type'         => 'required|string|in:cnpj,cpf',
             'document_number'       => [
                 'required',
@@ -62,18 +55,14 @@ class EditPartner
                     }
                 },
             ],
-            'is_active'             => 'required|boolean',
             'state_tax_id'          => 'nullable|string|max:50',
             'state_tax_indicator'   => 'nullable|int|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Tax\StateTaxIndicator::cases())),
             'municipal_tax_id'      => 'nullable|string|max:50',
             'updated_by'            => 'required|integer|exists:users,id',
         ], [
             'name.required'             => 'O nome do parceiro é obrigatório.',
-            'type.required'             => 'O tipo de parceiro é obrigatório.',
-            'type.*.in'                 => 'O tipo de parceiro informado é inválido.',
             'document_type.in'          => 'O tipo de documento informado é inválido.',
             'document_number.required'  => 'O número do documento é obrigatório.',
-            'is_active.required'        => 'O status de ativo é obrigatório.',
             'state_tax_id.max'          => 'A inscrição estadual deve ter no máximo 50 caracteres.',
             'municipal_tax_id.max'      => 'A inscrição municipal deve ter no máximo 50 caracteres.',
             'state_tax_indicator.in'    => 'O indicador de inscrição estadual informado é inválido.',

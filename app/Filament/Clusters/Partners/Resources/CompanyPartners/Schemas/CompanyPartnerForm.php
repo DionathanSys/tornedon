@@ -7,8 +7,10 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use App\Enum;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
 use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -28,6 +30,7 @@ class CompanyPartnerForm
                     ])
                     ->columnSpanFull()
                     ->schema([
+                        Hidden::make('partner_exists'),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -43,15 +46,18 @@ class CompanyPartnerForm
                             ->label('Nome')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->required(),
+                            ->required()
+                            ->disabled(fn(Get $get): bool => $get('partner_exists')),
                         TextInput::make('state_tax_id')
                             ->label('Inscrição Estadual')
+                            ->placeholder('Não definido')
                             ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
                             ->numeric(),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscrição Municipal')
+                            ->placeholder('Não definido')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->numeric(),
