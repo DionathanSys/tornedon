@@ -30,8 +30,8 @@ class CompanyPartnerForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
-                    ->disabledOn('edit')
                     ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
+                    ->disabledOn('edit')
                     ->schema([
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
