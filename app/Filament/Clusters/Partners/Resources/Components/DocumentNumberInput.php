@@ -26,6 +26,10 @@ class DocumentNumberInput
             ->columnSpan(['md' => 2, 'lg' => 3])
             ->dynamic()
             ->live(onBlur: true)
+            ->belowContent([
+                self::clearFields()
+                    ->visible(fn(callable $get) => $get('partner_exists') === true),
+            ])
             ->afterStateUpdated(function (Set $set, Field $component, $state) {
                 if ($state) {
 
@@ -42,7 +46,6 @@ class DocumentNumberInput
                         }
 
                         $component->afterLabel([Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']);
-                        $component->belowContent(self::clearFields());
                         $set('document_type', $partner->document_type);
                         $set('name', $partner->name);
                         $set('state_tax_id', $partner->state_tax_id ?? '');
@@ -78,7 +81,6 @@ class DocumentNumberInput
                 $set('state_tax_indicator', null);
                 $set('partner_exists', false);
                 $component->afterLabel(null);
-                $component->belowContent(null);
             });
     }
 }
