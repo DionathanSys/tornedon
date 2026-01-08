@@ -21,16 +21,17 @@ class CompanyPartnerForm
     {
         return $schema
             ->components([
+                Hidden::make('partner_exists'),
                 Section::make('Parceiro')
-                    ->disabledOn('edit')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
+                    ->disabledOn('edit')
+                    
                     ->schema([
-                        Hidden::make('partner_exists'),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -40,33 +41,36 @@ class CompanyPartnerForm
                             ])
                             ->default('cnpj')
                             ->native(false)
+                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
                             ->required(),
                         DocumentNumberInput::make(),
                         TextInput::make('name')
                             ->label('Nome')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->required()
-                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false),
+                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
+                            ->required(),
                         TextInput::make('state_tax_id')
                             ->label('Inscrição Estadual')
                             ->placeholder('Não definido')
                             ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
+                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
                             ->numeric(),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscrição Municipal')
                             ->placeholder('Não definido')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
                             ->numeric(),
                         Select::make('state_tax_indicator')
                             ->label('Indicador IE')
                             ->columnSpanFull()
                             ->options(Enum\Tax\StateTaxIndicator::toSelectArray())
+                            ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
                             ->native(false),
-
                     ]),
                 Section::make('Configurações da Empresa')
                     ->columns([

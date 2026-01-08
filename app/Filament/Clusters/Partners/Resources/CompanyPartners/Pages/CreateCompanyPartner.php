@@ -33,7 +33,7 @@ class CreateCompanyPartner extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         $service = new PartnerService();
-        $partner = $service->createPartner($data);
+        $partner = $data['partner_exists'] ? $service->getPartner($data['document_number']) : $service->createPartner($data);
 
         if($service->hasError()){
             notify::error();

@@ -2,7 +2,10 @@
 
 namespace App\Filament\Clusters\Partners\Resources\Components;
 
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Models\Partner;
+use App\Services\Partner\CompanyPartnerService;
+use App\Services\Partner\PartnerService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\TextInput;
@@ -25,10 +28,19 @@ class DocumentNumberInput
             ->live(onBlur: true)
             ->afterStateUpdated(function (Set $set, Field $component, $state) {
                 if ($state) {
-                    $partner = Partner::where('document_number', $state)->get()->first();
+
+                    $partner = (new PartnerService())->getPartner($state);
+
                     if ($partner) {
 
-                        //TODO: Verificar se existe vinculo entre parceiro e empresa
+                        $companyPartner = CompanyPartnerService::companyHasPartner($partner->id);
+
+                        if ($companyPartner) {
+                            return redirect(
+                                CompanyPartnerResource::getUrl('edit', ['record' => $companyPartner->id])
+                            );
+                        }
+
                         $component->afterLabel([Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']);
                         $component->belowContent(self::clearFields());
                         $set('document_type', $partner->document_type);
@@ -49,7 +61,6 @@ class DocumentNumberInput
 
                 $component->afterLabel(null);
                 $component->belowContent(null);
-
             });
     }
 
@@ -60,7 +71,8 @@ class DocumentNumberInput
         return Action::make('clear-fields')
             ->label('Limpar campos')
             ->action(function (Set $set, Field $component) {
-                $set('name', null);
+                $set('name', null, shouldCallUpdatedHooks: true);
+                $set('document_number', null, shouldCallUpdatedHooks: true);
                 $set('state_tax_id', null);
                 $set('municipal_tax_id', null);
                 $set('state_tax_indicator', null);

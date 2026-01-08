@@ -10,6 +10,7 @@ use App\Services\Partner\Actions\EditPartner;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class PartnerService
 {
@@ -98,5 +99,25 @@ class PartnerService
             ]);
             return null;
         }
+    }
+
+    public function getPartner(string $documentNumber): ?Partner
+    {
+        if(Str::length($documentNumber) != 14 && Str::length($documentNumber) != 18){
+            $this->setError('Nro. de documento inválido');
+            return null;
+        }
+
+        $result = Partner::query()
+            ->where('document_number', $documentNumber)
+            ->get()
+            ->first();
+
+        if(!$result){
+            $this->setError('Parceiro não encontrado');
+            return null;
+        }
+
+        return $result;
     }
 }
