@@ -101,7 +101,7 @@ class PartnerService
         }
     }
 
-    public function getPartner(string $documentNumber): ?Partner
+    public function getPartnerByDocument(string $documentNumber): ?Partner
     {
         if(Str::length($documentNumber) != 14 && Str::length($documentNumber) != 18){
             $this->setError('Nro. de documento inválido');
@@ -112,6 +112,19 @@ class PartnerService
             ->where('document_number', $documentNumber)
             ->get()
             ->first();
+
+        if(!$result){
+            $this->setError('Parceiro não encontrado');
+            return null;
+        }
+
+        return $result;
+    }
+
+    public function getPartnerById(int $partnerId): ?Partner
+    {
+        $result = Partner::query()
+            ->find($partnerId);
 
         if(!$result){
             $this->setError('Parceiro não encontrado');

@@ -22,6 +22,7 @@ class CompanyPartnerForm
         return $schema
             ->components([
                 Hidden::make('partner_exists'),
+                Hidden::make('partner_id'),
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,

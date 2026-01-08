@@ -33,7 +33,7 @@ class DocumentNumberInput
             ->afterStateUpdated(function (Set $set, Field $component, $state) {
                 if ($state) {
 
-                    $partner = (new PartnerService())->getPartner($state);
+                    $partner = (new PartnerService())->getPartnerByDocument($state);
 
                     if ($partner) {
 
@@ -45,13 +45,17 @@ class DocumentNumberInput
                             );
                         }
 
-                        $component->afterLabel([Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']);
+                        $component->afterLabel(
+                            [Icon::make(Heroicon::CheckCircle), 'Parceiro já cadastrado']
+                        );
+
                         $set('document_type', $partner->document_type);
                         $set('name', $partner->name);
                         $set('state_tax_id', $partner->state_tax_id ?? '');
                         $set('municipal_tax_id', $partner->municipal_tax_id ?? '');
                         $set('state_tax_indicator', $partner->state_tax_indicator ?? '');
                         $set('partner_exists', true);
+                        $set('partner_id', $partner->id);
                         return;
                     }
                 }
@@ -63,14 +67,11 @@ class DocumentNumberInput
                 $set('partner_exists', false);
 
                 $component->afterLabel(null);
-                $component->belowContent(null);
             });
     }
 
     private static function clearFields(): Action
     {
-        Log::debug(__METHOD__);
-
         return Action::make('clear-fields')
             ->label('Limpar campos')
             ->action(function (Set $set, Field $component) {

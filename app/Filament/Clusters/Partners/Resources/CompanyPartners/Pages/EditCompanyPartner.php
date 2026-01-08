@@ -30,6 +30,9 @@ class EditCompanyPartner extends EditRecord
         $data['name']               = $partner->name;
         $data['document_type']      = $partner->document_type;
         $data['document_number']    = $partner->document_number;
+        $data['state_tax_id']       = $partner->state_tax_id;
+        $data['municipal_tax_id']   = $partner->municipal_tax_id;
+        $data['state_tax_indicator'] = $partner->state_tax_indicator;
 
         return $data;
     }
