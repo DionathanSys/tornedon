@@ -26,9 +26,6 @@ class EditCompanyPartner extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-
-        ds($data)->label('Dados recuperados do DB para form - '. __METHOD__);
-
         $partner                                        = Partner::find($this->record->partner_id);
         $data['name']                                   = $partner->name;
         $data['document_type']                          = $partner->document_type;
@@ -40,8 +37,6 @@ class EditCompanyPartner extends EditRecord
         $data['company_partner']['invoice_threshold']   = $data['invoice_threshold'];
         $data['company_partner']['is_active']           = $data['is_active'];
         
-        ds($data)->label('Dados processados para form - '. __METHOD__);
-
         return $data;
     }
 
@@ -61,8 +56,6 @@ class EditCompanyPartner extends EditRecord
             notify::error(message: $service->getMessage());
             $this->halt();
         }
-
-        ds($result)->label("Record atualizado - ".__METHOD__);
 
         return $result;
     }

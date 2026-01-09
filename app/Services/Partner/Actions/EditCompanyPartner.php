@@ -24,7 +24,6 @@ class EditCompanyPartner
 
     public function execute(array $data): ?CompanyPartner
     {
-        ds($data)->label("Dados recebidos - " . __METHOD__);
         $this->validate($data);
 
         if ($this->hasError()) {
