@@ -21,8 +21,10 @@ class CompanyPartnerForm
     {
         return $schema
             ->components([
-                Hidden::make('partner_exists'),
-                Hidden::make('partner_id'),
+                Hidden::make('partner_exists')
+                    ->visibleOn('create'),
+                Hidden::make('partner_id')
+                    ->visibleOn('create'),
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,
@@ -88,6 +90,7 @@ class CompanyPartnerForm
                         Money::make('company_partner.invoice_threshold')
                             ->label('Vlr. Mín p/ Fatura')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->default(0),
                         Toggle::make('company_partner.is_active')
                             ->label('Ativo')

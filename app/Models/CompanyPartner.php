@@ -10,6 +10,12 @@ class CompanyPartner extends Model
 {
     protected $table = 'company_partner';
 
+    protected $fillable = [
+        'type',
+        'invoice_threshold',
+        'is_active',
+    ];
+
     protected $casts = [
         'invoice_threshold' => MoneyCast::class,
         'type'              => 'array',

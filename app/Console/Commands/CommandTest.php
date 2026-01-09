@@ -28,10 +28,9 @@ class CommandTest extends Command
      */
     public function handle()
     {
-        $user = User::find(1);
-        $companies = $user->companies();
+        
 
-        ds($companies);
+        ds(implode(',', array_map(fn($case) => $case->value, Enum\Partner\Type::cases())));
     }
 
 }
