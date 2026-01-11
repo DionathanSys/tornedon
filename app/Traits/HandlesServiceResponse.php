@@ -49,6 +49,16 @@ trait HandlesServiceResponse
         return $this->message;
     }
 
+    public function getMessageUser(): string
+    {
+        if($this->hasError()){
+            $errors = implode('<br>- ',  $this->getErrors());
+            return $this->message . $errors;
+        }
+
+        return $this->message;
+    }
+
     public function getData(): array
     {
         return $this->data;
