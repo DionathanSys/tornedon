@@ -53,7 +53,10 @@ class CompanyPartnerForm
                             ])
                             ->default('cnpj')
                             ->native(false)
-                            ->required(),
+                            ->required()
+                            ->afterStateUpdatedJs(<<<'JS'
+                                $set('document_number', null)
+                            JS),
                         DocumentNumberInput::make(),
                         TextInput::make('name')
                             ->label('Nome')

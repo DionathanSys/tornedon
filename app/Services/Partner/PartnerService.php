@@ -73,10 +73,10 @@ class PartnerService
         }
     }
 
-    public function editPartner(array $data): ?Partner
+    public function editPartner(Partner $partner, array $data): ?Partner
     {
         try {
-            $action = new EditPartner();
+            $action = new EditPartner($partner);
             $result = $action->execute($data);
 
             if ($action->hasError()) {

@@ -16,14 +16,13 @@ class EditPartner
 
     private array $fillableFields;
 
-    public function __construct()
+    public function __construct(protected Partner $partner)
     {
         $this->fillableFields = (new Partner())->getFillable();
     }
 
     public function execute(array $data): ?Partner
     {
-        ds($data)->label('Dados recebidos');
         $this->validate($data);
 
         if ($this->hasError()) {

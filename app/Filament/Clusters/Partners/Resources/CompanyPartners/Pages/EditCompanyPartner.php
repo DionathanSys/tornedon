@@ -11,6 +11,7 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Partner\PartnerService;
 
 class EditCompanyPartner extends EditRecord
 {
@@ -26,7 +27,7 @@ class EditCompanyPartner extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $partner                                        = Partner::find($this->record->partner_id);
+        $partner                                        = (new PartnerService())->getPartnerById($this->record->partner_id);
         $data['partner_exists']                         = true;
         $data['partner_id']                             = $partner->id;
         $data['name']                                   = $partner->name;

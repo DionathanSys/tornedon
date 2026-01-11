@@ -4,7 +4,10 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions;
 
 use App\Enum;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
+use App\Models\CompanyPartner;
+use App\Services\Partner\PartnerService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
@@ -19,6 +22,18 @@ class UpdatePartner
             ->label('Editar Parceiro')
             ->icon(Heroicon::PencilSquare)
             ->visible(fn($operation): bool => $operation === 'edit')
+            ->fillForm(function (Get $get): array {
+                $partner                      = (new PartnerService())->getPartnerById($get('partner_id'));
+                return [
+                    'partner_id'           => $partner->id,
+                    'name'                 => $partner->name,
+                    'document_type'        => $partner->document_type,
+                    'document_number'      => $partner->document_number,
+                    'state_tax_id'         => $partner->state_tax_id,
+                    'municipal_tax_id'     => $partner->municipal_tax_id,
+                    'state_tax_indicator'  => $partner->state_tax_indicator,
+                ];
+            })
             ->schema(function (Schema $schema) {
                 return $schema
                     ->columns([
@@ -27,6 +42,7 @@ class UpdatePartner
                         'lg' => 8,
                     ])
                     ->schema([
+                        Hidden::make('partner_id'),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -36,7 +52,10 @@ class UpdatePartner
                             ])
                             ->default('cnpj')
                             ->native(false)
-                            ->required(),
+                            ->required()
+                            ->afterStateUpdatedJs(<<<'JS'
+                                $set('document_number', null)
+                            JS),
                         DocumentNumberInput::make(),
                         TextInput::make('name')
                             ->label('Nome')
@@ -64,6 +83,7 @@ class UpdatePartner
                     ]);
             })
             ->action(fn(array $data) => dd($data))
-            ;
+            ->modalSubmitActionLabel('Salvar')
+        ;
     }
 }
