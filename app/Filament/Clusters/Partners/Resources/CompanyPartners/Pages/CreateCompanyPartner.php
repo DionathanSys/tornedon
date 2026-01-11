@@ -36,8 +36,8 @@ class CreateCompanyPartner extends CreateRecord
         $partner = $data['partner_exists'] ? $service->getPartnerById($data['partner_id']) : $service->createPartner($data);
 
         if($service->hasError()){
-            $errors = implode(',<br>',  $service->getErrors());
-            notify::error(message: 'Erro(s):<br>'.$errors);
+            $errors = implode('<br>- ',  $service->getErrors());
+            notify::error(message: 'Erro(s):<br>- '.$errors);
             $this->halt();
         }
 
