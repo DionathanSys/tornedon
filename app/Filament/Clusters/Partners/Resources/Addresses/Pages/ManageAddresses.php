@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Partners\Resources\Addresses\Pages;
 use App\Filament\Clusters\Partners\Resources\Addresses\AddressResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Support\Icons\Heroicon;
 
 class ManageAddresses extends ManageRecords
 {
@@ -13,7 +14,9 @@ class ManageAddresses extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Endereço')
+                ->icon(Heroicon::Plus),
         ];
     }
 }

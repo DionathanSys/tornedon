@@ -19,7 +19,7 @@ class CompanyPartnersTable
                 TextColumn::make('partner.name')
                     ->label('Parceiro')
                     ->sortable(),
-                TextColumn::make('company.document_number')
+                TextColumn::make('partner.document_number')
                     ->label('CPF/CNPJ')
                     ->searchable(),
                 TextColumn::make('invoice_threshold')

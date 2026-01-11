@@ -20,7 +20,7 @@ observers:
   logs: true
   http: false
   jobs: true
-  commands: true
+  commands: false
   scheduled_commands: false
   gate: false
   cache: true

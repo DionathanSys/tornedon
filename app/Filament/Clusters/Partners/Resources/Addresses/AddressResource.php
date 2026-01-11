@@ -11,6 +11,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
@@ -19,6 +20,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AddressResource extends Resource
 {
@@ -37,34 +39,93 @@ class AddressResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'sm' => 1,
+                'md' => 4,
+                'lg' => 8,
+            ])
             ->components([
                 Select::make('partner_id')
                     ->label('Parceiro')
+                    ->columnStart(1)
+                    ->columnSpanFull()
                     ->required()
-                    ->relationship('partner', 'name'),
+                    ->relationship('partner', 'name', modifyQueryUsing: function (Builder $query) {
+                        $tenant = Filament::getTenant();
+                        return $query
+                            ->where('company_id', $tenant->id);
+                    })
+                    ->searchable()
+                    ->preload(),
                 TextInput::make('street')
                     ->label('Logradouro')
+                    ->columnStart(1)
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 4,
+                    ])
                     ->required()
                     ->maxLength(255),
                 TextInput::make('number')
                     ->label('Número')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 2,
+                    ])
                     ->required()
                     ->maxLength(50),
                 TextInput::make('complement')
-                    ->label('Complemento'),
+                    ->label('Complemento')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 2,
+                    ]),
                 TextInput::make('neighborhood')
-                    ->label('Bairro'),
+                    ->label('Bairro')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 4,
+                    ]),
                 TextInput::make('city')
-                    ->label('Cidade'),
+                    ->label('Cidade')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 4,
+                    ]),
                 TextInput::make('state')
-                    ->label('Estado'),
+                    ->label('Estado')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 4,
+                    ]),
                 TextInput::make('country')
                     ->required()
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 4,
+                    ])
                     ->default('BRASIL'),
                 TextInput::make('postal_code')
-                    ->label('CEP'),
+                    ->label('CEP')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 4,
+                    ]),
                 TextInput::make('city_code')
-                    ->label('Código do IBGE da Cidade'),
+                    ->label('Código do IBGE da Cidade')
+                    ->columnSpan([
+                        'sm' => 1,
+                        'md' => 2,
+                        'lg' => 4,
+                    ]),
             ]);
     }
 
@@ -123,39 +184,53 @@ class AddressResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('partner_id')
-                    ->numeric()
+                TextColumn::make('partner.name')
+                    ->label('Parceiro')
                     ->sortable(),
                 TextColumn::make('street')
+                    ->label('Rua')
                     ->searchable(),
                 TextColumn::make('number')
+                    ->label('Nro.')
                     ->searchable(),
                 TextColumn::make('complement')
-                    ->searchable(),
+                    ->label('Complemento')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('neighborhood')
+                    ->label('Bairro')
                     ->searchable(),
                 TextColumn::make('city')
+                    ->label('Cidade')
                     ->searchable(),
                 TextColumn::make('state')
+                    ->label('Estado')
                     ->searchable(),
                 TextColumn::make('country')
-                    ->searchable(),
+                    ->label('País')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('postal_code')
+                    ->label('CEP')
                     ->searchable(),
                 TextColumn::make('city_code')
-                    ->searchable(),
-                TextColumn::make('created_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('updated_by')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Cód. Cidade IBGE')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('createdBy.name')
+                    ->label('Criado por')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updatedBy.name')
+                    ->label('Editado por')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Criado em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Editado em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

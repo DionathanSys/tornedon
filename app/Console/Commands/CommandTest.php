@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enum;
+use App\Models\CompanyPartner;
 use App\Models\User;
 use App\Services\Partner\Actions\CreatePartner;
 use App\Services\Partner\PartnerService;
@@ -30,7 +31,7 @@ class CommandTest extends Command
      */
     public function handle()
     {
- dd(extension_loaded('xdebug'));
+        ds()->model(CompanyPartner::with('company')->find(3));
 
 
     }
