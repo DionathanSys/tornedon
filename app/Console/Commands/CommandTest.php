@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enum;
 use App\Models\User;
+use App\Services\Partner\Actions\CreatePartner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -28,9 +29,22 @@ class CommandTest extends Command
      */
     public function handle()
     {
-        
+        $data = [
+            'name'                  => '',
+            'document_type'         => 'abc',
+            'document_number'       => '070.934.799-52',
+            'state_tax_id'          => 'null',
+            'state_tax_indicator'   => '1',
+            'municipal_tax_id'      => null,
+            'created_by'            => 1,
+            'updated_by'            => 5,
+        ];
 
-        ds(implode(',', array_map(fn($case) => $case->value, Enum\Partner\Type::cases())));
+
+        $action = new CreatePartner();
+        $result = $action->execute($data);
+
+        ds($action->getMessage())->label('Message');
+        ds($action->getErrors())->label('Erros');
     }
-
 }

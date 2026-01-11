@@ -17,7 +17,7 @@ trait HandlesActionResponse
     {
         $this->success = false;
         $this->message = $message;
-        $this->errors = $errors;
+        $this->errors  = $errors;
 
     }
 

@@ -81,7 +81,7 @@ class CreatePartner
         ]);
 
         if ($validate->fails()) {
-            $this->setError('Falha de validação dos dados', $validate->errors()->toArray());
+            $this->setError('Falha de validação dos dados', $validate->errors()->all());
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Falha de validação dos dados',
                 'errors'    => $validate->errors()->toArray(),
