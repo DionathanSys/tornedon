@@ -53,7 +53,7 @@ trait HandlesServiceResponse
     {
         if($this->hasError()){
             $errors = implode('<br>- ',  $this->getErrors());
-            return $this->message . $errors;
+            return $this->message . '<br>- ' . $errors;
         }
 
         return $this->message;
