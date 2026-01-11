@@ -38,7 +38,8 @@ class PartnerService
             $this->setError('Erro ao cadastrar parceiro', $action->getErrors());
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Erro ao cadastrar parceiro',
-                'errors' => $e->getMessage(),
+                'errors'  => $e->getMessage(),
+                'data'    => $data,
             ]);
             return null;
         }
@@ -68,6 +69,7 @@ class PartnerService
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Erro ao vincular parceiro e empresa',
                 'errors'    => $e->getMessage(),
+                'data'      => $data,
             ]);
             return null;
         }
@@ -95,7 +97,8 @@ class PartnerService
             $this->setError('Erro ao editar parceiro');
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Erro ao editar parceiro',
-                'errors' => $e->getMessage(),
+                'errors'  => $e->getMessage(),
+                'data'    => $data,
             ]);
             return null;
         }

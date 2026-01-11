@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions;
 
 use App\Enum;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Models\CompanyPartner;
 use App\Services\Partner\PartnerService;
@@ -13,9 +14,12 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use App\Notification\NotifyService as notify;
+use Illuminate\Support\Facades\Auth;
 
 class UpdatePartner
 {
+
     public static function make(): Action
     {
         return Action::make('edit-partner')
@@ -56,7 +60,8 @@ class UpdatePartner
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('document_number', null)
                             JS),
-                        DocumentNumberInput::make(),
+                        DocumentNumberInput::make()
+                            ->afterStateUpdated(null),
                         TextInput::make('name')
                             ->label('Nome')
                             ->autocomplete(false)
@@ -82,8 +87,25 @@ class UpdatePartner
                             ->native(false),
                     ]);
             })
-            ->action(fn(array $data) => dd($data))
+            ->action(function (Action $action, array $data) {
+
+                $data['id'] = $data['partner_id'];
+                $data['updated_by'] = Auth::id();
+                $service = new PartnerService();
+                $partner = $service->getPartnerById($data['id']);
+
+                $result = $service->editPartner($partner, $data);
+
+                if($service->hasError()){
+                    notify::error(message: $service->getMessageUser());
+                    $action->halt();
+                }
+
+                notify::success(message: 'Parceiro atualizado.');
+                $action->success();
+            })
             ->modalSubmitActionLabel('Salvar')
+            ->successRedirectUrl(fn(CompanyPartner $record) => CompanyPartnerResource::getUrl('edit', ['record'=> $record->id]))
         ;
     }
 }

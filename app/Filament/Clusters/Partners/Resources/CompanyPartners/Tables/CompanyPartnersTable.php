@@ -51,7 +51,8 @@ class CompanyPartnersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ,
                 ]),
             ]);
     }

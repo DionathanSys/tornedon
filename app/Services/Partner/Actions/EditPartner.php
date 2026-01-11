@@ -30,9 +30,9 @@ class EditPartner
         }
 
         $data = Arr::only($data, $this->fillableFields);
-        $partner = Partner::create($data);
+        $this->partner->update($data);
         $this->setSuccess();
-        return $partner;
+        return $this->partner;
     }
 
     private function validate(array $data): void
