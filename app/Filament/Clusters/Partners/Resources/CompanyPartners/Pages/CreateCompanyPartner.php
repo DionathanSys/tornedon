@@ -36,14 +36,14 @@ class CreateCompanyPartner extends CreateRecord
         $partner = $data['partner_exists'] ? $service->getPartnerById($data['partner_id']) : $service->createPartner($data);
 
         if($service->hasError()){
-            notify::error();
+            notify::error(message: $service->getMessage());
             $this->halt();
         }
 
         $result = $service->associatePartnerCompany($partner->id, $data['company_id'], $data['company_partner']);
 
         if($service->hasError()){
-            notify::error();
+            notify::error(message: $service->getMessage());
             $this->halt();
         }
         
