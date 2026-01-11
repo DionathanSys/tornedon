@@ -6,13 +6,16 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use App\Enum;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Utilities\Get;
 use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class CompanyPartnerForm
@@ -33,7 +36,13 @@ class CompanyPartnerForm
                     ])
                     ->columnSpanFull()
                     ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
-                    ->disabledOn('edit')
+                    ->description('Dados de cadastro do Parceiro')
+                    ->collapsible()
+                    ->persistCollapsed()
+                    ->compact()
+                    ->afterHeader([
+                        UpdatePartner::make()
+                    ])
                     ->schema([
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
@@ -77,6 +86,8 @@ class CompanyPartnerForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
+                    ->description('Dados de vínculo entre Empresa e Parceiro')
+                    ->compact()
                     ->schema([
                         Select::make('company_partner.type')
                             ->label('Tipo')

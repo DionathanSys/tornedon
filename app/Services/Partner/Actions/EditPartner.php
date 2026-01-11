@@ -75,6 +75,7 @@ class EditPartner
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Falha de validação dos dados',
                 'errors'    => $validate->errors()->toArray(),
+                'data'      => $data,
             ]);
             return;
         }

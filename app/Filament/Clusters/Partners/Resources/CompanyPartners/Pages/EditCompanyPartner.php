@@ -27,6 +27,8 @@ class EditCompanyPartner extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $partner                                        = Partner::find($this->record->partner_id);
+        $data['partner_exists']                         = true;
+        $data['partner_id']                             = $partner->id;
         $data['name']                                   = $partner->name;
         $data['document_type']                          = $partner->document_type;
         $data['document_number']                        = $partner->document_number;
@@ -53,7 +55,7 @@ class EditCompanyPartner extends EditRecord
         $result = $service->update($record, $data);
 
         if($service->hasError()){
-            notify::error(message: $service->getMessage());
+            notify::error(message: $service->getMessageUser());
             $this->halt();
         }
 

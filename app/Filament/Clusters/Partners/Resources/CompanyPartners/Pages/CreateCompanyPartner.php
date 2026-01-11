@@ -19,7 +19,7 @@ class CreateCompanyPartner extends CreateRecord
     {
         $tenant = Filament::getTenant();
 
-        // $data['created_by'] = Auth::id();
+        $data['created_by'] = Auth::id();
         $data['company_id'] = $tenant->id;
 
         return $data;
@@ -35,7 +35,7 @@ class CreateCompanyPartner extends CreateRecord
         $service = new PartnerService();
         $partner = $data['partner_exists'] ? $service->getPartnerById($data['partner_id']) : $service->createPartner($data);
 
-        if($service->hasError()){
+        if($service->hasError() || $partner === null){
             notify::error(message: $service->getMessageUser());
             $this->halt();
         }

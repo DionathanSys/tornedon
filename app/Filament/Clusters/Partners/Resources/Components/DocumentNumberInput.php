@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Icon;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +29,7 @@ class DocumentNumberInput
             ->live(onBlur: true)
             ->belowContent([
                 self::clearFields()
-                    ->visible(fn(callable $get) => $get('partner_exists') === true),
+                    ->visible(fn(Get $get, string $operation) => $get('partner_exists') === true && $operation === 'create'),
             ])
             ->afterStateUpdated(function (Set $set, Field $component, $state) {
                 if ($state) {

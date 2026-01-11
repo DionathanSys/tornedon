@@ -70,14 +70,14 @@ class CreatePartner
             'municipal_tax_id'      => 'nullable|string|max:50',
             'created_by'            => 'required|integer|exists:users,id',
         ], [
-            'name.required' => 'O nome do parceiro é obrigatório.',
-            'document_type.in' => 'O tipo de documento informado é inválido.',
-            'document_number.required' => 'O número do documento é obrigatório.',
-            'state_tax_id.max' => 'A inscrição estadual deve ter no máximo 50 caracteres.',
-            'municipal_tax_id.max' => 'A inscrição municipal deve ter no máximo 50 caracteres.',
-            'state_tax_indicator.in' => 'O indicador de inscrição estadual informado é inválido.',
-            'created_by.required' => 'O usuário criador é obrigatório.',
-            'created_by.exists' => 'O usuário criador informado não existe.',
+            'name.required'             => 'O nome do parceiro é obrigatório.',
+            'document_type.in'          => 'O tipo de documento informado é inválido.',
+            'document_number.required'  => 'O número do documento é obrigatório.',
+            'state_tax_id.max'          => 'A inscrição estadual deve ter no máximo 50 caracteres.',
+            'municipal_tax_id.max'      => 'A inscrição municipal deve ter no máximo 50 caracteres.',
+            'state_tax_indicator.in'    => 'O indicador de inscrição estadual informado é inválido.',
+            'created_by.required'       => 'O usuário criador é obrigatório.',
+            'created_by.exists'         => 'O usuário criador informado não existe.',
         ]);
 
         if ($validate->fails()) {
@@ -85,6 +85,7 @@ class CreatePartner
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Falha de validação dos dados',
                 'errors'    => $validate->errors()->toArray(),
+                'data'      => $data,
             ]);
             return;
         }

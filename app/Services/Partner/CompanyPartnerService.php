@@ -44,7 +44,7 @@ class CompanyPartnerService
         $companyId = $companyId ?? (Filament::getTenant())->id;
 
         if ($companyId == null) {
-            (new self)->setError('Empresa não informada ou não autenticada!');
+            Log::error('Empresa não informada ou não autenticada!');
             return null;
         }
 
