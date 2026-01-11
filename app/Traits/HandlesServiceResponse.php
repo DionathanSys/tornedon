@@ -46,9 +46,12 @@ trait HandlesServiceResponse
 
     public function getMessage(): string
     {
-        if($this->hasError()){
-            $errors = implode(', ' , $this->errors);
-            return $this->message . ' Erros: ' . $errors;
+        if ($this->hasError()) {
+            $errors = implode(', ', $this->errors);
+
+            return $this->message
+                . PHP_EOL . 'Erros: '
+                . PHP_EOL . $errors;
         }
 
         return $this->message;
