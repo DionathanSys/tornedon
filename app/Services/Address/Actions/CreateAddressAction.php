@@ -28,9 +28,20 @@ final class CreateAddressAction
             'created_by' => $this->createdBy,
         ];
 
+        Log::debug(__METHOD__ . '@' . __LINE__, [
+            'data' => $data,
+        ]);
+
         try {
             return Address::create($data);
         } catch (QueryException $e) {
+
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message'   => 'Erro de query ao criar endereço',
+                'error'     => $e->getMessage(),
+                'data'      => $data,
+            ]);
+            
             if ($e->getCode() === '23000') {
                 throw new DomainValidationException([
                     'address' => ['Endereço já cadastrado para este parceiro nesta empresa'],
@@ -101,7 +112,7 @@ final class CreateAddressAction
         ]);
 
         if ($validator->fails()) {
-            
+
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Erro de validação ao validar dados para criação de endereço',
                 'errors'  => $validator->errors()->toArray(),

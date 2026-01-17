@@ -57,7 +57,18 @@ class AddressService
                 createdBy: $userId
             );
 
+            Log::debug(__METHOD__ . '@' . __LINE__, [
+                'company_id'    => $companyId,
+                'partner_id'    => $partnerId,
+                'user_id'       => $userId,
+                'input'         => $input,
+            ]);
+
             $address = $action->execute($input);
+
+            Log::debug(__METHOD__ . '@' . __LINE__, [
+                'address_id'    => $address->id ?? null,
+            ]);
 
             $this->setSuccess('Endereço cadastrado com sucesso');
 

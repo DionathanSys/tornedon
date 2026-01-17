@@ -30,14 +30,11 @@ class ManageAddresses extends ManageRecords
                     $service = new AddressService();
                     $result = $service->create($companyId, $partnerId, $data, Auth::id());
 
-                    ds($service->hasError())->label('Service has error?');
 
                     if($service->hasError()) {
                         notify::error(message: $service->getMessageUser());
                         $action->halt();
                     }
-
-                    ds($result);
 
                     notify::success(message: $service->getMessageUser());
 
