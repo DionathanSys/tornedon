@@ -7,6 +7,7 @@ use App\Models\Address;
 use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -100,6 +101,13 @@ final class CreateAddressAction
         ]);
 
         if ($validator->fails()) {
+            
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro de validação ao validar dados para criação de endereço',
+                'errors'  => $validator->errors()->toArray(),
+                'input'   => $input,
+            ]);
+
             throw new DomainValidationException(
                 $validator->errors()->toArray()
             );
