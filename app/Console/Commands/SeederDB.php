@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 class SeederDB extends Command
@@ -31,6 +33,14 @@ class SeederDB extends Command
             $this->error('Tabela companies não encontrada. Rode as migrations primeiro.');
             return 1;
         }
+
+        if (!Schema::hasTable('users')) {
+            $this->error('Tabela users não encontrada. Rode as migrations primeiro.');
+            return 1;
+        }
+
+        // Criar usuário admin se não existir
+        $this->createAdminUser();
 
         $now = now();
 
@@ -92,17 +102,12 @@ class SeederDB extends Command
         ];
 
         try {
-            DB::table('companies')->insert($companies);
+            DB::table('companies')->insertOrIgnore($companies);
             $this->info('Companies seeded: ' . count($companies));
 
             // Vincular companies com users existentes via pivot company_user
             if (!Schema::hasTable('company_user')) {
                 $this->warn('Tabela company_user não encontrada; pulando vinculação.');
-                return 0;
-            }
-
-            if (!Schema::hasTable('users')) {
-                $this->warn('Tabela users não encontrada; pulando vinculação.');
                 return 0;
             }
 
@@ -161,6 +166,35 @@ class SeederDB extends Command
         } catch (\Exception $e) {
             $this->error('Erro ao inserir companies: ' . $e->getMessage());
             return 1;
+        }
+    }
+
+    /**
+     * Criar usuário admin se não existir
+     */
+    private function createAdminUser(): void
+    {
+        $adminEmail = 'dev@dev.com';
+
+        // Verificar se admin já existe
+        if (User::where('email', $adminEmail)->exists()) {
+            $this->info('Usuário admin já existe.');
+            return;
+        }
+
+        try {
+            User::create([
+                'name' => 'Administrador',
+                'email' => $adminEmail,
+                'password' => Hash::make('asd'), // Alterar após primeira login
+            ]);
+
+            $this->info("Usuário admin criado com sucesso!");
+            $this->line("Email: {$adminEmail}");
+            $this->line("Senha: admin123");
+            $this->warn('⚠️  Altere a senha após o primeiro acesso!');
+        } catch (\Exception $e) {
+            $this->error('Erro ao criar usuário admin: ' . $e->getMessage());
         }
     }
 }

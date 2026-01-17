@@ -46,6 +46,9 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
+
+            $table->unique(['company_id', 'partner_id', 'street', 'number']);
+            $table->index(['company_id', 'partner_id']);
         });
     }
 

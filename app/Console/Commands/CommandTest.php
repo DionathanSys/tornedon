@@ -4,11 +4,13 @@ namespace App\Console\Commands;
 
 use App\Enum;
 use App\Models\CompanyPartner;
+use App\Models\Partner;
 use App\Models\User;
 use App\Services\Partner\Actions\CreatePartner;
 use App\Services\Partner\PartnerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class CommandTest extends Command
 {
@@ -31,8 +33,9 @@ class CommandTest extends Command
      */
     public function handle()
     {
-        ds()->model(CompanyPartner::with('company')->find(3));
 
-
+        $service = new PartnerService();
+        $partners = $service->getPartnersByCompanyId(2);
+        ds($partners);
     }
 }

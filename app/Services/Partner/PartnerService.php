@@ -8,6 +8,7 @@ use App\Enum;
 use App\Services\Partner\Actions\AssociatePartnerCompany;
 use App\Services\Partner\Actions\EditPartner;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -136,4 +137,14 @@ class PartnerService
 
         return $result;
     }
+
+    public function getPartnersByCompanyId(int $companyId): ?Collection
+    {
+        return Partner::query()
+            ->whereHas('companies', function($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            })
+            ->get();
+    }
 }
+

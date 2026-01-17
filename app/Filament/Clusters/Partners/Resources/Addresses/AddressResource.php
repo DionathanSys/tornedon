@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Partners\Resources\Addresses;
 use App\Filament\Clusters\Partners\PartnersCluster;
 use App\Filament\Clusters\Partners\Resources\Addresses\Pages\ManageAddresses;
 use App\Models\Address;
+use App\Models\Partner;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -12,6 +13,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
@@ -21,6 +23,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class AddressResource extends Resource
 {
@@ -45,6 +48,13 @@ class AddressResource extends Resource
                 'lg' => 8,
             ])
             ->components([
+                // Select::make('parceiro_id')
+                //     ->options(fn() => Partner::all()->pluck('nome', 'id'))
+                //     ->required()
+                //     ->exists('company_partner', 'company_id', function ($query) {
+                //         // Valida se o parceiro selecionado realmente pertence à empresa logada
+                //         $query->where('company_id', Auth::user()->com);
+                //     }),
                 Select::make('partner_id')
                     ->label('Parceiro')
                     ->columnStart(1)
@@ -105,6 +115,7 @@ class AddressResource extends Resource
                         'lg' => 4,
                     ]),
                 TextInput::make('country')
+                    ->label('País')
                     ->required()
                     ->columnSpan([
                         'sm' => 1,
@@ -126,6 +137,10 @@ class AddressResource extends Resource
                         'md' => 2,
                         'lg' => 4,
                     ]),
+                Checkbox::make('open-record-after-creation')
+                    ->label('Abrir o registro após a criação')
+                    ->columnSpanFull()
+                    ->default(true),
             ]);
     }
 

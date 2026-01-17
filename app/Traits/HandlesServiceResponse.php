@@ -2,6 +2,8 @@
 
 namespace App\Traits;
 
+use Illuminate\Support\Arr;
+
 trait HandlesServiceResponse
 {
     protected bool $success = false;
@@ -41,7 +43,7 @@ trait HandlesServiceResponse
 
     public function hasError(): bool
     {
-        return !empty($this->errors);
+        return !empty($this->errors) || !$this->success;
     }
 
     public function getMessage(): string
@@ -52,7 +54,7 @@ trait HandlesServiceResponse
     public function getMessageUser(): string
     {
         if($this->hasError()){
-            $errors = implode('<br>- ',  $this->getErrors());
+            $errors = implode('<br>- ',  Arr::flatten($this->getErrors()));
             return $this->message . '<br>- ' . $errors;
         }
 

@@ -50,7 +50,7 @@ class Partner extends Model
         return $this->hasMany(Contact::class);
     }
 
-    public function company(): BelongsToMany
+    public function companies(): BelongsToMany
     {
         return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
     }
