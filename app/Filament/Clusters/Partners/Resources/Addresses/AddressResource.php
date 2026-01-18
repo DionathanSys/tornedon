@@ -60,11 +60,17 @@ class AddressResource extends Resource
                     ->columnStart(1)
                     ->columnSpanFull()
                     ->required()
-                    ->relationship('partner', 'name', modifyQueryUsing: function (Builder $query) {
-                        $tenant = Filament::getTenant();
-                        return $query
-                            ->where('company_id', $tenant->id);
-                    })
+                    ->relationship(
+                        'partner',
+                        'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $tenant = Filament::getTenant();
+                            return $query
+                                ->whereHas('companies', function (Builder $subQuery) use ($tenant) {
+                                    $subQuery->where('company_id', $tenant->id);
+                                });
+                        }
+                    )
                     ->searchable()
                     ->preload(),
                 TextInput::make('street')
