@@ -22,14 +22,14 @@ class Address extends Model
         'updated_by',
     ];
 
-    public function company(): BelongsToMany
+    public function company(): BelongsTo
     {
-        return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
-    public function partner(): BelongsToMany
+    public function partner(): BelongsTo
     {
-        return $this->belongsToMany(Partner::class, 'company_partner', 'company_id', 'partner_id');
+        return $this->belongsTo(Partner::class, 'partner_id');
     }
 
     public function createdBy(): BelongsTo
@@ -41,5 +41,4 @@ class Address extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
-
 }

@@ -53,9 +53,9 @@ trait HandlesServiceResponse
 
     public function getMessageUser(): string
     {
-        if($this->hasError()){
-            $errors = implode('<br>- ',  Arr::flatten($this->getErrors()));
-            return $this->message . '<br>- ' . $errors;
+        if(!empty($this->errors)){
+            $errors = implode('<br> ',  Arr::flatten($this->getErrors()));
+            return $this->message . ';<br> ' . $errors;
         }
 
         return $this->message;
