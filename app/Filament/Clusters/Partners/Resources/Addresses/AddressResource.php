@@ -3,9 +3,13 @@
 namespace App\Filament\Clusters\Partners\Resources\Addresses;
 
 use App\Filament\Clusters\Partners\PartnersCluster;
+use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponent;
+use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponentFull;
 use App\Filament\Clusters\Partners\Resources\Addresses\Pages\ManageAddresses;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Models\Address;
 use App\Models\Partner;
+use App\Services\Address\AddressService;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -24,6 +28,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Notification\NotifyService as notify;
+use Filament\Forms\Components\Hidden;
 
 class AddressResource extends Resource
 {
@@ -47,107 +53,7 @@ class AddressResource extends Resource
                 'md' => 4,
                 'lg' => 8,
             ])
-            ->components([
-                // Select::make('parceiro_id')
-                //     ->options(fn() => Partner::all()->pluck('nome', 'id'))
-                //     ->required()
-                //     ->exists('company_partner', 'company_id', function ($query) {
-                //         // Valida se o parceiro selecionado realmente pertence à empresa logada
-                //         $query->where('company_id', Auth::user()->com);
-                //     }),
-                Select::make('partner_id')
-                    ->label('Parceiro')
-                    ->columnStart(1)
-                    ->columnSpanFull()
-                    ->required()
-                    ->relationship(
-                        'partner',
-                        'name',
-                        modifyQueryUsing: function (Builder $query) {
-                            $tenant = Filament::getTenant();
-                            return $query
-                                ->whereHas('companies', function (Builder $subQuery) use ($tenant) {
-                                    $subQuery->where('company_id', $tenant->id);
-                                });
-                        }
-                    )
-                    ->searchable()
-                    ->preload(),
-                TextInput::make('street')
-                    ->label('Logradouro')
-                    ->columnStart(1)
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 4,
-                        'lg' => 4,
-                    ])
-                    ->required()
-                    ->maxLength(255),
-                TextInput::make('number')
-                    ->label('Número')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 2,
-                    ])
-                    ->required()
-                    ->maxLength(50),
-                TextInput::make('complement')
-                    ->label('Complemento')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 2,
-                    ]),
-                TextInput::make('neighborhood')
-                    ->label('Bairro')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 4,
-                    ]),
-                TextInput::make('city')
-                    ->label('Cidade')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 4,
-                    ]),
-                TextInput::make('state')
-                    ->label('Estado')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 4,
-                    ]),
-                TextInput::make('country')
-                    ->label('País')
-                    ->required()
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 4,
-                    ])
-                    ->default('BRASIL'),
-                TextInput::make('postal_code')
-                    ->label('CEP')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 4,
-                    ]),
-                TextInput::make('city_code')
-                    ->label('Código do IBGE da Cidade')
-                    ->columnSpan([
-                        'sm' => 1,
-                        'md' => 2,
-                        'lg' => 4,
-                    ]),
-                Checkbox::make('open-record-after-creation')
-                    ->label('Abrir o registro após a criação')
-                    ->columnSpanFull()
-                    ->default(true),
-            ]);
+            ->components(AddressComponentFull::make());
     }
 
     public static function infolist(Schema $schema): Schema
@@ -156,7 +62,8 @@ class AddressResource extends Resource
             ->components([
                 TextEntry::make('partner.name')
                     ->label('Parceiro')
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->visibleOn(AddressResource::class),
                 TextEntry::make('street')
                     ->label('Logradouro')
                     ->placeholder('-'),
@@ -259,9 +166,21 @@ class AddressResource extends Resource
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->iconButton()
+                    ->action(function (EditAction $action, array $data, Address $record ) {
+                        $service = new AddressService();
+                        $result = $service->update($record, $data, Auth::id());
+
+                        if($service->hasError() || $service->isSuccess() === false) {
+                            notify::error(message: $service->getMessageUser());
+                            $action->halt();
+                        }
+
+                        notify::success(message: $service->getMessageUser());
+                    }),
+                DeleteAction::make()
+                    ->iconButton(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

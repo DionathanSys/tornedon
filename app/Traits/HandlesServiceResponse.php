@@ -55,10 +55,10 @@ trait HandlesServiceResponse
     {
         if(!empty($this->errors)){
             $errors = implode('<br> ',  Arr::flatten($this->getErrors()));
-            return $this->message . ';<br> ' . $errors;
+            return ($this->message . ';<br> ' . $errors) ?? '';
         }
 
-        return $this->message;
+        return $this->message ?? '';
     }
 
     public function getData(): array

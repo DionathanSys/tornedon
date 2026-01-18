@@ -6,12 +6,17 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use App\Enum;
+use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
+use App\Filament\Clusters\Partners\Resources\Addresses\AddressResource;
+use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponent;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Leandrocfe\FilamentPtbrFormFields\Document;
@@ -113,6 +118,41 @@ class CompanyPartnerForm
                             ->inline(false)
                             ->default(true)
                             ->required(),
+                    ]),
+                Section::make()
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 8,
+                    ])
+                    ->columnSpanFull()
+                    ->description('Endereço(s) do Parceiro')
+                    ->afterHeader([
+                        CreateAddressAction::make()
+                            ->schema(function (Schema $schema): Schema {
+                                return AddressResource::form($schema)
+                                    ->schema(AddressComponent::make());
+                            }),
+                    ])
+                    ->collapsible()
+                    ->visibleOn(['edit', 'view'])
+                    ->persistCollapsed()
+                    ->compact()
+                    ->schema([
+                        RepeatableEntry::make('addresses')
+                            ->label('Registros')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 2,
+                                'lg' => 4,
+                            ])
+                            ->schema(fn(Schema $schema) => $schema->components([
+                                TextEntry::make('full_address')
+                                    ->label('Endereço Completo')
+                                    ->placeholder('-')
+                                    ->columnSpanFull()
+                            ]))
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

@@ -49,10 +49,11 @@ class PartnerService
     public function associatePartnerCompany(int $partnerId, int $companyId, array $data): ?CompanyPartner
     {
         try {
+
             $action = new AssociatePartnerCompany();
             $result = $action->execute($partnerId, $companyId, $data);
 
-            if($action->hasError()){
+            if ($action->hasError()) {
                 $this->setError($action->getMessage(), $action->getErrors());
                 Log::error(__METHOD__ . '@' . __LINE__, [
                     'message'           => 'Erro identificado durante execução da Action para associação do Parceiro com Empresa',
@@ -64,8 +65,7 @@ class PartnerService
 
             $this->setSuccess('Parceiro Associado com sucesso');
             return $result;
-
-         } catch (\Exception $e) {
+        } catch (\Exception $e) {
             $this->setError('Erro ao vincular parceiro e empresa');
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Erro ao vincular parceiro e empresa',
@@ -107,7 +107,7 @@ class PartnerService
 
     public function getPartnerByDocument(string $documentNumber): ?Partner
     {
-        if(Str::length($documentNumber) != 14 && Str::length($documentNumber) != 18){
+        if (Str::length($documentNumber) != 14 && Str::length($documentNumber) != 18) {
             $this->setError('Nro. de documento inválido');
             return null;
         }
@@ -117,7 +117,7 @@ class PartnerService
             ->get()
             ->first();
 
-        if(!$result){
+        if (!$result) {
             $this->setError('Parceiro não encontrado');
             return null;
         }
@@ -130,21 +130,21 @@ class PartnerService
         $result = Partner::query()
             ->find($partnerId);
 
-        if(!$result){
+        if (!$result) {
             $this->setError('Parceiro não encontrado');
             return null;
         }
 
+        $this->setSuccess();
         return $result;
     }
 
     public function getPartnersByCompanyId(int $companyId): ?Collection
     {
         return Partner::query()
-            ->whereHas('companies', function($query) use ($companyId) {
+            ->whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })
             ->get();
     }
 }
-

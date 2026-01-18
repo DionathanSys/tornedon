@@ -54,4 +54,24 @@ class CompanyPartnerService
             ->get()
             ->first();
     }
+
+    public static function getIdCompanyPartner(int $partnerId, int|null $companyId = null): ?int
+    {
+        $companyId = $companyId ?? (Filament::getTenant())->id;
+
+        if ($companyId == null) {
+            Log::error('Empresa não informada ou não autenticada!');
+            return null;
+        }
+
+        $companyPartner = CompanyPartner::query()
+            ->select('id')
+            ->where('company_id', $companyId)
+            ->where('partner_id', $partnerId)
+            ->first();
+
+        if(!$companyPartner) return null;
+
+        return $companyPartner->id;
+    }
 }

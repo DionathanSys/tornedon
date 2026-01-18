@@ -19,6 +19,9 @@ return new class extends Migration
             $table->foreignId('company_id')
                 ->constrained('companies')
                 ->cascadeOnDelete();
+            $table->foreignId('company_partner_id')
+                ->constrained('company_partner')
+                ->cascadeOnDelete();
             $table->string('street')
                 ->nullable();                                       // Logradouro (rua, avenida, etc.)
             $table->string('number')

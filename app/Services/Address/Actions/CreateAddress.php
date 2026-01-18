@@ -2,80 +2,97 @@
 
 namespace App\Services\Address\Actions;
 
+use App\Exceptions\DomainValidationException;
 use App\Models\Address;
-use App\Models\User;
-use App\Traits\HandlesActionResponse;
-use Illuminate\Support\Arr;
+use DomainException;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
-class CreateAddress
+final class CreateAddress
 {
-    use HandlesActionResponse;
+    public function __construct(
+        private int $companyPartnerId,
+        private int $companyId,
+        private int $partnerId,
+        private int $createdBy,
+    ) {}
 
-    private User $user;
-    private array $fillableFields;
-    private array $dataValidated;
-
-    public function __construct(private int $userId)
+    public function execute(array $input): ?Address
     {
-        $this->user = User::query()->findOrFail($userId);
-    }
+        $data = [
+            ...$this->validateInput($input),
+            'company_partner_id' => $this->companyPartnerId,
+            'company_id' => $this->companyId,
+            'partner_id' => $this->partnerId,
+            'created_by' => $this->createdBy,
+        ];
 
-    public function execute(array $data): ?Address
-    {
-        Log::debug('Dados recebidos - ' . __METHOD__ . '@' . __LINE__, [
-            'data'      => $data,
-            'userId'    => $this->userId,
-        ]);
+        try {
+            $result = Address::create($data);
+            return $result;
+        } catch (QueryException $e) {
 
-        $this->validate($data);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message'   => 'Erro de query ao criar endereço',
+                'error'     => $e->getMessage(),
+                'error_code' => $e->getCode(),
+                'data'      => $data,
+            ]);
 
-        if ($this->hasError()) return null;
+            if ($e->getCode() === '23000') {
+                throw new DomainValidationException([
+                    'address' => ['Endereço já cadastrado para este parceiro nesta empresa'],
+                ]);
+            }
 
-        if ($this->exists($data)) {
-            $this->setError('Endereço já possui cadastro para Parceiro/Empresa');
-            return null;
+            throw $e;
         }
-
-        $this->dataValidated['created_by'] = $this->userId;
-
-        $result = Address::create($this->dataValidated);
-        return $result;
     }
 
-    private function exists(array $data): bool
+    private function validateInput(array $input): array
     {
-        return Address::query()
-            ->where('postal_code', $data['postal_code'])
-            ->where('street', $data['street'])
-            ->where('number', $data['number'])
-            ->where('partner_id', $data['partner_id'])
-            ->where('company_id', $data['company_id'])
-            ->exists();
-    }
-
-    private function validate(array $data): void
-    {
-        //TODO: Melhorar validação de 'state' e 'postal_code'
-        $validator = Validator::make($data, [
-            'company_id'    => ['required', Rule::exists('companies', 'id')
-                ->whereIn('id', $this->user->companies()->pluck('id'))],
-            'partner_id' => ['required', Rule::exists('company_partner', 'partner_id')
-                ->where('company_id', $data['company_id'])],
+        $validator = Validator::make($input, [
             'street'        => 'required|string|max:150',
             'number'        => 'required|string|max:20',
             'complement'    => 'nullable|string|max:150',
             'neighborhood'  => 'nullable|string|max:100',
             'city'          => 'required|string|max:100',
-            'state'         => 'required|string|size:2',
+            'state'         => ['required', Rule::in([
+                'AC',
+                'AL',
+                'AP',
+                'AM',
+                'BA',
+                'CE',
+                'DF',
+                'ES',
+                'GO',
+                'MA',
+                'MT',
+                'MS',
+                'MG',
+                'PA',
+                'PB',
+                'PR',
+                'PE',
+                'PI',
+                'RJ',
+                'RN',
+                'RS',
+                'RO',
+                'RR',
+                'SC',
+                'SP',
+                'SE',
+                'TO'
+            ])],
+            'postal_code'   => ['required', 'regex:/^\d{5}-?\d{3}$/'],
             'country'       => 'required|string|max:50',
-            'postal_code'   => 'required|string|max:10',
             'city_code'     => 'nullable|integer',
         ], [
-            'company.required'  => 'Empresa não esta sendo informada.',
-            'partner.required'  => 'Parceiro não esta sendo informado.',
             'street.required'   => 'É obrigatório informar o campo rua.',
             'street.max'        => 'Tamanho máx. para o campo rua é de 150 caracteres',
             'number.required'   => 'É obrigatório informar o campo Número.',
@@ -89,21 +106,23 @@ class CreateAddress
             'country.required'  => 'É obrigatório informar o campo país.',
             'country.max'       => 'Tamanho máx. para o campo país é de 50 caracteres.',
             'postal_code.required'  => 'É obrigatório informar o campo CEP.',
-            'city_code.required'    => 'Tipo de valor inválido para o campo Cód. Cidade',
+            'postal_code.regex'     => 'Formato inválido para o campo CEP.',
+            'city_code.integer'     => 'Tipo de valor é inválido para o campo Cód. Cidade',
         ]);
 
         if ($validator->fails()) {
-            $this->setError('Falha de validação dos dados', $validator->errors()->all());
+
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'message'   => 'Falha de validação dos dados',
-                'errors'    => $validator->errors()->toArray(),
-                'data'      => $data,
+                'message' => 'Erro de validação ao validar dados para criação de endereço',
+                'errors'  => $validator->errors()->toArray(),
+                'input'   => $input,
             ]);
-            return;
+
+            throw new DomainValidationException(
+                $validator->errors()->toArray()
+            );
         }
 
-        $this->dataValidated = $validator->validated();
-
-        return;
+        return $validator->validated();
     }
 }

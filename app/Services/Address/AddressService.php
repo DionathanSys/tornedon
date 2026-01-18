@@ -4,9 +4,7 @@ namespace App\Services\Address;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\Address;
-// use App\Services\Address\Actions;
 use App\Traits\HandlesServiceResponse;
-use DomainException;
 use Illuminate\Support\Facades\Log;
 
 class AddressService
@@ -14,77 +12,38 @@ class AddressService
 
     use HandlesServiceResponse;
 
-    // public function create2(array $data, int $userId): ?Address
-    // {
-    //     try {
-
-    //         $action = new Actions\CreateAddress($userId);
-    //         $result = $action->execute($data);
-
-    //         if ($action->hasError()) {
-    //             $this->setError($action->getMessage(), $action->getErrors());
-    //             Log::error(__METHOD__ . '@' . __LINE__, [
-    //                 'message'           => 'Erro identificado durante execução da Action para cadastro de endereço',
-    //                 'action_message'    => $action->getMessage(),
-    //                 'errors'            => $action->getErrors(),
-    //             ]);
-    //             return null;
-    //         }
-
-    //         $this->setSuccess('Endereço cadastrado com sucesso');
-    //         return $result;
-    //     } catch (\Exception $e) {
-    //         $this->setError('Erro ao cadastrar endereço', $action->getErrors());
-    //         Log::error(__METHOD__ . '@' . __LINE__, [
-    //             'message' => 'Erro ao cadastrar endereço',
-    //             'errors'  => $e->getMessage(),
-    //             'data'    => $data,
-    //         ]);
-    //         return null;
-    //     }
-    // }
-
-    public function create(
-        int $companyId,
-        int $partnerId,
-        array $input,
-        int $userId
-    ): ?Address {
+    public function create(int $companyPartnerId, int $companyId, int $partnerId, array $input, int $userId): ?Address 
+    {
         try {
-            $action = new Actions\CreateAddressAction(
-                companyId: $companyId,
-                partnerId: $partnerId,
-                createdBy: $userId
-            );
-
-            Log::debug(__METHOD__ . '@' . __LINE__, [
-                'company_id'    => $companyId,
-                'partner_id'    => $partnerId,
-                'user_id'       => $userId,
-                'input'         => $input,
-            ]);
+            $action = new Actions\CreateAddress($companyPartnerId, $companyId, $partnerId, $userId);
 
             $address = $action->execute($input);
 
-            Log::debug(__METHOD__ . '@' . __LINE__, [
-                'address_id'    => $address->id ?? null,
+            Log::info('Endereço cadastrado com sucesso', [
+                'metodo'        => __METHOD__ . '@' . __LINE__,
+                'address_id'    => $address->id,
+                'company_id'    => $companyId,
+                'partner_id'    => $partnerId,
+                'user_id'       => $userId,
             ]);
 
             $this->setSuccess('Endereço cadastrado com sucesso');
 
             return $address;
         } catch (DomainValidationException $e) {
-            $this->setError('Falha ao salvar endereço', $e->errors);
+            $this->setError('Falha durante cadastro do endereço', $e->errors);
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'company_id'    => $companyId,
-                'partner_id'    => $partnerId,
-                'user_id'       => $userId,
+                'company_partner_id'    => $companyPartnerId,
+                'company_id'        => $companyId,
+                'partner_id'        => $partnerId,
+                'user_id'           => $userId,
                 'validation_errors' => $e->errors,
             ]);
             return null;
         } catch (\Throwable $e) {
             $this->setError('Erro interno ao cadastrar endereço');
             Log::error(__METHOD__ . '@' . __LINE__, [
+                'company_partner_id'    => $companyPartnerId,
                 'company_id'    => $companyId,
                 'partner_id'    => $partnerId,
                 'user_id'       => $userId,
@@ -94,9 +53,31 @@ class AddressService
         }
     }
 
-    public function update(Address $address, $data): ?Address
+    public function update(Address $address, $input, int $userId): ?Address
     {
+        try {
+            $action = new Actions\UpdateAddress($address, $userId);
+            $result = $action->execute($input);
 
-        return null;
+            $this->setSuccess('Endereço atualizado com sucesso');
+
+            return $result;
+        } catch(DomainValidationException $e) {
+            $this->setError('Falha durante atualização do endereço', $e->errors);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'address_id'    => $address->id,
+                'user_id'       => $userId,
+                'validation_errors' => $e->errors,
+            ]);
+            return null;
+        } catch (\Throwable $e) {
+            $this->setError('Erro interno ao atualizar endereço');
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'address_id'    => $address->id,
+                'user_id'       => $userId,
+                'exception'     => $e,
+            ]);
+            return null;
+        }
     }
 }

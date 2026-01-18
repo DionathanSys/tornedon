@@ -11,47 +11,23 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
-final class CreateAddressAction
+final class UpdateAddress
 {
     public function __construct(
-        private int $companyId,
-        private int $partnerId,
-        private int $createdBy,
+        private Address $address,
+        private int $updatedBy,
     ) {}
 
     public function execute(array $input): ?Address
     {
         $data = [
             ...$this->validateInput($input),
-            'company_id' => $this->companyId,
-            'partner_id' => $this->partnerId,
-            'created_by' => $this->createdBy,
+            'updated_by' => $this->updatedBy,
         ];
 
-        Log::debug(__METHOD__ . '@' . __LINE__, [
-            'data' => $data,
-        ]);
-
-        try {
-            $result = Address::create($data);
-            return $result;
-        } catch (QueryException $e) {
-
-            Log::error(__METHOD__ . '@' . __LINE__, [
-                'message'   => 'Erro de query ao criar endereço',
-                'error'     => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'data'      => $data,
-            ]);
-
-            if ($e->getCode() === '23000') {
-                throw new DomainValidationException([
-                    'address' => ['Endereço já cadastrado para este parceiro nesta empresa'],
-                ]);
-            }
-
-            throw $e;
-        }
+        $this->address->update($data);
+        
+        return $this->address;
     }
 
     private function validateInput(array $input): array
@@ -114,7 +90,7 @@ final class CreateAddressAction
         if ($validator->fails()) {
 
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Erro de validação ao validar dados para criação de endereço',
+                'message' => 'Erro de validação ao validar dados para edição de endereço',
                 'errors'  => $validator->errors()->toArray(),
                 'input'   => $input,
             ]);

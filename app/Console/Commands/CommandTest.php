@@ -34,8 +34,7 @@ class CommandTest extends Command
     public function handle()
     {
 
-        $service = new PartnerService();
-        $partners = $service->getPartnersByCompanyId(2);
-        ds($partners);
+        $service = Partner::find(1);
+        dd($service->address()->get());
     }
 }

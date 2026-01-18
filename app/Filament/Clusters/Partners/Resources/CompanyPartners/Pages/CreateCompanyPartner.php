@@ -33,20 +33,21 @@ class CreateCompanyPartner extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         $service = new PartnerService();
+
         $partner = $data['partner_exists'] ? $service->getPartnerById($data['partner_id']) : $service->createPartner($data);
 
-        if($service->hasError() || $partner === null){
+        if ($service->hasError() || $partner === null) {
             notify::error(message: $service->getMessageUser());
             $this->halt();
         }
 
         $result = $service->associatePartnerCompany($partner->id, $data['company_id'], $data['company_partner']);
 
-        if($service->hasError()){
+        if ($service->hasError()) {
             notify::error(message: $service->getMessageUser());
             $this->halt();
         }
-        
+
         return $result;
     }
 }
