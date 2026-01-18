@@ -19,7 +19,7 @@ final class CreateAddressAction
         private int $createdBy,
     ) {}
 
-    public function execute(array $input): Address
+    public function execute(array $input): ?Address
     {
         $data = [
             ...$this->validateInput($input),
@@ -33,15 +33,17 @@ final class CreateAddressAction
         ]);
 
         try {
-            return Address::create($data);
+            $result = Address::create($data);
+            return $result;
         } catch (QueryException $e) {
 
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message'   => 'Erro de query ao criar endereço',
                 'error'     => $e->getMessage(),
+                'error_code' => $e->getCode(),
                 'data'      => $data,
             ]);
-            
+
             if ($e->getCode() === '23000') {
                 throw new DomainValidationException([
                     'address' => ['Endereço já cadastrado para este parceiro nesta empresa'],
@@ -50,8 +52,6 @@ final class CreateAddressAction
 
             throw $e;
         }
-
-        return $result;
     }
 
     private function validateInput(array $input): array

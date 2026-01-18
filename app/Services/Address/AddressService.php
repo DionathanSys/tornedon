@@ -14,35 +14,35 @@ class AddressService
 
     use HandlesServiceResponse;
 
-    public function create2(array $data, int $userId): ?Address
-    {
-        try {
+    // public function create2(array $data, int $userId): ?Address
+    // {
+    //     try {
 
-            $action = new Actions\CreateAddress($userId);
-            $result = $action->execute($data);
+    //         $action = new Actions\CreateAddress($userId);
+    //         $result = $action->execute($data);
 
-            if ($action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors());
-                Log::error(__METHOD__ . '@' . __LINE__, [
-                    'message'           => 'Erro identificado durante execução da Action para cadastro de endereço',
-                    'action_message'    => $action->getMessage(),
-                    'errors'            => $action->getErrors(),
-                ]);
-                return null;
-            }
+    //         if ($action->hasError()) {
+    //             $this->setError($action->getMessage(), $action->getErrors());
+    //             Log::error(__METHOD__ . '@' . __LINE__, [
+    //                 'message'           => 'Erro identificado durante execução da Action para cadastro de endereço',
+    //                 'action_message'    => $action->getMessage(),
+    //                 'errors'            => $action->getErrors(),
+    //             ]);
+    //             return null;
+    //         }
 
-            $this->setSuccess('Endereço cadastrado com sucesso');
-            return $result;
-        } catch (\Exception $e) {
-            $this->setError('Erro ao cadastrar endereço', $action->getErrors());
-            Log::error(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Erro ao cadastrar endereço',
-                'errors'  => $e->getMessage(),
-                'data'    => $data,
-            ]);
-            return null;
-        }
-    }
+    //         $this->setSuccess('Endereço cadastrado com sucesso');
+    //         return $result;
+    //     } catch (\Exception $e) {
+    //         $this->setError('Erro ao cadastrar endereço', $action->getErrors());
+    //         Log::error(__METHOD__ . '@' . __LINE__, [
+    //             'message' => 'Erro ao cadastrar endereço',
+    //             'errors'  => $e->getMessage(),
+    //             'data'    => $data,
+    //         ]);
+    //         return null;
+    //     }
+    // }
 
     public function create(
         int $companyId,
