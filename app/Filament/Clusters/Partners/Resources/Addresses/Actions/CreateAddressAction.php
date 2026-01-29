@@ -36,7 +36,7 @@ final class CreateAddressAction
                 
                 $tenant     = Filament::getTenant();
                 $companyId  = $tenant->id;
-                $partnerId  = $data['partner_id'] ?? 0;
+                $partnerId  = $get('partner_id') ?? 0;
                 $company_partner_id = CompanyPartnerService::getIdCompanyPartner($partnerId);
 
                 if(!$company_partner_id) {
