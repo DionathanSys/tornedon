@@ -63,6 +63,20 @@ final class CreateAddressAction
 
                 return $result;
             })
+            ->after(function (Action $action) {
+                // Recarregar o relacionamento addresses no record atual
+                $record = $action->getRecord();
+                if ($record) {
+                    $record->refresh();
+                    $record->load('addresses');
+                }
+                
+                // Disparar evento para atualizar o Livewire
+                $livewire = $action->getLivewire();
+                if ($livewire && method_exists($livewire, 'refreshFormData')) {
+                    $livewire->refreshFormData(['addresses']);
+                }
+            })
             ->extraModalFooterActions(fn(Action $action): array => [
                 $action->makeModalSubmitAction('createAnother', arguments: ['another' => true])
                     ->label('Salvar e criar outro')
