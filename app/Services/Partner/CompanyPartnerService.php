@@ -70,7 +70,13 @@ class CompanyPartnerService
             ->where('partner_id', $partnerId)
             ->first();
 
-        if(!$companyPartner) return null;
+        if(!$companyPartner){
+            Log::error('Vínculo entre Empresa e Parceiro não encontrado!', [
+                'company_id'   => $companyId,
+                'partner_id'   => $partnerId,
+            ]);
+            return null;
+        }
 
         return $companyPartner->id;
     }

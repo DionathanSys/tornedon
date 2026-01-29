@@ -162,10 +162,234 @@ class SeederDB extends Command
                 $this->warn('Erro ao vincular companies com users: ' . $e->getMessage());
             }
 
+            // Criar partners
+            $this->createPartners($now);
+
+            // Criar company_partners (vinculação entre company e partner)
+            $this->createCompanyPartners($now);
+
+            // Criar endereços para company_partners
+            $this->createAddresses($now);
+
             return 0;
         } catch (\Exception $e) {
             $this->error('Erro ao inserir companies: ' . $e->getMessage());
             return 1;
+        }
+    }
+
+    /**
+     * Criar partners
+     */
+    private function createPartners($now): void
+    {
+        if (!Schema::hasTable('partners')) {
+            $this->warn('Tabela partners não encontrada; pulando criação de parceiros.');
+            return;
+        }
+
+        $partners = [
+            [
+                'name' => 'Cliente Alpha LTDA',
+                'document_number' => '12345678000195',
+                'document_type' => 'cnpj',
+                'state_tax_id' => '123456789',
+                'municipal_tax_id' => '987654321',
+                'state_tax_indicator' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name' => 'Fornecedor Beta S/A',
+                'document_number' => '98765432000123',
+                'document_type' => 'cnpj',
+                'state_tax_id' => '987654321',
+                'municipal_tax_id' => '123456789',
+                'state_tax_indicator' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name' => 'João Silva',
+                'document_number' => '12345678901',
+                'document_type' => 'cpf',
+                'state_tax_id' => null,
+                'municipal_tax_id' => null,
+                'state_tax_indicator' => 9,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        ];
+
+        try {
+            DB::table('partners')->insertOrIgnore($partners);
+            $this->info('Partners criados: ' . count($partners));
+        } catch (\Exception $e) {
+            $this->error('Erro ao criar partners: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Criar company_partners (vinculação entre companies e partners)
+     */
+    private function createCompanyPartners($now): void
+    {
+        if (!Schema::hasTable('company_partner')) {
+            $this->warn('Tabela company_partner não encontrada; pulando criação de vínculos.');
+            return;
+        }
+
+        $companies = DB::table('companies')->pluck('id')->all();
+        $partners = DB::table('partners')->pluck('id')->all();
+
+        if (empty($companies) || empty($partners)) {
+            $this->warn('Não há companies ou partners para vincular.');
+            return;
+        }
+
+        $companyPartners = [];
+        
+        // Cada company terá 2 parceiros vinculados
+        foreach ($companies as $companyId) {
+            foreach (array_slice($partners, 0, 2) as $partnerId) {
+                $companyPartners[] = [
+                    'company_id' => $companyId,
+                    'partner_id' => $partnerId,
+                    'type' => json_encode(['customer']),
+                    'invoice_threshold' => 0.00,
+                    'is_active' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        try {
+            DB::table('company_partner')->insertOrIgnore($companyPartners);
+            $this->info('Company-Partners criados: ' . count($companyPartners));
+        } catch (\Exception $e) {
+            $this->error('Erro ao criar company_partners: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Criar endereços para company_partners
+     */
+    private function createAddresses($now): void
+    {
+        if (!Schema::hasTable('company_partner')) {
+            $this->warn('Tabela company_partner não encontrada; pulando criação de endereços.');
+            return;
+        }
+
+        if (!Schema::hasTable('addresses')) {
+            $this->warn('Tabela addresses não encontrada; pulando criação de endereços.');
+            return;
+        }
+
+        // Buscar company_partners existentes
+        $companyPartners = DB::table('company_partner')->get();
+        
+        if ($companyPartners->isEmpty()) {
+            $this->warn('Nenhum company_partner encontrado para criar endereços.');
+            return;
+        }
+
+        $addresses = [
+            [
+                'street' => 'Rua das Palmeiras',
+                'number' => '100',
+                'complement' => 'Sala 101',
+                'neighborhood' => 'Centro',
+                'city' => 'São Paulo',
+                'state' => 'SP',
+                'country' => 'Brasil',
+                'postal_code' => '01310-100',
+                'city_code' => '3550308',
+            ],
+            [
+                'street' => 'Avenida Paulista',
+                'number' => '1500',
+                'complement' => 'Andar 10',
+                'neighborhood' => 'Bela Vista',
+                'city' => 'São Paulo',
+                'state' => 'SP',
+                'country' => 'Brasil',
+                'postal_code' => '01310-200',
+                'city_code' => '3550308',
+            ],
+            [
+                'street' => 'Rua XV de Novembro',
+                'number' => '250',
+                'complement' => null,
+                'neighborhood' => 'Centro',
+                'city' => 'Curitiba',
+                'state' => 'PR',
+                'country' => 'Brasil',
+                'postal_code' => '80020-310',
+                'city_code' => '4106902',
+            ],
+            [
+                'street' => 'Rua Marechal Deodoro',
+                'number' => '500',
+                'complement' => 'Loja 3',
+                'neighborhood' => 'Centro',
+                'city' => 'Curitiba',
+                'state' => 'PR',
+                'country' => 'Brasil',
+                'postal_code' => '80010-010',
+                'city_code' => '4106902',
+            ],
+            [
+                'street' => 'Avenida Afonso Pena',
+                'number' => '1000',
+                'complement' => 'Conjunto 20',
+                'neighborhood' => 'Centro',
+                'city' => 'Belo Horizonte',
+                'state' => 'MG',
+                'country' => 'Brasil',
+                'postal_code' => '30130-001',
+                'city_code' => '3106200',
+            ],
+        ];
+
+        try {
+            $insertedCount = 0;
+            foreach ($companyPartners as $index => $companyPartner) {
+                // Cada company_partner recebe 1-2 endereços
+                $numAddresses = rand(1, 2);
+                
+                for ($i = 0; $i < $numAddresses && !empty($addresses); $i++) {
+                    $addressData = array_shift($addresses);
+                    
+                    DB::table('addresses')->insertOrIgnore([
+                        'company_id' => $companyPartner->company_id,
+                        'partner_id' => $companyPartner->partner_id,
+                        'company_partner_id' => $companyPartner->id,
+                        'street' => $addressData['street'],
+                        'number' => $addressData['number'],
+                        'complement' => $addressData['complement'],
+                        'neighborhood' => $addressData['neighborhood'],
+                        'city' => $addressData['city'],
+                        'state' => $addressData['state'],
+                        'country' => $addressData['country'],
+                        'postal_code' => $addressData['postal_code'],
+                        'city_code' => $addressData['city_code'],
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                    
+                    $insertedCount++;
+                }
+                
+                if (empty($addresses)) {
+                    break;
+                }
+            }
+            
+            $this->info("Endereços criados: {$insertedCount}");
+        } catch (\Exception $e) {
+            $this->warn('Erro ao criar endereços: ' . $e->getMessage());
         }
     }
 
@@ -186,7 +410,7 @@ class SeederDB extends Command
             User::create([
                 'name' => 'Administrador',
                 'email' => $adminEmail,
-                'password' => Hash::make('asd'), // Alterar após primeira login
+                'password' => Hash::make('asd'), // Alterar após primeiro login
             ]);
 
             $this->info("Usuário admin criado com sucesso!");

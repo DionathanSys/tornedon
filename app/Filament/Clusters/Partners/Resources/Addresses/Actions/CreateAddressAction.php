@@ -30,6 +30,11 @@ final class CreateAddressAction
                 $partnerId  = $data['partner_id'] ?? 0;
                 $company_partner_id = CompanyPartnerService::getIdCompanyPartner($partnerId);
 
+                if(!$company_partner_id) {
+                    notify::error(message: 'Vínculo entre Empresa e Parceiro não encontrado. Não é possível cadastrar o endereço.');
+                    $action->halt();
+                }
+
                 $service = new AddressService();
                 $result = $service->create($company_partner_id, $companyId, $partnerId, $data, Auth::id());
 

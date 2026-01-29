@@ -19,6 +19,7 @@ class Address extends Model
         'country',
         'postal_code',
         'city_code',
+        'company_partner_id',
         'created_by',
         'updated_by',
     ];
@@ -31,6 +32,11 @@ class Address extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class, 'partner_id');
+    }
+
+    public function companyPartner(): BelongsTo
+    {
+        return $this->belongsTo(CompanyPartner::class, 'company_partner_id');
     }
 
     public function createdBy(): BelongsTo
