@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Log;
 
 final class CreateAddressAction
 {
@@ -25,6 +26,12 @@ final class CreateAddressAction
             ->schema(fn(Schema $schema): Schema => AddressResource::form($schema))
             ->action(function (Action $action, array $data, array $arguments) {
 
+                Log::debug(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Iniciando criação de novo endereço para Parceiro',
+                    'data'    => $data,
+                    'args'    => $arguments,
+                ]);
+                
                 $tenant     = Filament::getTenant();
                 $companyId  = $tenant->id;
                 $partnerId  = $data['partner_id'] ?? 0;
