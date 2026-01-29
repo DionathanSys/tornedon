@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use Filament\Actions\Action;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
 
@@ -24,12 +25,13 @@ final class CreateAddressAction
             ->icon(Heroicon::Plus)
             ->modal()
             ->schema(fn(Schema $schema): Schema => AddressResource::form($schema))
-            ->action(function (Action $action, array $data, array $arguments) {
+            ->action(function (Get $get, Action $action, array $data, array $arguments) {
 
                 Log::debug(__METHOD__ . '@' . __LINE__, [
                     'message' => 'Iniciando criação de novo endereço para Parceiro',
                     'data'    => $data,
                     'args'    => $arguments,
+                    'partner_id' => $get('partner_id'),
                 ]);
                 
                 $tenant     = Filament::getTenant();
@@ -62,7 +64,9 @@ final class CreateAddressAction
                 return $result;
             })
             ->extraModalFooterActions(fn(Action $action): array => [
-                $action->makeModalSubmitAction('createAnother', arguments: ['another' => true]),
+                $action->makeModalSubmitAction('createAnother', arguments: ['another' => true])
+                    ->label('Salvar e criar outro')
+                    ->color('secondary'),
             ]);
     }
 }
