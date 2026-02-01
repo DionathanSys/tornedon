@@ -4,21 +4,24 @@ namespace App\Traits;
 
 trait HandlesActionResponse
 {
+    use GeneratesErrorCode;
+
     protected bool $success = false;
     protected ?string $message = null;
     protected array $errors = [];
+    protected ?string $errorCode = null;
 
     public function setSuccess(): void
     {
         $this->success = true;
     }
 
-    public function setError(string|null $message = null, array $errors = []): void
+    public function setError(string|null $message = null, array $errors = [], ?string $errorCode = null): void
     {
-        $this->success = false;
-        $this->message = $message;
-        $this->errors  = $errors;
-
+        $this->success   = false;
+        $this->message   = $message;
+        $this->errors    = $errors;
+        $this->errorCode = $errorCode ?? $this->generateErrorCode();
     }
 
     public function isSuccess(): bool
@@ -41,4 +44,8 @@ trait HandlesActionResponse
         return $this->message;
     }
 
+    public function getErrorCode(): ?string
+    {
+        return $this->errorCode;
+    }
 }

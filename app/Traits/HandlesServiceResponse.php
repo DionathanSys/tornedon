@@ -6,11 +6,14 @@ use Illuminate\Support\Arr;
 
 trait HandlesServiceResponse
 {
+    use GeneratesErrorCode;
+
     protected bool $success = false;
     protected ?string $message = null;
     protected array $data = [];
     protected array $errors = [];
     protected int $status = 200;
+    protected ?string $errorCode = null;
 
     public function setSuccess(string|null $message = null, array $data = [], int $status = 200): void
     {
@@ -21,13 +24,14 @@ trait HandlesServiceResponse
         $this->status   = $status;
     }
 
-    public function setError(string|null $message = null, array $errors = [], int $status = 422): void
+    public function setError(string|null $message = null, array $errors = [], int $status = 422, ?string $errorCode = null): void
     {
-        $this->success  = false;
-        $this->message  = $message;
-        $this->errors   = $errors;
-        $this->data     = [];
-        $this->status   = $status;
+        $this->success   = false;
+        $this->message   = $message;
+        $this->errors    = $errors;
+        $this->data      = [];
+        $this->status    = $status;
+        $this->errorCode = $errorCode ?? $this->generateErrorCode();
     }
 
     public function setData(array $data): self
@@ -53,12 +57,14 @@ trait HandlesServiceResponse
 
     public function getMessageUser(): string
     {
+        $baseMessage = $this->message ?? '';
+        
         if(!empty($this->errors)){
             $errors = implode('<br> ',  Arr::flatten($this->getErrors()));
-            return ($this->message . ';<br> ' . $errors) ?? '';
+            return $baseMessage . ';<br> ' . $errors;
         }
 
-        return $this->message ?? '';
+        return $baseMessage;
     }
 
     public function getData(): array
@@ -76,6 +82,11 @@ trait HandlesServiceResponse
         return $this->status;
     }
 
+    public function getErrorCode(): ?string
+    {
+        return $this->errorCode;
+    }
+
     public function toArray(): array
     {
         return [
@@ -84,6 +95,7 @@ trait HandlesServiceResponse
             'data' => $this->data,
             'errors' => $this->errors,
             'status' => $this->status,
+            'error_code' => $this->errorCode,
         ];
     }
 
@@ -94,6 +106,7 @@ trait HandlesServiceResponse
         $this->data = [];
         $this->errors = [];
         $this->status = 200;
+        $this->errorCode = null;
         return $this;
     }
 }

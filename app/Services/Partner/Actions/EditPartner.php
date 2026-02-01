@@ -3,12 +3,11 @@
 namespace App\Services\Partner\Actions;
 
 use App\Models\Partner;
-use App\Enum;
+use App\Services\Partner\Validators\PartnerValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class EditPartner
 {
@@ -23,62 +22,28 @@ class EditPartner
 
     public function execute(array $data): ?Partner
     {
-        $this->validate($data);
-
-        if ($this->hasError()) {
+        try {
+            $validator = new PartnerValidator();
+            $validatedData = $validator->validateForUpdate($data, $this->partner->id);
+            
+            $validatedData = Arr::only($validatedData, $this->fillableFields);
+            $this->partner->update($validatedData);
+            $this->setSuccess();
+            return $this->partner;
+            
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validação dos dados', $e->errors());
+            
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'error_code' => $this->getErrorCode(),
+                'message'    => 'Falha de validação dos dados',
+                'errors'     => $e->errors(),
+                'data'       => $data,
+            ]);
+            
             return null;
         }
-
-        $data = Arr::only($data, $this->fillableFields);
-        $this->partner->update($data);
-        $this->setSuccess();
-        return $this->partner;
     }
 
-    private function validate(array $data): void
-    {
-        $validate = Validator::make($data, [
-            'name'                  => 'required|string|max:255',
-            'document_type'         => 'required|string|in:cnpj,cpf',
-            'document_number'       => [
-                'required',
-                'string',
-                Rule::unique('partners', 'document_number')->ignore($data['id']),
-                function ($attribute, $value, $fail) use ($data) {
-                    if (($data['document_type'] ?? null) === 'cpf' && strlen($value) !== 14) {
-                        $fail('O CPF deve conter exatamente 14 caracteres.');
-                    }
-
-                    if (($data['document_type'] ?? null) === 'cnpj' && strlen($value) !== 18) {
-                        $fail('O CNPJ deve conter exatamente 18 caracteres.');
-                    }
-                },
-            ],
-            'state_tax_id'          => 'nullable|string|max:50',
-            'state_tax_indicator'   => 'nullable|int|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Tax\StateTaxIndicator::cases())),
-            'municipal_tax_id'      => 'nullable|string|max:50',
-            'updated_by'            => 'required|integer|exists:users,id',
-        ], [
-            'name.required'             => 'O nome do parceiro é obrigatório.',
-            'document_type.in'          => 'O tipo de documento informado é inválido.',
-            'document_number.required'  => 'O número do documento é obrigatório.',
-            'state_tax_id.max'          => 'A inscrição estadual deve ter no máximo 50 caracteres.',
-            'municipal_tax_id.max'      => 'A inscrição municipal deve ter no máximo 50 caracteres.',
-            'state_tax_indicator.in'    => 'O indicador de inscrição estadual informado é inválido.',
-            'updated_by.required'       => 'O usuário atualizador é obrigatório.',
-            'updated_by.exists'         => 'O usuário atualizador informado não existe.',
-        ]);
-
-        if ($validate->fails()) {
-            $this->setError('Falha de validação dos dados', $validate->errors()->all());
-            Log::error(__METHOD__ . '@' . __LINE__, [
-                'message'   => 'Falha de validação dos dados',
-                'errors'    => $validate->errors()->toArray(),
-                'data'      => $data,
-            ]);
-            return;
-        }
-
-        return;
-    }
 }
+

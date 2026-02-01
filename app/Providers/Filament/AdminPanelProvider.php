@@ -19,6 +19,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Livewire\CreateErrorTicketAction;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -58,6 +59,10 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->renderHook(
+                'panels::body.end',
+                fn () => \Livewire\Livewire::mount('create-error-ticket-action')
+            )
             ->resourceCreatePageRedirect('edit')
             ->resourceCreatePageRedirect('view')
             ->resourceCreatePageRedirect('index');

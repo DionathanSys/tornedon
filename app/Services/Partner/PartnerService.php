@@ -24,9 +24,10 @@ class PartnerService
             $result = $action->execute($data);
 
             if ($action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors());
+                $this->setError($action->getMessage(), $action->getErrors(), 422, $action->getErrorCode());
                 Log::error(__METHOD__ . '@' . __LINE__, [
-                    'message'           => 'Erro identificado durante execução da Action para edição do Parceiro',
+                    'error_code'        => $action->getErrorCode(),
+                    'message'           => 'Erro identificado durante execução da Action para criação do Parceiro',
                     'action_message'    => $action->getMessage(),
                     'errors'            => $action->getErrors(),
                 ]);
@@ -36,11 +37,13 @@ class PartnerService
             $this->setSuccess('Parceiro cadastrado com sucesso');
             return $result;
         } catch (\Exception $e) {
-            $this->setError('Erro ao cadastrar parceiro', $action->getErrors());
+            $this->setError('Erro ao cadastrar parceiro', [$e->getMessage()], 500);
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Erro ao cadastrar parceiro',
-                'errors'  => $e->getMessage(),
-                'data'    => $data,
+                'error_code' => $this->getErrorCode(),
+                'message'    => 'Erro ao cadastrar parceiro',
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
             ]);
             return null;
         }
@@ -54,8 +57,9 @@ class PartnerService
             $result = $action->execute($partnerId, $companyId, $data);
 
             if ($action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors());
+                $this->setError($action->getMessage(), $action->getErrors(), 422, $action->getErrorCode());
                 Log::error(__METHOD__ . '@' . __LINE__, [
+                    'error_code'        => $action->getErrorCode(),
                     'message'           => 'Erro identificado durante execução da Action para associação do Parceiro com Empresa',
                     'action_message'    => $action->getMessage(),
                     'errors'            => $action->getErrors(),
@@ -66,11 +70,13 @@ class PartnerService
             $this->setSuccess('Parceiro Associado com sucesso');
             return $result;
         } catch (\Exception $e) {
-            $this->setError('Erro ao vincular parceiro e empresa');
+            $this->setError('Erro ao vincular parceiro e empresa', [$e->getMessage()], 500);
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'message'   => 'Erro ao vincular parceiro e empresa',
-                'errors'    => $e->getMessage(),
-                'data'      => $data,
+                'error_code' => $this->getErrorCode(),
+                'message'    => 'Erro ao vincular parceiro e empresa',
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
             ]);
             return null;
         }
@@ -83,8 +89,9 @@ class PartnerService
             $result = $action->execute($data);
 
             if ($action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors());
+                $this->setError($action->getMessage(), $action->getErrors(), 422, $action->getErrorCode());
                 Log::error(__METHOD__ . '@' . __LINE__, [
+                    'error_code'        => $action->getErrorCode(),
                     'message'           => 'Erro identificado durante execução da Action para edição do Parceiro',
                     'action_message'    => $action->getMessage(),
                     'errors'            => $action->getErrors(),
@@ -95,11 +102,47 @@ class PartnerService
             $this->setSuccess();
             return $result;
         } catch (\Exception $e) {
-            $this->setError('Erro ao editar parceiro');
+            $errorCode = $this->generateErrorCode();
+            $this->setError('Erro ao editar parceiro', [$e->getMessage()], 500, $errorCode);
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Erro ao editar parceiro',
-                'errors'  => $e->getMessage(),
-                'data'    => $data,
+                'error_code' => $errorCode,
+                'message'    => 'Erro ao editar parceiro',
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Busca partner existente por documento ou cria novo
+     */
+    public function findOrCreatePartner(array $data): ?Partner
+    {
+        try {
+            $existing = Partner::where('document_number', $data['document_number'])->first();
+
+            if ($existing) {
+                // Partner já existe - reutilizar
+                Log::info(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Partner existente encontrado, reutilizando',
+                    'partner_id' => $existing->id,
+                    'document_number' => $data['document_number'],
+                ]);
+
+                $this->setSuccess('Partner encontrado');
+                return $existing;
+            }
+
+            return $this->createPartner($data);
+        } catch (\Exception $e) {
+            $this->setError('Erro ao buscar/criar parceiro', [$e->getMessage()]);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'error_code' => $this->getErrorCode(),
+                'message' => 'Erro ao buscar/criar parceiro',
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return null;
         }
@@ -122,6 +165,7 @@ class PartnerService
             return null;
         }
 
+        $this->setSuccess();
         return $result;
     }
 

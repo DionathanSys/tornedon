@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Notification\NotifyService as notify;
+use Illuminate\Support\Facades\DB;
 
 class CreateCompanyPartner extends CreateRecord
 {
@@ -32,22 +33,34 @@ class CreateCompanyPartner extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        $service = new PartnerService();
+        return DB::transaction(function () use ($data) {
+            $service = new PartnerService();
+            $partner = $service->findOrCreatePartner($data);
 
-        $partner = $data['partner_exists'] ? $service->getPartnerById($data['partner_id']) : $service->createPartner($data);
+            if ($service->hasError() || $partner === null) {
+                notify::error(
+                    message: $service->getMessageUser(),
+                    errorCode: $service->getErrorCode()
+                );
+                $this->halt();
+            }
 
-        if ($service->hasError() || $partner === null) {
-            notify::error(message: $service->getMessageUser());
-            $this->halt();
-        }
+            $result = $service->associatePartnerCompany(
+                $partner->id,
+                $data['company_id'],
+                $data['company_partner']
+            );
 
-        $result = $service->associatePartnerCompany($partner->id, $data['company_id'], $data['company_partner']);
+            if ($service->hasError()) {
+                notify::error(
+                    message: $service->getMessageUser(),
+                    errorCode: $service->getErrorCode()
+                );
+                $this->halt();
+            }
 
-        if ($service->hasError()) {
-            notify::error(message: $service->getMessageUser());
-            $this->halt();
-        }
+            return $result;
+        });
 
-        return $result;
     }
 }

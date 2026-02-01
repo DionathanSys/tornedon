@@ -23,6 +23,7 @@ use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use App\Notification\NotifyService as notify;
 
 class CompanyPartnerForm
 {
@@ -42,7 +43,10 @@ class CompanyPartnerForm
                     ])
                     ->columnSpanFull()
                     ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
-                    ->description('Dados de cadastro do Parceiro')
+                    ->description(fn(Get $get): string => ($get('partner_exists') ?? false)
+                        ? 'Cadastro do Parceiro ' . ($get('name') ?? '')
+                        : ''
+                    )
                     ->collapsible()
                     ->persistCollapsed()
                     ->compact()
@@ -147,10 +151,26 @@ class CompanyPartnerForm
                                 'lg' => 4,
                             ])
                             ->schema(fn(Schema $schema) => $schema->components([
+                                TextEntry::make('id')
+                                    ->label('ID')
+                                    ->placeholder('-')
+                                    ->hidden(),
                                 TextEntry::make('full_address')
                                     ->label('Endereço Completo')
                                     ->placeholder('-')
                                     ->columnSpanFull()
+                                    ->afterContent(Action::make('delete_address')
+                                        ->icon(Heroicon::Trash)
+                                        ->iconButton()
+                                        ->requiresConfirmation()
+                                        ->action(function (Get $get) {
+                                            $addressId = $get('id');
+                                            if ($addressId) {
+                                                notify::success(message: 'Endereço excluído com sucesso.');
+                                            } else {
+                                                notify::error(message: 'Endereço não encontrado. Não foi possível excluir.');
+                                            }
+                                        })),
                             ]))
                             ->columnSpanFull(),
                     ]),

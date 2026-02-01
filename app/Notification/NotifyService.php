@@ -3,13 +3,16 @@
 namespace App\Notification;
 
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 class NotifyService
 {
     protected Collection|EloquentCollection $recipients;
+    protected ?string $errorCode = null;
 
     public function __construct(
         protected string $level,
@@ -26,24 +29,60 @@ class NotifyService
      |  Public API
      |==============================*/
 
+    public function withErrorCode(?string $errorCode): self
+    {
+        $this->errorCode = $errorCode;
+        return $this;
+    }
+
     public function sendToDatabase(Collection|User|array|int|null $users = null): void
     {
         $targets = $this->resolveRecipients($users) ?? $this->recipients;
 
-        Notification::make()
+        $notification = Notification::make()
             ->title($this->title)
             ->body($this->message)
-            ->status($this->level)
-            ->sendToDatabase($targets);
+            ->status($this->level);
+
+        if ($this->errorCode) {
+            $notification->actions([
+                Action::make('create_ticket')
+                    ->label('Reportar Erro')
+                    ->icon(Heroicon::Ticket)
+                    ->color('warning')
+                    ->dispatch('createErrorTicket', [
+                        'errorCode' => $this->errorCode,
+                        'title' => $this->title,
+                        'message' => $this->message,
+                    ]),
+            ]);
+        }
+
+        $notification->sendToDatabase($targets);
     }
 
     public function sendToast(): void
     {
-        Notification::make()
+        $notification = Notification::make()
             ->title($this->title)
             ->body($this->message)
-            ->status($this->level)
-            ->send();
+            ->status($this->level);
+
+        if ($this->errorCode) {
+            $notification->actions([
+                Action::make('create_ticket')
+                    ->label('Reportar')
+                    ->icon(Heroicon::Ticket)
+                    ->color('warning')
+                    ->dispatch('createErrorTicket', [
+                        'errorCode' => $this->errorCode,
+                        'title' => $this->title,
+                        'message' => $this->message,
+                    ]),
+            ]);
+        }
+
+        $notification->send();
     }
 
     /* ==============================
@@ -54,7 +93,8 @@ class NotifyService
         string $title = 'Sucesso',
         string $message = '',
         bool $toDatabase = false,
-        Collection|User|array|int|null $users = null
+        Collection|User|array|int|null $users = null,
+        ?string $errorCode = null
     ): void {
 
         if ($toDatabase && $users === null) {
@@ -63,14 +103,15 @@ class NotifyService
             );
         }
 
-        self::dispatc('success', $title, $message, $toDatabase, $users);
+        self::dispatch('success', $title, $message, $toDatabase, $users, $errorCode);
     }
 
     public static function error(
         string $title = 'Falha durante processamento',
         string $message = '',
         bool $toDatabase = false,
-        Collection|User|array|int|null $users = null
+        Collection|User|array|int|null $users = null,
+        ?string $errorCode = null
     ): void {
 
         if ($toDatabase && $users === null) {
@@ -79,14 +120,15 @@ class NotifyService
             );
         }
 
-        self::dispatc('danger', $title, $message, $toDatabase, $users);
+        self::dispatch('danger', $title, $message, $toDatabase, $users, $errorCode);
     }
 
     public static function warning(
         string $title = 'Alerta',
         string $message = '',
         bool $toDatabase = false,
-        Collection|User|array|int|null $users = null
+        Collection|User|array|int|null $users = null,
+        ?string $errorCode = null
     ): void {
 
         if ($toDatabase && $users === null) {
@@ -95,21 +137,22 @@ class NotifyService
             );
         }
 
-        self::dispatc('warning', $title, $message, $toDatabase, $users);
+        self::dispatch('warning', $title, $message, $toDatabase, $users, $errorCode);
     }
 
     public static function info(
         string $title = 'Info',
         string $message = '',
         bool $toDatabase = false,
-        Collection|User|array|int|null $users = null
+        Collection|User|array|int|null $users = null,
+        ?string $errorCode = null
     ): void {
 
         if ($toDatabase && $users === null) {
             $toDatabase = false;
         }
 
-        self::dispatc('info', $title, $message, $toDatabase, $users);
+        self::dispatch('info', $title, $message, $toDatabase, $users, $errorCode);
     }
 
     public static function debug(string $title = 'Debug', string $message = ''): void
@@ -127,14 +170,19 @@ class NotifyService
      |  Internal helpers
      |==============================*/
 
-    protected static function dispatc(
+    protected static function dispatch(
         string $level,
         string $title,
         string $message,
         bool $toDatabase,
-        Collection|User|array|int|null $users
+        Collection|User|array|int|null $users,
+        ?string $errorCode = null
     ): void {
         $service = new self($level, $title, $message);
+
+        if ($errorCode) {
+            $service->withErrorCode($errorCode);
+        }
 
         if ($toDatabase) {
             $service->sendToDatabase($users);

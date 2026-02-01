@@ -97,7 +97,10 @@ class UpdatePartner
                 $result = $service->editPartner($partner, $data);
 
                 if($service->hasError()){
-                    notify::error(message: $service->getMessageUser());
+                    notify::error(
+                        message: $service->getMessageUser(),
+                        errorCode: $service->getErrorCode()
+                    );
                     $action->halt();
                 }
 
