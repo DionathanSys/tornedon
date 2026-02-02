@@ -24,7 +24,9 @@ class CreatePartner
     {
         try {
             $validator = new PartnerValidator();
-            $validatedData = $validator->validateForCreate($data);
+            $validatedData = $validator->validate($data);
+            
+            ds( $validatedData )->label('Dados validados para criação do parceiro' );
             
             $validatedData = Arr::only($validatedData, $this->fillableFields);
             $partner = Partner::create($validatedData);

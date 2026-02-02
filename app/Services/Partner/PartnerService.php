@@ -24,9 +24,9 @@ class PartnerService
             $result = $action->execute($data);
 
             if ($action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors(), 422, $action->getErrorCode());
+                $this->setError($action->getMessage(), $action->getErrors());
                 Log::error(__METHOD__ . '@' . __LINE__, [
-                    'error_code'        => $action->getErrorCode(),
+                    'error_code'        => $this->getErrorCode(),
                     'message'           => 'Erro identificado durante execução da Action para criação do Parceiro',
                     'action_message'    => $action->getMessage(),
                     'errors'            => $action->getErrors(),
@@ -34,10 +34,11 @@ class PartnerService
                 return null;
             }
 
+            ds( $result )->label('Parceiro criado com sucesso' );
             $this->setSuccess('Parceiro cadastrado com sucesso');
             return $result;
         } catch (\Exception $e) {
-            $this->setError('Erro ao cadastrar parceiro', [$e->getMessage()], 500);
+            $this->setError('Erro ao cadastrar parceiro', [$e->getMessage()]);
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'error_code' => $this->getErrorCode(),
                 'message'    => 'Erro ao cadastrar parceiro',
@@ -124,14 +125,14 @@ class PartnerService
             $existing = Partner::where('document_number', $data['document_number'])->first();
 
             if ($existing) {
-                // Partner já existe - reutilizar
                 Log::info(__METHOD__ . '@' . __LINE__, [
-                    'message' => 'Partner existente encontrado, reutilizando',
+                    'message' => 'Parceiro existente encontrado, reutilizando',
                     'partner_id' => $existing->id,
                     'document_number' => $data['document_number'],
                 ]);
 
-                $this->setSuccess('Partner encontrado');
+                ds( $existing )->label('Parceiro existente encontrado');
+                $this->setSuccess('Parceiro encontrado');
                 return $existing;
             }
 

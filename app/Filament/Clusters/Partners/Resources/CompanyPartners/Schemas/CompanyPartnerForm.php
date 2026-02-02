@@ -43,9 +43,10 @@ class CompanyPartnerForm
                     ])
                     ->columnSpanFull()
                     ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
-                    ->description(fn(Get $get): string => ($get('partner_exists') ?? false)
-                        ? 'Cadastro do Parceiro ' . ($get('name') ?? '')
-                        : ''
+                    ->description(
+                        fn(Get $get): string => ($get('partner_exists') ?? false)
+                            ? 'Cadastro do Parceiro ' . ($get('name') ?? '')
+                            : ''
                     )
                     ->collapsible()
                     ->persistCollapsed()
@@ -76,6 +77,7 @@ class CompanyPartnerForm
                         TextInput::make('state_tax_id')
                             ->label('Inscrição Estadual')
                             ->placeholder('Não definido')
+                            ->live()
                             ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)

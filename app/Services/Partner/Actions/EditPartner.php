@@ -24,7 +24,7 @@ class EditPartner
     {
         try {
             $validator = new PartnerValidator();
-            $validatedData = $validator->validateForUpdate($data, $this->partner->id);
+            $validatedData = $validator->validate($data, $this->partner->id);
             
             $validatedData = Arr::only($validatedData, $this->fillableFields);
             $this->partner->update($validatedData);

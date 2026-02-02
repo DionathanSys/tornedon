@@ -10,49 +10,23 @@ use Illuminate\Validation\ValidationException;
 class PartnerValidator
 {
     /**
-     * Valida dados para criação de Partner
+     * Valida dados de Partner
+     * @param array $data Dados a validar
      * @return array Retorna dados validados
      * @throws ValidationException Se a validação falhar
      */
-    public function validateForCreate(array $data): array
+    public function validate(array $data, ?int $partnerId = null): array
     {
-        return $this->validate($data, 'create');
-    }
-
-    /**
-     * Valida dados para edição de Partner
-     * @return array Retorna dados validados
-     * @throws ValidationException Se a validação falhar
-     */
-    public function validateForUpdate(array $data, int $partnerId): array
-    {
-        return $this->validate($data, 'update', $partnerId);
-    }
-
-    /**
-     * Executa validação
-     * @return array Retorna dados validados
-     * @throws ValidationException Se a validação falhar
-     */
-    private function validate(array $data, string $context = 'create', ?int $partnerId = null): array
-    {
-        $rules = $this->getRules($context, $partnerId, $data);
-        $messages = $this->getMessages($context);
-
-        return Validator::make($data, $rules, $messages)->validate();
-    }
-
-    /**
-     * Define regras de validação
-     */
-    private function getRules(string $context, ?int $partnerId, array $data): array
-    {
+        ds($data)->label('Validando dados do parceiro');
+        ds($partnerId)->label('ID do parceiro (se aplicável)');
+        
         $rules = [
             'name'                  => 'required|string|max:255',
             'document_type'         => 'required|string|in:cnpj,cpf',
             'document_number'       => [
                 'required',
                 'string',
+                Rule::unique('partners', 'document_number')->ignore($partnerId ?? null),
                 function ($attribute, $value, $fail) use ($data) {
                     if (($data['document_type'] ?? null) === 'cpf' && strlen($value) !== 14) {
                         $fail('O CPF deve conter exatamente 14 caracteres.');
@@ -63,44 +37,21 @@ class PartnerValidator
                     }
                 },
             ],
-            'state_tax_id'          => 'nullable|string|max:50',
-            'state_tax_indicator'   => 'nullable|int|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Tax\StateTaxIndicator::cases())),
-            'municipal_tax_id'      => 'nullable|string|max:50',
+            'state_tax_id'          => 'nullable|integer',
+            'state_tax_indicator'   => 'required|int|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Tax\StateTaxIndicator::cases())),
+            'municipal_tax_id'      => 'nullable|integer',
         ];
-
-        // Adicionar regra específica por contexto
-        if ($context === 'update' && $partnerId) {
-            $rules['document_number'][] = Rule::unique('partners', 'document_number')->ignore($partnerId);
-            $rules['updated_by'] = 'required|integer|exists:users,id';
-        } else {
-            $rules['created_by'] = 'required|integer|exists:users,id';
-        }
-
-        return $rules;
-    }
-
-    /**
-     * Define mensagens de validação
-     */
-    private function getMessages(string $context): array
-    {
+        
         $messages = [
             'name.required'             => 'O nome do parceiro é obrigatório.',
             'document_type.in'          => 'O tipo de documento informado é inválido.',
+            'document_type.required'    => 'O tipo de documento é obrigatório.',
             'document_number.required'  => 'O número do documento é obrigatório.',
-            'state_tax_id.max'          => 'A inscrição estadual deve ter no máximo 50 caracteres.',
-            'municipal_tax_id.max'      => 'A inscrição municipal deve ter no máximo 50 caracteres.',
+            'document_number.unique'    => 'Este documento já está cadastrado.',
             'state_tax_indicator.in'    => 'O indicador de inscrição estadual informado é inválido.',
+            'state_tax_indicator.required'=> 'O indicador de inscrição estadual é obrigatório.',
         ];
 
-        if ($context === 'update') {
-            $messages['updated_by.required'] = 'O usuário atualizador é obrigatório.';
-            $messages['updated_by.exists'] = 'O usuário atualizador informado não existe.';
-        } else {
-            $messages['created_by.required'] = 'O usuário criador é obrigatório.';
-            $messages['created_by.exists'] = 'O usuário criador informado não existe.';
-        }
-
-        return $messages;
+        return Validator::make($data, $rules, $messages)->validate();
     }
 }
