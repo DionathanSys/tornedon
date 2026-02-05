@@ -13,23 +13,20 @@ class CreatePartner
 {
     use HandlesActionResponse;
 
-    private array $fillableFields;
-
-    public function __construct()
-    {
-        $this->fillableFields = (new Partner())->getFillable();
-    }
+    public function __construct(
+        private int $createdBy,
+    ) {}
 
     public function execute(array $data): ?Partner
     {
         try {
-            $validator = new PartnerValidator();
-            $validatedData = $validator->validate($data);
+            $validatedData = PartnerValidator::validate($data);
             
-            ds( $validatedData )->label('Dados validados para criação do parceiro' );
-            
-            $validatedData = Arr::only($validatedData, $this->fillableFields);
-            $partner = Partner::create($validatedData);
+            $data = array_merge($validatedData, [
+                'created_by' => $this->createdBy,
+            ]);
+
+            $partner = Partner::create($data);
             $this->setSuccess();
             return $partner;
             

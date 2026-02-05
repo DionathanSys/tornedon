@@ -13,21 +13,20 @@ class EditPartner
 {
     use HandlesActionResponse;
 
-    private array $fillableFields;
-
-    public function __construct(protected Partner $partner)
+    public function __construct(protected int $updatedBy, protected Partner $partner)
     {
-        $this->fillableFields = (new Partner())->getFillable();
     }
 
     public function execute(array $data): ?Partner
     {
         try {
-            $validator = new PartnerValidator();
-            $validatedData = $validator->validate($data, $this->partner->id);
+            $validatedData = PartnerValidator::validate($data, $this->partner->id);
             
-            $validatedData = Arr::only($validatedData, $this->fillableFields);
-            $this->partner->update($validatedData);
+            $data = array_merge($validatedData, [
+                'updated_by' => $this->updatedBy,
+            ]);
+
+            $this->partner->update($data);
             $this->setSuccess();
             return $this->partner;
             

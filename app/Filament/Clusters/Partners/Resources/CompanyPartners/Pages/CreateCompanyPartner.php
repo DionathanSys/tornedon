@@ -19,8 +19,6 @@ class CreateCompanyPartner extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $tenant = Filament::getTenant();
-
-        $data['created_by'] = Auth::id();
         $data['company_id'] = $tenant->id;
 
         return $data;
@@ -35,7 +33,7 @@ class CreateCompanyPartner extends CreateRecord
     {
         return DB::transaction(function () use ($data) {
             $service = new PartnerService();
-            $partner = $service->findOrCreatePartner($data);
+            $partner = $service->findOrCreatePartner(Auth::id(), $data);
 
             if ($service->hasError() || $partner === null) {
                 notify::error(

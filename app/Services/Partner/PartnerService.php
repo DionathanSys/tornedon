@@ -17,10 +17,10 @@ class PartnerService
 {
     use HandlesServiceResponse;
 
-    public function createPartner(array $data): ?Partner
+    public function createPartner(int $createdBy, array $data): ?Partner
     {
         try {
-            $action = new Actions\CreatePartner();
+            $action = new Actions\CreatePartner($createdBy);
             $result = $action->execute($data);
 
             if ($action->hasError()) {
@@ -83,14 +83,14 @@ class PartnerService
         }
     }
 
-    public function editPartner(Partner $partner, array $data): ?Partner
+    public function editPartner(int $updatedBy, Partner $partner, array $data): ?Partner
     {
         try {
-            $action = new EditPartner($partner);
+            $action = new EditPartner($updatedBy, $partner);
             $result = $action->execute($data);
 
             if ($action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors(), 422, $action->getErrorCode());
+                $this->setError($action->getMessage(), $action->getErrors());
                 Log::error(__METHOD__ . '@' . __LINE__, [
                     'error_code'        => $action->getErrorCode(),
                     'message'           => 'Erro identificado durante execução da Action para edição do Parceiro',
@@ -119,7 +119,7 @@ class PartnerService
     /**
      * Busca partner existente por documento ou cria novo
      */
-    public function findOrCreatePartner(array $data): ?Partner
+    public function findOrCreatePartner(int $createdBy, array $data): ?Partner
     {
         try {
             $existing = Partner::where('document_number', $data['document_number'])->first();
@@ -131,12 +131,11 @@ class PartnerService
                     'document_number' => $data['document_number'],
                 ]);
 
-                ds( $existing )->label('Parceiro existente encontrado');
                 $this->setSuccess('Parceiro encontrado');
                 return $existing;
             }
 
-            return $this->createPartner($data);
+            return $this->createPartner($createdBy, $data);
         } catch (\Exception $e) {
             $this->setError('Erro ao buscar/criar parceiro', [$e->getMessage()]);
             Log::error(__METHOD__ . '@' . __LINE__, [

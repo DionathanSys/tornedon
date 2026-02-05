@@ -15,10 +15,10 @@ class PartnerValidator
      * @return array Retorna dados validados
      * @throws ValidationException Se a validação falhar
      */
-    public function validate(array $data, ?int $partnerId = null): array
+    public static function validate(array $data, ?int $partnerId = null): array
     {
         ds($data)->label('Validando dados do parceiro');
-        ds($partnerId)->label('ID do parceiro (se aplicável)');
+        ds("ID Parceiro " . $partnerId)->label('ID do parceiro (se aplicável)');
         
         $rules = [
             'name'                  => 'required|string|max:255',

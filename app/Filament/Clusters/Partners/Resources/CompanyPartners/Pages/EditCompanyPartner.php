@@ -56,7 +56,7 @@ class EditCompanyPartner extends EditRecord
         $service = new CompanyPartnerService();
         $result = $service->update($record, $data);
 
-        if($service->hasError()){
+        if($service->hasError()){ 
             notify::error(message: $service->getMessageUser());
             $this->halt();
         }
