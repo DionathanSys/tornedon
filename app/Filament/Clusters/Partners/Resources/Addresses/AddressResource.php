@@ -35,6 +35,8 @@ class AddressResource extends Resource
 {
     protected static ?string $model = Address::class;
 
+    protected static ?string $tenantOwnershipRelationshipName = 'companyPartner';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $cluster = PartnersCluster::class;
