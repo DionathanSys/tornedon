@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Partner\PartnerService;
+use Illuminate\Support\Facades\Log;
 
 class EditCompanyPartner extends EditRecord
 {
@@ -40,6 +41,8 @@ class EditCompanyPartner extends EditRecord
         $data['company_partner']['type']                = $data['type'];
         $data['company_partner']['invoice_threshold']   = $data['invoice_threshold'];
         $data['company_partner']['is_active']           = $data['is_active'];
+        
+        Log::debug('Mutate Form Data Before Fill:', $data);
         
         return $data;
     }

@@ -80,4 +80,40 @@ class AddressService
             return null;
         }
     }
+
+    public function delete(Address $address, int $userId): bool
+    {
+        try {
+            $action = new Actions\DeleteAddress($address, $userId);
+            $result = $action->execute();
+
+            Log::info('Endereço excluído com sucesso via service', [
+                'metodo'        => __METHOD__ . '@' . __LINE__,
+                'address_id'    => $address->id,
+                'partner_id'    => $address->partner_id,
+                'company_id'    => $address->company_id,
+                'user_id'       => $userId,
+            ]);
+
+            $this->setSuccess('Endereço excluído com sucesso');
+
+            return $result;
+        } catch (DomainValidationException $e) {
+            $this->setError('Falha durante exclusão do endereço', $e->errors);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'address_id'        => $address->id,
+                'user_id'           => $userId,
+                'validation_errors' => $e->errors,
+            ]);
+            return false;
+        } catch (\Throwable $e) {
+            $this->setError('Erro interno ao excluir endereço');
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'address_id'    => $address->id,
+                'user_id'       => $userId,
+                'exception'     => $e,
+            ]);
+            return false;
+        }
+    }
 }

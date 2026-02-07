@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Tables;
 
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\EditCompanyPartnerAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -51,8 +52,7 @@ class CompanyPartnersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ,
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

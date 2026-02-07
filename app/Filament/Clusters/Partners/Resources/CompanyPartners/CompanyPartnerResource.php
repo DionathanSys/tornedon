@@ -58,7 +58,6 @@ class CompanyPartnerResource extends Resource
         return [
             'index' => ListCompanyPartners::route('/'),
             'create' => CreateCompanyPartner::route('/create'),
-            'view' => ViewCompanyPartner::route('/{record}'),
             'edit' => EditCompanyPartner::route('/{record}/edit'),
         ];
     }

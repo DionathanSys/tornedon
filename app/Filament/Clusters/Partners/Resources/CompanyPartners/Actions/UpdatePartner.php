@@ -27,7 +27,8 @@ class UpdatePartner
             ->icon(Heroicon::PencilSquare)
             ->visible(fn($operation): bool => $operation === 'edit')
             ->fillForm(function (Get $get): array {
-                $partner                      = (new PartnerService())->getPartnerById($get('partner_id'));
+                $partner = (new PartnerService())->getPartnerById($get('partner_id'));
+
                 return [
                     'partner_id'           => $partner->id,
                     'name'                 => $partner->name,
@@ -94,7 +95,7 @@ class UpdatePartner
                 $service = new PartnerService();
                 $partner = $service->getPartnerById($data['id']);
 
-                $result = $service->editPartner($partner, $data);
+                $result = $service->editPartner(Auth::id(), $partner, $data);
 
                 if($service->hasError()){
                     notify::error(

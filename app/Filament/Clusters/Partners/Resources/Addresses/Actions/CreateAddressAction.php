@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Partners\Resources\Addresses\Actions;
 
 use App\Filament\Clusters\Partners\Resources\Addresses\AddressResource;
+use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponent;
+use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponentFull;
 use App\Models\Address;
 use App\Services\Address\AddressService;
 use App\Services\Partner\CompanyPartnerService;
@@ -12,7 +14,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use Filament\Actions\Action;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
 
@@ -24,19 +25,46 @@ final class CreateAddressAction
             ->label('Endereço')
             ->icon(Heroicon::Plus)
             ->modal()
-            ->schema(fn(Schema $schema): Schema => AddressResource::form($schema))
-            ->action(function (Get $get, Action $action, array $data, array $arguments) {
+            ->schema(function (Schema $schema, Action $action): Schema {
+                // Detecta o contexto: se tem record, está dentro do form do parceiro
+                $record = $action->getRecord();
+
+                if ($record && $record instanceof \App\Models\CompanyPartner) {
+                    // Contexto: dentro do form do parceiro - usa AddressComponent (sem select de parceiro)
+                    return $schema
+                        ->columns([
+                            'sm' => 1,
+                            'md' => 4,
+                            'lg' => 8,
+                        ])
+                        ->components(AddressComponent::make());
+                }
+                
+                // Contexto: index de endereços - usa AddressComponentFull (com select de parceiro)
+                return AddressResource::form($schema);
+            })
+            ->action(function (Action $action, array $data, array $arguments) {
+                $record = $action->getRecord();
+                
+                // Determina o partner_id baseado no contexto
+                if ($record && $record instanceof \App\Models\CompanyPartner) {
+                    // Está dentro do form do parceiro - usa o ID do record
+                    $partnerId = $record->partner_id;
+                } else {
+                    // Está no index de endereços - usa o partner_id do formulário
+                    $partnerId = $data['partner_id'] ?? 0;
+                }
 
                 Log::debug(__METHOD__ . '@' . __LINE__, [
                     'message' => 'Iniciando criação de novo endereço para Parceiro',
                     'data'    => $data,
                     'args'    => $arguments,
-                    'partner_id' => $get('partner_id'),
+                    'partner_id' => $partnerId,
+                    'context' => $record ? 'partner_form' : 'addresses_index',
                 ]);
                 
                 $tenant     = Filament::getTenant();
                 $companyId  = $tenant->id;
-                $partnerId  = $get('partner_id') ?? 0;
                 $company_partner_id = CompanyPartnerService::getIdCompanyPartner($partnerId);
 
                 if(!$company_partner_id) {
@@ -55,9 +83,12 @@ final class CreateAddressAction
                 notify::success(message: $service->getMessageUser());
 
                 if ($arguments['another'] ?? false) {
-                    $action->fillForm([
-                        'partner_id' => $data['partner_id'],
-                    ]);
+                    // Se está no contexto do index, mantém o partner_id selecionado
+                    if (!($record && $record instanceof \App\Models\CompanyPartner)) {
+                        $action->fillForm([
+                            'partner_id' => $data['partner_id'] ?? null,
+                        ]);
+                    }
                     $action->halt();
                 }
 
@@ -81,6 +112,7 @@ final class CreateAddressAction
                 $action->makeModalSubmitAction('createAnother', arguments: ['another' => true])
                     ->label('Salvar e criar outro')
                     ->color('secondary'),
-            ]);
+            ])
+            ->modalSubmitAction(fn(Action $action) => $action->label('Salvar'));
     }
 }

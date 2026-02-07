@@ -7,13 +7,12 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use App\Enum;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
+use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\AddressResource;
 use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponent;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
-use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -21,9 +20,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
-use App\Notification\NotifyService as notify;
 
 class CompanyPartnerForm
 {
@@ -134,11 +131,7 @@ class CompanyPartnerForm
                     ->columnSpanFull()
                     ->description('Endereço(s) do Parceiro')
                     ->afterHeader([
-                        CreateAddressAction::make()
-                            ->schema(function (Schema $schema): Schema {
-                                return AddressResource::form($schema)
-                                    ->schema(AddressComponent::make());
-                            }),
+                        CreateAddressAction::make(),
                     ])
                     ->collapsible()
                     ->visibleOn(['edit', 'view'])
@@ -161,18 +154,10 @@ class CompanyPartnerForm
                                     ->label('Endereço Completo')
                                     ->placeholder('-')
                                     ->columnSpanFull()
-                                    ->afterContent(Action::make('delete_address')
-                                        ->icon(Heroicon::Trash)
-                                        ->iconButton()
-                                        ->requiresConfirmation()
-                                        ->action(function (Get $get) {
-                                            $addressId = $get('id');
-                                            if ($addressId) {
-                                                notify::success(message: 'Endereço excluído com sucesso.');
-                                            } else {
-                                                notify::error(message: 'Endereço não encontrado. Não foi possível excluir.');
-                                            }
-                                        })),
+                                    ->afterContent(fn($record) => 
+                                        DeleteAddressAction::make()
+                                            ->arguments(['address_id' => $record?->id])
+                                    ),
                             ]))
                             ->columnSpanFull(),
                     ]),
