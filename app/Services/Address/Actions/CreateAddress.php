@@ -15,8 +15,6 @@ final class CreateAddress
 {
     public function __construct(
         private int $companyPartnerId,
-        private int $companyId,
-        private int $partnerId,
         private int $createdBy,
     ) {}
 
@@ -25,8 +23,6 @@ final class CreateAddress
         $data = [
             ...$this->validateInput($input),
             'company_partner_id' => $this->companyPartnerId,
-            'company_id' => $this->companyId,
-            'partner_id' => $this->partnerId,
             'created_by' => $this->createdBy,
         ];
 

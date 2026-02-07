@@ -363,8 +363,6 @@ class SeederDB extends Command
                     $addressData = array_shift($addresses);
                     
                     DB::table('addresses')->insertOrIgnore([
-                        'company_id' => $companyPartner->company_id,
-                        'partner_id' => $companyPartner->partner_id,
                         'company_partner_id' => $companyPartner->id,
                         'street' => $addressData['street'],
                         'number' => $addressData['number'],

@@ -13,13 +13,7 @@ return new class extends Migration
     {
         Schema::create('addresses', function (Blueprint $table) {
             $table->id();                                           // ID único do endereço
-            $table->foreignId('partner_id')                         // ID do parceiro (obrigatório)
-                ->constrained('partners')
-                ->cascadeOnDelete();
-            $table->foreignId('company_id')
-                ->constrained('companies')
-                ->cascadeOnDelete();
-            $table->foreignId('company_partner_id')
+            $table->foreignId('company_partner_id')                 // Relacionamento Company + Partner
                 ->constrained('company_partner')
                 ->cascadeOnDelete();
             $table->string('street')
@@ -50,8 +44,8 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
 
-            $table->unique(['company_id', 'partner_id', 'street', 'number']);
-            $table->index(['company_id', 'partner_id']);
+            $table->unique(['company_partner_id', 'street', 'number']);
+            $table->index('company_partner_id');
         });
     }
 

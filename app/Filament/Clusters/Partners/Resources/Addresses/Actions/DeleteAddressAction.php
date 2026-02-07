@@ -41,10 +41,9 @@ final class DeleteAddressAction
                 }
 
                 Log::debug('Iniciando exclusão de endereço', [
-                    'metodo'  => __METHOD__ . '@' . __LINE__,
-                    'address_id' => $addressId,
-                    'partner_id' => $address->partner_id,
-                    'company_id' => $address->company_id,
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'address_id'         => $addressId,
+                    'company_partner_id' => $address->company_partner_id,
                 ]);
 
                 $service = new AddressService();

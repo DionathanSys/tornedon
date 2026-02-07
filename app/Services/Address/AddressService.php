@@ -12,18 +12,17 @@ class AddressService
 
     use HandlesServiceResponse;
 
-    public function create(int $companyPartnerId, int $companyId, int $partnerId, array $input, int $userId): ?Address 
+    public function create(int $companyPartnerId, array $input, int $userId): ?Address 
     {
         try {
-            $action = new Actions\CreateAddress($companyPartnerId, $companyId, $partnerId, $userId);
+            $action = new Actions\CreateAddress($companyPartnerId, $userId);
 
             $address = $action->execute($input);
 
             Log::info('Endereço cadastrado com sucesso', [
                 'metodo'        => __METHOD__ . '@' . __LINE__,
                 'address_id'    => $address->id,
-                'company_id'    => $companyId,
-                'partner_id'    => $partnerId,
+                'company_partner_id' => $companyPartnerId,
                 'user_id'       => $userId,
             ]);
 
@@ -33,21 +32,17 @@ class AddressService
         } catch (DomainValidationException $e) {
             $this->setError('Falha durante cadastro do endereço', $e->errors);
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'company_partner_id'    => $companyPartnerId,
-                'company_id'        => $companyId,
-                'partner_id'        => $partnerId,
-                'user_id'           => $userId,
-                'validation_errors' => $e->errors,
+                'company_partner_id' => $companyPartnerId,
+                'user_id'            => $userId,
+                'validation_errors'  => $e->errors,
             ]);
             return null;
         } catch (\Throwable $e) {
             $this->setError('Erro interno ao cadastrar endereço');
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'company_partner_id'    => $companyPartnerId,
-                'company_id'    => $companyId,
-                'partner_id'    => $partnerId,
-                'user_id'       => $userId,
-                'exception'     => $e,
+                'company_partner_id' => $companyPartnerId,
+                'user_id'            => $userId,
+                'exception'          => $e,
             ]);
             return null;
         }
@@ -88,11 +83,10 @@ class AddressService
             $result = $action->execute();
 
             Log::info('Endereço excluído com sucesso via service', [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'address_id'    => $address->id,
-                'partner_id'    => $address->partner_id,
-                'company_id'    => $address->company_id,
-                'user_id'       => $userId,
+                'metodo'                => __METHOD__ . '@' . __LINE__,
+                'address_id'            => $address->id,
+                'company_partner_id'    => $address->company_partner_id,
+                'user_id'               => $userId,
             ]);
 
             $this->setSuccess('Endereço excluído com sucesso');

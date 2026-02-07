@@ -7,6 +7,7 @@ use App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages\CreateCompany
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages\EditCompanyPartner;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages\ListCompanyPartners;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages\ViewCompanyPartner;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\RelationManagers\ContactsRelationManager;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas\CompanyPartnerForm;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas\CompanyPartnerInfolist;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Tables\CompanyPartnersTable;
@@ -49,7 +50,7 @@ class CompanyPartnerResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ContactsRelationManager::class,
         ];
     }
 

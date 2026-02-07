@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Address extends Model
 {
     protected $fillable = [
+        'company_partner_id',
         'street',
         'number',
         'complement',
@@ -19,20 +20,9 @@ class Address extends Model
         'country',
         'postal_code',
         'city_code',
-        'company_partner_id',
         'created_by',
         'updated_by',
     ];
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class, 'company_id');
-    }
-
-    public function partner(): BelongsTo
-    {
-        return $this->belongsTo(Partner::class, 'partner_id');
-    }
 
     public function companyPartner(): BelongsTo
     {

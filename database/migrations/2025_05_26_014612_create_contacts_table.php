@@ -13,14 +13,11 @@ return new class extends Migration
     {
         Schema::create('contacts', function (Blueprint $table) {
             $table->id();                                           // ID único do contato
-            $table->foreignId('partner_id')                         // ID do parceiro (obrigatório)
-                ->constrained('partners')
+            $table->foreignId('company_partner_id')                 // Relacionamento Company + Partner
+                ->constrained('company_partner')
                 ->cascadeOnDelete();
-            $table->foreignId('company_id')
-                ->constrained('companies')
-                ->cascadeOnDelete();
-            $table->string('email')                                 // E-mail do contato (único)
-                ->unique();
+            $table->string('email')                                 // E-mail do contato (único por parceiro)
+                ->nullable();
             $table->string('phone')                                 // Telefone fixo
                 ->nullable();
             $table->string('mobile')                                // Telefone celular
@@ -38,6 +35,12 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
+
+            // Um e-mail único por parceiro (company_partner)
+            $table->unique(['company_partner_id', 'email']);
+            
+            // Índice para queries de listagem e filtragem
+            $table->index('company_partner_id');
         });
     }
 

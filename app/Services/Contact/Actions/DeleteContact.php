@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Services\Address\Actions;
+namespace App\Services\Contact\Actions;
 
 use App\Exceptions\DomainValidationException;
-use App\Models\Address;
+use App\Models\Contact;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class DeleteAddress
+class DeleteContact
 {
     public function __construct(
-        private Address $address,
+        private Contact $contact,
         private int $deletedBy,
     ) {}
 
@@ -24,16 +24,16 @@ final class DeleteAddress
             // Validações de negócio
             $this->validateDeletion();
 
-            // Exclui o endereço
-            $result = $this->address->delete();
+            // Exclui o contato
+            $result = $this->contact->delete();
 
             DB::commit();
 
-            Log::info('Endereço excluído com sucesso', [
-                'metodo'                => __METHOD__ . '@' . __LINE__,
-                'address_id'            => $this->address->id,
-                'company_partner_id'    => $this->address->company_partner_id,
-                'deleted_by'            => $this->deletedBy,
+            Log::info('Contato excluído com sucesso', [
+                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'contact_id'         => $this->contact->id,
+                'company_partner_id' => $this->contact->company_partner_id,
+                'deleted_by'         => $this->deletedBy,
             ]);
 
             return $result;
@@ -41,14 +41,14 @@ final class DeleteAddress
             DB::rollBack();
 
             Log::error(__METHOD__ . '@' . __LINE__, [
-                'message'   => 'Erro de query ao excluir endereço',
-                'error'     => $e->getMessage(),
+                'message'    => 'Erro de query ao excluir contato',
+                'error'      => $e->getMessage(),
                 'error_code' => $e->getCode(),
-                'address_id' => $this->address->id,
+                'contact_id' => $this->contact->id,
             ]);
 
             throw new DomainValidationException([
-                'address' => ['Não foi possível excluir o endereço. Verifique se não há vínculos ativos.'],
+                'contact' => ['Não foi possível excluir o contato. Verifique se não há vínculos ativos.'],
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -58,7 +58,7 @@ final class DeleteAddress
 
     private function validateDeletion(): void
     {
-        // Valida se o usuário tem vínculo com a mesma empresa do endereço
+        // Valida se o usuário tem vínculo com a mesma empresa do contato
         $user = User::find($this->deletedBy);
 
         if (!$user) {
@@ -68,7 +68,7 @@ final class DeleteAddress
         }
 
         // Carrega o companyPartner para obter o company_id
-        $companyId = $this->address->companyPartner->company_id;
+        $companyId = $this->contact->companyPartner->company_id;
 
         $hasCompanyAccess = $user->companies()
             ->where('companies.id', $companyId)
@@ -76,7 +76,7 @@ final class DeleteAddress
 
         if (!$hasCompanyAccess) {
             throw new DomainValidationException([
-                'address' => ['Você não tem permissão para excluir este endereço. O endereço pertence a uma empresa diferente.'],
+                'contact' => ['Você não tem permissão para excluir este contato. O contato pertence a uma empresa diferente.'],
             ]);
         }
     }

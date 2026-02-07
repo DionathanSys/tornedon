@@ -38,4 +38,9 @@ class CompanyPartner extends Model
     {
         return $this->hasMany(Address::class, 'company_partner_id');
     }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(Contact::class, 'company_partner_id');
+    }
 }

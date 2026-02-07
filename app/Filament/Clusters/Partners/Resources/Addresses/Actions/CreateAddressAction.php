@@ -63,8 +63,7 @@ final class CreateAddressAction
                     'context' => $record ? 'partner_form' : 'addresses_index',
                 ]);
                 
-                $tenant     = Filament::getTenant();
-                $companyId  = $tenant->id;
+                //TODO Remover caso seja removido o Resource de Address
                 $company_partner_id = CompanyPartnerService::getIdCompanyPartner($partnerId);
 
                 if(!$company_partner_id) {
@@ -73,7 +72,7 @@ final class CreateAddressAction
                 }
 
                 $service = new AddressService();
-                $result = $service->create($company_partner_id, $companyId, $partnerId, $data, Auth::id());
+                $result = $service->create($company_partner_id, $data, Auth::id());
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser());
