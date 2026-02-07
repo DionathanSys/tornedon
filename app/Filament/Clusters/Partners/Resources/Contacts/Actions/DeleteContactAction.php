@@ -1,52 +1,52 @@
 <?php
 
-namespace App\Filament\Clusters\Partners\Resources\Addresses\Actions;
+namespace App\Filament\Clusters\Partners\Resources\Contacts\Actions;
 
-use App\Models\Address;
-use App\Services\Address\AddressService;
+use App\Models\Contact;
+use App\Services\Contact\ContactService;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use Filament\Actions\Action;
 use Illuminate\Support\Facades\Log;
 
-final class DeleteAddressAction
+final class DeleteContactAction
 {
     public static function make(): Action
     {
-        return Action::make('delete_address')
+        return Action::make('delete_contact')
             ->label('Excluir')
             ->icon(Heroicon::Trash)
             ->color('danger')
             ->requiresConfirmation()
-            ->modalHeading('Excluir Endereço')
-            ->modalDescription('Tem certeza que deseja excluir este endereço? Esta ação não pode ser desfeita.')
+            ->modalHeading('Excluir Contato')
+            ->modalDescription('Tem certeza que deseja excluir este contato? Esta ação não pode ser desfeita.')
             ->modalSubmitActionLabel('Sim, excluir')
             ->action(function (Action $action, array $arguments) {
-                $addressId = $arguments['address_id'] ?? null;
+                $contactId = $arguments['contact_id'] ?? null;
 
-                if (!$addressId) {
-                    notify::error(message: 'Endereço não identificado. Não foi possível excluir.');
+                if (!$contactId) {
+                    notify::error(message: 'Contato não identificado. Não foi possível excluir.');
                     $action->halt();
                     return;
                 }
 
-                $address = Address::find($addressId);
+                $contact = Contact::find($contactId);
 
-                if (!$address) {
-                    notify::error(message: 'Endereço não encontrado. Não foi possível excluir.');
+                if (!$contact) {
+                    notify::error(message: 'Contato não encontrado. Não foi possível excluir.');
                     $action->halt();
                     return;
                 }
 
-                Log::debug('Iniciando exclusão de endereço', [
+                Log::debug('Iniciando exclusão de contato', [
                     'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'address_id'         => $addressId,
-                    'company_partner_id' => $address->company_partner_id,
+                    'contact_id'         => $contactId,
+                    'company_partner_id' => $contact->company_partner_id,
                 ]);
 
-                $service = new AddressService();
-                $result = $service->delete($address, Auth::id());
+                $service = new ContactService();
+                $result = $service->delete($contact, Auth::id());
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser());
@@ -59,17 +59,15 @@ final class DeleteAddressAction
                 return $result;
             })
             ->after(function (Action $action) {
-                // Recarregar o relacionamento addresses no record atual
                 $record = $action->getRecord();
                 if ($record) {
                     $record->refresh();
-                    $record->load('addresses');
+                    $record->load('contacts');
                 }
                 
-                // Disparar evento para atualizar o Livewire
                 $livewire = $action->getLivewire();
                 if ($livewire && method_exists($livewire, 'refreshFormData')) {
-                    $livewire->refreshFormData(['addresses']);
+                    $livewire->refreshFormData(['contacts']);
                 }
             });
     }

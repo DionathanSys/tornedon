@@ -5,17 +5,24 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Support\Icons\Heroicon;
 use App\Enum;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
+use App\Filament\Clusters\Partners\Resources\Addresses\Actions\EditAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\AddressResource;
 use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponent;
+use App\Filament\Clusters\Partners\Resources\Contacts\Actions\CreateContactAction;
+use App\Filament\Clusters\Partners\Resources\Contacts\Actions\DeleteContactAction;
+use App\Filament\Clusters\Partners\Resources\Contacts\Actions\EditContactAction;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
+use App\Models\CompanyPartner;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Leandrocfe\FilamentPtbrFormFields\Document;
@@ -139,6 +146,7 @@ class CompanyPartnerForm
                     ->compact()
                     ->schema([
                         RepeatableEntry::make('addresses')
+                            ->hiddenLabel()
                             ->label('Registros')
                             ->columns([
                                 'sm' => 1,
@@ -154,10 +162,84 @@ class CompanyPartnerForm
                                     ->label('Endereço Completo')
                                     ->placeholder('-')
                                     ->columnSpanFull()
-                                    ->afterContent(fn($record) => 
-                                        DeleteAddressAction::make()
-                                            ->arguments(['address_id' => $record?->id])
+                                    ->belowContent(
+                                        fn($record) =>
+                                        Schema::start([
+                                            EditAddressAction::make()
+                                                ->arguments(['address_id' => $record?->id]),
+                                            DeleteAddressAction::make()
+                                                ->arguments(['address_id' => $record?->id]),
+                                        ])
                                     ),
+                            ]))
+                            ->columnSpanFull(),
+                    ]),
+                Section::make()
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 8,
+                    ])
+                    ->columnSpanFull()
+                    ->description('Contato(s) do Parceiro')
+                    ->afterHeader([
+                        CreateContactAction::make(),
+                    ])
+                    ->collapsible()
+                    ->visibleOn(['edit', 'view'])
+                    ->persistCollapsed()
+                    ->compact()
+                    ->schema([
+                        RepeatableEntry::make('contacts')
+                            ->hiddenLabel()
+                            ->label('Registros')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 6,
+                                'lg' => 8,
+                            ])
+                            ->schema(fn(Schema $schema) => $schema->components([
+                                TextEntry::make('id')
+                                    ->label('ID')
+                                    ->placeholder('-')
+                                    ->hidden(),
+                                TextEntry::make('email')
+                                    ->label('E-mail')
+                                    ->placeholder('-')
+                                    ->icon(Heroicon::Envelope)
+                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->belowContent(
+                                        fn($record) =>
+                                        Schema::start([
+                                            EditContactAction::make()
+                                                ->arguments(['contact_id' => $record?->id]),
+                                            DeleteContactAction::make()
+                                                ->arguments(['contact_id' => $record?->id]),
+                                        ]),
+                                    ),
+                                TextEntry::make('phone')
+                                    ->label('Telefone')
+                                    ->placeholder('-')
+                                    ->icon(Heroicon::Phone)
+                                    ->columnSpan(['md' => 1, 'lg' => 1]),
+                                TextEntry::make('mobile')
+                                    ->label('Celular')
+                                    ->placeholder('-')
+                                    ->icon(Heroicon::DevicePhoneMobile)
+                                    ->columnSpan(['md' => 1, 'lg' => 1]),
+                                TextEntry::make('notify')
+                                    ->label('Recebe Notificações')
+                                    ->badge()
+                                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
+                                    ->color(fn($state) => $state ? 'success' : 'gray')
+                                    ->columnSpan(['md' => 1, 'lg' => 2]),
+                                TextEntry::make('is_active')
+                                    ->label('Ativo')
+                                    ->badge()
+                                    ->formatStateUsing(fn($state) => $state ? 'Ativo' : 'Inativo')
+                                    ->color(fn($state) => $state ? 'success' : 'danger')
+                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                    ,
                             ]))
                             ->columnSpanFull(),
                     ]),

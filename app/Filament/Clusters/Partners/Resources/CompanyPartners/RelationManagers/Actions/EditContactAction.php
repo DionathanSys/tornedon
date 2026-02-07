@@ -10,6 +10,7 @@ use Filament\Forms\Components\Toggle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Log;
 
 final class EditContactAction
@@ -17,6 +18,8 @@ final class EditContactAction
     public static function make(): EditAction
     {
         return EditAction::make()
+            ->iconButton()
+            ->icon(Heroicon::PencilSquare)
             ->schema([
                 TextInput::make('email')
                     ->label('E-mail')
