@@ -55,19 +55,11 @@ final class DeleteAddressAction
                 }
 
                 notify::success(message: $service->getMessageUser());
-
-                return $result;
             })
+            ->successNotificationTitle('Endereço excluído com sucesso!')
             ->after(function (Action $action) {
-                // Recarregar o relacionamento addresses no record atual
-                $record = $action->getRecord();
-                if ($record) {
-                    $record->refresh();
-                    $record->load('addresses');
-                }
-                
-                // Disparar evento para atualizar o Livewire
                 $livewire = $action->getLivewire();
+                
                 if ($livewire && method_exists($livewire, 'refreshFormData')) {
                     $livewire->refreshFormData(['addresses']);
                 }
