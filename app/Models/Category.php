@@ -2,26 +2,19 @@
 
 namespace App\Models;
 
-use App\Enum\Product\Unit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Product extends Model
+class Category extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'product_code',
         'name',
         'description',
-        'category_id',
         'is_active',
-        'unit',
-        'alternative_units',
-        'profit_margin',
-        'min_sale_price',
         'created_by',
         'updated_by',
         'company_id',
@@ -29,10 +22,6 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'unit' => Unit::class,
-        'alternative_units' => 'array',
-        'profit_margin' => 'decimal:2',
-        'min_sale_price' => 'decimal:2',
     ];
 
     public function company(): BelongsTo
@@ -50,18 +39,8 @@ class Product extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function category(): BelongsTo
+    public function products(): HasMany
     {
-        return $this->belongsTo(Category::class);
-    }
-
-    public function tax(): HasOne
-    {
-        return $this->hasOne(ProductTax::class);
-    }
-
-    public function stock(): HasOne
-    {
-        return $this->hasOne(ProductStock::class);
+        return $this->hasMany(Product::class);
     }
 }
