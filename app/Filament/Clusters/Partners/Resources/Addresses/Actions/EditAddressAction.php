@@ -90,14 +90,17 @@ final class EditAddressAction
                 notify::success(message: $service->getMessageUser());
             })
             ->after(function (Action $action) {
-                $record = $action->getRecord();
-                dd($record);
-                if ($record) {
-                    $record->refresh();
-                    $record->load('addresses');
+                $livewire = $action->getLivewire();
+                
+                // O record do Livewire é o CompanyPartner
+                if ($livewire && method_exists($livewire, 'getRecord')) {
+                    $companyPartner = $livewire->getRecord();
+                    if ($companyPartner) {
+                        $companyPartner->refresh();
+                        $companyPartner->load('addresses');
+                    }
                 }
                 
-                $livewire = $action->getLivewire();
                 if ($livewire && method_exists($livewire, 'refreshFormData')) {
                     $livewire->refreshFormData(['addresses']);
                 }

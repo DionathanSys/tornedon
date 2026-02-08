@@ -58,13 +58,17 @@ final class DeleteContactAction
             })
             ->successNotificationTitle('Contato excluído com sucesso!')
             ->after(function (Action $action) {
-                $record = $action->getRecord();
-                if ($record) {
-                    $record->refresh();
-                    $record->load('contacts');
+                $livewire = $action->getLivewire();
+                
+                // O record do Livewire é o CompanyPartner
+                if ($livewire && method_exists($livewire, 'getRecord')) {
+                    $companyPartner = $livewire->getRecord();
+                    if ($companyPartner) {
+                        $companyPartner->refresh();
+                        $companyPartner->load('contacts');
+                    }
                 }
                 
-                $livewire = $action->getLivewire();
                 if ($livewire && method_exists($livewire, 'refreshFormData')) {
                     $livewire->refreshFormData(['contacts']);
                 }
