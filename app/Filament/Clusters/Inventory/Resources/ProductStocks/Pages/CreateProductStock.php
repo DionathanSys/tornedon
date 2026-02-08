@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Inventory\Resources\ProductStocks\Pages;
 
 use App\Filament\Clusters\Inventory\Resources\ProductStocks\ProductStockResource;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,8 +13,9 @@ class CreateProductStock extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $tenant = Filament::getTenant();
         $data['created_by'] = Auth::id();
-        $data['company_id'] = Auth::user()->currentCompany->id;
+        $data['company_id'] = $tenant->id;
 
         return $data;
     }
