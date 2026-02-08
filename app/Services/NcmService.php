@@ -12,9 +12,7 @@ class NcmService
      */
     public function exists(string $code): bool
     {
-        $code = $this->normalize($code);
-
-        return NcmCode::where('code', $code)->exists();
+        return NcmCode::where('code', self::normalize($code))->exists();
     }
 
     /**
@@ -23,9 +21,7 @@ class NcmService
      */
     public function getDescription(string $code): ?string
     {
-        $code = $this->normalize($code);
-
-        return NcmCode::where('code', $code)->value('description');
+        return NcmCode::where('code', self::normalize($code))->value('description');
     }
 
     /**
@@ -34,9 +30,7 @@ class NcmService
      */
     public function find(string $code): ?NcmCode
     {
-        $code = $this->normalize($code);
-
-        return NcmCode::where('code', $code)->first();
+        return NcmCode::where('code', self::normalize($code))->first();
     }
 
     /**
@@ -44,10 +38,9 @@ class NcmService
      */
     public function isValid(string $code, ?Carbon $date = null): bool
     {
-        $code = $this->normalize($code);
         $date = $date ?? Carbon::today();
 
-        return NcmCode::where('code', $code)
+        return NcmCode::where('code', self::normalize($code))
             ->where('start_date', '<=', $date)
             ->where(function ($query) use ($date) {
                 $query->whereNull('end_date')
@@ -84,9 +77,9 @@ class NcmService
     }
 
     /**
-     * Remove pontos do código para normalizar (ex: 0204.22.00 → 02042200).
+     * Remove pontos e espaços do código (ex: 0204.22.00 → 02042200).
      */
-    private function normalize(string $code): string
+    private static function normalize(string $code): string
     {
         return str_replace('.', '', trim($code));
     }

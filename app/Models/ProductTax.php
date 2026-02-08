@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum\Product\Origin;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -28,6 +29,13 @@ class ProductTax extends Model
         'pis' => 'array',
         'cofins' => 'array',
     ];
+
+    protected function ncmCode(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => $value ? str_replace('.', '', trim($value)) : null,
+        );
+    }
 
     public function product(): BelongsTo
     {
