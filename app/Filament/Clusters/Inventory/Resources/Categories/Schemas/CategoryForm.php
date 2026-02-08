@@ -37,7 +37,8 @@ class CategoryForm
                             ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule, $get) {
                                 $tenant = Filament::getTenant();
                                 return $rule->where('company_id', $tenant->id);
-                            }),
+                            })
+                            ->autocomplete(false),
                         Checkbox::make('is_active')
                             ->label('Ativo')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -47,7 +48,8 @@ class CategoryForm
                             ->label('Descrição')
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->rows(3)
-                            ->maxLength(500),
+                            ->maxLength(500)
+                            ->autocomplete(false),
                     ]),
                 Hidden::make('company_id'),
                 Hidden::make('created_by'),

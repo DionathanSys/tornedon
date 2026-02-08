@@ -45,12 +45,14 @@ class ProductForm
                             ->label('Nome')
                             ->columnSpan(['md' => 2, 'lg' => 6])
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->autocomplete(false),
                         Textarea::make('description')
                             ->label('Descrição')
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->rows(3)
-                            ->maxLength(500),
+                            ->maxLength(500)
+                            ->autocomplete(false),
                         Select::make('category_id')
                             ->label('Categoria')
                             ->columnSpan(['md' => 2, 'lg' => 4])
@@ -72,11 +74,13 @@ class ProductForm
                                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
                                         $tenant = Filament::getTenant();
                                         return $rule->where('company_id', $tenant->id);
-                                    }),
+                                    })
+                                    ->autocomplete(false),
                                 Textarea::make('description')
                                     ->label('Descrição')
                                     ->rows(2)
-                                    ->maxLength(500),
+                                    ->maxLength(500)
+                                    ->autocomplete(false),
                             ])
                             ->createOptionUsing(function (array $data): int {
                                 $tenant = Filament::getTenant();

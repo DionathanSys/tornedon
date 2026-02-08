@@ -3,7 +3,7 @@
 namespace App\Filament\Clusters\Inventory\Resources\ProductTaxes\Schemas;
 
 use App\Enum\Product\Origin;
-use App\Rules\ValidNcm;
+use App\Filament\Components\NcmCodeInput;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
@@ -57,14 +57,7 @@ class ProductTaxForm
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(Origin::toSelectArray())
                             ->native(false),
-                        TextInput::make('ncm_code')
-                            ->label('Código NCM')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->mask('9999.99.99')
-                            ->placeholder('0000.00.00')
-                            ->maxLength(10)
-                            ->rules([new ValidNcm()])
-                            ->helperText('O código será validado automaticamente na tabela NCM vigente.'),
+                        NcmCodeInput::make(),
                         TextInput::make('cest_code')
                             ->label('Código CEST')
                             ->columnSpan(['md' => 1, 'lg' => 3])

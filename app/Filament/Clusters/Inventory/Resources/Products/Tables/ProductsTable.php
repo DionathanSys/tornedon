@@ -44,16 +44,6 @@ class ProductsTable
                     ->label('Unidade')
                     ->badge()
                     ->sortable(),
-                TextColumn::make('min_sale_price')
-                    ->label('Preço Mínimo')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(),
-                IconColumn::make('is_active')
-                    ->label('Ativo')
-                    ->boolean()
-                    ->sortable()
-                    ->alignCenter(),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -71,7 +61,8 @@ class ProductsTable
                     ->boolean()
                     ->trueLabel('Apenas ativos')
                     ->falseLabel('Apenas inativos')
-                    ->native(false),
+                    ->native(false)
+                    ->default(true),
                 SelectFilter::make('category_id')
                     ->label('Categoria')
                     ->relationship(

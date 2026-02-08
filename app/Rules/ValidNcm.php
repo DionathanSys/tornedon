@@ -14,13 +14,13 @@ class ValidNcm implements ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (empty($value)) {
-            return; // Se for nullable, deixa passar
+            return;
         }
 
-        // $ncmService = app(NcmService::class);
-        
-        // if (!$ncmService->exists($value)) {
-        //     $fail('O código NCM informado não é válido ou não foi encontrado na tabela vigente.');
-        // }
+        $ncmService = app(NcmService::class);
+
+        if (!$ncmService->exists($value)) {
+            $fail('O código NCM informado não é válido ou não foi encontrado na tabela vigente.');
+        }
     }
 }
