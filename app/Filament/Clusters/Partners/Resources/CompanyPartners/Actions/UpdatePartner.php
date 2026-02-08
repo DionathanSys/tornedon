@@ -25,6 +25,8 @@ class UpdatePartner
         return Action::make('edit-partner')
             ->label('Editar Parceiro')
             ->icon(Heroicon::PencilSquare)
+            ->modal()
+            ->badge()
             ->visible(fn($operation): bool => $operation === 'edit')
             ->fillForm(function (Get $get): array {
                 $partner = (new PartnerService())->getPartnerById($get('partner_id'));

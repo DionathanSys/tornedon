@@ -24,6 +24,7 @@ final class CreateAddressAction
         return Action::make('create_address')
             ->label('Endereço')
             ->icon(Heroicon::Plus)
+            ->badge()
             ->modal()
             ->schema(function (Schema $schema, Action $action): Schema {
                 // Detecta o contexto: se tem record, está dentro do form do parceiro
@@ -39,13 +40,13 @@ final class CreateAddressAction
                         ])
                         ->components(AddressComponent::make());
                 }
-                
+
                 // Contexto: index de endereços - usa AddressComponentFull (com select de parceiro)
                 return AddressResource::form($schema);
             })
             ->action(function (Action $action, array $data, array $arguments) {
                 $record = $action->getRecord();
-                
+
                 // Determina o partner_id baseado no contexto
                 if ($record && $record instanceof \App\Models\CompanyPartner) {
                     // Está dentro do form do parceiro - usa o ID do record
@@ -62,11 +63,11 @@ final class CreateAddressAction
                     'partner_id' => $partnerId,
                     'context' => $record ? 'partner_form' : 'addresses_index',
                 ]);
-                
+
                 //TODO Remover caso seja removido o Resource de Address
                 $company_partner_id = CompanyPartnerService::getIdCompanyPartner($partnerId);
 
-                if(!$company_partner_id) {
+                if (!$company_partner_id) {
                     notify::error(message: 'Vínculo entre Empresa e Parceiro não encontrado. Não é possível cadastrar o endereço.');
                     $action->halt();
                 }
@@ -82,12 +83,7 @@ final class CreateAddressAction
                 notify::success(message: $service->getMessageUser());
 
                 if ($arguments['another'] ?? false) {
-                    // Se está no contexto do index, mantém o partner_id selecionado
-                    if (!($record && $record instanceof \App\Models\CompanyPartner)) {
-                        $action->fillForm([
-                            'partner_id' => $data['partner_id'] ?? null,
-                        ]);
-                    }
+                    $action->fillForm([]);
                     $action->halt();
                 }
 
@@ -100,7 +96,7 @@ final class CreateAddressAction
                     $record->refresh();
                     $record->load('addresses');
                 }
-                
+
                 // Disparar evento para atualizar o Livewire
                 $livewire = $action->getLivewire();
                 if ($livewire && method_exists($livewire, 'refreshFormData')) {

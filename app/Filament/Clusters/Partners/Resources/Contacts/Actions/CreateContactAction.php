@@ -18,6 +18,7 @@ final class CreateContactAction
         return Action::make('create_contact')
             ->label('Contato')
             ->icon(Heroicon::Plus)
+            ->badge()
             ->modal()
             ->schema(function (Schema $schema): Schema {
                 return $schema
@@ -55,6 +56,7 @@ final class CreateContactAction
                 notify::success(message: $service->getMessageUser());
 
                 if ($arguments['another'] ?? false) {
+                    $action->fillForm([]);
                     $action->halt();
                 }
 

@@ -221,25 +221,26 @@ class CompanyPartnerForm
                                     ->label('Telefone')
                                     ->placeholder('-')
                                     ->icon(Heroicon::Phone)
-                                    ->columnSpan(['md' => 1, 'lg' => 1]),
+                                    ->columnSpan(['md' => 1, 'lg' => 2]),
                                 TextEntry::make('mobile')
                                     ->label('Celular')
                                     ->placeholder('-')
                                     ->icon(Heroicon::DevicePhoneMobile)
-                                    ->columnSpan(['md' => 1, 'lg' => 1]),
+                                    ->columnSpan(['md' => 1, 'lg' => 2]),
                                 TextEntry::make('notify')
                                     ->label('Recebe Notificações')
                                     ->badge()
                                     ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
                                     ->color(fn($state) => $state ? 'success' : 'gray')
-                                    ->columnSpan(['md' => 1, 'lg' => 2]),
+                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                    ->visible(fn(Get $get, $record) => $record->is_active),
                                 TextEntry::make('is_active')
                                     ->label('Ativo')
                                     ->badge()
                                     ->formatStateUsing(fn($state) => $state ? 'Ativo' : 'Inativo')
                                     ->color(fn($state) => $state ? 'success' : 'danger')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                    ,
+                                    ->hidden(fn(Get $get, $record) => $record->is_active),
                             ]))
                             ->columnSpanFull(),
                     ]),
