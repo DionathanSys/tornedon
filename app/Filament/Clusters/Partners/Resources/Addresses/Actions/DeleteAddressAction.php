@@ -48,6 +48,13 @@ final class DeleteAddressAction
                 $service = new AddressService();
                 $result = $service->delete($address, Auth::id());
 
+                Log::debug('Resultado da exclusão de endereço', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'result' => $result,
+                    'hasError' => $service->hasError(),
+                    'messageUser' => $service->getMessageUser(),
+                ]);
+
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser());
                     $action->halt();
@@ -58,11 +65,20 @@ final class DeleteAddressAction
             })
             ->successNotificationTitle('Endereço excluído com sucesso!')
             ->after(function (Action $action) {
-                $livewire = $action->getLivewire();
+                $record = $action->getRecord();
+                Log::debug('Após exclusão de endereço - refresh de dados', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'record_id' => $record ? $record->id : null,
+                ]);
+                // if ($record) {
+                //     $record->refresh();
+                //     $record->load('addresses');
+                // }
                 
-                if ($livewire && method_exists($livewire, 'refreshFormData')) {
-                    $livewire->refreshFormData(['addresses']);
-                }
+                // $livewire = $action->getLivewire();
+                // if ($livewire && method_exists($livewire, 'refreshFormData')) {
+                //     $livewire->refreshFormData(['addresses']);
+                // }
             });
     }
 }

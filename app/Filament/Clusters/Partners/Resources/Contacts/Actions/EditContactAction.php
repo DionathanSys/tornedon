@@ -86,8 +86,13 @@ final class EditContactAction
                 notify::success(message: $service->getMessageUser());
             })
             ->after(function (Action $action) {
-                $livewire = $action->getLivewire();
+                $record = $action->getRecord();
+                if ($record) {
+                    $record->refresh();
+                    $record->load('contacts');
+                }
                 
+                $livewire = $action->getLivewire();
                 if ($livewire && method_exists($livewire, 'refreshFormData')) {
                     $livewire->refreshFormData(['contacts']);
                 }
