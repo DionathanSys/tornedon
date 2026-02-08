@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum\Product\Unit;
+use App\Services\Product\ProductCodeService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -34,6 +35,17 @@ class Product extends Model
         'profit_margin' => 'decimal:2',
         'min_sale_price' => 'decimal:2',
     ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (Product $product) {
+            if (empty($product->product_code)) {
+                $product->product_code = ProductCodeService::generate($product->company_id);
+            }
+        });
+    }
 
     public function company(): BelongsTo
     {
