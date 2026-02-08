@@ -23,23 +23,23 @@ class ProductTaxesTable
                     ->sortable()
                     ->limit(50)
                     ->icon(Heroicon::Cube),
-                TextColumn::make('product_origin')
-                    ->label('Origem')
-                    ->sortable()
-                    ->placeholder('-')
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-'),
+                // TextColumn::make('product_origin')
+                //     ->label('Origem')
+                //     ->sortable()
+                //     ->placeholder('-')
+                //     ->formatStateUsing(fn($state) => $state?->description() ?? '-'),
                 TextColumn::make('ncm_code')
                     ->label('NCM')
                     ->searchable()
                     ->sortable()
                     ->placeholder('-')
                     ->icon(Heroicon::Hashtag),
-                TextColumn::make('cest_code')
-                    ->label('CEST')
-                    ->searchable()
-                    ->sortable()
-                    ->placeholder('-')
-                    ->icon(Heroicon::Hashtag),
+                // TextColumn::make('cest_code')
+                //     ->label('CEST')
+                //     ->searchable()
+                //     ->sortable()
+                //     ->placeholder('-')
+                //     ->icon(Heroicon::Hashtag),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
