@@ -6,7 +6,6 @@ use App\Rules\ValidNcm;
 use App\Services\NcmService;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\HtmlString;
 
 class NcmCodeInput
@@ -31,10 +30,9 @@ class NcmCodeInput
                 $info = $ncmService->getValidityInfo($state);
 
                 if (!$info) {
-                    $component->belowContent([
-                        Heroicon::XCircle,
-                        new HtmlString('<span style="color: #ef4444;">Código NCM não encontrado.</span>')
-                    ]);
+                    $component->belowContent(
+                        new HtmlString('<span style="color: #ef4444;">❌ Código NCM não encontrado.</span>')
+                    );
                     return;
                 }
 
