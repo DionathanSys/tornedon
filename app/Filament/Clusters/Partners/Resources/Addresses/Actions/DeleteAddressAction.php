@@ -56,7 +56,7 @@ final class DeleteAddressAction
 
                 notify::success(message: $service->getMessageUser());
             })
-            ->successNotificationTitle('Endereço excluído com sucesso!')
+            ->successNotificationTitle(null)
             ->after(function (Action $action) {
                 $livewire = $action->getLivewire();
                 

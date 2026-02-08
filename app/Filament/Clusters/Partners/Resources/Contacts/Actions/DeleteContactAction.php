@@ -56,7 +56,7 @@ final class DeleteContactAction
 
                 notify::success(message: $service->getMessageUser());
             })
-            ->successNotificationTitle('Contato excluído com sucesso!')
+            ->successNotificationTitle(null)
             ->after(function (Action $action) {
                 $livewire = $action->getLivewire();
                 
