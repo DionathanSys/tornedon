@@ -19,6 +19,7 @@ class Product extends Model
         'description',
         'category_id',
         'is_active',
+        'is_custom_manufacturing',
         'unit',
         'alternative_units',
         'profit_margin',
@@ -30,6 +31,7 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_custom_manufacturing' => 'boolean',
         'unit' => Unit::class,
         'alternative_units' => 'array',
         'profit_margin' => 'decimal:2',

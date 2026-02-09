@@ -81,6 +81,11 @@ class Requisition extends Model
         return $this->hasMany(RequisitionItem::class);
     }
 
+    public function productionOrders(): HasMany
+    {
+        return $this->hasMany(ProductionOrder::class);
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
