@@ -3,8 +3,60 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RequisitionItem extends Model
 {
-    //
+    use SoftDeletes;
+
+    protected $fillable = [
+        'requisition_id',
+        'product_id',
+        'unit_of_measure',
+        'quantity',
+        'unit_price',
+        'unit_cost',
+        'discount_percentage',
+        'discount_amount',
+        'stock_consumed',
+        'stock_consumed_at',
+        'commission_percentage',
+        'observations',
+        'additional_info',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected $casts = [
+        'quantity' => 'decimal:3',
+        'unit_price' => 'decimal:4',
+        'unit_cost' => 'decimal:4',
+        'discount_percentage' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'stock_consumed' => 'boolean',
+        'stock_consumed_at' => 'datetime',
+        'commission_percentage' => 'decimal:2',
+        'additional_info' => 'array',
+    ];
+
+    public function requisition(): BelongsTo
+    {
+        return $this->belongsTo(Requisition::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }

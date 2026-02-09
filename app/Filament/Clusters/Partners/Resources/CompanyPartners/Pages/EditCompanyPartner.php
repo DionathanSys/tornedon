@@ -49,9 +49,42 @@ class EditCompanyPartner extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data = $data['company_partner'];
+        Log::debug('Mutate Form Data Before Save - Received Data:', $data);
+        
+        // Separa os dados do partner dos dados do company_partner
+        $partnerData = [
+            'name' => $data['name'] ?? null,
+            'document_type' => $data['document_type'] ?? null,
+            'document_number' => $data['document_number'] ?? null,
+            'state_tax_id' => $data['state_tax_id'] ?? null,
+            'municipal_tax_id' => $data['municipal_tax_id'] ?? null,
+            'state_tax_indicator' => $data['state_tax_indicator'] ?? null,
+            'updated_by' => Auth::id(),
+        ];
 
-        return $data;
+        // Atualiza os dados do Partner
+        if (!empty($partnerData['name'])) {
+            $partnerService = new PartnerService();
+            $partner = $partnerService->getPartnerById($this->record->partner_id);
+            
+            if ($partner) {
+                $partnerData['id'] = $partner->id;
+                Log::debug('Updating Partner with data:', $partnerData);
+                
+                $partnerService->editPartner(Auth::id(), $partner, $partnerData);
+                
+                if ($partnerService->hasError()) {
+                    notify::error(message: $partnerService->getMessageUser());
+                    $this->halt();
+                }
+            }
+        }
+
+        // Retorna apenas os dados do company_partner para serem salvos
+        $companyPartnerData = $data['company_partner'] ?? [];
+        Log::debug('Returning CompanyPartner data:', $companyPartnerData);
+        
+        return $companyPartnerData;
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model

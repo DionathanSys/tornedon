@@ -46,7 +46,6 @@ class CompanyPartnerForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
-                    ->disabled(fn(Get $get): bool => $get('partner_exists') ?? false)
                     ->description(
                         fn(Get $get): string => ($get('partner_exists') ?? false)
                             ? 'Cadastro do Parceiro ' . ($get('name') ?? '')
@@ -68,16 +67,17 @@ class CompanyPartnerForm
                             ])
                             ->default('cnpj')
                             ->native(false)
-                            ->required()
+                            ->disabledOn('edit')
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('document_number', null)
                             JS),
-                        DocumentNumberInput::make(),
+                        DocumentNumberInput::make()
+                            ->disabledOn('edit'),
                         TextInput::make('name')
                             ->label('Nome')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->required(),
+                            ->disabledOn('edit'),
                         TextInput::make('state_tax_id')
                             ->label('Inscrição Estadual')
                             ->placeholder('Não definido')
@@ -85,19 +85,23 @@ class CompanyPartnerForm
                             ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
-                            ->numeric(),
+                            ->numeric()
+                            ->disabledOn('edit'),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscrição Municipal')
                             ->placeholder('Não definido')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->numeric(),
+                            ->numeric()
+                            ->disabledOn('edit'),
                         Select::make('state_tax_indicator')
                             ->label('Indicador IE')
                             ->columnSpanFull()
                             ->options(Enum\Tax\StateTaxIndicator::toSelectArray())
-                            ->native(false),
+                            ->native(false)
+                            ->disabledOn('edit'),
                     ]),
+
                 Section::make('Configurações da Empresa')
                     ->columns([
                         'sm' => 1,
