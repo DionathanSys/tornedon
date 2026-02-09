@@ -96,7 +96,6 @@ class QuoteForm
                         FileUpload::make('technical_drawings')
                             ->label('Desenhos Técnicos')
                             ->columnSpanFull()
-                            ->collection('technical_drawings')
                             ->multiple()
                             ->downloadable()
                             ->openable()
