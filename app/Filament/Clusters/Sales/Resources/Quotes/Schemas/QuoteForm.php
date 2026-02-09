@@ -165,6 +165,7 @@ class QuoteForm
                                 TextInput::make('quantity')
                                     ->label('Qtd')
                                     ->columnSpan(['md' => 1, 'lg' => 1])
+                                    ->columnStart(1)
                                     ->numeric()
                                     ->minValue(0.001)
                                     ->default(1)
@@ -190,6 +191,8 @@ class QuoteForm
                                 KeyValue::make('technical_specifications')
                                     ->label('Especificações Técnicas')
                                     ->columnSpan(['md' => 6, 'lg' => 6])
+
+                                    ->columnStart(1)
                                     ->keyLabel('Propriedade')
                                     ->valueLabel('Valor')
                                     ->addActionLabel('Adicionar especificação')
