@@ -38,6 +38,21 @@ class UpdateProductAction
             // Persistência
             $this->product->update($validated);
 
+            // Sincroniza o estoque do produto se o campo has_stock_control foi atualizado
+            if (isset($validated['has_stock_control'])) {
+                $this->product->refresh(); // Garante que temos os dados atualizados
+                $syncStockAction = new SyncProductStockAction($this->product, $this->updatedBy);
+                $syncStockAction->execute();
+                
+                if ($syncStockAction->hasError()) {
+                    Log::warning('Erro ao sincronizar estoque durante atualização do produto', [
+                        'metodo'        => __METHOD__ . '@' . __LINE__,
+                        'product_id'    => $this->product->id,
+                        'error_message' => $syncStockAction->getMessage(),
+                    ]);
+                }
+            }
+
             $this->setSuccess();
             return $this->product;
 

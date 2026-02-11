@@ -100,9 +100,20 @@ class ProductForm
                             ->default('UN'),
                         Toggle::make('is_active')
                             ->label('Ativo')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 1, 'lg' => 1])
                             ->inline(false)
                             ->default(true),
+                        Toggle::make('is_custom_manufacturing')
+                            ->label('Fabricação Customizada')
+                            ->columnSpan(['md' => 1, 'lg' => 1])
+                            ->inline(false)
+                            ->default(false),
+                        Toggle::make('has_stock_control')
+                            ->label('Controle de Estoque')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->inline(false)
+                            ->default(false)
+                            ->helperText('Quando ativo, um registro de estoque será criado automaticamente para este produto'),
                     ]),
                 Section::make('Precificação')
                     ->columns([

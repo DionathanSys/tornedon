@@ -1,17 +1,15 @@
 <?php
 
-namespace App\Services\Product\Actions;
+namespace App\Services\ProductStock\Actions;
 
-use App\Models\Product;
-use App\Services\Product\ProductCodeService;
-use App\Services\Product\Validators\ProductValidator;
+use App\Models\ProductStock;
+use App\Services\ProductStock\Validators\ProductStockValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use App\Notification\NotifyService as notify;
 
-class CreateProductAction
+class CreateProductStockAction
 {
     use HandlesActionResponse;
 
@@ -20,47 +18,23 @@ class CreateProductAction
     ) {}
 
     /**
-     * Cria um novo produto.
+     * Cria um novo registro de estoque de produto.
      *
      * @param array $data
-     * @return Product|null
+     * @return ProductStock|null
      */
-    public function execute(array $data): ?Product
+    public function execute(array $data): ?ProductStock
     {
         try {
-            $validated = ProductValidator::validateCreate($data);
-
-            if (empty($validated['product_code'])) {
-                $validated['product_code'] = ProductCodeService::generate($validated['company_id']);
-            }
+            $validated = ProductStockValidator::validateCreate($data);
 
             $validated['created_by'] = $this->createdBy;
 
-            $product = Product::create($validated);
-
-            // Sincroniza o estoque do produto se necessário
-            if (isset($validated['has_stock_control'])) {
-                $syncStockAction = new SyncProductStockAction($product, $this->createdBy);
-                $syncStockAction->execute();
-
-                if ($syncStockAction->hasError()) {
-                    Log::warning($syncStockAction->getMessage(), [
-                        'metodo'        => __METHOD__ . '@' . __LINE__,
-                        'message'       => $syncStockAction->getMessage(),
-                        'product_id'    => $product->id,
-                        'error_message' => $syncStockAction->getMessage(),
-                    ]);
-
-                    notify::warning(
-                        message: $syncStockAction->getMessage(),
-                        toDatabase: true,
-                        users: $this->createdBy,
-                    );
-                }
-            }
+            $productStock = ProductStock::create($validated);
 
             $this->setSuccess();
-            return $product;
+            return $productStock;
+
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
@@ -74,10 +48,11 @@ class CreateProductAction
             ]);
 
             return null;
+
         } catch (QueryException $e) {
             $message = ($e->getCode() === '23000')
-                ? 'Já existe um produto com este código'
-                : 'Erro ao criar produto no banco de dados';
+                ? 'Já existe um registro de estoque para este produto'
+                : 'Erro ao criar estoque no banco de dados';
 
             $this->setError($message);
 
@@ -92,8 +67,9 @@ class CreateProductAction
             ]);
 
             return null;
+
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao criar produto');
+            $this->setError('Erro inesperado ao criar estoque');
 
             Log::error($this->getMessage(), [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
