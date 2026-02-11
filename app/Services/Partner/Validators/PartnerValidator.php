@@ -17,9 +17,6 @@ class PartnerValidator
      */
     public static function validate(array $data, ?int $partnerId = null): array
     {
-        ds($data)->label('Validando dados do parceiro');
-        ds("ID Parceiro " . $partnerId)->label('ID do parceiro (se aplicável)');
-        
         $rules = [
             'name'                  => 'required|string|max:255',
             'document_type'         => 'required|string|in:cnpj,cpf',

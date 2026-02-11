@@ -38,17 +38,6 @@ class Product extends Model
         'min_sale_price' => 'decimal:2',
     ];
 
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (Product $product) {
-            if (empty($product->product_code)) {
-                $product->product_code = ProductCodeService::generate($product->company_id);
-            }
-        });
-    }
-
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

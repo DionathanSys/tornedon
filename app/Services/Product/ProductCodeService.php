@@ -4,6 +4,7 @@ namespace App\Services\Product;
 
 use App\Models\ProductSequence;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProductCodeService
 {
@@ -19,6 +20,13 @@ class ProductCodeService
                     ['company_id' => $companyId],
                     ['last_number' => 0]
                 );
+
+            Log::info('Gerando código de produto', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'company_id' => $companyId,
+                'current_last_number' => $sequence->last_number,
+                'next_number' => $sequence->last_number + 1,
+            ]);
 
             $sequence->increment('last_number');
 

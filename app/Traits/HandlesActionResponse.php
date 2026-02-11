@@ -31,7 +31,7 @@ trait HandlesActionResponse
 
     public function hasError(): bool
     {
-        return !empty($this->errors);
+        return !empty($this->errors) || !$this->success;
     }
 
     public function getErrors(): array

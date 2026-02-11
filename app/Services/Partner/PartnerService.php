@@ -34,7 +34,6 @@ class PartnerService
                 return null;
             }
 
-            ds( $result )->label('Parceiro criado com sucesso' );
             $this->setSuccess('Parceiro cadastrado com sucesso');
             return $result;
         } catch (\Exception $e) {

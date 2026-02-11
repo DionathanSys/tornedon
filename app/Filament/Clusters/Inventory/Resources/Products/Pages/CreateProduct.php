@@ -3,10 +3,12 @@
 namespace App\Filament\Clusters\Inventory\Resources\Products\Pages;
 
 use App\Filament\Clusters\Inventory\Resources\Products\ProductResource;
+use App\Notification\NotifyService as notify;
+use App\Services\Product\ProductService;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class CreateProduct extends CreateRecord
 {
@@ -15,14 +17,29 @@ class CreateProduct extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $tenant = Filament::getTenant();
-        $data['created_by'] = Auth::id();
         $data['company_id'] = $tenant->id;
 
         return $data;
     }
 
-    protected function getRedirectUrl(): string
+    protected function getCreatedNotificationTitle(): ?string
     {
-        return $this->getResource()::getUrl('index');
+        return 'Produto criado com sucesso';
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        $service = app(ProductService::class);
+        $product = $service->create($data, Auth::id());
+
+        if ($service->hasError() || $product === null) {
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode()
+            );
+            $this->halt();
+        }
+
+        return $product;
     }
 }
