@@ -39,7 +39,6 @@ class ProductForm
                             ->label('Código do Produto')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(60)
-                            ->visibleOn('edit')
                             ->disabled(),
                         TextInput::make('name')
                             ->label('Nome')
@@ -59,7 +58,7 @@ class ProductForm
                             ->relationship(
                                 name: 'category',
                                 titleAttribute: 'name',
-                                modifyQueryUsing: fn ($query) => $query
+                                modifyQueryUsing: fn($query) => $query
                                     ->where('company_id', Filament::getTenant()->id)
                                     ->where('is_active', true)
                                     ->orderBy('name')
@@ -88,7 +87,7 @@ class ProductForm
                                 $data['created_by'] = Auth::id();
                                 $data['updated_by'] = Auth::id();
                                 $data['is_active'] = true;
-                                
+
                                 return Category::create($data)->getKey();
                             }),
                         Select::make('unit')
@@ -98,22 +97,22 @@ class ProductForm
                             ->required()
                             ->native(false)
                             ->default('UN'),
+                        Toggle::make('is_custom_manufacturing')
+                            ->label('Fabricação Própria')
+                            ->columnStart(1)
+                            ->columnSpan(['md' => 1, 'lg' => 1])
+                            ->inline(false)
+                            ->default(false),
+                        Toggle::make('has_stock_control')
+                            ->label('Controla de Estoque?')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->inline(false)
+                            ->default(false),
                         Toggle::make('is_active')
                             ->label('Ativo')
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->inline(false)
                             ->default(true),
-                        Toggle::make('is_custom_manufacturing')
-                            ->label('Fabricação Customizada')
-                            ->columnSpan(['md' => 1, 'lg' => 1])
-                            ->inline(false)
-                            ->default(false),
-                        Toggle::make('has_stock_control')
-                            ->label('Controle de Estoque')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->inline(false)
-                            ->default(false)
-                            ->helperText('Quando ativo, um registro de estoque será criado automaticamente para este produto'),
                     ]),
                 Section::make('Precificação')
                     ->columns([
@@ -122,6 +121,7 @@ class ProductForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
+                    ->visibleOn('edit')
                     ->collapsible()
                     ->schema([
                         Money::make('profit_margin')
