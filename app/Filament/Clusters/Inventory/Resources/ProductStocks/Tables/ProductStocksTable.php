@@ -2,14 +2,19 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\ProductStocks\Tables;
 
+use App\Notification\NotifyService as notify;
+use App\Services\ProductStock\ProductStockService;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ProductStocksTable
 {
@@ -108,14 +113,10 @@ class ProductStocksTable
                     ->native(false),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->iconButton(),
-                DeleteAction::make()
-                    ->iconButton(),
+                ViewAction::make()
+                    ->iconButton()
             ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

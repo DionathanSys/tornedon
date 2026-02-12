@@ -197,7 +197,7 @@ class ProductService
 
                     Log::error($this->getMessage(), [
                         'metodo'            => __METHOD__ . '@' . __LINE__,
-                        'mesage'            => $this->getMessage(),
+                        'message'           => $this->getMessage(),
                         'error_code'        => $this->getErrorCode(),
                         'errors'            => $action->getErrors(),
                         'product_id'        => $product->id,

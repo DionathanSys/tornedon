@@ -3,6 +3,7 @@
 namespace App\Services\Product\Actions;
 
 use App\Models\Product;
+use App\Services\ProductStock\ProductStockService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -12,9 +13,13 @@ class DeleteProductAction
 {
     use HandlesActionResponse;
 
+    private ProductStockService $stockService;
+
     public function __construct(
         private Product $product,
-    ) {}
+    ) {
+        $this->stockService = new ProductStockService();
+    }
 
     /**
      * Exclui (soft delete) um produto.
@@ -27,6 +32,19 @@ class DeleteProductAction
             // Valida se pode excluir
             if (!$this->validateCanDelete()) {
                 return false;
+            }
+
+            // Exclui o estoque associado (soft delete)
+            if ($this->product->stock) {
+                $stockDeleted = $this->stockService->delete($this->product->stock);
+                if (!$stockDeleted) {
+                    $this->setError(
+                        'Erro ao excluir o estoque do produto',
+                        $this->stockService->getErrors(),
+                        422
+                    );
+                    return false;
+                }
             }
 
             // Exclui o produto
@@ -83,6 +101,20 @@ class DeleteProductAction
             // Valida se pode excluir permanentemente
             if (!$this->validateCanForceDelete()) {
                 return false;
+            }
+
+            // Exclui permanentemente o estoque associado
+            $stock = $this->product->stock()->withTrashed()->first();
+            if ($stock) {
+                $stockDeleted = $this->stockService->forceDelete($stock);
+                if (!$stockDeleted) {
+                    $this->setError(
+                        'Erro ao excluir permanentemente o estoque do produto',
+                        $this->stockService->getErrors(),
+                        422
+                    );
+                    return false;
+                }
             }
 
             // Exclui permanentemente

@@ -3,6 +3,7 @@
 namespace App\Services\Product\Actions;
 
 use App\Models\Product;
+use App\Services\ProductStock\ProductStockService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -12,9 +13,13 @@ class RestoreProductAction
 {
     use HandlesActionResponse;
 
+    private ProductStockService $stockService;
+
     public function __construct(
         private Product $product,
-    ) {}
+    ) {
+        $this->stockService = new ProductStockService();
+    }
 
     /**
      * Restaura um produto excluído (soft delete).
@@ -31,6 +36,20 @@ class RestoreProductAction
 
             // Restaura o produto
             $result = $this->product->restore();
+
+            // Restaura o estoque associado (se existir)
+            $stock = $this->product->stock()->withTrashed()->first();
+            if ($stock) {
+                $stockRestored = $this->stockService->restore($stock);
+                if (!$stockRestored) {
+                    $this->setError(
+                        'Erro ao restaurar o estoque do produto',
+                        $this->stockService->getErrors(),
+                        422
+                    );
+                    return false;
+                }
+            }
 
             $this->setSuccess();
             return $result;

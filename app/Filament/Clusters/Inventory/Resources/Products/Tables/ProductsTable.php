@@ -4,16 +4,22 @@ namespace App\Filament\Clusters\Inventory\Resources\Products\Tables;
 
 use App\Enum\Product\Unit;
 use App\Models\Category;
+use App\Notification\NotifyService as notify;
+use App\Services\Product\ProductService;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ProductsTable
 {
@@ -68,7 +74,7 @@ class ProductsTable
                     ->relationship(
                         name: 'category',
                         titleAttribute: 'name',
-                        modifyQueryUsing: fn ($query) => $query
+                        modifyQueryUsing: fn($query) => $query
                             ->where('company_id', Filament::getTenant()->id)
                             ->orderBy('name')
                     )
@@ -81,16 +87,15 @@ class ProductsTable
                     ->options(Unit::toSelectArray())
                     ->multiple()
                     ->native(false),
+                TrashedFilter::make(),
             ])
             ->recordActions([
                 EditAction::make()
                     ->iconButton(),
-                DeleteAction::make()
-                    ->iconButton(),
             ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+            ->toolbarActions([
             ])
             ->defaultSort('created_at', 'desc');
     }
+
 }
