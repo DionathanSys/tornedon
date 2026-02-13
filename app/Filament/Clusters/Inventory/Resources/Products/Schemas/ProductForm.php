@@ -100,7 +100,7 @@ class ProductForm
                         Toggle::make('is_custom_manufacturing')
                             ->label('Fabricação Própria')
                             ->columnStart(1)
-                            ->columnSpan(['md' => 1, 'lg' => 1])
+                            ->columnSpan(['md' => 2, 'lg' => 2])
                             ->inline(false)
                             ->default(false),
                         Toggle::make('has_stock_control')
