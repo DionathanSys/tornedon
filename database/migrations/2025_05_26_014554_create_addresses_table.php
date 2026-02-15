@@ -44,7 +44,6 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
 
-            $table->unique(['company_partner_id', 'street', 'number']);
             $table->index('company_partner_id');
         });
     }

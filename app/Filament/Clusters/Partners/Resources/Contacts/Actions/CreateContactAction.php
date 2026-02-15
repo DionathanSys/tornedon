@@ -66,6 +66,12 @@ final class CreateContactAction
                 $record = $action->getRecord();
                 if ($record) {
                     $record->refresh();
+                    $record->load('contacts');
+                }
+
+                $livewire = $action->getLivewire();
+                if ($livewire && method_exists($livewire, 'refreshFormData')) {
+                    $livewire->refreshFormData(['contacts']);
                 }
             })
             ->modalWidth('5xl')

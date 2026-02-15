@@ -191,7 +191,7 @@ class SeederDB extends Command
         $partners = [
             [
                 'name' => 'Cliente Alpha LTDA',
-                'document_number' => '12345678000195',
+                'document_number' => '75.813.923/0010-52',
                 'document_type' => 'cnpj',
                 'state_tax_id' => '123456789',
                 'municipal_tax_id' => '987654321',
@@ -201,7 +201,7 @@ class SeederDB extends Command
             ],
             [
                 'name' => 'Fornecedor Beta S/A',
-                'document_number' => '98765432000123',
+                'document_number' => '04.110.246/0001-77',
                 'document_type' => 'cnpj',
                 'state_tax_id' => '987654321',
                 'municipal_tax_id' => '123456789',
@@ -211,8 +211,8 @@ class SeederDB extends Command
             ],
             [
                 'name' => 'João Silva',
-                'document_number' => '12345678901',
-                'document_type' => 'cpf',
+                'document_number' => '99.451.842/0001-27',
+                'document_type' => 'cnpj',
                 'state_tax_id' => null,
                 'municipal_tax_id' => null,
                 'state_tax_indicator' => 9,

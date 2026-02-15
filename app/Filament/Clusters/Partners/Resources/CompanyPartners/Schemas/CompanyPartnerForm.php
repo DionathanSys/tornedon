@@ -151,7 +151,6 @@ class CompanyPartnerForm
                     ->schema([
                         RepeatableEntry::make('addresses')
                             ->hiddenLabel()
-                            ->label('Registros')
                             ->columns([
                                 'sm' => 1,
                                 'md' => 2,
@@ -196,7 +195,6 @@ class CompanyPartnerForm
                     ->schema([
                         RepeatableEntry::make('contacts')
                             ->hiddenLabel()
-                            ->label('Registros')
                             ->columns([
                                 'sm' => 1,
                                 'md' => 6,

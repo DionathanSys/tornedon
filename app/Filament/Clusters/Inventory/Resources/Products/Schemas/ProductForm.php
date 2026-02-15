@@ -248,7 +248,7 @@ class ProductForm
                                             ->columnSpanFull()
                                             ->schema([
                                                 Repeater::make('icms')
-                                                    ->hideLabel()
+                                                    ->hiddenLabel()
                                                     ->schema([
                                                         TextInput::make('key')
                                                             ->label('Chave')
@@ -274,7 +274,7 @@ class ProductForm
                                             ->columnSpanFull()
                                             ->schema([
                                                 Repeater::make('ipi')
-                                                    ->hideLabel()
+                                                    ->hiddenLabel()
                                                     ->schema([
                                                         TextInput::make('key')
                                                             ->label('Chave')
@@ -300,7 +300,7 @@ class ProductForm
                                             ->columnSpanFull()
                                             ->schema([
                                                 Repeater::make('pis')
-                                                    ->hideLabel()
+                                                    ->hiddenLabel()
                                                     ->schema([
                                                         TextInput::make('key')
                                                             ->label('Chave')
@@ -326,7 +326,7 @@ class ProductForm
                                             ->columnSpanFull()
                                             ->schema([
                                                 Repeater::make('cofins')
-                                                    ->hideLabel()
+                                                    ->hiddenLabel()
                                                     ->schema([
                                                         TextInput::make('key')
                                                             ->label('Chave')

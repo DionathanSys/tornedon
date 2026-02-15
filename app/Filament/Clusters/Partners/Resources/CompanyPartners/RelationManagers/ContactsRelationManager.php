@@ -76,11 +76,6 @@ class ContactsRelationManager extends RelationManager
                     ->iconButton(),
             ])
             ->toolbarActions([
-                DeleteBulkAction::make()
-                    ->using(function (Contact $record): bool {
-                        $service = new ContactService();
-                        return $service->delete($record, Auth::id());
-                    }),
             ])
             ->defaultSort('email', 'asc');
     }

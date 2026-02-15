@@ -36,11 +36,11 @@ class CompanyPartner extends Model
 
     public function addresses(): HasMany
     {
-        return $this->hasMany(Address::class, 'company_partner_id');
+        return $this->hasMany(Address::class, 'company_partner_id', 'id');
     }
 
     public function contacts(): HasMany
     {
-        return $this->hasMany(Contact::class, 'company_partner_id');
+        return $this->hasMany(Contact::class, 'company_partner_id', 'id');
     }
 }
