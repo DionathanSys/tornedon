@@ -16,7 +16,8 @@ class ListCompanyPartners extends ListRecords
         return [
             CreateAction::make()
                 ->label('Parceiro')
-                ->icon(Heroicon::Plus),
+                ->icon(Heroicon::Plus)
+                ->badge(),
         ];
     }
 }

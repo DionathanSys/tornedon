@@ -16,7 +16,8 @@ class ListEquipments extends ListRecords
         return [
             CreateAction::make()
                 ->label('Equipamento')
-                ->icon(Heroicon::Plus),
+                ->icon(Heroicon::Plus)
+                ->badge(),
         ];
     }
 }

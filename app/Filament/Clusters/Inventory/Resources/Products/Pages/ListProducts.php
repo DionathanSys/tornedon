@@ -16,7 +16,8 @@ class ListProducts extends ListRecords
         return [
             CreateAction::make()
                 ->label('Produto')
-                ->icon(Heroicon::Plus),
+                ->icon(Heroicon::Plus)
+                ->badge(),
         ];
     }
 }

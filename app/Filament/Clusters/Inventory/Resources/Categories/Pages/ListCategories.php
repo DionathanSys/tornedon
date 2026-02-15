@@ -16,7 +16,8 @@ class ListCategories extends ListRecords
         return [
             CreateAction::make()
                 ->label('Categoria')
-                ->icon(Heroicon::Plus),
+                ->icon(Heroicon::Plus)
+                ->badge(),
         ];
     }
 }
