@@ -20,6 +20,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Livewire\CreateErrorTicketAction;
+use Filament\Support\Enums\Width;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -27,6 +28,9 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
+            ->maxContentWidth(Width::MaxContent)
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('15rem')
             ->id('admin')
             ->path('admin')
             ->login()

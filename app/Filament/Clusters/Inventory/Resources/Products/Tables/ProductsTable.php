@@ -35,7 +35,17 @@ class ProductsTable
                     ->icon(Heroicon::Hashtag),
                 TextColumn::make('name')
                     ->label('Nome')
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $searchTerm = "%{$search}%";
+
+                        return $query->where(function (Builder $query) use ($searchTerm) {
+                            $query
+                                ->where('name', 'like', $searchTerm)
+                                ->orWhere('barcode', 'like', $searchTerm)
+                                ->orWhere('manufacturer_code', 'like', $searchTerm)
+                                ->orWhereRaw('CAST(external_reference_codes AS CHAR) LIKE ?', [$searchTerm]);
+                        });
+                    })
                     ->sortable()
                     ->limit(50),
                 TextColumn::make('category.name')

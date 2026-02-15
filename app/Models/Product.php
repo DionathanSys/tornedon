@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
+use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
 use App\Services\Product\ProductCodeService;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +27,14 @@ class Product extends Model
         'alternative_units',
         'profit_margin',
         'min_sale_price',
+        'origin_sale_price',
+        'sale_price_value',
+        'external_reference_codes',
+        'item_type',
+        'manufacturer_code',
+        'gross_weight',
+        'net_weight',
+        'barcode',
         'created_by',
         'updated_by',
         'company_id',
@@ -35,9 +45,14 @@ class Product extends Model
         'is_custom_manufacturing' => 'boolean',
         'has_stock_control' => 'boolean',
         'unit' => Unit::class,
+        'origin_sale_price' => OriginSalePrice::class,
         'alternative_units' => 'array',
         'profit_margin' => 'decimal:2',
-        'min_sale_price' => 'decimal:2',
+        'min_sale_price' => MoneyCast::class,
+        'sale_price_value' => MoneyCast::class,
+        'external_reference_codes' => 'array',
+        'gross_weight' => 'decimal:3',
+        'net_weight' => 'decimal:3',
     ];
 
     public function company(): BelongsTo

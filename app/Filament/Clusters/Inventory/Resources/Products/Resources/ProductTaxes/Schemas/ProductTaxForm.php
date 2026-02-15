@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Clusters\Inventory\Resources\ProductTaxes\Schemas;
+namespace App\Filament\Clusters\Inventory\Resources\Products\Resources\ProductTaxes\Schemas;
 
 use App\Enum\Product\Origin;
 use App\Filament\Components\NcmCodeInput;

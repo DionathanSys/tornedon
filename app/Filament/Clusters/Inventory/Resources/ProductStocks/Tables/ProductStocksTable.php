@@ -24,42 +24,49 @@ class ProductStocksTable
             ->columns([
                 TextColumn::make('product.name')
                     ->label('Produto')
+                    ->width('1%')
                     ->searchable()
                     ->sortable()
                     ->limit(50)
                     ->icon(Heroicon::Cube),
                 TextColumn::make('quantity_available')
                     ->label('Qtd. Disponível')
+                    ->width('1%')
                     ->numeric(decimalPlaces: 3)
                     ->sortable()
                     ->alignEnd()
                     ->color(fn($record) => $record->quantity_available <= $record->quantity_minimum ? 'danger' : 'success'),
                 TextColumn::make('quantity_reserved')
                     ->label('Qtd. Reservada')
+                    ->width('1%')
                     ->numeric(decimalPlaces: 3)
                     ->sortable()
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('quantity_minimum')
                     ->label('Est. Mínimo')
+                    ->width('1%')
                     ->numeric(decimalPlaces: 3)
                     ->sortable()
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('average_cost')
                     ->label('Custo Médio')
+                    ->width('1%')
                     ->money('BRL')
                     ->sortable()
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('last_movement_date')
                     ->label('Último Movimento')
+                    ->width('1%')
                     ->date('d/m/Y')
                     ->sortable()
                     ->placeholder('-')
                     ->toggleable(),
                 TextColumn::make('last_movement_type')
                     ->label('Tipo')
+                    ->width('1%')
                     ->badge()
                     ->formatStateUsing(fn(?string $state) => match ($state) {
                         'entrada' => 'Entrada',
@@ -79,6 +86,7 @@ class ProductStocksTable
                     ->toggleable(),
                 IconColumn::make('is_active')
                     ->label('Ativo')
+                    ->width('1%')
                     ->boolean()
                     ->sortable()
                     ->alignCenter()
@@ -91,6 +99,7 @@ class ProductStocksTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
+                    ->width('1%')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
