@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -211,6 +212,7 @@ class ProductForm
                             ]),
                         Tab::make('Impostos')
                             ->icon(Heroicon::CurrencyDollar)
+                            ->visibleOn('edit')
                             ->schema([
                                 Section::make('Tributação')
                                     ->relationship('tax')
@@ -236,110 +238,122 @@ class ProductForm
                                             ->mask('99.999.99')
                                             ->placeholder('00.000.00')
                                             ->maxLength(9),
-                                        Section::make('icms_group')
-                                            ->label('ICMS')
-                                            ->columns([
-                                                'sm' => 1,
-                                                'md' => 2,
-                                                'lg' => 2,
-                                            ])
-                                            ->collapsible()
-                                            ->persistCollapsed()
-                                            ->columnSpanFull()
+
+                                    ]),
+                                Section::make('ICMS')
+                                    ->columns([
+                                        'sm' => 1,
+                                        'md' => 2,
+                                        'lg' => 2,
+                                    ])
+                                    ->collapsible()
+                                    ->persistCollapsed()
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        Repeater::make('icms')
+                                            ->hiddenLabel()
                                             ->schema([
-                                                Repeater::make('icms')
-                                                    ->hiddenLabel()
+                                                Group::make()
+                                                    ->columns(2)
                                                     ->schema([
                                                         TextInput::make('key')
-                                                            ->label('Chave')
-                                                            ->required(),
+                                                            ->label('Chave'),
                                                         TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required(),
+                                                            ->label('Valor'),
                                                     ])
-                                                    ->columnSpanFull()
-                                                    ->addActionLabel('Adicionar campo')
-                                                    ->deletable(fn() => Auth::user()->is_admin)
-                                                    ->reorderable(),
-                                            ]),
-                                        Section::make('ipi_group')
-                                            ->label('IPI')
-                                            ->columns([
-                                                'sm' => 1,
-                                                'md' => 2,
-                                                'lg' => 2,
+                                                    ->columnSpanFull(),
                                             ])
-                                            ->collapsible()
-                                            ->persistCollapsed()
                                             ->columnSpanFull()
+                                            ->addActionLabel('Adicionar campo')
+                                            ->deletable(fn() => Auth::user()->is_admin)
+                                            ->reorderable(),
+                                    ]),
+                                Section::make('IPI')
+                                    ->label('IPI')
+                                    ->columns([
+                                        'sm' => 1,
+                                        'md' => 2,
+                                        'lg' => 2,
+                                    ])
+                                    ->collapsible()
+                                    ->persistCollapsed()
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        Repeater::make('ipi')
+                                            ->hiddenLabel()
                                             ->schema([
-                                                Repeater::make('ipi')
-                                                    ->hiddenLabel()
+                                                Group::make()
+                                                    ->columns(2)
                                                     ->schema([
                                                         TextInput::make('key')
-                                                            ->label('Chave')
-                                                            ->required(),
+                                                            ->label('Chave'),
                                                         TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required(),
+                                                            ->label('Valor'),
                                                     ])
-                                                    ->columnSpanFull()
-                                                    ->addActionLabel('Adicionar campo')
-                                                    ->deletable(fn() => Auth::user()->is_admin)
-                                                    ->reorderable(),
-                                            ]),
-                                        Section::make('pis_group')
-                                            ->label('PIS')
-                                            ->columns([
-                                                'sm' => 1,
-                                                'md' => 2,
-                                                'lg' => 2,
+                                                    ->columnSpanFull(),
                                             ])
-                                            ->collapsible()
-                                            ->persistCollapsed()
                                             ->columnSpanFull()
+                                            ->addActionLabel('Adicionar campo')
+                                            ->deletable(fn() => Auth::user()->is_admin)
+                                            ->reorderable(),
+                                    ]),
+                                Section::make('PIS')
+                                    ->label('PIS')
+                                    ->columns([
+                                        'sm' => 1,
+                                        'md' => 2,
+                                        'lg' => 2,
+                                    ])
+                                    ->collapsible()
+                                    ->persistCollapsed()
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        Repeater::make('pis')
+                                            ->hiddenLabel()
                                             ->schema([
-                                                Repeater::make('pis')
-                                                    ->hiddenLabel()
+                                                Group::make()
+                                                    ->columns(2)
                                                     ->schema([
                                                         TextInput::make('key')
-                                                            ->label('Chave')
-                                                            ->required(),
+                                                            ->label('Chave'),
                                                         TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required(),
+                                                            ->label('Valor'),
                                                     ])
-                                                    ->columnSpanFull()
-                                                    ->addActionLabel('Adicionar campo')
-                                                    ->deletable(fn() => Auth::user()->is_admin)
-                                                    ->reorderable(),
-                                            ]),
-                                        Section::make('cofins_group')
-                                            ->label('COFINS')
-                                            ->columns([
-                                                'sm' => 1,
-                                                'md' => 2,
-                                                'lg' => 2,
+                                                    ->columnSpanFull(),
                                             ])
-                                            ->collapsible()
-                                            ->persistCollapsed()
                                             ->columnSpanFull()
+                                            ->addActionLabel('Adicionar campo')
+                                            ->deletable(fn() => Auth::user()->is_admin)
+                                            ->reorderable(),
+                                    ]),
+                                Section::make('COFINS')
+                                    ->label('COFINS')
+                                    ->columns([
+                                        'sm' => 1,
+                                        'md' => 2,
+                                        'lg' => 2,
+                                    ])
+                                    ->collapsible()
+                                    ->persistCollapsed()
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        Repeater::make('cofins')
+                                            ->hiddenLabel()
                                             ->schema([
-                                                Repeater::make('cofins')
-                                                    ->hiddenLabel()
+                                                Group::make()
+                                                    ->columns(2)
                                                     ->schema([
                                                         TextInput::make('key')
-                                                            ->label('Chave')
-                                                            ->required(),
+                                                            ->label('Chave'),
                                                         TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required(),
+                                                            ->label('Valor'),
                                                     ])
-                                                    ->columnSpanFull()
-                                                    ->addActionLabel('Adicionar campo')
-                                                    ->deletable(fn() => Auth::user()->is_admin)
-                                                    ->reorderable(),
-                                            ]),
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columnSpanFull()
+                                            ->addActionLabel('Adicionar campo')
+                                            ->deletable(fn() => Auth::user()->is_admin)
+                                            ->reorderable(),
                                     ]),
                             ]),
                     ]),
