@@ -41,18 +41,18 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'is_custom_manufacturing' => 'boolean',
-        'has_stock_control' => 'boolean',
-        'unit' => Unit::class,
-        'origin_sale_price' => OriginSalePrice::class,
-        'alternative_units' => 'array',
-        'profit_margin' => 'decimal:2',
-        'min_sale_price' => MoneyCast::class,
-        'sale_price_value' => MoneyCast::class,
-        'external_reference_codes' => 'array',
-        'gross_weight' => 'decimal:3',
-        'net_weight' => 'decimal:3',
+        'is_active'                 => 'boolean',
+        'is_custom_manufacturing'   => 'boolean',
+        'has_stock_control'         => 'boolean',
+        'unit'                      => Unit::class,
+        'origin_sale_price'         => OriginSalePrice::class,
+        'alternative_units'         => 'array',
+        'profit_margin'             => 'decimal:2',
+        'min_sale_price'            => MoneyCast::class,
+        'sale_price_value'          => MoneyCast::class,
+        'external_reference_codes'  => 'array',
+        'gross_weight'              => 'decimal:3',
+        'net_weight'                => 'decimal:3',
     ];
 
     public function company(): BelongsTo

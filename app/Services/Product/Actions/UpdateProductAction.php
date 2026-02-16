@@ -39,6 +39,11 @@ class UpdateProductAction
             // Persistência
             $this->product->update($validated);
 
+            Log::debug('Produto atualizado com sucesso', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'product' => $this->product->refresh(),
+            ]);
+
             // Sincroniza o estoque do produto se o campo has_stock_control foi atualizado
             if (isset($validated['has_stock_control'])) {
                 $this->product->refresh(); // Garante que temos os dados atualizados

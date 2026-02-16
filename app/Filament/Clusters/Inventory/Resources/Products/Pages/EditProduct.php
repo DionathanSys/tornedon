@@ -11,6 +11,7 @@ use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EditProduct extends EditRecord
 {
@@ -83,6 +84,7 @@ class EditProduct extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
+
         $service = app(ProductService::class);
         $product = $service->update($record, $data, Auth::id());
 

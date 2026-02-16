@@ -25,7 +25,7 @@ class ProductTaxService
     public function ensureForProduct(int $productId, int $createdBy, array $data = []): ?ProductTax
     {
         try {
-            $existing = ProductTax::withTrashed()->where('product_id', $productId)->first();
+            $existing = ProductTax::where('product_id', $productId)->first();
 
             if ($existing) {
                 if ($existing->trashed()) {

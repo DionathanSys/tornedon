@@ -199,6 +199,7 @@ class ProductForm
                                         Money::make('min_sale_price')
                                             ->label('Preço Mínimo de Venda')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
                                         Select::make('origin_sale_price')
                                             ->label('Origem do Preço de Venda')
@@ -208,7 +209,7 @@ class ProductForm
                                         Money::make('sale_price_value')
                                             ->label('Valor de Venda Fixo')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->default(0)
+                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                             ->hiddenJs(<<<'JS'
                                                 $get('origin_sale_price') !== 'fixed'
                                             JS)
