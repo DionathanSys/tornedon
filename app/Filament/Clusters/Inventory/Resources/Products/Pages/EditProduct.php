@@ -81,7 +81,7 @@ class EditProduct extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['tax.ncm_code'] = str_replace(['.', '-'], '', $data['tax']['ncm_code'] ?? '');
+        $data['tax.ncm_code'] = str_replace('.', '', $data['tax']['ncm_code']);
 
         Log::debug('Dados do formulário antes de salvar o produto', [
             'metodo' => __METHOD__ . '@' . __LINE__,
