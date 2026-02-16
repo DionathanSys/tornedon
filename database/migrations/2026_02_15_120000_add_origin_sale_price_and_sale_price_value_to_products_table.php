@@ -43,6 +43,10 @@ return new class extends Migration
             $table->string('barcode', 60)
                 ->nullable()
                 ->after('net_weight');
+
+            $table->boolean('is_invoiceable')
+                ->default(false)
+                ->after('barcode');
         });
     }
 
@@ -61,7 +65,7 @@ return new class extends Migration
                 'gross_weight',
                 'net_weight',
                 'barcode',
-            ]);
+                'is_invoiceable',
         });
     }
 };

@@ -69,8 +69,8 @@ class EquipmentForm
                             ->mask('AAA9*99')
                             ->placeholder('ABC1234')
                             ->required(fn(Get $get) => $get('type') === Enum\Equipment\Type::CAR->value || $get('type') === Enum\Equipment\Type::TRUCK->value)
-                            ->visibleJs(<<<'JS'
-                                $get('type') === 'car' || $get('type') === 'truck'
+                            ->hiddenJs(<<<'JS'
+                                $get('type') !== 'car' && $get('type') !== 'truck'
                             JS)
                             ->helperText('Formato: ABC1234 ou ABC1D34'),
                         TextInput::make('model')

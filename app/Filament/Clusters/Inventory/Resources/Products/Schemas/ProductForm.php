@@ -159,6 +159,12 @@ class ProductForm
                                             ->columnSpan(['md' => 1, 'lg' => 1])
                                             ->inline(false)
                                             ->default(true),
+                                        Toggle::make('is_invoiceable')
+                                            ->label('Permite Venda')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 1])
+                                            ->inline(false)
+                                            ->disabled(),
                                         KeyValue::make('external_reference_codes')
                                             ->label('Outros Códigos (Ref. / Cód.)')
                                             ->keyLabel('Ref.')
@@ -203,8 +209,8 @@ class ProductForm
                                             ->label('Valor de Venda Fixo')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->default(0)
-                                            ->visibleJs(<<<'JS'
-                                                $get('origin_sale_price') === 'fixed';
+                                            ->hiddenJs(<<<'JS'
+                                                $get('origin_sale_price') !== 'fixed'
                                             JS)
                                             ->requiredIf('origin_sale_price', 'fixed'),
                                     ]),
@@ -220,16 +226,15 @@ class ProductForm
                                         'lg' => 8,
                                     ])
                                     ->columnSpanFull()
-                                    ->visibleOn('edit')
                                     ->collapsible()
                                     ->schema([
-                                        Select::make('product_origin')
+                                        Select::make('tax.product_origin')
                                             ->label('Origem do Produto')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->options(Origin::toSelectArray())
                                             ->native(false),
                                         NcmCodeInput::make(),
-                                        TextInput::make('cest_code')
+                                        TextInput::make('tax.cest_code')
                                             ->label('Código CEST')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
                                             ->mask('99.999.99')
@@ -251,10 +256,32 @@ class ProductForm
                                         Group::make()
                                             ->columns(2)
                                             ->schema([
-                                                TextInput::make('icms.key')
-                                                    ->label('Chave'),
-                                                TextInput::make('icms.value')
-                                                    ->label('Valor'),
+                                                Select::make('tax.icms.tax_situation')
+                                                    ->label('Situação Tributária')
+                                                    ->options([
+                                                        '00' => '00 - Tributada integralmente',
+                                                        '10' => '10 - Tributada e com cobrança do ICMS por substituição tributária',
+                                                        '20' => '20 - Com redução de base de cálculo',
+                                                        '30' => '30 - Isenta ou não tributada e com cobrança do ICMS por substituição tributária',
+                                                        '40' => '40 - Isenta',
+                                                        '41' => '41 - Não tributada',
+                                                        '50' => '50 - Suspensão',
+                                                        '51' => '51 - Diferimento',
+                                                        '60' => '60 - ICMS cobrado anteriormente por substituição tributária',
+                                                        '70' => '70 - Com redução de base de cálculo e cobrança do ICMS por substituição tributária',
+                                                        '90' => '90 - Outras',
+                                                    ]), //TODO falta mais opções
+                                                Select::make('tax.icms.base_calculation_method')
+                                                    ->label('Método de Cálculo da Base')
+                                                    ->options([
+                                                        0 => '0 - margem de valor agregado (%)',
+                                                        1 => '1 - pauta (valor)',
+                                                        2 => '2 - preço tabelado máximo (valor)',
+                                                        3 => '3 - valor da operação'
+                                                    ]),
+                                                Money::make('tax.icms.aliquot')
+                                                    ->label('Alíquota (%)')
+                                                    ->suffix('%'),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
@@ -272,15 +299,35 @@ class ProductForm
                                         Group::make()
                                             ->columns(2)
                                             ->schema([
-                                                TextInput::make('ipi.key')
-                                                    ->label('Chave'),
-                                                TextInput::make('ipi.value')
-                                                    ->label('Valor'),
+                                                TextInput::make('tax.ipi.framing_code')
+                                                    ->label('Cód. Enquadramento'),
+                                                Select::make('tax.ipi.tax_situation')
+                                                    ->label('Situação Tributária')
+                                                    ->options([
+                                                        '00' => '00 - Entrada com recuperação de crédito',
+                                                        '01' => '01 - Entrada tributada com alíquota zero',
+                                                        '02' => '02 - Entrada isenta',
+                                                        '03' => '03 - Entrada não tributada',
+                                                        '04' => '04 - Entrada imune',
+                                                        '05' => '05 - Entrada com suspensão',
+                                                        '49' => '49 - Outras entradas',
+                                                        '50' => '50 - Saída tributada com alíquota zero',
+                                                        '51' => '51 - Saída isenta',
+                                                        '52' => '52 - Saída não tributada',
+                                                        '53' => '53 - Saída imune',
+                                                        '54' => '54 - Saída com suspensão',
+                                                        '55' => '55 - Saída que não se enquadra nas anteriores',
+                                                        '99' => '99 - Outras saídas',
+                                                    ]),
+                                                Money::make('tax.ipi.aliquot')
+                                                    ->label('Alíquota (%)')
+                                                    ->suffix('%'),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
                                 Section::make()
                                     ->label('Regras PIS')
+                                    ->hidden()
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 2,
@@ -293,15 +340,16 @@ class ProductForm
                                         Group::make()
                                             ->columns(2)
                                             ->schema([
-                                                TextInput::make('pis.key')
+                                                TextInput::make('tax.pis.key')
                                                     ->label('Chave'),
-                                                TextInput::make('pis.value')
+                                                TextInput::make('tax.pis.value')
                                                     ->label('Valor'),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
                                 Section::make()
                                     ->label('Regras COFINS')
+                                    ->hidden()
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 2,
@@ -314,9 +362,9 @@ class ProductForm
                                         Group::make()
                                             ->columns(2)
                                             ->schema([
-                                                TextInput::make('cofins.key')
+                                                TextInput::make('tax.cofins.key')
                                                     ->label('Chave'),
-                                                TextInput::make('cofins.value')
+                                                TextInput::make('tax.cofins.value')
                                                     ->label('Valor'),
                                             ])
                                             ->columnSpanFull(),

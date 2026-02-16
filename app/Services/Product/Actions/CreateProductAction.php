@@ -10,6 +10,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use App\Notification\NotifyService as notify;
+use App\Services\ProductTax\ProductTaxService;
 
 class CreateProductAction
 {
@@ -59,6 +60,41 @@ class CreateProductAction
                 }
             }
 
+            // Garante registro de tributos do produto
+            try {
+                $productTaxService = app(ProductTaxService::class);
+
+
+                $productTax = $productTaxService->ensureForProduct($product->id, $this->createdBy, $data['tax'] ?? []);
+
+                if ($productTaxService->hasError() || !$productTax) {
+                    Log::warning('Não foi possível criar/garantir imposto de produto automaticamente', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'product_id' => $product->id,
+                        'service_message' => $productTaxService->getMessage(),
+                        'error_code' => $productTaxService->getErrorCode(),
+                        'errors' => $productTaxService->getErrors(),
+                    ]);
+
+                    notify::warning(
+                        message: $productTaxService->getMessage(),
+                        toDatabase: true,
+                        users: $this->createdBy,
+                    );
+                }
+            } catch (\Exception $e) {
+                $this->setError('Erro inesperado ao criar imposto de produto automaticamente');
+
+                Log::error($this->getMessage(), [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'message' => $this->getMessage(),
+                    'error_code' => $this->getErrorCode(),
+                    'exception' => $e->getMessage(),
+                    'user_id'    => $this->createdBy,
+                    'product_id' => $product->id,
+                ]);
+            }
+
             $this->setSuccess();
             return $product;
         } catch (ValidationException $e) {
@@ -102,6 +138,7 @@ class CreateProductAction
                 'exception'  => $e->getMessage(),
                 'trace'      => $e->getTraceAsString(),
                 'data'       => $data,
+                'user_id'    => $this->createdBy,
             ]);
 
             return null;

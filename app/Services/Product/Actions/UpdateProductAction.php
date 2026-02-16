@@ -4,6 +4,7 @@ namespace App\Services\Product\Actions;
 
 use App\Models\Product;
 use App\Services\Product\Validators\ProductValidator;
+use App\Services\ProductTax\ProductTaxService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -49,6 +50,22 @@ class UpdateProductAction
                         'metodo'        => __METHOD__ . '@' . __LINE__,
                         'product_id'    => $this->product->id,
                         'error_message' => $syncStockAction->getMessage(),
+                    ]);
+                }
+            }
+
+            // Atualiza tributos do produto se houver dados de tax
+            if (isset($data['tax']) && is_array($data['tax'])) {
+                $productTaxService = app(ProductTaxService::class);
+                $productTax = $productTaxService->update($this->product->id, $this->updatedBy, $data['tax']);
+
+                if ($productTaxService->hasError() || !$productTax) {
+                    Log::warning($productTaxService->getMessage(), [
+                        'metodo'            => __METHOD__ . '@' . __LINE__,
+                        'product_id'        => $this->product->id,
+                        'service_message'   => $productTaxService->getMessage(),
+                        'error_code'        => $productTaxService->getErrorCode(),
+                        'errors'            => $productTaxService->getErrors(),
                     ]);
                 }
             }

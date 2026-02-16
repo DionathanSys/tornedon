@@ -12,15 +12,15 @@
 	- [x] Isso deve ser verificado quando o mesmo é criado, e também quando é atualizado, criando quando marcado como sim, ou excluindo caso exista e for atualizado para 'não';
 - [x] Incluir atualização dos impostos dentro da tela de produtos;
 - [ ] Incluir campos para: 
-	- [ ] origem valor de venda (Select: fixo, calculado, definir no ato)
-	- [ ] Outro códigos, código ref. externo KeyValue: Ref. - Cód.? **Como pesquisar?**
-	- [ ] tipo de item
-	- [ ] código fábrica
-	- [ ] peso bruto
-	- [ ] peso líquido
-	- [ ] código de barras
+	- [x] origem valor de venda (Select: fixo, calculado, definir no ato)
+	- [x] Outro códigos, código ref. externo KeyValue: Ref. - Cód.? **Como pesquisar?**
+	- [x] tipo de item
+	- [x] código fábrica
+	- [x] peso bruto
+	- [x] peso líquido
+	- [x] código de barras
 	- [ ] ipi
-		- [ ] cód enquadramento
+		- [x] cód enquadramento
 		- [ ] cst ipi venda
 		- [ ] aliq. ipi venda
 		- [ ] cst ipi compra

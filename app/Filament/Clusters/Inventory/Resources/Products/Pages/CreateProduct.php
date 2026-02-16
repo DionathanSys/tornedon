@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\Products\Pages;
 
+use App\Enum\Product\OriginSalePrice;
 use App\Filament\Clusters\Inventory\Resources\Products\ProductResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Product\ProductService;
@@ -18,6 +19,10 @@ class CreateProduct extends CreateRecord
     {
         $tenant = Filament::getTenant();
         $data['company_id'] = $tenant->id;
+
+        if($data['origin_sale_price'] === OriginSalePrice::FIXED->value) {
+            $data['sale_price_value'] = null;
+        }
 
         return $data;
     }
