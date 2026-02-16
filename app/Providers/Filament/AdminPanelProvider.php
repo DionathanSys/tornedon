@@ -67,6 +67,7 @@ class AdminPanelProvider extends PanelProvider
                 'panels::body.end',
                 fn () => \Livewire\Livewire::mount('create-error-ticket-action')
             )
-            ->resourceCreatePageRedirect('edit');
+            ->resourceCreatePageRedirect('edit')
+            ->databaseNotifications();
     }
 }
