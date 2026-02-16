@@ -40,14 +40,14 @@ class NcmCodeInput
                         $component->belowContent(Schema::start([
                             Icon::make(Heroicon::ExclamationTriangle)
                                 ->color('warning'),
-                            Text::make('A tabela de códigos NCM está vazia. Solicite o suporte')
+                            Text::make('A tabela de códigos NCM está vazia. Solicite ajuda ao suporte')
                                 ->color('warning'),
                         ]));
                         notify::warning(
                             message: 'Tabela de códigos NCM vazia. Importação automática falhou.',
                             toDatabase: true,
                             users: Auth::id(),
-                            errorCode: $ncmService->get
+                            errorCode: $ncmService->getErrorCode(),
                         );
                     }
                     return;

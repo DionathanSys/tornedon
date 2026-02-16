@@ -49,9 +49,12 @@ class NcmService
 
             return $this->hasData();
         } catch (\Exception $e) {
-            Log::error('Falha ao importar NCM automaticamente.', [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
-                'exception' => $e->getMessage(),
+            $this->setError('Falha ao importar códigos NCM automaticamente.');
+            Log::error($this->getMessage(), [
+                'metodo'        => __METHOD__ . '@' . __LINE__,
+                'message'       => $this->getMessage(),
+                'error_code'    => $this->getErrorCode(),
+                'exception'     => $e->getMessage(),
             ]);
 
             return false;
