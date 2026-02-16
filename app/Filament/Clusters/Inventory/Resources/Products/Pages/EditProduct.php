@@ -74,25 +74,19 @@ class EditProduct extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        Log::debug('Mutando dados do produto para preenchimento do formulário', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data_before' => $data,
-        ]);
-
         $data['tax'] = $this->record->tax ? $this->record->tax->toArray() : null;
-
-        Log::debug('Dados do produto após mutação para preenchimento do formulário', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'tax_data' => $this->record->tax ? $this->record->tax->toArray() : null,
-            'data_after' => $data,
-        ]);
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        unset($data['created_by'], $data['company_id']);
+        $data['tax.ncm_code'] = str_replace(['.', '-'], '', $data['tax']['ncm_code'] ?? '');
+
+        Log::debug('Dados do formulário antes de salvar o produto', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'data' => $data,
+        ]);
 
         return $data;
     }

@@ -173,9 +173,6 @@ class ProductForm
                                             ->addActionLabel('Adicionar referência'),
                                     ]),
 
-                                Hidden::make('company_id'),
-                                Hidden::make('created_by'),
-                                Hidden::make('updated_by'),
                             ]),
                         Tab::make('Preços')
                             ->icon(Heroicon::CurrencyDollar)
