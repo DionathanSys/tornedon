@@ -32,9 +32,9 @@ code_snippet:
   below: 3
 logs:
   info: true
-  warning: false
+  warning: true
   emergency: true
-  alert: false
+  alert: true
   debug: true
   error: true
   critical: true

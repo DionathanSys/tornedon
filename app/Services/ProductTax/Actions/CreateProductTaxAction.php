@@ -17,10 +17,12 @@ class CreateProductTaxAction
     public function execute(array $data): ?ProductTax
     {
         try {
+            
+            $data['product_id'] = $this->productId;
+
             $validated = ProductTaxValidator::validateCreate($data);
 
             $validated['created_by'] = $this->createdBy;
-            $validated['product_id'] = $this->productId;
 
             $productTax = ProductTax::create($validated);
 

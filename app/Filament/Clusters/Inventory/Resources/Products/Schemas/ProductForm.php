@@ -234,7 +234,7 @@ class ProductForm
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->options(Origin::toSelectArray())
                                             ->native(false),
-                                        NcmCodeInput::make(),
+                                        NcmCodeInput::make('tax.ncm_code'),
                                         TextInput::make('tax.cest_code')
                                             ->label('Código CEST')
                                             ->columnSpan(['md' => 1, 'lg' => 3])

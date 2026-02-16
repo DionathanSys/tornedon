@@ -87,6 +87,11 @@ class ProductTaxService
 
             // Se não existir, garante a criação
             if (!$existing) {
+                Log::info('Nenhum registro de imposto encontrado para o produto. Criando um novo.', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'product_id' => $productId,
+                ]);
+
                 return $this->ensureForProduct($productId, $updatedBy, $data);
             }
 

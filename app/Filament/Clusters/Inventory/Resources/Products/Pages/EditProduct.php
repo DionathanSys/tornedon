@@ -22,7 +22,6 @@ class EditProduct extends EditRecord
         return [
             DeleteAction::make()
                 ->using(function (Model $record): bool {
-                    dd($record);
                     $service = app(ProductService::class);
                     $result = $service->delete($record);
                     if ($service->hasError()) {
@@ -37,7 +36,6 @@ class EditProduct extends EditRecord
                 }),
             ForceDeleteAction::make()
                 ->using(function (Model $record): bool {
-                    dd($record);
                     $service = app(ProductService::class);
                     $result = $service->forceDelete($record);
 
@@ -53,7 +51,6 @@ class EditProduct extends EditRecord
                 }),
             RestoreAction::make()
                 ->using(function (Model $record): bool {
-                    dd($record);
                     $service = app(ProductService::class);
                     $result = $service->restore($record);
 
@@ -75,6 +72,24 @@ class EditProduct extends EditRecord
         return static::getModel()::withTrashed()->findOrFail($key);
     }
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        Log::debug('Mutando dados do produto para preenchimento do formulário', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'data_before' => $data,
+        ]);
+
+        $data['tax'] = $this->record->tax ? $this->record->tax->toArray() : null;
+
+        Log::debug('Dados do produto após mutação para preenchimento do formulário', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'tax_data' => $this->record->tax ? $this->record->tax->toArray() : null,
+            'data_after' => $data,
+        ]);
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         unset($data['created_by'], $data['company_id']);
@@ -84,7 +99,11 @@ class EditProduct extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-
+        Log::debug('Iniciando atualização de produto', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'product_id' => $record->id,
+            'data' => $data,
+        ]);
         $service = app(ProductService::class);
         $product = $service->update($record, $data, Auth::id());
 

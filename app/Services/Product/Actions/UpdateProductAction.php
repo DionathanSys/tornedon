@@ -57,10 +57,23 @@ class UpdateProductAction
                         'error_message' => $syncStockAction->getMessage(),
                     ]);
                 }
+
+                Log::debug('Sincronização de estoque executada durante atualização do produto', [
+                    'metodo'        => __METHOD__ . '@' . __LINE__,
+                    'product_id'    => $this->product->id,
+                    'has_stock_control' => $validated['has_stock_control'],
+                ]);
             }
 
             // Atualiza tributos do produto se houver dados de tax
             if (isset($data['tax']) && is_array($data['tax'])) {
+
+                Log::debug('Atualizando tributos do produto', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'product_id' => $this->product->id,
+                    'tax_data' => $data['tax'],
+                ]);
+                
                 $productTaxService = app(ProductTaxService::class);
                 $productTax = $productTaxService->update($this->product->id, $this->updatedBy, $data['tax']);
 
@@ -73,6 +86,7 @@ class UpdateProductAction
                         'errors'            => $productTaxService->getErrors(),
                     ]);
                 }
+
             }
 
             $this->setSuccess();

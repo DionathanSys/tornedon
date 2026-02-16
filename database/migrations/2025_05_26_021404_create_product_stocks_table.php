@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('product_stocks', function (Blueprint $table) {
             $table->id();                                           // ID único do registro de estoque
             $table->foreignId('product_id')                         // ID do produto (obrigatório)
-                ->constrained('products');
+                ->constrained('products')
+                ->cascadeOnDelete();
             $table->decimal('quantity_available', 15, 3)            // Quantidade disponível
                 ->default(0.000);
             $table->decimal('quantity_reserved', 15, 3)             // Quantidade reservada/bloqueada

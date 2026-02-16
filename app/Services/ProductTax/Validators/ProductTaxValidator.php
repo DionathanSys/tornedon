@@ -3,6 +3,7 @@
 namespace App\Services\ProductTax\Validators;
 
 use App\Enum\Product\Origin;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +40,11 @@ class ProductTaxValidator
             'cest_code.max'      => 'O código CEST deve ter no máximo 9 caracteres',
         ];
 
+        Log::debug('Validando dados para criação de ProductTax', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'data' => $data,
+        ]);
+
         return Validator::make($data, $rules, $messages)->validate();
     }
 
@@ -72,6 +78,11 @@ class ProductTaxValidator
             'cest_code.max'      => 'O código CEST deve ter no máximo 9 caracteres',
         ];
 
+        Log::debug('Validando dados para criação de ProductTax', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'data' => $data,
+        ]);
+        
         return Validator::make($data, $rules, $messages)->validate();
     }
 
