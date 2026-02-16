@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\Products\Schemas;
 
+use App\Enum\Product\ItemType;
 use App\Enum\Product\Origin;
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
@@ -115,17 +116,11 @@ class ProductForm
                                             ->required()
                                             ->native(false)
                                             ->default('UN'),
-                                        KeyValue::make('external_reference_codes')
-                                            ->label('Outros Códigos (Ref. / Cód.)')
-                                            ->keyLabel('Ref.')
-                                            ->valueLabel('Cód.')
-                                            ->columnSpan(['md' => 4, 'lg' => 8])
-                                            ->addActionLabel('Adicionar referência'),
-                                        TextInput::make('item_type')
+                                        Select::make('item_type')
                                             ->label('Tipo de Item')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->maxLength(60)
-                                            ->autocomplete(false),
+                                            ->options(ItemType::toSelectArray())
+                                            ->native(false),
                                         TextInput::make('manufacturer_code')
                                             ->label('Código Fábrica')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -164,6 +159,12 @@ class ProductForm
                                             ->columnSpan(['md' => 1, 'lg' => 1])
                                             ->inline(false)
                                             ->default(true),
+                                        KeyValue::make('external_reference_codes')
+                                            ->label('Outros Códigos (Ref. / Cód.)')
+                                            ->keyLabel('Ref.')
+                                            ->valueLabel('Cód.')
+                                            ->columnSpan(['md' => 4, 'lg' => 8])
+                                            ->addActionLabel('Adicionar referência'),
                                     ]),
 
                                 Hidden::make('company_id'),
@@ -180,7 +181,6 @@ class ProductForm
                                         'lg' => 8,
                                     ])
                                     ->columnSpanFull()
-                                    ->visibleOn('edit')
                                     ->collapsible()
                                     ->contained(false)
                                     ->schema([
@@ -196,7 +196,6 @@ class ProductForm
                                             ->default(0),
                                         Select::make('origin_sale_price')
                                             ->label('Origem do Preço de Venda')
-                                            ->live(onBlur: true)
                                             ->options(OriginSalePrice::toSelectArray())
                                             ->default(OriginSalePrice::CALCULATED->value)
                                             ->columnSpan(['md' => 1, 'lg' => 2]),
@@ -215,7 +214,6 @@ class ProductForm
                             ->visibleOn('edit')
                             ->schema([
                                 Section::make('Tributação')
-                                    ->relationship('tax')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 4,
@@ -224,7 +222,6 @@ class ProductForm
                                     ->columnSpanFull()
                                     ->visibleOn('edit')
                                     ->collapsible()
-                                    ->contained(false)
                                     ->schema([
                                         Select::make('product_origin')
                                             ->label('Origem do Produto')
@@ -240,7 +237,8 @@ class ProductForm
                                             ->maxLength(9),
 
                                     ]),
-                                Section::make('ICMS')
+                                Section::make()
+                                    ->label('Regras ICMS')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 2,
@@ -250,26 +248,18 @@ class ProductForm
                                     ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
-                                        Repeater::make('icms')
-                                            ->hiddenLabel()
+                                        Group::make()
+                                            ->columns(2)
                                             ->schema([
-                                                Group::make()
-                                                    ->columns(2)
-                                                    ->schema([
-                                                        TextInput::make('key')
-                                                            ->label('Chave'),
-                                                        TextInput::make('value')
-                                                            ->label('Valor'),
-                                                    ])
-                                                    ->columnSpanFull(),
+                                                TextInput::make('icms.key')
+                                                    ->label('Chave'),
+                                                TextInput::make('icms.value')
+                                                    ->label('Valor'),
                                             ])
-                                            ->columnSpanFull()
-                                            ->addActionLabel('Adicionar campo')
-                                            ->deletable(fn() => Auth::user()->is_admin)
-                                            ->reorderable(),
+                                            ->columnSpanFull(),
                                     ]),
-                                Section::make('IPI')
-                                    ->label('IPI')
+                                Section::make()
+                                    ->label('Regras IPI')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 2,
@@ -279,26 +269,18 @@ class ProductForm
                                     ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
-                                        Repeater::make('ipi')
-                                            ->hiddenLabel()
+                                        Group::make()
+                                            ->columns(2)
                                             ->schema([
-                                                Group::make()
-                                                    ->columns(2)
-                                                    ->schema([
-                                                        TextInput::make('key')
-                                                            ->label('Chave'),
-                                                        TextInput::make('value')
-                                                            ->label('Valor'),
-                                                    ])
-                                                    ->columnSpanFull(),
+                                                TextInput::make('ipi.key')
+                                                    ->label('Chave'),
+                                                TextInput::make('ipi.value')
+                                                    ->label('Valor'),
                                             ])
-                                            ->columnSpanFull()
-                                            ->addActionLabel('Adicionar campo')
-                                            ->deletable(fn() => Auth::user()->is_admin)
-                                            ->reorderable(),
+                                            ->columnSpanFull(),
                                     ]),
-                                Section::make('PIS')
-                                    ->label('PIS')
+                                Section::make()
+                                    ->label('Regras PIS')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 2,
@@ -308,26 +290,18 @@ class ProductForm
                                     ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
-                                        Repeater::make('pis')
-                                            ->hiddenLabel()
+                                        Group::make()
+                                            ->columns(2)
                                             ->schema([
-                                                Group::make()
-                                                    ->columns(2)
-                                                    ->schema([
-                                                        TextInput::make('key')
-                                                            ->label('Chave'),
-                                                        TextInput::make('value')
-                                                            ->label('Valor'),
-                                                    ])
-                                                    ->columnSpanFull(),
+                                                TextInput::make('pis.key')
+                                                    ->label('Chave'),
+                                                TextInput::make('pis.value')
+                                                    ->label('Valor'),
                                             ])
-                                            ->columnSpanFull()
-                                            ->addActionLabel('Adicionar campo')
-                                            ->deletable(fn() => Auth::user()->is_admin)
-                                            ->reorderable(),
+                                            ->columnSpanFull(),
                                     ]),
-                                Section::make('COFINS')
-                                    ->label('COFINS')
+                                Section::make()
+                                    ->label('Regras COFINS')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 2,
@@ -337,26 +311,19 @@ class ProductForm
                                     ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
-                                        Repeater::make('cofins')
-                                            ->hiddenLabel()
+                                        Group::make()
+                                            ->columns(2)
                                             ->schema([
-                                                Group::make()
-                                                    ->columns(2)
-                                                    ->schema([
-                                                        TextInput::make('key')
-                                                            ->label('Chave'),
-                                                        TextInput::make('value')
-                                                            ->label('Valor'),
-                                                    ])
-                                                    ->columnSpanFull(),
+                                                TextInput::make('cofins.key')
+                                                    ->label('Chave'),
+                                                TextInput::make('cofins.value')
+                                                    ->label('Valor'),
                                             ])
-                                            ->columnSpanFull()
-                                            ->addActionLabel('Adicionar campo')
-                                            ->deletable(fn() => Auth::user()->is_admin)
-                                            ->reorderable(),
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
                     ]),
+
             ]);
     }
 }

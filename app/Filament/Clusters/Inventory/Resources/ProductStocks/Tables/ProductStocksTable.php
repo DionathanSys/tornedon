@@ -58,7 +58,7 @@ class ProductStocksTable
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('last_movement_date')
-                    ->label('Último Movimento')
+                    ->label('Últ. Mov.')
                     ->width('1%')
                     ->date('d/m/Y')
                     ->sortable()

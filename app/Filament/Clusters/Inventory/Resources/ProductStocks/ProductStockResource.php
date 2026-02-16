@@ -43,8 +43,6 @@ class ProductStockResource extends Resource
     {
         return [
             'index' => ListProductStocks::route('/'),
-            'create' => CreateProductStock::route('/create'),
-            'edit' => EditProductStock::route('/{record}/edit'),
         ];
     }
 }
