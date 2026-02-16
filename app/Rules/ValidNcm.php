@@ -19,6 +19,14 @@ class ValidNcm implements ValidationRule
 
         $ncmService = app(NcmService::class);
 
+        // Se a tabela estiver vazia, tenta importar antes de validar
+        if (!$ncmService->hasData()) {
+            if (!$ncmService->ensureDataLoaded()) {
+                // Não conseguiu carregar — não bloqueia o usuário
+                return;
+            }
+        }
+
         if (!$ncmService->exists($value)) {
             $fail('O código NCM informado não é válido ou não foi encontrado na tabela vigente.');
         }

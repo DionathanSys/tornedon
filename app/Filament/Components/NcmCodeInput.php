@@ -11,6 +11,8 @@ use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\HtmlString;
+use App\Notification\NotifyService as notify;
+use Illuminate\Support\Facades\Auth;
 
 class NcmCodeInput
 {
@@ -31,6 +33,26 @@ class NcmCodeInput
                 }
 
                 $ncmService = app(NcmService::class);
+
+                // Se a tabela estiver vazia, tenta importar automaticamente
+                if (!$ncmService->hasData()) {
+                    if (!$ncmService->ensureDataLoaded()) {
+                        $component->belowContent(Schema::start([
+                            Icon::make(Heroicon::ExclamationTriangle)
+                                ->color('warning'),
+                            Text::make('A tabela de códigos NCM está vazia. Solicite o suporte')
+                                ->color('warning'),
+                        ]));
+                        notify::warning(
+                            message: 'Tabela de códigos NCM vazia. Importação automática falhou.',
+                            toDatabase: true,
+                            users: Auth::id(),
+                            errorCode: $ncmService->get
+                        );
+                    }
+                    return;
+                }
+
                 $info = $ncmService->getValidityInfo($state);
 
                 if (!$info) {

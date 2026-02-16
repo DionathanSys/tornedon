@@ -7,6 +7,8 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log as FacadesLog;
+use Opcodes\LogViewer\Logs\Log;
 
 class ImportNcmCodes extends Command
 {
@@ -51,6 +53,13 @@ class ImportNcmCodes extends Command
         foreach ($chunks as $chunk) {
             DB::transaction(function () use ($chunk, $bar) {
                 $records = [];
+                
+                FacadesLog::debug('Processando chunk de NCM', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'chunk_size' => count($chunk),
+                    'first_item' => $chunk[0] ?? null,
+                    'second_item' => $chunk[1] ?? null,
+                ]);
 
                 foreach ($chunk as $item) {
                     $code = str_replace('.', '', $item['Codigo'] ?? '');

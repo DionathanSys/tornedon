@@ -3,10 +3,60 @@
 namespace App\Services;
 
 use App\Models\NcmCode;
+use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class NcmService
 {
+    use HandlesServiceResponse;
+
+    /**
+     * Verifica se a tabela ncm_codes possui registros.
+     * Usa cache de 1 semana para evitar queries repetidas.
+     */
+    public function hasData(): bool
+    {
+        return Cache::remember('ncm_codes_has_data', 604800, function () {
+            $exists = NcmCode::exists();
+            Log::debug('Verificando existência de dados na tabela ncm_codes', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'exists' => $exists,
+            ]);
+            return $exists;
+        });
+    }
+
+    /**
+     * Garante que a tabela ncm_codes possui dados.
+     * Se estiver vazia, dispara a importação e retorna se conseguiu carregar.
+     */
+    public function ensureDataLoaded(): bool
+    {
+        if ($this->hasData()) {
+            return true;
+        }
+
+        Log::warning('Tabela ncm_codes vazia. Disparando importação automática.', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+        ]);
+
+        try {
+            Artisan::call('ncm:import');
+            Cache::forget('ncm_codes_has_data');
+
+            return $this->hasData();
+        } catch (\Exception $e) {
+            Log::error('Falha ao importar NCM automaticamente.', [
+                'metodo'    => __METHOD__ . '@' . __LINE__,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
     /**
      * Verifica se um código NCM existe na tabela.
      */
