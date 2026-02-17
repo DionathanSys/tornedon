@@ -56,7 +56,7 @@ class ProductTaxService
             return $result;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao garantir imposto de produto');
+            $this->setError('Erro ao criar imposto de produto');
             Log::error($this->getMessage(), [
                 'metodo'        => __METHOD__ . '@' . __LINE__,
                 'message'       => $this->getMessage(),

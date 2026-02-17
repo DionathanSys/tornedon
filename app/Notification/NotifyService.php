@@ -5,7 +5,6 @@ namespace App\Notification;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -48,7 +47,7 @@ class NotifyService
             $notification->actions([
                 Action::make('create_ticket')
                     ->label('Reportar Erro')
-                    ->icon(Heroicon::Ticket)
+                    ->icon('heroicon-o-ticket')
                     ->color('warning')
                     ->dispatch('createErrorTicket', [
                         'errorCode' => $this->errorCode,
@@ -72,7 +71,7 @@ class NotifyService
             $notification->actions([
                 Action::make('create_ticket')
                     ->label('Reportar')
-                    ->icon(Heroicon::Ticket)
+                    ->icon('heroicon-o-ticket')
                     ->color('warning')
                     ->dispatch('createErrorTicket', [
                         'errorCode' => $this->errorCode,

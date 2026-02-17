@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');                                 // Nome/descrição do serviço
             $table->text('description')                             // Descrição detalhada do serviço
                 ->nullable();
-            $table->string('unit_of_measure');                      // Unidade de medida (hora, peça, m², etc.)
+            $table->string('unit_of_measure');                      // Unidade de medida (hora, etc.)
             $table->decimal('price', 15, 2)                         // Preço base do serviço
                 ->default(0.00);
             $table->decimal('cost', 15, 2)                          // Custo do serviço

@@ -48,6 +48,7 @@ class CreateProductAction
                     Log::warning($syncStockAction->getMessage(), [
                         'metodo'        => __METHOD__ . '@' . __LINE__,
                         'message'       => $syncStockAction->getMessage(),
+                        'error_code'    => $syncStockAction->getErrorCode(),
                         'product_id'    => $product->id,
                         'error_message' => $syncStockAction->getMessage(),
                     ]);
@@ -56,6 +57,7 @@ class CreateProductAction
                         message: $syncStockAction->getMessage(),
                         toDatabase: true,
                         users: $this->createdBy,
+                        errorCode: $syncStockAction->getErrorCode(),
                     );
                 }
             }
@@ -63,12 +65,10 @@ class CreateProductAction
             // Garante registro de tributos do produto
             try {
                 $productTaxService = app(ProductTaxService::class);
-
-
                 $productTax = $productTaxService->ensureForProduct($product->id, $this->createdBy, $data['tax'] ?? []);
 
                 if ($productTaxService->hasError() || !$productTax) {
-                    Log::warning('Não foi possível criar/garantir imposto de produto automaticamente', [
+                    Log::warning('Não foi possível criar imposto de produto automaticamente', [
                         'metodo' => __METHOD__ . '@' . __LINE__,
                         'product_id' => $product->id,
                         'service_message' => $productTaxService->getMessage(),
@@ -80,7 +80,9 @@ class CreateProductAction
                         message: $productTaxService->getMessage(),
                         toDatabase: true,
                         users: $this->createdBy,
+                        errorCode: $productTaxService->getErrorCode(),
                     );
+                    
                 }
             } catch (\Exception $e) {
                 $this->setError('Erro inesperado ao criar imposto de produto automaticamente');
