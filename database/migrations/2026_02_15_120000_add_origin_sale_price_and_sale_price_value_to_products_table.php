@@ -66,6 +66,7 @@ return new class extends Migration
                 'net_weight',
                 'barcode',
                 'is_invoiceable',
+            ]);
         });
     }
 };

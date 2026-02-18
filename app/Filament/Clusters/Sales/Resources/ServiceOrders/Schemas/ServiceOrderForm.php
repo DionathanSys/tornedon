@@ -49,10 +49,8 @@ class ServiceOrderForm
                                         TextInput::make('number')
                                             ->label('Número da OS')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->required()
-                                            ->maxLength(50)
-                                            ->unique(ignoreRecord: true)
-                                            ->autocomplete(false),
+                                            ->visibleOn('edit')
+                                            ->disabled(),
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->columnSpan(['md' => 2, 'lg' => 5])

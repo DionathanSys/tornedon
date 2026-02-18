@@ -3,6 +3,7 @@
 namespace App\Services\ServiceOrder;
 
 use App\Models\ServiceOrder;
+use App\Models\ServiceOrderSequence;
 use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
 use App\Services\ServiceOrder\Actions\DeleteServiceOrderAction;
 use App\Services\ServiceOrder\Actions\RestoreServiceOrderAction;
@@ -208,6 +209,11 @@ class ServiceOrderService
 
         try {
             return DB::transaction(function () use ($data, $createdBy) {
+                // Gera número automaticamente se não fornecido
+                if (empty($data['number']) && isset($data['company_id'])) {
+                    $data['number'] = $this->generateNumber($data['company_id']);
+                }
+
                 $action = new CreateServiceOrderAction($createdBy);
                 $serviceOrder = $action->execute($data);
 
@@ -482,5 +488,29 @@ class ServiceOrderService
 
             return false;
         }
+    }
+
+    /* ==============================
+     |  Métodos Auxiliares
+     |==============================*/
+
+    /**
+     * Gera o próximo número de ordem de serviço para a empresa.
+     * Usa lock pessimista para evitar duplicidade.
+     *
+     * @param  int  $companyId
+     * @return string
+     */
+    private function generateNumber(int $companyId): string
+    {
+        $sequence = ServiceOrderSequence::lockForUpdate()
+            ->firstOrCreate(
+                ['company_id' => $companyId],
+                ['last_number' => 0]
+            );
+
+        $sequence->increment('last_number');
+
+        return str_pad($sequence->last_number, 5, '0', STR_PAD_LEFT);
     }
 }
