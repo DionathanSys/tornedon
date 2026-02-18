@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,7 +10,28 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
-    
+    protected $fillable = [
+        'name',
+        'address',
+        'phone',
+        'email',
+        'certificate',
+        'municipal_tax_id',
+        'state_tax_id',
+        'is_active',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected $casts = [
+        'address' => 'array',
+        'is_active' => 'boolean',
+    ];
+
+    protected $appends = [
+        'service_provision_location',
+    ];    
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class);
@@ -23,6 +45,23 @@ class Company extends Model
     public function preferences(): HasMany
     {
         return $this->hasMany(CompanyPreference::class);
+    }
+
+    public function serviceProvisionLocation(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $address = $this->address ?? [];
+                $city = $address['city'] ?? '';
+                $state = $address['state'] ?? '';
+
+                if (!$city && !$state) {
+                    return '';
+                }
+
+                return trim("{$city} - {$state}", ' -');
+            }
+        );
     }
 
     /**

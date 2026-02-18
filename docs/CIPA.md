@@ -50,3 +50,30 @@ Atividade
 
 ----
 ![[Pasted image 20260218133944.png]]
+
+
+## Acidente Fictício
+
+Veículo do tipo carreta baú, carregado, trafegava pela rodovia, em um trecho com curva acentuada, sob pista molha devido à chuva.
+Ao entrar na curva o motorista perdeu o controle da veículo, onde ocorreu o tombamento do conjunto, bloqueando a pista parcialmente.
+Motorista com excesso de jornada.
+
+## Falhas Comportamento: 
+- Velocidade incompatível com a pista molhada.
+- Possível fadiga
+## Falha de sinalização:
+- Placa de sinalização de curva acentuada, estava parcialmente encoberta.
+## ACIDENTE: Tombamento do caminhão  
+-  Perda de estabilidade lateral  
+	- Velocidade excessiva  
+	- Pista molhada  
+-  Falha na percepção do risco  
+	- Sinalização insuficiente  
+	- Fadiga do condutor  
+# Causa Raiz Provável
+
+> Velocidade inadequada sob pista molhada + fadiga
+## Medidas
+- Controle de jornada mais rigoroso;
+- Treinamento/acompanhamento por instrutor;
+- Avaliação periódica de desempenho do motorista

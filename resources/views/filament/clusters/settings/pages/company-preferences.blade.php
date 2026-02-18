@@ -2,7 +2,9 @@
     <form wire:submit="save">
         {{ $this->form }}
         
-        <div class="mt-6 m-2">
+        <x-filament-actions::modals />
+        
+        <div style="margin-top: 1rem;">
             <x-filament::button type="submit" wire:loading.attr="disabled">
                 Salvar Preferências
             </x-filament::button>

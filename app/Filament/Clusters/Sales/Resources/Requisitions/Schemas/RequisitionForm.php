@@ -56,7 +56,7 @@ class RequisitionForm
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->options(function () {
                                 return \App\Models\Partner::whereHas('companies', function ($query) {
-                                        $query->where('companies.id', Filament::getTenant()->id)
+                                        $query->where('companies.id', Filament::getTenant()?->id)
                                             ->whereJsonContains('company_partner.type', 'customer')
                                             ->where('company_partner.is_active', true);
                                     })

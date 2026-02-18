@@ -8,6 +8,7 @@ use App\Enum\ServiceOrder\Priority;
 use App\Models\CompanyPreference;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
@@ -18,6 +19,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -60,18 +62,34 @@ class ServiceOrderForm
                                             ->required()
                                             ->searchable()
                                             ->preload()
-                                            ->relationship('customer', 'name')
-                                            ->createOptionForm([
-                                                TextInput::make('name')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                            ]),
+                                            ->live()
+                                            ->disabledOn('edit')
+                                            ->afterStateUpdated(fn($state, $set) => $set('equipment_id', null))
+                                            ->options(function () {
+                                                return \App\Models\Partner::whereHas('companies', function ($query) {
+                                                        $query->where('companies.id', Filament::getTenant()->id)
+                                                            ->whereJsonContains('company_partner.type', 'customer')
+                                                            ->where('company_partner.is_active', true);
+                                                    })
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id');
+                                            }),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->searchable()
                                             ->preload()
-                                            ->relationship('equipment', 'name'),
+                                            ->options(function ($get) {
+                                                $customerId = $get('customer_id');
+                                                if (!$customerId) {
+                                                    return [];
+                                                }
+                                                return \App\Models\Equipment::where('owner_id', $customerId)
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id');
+                                            })
+                                            ->disabled(fn($get) => !$get('customer_id'))
+                                            ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                                         Select::make('status')
                                             ->label('Status')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -79,21 +97,24 @@ class ServiceOrderForm
                                             ->required()
                                             ->options(State::toSelectArray())
                                             ->default(State::OPEN->value)
-                                            ->native(false),
+                                            ->native(false)
+                                            ->selectablePlaceholder(false),
                                         Select::make('priority')
                                             ->label('Prioridade')
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->required()
                                             ->options(Priority::toSelectArray())
                                             ->default(Priority::NORMAL->value)
-                                            ->native(false),
+                                            ->native(false)
+                                            ->selectablePlaceholder(false),
                                         Select::make('type')
                                             ->label('Tipo')
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->required()
                                             ->options(Type::toSelectArray())
                                             ->default(Type::MAINTENANCE->value)
-                                            ->native(false),
+                                            ->native(false)
+                                            ->selectablePlaceholder(false),
                                         DatePicker::make('order_date')
                                             ->label('Data da Ordem')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -142,20 +163,13 @@ class ServiceOrderForm
                                             ->preload()
                                             ->relationship('salesperson', 'name')
                                             ->default(fn() => Auth::id()),
-                                        Toggle::make('on_site')
-                                            ->label('Atendimento Presencial')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->columnStart(1)
-                                            ->inline(false)
-                                            ->default(true),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->columnStart(1)
                                             ->maxLength(255)
                                             ->autocomplete(false)
-                                            ->hiddenJs(<<<'JS'
-                                                $get('on_site') === true
-                                            JS)
+                                            ->default(fn() => Filament::getTenant()->service_provision_location)
                                             ->helperText('Cidade - UF'),
                                     ]),
                             ]),
@@ -201,26 +215,36 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
-                                        TextInput::make('estimated_hours')
-                                            ->label('Horas Estimadas')
+                                        Money::make('value_km')
+                                            ->label('Valor do KM')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->numeric()
-                                            ->suffix('h')
-                                            ->default(0)
-                                            ->minValue(0)
-                                            ->step(0.5),
-                                        TextInput::make('actual_hours')
-                                            ->label('Horas Reais')
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, Set $set, $get) {
+                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
+                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
+                                                $set('travel_value', number_format($valueKm * $distanceKm));
+                                            })
+                                            ->default(350)
+                                            ->saved(false),
+                                        Money::make('distance_km')
+                                            ->label('Distância em KM')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->numeric()
-                                            ->suffix('h')
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, Set $set, $get) {
+                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
+                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
+                                                $set('travel_value', number_format($valueKm * $distanceKm));
+                                            })
+                                            ->suffix('km')
+                                            ->prefix(null)
                                             ->default(0)
-                                            ->minValue(0)
-                                            ->step(0.5),
+                                            ->saved(false),
                                         Money::make('travel_value')
                                             ->label('Valor de Deslocamento')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                            ->columnStart(1)
+                                            ->disabled()
+                                            ->dehydrated()
                                             ->default(0),
                                         Money::make('discount_amount')
                                             ->label('Desconto')
@@ -229,14 +253,15 @@ class ServiceOrderForm
                                             ->default(0),
                                         Select::make('payment_method')
                                             ->label('Forma de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->columnStart(1)
                                             ->options(PaymentMethod::toSelectArray())
                                             ->native(false)
                                             ->searchable()
                                             ->default(fn() => CompanyPreference::getDefaultPaymentMethod()),
                                         Select::make('payment_condition')
                                             ->label('Condição de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->options(PaymentCondition::toGroupedSelectArray())
                                             ->native(false)
                                             ->searchable()
@@ -268,6 +293,7 @@ class ServiceOrderForm
                                         DateTimePicker::make('approved_at')
                                             ->label('Data de Aprovação')
                                             ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->columnStart(1)
                                             ->displayFormat('d/m/Y H:i'),
                                         DatePicker::make('warranty_expires_at')
                                             ->label('Garantia Válida Até')
