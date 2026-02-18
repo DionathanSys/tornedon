@@ -47,3 +47,6 @@ Atividade
 **Medidas**
 - Sinalização do local
 - Motorista ficar fora da pista para evitar atropelamento
+
+----
+![[Pasted image 20260218133944.png]]

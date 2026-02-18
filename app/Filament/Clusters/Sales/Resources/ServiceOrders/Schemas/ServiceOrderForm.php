@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
+use App\Models\CompanyPreference;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use Filament\Forms\Components\DatePicker;
@@ -55,7 +56,7 @@ class ServiceOrderForm
                                             ->disabled(),
                                         Select::make('customer_id')
                                             ->label('Cliente')
-                                            ->columnSpan(['md' => 2, 'lg' => 5])
+                                            ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->required()
                                             ->searchable()
                                             ->preload()
@@ -67,8 +68,7 @@ class ServiceOrderForm
                                             ]),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 5])
-                                            ->columnStart(1)
+                                            ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->searchable()
                                             ->preload()
                                             ->relationship('equipment', 'name'),
@@ -232,13 +232,15 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->options(PaymentMethod::toSelectArray())
                                             ->native(false)
-                                            ->searchable(),
+                                            ->searchable()
+                                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod()),
                                         Select::make('payment_condition')
                                             ->label('Condição de Pagamento')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->options(PaymentCondition::toGroupedSelectArray())
                                             ->native(false)
-                                            ->searchable(),
+                                            ->searchable()
+                                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition()),
                                     ]),
                             ]),
                         Tab::make('Aprovação')

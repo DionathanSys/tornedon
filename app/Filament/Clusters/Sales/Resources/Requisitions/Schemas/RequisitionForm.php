@@ -6,6 +6,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Product\Unit;
 use App\Enum\Requisition\Status;
+use App\Models\CompanyPreference;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -109,13 +110,15 @@ class RequisitionForm
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
-                            ->searchable(),
+                            ->searchable()
+                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
                         Select::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
-                            ->searchable(),
+                            ->searchable()
+                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
                         Money::make('discount_amount')
                             ->label('Desconto')
                             ->columnSpan(['md' => 1, 'lg' => 2])
