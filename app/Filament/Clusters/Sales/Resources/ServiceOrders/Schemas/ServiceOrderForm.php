@@ -5,9 +5,6 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
-use App\Models\Equipment;
-use App\Models\Partner;
-use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
@@ -36,7 +33,6 @@ class ServiceOrderForm
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
                     ->vertical()
-                    ->activeTab(1)
                     ->tabs([
                         Tab::make('Dados Gerais')
                             ->icon(Heroicon::InformationCircle)

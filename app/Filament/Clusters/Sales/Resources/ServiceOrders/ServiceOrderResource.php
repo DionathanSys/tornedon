@@ -29,7 +29,7 @@ class ServiceOrderResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    public static function schema(Schema $schema): Schema
+    public static function form(Schema $schema): Schema
     {
         return ServiceOrderForm::configure($schema);
     }
