@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas;
 
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
@@ -17,6 +19,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ServiceOrderForm
@@ -44,7 +47,6 @@ class ServiceOrderForm
                                         'lg' => 12,
                                     ])
                                     ->columnSpanFull()
-                                    ->contained(false)
                                     ->schema([
                                         TextInput::make('number')
                                             ->label('Número da OS')
@@ -63,6 +65,13 @@ class ServiceOrderForm
                                                     ->required()
                                                     ->maxLength(255),
                                             ]),
+                                        Select::make('equipment_id')
+                                            ->label('Equipamento')
+                                            ->columnSpan(['md' => 2, 'lg' => 5])
+                                            ->columnStart(1)
+                                            ->searchable()
+                                            ->preload()
+                                            ->relationship('equipment', 'name'),
                                         Select::make('status')
                                             ->label('Status')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -73,7 +82,7 @@ class ServiceOrderForm
                                             ->native(false),
                                         Select::make('priority')
                                             ->label('Prioridade')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->required()
                                             ->options(Priority::toSelectArray())
                                             ->default(Priority::NORMAL->value)
@@ -91,54 +100,35 @@ class ServiceOrderForm
                                             ->columnStart(1)
                                             ->required()
                                             ->default(now())
-                                            ->native(false)
                                             ->displayFormat('d/m/Y'),
                                         DatePicker::make('scheduled_date')
                                             ->label('Data Agendada')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->native(false)
                                             ->displayFormat('d/m/Y'),
                                         DatePicker::make('limit_date')
                                             ->label('Data Limite')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->native(false)
                                             ->displayFormat('d/m/Y'),
                                         DatePicker::make('completion_date')
                                             ->label('Data de Conclusão')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->native(false)
                                             ->displayFormat('d/m/Y'),
                                     ]),
-                            ]),
-                        Tab::make('Atendimento')
-                            ->icon(Heroicon::WrenchScrewdriver)
-                            ->schema([
-                                Section::make('Informações de Atendimento')
+                                Section::make('Atendimento')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 4,
                                         'lg' => 12,
                                     ])
                                     ->columnSpanFull()
-                                    ->contained(false)
                                     ->schema([
-                                        Select::make('equipment_id')
-                                            ->label('Equipamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->searchable()
-                                            ->preload()
-                                            ->relationship('equipment', 'name'),
-                                        TextInput::make('location')
-                                            ->label('Local do Atendimento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->maxLength(255)
-                                            ->autocomplete(false),
                                         Select::make('technician_id')
                                             ->label('Técnico Responsável')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->searchable()
                                             ->preload()
-                                            ->relationship('technician', 'name'),
+                                            ->relationship('technician', 'name')
+                                            ->default(fn() => Auth::id()),
                                         Select::make('supervisor_id')
                                             ->label('Supervisor')
                                             ->columnSpan(['md' => 1, 'lg' => 4])
@@ -150,7 +140,23 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 1, 'lg' => 4])
                                             ->searchable()
                                             ->preload()
-                                            ->relationship('salesperson', 'name'),
+                                            ->relationship('salesperson', 'name')
+                                            ->default(fn() => Auth::id()),
+                                        Toggle::make('on_site')
+                                            ->label('Atendimento Presencial')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->columnStart(1)
+                                            ->inline(false)
+                                            ->default(true),
+                                        TextInput::make('location')
+                                            ->label('Local do Atendimento')
+                                            ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->maxLength(255)
+                                            ->autocomplete(false)
+                                            ->hiddenJs(<<<'JS'
+                                                $get('on_site') === true
+                                            JS)
+                                            ->helperText('Cidade - UF'),
                                     ]),
                             ]),
                         Tab::make('Observações')
@@ -214,23 +220,25 @@ class ServiceOrderForm
                                         Money::make('travel_value')
                                             ->label('Valor de Deslocamento')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
                                         Money::make('discount_amount')
                                             ->label('Desconto')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
-                                        TextInput::make('payment_method')
+                                        Select::make('payment_method')
                                             ->label('Forma de Pagamento')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->maxLength(50)
-                                            ->autocomplete(false),
-                                        TextInput::make('payment_condition')
+                                            ->options(PaymentMethod::toSelectArray())
+                                            ->native(false)
+                                            ->searchable(),
+                                        Select::make('payment_condition')
                                             ->label('Condição de Pagamento')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->maxLength(100)
-                                            ->autocomplete(false),
+                                            ->options(PaymentCondition::toGroupedSelectArray())
+                                            ->native(false)
+                                            ->searchable(),
                                     ]),
                             ]),
                         Tab::make('Aprovação')
@@ -258,26 +266,10 @@ class ServiceOrderForm
                                         DateTimePicker::make('approved_at')
                                             ->label('Data de Aprovação')
                                             ->columnSpan(['md' => 1, 'lg' => 4])
-                                            ->native(false)
                                             ->displayFormat('d/m/Y H:i'),
-                                        TextInput::make('customer_rating')
-                                            ->label('Avaliação do Cliente')
-                                            ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->numeric()
-                                            ->suffix('⭐')
-                                            ->minValue(0)
-                                            ->maxValue(5)
-                                            ->step(0.5)
-                                            ->helperText('0 a 5 estrelas'),
-                                        Textarea::make('customer_feedback')
-                                            ->label('Feedback do Cliente')
-                                            ->columnSpan(['md' => 3, 'lg' => 9])
-                                            ->rows(3)
-                                            ->autocomplete(false),
                                         DatePicker::make('warranty_expires_at')
                                             ->label('Garantia Válida Até')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->native(false)
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->displayFormat('d/m/Y'),
                                     ]),
                             ]),

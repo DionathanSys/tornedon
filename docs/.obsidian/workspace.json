@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CIPA.md",
+                "file": "Projeto/📥 Caixa de Entrada.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CIPA"
+              "title": "📥 Caixa de Entrada"
             }
           }
         ]
@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "a36137f84796124f",
@@ -186,9 +185,9 @@
   },
   "active": "78701007cd0d6a71",
   "lastOpenFiles": [
+    "CIPA.md",
     "Pasted image 20260218095557.png",
     "Pasted image 20260218092901.png",
-    "CIPA.md",
     "Projeto/AÇÕES/⚡CRUD Product Stock.md",
     "Projeto/AÇÕES/⚡CRUD Equipaments.md",
     "Projeto/AÇÕES/⚡CRUD Product.md",

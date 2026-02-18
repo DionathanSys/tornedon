@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
@@ -62,6 +64,8 @@ class ServiceOrder extends Model
         'status'                => State::class,
         'priority'              => Priority::class,
         'type'                  => Type::class,
+        'payment_method'        => PaymentMethod::class,
+        'payment_condition'     => PaymentCondition::class,
         'estimated_hours'       => 'decimal:2',
         'actual_hours'          => 'decimal:2',
         'travel_value'          => MoneyCast::class,

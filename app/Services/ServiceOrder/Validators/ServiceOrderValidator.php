@@ -2,6 +2,8 @@
 
 namespace App\Services\ServiceOrder\Validators;
 
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\State;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -44,7 +46,7 @@ class ServiceOrderValidator
             'actual_hours'              => 'nullable|numeric|min:0',
             'travel_value'              => 'nullable|numeric|min:0',
             'discount_amount'           => 'nullable|numeric|min:0',
-            'payment_method'            => 'nullable|string|max:50',
+            'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition'         => 'nullable|string|max:100',
             'technician_id'             => 'nullable|integer|exists:users,id',
             'supervisor_id'             => 'nullable|integer|exists:users,id',
@@ -95,8 +97,8 @@ class ServiceOrderValidator
             'actual_hours'              => 'nullable|numeric|min:0',
             'travel_value'              => 'nullable|numeric|min:0',
             'discount_amount'           => 'nullable|numeric|min:0',
-            'payment_method'            => 'nullable|string|max:50',
-            'payment_condition'         => 'nullable|string|max:100',
+            'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
+            'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
             'technician_id'             => 'nullable|integer|exists:users,id',
             'supervisor_id'             => 'nullable|integer|exists:users,id',
             'salesperson_id'            => 'nullable|integer|exists:users,id',
@@ -164,8 +166,6 @@ class ServiceOrderValidator
             'travel_value.min'              => 'O valor de deslocamento não pode ser negativo',
             'discount_amount.numeric'       => 'O desconto deve ser um número',
             'discount_amount.min'           => 'O desconto não pode ser negativo',
-            'payment_method.max'            => 'A forma de pagamento não pode ter mais de 50 caracteres',
-            'payment_condition.max'         => 'A condição de pagamento não pode ter mais de 100 caracteres',
             'technician_id.exists'          => 'O técnico informado não existe',
             'supervisor_id.exists'          => 'O supervisor informado não existe',
             'salesperson_id.exists'         => 'O vendedor informado não existe',

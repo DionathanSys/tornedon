@@ -1,2 +1,2 @@
-- [ ] Ideias
+- [ ] Registrar info. de tempo de garantia padrão 
 - [ ] 

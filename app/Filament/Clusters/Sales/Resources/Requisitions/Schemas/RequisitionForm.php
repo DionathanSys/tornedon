@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Schemas;
 
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Product\Unit;
 use App\Enum\Requisition\Status;
 use Filament\Facades\Filament;
@@ -102,14 +104,18 @@ class RequisitionForm
                     ->columnSpanFull()
                     ->collapsible()
                     ->schema([
-                        TextInput::make('payment_method')
+                        Select::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->maxLength(255),
-                        TextInput::make('payment_condition')
+                            ->options(PaymentMethod::toSelectArray())
+                            ->native(false)
+                            ->searchable(),
+                        Select::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->maxLength(255),
+                            ->options(PaymentCondition::toGroupedSelectArray())
+                            ->native(false)
+                            ->searchable(),
                         Money::make('discount_amount')
                             ->label('Desconto')
                             ->columnSpan(['md' => 1, 'lg' => 2])

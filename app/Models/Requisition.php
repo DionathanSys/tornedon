@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Requisition\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +40,8 @@ class Requisition extends Model
 
     protected $casts = [
         'status' => Status::class,
+        'payment_method' => PaymentMethod::class,
+        'payment_condition' => PaymentCondition::class,
         'sale_date' => 'date',
         'delivery_date' => 'date',
         'invoiced_at' => 'datetime',
