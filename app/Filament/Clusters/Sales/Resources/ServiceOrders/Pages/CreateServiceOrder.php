@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
+
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
+use App\Notification\NotifyService as notify;
+use App\Services\ServiceOrder\ServiceOrderService;
+use Filament\Facades\Filament;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+
+class CreateServiceOrder extends CreateRecord
+{
+    protected static string $resource = ServiceOrderResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        Log::debug('CreateServiceOrder: Mutando dados antes de criar', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'data' => $data,
+        ]);
+
+        $tenant = Filament::getTenant();
+        $data['company_id'] = $tenant->id;
+
+        return $data;
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Ordem de serviço criada com sucesso';
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        Log::debug('CreateServiceOrder: Iniciando criação de ordem de serviço', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'data' => $data,
+        ]);
+
+        $service = app(ServiceOrderService::class);
+        $serviceOrder = $service->create($data, Auth::id());
+
+        if ($service->hasError() || $serviceOrder === null) {
+            Log::error($service->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $service->getMessage(),
+                'error_code' => $service->getErrorCode(),
+                'errors' => $service->getErrors(),
+            ]);
+
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode()
+            );
+            
+            $this->halt();
+        }
+
+        Log::info('CreateServiceOrder: Ordem de serviço criada com sucesso', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'service_order_id' => $serviceOrder->id,
+        ]);
+
+        return $serviceOrder;
+    }
+}

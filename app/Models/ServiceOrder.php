@@ -2,14 +2,134 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
+use App\Enum\ServiceOrder\Priority;
+use App\Enum\ServiceOrder\State;
+use App\Enum\ServiceOrder\Type;
 use App\Services\ServiceOrder\StateResolver;
 use App\Services\ServiceOrder\States\ServiceOrderState;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ServiceOrder extends Model
 {
+    use SoftDeletes;
+
+    protected $fillable = [
+        'number',
+        'customer_id',
+        'company_id',
+        'order_date',
+        'scheduled_date',
+        'limit_date',
+        'completion_date',
+        'status',
+        'priority',
+        'type',
+        'solution',
+        'equipment_id',
+        'location',
+        'customer_observations',
+        'technician_observations',
+        'estimated_hours',
+        'actual_hours',
+        'travel_value',
+        'discount_amount',
+        'payment_method',
+        'payment_condition',
+        'technician_id',
+        'supervisor_id',
+        'salesperson_id',
+        'warranty_expires_at',
+        'requires_approval',
+        'approved_by_customer',
+        'approved_at',
+        'customer_rating',
+        'customer_feedback',
+        'invoice_id',
+        'additional_info',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected $casts = [
+        'order_date'            => 'date',
+        'scheduled_date'        => 'date',
+        'limit_date'            => 'date',
+        'completion_date'       => 'date',
+        'status'                => State::class,
+        'priority'              => Priority::class,
+        'type'                  => Type::class,
+        'estimated_hours'       => 'decimal:2',
+        'actual_hours'          => 'decimal:2',
+        'travel_value'          => MoneyCast::class,
+        'discount_amount'       => MoneyCast::class,
+        'warranty_expires_at'   => 'date',
+        'requires_approval'     => 'boolean',
+        'approved_by_customer'  => 'boolean',
+        'approved_at'           => 'datetime',
+        'customer_rating'       => 'decimal:1',
+        'additional_info'       => 'array',
+    ];
+
     public function state(): ServiceOrderState
     {
         return StateResolver::resolve($this);
+    }
+
+    /* ==============================
+     |  Relacionamentos
+     |==============================*/
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class, 'customer_id');
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function equipment(): BelongsTo
+    {
+        return $this->belongsTo(Equipment::class);
+    }
+
+    public function technician(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'technician_id');
+    }
+
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    public function salesperson(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'salesperson_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(ServiceOrderItem::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }
