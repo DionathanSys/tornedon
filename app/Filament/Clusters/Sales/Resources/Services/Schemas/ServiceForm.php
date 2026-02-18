@@ -139,7 +139,8 @@ class ServiceForm
                                             ->label('Classificação Fiscal')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->maxLength(255)
-                                            ->autocomplete(false),
+                                            ->autocomplete(false)
+                                            ->helperText('Código do serviço prestado Item da LC 116/2003'),
                                         Money::make('tax_rate')
                                             ->label('Alíquota Imposto (%)')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
