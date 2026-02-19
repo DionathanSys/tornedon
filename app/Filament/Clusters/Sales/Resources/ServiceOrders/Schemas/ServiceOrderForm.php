@@ -224,8 +224,7 @@ class ServiceOrderForm
                                                 $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
                                                 $set('travel_value', number_format($valueKm * $distanceKm));
                                             })
-                                            ->default(350)
-                                            ->saved(false),
+                                            ->default(350),
                                         Money::make('distance_km')
                                             ->label('Distância em KM')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
@@ -237,8 +236,7 @@ class ServiceOrderForm
                                             })
                                             ->suffix('km')
                                             ->prefix(null)
-                                            ->default(0)
-                                            ->saved(false),
+                                            ->default(0),
                                         Money::make('travel_value')
                                             ->label('Valor de Deslocamento')
                                             ->columnSpan(['md' => 1, 'lg' => 3])
