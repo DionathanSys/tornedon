@@ -33,6 +33,7 @@ class EquipmentForm
                     ->schema([
                         Select::make('owner_id')
                             ->label('Proprietário')
+                            ->native(false)
                             ->columnSpan(['md' => 4, 'lg' => 4])
                             ->relationship(
                                 'owner',
@@ -48,15 +49,22 @@ class EquipmentForm
                             ->searchable()
                             ->preload()
                             ->required()
+                            ->disabledOn('edit')
                             ->helperText('Parceiro proprietário do equipamento'),
                         TextInput::make('name')
                             ->label('Descrição')
                             ->columnSpan(['md' => 4, 'lg' => 4])
                             ->required()
                             ->maxLength(255)
-                            ->helperText('Identificação do equipamento, ex: "Caminhão 01", "Equipamento 02", etc.'),
+                            ->helperText(fn($operation) => match ($operation) {
+                                'create' => 'Identificação do equipamento, ex: "Caminhão 01", "Equipamento 02", etc.',
+                                'edit' => 'Identificação do equipamento, ex: "Caminhão 01", "Equipamento 02", etc.',
+                                default => '',
+                            })
+                            ->autocomplete(false),
                         Select::make('type')
                             ->label('Tipo')
+                            ->native(false)
                             ->columnStart(1)
                             ->required()
                             ->selectablePlaceholder(false)
@@ -72,16 +80,24 @@ class EquipmentForm
                             ->hiddenJs(<<<'JS'
                                 $get('type') !== 'car' && $get('type') !== 'truck'
                             JS)
-                            ->helperText('Formato: ABC1234 ou ABC1D34'),
+                            ->helperText('Formato: ABC1234 ou ABC1D34')
+                            ->autocomplete(false),
+                        TextInput::make('mark')
+                            ->label('Marca')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->maxLength(255)
+                            ->autocomplete(false),
                         TextInput::make('model')
                             ->label('Modelo')
                             ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->autocomplete(false),
                         TextInput::make('serial_number')
                             ->label('Número de Série')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(255)
-                            ->helperText('Identificação única do equipamento'),
+                            ->helperText('Identificação única do equipamento')
+                            ->autocomplete(false),
                     ]),
             ]);
     }

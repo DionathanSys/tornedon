@@ -25,6 +25,8 @@ return new class extends Migration
                 ->nullable();
             $table->string('placa', 7)
                 ->nullable();
+            $table->string('mark')
+                ->nullable();
             $table->string('model')
                 ->nullable();
             $table->string('serial_number')

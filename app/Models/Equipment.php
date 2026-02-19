@@ -18,6 +18,7 @@ class Equipment extends Model
         'company_id',
         'type',
         'placa',
+        'mark',
         'model',
         'serial_number',
         'created_by',
