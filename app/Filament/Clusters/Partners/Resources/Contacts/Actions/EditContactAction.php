@@ -102,7 +102,6 @@ final class EditContactAction
                 }
             })
             ->modalWidth('5xl')
-            ->modalSubmitActionLabel('Atualizar')
-            ->slideOver();
+            ->modalSubmitActionLabel('Atualizar');
     }
 }

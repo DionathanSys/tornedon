@@ -77,3 +77,10 @@ Motorista com excesso de jornada.
 - Controle de jornada mais rigoroso;
 - Treinamento/acompanhamento por instrutor;
 - Avaliação periódica de desempenho do motorista
+
+
+> [!TIP] GRO/PGR
+> GRO - Gerenciamento de Riscos Ocupacionais;
+> PGR - Programa de Gerenciamento Riscos;
+
+![[Pasted image 20260219092215.png]]

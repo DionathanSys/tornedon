@@ -19,6 +19,7 @@ final class ContactComponent
                     'lg' => 4,
                 ])
                 ->email()
+                ->requiredIf('notify', true)
                 ->maxLength(255),
             TextInput::make('phone')
                 ->label('Telefone')
@@ -28,6 +29,7 @@ final class ContactComponent
                     'lg' => 2,
                 ])
                 ->tel()
+                ->mask('(99) 9999-9999')
                 ->maxLength(20),
             TextInput::make('mobile')
                 ->label('Celular')
@@ -37,6 +39,7 @@ final class ContactComponent
                     'lg' => 2,
                 ])
                 ->tel()
+                ->mask('(99) 9.9999-9999')
                 ->maxLength(20),
             Toggle::make('notify')
                 ->label('Recebe Notificações?')

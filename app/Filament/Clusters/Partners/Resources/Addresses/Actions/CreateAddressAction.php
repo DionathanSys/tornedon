@@ -27,22 +27,13 @@ final class CreateAddressAction
             ->badge()
             ->modal()
             ->schema(function (Schema $schema, Action $action): Schema {
-                // Detecta o contexto: se tem record, está dentro do form do parceiro
-                $record = $action->getRecord();
-
-                if ($record && $record instanceof \App\Models\CompanyPartner) {
-                    // Contexto: dentro do form do parceiro - usa AddressComponent (sem select de parceiro)
-                    return $schema
-                        ->columns([
-                            'sm' => 1,
-                            'md' => 4,
-                            'lg' => 8,
-                        ])
-                        ->components(AddressComponent::make());
-                }
-
-                // Contexto: index de endereços - usa AddressComponentFull (com select de parceiro)
-                return AddressResource::form($schema);
+                return $schema
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 8,
+                    ])
+                    ->components(AddressComponent::make());
             })
             ->action(function (Action $action, array $data, array $arguments) {
                 $record = $action->getRecord();

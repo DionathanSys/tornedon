@@ -75,7 +75,6 @@ final class CreateContactAction
                 }
             })
             ->modalWidth('5xl')
-            ->modalSubmitActionLabel('Salvar')
-            ->slideOver();
+            ->modalSubmitActionLabel('Salvar');
     }
 }
