@@ -97,6 +97,22 @@ class ProductsTable
                     ->options(Unit::toSelectArray())
                     ->multiple()
                     ->native(false),
+                SelectFilter::make('has_stock_control')
+                    ->label('Controla estoque?')
+                    ->options([
+                        1 => 'Sim',
+                        0 => 'Não',
+                    ])
+                    ->multiple()
+                    ->native(false),
+                SelectFilter::make('is_custom_manufacturing')
+                    ->label('Fabricação própria?')
+                    ->options([
+                        1 => 'Sim',
+                        0 => 'Não',
+                    ])
+                    ->multiple()
+                    ->native(false),
                 TrashedFilter::make(),
             ])
             ->recordActions([

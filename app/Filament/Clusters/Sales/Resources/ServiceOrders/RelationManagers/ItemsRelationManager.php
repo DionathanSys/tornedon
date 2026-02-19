@@ -17,6 +17,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -32,11 +34,23 @@ class ItemsRelationManager extends RelationManager
         return $schema
             ->components([
                 Select::make('service_id')
+                    ->label('Serviço')
+                    ->searchable()
                     ->relationship('service', 'name', function ($query) {
                         $query->where('services.company_id', Filament::getTenant()->id);
                     })
                     ->required()
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set, callable $get, $state) {
+                        $service = \App\Models\Service::find($state);
+                        if ($service) {
+                            $set('unit_price', number_format($service->price, 2, ',', ''));
+                        } else {
+                            $set('unit_price', null);
+                        }
+                        self::calculateValues($get, $set);
+                    }),
                 Group::make()
                     ->columns(3)
                     ->columnSpanFull()
@@ -44,35 +58,57 @@ class ItemsRelationManager extends RelationManager
                         TextInput::make('quantity')
                             ->label('Quantidade')
                             ->required()
-                            ->numeric(),
+                            ->numeric()
+                            ->default(1)
+                            ->minValue(0)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn ($state, Set $set, callable $get) => self::calculateValues($get, $set)),
                         Money::make('unit_price')
                             ->label('Preço Unitário')
                             ->required()
-                            ->numeric()
-                            ->prefix('$'),
-                        Money::make('unit_cost')
-                            ->label('Custo Unitário')
-                            ->numeric()
-                            ->prefix('$'),
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn ($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                        Money::make('subtotal')
+                            ->label('Subtotal')
+                            ->readOnly()
+                            ->dehydrated(),
                     ]),
                 Group::make()
                     ->columns(3)
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('discount_percentage')
+                        Money::make('discount_percentage')
                             ->label('Desconto (%)')
-                            ->required()
                             ->numeric()
-                            ->default(0.0),
+                            ->default(0.0)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->suffix('%')
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
+                                $subtotal = (float) ($get('subtotal') ?? 0);
+                                $percentage = (float) ($state ?? 0);
+                                $discountAmount = $subtotal * ($percentage / 100);
+                                $set('discount_amount', number_format($discountAmount, 2, ',', ''));
+                                self::calculateValues($get, $set);
+                            }),
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
-                            ->required()
-                            ->numeric()
-                            ->default(0.0),
-                        Money::make('subtotal')
-                            ->label('Subtotal'),
+                            ->default(0.0)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
+                                $subtotal = (float) ($get('subtotal') ?? 0);
+                                $discountAmount = (float) ($state ?? 0);
+                                if ($subtotal > 0) {
+                                    $percentage = ($discountAmount / $subtotal) * 100;
+                                    $set('discount_percentage', number_format($percentage, 2, ',', ''));
+                                }
+                                self::calculateValues($get, $set);
+                            }),
                         Money::make('total_amount')
-                            ->numeric(),
+                            ->label('Valor Total')
+                            ->readOnly()
+                            ->dehydrated(),
                     ]),
                 Textarea::make('observations')
                     ->label('Observações')
@@ -84,42 +120,40 @@ class ItemsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('service_id')
+            ->heading('Itens')
             ->columns([
                 TextColumn::make('service.name')
                     ->label('Serviço')
                     ->searchable(),
-                TextColumn::make('unit_of_measure')
-                    ->badge()
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('quantity')
                     ->label('Qtde.')
-                    ->numeric()
+                    ->numeric(2, ',', '.')
                     ->sortable(),
                 TextColumn::make('unit_price')
                     ->label('Preço Unit.')
-                    ->money()
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('unit_cost')
                     ->label('Custo Unit.')
-                    ->money()
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_percentage')
                     ->label('Desc. (%)')
-                    ->numeric()
+                    ->numeric(2, ',', '.')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
-                    ->numeric()
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('subtotal')
                     ->label('Subtotal')
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money()
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('createdBy')
                     ->label('Criado por')
@@ -158,5 +192,20 @@ class ItemsRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    protected static function calculateValues(callable $get, Set $set): void
+    {
+        $quantity = (float) ($get('quantity') ?? 0);
+        $unitPrice = (float) ($get('unit_price') ?? 0);
+        $discountAmount = (float) ($get('discount_amount') ?? 0);
+
+        // Calcula o subtotal
+        $subtotal = $quantity * $unitPrice;
+        $set('subtotal', number_format($subtotal, 2, ',', ''));
+
+        // Calcula o total
+        $totalAmount = $subtotal - $discountAmount;
+        $set('total_amount', number_format($totalAmount, 2, ',', ''));
     }
 }

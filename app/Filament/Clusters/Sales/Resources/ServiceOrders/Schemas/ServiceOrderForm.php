@@ -212,7 +212,7 @@ class ServiceOrderForm
                         Tab::make('Valores')
                             ->icon(Heroicon::CurrencyDollar)
                             ->schema([
-                                Section::make('Valores e Horas')
+                                Section::make('Valores')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 4,
