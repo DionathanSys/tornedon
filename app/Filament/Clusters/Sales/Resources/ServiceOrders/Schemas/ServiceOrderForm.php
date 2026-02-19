@@ -8,6 +8,9 @@ use App\Enum\ServiceOrder\Priority;
 use App\Models\CompanyPreference;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
+use App\Models\ServiceOrder;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -16,14 +19,17 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Livewire as ComponentsLivewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use Livewire\Livewire;
 
 class ServiceOrderForm
 {
@@ -67,10 +73,10 @@ class ServiceOrderForm
                                             ->afterStateUpdated(fn($state, $set) => $set('equipment_id', null))
                                             ->options(function () {
                                                 return \App\Models\Partner::whereHas('companies', function ($query) {
-                                                        $query->where('companies.id', Filament::getTenant()->id)
-                                                            ->whereJsonContains('company_partner.type', 'customer')
-                                                            ->where('company_partner.is_active', true);
-                                                    })
+                                                    $query->where('companies.id', Filament::getTenant()->id)
+                                                        ->whereJsonContains('company_partner.type', 'customer')
+                                                        ->where('company_partner.is_active', true);
+                                                })
                                                     ->orderBy('name')
                                                     ->pluck('name', 'id');
                                             }),
@@ -319,6 +325,23 @@ class ServiceOrderForm
                                             ->addActionLabel('Adicionar informação')
                                             ->reorderable(),
                                     ]),
+                            ]),
+                        Tab::make('Serviços')
+                            ->icon(Heroicon::WrenchScrewdriver)
+                            ->schema([
+                                Section::make('Serviços Realizados')
+                                    ->columnSpanFull()
+                                    ->contained(false)
+                                    ->schema([
+                                        ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
+                                            'ownerRecord' => $record,
+                                            'pageClass' => EditServiceOrder::class,
+                                            ])
+                                            ->key('items-relation-manager')
+                                            ->columnSpanFull()
+
+                                    ])
+                                    ->visibleOn([Operation::Edit]),
                             ]),
                     ]),
             ]);
