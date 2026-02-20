@@ -31,6 +31,8 @@ class ServiceOrderItem extends Model
         'unit_cost'            => MoneyCast::class,
         'discount_percentage'  => 'decimal:2',
         'discount_amount'      => MoneyCast::class,
+        'subtotal'             => MoneyCast::class,
+        'total_amount'         => MoneyCast::class,
         'additional_info'      => 'array',
     ];
 
