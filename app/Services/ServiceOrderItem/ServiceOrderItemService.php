@@ -69,7 +69,6 @@ class ServiceOrderItemService
                         'metodo'            => __METHOD__ . '@' . __LINE__,
                         'message'           => $this->getMessage(),
                         'error_code'        => $this->getErrorCode(),
-                        'action_message'    => $action->getMessage(),
                         'errors'            => $action->getErrors(),
                     ]);
 

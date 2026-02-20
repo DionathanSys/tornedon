@@ -15,6 +15,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Service\ServiceService;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -37,9 +38,9 @@ final class CreateItemAction
                     ->columnSpanFull()
                     ->live()
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        $service = \App\Models\Service::find($state);
+                        $service = (new ServiceService())->find($state);
                         if ($service) {
-                            $set('unit_price', number_format($service->price, 2, ',', ''));
+                            $set('unit_price', number_format($service->price, 2, ',', '.'));
                         } else {
                             $set('unit_price', null);
                         }
@@ -128,7 +129,8 @@ final class CreateItemAction
 
                 notify::success(message: $service->getMessageUser());
                 return $item;
-            });
+            })
+            ->successNotification(null);
     }
 
     protected static function calculateValues(callable $get, Set $set): void

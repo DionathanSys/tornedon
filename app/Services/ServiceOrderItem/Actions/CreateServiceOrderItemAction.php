@@ -43,6 +43,7 @@ class CreateServiceOrderItemAction
                 'message'    => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'errors'     => $e->errors(),
+                'data'       => $data,
             ]);
 
             return null;
@@ -55,6 +56,7 @@ class CreateServiceOrderItemAction
                 'message'    => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'exception'  => $e->getMessage(),
+                'data'       => $data,
             ]);
 
             return null;
@@ -68,6 +70,7 @@ class CreateServiceOrderItemAction
                 'error_code' => $this->getErrorCode(),
                 'exception'  => $e->getMessage(),
                 'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
             ]);
 
             return null;
