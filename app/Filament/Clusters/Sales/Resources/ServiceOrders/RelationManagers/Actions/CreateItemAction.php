@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
 use Filament\Actions\Action;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -90,17 +91,16 @@ final class CreateItemAction
                                 $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
                                 self::calculateValues($get, $set);
                             })
-                            ->beforeLabel(Action::make('reset_discount_percentage')
+                            ->afterLabel(Action::make('reset_discount_percentage')
                                 ->label('')
                                 ->icon(Heroicon::ArrowPath)
                                 ->action(function (Set $set, Get $get) {
-                                    $set('discount_percentage', 0);
-                                    $set('discount_amount', 0);
+                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                    $set('discount_amount', number_format(0, 2, ',', '.'));
                                     self::calculateValues($get, $set);
                                 })),
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
-                            ->default(0.0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
