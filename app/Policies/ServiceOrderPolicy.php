@@ -43,13 +43,13 @@ class ServiceOrderPolicy
      */
     public function update(User $user, ServiceOrder $serviceOrder): bool
     {
-        // Não pode editar ordens faturadas ou canceladas
-        if (in_array($serviceOrder->status->value, ['faturada', 'cancelada'])) {
-            return false;
-        }
-
+        // Acesso à página é sempre permitido; campos e itens são bloqueados
+        // individualmente pelo form (->disabled) e pela AuthorizesServiceOrderItemActions.
         return true;
         // Para ativar verificação de permissão e empresa:
+        // if (in_array($serviceOrder->status->value, ['faturada', 'cancelada'])) {
+        //     return false;
+        // }
         // return $user->can('update_service_orders')
         //     && $user->belongsToCompany($serviceOrder->company_id);
     }

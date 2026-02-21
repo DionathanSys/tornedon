@@ -41,6 +41,11 @@ class ServiceOrderForm
                 'md' => 4,
                 'lg' => 12,
             ])
+            ->disabled(
+                fn (Schema $schema): bool =>
+                    $schema->getOperation() === Operation::Edit
+                    && $schema->getRecord()?->status !== State::OPEN
+            )
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
