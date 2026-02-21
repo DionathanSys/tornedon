@@ -19,6 +19,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
 use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\ParsesMoneyValues;
+use Filament\Actions\Action;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -84,24 +85,31 @@ final class EditItemAction
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $percentage = self::parseMoneyValue($state);
                                 $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', $discountAmount);
+                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
                                 self::calculateValues($get, $set);
-                            }),
+                            })
+                            ->beforeLabel(Action::make('reset_discount_percentage')
+                                ->label('')
+                                ->icon(Heroicon::ArrowPath)
+                                ->live(onClick: true)
+                                ->afterClick(function (Set $set, callable $get) {
+                                    $set('discount_percentage', 0);
+                                    $set('discount_amount', 0);
+                                    self::calculateValues($get, $set);
+                                })),
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
+                            ->default(0.0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $discountAmount = self::parseMoneyValue($state);
                                 if ($subtotal > 0) {
                                     $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', $percentage);
+                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
                                 }
                                 self::calculateValues($get, $set);
                             }),
-                        Money::make('total_amount')
-                            ->label('Valor Total')
-                            ->readOnly(),
                     ]),
                 Textarea::make('observations')
                     ->label('Observações')
