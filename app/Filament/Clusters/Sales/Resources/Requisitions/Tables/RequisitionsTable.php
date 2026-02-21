@@ -81,7 +81,7 @@ class RequisitionsTable
                 DeleteAction::make()
                     ->iconButton(),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 DeleteBulkAction::make(),
             ]);
     }

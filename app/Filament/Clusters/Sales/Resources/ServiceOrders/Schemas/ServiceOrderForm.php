@@ -334,6 +334,7 @@ class ServiceOrderForm
                             ]),
                         Tab::make('Serviços')
                             ->icon(Heroicon::WrenchScrewdriver)
+                            ->visibleOn([Operation::Edit])
                             ->schema([
                                 Section::make()
                                     ->columnSpanFull()

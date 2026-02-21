@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Requisition\Status;
+use App\Services\Requisition\States\RequisitionState;
+use App\Services\Requisition\States\StateResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -98,5 +100,13 @@ class Requisition extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Retorna o objeto de estado atual da requisição (State Pattern).
+     */
+    public function state(): RequisitionState
+    {
+        return StateResolver::resolve($this);
     }
 }

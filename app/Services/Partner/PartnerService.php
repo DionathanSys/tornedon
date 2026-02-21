@@ -190,4 +190,61 @@ class PartnerService
             })
             ->get();
     }
+
+    /**
+     * Busca parceiros por tipo de vinculo para uso em selects do Filament.
+     * Retorna um array [id => 'Nome'].
+     *
+     * @param string $search  Termo de busca
+     * @param int    $companyId  Restringe à empresa atual
+     * @param int    $limit   Máximo de resultados (padrão 20)
+     */
+    public function searchForSelect(string $search, int $companyId, string $type, int $limit = 20): array
+    {
+        Log::debug('Buscando parceiros para select', [
+            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'search'     => $search,
+            'company_id' => $companyId,
+            'type'       => $type,
+        ]);
+
+        return Partner::whereHas('companies', function ($query) use ($companyId, $type) {
+            $query->where('company_id', $companyId)
+                ->whereJsonContains('company_partner.type', $type)
+                ->where('company_partner.is_active', true);
+        })
+            ->limit($limit)
+            ->get()
+            ->mapWithKeys(fn(Partner $partner) => [
+                $partner->id => self::formatSelectLabel($partner),
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Retorna o label formatado de um parceiro para exibição em um select.
+     */
+    public function getLabelForSelect(int $id): ?string
+    {
+        $partner = Partner::find($id);
+
+        if (! $partner) {
+            return null;
+        }
+
+        return self::formatSelectLabel($partner);
+    }
+
+    /* ==============================
+     |  Helpers
+     |==============================*/
+
+    /**
+     * Formata o label do parceiro: "Nome (Documento)"
+     */
+    private static function formatSelectLabel(Partner $partner): string
+    {
+        $label = "{$partner->name} ({$partner->document_number})";
+        return $label;
+    }
 }
