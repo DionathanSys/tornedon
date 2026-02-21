@@ -77,10 +77,6 @@ final class EditItemAction
                     ->schema([
                         Money::make('discount_percentage')
                             ->label('Desconto (%)')
-                            ->numeric()
-                            ->default(0.0)
-                            ->minValue(0)
-                            ->maxValue(100)
                             ->suffix('%')
                             ->prefix(null)
                             ->live(onBlur: true)
