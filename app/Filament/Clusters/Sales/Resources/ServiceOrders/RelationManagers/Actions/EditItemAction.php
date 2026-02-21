@@ -28,11 +28,11 @@ final class EditItemAction
 {
     use AuthorizesServiceOrderItemActions;
     use ParsesMoneyValues;
-    
+
     public static function make(): EditAction
     {
         return EditAction::make()
-            ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
                 Select::make('service_id')
                     ->label('Serviço')
@@ -63,12 +63,12 @@ final class EditItemAction
                             ->default(1)
                             ->minValue(0)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn ($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
                         Money::make('unit_price')
                             ->label('Preço Unitário')
                             ->required()
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn ($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
                         Money::make('subtotal')
                             ->label('Subtotal')
                             ->readOnly(),
@@ -110,6 +110,9 @@ final class EditItemAction
                                 }
                                 self::calculateValues($get, $set);
                             }),
+                        Money::make('total_amount')
+                            ->label('Valor Total')
+                            ->readOnly(),
                     ]),
                 Textarea::make('observations')
                     ->label('Observações')
@@ -135,19 +138,18 @@ final class EditItemAction
             });
     }
 
-   protected static function calculateValues(callable $get, Set $set): void
+    protected static function calculateValues(callable $get, Set $set): void
     {
         $quantity = self::parseMoneyValue($get('quantity'));
         $unitPrice = self::parseMoneyValue($get('unit_price'));
         $discountAmount = self::parseMoneyValue($get('discount_amount'));
 
-          // Calcula o subtotal
+        // Calcula o subtotal
         $subtotal = $quantity * $unitPrice;
         $set('subtotal', number_format($subtotal, 2, ',', '.'));
 
         // Calcula o total
         $totalAmount = $subtotal - $discountAmount;
         $set('total_amount', number_format($totalAmount, 2, ',', '.'));
-
     }
 }

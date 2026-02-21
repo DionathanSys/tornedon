@@ -32,7 +32,7 @@ final class CreateItemAction
             ->label('Serviço')
             ->icon(Heroicon::Plus)
             ->badge()
-            ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
                 Select::make('service_id')
                     ->label('Serviço')
@@ -63,12 +63,12 @@ final class CreateItemAction
                             ->default(1)
                             ->minValue(0)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn ($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
                         Money::make('unit_price')
                             ->label('Preço Unitário')
                             ->required()
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn ($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
                         Money::make('subtotal')
                             ->label('Subtotal')
                             ->readOnly(),
@@ -88,7 +88,15 @@ final class CreateItemAction
                                 $discountAmount = $subtotal * ($percentage / 100);
                                 $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
                                 self::calculateValues($get, $set);
-                            }),
+                            })
+                            ->beforeLabel(Action::make('reset_discount_percentage')
+                                ->label('')
+                                ->icon(Heroicon::ArrowPath)
+                                ->action(function (Set $set, Get $get) {
+                                    $set('discount_percentage', 0);
+                                    $set('discount_amount', 0);
+                                    self::calculateValues($get, $set);
+                                })),
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
                             ->default(0.0)
@@ -112,9 +120,9 @@ final class CreateItemAction
             ])
             ->using(function (array $data, RelationManager $livewire): ?Model {
                 $serviceOrder = $livewire->getOwnerRecord();
-                
+
                 $data['service_order_id'] = $serviceOrder->id;
-                
+
                 Log::debug('Iniciando criação de item via RelationManager', [
                     'metodo'            => __METHOD__ . '@' . __LINE__,
                     'service_order_id'  => $serviceOrder->id,
@@ -153,7 +161,7 @@ final class CreateItemAction
             'metodo'        => __METHOD__ . '@' . __LINE__,
             'quantity'      => $quantity,
             'unit_price'    => $unitPrice,
-            'discount_amount'=> $discountAmount,
+            'discount_amount' => $discountAmount,
             'subtotal'      => $subtotal,
             'total_amount'  => $totalAmount,
         ]);
