@@ -77,7 +77,8 @@ final class EditItemAction
                     ->schema([
                         Money::make('discount_percentage')
                             ->label('Desconto (%)')
-                            
+                            ->suffix('%')
+                            ->prefix(null)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
