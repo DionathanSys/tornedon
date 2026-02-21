@@ -335,7 +335,7 @@ class ServiceOrderForm
                         Tab::make('Serviços')
                             ->icon(Heroicon::WrenchScrewdriver)
                             ->schema([
-                                Section::make('Serviços Realizados')
+                                Section::make()
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([

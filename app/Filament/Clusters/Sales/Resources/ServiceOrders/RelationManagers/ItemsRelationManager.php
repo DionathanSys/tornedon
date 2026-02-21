@@ -10,6 +10,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -21,7 +22,7 @@ class ItemsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('service_id')
-            ->heading('Itens')
+            ->heading('Serviços')
             ->columns([
                 TextColumn::make('service.name')
                     ->label('Serviço')
@@ -31,14 +32,9 @@ class ItemsRelationManager extends RelationManager
                     ->numeric(2, ',', '.')
                     ->sortable(),
                 TextColumn::make('unit_price')
-                    ->label('Preço Unit.')
+                    ->label('Vlr. Unit.')
                     ->money('BRL')
                     ->sortable(),
-                TextColumn::make('unit_cost')
-                    ->label('Custo Unit.')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_percentage')
                     ->label('Desc. (%)')
                     ->numeric(2, ',', '.')
@@ -47,14 +43,17 @@ class ItemsRelationManager extends RelationManager
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
                     ->money('BRL')
+                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100))
                     ->sortable(),
                 TextColumn::make('subtotal')
                     ->label('Subtotal')
                     ->money('BRL')
+                    ->summarize(Sum::make('subtotal')->label('TT Subtotal')->money('BRL', 100))
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Total')
                     ->money('BRL')
+                    ->summarize(Sum::make('total_amount')->label('TT Geral')->money('BRL', 100))
                     ->sortable(),
                 TextColumn::make('createdBy')
                     ->label('Criado por')
