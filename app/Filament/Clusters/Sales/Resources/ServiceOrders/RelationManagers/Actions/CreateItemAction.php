@@ -46,7 +46,7 @@ final class CreateItemAction
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
                         $service = (new ServiceService())->find($state);
                         if ($service) {
-                            $set('unit_price', $service->price);
+                            $set('unit_price', number_format($service->price, 2, ',', '.'));
                         } else {
                             $set('unit_price', null);
                         }
@@ -147,11 +147,11 @@ final class CreateItemAction
 
         // Calcula o subtotal
         $subtotal = $quantity * $unitPrice;
-        $set('subtotal', $subtotal);
+        $set('subtotal', number_format($subtotal, 2, ',', '.'));
 
         // Calcula o total
         $totalAmount = $subtotal - $discountAmount;
-        $set('total_amount', $totalAmount);
+        $set('total_amount', number_format($totalAmount, 2, ',', '.'));
 
         Log::debug('Valores recalculados', [
             'metodo'        => __METHOD__ . '@' . __LINE__,

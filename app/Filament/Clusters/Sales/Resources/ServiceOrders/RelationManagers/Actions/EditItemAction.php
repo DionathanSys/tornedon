@@ -44,7 +44,7 @@ final class EditItemAction
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
                         $service = (new ServiceService())->find($state);
                         if ($service) {
-                            $set('unit_price', $service->price);
+                            $set('unit_price', number_format($service->price, 2, ',', '.'));
                         } else {
                             $set('unit_price', null);
                         }
@@ -138,7 +138,7 @@ final class EditItemAction
         $unitPrice = self::parseMoneyValue($get('unit_price'));
         $discountAmount = self::parseMoneyValue($get('discount_amount'));
 
-        // Calcula o subtotal
+          // Calcula o subtotal
         $subtotal = $quantity * $unitPrice;
         $set('subtotal', number_format($subtotal, 2, ',', '.'));
 
