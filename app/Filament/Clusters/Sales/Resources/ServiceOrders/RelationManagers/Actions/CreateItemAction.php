@@ -65,12 +65,20 @@ final class CreateItemAction
                             ->default(1)
                             ->minValue(0)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(function($state, Set $set, Get $get) {
+                                $set('discount_amount', number_format(0, 2, ',', '.'));
+                                $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                self::calculateValues($get, $set);
+                            }),
                         Money::make('unit_price')
                             ->label('Preço Unitário')
                             ->required()
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(function($state, Set $set, Get $get) {
+                                $set('discount_amount', number_format(0, 2, ',', '.'));
+                                $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                self::calculateValues($get, $set);
+                            }),
                         Money::make('subtotal')
                             ->label('Subtotal')
                             ->readOnly(),

@@ -63,12 +63,20 @@ final class EditItemAction
                             ->default(1)
                             ->minValue(0)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(function($state, Set $set, Get $get) {
+                                $set('discount_amount', number_format(0, 2, ',', '.'));
+                                $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                self::calculateValues($get, $set);
+                            }),
                         Money::make('unit_price')
                             ->label('Preço Unitário')
                             ->required()
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, Set $set, callable $get) => self::calculateValues($get, $set)),
+                            ->afterStateUpdated(function($state, Set $set, Get $get) {
+                                $set('discount_amount', number_format(0, 2, ',', '.'));
+                                $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                self::calculateValues($get, $set);
+                            }),
                         Money::make('subtotal')
                             ->label('Subtotal')
                             ->readOnly(),
@@ -82,7 +90,7 @@ final class EditItemAction
                             ->suffix('%')
                             ->prefix(null)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $percentage = self::parseMoneyValue($state);
                                 $discountAmount = $subtotal * ($percentage / 100);
@@ -100,7 +108,7 @@ final class EditItemAction
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
                             ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $discountAmount = self::parseMoneyValue($state);
                                 if ($subtotal > 0) {
@@ -137,7 +145,7 @@ final class EditItemAction
             });
     }
 
-    protected static function calculateValues(callable $get, Set $set): void
+    protected static function calculateValues(Get $get, Set $set): void
     {
         $quantity = self::parseMoneyValue($get('quantity'));
         $unitPrice = self::parseMoneyValue($get('unit_price'));
