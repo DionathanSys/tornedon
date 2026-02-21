@@ -20,6 +20,7 @@ use App\Services\Service\ServiceService;
 use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\Action;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -91,8 +92,7 @@ final class EditItemAction
                             ->beforeLabel(Action::make('reset_discount_percentage')
                                 ->label('')
                                 ->icon(Heroicon::ArrowPath)
-                                ->live(onClick: true)
-                                ->afterClick(function (Set $set, callable $get) {
+                                ->action(function (Set $set, Get $get) {
                                     $set('discount_percentage', 0);
                                     $set('discount_amount', 0);
                                     self::calculateValues($get, $set);
