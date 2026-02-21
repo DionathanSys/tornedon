@@ -50,6 +50,8 @@ class ServiceOrderForm
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
+                    ->persistTab(true)
+                    ->id('order-tabs')
                     ->vertical()
                     ->tabs([
                         Tab::make('Dados Gerais')
@@ -97,7 +99,7 @@ class ServiceOrderForm
                                             ->getOptionLabelUsing(
                                                 fn($value): ?string => (new EquipmentService())
                                                     ->getLabelForSelect((int) $value)
-                                            )                                        
+                                            )
                                             ->disabled(fn($get) => !$get('customer_id'))
                                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                                         Select::make('status')

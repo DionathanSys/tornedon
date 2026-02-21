@@ -40,7 +40,7 @@ class EquipmentsTable
                     ->label('Placa / Nº Série')
                     ->disabledClick()
                     ->toggleable(isToggledHiddenByDefault: false)
-                    ->searchable(query: fn(Builder $q, string $s) => $q->searchByIdentifier($s)),
+                    ->searchable(query: fn(Builder $query, string $search) => $query->searchByIdentifier($search)),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
