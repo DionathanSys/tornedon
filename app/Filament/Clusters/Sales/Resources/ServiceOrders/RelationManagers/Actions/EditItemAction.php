@@ -89,7 +89,6 @@ final class EditItemAction
                             }),
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
-                            ->default(0.0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
