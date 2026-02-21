@@ -11,6 +11,7 @@ use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Models\ServiceOrder;
+use App\Services\Equipment\EquipmentService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -42,8 +43,8 @@ class ServiceOrderForm
                 'lg' => 12,
             ])
             ->disabled(
-                fn (Schema $schema): bool =>
-                    $schema->getOperation() === Operation::Edit
+                fn(Schema $schema): bool =>
+                $schema->getOperation() === Operation::Edit
                     && $schema->getRecord()?->status !== State::OPEN
             )
             ->components([
@@ -87,18 +88,15 @@ class ServiceOrderForm
                                             }),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->searchable()
-                                            ->preload()
-                                            ->options(function ($get) {
-                                                $customerId = $get('customer_id');
-                                                if (!$customerId) {
-                                                    return [];
-                                                }
-                                                return \App\Models\Equipment::where('owner_id', $customerId)
-                                                    ->orderBy('name')
-                                                    ->pluck('name', 'id');
-                                            })
+                                            ->getSearchResultsUsing(
+                                                fn(string $search): array => (new EquipmentService())
+                                                    ->searchForSelect($search, Filament::getTenant()->id)
+                                            )
+                                            ->getOptionLabelUsing(
+                                                fn($value): ?string => (new EquipmentService())
+                                                    ->getLabelForSelect((int) $value)
+                                            )                                        
                                             ->disabled(fn($get) => !$get('customer_id'))
                                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                                         Select::make('status')
@@ -341,7 +339,7 @@ class ServiceOrderForm
                                         ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
                                             'ownerRecord' => $record,
                                             'pageClass' => EditServiceOrder::class,
-                                            ])
+                                        ])
                                             ->key('items-relation-manager')
                                             ->columnSpanFull()
 
