@@ -31,33 +31,16 @@ class EquipmentsTable
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->searchable()
-                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->formatStateUsing(fn($state) => $state->description())
                     ->sortable()
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->disabledClick(),
-                TextColumn::make('placa')
-                    ->label('Placa')
-                    ->searchable()
-                    ->sortable()
-                    ->placeholder('Não aplicável')
-                    ->disabledClick(),
-                TextColumn::make('model')
-                    ->label('Modelo')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->disabledClick(),
-                TextColumn::make('serial_number')
-                    ->label('Nº Série')
-                    ->searchable(
-                        isIndividual: true,
-                        isGlobal: false,
-                        query: function (Builder $query, string $search): Builder {
-                            return $query->where('serial_number', 'like', "{$search}%");
-                        }
-                    )
+                TextColumn::make('identifier')
+                    ->label('Placa / Nº Série')
                     ->disabledClick()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->searchable(query: fn(Builder $q, string $s) => $q->searchByIdentifier($s)),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
@@ -102,8 +85,7 @@ class EquipmentsTable
                 EditAction::make()
                     ->iconButton(),
             ])
-            ->toolbarActions([
-            ])
+            ->toolbarActions([])
             ->defaultSort('id', 'desc');
     }
 }

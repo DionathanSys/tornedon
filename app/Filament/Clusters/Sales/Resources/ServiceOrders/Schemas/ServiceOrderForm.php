@@ -88,6 +88,7 @@ class ServiceOrderForm
                                             }),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
+                                            ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->searchable()
                                             ->getSearchResultsUsing(
                                                 fn(string $search): array => (new EquipmentService())

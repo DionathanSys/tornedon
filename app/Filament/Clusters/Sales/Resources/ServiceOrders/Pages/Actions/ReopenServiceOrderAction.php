@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -57,6 +58,7 @@ final class ReopenServiceOrderAction
                 ]);
 
                 notify::success('Ordem de serviço reaberta com sucesso.');
-            });
+            })
+            ->successRedirectUrl(fn(ServiceOrder $record): string => ServiceOrderResource::getUrl('edit', ['record' => $record->id]));
     }
 }
