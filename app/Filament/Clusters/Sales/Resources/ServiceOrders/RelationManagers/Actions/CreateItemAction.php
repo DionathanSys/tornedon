@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions;
 
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
+use App\Traits\AuthorizesServiceOrderItemActions;
+use App\Traits\ParsesMoneyValues;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -21,12 +23,16 @@ use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class CreateItemAction
 {
+    use AuthorizesServiceOrderItemActions;
+    use ParsesMoneyValues;
+
     public static function make(): CreateAction
     {
         return CreateAction::make()
             ->label('Serviço')
             ->icon(Heroicon::Plus)
             ->badge()
+            ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
                 Select::make('service_id')
                     ->label('Serviço')
@@ -36,11 +42,11 @@ final class CreateItemAction
                     })
                     ->required()
                     ->columnSpanFull()
-                    ->live()
+                    ->live(onBlur: true)
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
                         $service = (new ServiceService())->find($state);
                         if ($service) {
-                            $set('unit_price', number_format($service->price, 2, ',', '.'));
+                            $set('unit_price', $service->price);
                         } else {
                             $set('unit_price', null);
                         }
@@ -81,10 +87,10 @@ final class CreateItemAction
                             ->prefix(null)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                                $subtotal = (float) ($get('subtotal') ?? 0);
-                                $percentage = (float) ($state ?? 0);
+                                $subtotal = self::parseMoneyValue($get('subtotal'));
+                                $percentage = self::parseMoneyValue($state);
                                 $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
+                                $set('discount_amount', $discountAmount);
                                 self::calculateValues($get, $set);
                             }),
                         Money::make('discount_amount')
@@ -92,11 +98,11 @@ final class CreateItemAction
                             ->default(0.0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                                $subtotal = (float) ($get('subtotal') ?? 0);
-                                $discountAmount = (float) ($state ?? 0);
+                                $subtotal = self::parseMoneyValue($get('subtotal'));
+                                $discountAmount = self::parseMoneyValue($state);
                                 if ($subtotal > 0) {
                                     $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
+                                    $set('discount_percentage', $percentage);
                                 }
                                 self::calculateValues($get, $set);
                             }),
@@ -135,16 +141,25 @@ final class CreateItemAction
 
     protected static function calculateValues(callable $get, Set $set): void
     {
-        $quantity = (float) ($get('quantity') ?? 0);
-        $unitPrice = (float) ($get('unit_price') ?? 0);
-        $discountAmount = (float) ($get('discount_amount') ?? 0);
+        $quantity = self::parseMoneyValue($get('quantity'));
+        $unitPrice = self::parseMoneyValue($get('unit_price'));
+        $discountAmount = self::parseMoneyValue($get('discount_amount'));
 
         // Calcula o subtotal
         $subtotal = $quantity * $unitPrice;
-        $set('subtotal', number_format($subtotal, 2, ',', '.'));
+        $set('subtotal', $subtotal);
 
         // Calcula o total
         $totalAmount = $subtotal - $discountAmount;
-        $set('total_amount', number_format($totalAmount, 2, ',', '.'));
+        $set('total_amount', $totalAmount);
+
+        Log::debug('Valores recalculados', [
+            'metodo'        => __METHOD__ . '@' . __LINE__,
+            'quantity'      => $quantity,
+            'unit_price'    => $unitPrice,
+            'discount_amount'=> $discountAmount,
+            'subtotal'      => $subtotal,
+            'total_amount'  => $totalAmount,
+        ]);
     }
 }

@@ -2,32 +2,41 @@
 
 namespace App\Services\ServiceOrder\States;
 
-use App\Domain\Exceptions\ServiceOrder\InvalidStateTransitionException;
+use App\Exceptions\DomainValidationException;
 use App\Models\ServiceOrder;
 
-abstract class ServiceOrderState
+interface ServiceOrderState
 {
-    public function __construct(
-        protected ServiceOrder $ordem
-    ) {}
+    /**
+     * Encerra a ordem de serviço.
+     *
+     * @throws DomainValidationException
+     */
+    public function close(ServiceOrder $order, int $userId): void;
 
-    public function close(): void
-    {
-         throw InvalidStateTransitionException::make(
-            'encerrar',
-            $this->name()
-        );
-    }
+    /**
+     * Marca a ordem de serviço como faturada.
+     *
+     * @throws DomainValidationException
+     */
+    public function invoice(ServiceOrder $order, int $userId): void;
 
-    public function invoice(): void
-    {
-        throw new InvalidStateTransitionException('Faturamento não permitido neste estado.');
-    }
+    /**
+     * Cancela a ordem de serviço.
+     *
+     * @throws DomainValidationException
+     */
+    public function cancel(ServiceOrder $order, int $userId): void;
 
-    public function cancel(): void
-    {
-        throw new InvalidStateTransitionException('Cancelamento não permitido neste estado.');
-    }
+    /**
+     * Reabre uma ordem encerrada ou cancelada.
+     *
+     * @throws DomainValidationException
+     */
+    public function reopen(ServiceOrder $order, int $userId): void;
 
-    abstract public function name(): string;
+    /**
+     * Retorna true se a transição que recebe o $transition é possível.
+     */
+    public function canTransitionTo(string $transition): bool;
 }

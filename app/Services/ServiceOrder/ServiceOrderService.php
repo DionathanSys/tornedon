@@ -2,10 +2,15 @@
 
 namespace App\Services\ServiceOrder;
 
+use App\Enum\ServiceOrder\State;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderSequence;
+use App\Services\ServiceOrder\Actions\CancelServiceOrderAction;
+use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
 use App\Services\ServiceOrder\Actions\DeleteServiceOrderAction;
+use App\Services\ServiceOrder\Actions\InvoiceServiceOrderAction;
+use App\Services\ServiceOrder\Actions\ReopenServiceOrderAction;
 use App\Services\ServiceOrder\Actions\RestoreServiceOrderAction;
 use App\Services\ServiceOrder\Actions\UpdateServiceOrderAction;
 use App\Traits\HandlesServiceResponse;
@@ -487,6 +492,206 @@ class ServiceOrderService
             ]);
 
             return false;
+        }
+    }
+
+    /* ==============================
+     |  Transições de Estado
+     |==============================*/
+
+    /**
+     * Encerra uma ordem de serviço (aberta → encerrada).
+     */
+    public function close(ServiceOrder $serviceOrder, int $userId): ?ServiceOrder
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder, $userId) {
+                $action = new CloseServiceOrderAction($userId);
+                $result = $action->execute($serviceOrder);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error($action->getMessage(), [
+                        'metodo'           => __METHOD__ . '@' . __LINE__,
+                        'message'          => $this->getMessage(),
+                        'error_code'       => $this->getErrorCode(),
+                        'service_order_id' => $serviceOrder->id,
+                        'errors'           => $action->getErrors(),
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Ordem de serviço encerrada com sucesso');
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao encerrar ordem de serviço');
+
+            Log::error('Erro ao encerrar ordem de serviço via service', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_code'       => $this->getErrorCode(),
+                'exception'        => $e->getMessage(),
+                'trace'            => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Fatura uma ordem de serviço (encerrada → faturada).
+     */
+    public function invoice(ServiceOrder $serviceOrder, int $userId): ?ServiceOrder
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder, $userId) {
+                $action = new InvoiceServiceOrderAction($userId);
+                $result = $action->execute($serviceOrder);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error($action->getMessage(), [
+                        'metodo'           => __METHOD__ . '@' . __LINE__,
+                        'message'          => $this->getMessage(),
+                        'error_code'       => $this->getErrorCode(),
+                        'errors'           => $action->getErrors(),
+                        'service_order_id' => $serviceOrder->id,
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Ordem de serviço faturada com sucesso');
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao faturar ordem de serviço');
+
+            Log::error('Erro ao faturar ordem de serviço via service', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_code'       => $this->getErrorCode(),
+                'exception'        => $e->getMessage(),
+                'trace'            => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Cancela uma ordem de serviço (aberta → cancelada).
+     */
+    public function cancel(ServiceOrder $serviceOrder, int $userId): ?ServiceOrder
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder, $userId) {
+                $action = new CancelServiceOrderAction($userId);
+                $result = $action->execute($serviceOrder);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error($action->getMessage(), [
+                        'metodo'           => __METHOD__ . '@' . __LINE__,
+                        'service_order_id' => $serviceOrder->id,
+                        'message'          => $this->getMessage(),
+                        'error_code'       => $this->getErrorCode(),
+                        'errors'           => $action->getErrors(),
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Ordem de serviço cancelada com sucesso');
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao cancelar ordem de serviço');
+
+            Log::error('Erro ao cancelar ordem de serviço via service', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_code'       => $this->getErrorCode(),
+                'exception'        => $e->getMessage(),
+                'trace'            => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Reabre uma ordem de serviço (encerrada|cancelada → aberta).
+     */
+    public function reopen(ServiceOrder $serviceOrder, int $userId): ?ServiceOrder
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder, $userId) {
+                $action = new ReopenServiceOrderAction($userId);
+                $result = $action->execute($serviceOrder);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error($action->getMessage(), [
+                        'metodo'           => __METHOD__ . '@' . __LINE__,
+                        'service_order_id' => $serviceOrder->id,
+                        'message'          => $this->getMessage(),
+                        'error_code'       => $this->getErrorCode(),
+                        'errors'           => $action->getErrors(),
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Ordem de serviço reaberta com sucesso');
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao reabrir ordem de serviço');
+
+            Log::error('Erro ao reabrir ordem de serviço via service', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_code'       => $this->getErrorCode(),
+                'exception'        => $e->getMessage(),
+                'trace'            => $e->getTraceAsString(),
+            ]);
+
+            return null;
         }
     }
 

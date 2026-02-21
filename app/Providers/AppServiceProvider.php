@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\ServiceOrder;
+use App\Policies\ServiceOrderPolicy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,5 +24,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::unguard();
+
+        // Registrar policies
+        Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
     }
 }

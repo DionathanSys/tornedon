@@ -2,14 +2,17 @@
 
 namespace App\Services\ServiceOrderItem\Actions;
 
+use App\Enum\ServiceOrder\State;
 use App\Models\ServiceOrderItem;
+use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 class DeleteServiceOrderItemAction
 {
-    use HandlesActionResponse;
+    use HandlesActionResponse, AuthorizesServiceOrderItemActions;
 
     public function __construct(
         private ServiceOrderItem $serviceOrderItem,
@@ -22,6 +25,11 @@ class DeleteServiceOrderItemAction
      */
     public function execute(): bool
     {
+        if (! self::canDeleteItem($this->serviceOrderItem->service_order_id)) {
+            $this->setError('Não é permitido excluir itens desta ordem de serviço.');
+            return false;
+        }
+        
         try {
             $deleted = $this->serviceOrderItem->delete();
 
@@ -77,6 +85,13 @@ class DeleteServiceOrderItemAction
      */
     public function forceDelete(): bool
     {
+        $serviceOrder = $this->serviceOrderItem->serviceOrder;
+
+        if (! self::canDeleteItem($this->serviceOrderItem->service_order_id)) {
+            $this->setError('Não é permitido excluir permanentemente itens desta ordem de serviço.');
+            return false;
+        }
+
         try {
             $deleted = $this->serviceOrderItem->forceDelete();
 

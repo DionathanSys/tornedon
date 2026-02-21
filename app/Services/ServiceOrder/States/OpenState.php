@@ -2,30 +2,60 @@
 
 namespace App\Services\ServiceOrder\States;
 
-use App\Services\ServiceOrder\Events\ServiceOrderCanceled;
-use App\Services\ServiceOrder\Events\ServiceOrderClosed;
+use App\Enum\ServiceOrder\State;
+use App\Exceptions\DomainValidationException;
+use App\Models\ServiceOrder;
+use Illuminate\Support\Facades\Log;
 
-class OpenState extends ServiceOrderState
+/**
+ * Estado: Aberta
+ * Transições permitidas: Encerrar, Cancelar
+ */
+class OpenState implements ServiceOrderState
 {
-    public function close(): void
+    public function close(ServiceOrder $order, int $userId): void
     {
-
-        $this->ordem->update([
-            'status' => 'encerrada',
-            'encerrada_em' => now(),
+        Log::info('ServiceOrder: Encerrando ordem de serviço (aberta → encerrada)', [
+            'service_order_id' => $order->id,
+            'user_id'          => $userId,
         ]);
 
-        event(new ServiceOrderClosed($this->ordem));
+        $order->update([
+            'status'          => State::CLOSED,
+            'completion_date' => $order->completion_date ?? now()->toDateString(),
+            'updated_by'      => $userId,
+        ]);
     }
 
-    public function cancel(): void
+    public function invoice(ServiceOrder $order, int $userId): void
     {
-
-        event(new ServiceOrderCanceled($this->ordem));
+        throw new DomainValidationException(
+            ['status' => ['Não é possível faturar uma ordem aberta. Encerre-a antes de faturar.']]
+        );
     }
 
-    public function name(): string
+    public function cancel(ServiceOrder $order, int $userId): void
     {
-        return 'aberta';
+        Log::info('ServiceOrder: Cancelando ordem de serviço (aberta → cancelada)', [
+            'service_order_id' => $order->id,
+            'user_id'          => $userId,
+        ]);
+
+        $order->update([
+            'status'     => State::CANCELLED,
+            'updated_by' => $userId,
+        ]);
+    }
+
+    public function reopen(ServiceOrder $order, int $userId): void
+    {
+        throw new DomainValidationException(
+            ['status' => ['A ordem já está aberta.']]
+        );
+    }
+
+    public function canTransitionTo(string $transition): bool
+    {
+        return in_array($transition, ['close', 'cancel']);
     }
 }

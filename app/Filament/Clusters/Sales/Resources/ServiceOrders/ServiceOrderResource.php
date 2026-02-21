@@ -27,7 +27,7 @@ class ServiceOrderResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Ordens de Serviço';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 0;
 
     public static function form(Schema $schema): Schema
     {

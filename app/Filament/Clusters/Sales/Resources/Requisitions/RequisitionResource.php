@@ -27,7 +27,7 @@ class RequisitionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Requisições';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

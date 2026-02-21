@@ -6,6 +6,7 @@ use App\Models\ServiceOrderItem;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -15,14 +16,21 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Service\ServiceService;
+use App\Traits\AuthorizesServiceOrderItemActions;
+use App\Traits\ParsesMoneyValues;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class EditItemAction
 {
+    use AuthorizesServiceOrderItemActions;
+    use ParsesMoneyValues;
+    
     public static function make(): EditAction
     {
         return EditAction::make()
+            ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
                 Select::make('service_id')
                     ->label('Serviço')
@@ -32,11 +40,11 @@ final class EditItemAction
                     })
                     ->required()
                     ->columnSpanFull()
-                    ->live()
+                    ->live(onBlur: true)
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        $service = \App\Models\Service::find($state);
+                        $service = (new ServiceService())->find($state);
                         if ($service) {
-                            $set('unit_price', number_format($service->price, 2, ',', ''));
+                            $set('unit_price', $service->price);
                         } else {
                             $set('unit_price', null);
                         }
@@ -77,10 +85,10 @@ final class EditItemAction
                             ->prefix(null)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                                $subtotal = (float) ($get('subtotal') ?? 0);
-                                $percentage = (float) ($state ?? 0);
+                                $subtotal = self::parseMoneyValue($get('subtotal'));
+                                $percentage = self::parseMoneyValue($state);
                                 $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
+                                $set('discount_amount', $discountAmount);
                                 self::calculateValues($get, $set);
                             }),
                         Money::make('discount_amount')
@@ -88,11 +96,11 @@ final class EditItemAction
                             ->default(0.0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                                $subtotal = (float) ($get('subtotal') ?? 0);
-                                $discountAmount = (float) ($state ?? 0);
+                                $subtotal = self::parseMoneyValue($get('subtotal'));
+                                $discountAmount = self::parseMoneyValue($state);
                                 if ($subtotal > 0) {
                                     $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
+                                    $set('discount_percentage', $percentage);
                                 }
                                 self::calculateValues($get, $set);
                             }),
@@ -124,11 +132,11 @@ final class EditItemAction
             });
     }
 
-    protected static function calculateValues(callable $get, Set $set): void
+   protected static function calculateValues(callable $get, Set $set): void
     {
-        $quantity = (float) ($get('quantity') ?? 0);
-        $unitPrice = (float) ($get('unit_price') ?? 0);
-        $discountAmount = (float) ($get('discount_amount') ?? 0);
+        $quantity = self::parseMoneyValue($get('quantity'));
+        $unitPrice = self::parseMoneyValue($get('unit_price'));
+        $discountAmount = self::parseMoneyValue($get('discount_amount'));
 
         // Calcula o subtotal
         $subtotal = $quantity * $unitPrice;
@@ -137,5 +145,6 @@ final class EditItemAction
         // Calcula o total
         $totalAmount = $subtotal - $discountAmount;
         $set('total_amount', number_format($totalAmount, 2, ',', '.'));
+
     }
 }

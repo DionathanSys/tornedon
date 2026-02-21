@@ -73,4 +73,12 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->companies()->whereKey($tenant)->exists();
     }
 
+    /**
+     * Verifica se o usuário pertence a uma empresa específica.
+     */
+    public function belongsToCompany(int $companyId): bool
+    {
+        return $this->companies()->where('companies.id', $companyId)->exists();
+    }
+
 }

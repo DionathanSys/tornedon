@@ -2,20 +2,24 @@
 
 namespace App\Services\ServiceOrder;
 
-use App\Domain\Exceptions\ServiceOrder\InvalidStateTransitionException;
-use App\Models\ServiceOrder;
 use App\Enum\ServiceOrder\State;
+use App\Models\ServiceOrder;
+use App\Services\ServiceOrder\States\CancelledState;
+use App\Services\ServiceOrder\States\ClosedState;
+use App\Services\ServiceOrder\States\InvoicedState;
+use App\Services\ServiceOrder\States\OpenState;
+use App\Services\ServiceOrder\States\ServiceOrderState;
 
 class StateResolver
 {
-    public static function resolve(ServiceOrder $ordem)//: ServiceOrderState
+    public static function resolve(ServiceOrder $order): ServiceOrderState
     {
-        return match ($ordem->status) {
-            State::OPEN    => new States\OpenState($ordem),
-            default     => throw new InvalidStateTransitionException('Estado inválido'),
+        return match ($order->status) {
+            State::OPEN      => new OpenState(),
+            State::CLOSED    => new ClosedState(),
+            State::INVOICED  => new InvoicedState(),
+            State::CANCELLED => new CancelledState(),
+            default          => new OpenState(),
         };
     }
 }
-
-
-//TODO: Implementar Enum para os estados das ordens de serviço

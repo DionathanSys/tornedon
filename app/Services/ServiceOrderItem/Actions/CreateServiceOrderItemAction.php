@@ -2,16 +2,21 @@
 
 namespace App\Services\ServiceOrderItem\Actions;
 
+use App\Enum\ServiceOrder\State;
+use App\Models\ServiceOrder;
 use App\Models\ServiceOrderItem;
+use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrderItem\Validators\ServiceOrderItemValidator;
+use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class CreateServiceOrderItemAction
 {
-    use HandlesActionResponse;
+    use HandlesActionResponse, AuthorizesServiceOrderItemActions;
 
     public function __construct(
         private int $createdBy,
@@ -24,7 +29,12 @@ class CreateServiceOrderItemAction
      * @return ServiceOrderItem|null
      */
     public function execute(array $data): ?ServiceOrderItem
-    {
+    {   
+        if(! isset($data['service_order_id']) || ! self::canModifyItems($data['service_order_id'])) {
+            $this->setError('Não é permitido adicionar itens a esta ordem de serviço.');
+            return null;
+        }
+
         try {
             $validated = ServiceOrderItemValidator::validateCreate($data);
 

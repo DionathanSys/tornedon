@@ -28,7 +28,7 @@ class QuoteResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Orçamentos';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

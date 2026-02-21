@@ -5,6 +5,11 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Tables;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -33,8 +38,8 @@ class ServiceOrdersTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state->description())
-                    ->color(fn ($state) => match ($state) {
+                    ->formatStateUsing(fn($state) => $state->description())
+                    ->color(fn($state) => match ($state) {
                         State::OPEN => 'info',
                         State::CLOSED => 'success',
                         State::INVOICED => 'warning',
@@ -44,13 +49,13 @@ class ServiceOrdersTable
                 TextColumn::make('priority')
                     ->label('Prioridade')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state->description())
-                    ->color(fn ($state) => $state->color())
+                    ->formatStateUsing(fn($state) => $state->description())
+                    ->color(fn($state) => $state->color())
                     ->sortable(),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->formatStateUsing(fn($state) => $state->description())
                     ->color('gray')
                     ->sortable(),
                 TextColumn::make('equipment.name')
@@ -102,7 +107,7 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('customer_rating')
                     ->label('Avaliação')
-                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 1) . ' ⭐' : '-')
+                    ->formatStateUsing(fn($state) => $state ? number_format($state, 1) . ' ⭐' : '-')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
@@ -162,8 +167,13 @@ class ServiceOrdersTable
             ])
             ->defaultSort('order_date', 'desc')
             ->recordActions([
-                EditAction::make()
-                    ->iconButton(),
+                ActionGroup::make([
+                    CloseServiceOrderAction::make(),
+                    InvoiceServiceOrderAction::make(),
+                    CancelServiceOrderAction::make(),
+                    ReopenServiceOrderAction::make(),
+                    EditAction::make(),
+                ])
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }
