@@ -86,7 +86,7 @@ final class CreateItemAction
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $percentage = self::parseMoneyValue($state);
                                 $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', $discountAmount);
+                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
                                 self::calculateValues($get, $set);
                             }),
                         Money::make('discount_amount')
@@ -98,7 +98,7 @@ final class CreateItemAction
                                 $discountAmount = self::parseMoneyValue($state);
                                 if ($subtotal > 0) {
                                     $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', $percentage);
+                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
                                 }
                                 self::calculateValues($get, $set);
                             }),
