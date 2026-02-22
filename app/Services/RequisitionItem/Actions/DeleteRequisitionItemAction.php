@@ -2,10 +2,12 @@
 
 namespace App\Services\RequisitionItem\Actions;
 
+use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Models\RequisitionItem;
 use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class DeleteRequisitionItemAction
@@ -17,14 +19,21 @@ class DeleteRequisitionItemAction
     ) {}
 
     /**
-     * Exclui (soft delete) um item de requisição.
+     * Exclui (soft delete) um item de requisição e libera a reserva de estoque.
      *
      * @return bool
      */
     public function execute(): bool
     {
-        $this->setError('Não é permitido excluir itens desta requisição.');
-        return false;
+        if (! self::canDeleteItem($this->requisitionItem->requisition_id)) {
+            $this->setError('Não é permitido excluir itens desta requisição.');
+            return false;
+        }
+
+        // Carrega produto antes de deletar, para usar no evento
+        $this->requisitionItem->load('product');
+
+        $deletedBy = Auth::id() ?? 0;
 
         try {
             $deleted = $this->requisitionItem->delete();
@@ -42,8 +51,11 @@ class DeleteRequisitionItemAction
                 return false;
             }
 
+            RequisitionItemDeleted::dispatch($this->requisitionItem, $deletedBy);
+
             $this->setSuccess();
             return true;
+
         } catch (QueryException $e) {
             $this->setError('Erro ao excluir item da requisição');
 
@@ -74,6 +86,7 @@ class DeleteRequisitionItemAction
 
     /**
      * Exclui permanentemente um item de requisição.
+     * Libera reserva de estoque se o item não estava previamente soft-deleted.
      *
      * @return bool
      */
@@ -82,6 +95,14 @@ class DeleteRequisitionItemAction
         if (! self::canDeleteItem($this->requisitionItem->requisition_id)) {
             $this->setError('Não é permitido excluir permanentemente itens desta requisição.');
             return false;
+        }
+
+        // Se o item não estava soft-deleted, devemos liberar a reserva de estoque
+        $wasNotSoftDeleted = $this->requisitionItem->deleted_at === null;
+        $deletedBy         = Auth::id() ?? 0;
+
+        if ($wasNotSoftDeleted) {
+            $this->requisitionItem->load('product');
         }
 
         try {
@@ -100,8 +121,14 @@ class DeleteRequisitionItemAction
                 return false;
             }
 
+            // Libera reserva de estoque apenas se o item não passou pelo soft-delete antes
+            if ($wasNotSoftDeleted) {
+                RequisitionItemDeleted::dispatch($this->requisitionItem, $deletedBy);
+            }
+
             $this->setSuccess();
             return true;
+
         } catch (QueryException $e) {
             $this->setError('Erro ao excluir permanentemente item da requisição');
 

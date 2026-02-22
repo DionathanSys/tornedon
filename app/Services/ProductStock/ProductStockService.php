@@ -7,6 +7,7 @@ use App\Services\ProductStock\Actions\CreateProductStockAction;
 use App\Services\ProductStock\Actions\DeleteProductStockAction;
 use App\Services\ProductStock\Actions\RestoreProductStockAction;
 use App\Services\ProductStock\Actions\UpdateProductStockAction;
+use App\Services\ProductStock\Actions\UpdateStockReservationAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -431,6 +432,79 @@ class ProductStockService
         }
 
         return $this->update($productStock, ['is_active' => $active], $updatedBy, $companyId);
+    }
+
+    /**
+     * Atualiza os campos de reserva de estoque (quantity_reserved, last_sale_price, etc.).
+     * Usado pelos listeners de RequisitionItem para reservar/liberar estoque.
+     *
+     * @param  ProductStock $stock
+     * @param  float        $quantityDelta  Variação (+/-) na quantidade reservada
+     * @param  float        $lastSalePrice  Último preço de venda praticado no item
+     * @param  string       $movementType   Tipo do movimento para auditoria
+     * @param  int          $updatedBy
+     * @return bool
+     */
+    public function updateReservation(
+        ProductStock $stock,
+        float        $quantityDelta,
+        float        $lastSalePrice,
+        string       $movementType,
+        int          $updatedBy,
+    ): bool {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($stock, $quantityDelta, $lastSalePrice, $movementType, $updatedBy) {
+                // Busca o registro de estoque com lock para garantir exclusividade
+                $lockedStock = ProductStock::where('id', $stock->id)->lockForUpdate()->first();
+                if (! $lockedStock) {
+                    $this->setError('Registro de estoque não encontrado para atualização');
+                    Log::error($this->getMessage(), [
+                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'stock_id'   => $stock->id,
+                        'product_id' => $stock->product_id,
+                    ]);
+                    return false;
+                }
+
+                $action = new UpdateStockReservationAction($lockedStock, $updatedBy);
+                $result = $action->execute($quantityDelta, $lastSalePrice, $movementType);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error($this->getMessage(), [
+                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'stock_id'   => $stock->id,
+                        'product_id' => $stock->product_id,
+                        'delta'      => $quantityDelta,
+                    ]);
+
+                    return false;
+                }
+
+                $this->setSuccess('Reserva de estoque atualizada com sucesso');
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao atualizar reserva de estoque');
+
+            Log::error($this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'stock_id'   => $stock->id,
+                'product_id' => $stock->product_id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
+
+            return false;
+        }
     }
 
     /**

@@ -2,6 +2,9 @@
 
 namespace App\Services\RequisitionItem\Actions;
 
+use App\Events\RequisitionItem\RequisitionItemCreated;
+use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\RequisitionItem;
 use App\Services\RequisitionItem\Validators\RequisitionItemValidator;
 use App\Traits\AuthorizesRequisitionItemActions;
@@ -31,12 +34,30 @@ class CreateRequisitionItemAction
             return null;
         }
 
+        // Validação de saldo disponível no estoque
+        if (isset($data['product_id']) && isset($data['quantity'])) {
+            $stockError = $this->validateStockAvailability(
+                (int) $data['product_id'],
+                (float) $data['quantity']
+            );
+
+            if ($stockError) {
+                $this->setError($stockError);
+                return null;
+            }
+        }
+
         try {
             $validated = RequisitionItemValidator::validateCreate($data);
 
             $validated['created_by'] = $this->createdBy;
 
             $item = RequisitionItem::create($validated);
+
+            // Carrega o produto para o evento ser processado corretamente
+            $item->load('product');
+
+            RequisitionItemCreated::dispatch($item, $this->createdBy);
 
             $this->setSuccess();
             return $item;
@@ -81,5 +102,36 @@ class CreateRequisitionItemAction
 
             return null;
         }
+    }
+
+    /**
+     * Verifica se existe saldo disponível no estoque para a quantidade solicitada.
+     * Retorna null se OK, ou uma mensagem de erro caso não haja saldo.
+     */
+    private function validateStockAvailability(int $productId, float $requestedQty): ?string
+    {
+        $product = Product::find($productId);
+
+        if (! $product || ! $product->has_stock_control) {
+            return null;
+        }
+
+        $stock = ProductStock::where('product_id', $productId)->first();
+
+        if (! $stock) {
+            return null;
+        }
+
+        if ($stock->allow_negative) {
+            return null;
+        }
+
+        $netAvailable = $stock->quantity_available - $stock->quantity_reserved;
+
+        if ($netAvailable < $requestedQty) {
+            return "Saldo insuficiente no estoque. Disponível: {$netAvailable}, Solicitado: {$requestedQty}";
+        }
+
+        return null;
     }
 }
