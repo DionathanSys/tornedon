@@ -24,6 +24,7 @@ class ProductSalePriceService
      */
     public function resolve(Product $product, ?ProductStock $stock = null): ?float
     {
+
         $origin = $product->origin_sale_price;
 
         if ($origin === null) {
@@ -31,7 +32,7 @@ class ProductSalePriceService
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'product_id' => $product->id,
             ]);
-            return null;
+            return 0;
         }
 
         return match ($origin) {

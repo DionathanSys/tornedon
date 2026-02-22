@@ -48,9 +48,9 @@ final class EditItemAction
                     ->columnSpanFull()
                     ->live(onBlur: true)
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        $product = (new ProductService())->find($state);
-                        if ($product) {
-                            $set('unit_price', number_format($product->sale_price_value, 2, ',', '.'));
+                        $salePrice = (new ProductSalePriceService())->resolveById($state);
+                        if ($salePrice !== null) {
+                            $set('unit_price', number_format($salePrice, 2, ',', '.'));
                         } else {
                             $set('unit_price', null);
                         }

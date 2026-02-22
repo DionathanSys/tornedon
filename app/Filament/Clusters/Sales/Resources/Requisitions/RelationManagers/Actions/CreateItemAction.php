@@ -17,6 +17,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Product\ProductSalePriceService;
 use App\Services\Product\ProductService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use App\Services\Service\ServiceService;
@@ -49,10 +50,9 @@ final class CreateItemAction
                     ->columnSpanFull()
                     ->live(onBlur: true)
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        //TODO: Refatorar criando um método específico para buscar o preço do produto
-                        $product = (new ProductService())->find($state);
-                        if ($product) {
-                            $set('unit_price', number_format($product->sale_price_value, 2, ',', '.'));
+                        $salePrice = (new ProductSalePriceService())->resolveById($state);
+                        if ($salePrice !== null) {
+                            $set('unit_price', number_format($salePrice, 2, ',', '.'));
                         } else {
                             $set('unit_price', null);
                         }
