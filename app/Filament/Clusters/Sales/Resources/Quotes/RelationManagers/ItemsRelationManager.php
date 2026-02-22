@@ -138,4 +138,44 @@ class ItemsRelationManager extends RelationManager
                 ]),
             ]);
     }
+
+    public function createAction(): CreateAction
+    {
+        return CreateAction::make()
+            ->using(function (array $data, RelationManager $livewire) {
+                $service = app(\App\Services\QuoteItem\QuoteItemService::class);
+                $data['quote_id'] = $livewire->getOwnerRecord()->id;
+                $item = $service->create($data, auth()->id());
+                if (! $item) {
+                    throw new \Exception($service->getMessage() ?? 'Erro ao criar item');
+                }
+                return $item;
+            });
+    }
+
+    public function editAction(): EditAction
+    {
+        return EditAction::make()
+            ->using(function (array $data, QuoteItem $record) {
+                $service = app(\App\Services\QuoteItem\QuoteItemService::class);
+                $item = $service->update($record, $data, auth()->id());
+                if (! $item) {
+                    throw new \Exception($service->getMessage() ?? 'Erro ao atualizar item');
+                }
+                return $item;
+            });
+    }
+
+    public function deleteAction(): DeleteAction
+    {
+        return DeleteAction::make()
+            ->using(function (QuoteItem $record) {
+                $service = app(\App\Services\QuoteItem\QuoteItemService::class);
+                $ok = $service->delete($record, auth()->id());
+                if (! $ok) {
+                    throw new \Exception($service->getMessage() ?? 'Erro ao excluir item');
+                }
+                return $ok;
+            });
+    }
 }
