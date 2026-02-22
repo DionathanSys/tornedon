@@ -16,7 +16,8 @@ class ListQuotes extends ListRecords
         return [
             CreateAction::make()
                 ->label('Orçamento')
-                ->icon(Heroicon::Plus),
+                ->icon(Heroicon::Plus)
+                ->badge(),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
+use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\ParsesMoneyValues;
@@ -40,24 +41,8 @@ final class CreateItemAction
             ->badge()
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
-                Select::make('product_id')
-                    ->label('Peça')
-                    ->searchable()
-                    ->relationship('product', 'name', function ($query) {
-                        $query->where('products.company_id', Filament::getTenant()->id);
-                    })
-                    ->required()
-                    ->columnSpanFull()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        $salePrice = (new ProductSalePriceService())->resolveById($state);
-                        if ($salePrice !== null) {
-                            $set('unit_price', number_format($salePrice, 2, ',', '.'));
-                        } else {
-                            $set('unit_price', null);
-                        }
-                        self::calculateValues($get, $set);
-                    }),
+                SelectProduct::make()
+                    ->after(fn(Get $get, Set $set) => self::calculateValues($get, $set)),
                 Group::make()
                     ->columns(3)
                     ->columnSpanFull()

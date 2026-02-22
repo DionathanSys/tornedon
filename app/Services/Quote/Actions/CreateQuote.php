@@ -39,34 +39,6 @@ class CreateQuote
 
             $quote = Quote::create($quoteData);
 
-            // Create quote items
-            foreach ($validatedData['items'] as $index => $itemData) {
-                $quantity = $itemData['quantity'];
-                $unitPrice = $itemData['unit_price'];
-                $discountAmount = $itemData['discount_amount'] ?? 0;
-                $discountPercentage = $itemData['discount_percentage'] ?? 0;
-
-                if ($discountAmount == 0 && $discountPercentage > 0) {
-                    $discountAmount = ($quantity * $unitPrice) * ($discountPercentage / 100);
-                }
-
-                QuoteItem::create([
-                    'quote_id' => $quote->id,
-                    'product_id' => $itemData['product_id'] ?? null,
-                    'description' => $itemData['description'],
-                    'quantity' => $quantity,
-                    'unit_of_measure' => $itemData['unit_of_measure'],
-                    'unit_price' => $unitPrice,
-                    'discount_percentage' => $discountPercentage,
-                    'discount_amount' => $discountAmount,
-                    'technical_specifications' => $itemData['technical_specifications'] ?? null,
-                    'estimated_production_hours' => $itemData['estimated_production_hours'] ?? null,
-                    'material_cost' => $itemData['material_cost'] ?? null,
-                    'labor_cost' => $itemData['labor_cost'] ?? null,
-                    'sequence' => $index + 1,
-                ]);
-            }
-
             DB::commit();
             $this->setSuccess();
             

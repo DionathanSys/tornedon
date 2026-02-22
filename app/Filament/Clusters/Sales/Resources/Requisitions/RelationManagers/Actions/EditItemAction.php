@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
+use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Models\RequisitionItem;
 use App\Models\ServiceOrderItem;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
@@ -17,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Product\ProductSalePriceService;
 use App\Services\Product\ProductService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use App\Services\Service\ServiceService;
@@ -38,24 +40,8 @@ final class EditItemAction
             ->label('Editar')
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
-                Select::make('product_id')
-                    ->label('Peça')
-                    ->searchable()
-                    ->relationship('product', 'name', function ($query) {
-                        $query->where('products.company_id', Filament::getTenant()->id);
-                    })
-                    ->required()
-                    ->columnSpanFull()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        $salePrice = (new ProductSalePriceService())->resolveById($state);
-                        if ($salePrice !== null) {
-                            $set('unit_price', number_format($salePrice, 2, ',', '.'));
-                        } else {
-                            $set('unit_price', null);
-                        }
-                        self::calculateValues($get, $set);
-                    }),
+                SelectProduct::make()
+                    ->after(fn(Get $get, Set $set) => self::calculateValues($get, $set)),
                 Group::make()
                     ->columns(3)
                     ->columnSpanFull()

@@ -49,6 +49,11 @@ class QuoteItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
+    }
+
     public function productionOrderItem(): HasOne
     {
         return $this->hasOne(ProductionOrderItem::class);

@@ -6,6 +6,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Product\Unit;
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\EditRequisition;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Models\CompanyPreference;
@@ -63,27 +64,12 @@ class RequisitionForm
                             ->default(now())
                             ->required()
                             ->displayFormat('d/m/Y'),
-                        Select::make('salesperson_id')
+                        SelectPartner::make('salesperson_id', 'salesperson')
                             ->label('Vendedor')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->relationship(
-                                name: 'salesperson',
-                                titleAttribute: 'name',
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
-                        Select::make('customer_id')
-                            ->label('Cliente')
-                            ->columnSpan(['md' => 2, 'lg' => 8])
-                            ->columnStart(1)
-                            ->searchable()
-                            ->getSearchResultsUsing(fn(string $search): array => (new PartnerService())
-                                ->searchForSelect($search, Filament::getTenant()->id, 'customer')
-                            )
-                            ->getOptionLabelUsing(fn($value): ?string => (new PartnerService())
-                                ->getLabelForSelect((int) $value)
-                            ),
+                            ->required(false),
+                        SelectPartner::make('customer_id', 'customer')
+                            ->label('Cliente'),
                         Select::make('equipment_id')
                             ->label('Equipamento')
                             ->columnSpan(['md' => 2, 'lg' => 4])
