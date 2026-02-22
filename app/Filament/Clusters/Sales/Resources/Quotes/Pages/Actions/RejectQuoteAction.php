@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use App\Services\Quote\QuoteService;
+use Illuminate\Support\Facades\Auth;
 
 class RejectQuoteAction extends Action
 {
@@ -18,7 +19,7 @@ class RejectQuoteAction extends Action
         $record = $this->getRecord();
         $reason = $arguments['reason'] ?? '';
         $service = app(QuoteService::class);
-        $ok = $service->reject($record, $reason, auth()->id());
+        $ok = $service->reject($record, $reason, Auth::id());
 
         if ($ok) {
             Notification::make()->success()->title('Orçamento rejeitado')->send();

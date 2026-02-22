@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers;
 
+use App\Models\QuoteItem;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -17,6 +18,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -145,7 +147,7 @@ class ItemsRelationManager extends RelationManager
             ->using(function (array $data, RelationManager $livewire) {
                 $service = app(\App\Services\QuoteItem\QuoteItemService::class);
                 $data['quote_id'] = $livewire->getOwnerRecord()->id;
-                $item = $service->create($data, auth()->id());
+                $item = $service->create($data, Auth::id());
                 if (! $item) {
                     throw new \Exception($service->getMessage() ?? 'Erro ao criar item');
                 }
@@ -158,7 +160,7 @@ class ItemsRelationManager extends RelationManager
         return EditAction::make()
             ->using(function (array $data, QuoteItem $record) {
                 $service = app(\App\Services\QuoteItem\QuoteItemService::class);
-                $item = $service->update($record, $data, auth()->id());
+                $item = $service->update($record, $data, Auth::id());
                 if (! $item) {
                     throw new \Exception($service->getMessage() ?? 'Erro ao atualizar item');
                 }
@@ -171,7 +173,7 @@ class ItemsRelationManager extends RelationManager
         return DeleteAction::make()
             ->using(function (QuoteItem $record) {
                 $service = app(\App\Services\QuoteItem\QuoteItemService::class);
-                $ok = $service->delete($record, auth()->id());
+                $ok = $service->delete($record, Auth::id());
                 if (! $ok) {
                     throw new \Exception($service->getMessage() ?? 'Erro ao excluir item');
                 }
