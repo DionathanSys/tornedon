@@ -52,12 +52,12 @@ class ItemsRelationManager extends RelationManager
                     ->label('Desc. (R$)')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL')),
+                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
                 TextColumn::make('total_amount')
                     ->label('Total')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL')),
+                    ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL', 100)),
                 TextColumn::make('estimated_production_hours')
                     ->label('Hrs. Produção')
                     ->numeric(2, ',', '.')
