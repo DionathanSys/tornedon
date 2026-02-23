@@ -209,7 +209,9 @@ final class CreateItemAction
                     ->label('Observações')
                     ->columnSpanFull(),
             ])
-            ->mutateDataUsing(function (array $data) {
+            ->action(function (array $data, Action $action, RelationManager $livewire): ?Model {
+                $quote = $livewire->getOwnerRecord();
+
                 if(($data['product_stock_id'] ?? null) || ($data['product_id'] ?? null)) {
                     Log::debug('CreateItemAction (Quote RelationManager): Produto selecionado, ajustando dados para criação do item', [
                         'metodo' => __METHOD__ . '@' . __LINE__,
@@ -232,10 +234,6 @@ final class CreateItemAction
                         'data'   => $data,
                     ]);
                 }
-                return $data;
-            })
-            ->using(function (array $data, Action $action, RelationManager $livewire): ?Model {
-                $quote = $livewire->getOwnerRecord();
 
                 $data['quote_id'] = $quote->id;
                 unset($data['product_stock_id']);
