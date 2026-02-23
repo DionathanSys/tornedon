@@ -238,6 +238,7 @@ final class CreateItemAction
                 $quote = $livewire->getOwnerRecord();
 
                 $data['quote_id'] = $quote->id;
+                unset($data['product_stock_id']);
 
                 Log::debug('CreateItemAction (Quote RelationManager): Iniciando criação de item', [
                     'metodo'   => __METHOD__ . '@' . __LINE__,
