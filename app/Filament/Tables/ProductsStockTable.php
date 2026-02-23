@@ -21,12 +21,14 @@ class ProductsStockTable
                     ->searchable(),
                 TextColumn::make('quantity_available')
                     ->label('Qtde. Disp.')
-                    ->numeric()
+                    ->numeric(2, ',', '.')
+                    ->formatStateUsing(fn($state) => $state == 0 ? 'Esgotado' : number_format($state, 2, ',', '.') . ' un.')
+                    ->badge(fn($state) => $state == 0 ? 'danger' : null)
                     ->sortable(),
                 TextColumn::make('quantity_reserved')
                     ->label('Qtde. Res.')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->numeric()
+                    ->numeric(2, ',', '.')
                     ->sortable(),
                 TextColumn::make('average_cost')
                     ->label('Custo Médio')
@@ -80,6 +82,7 @@ class ProductsStockTable
             ->filters([
                 //
             ])
+            ->disabledSelection()
             ->headerActions([
                 //
             ])

@@ -56,6 +56,11 @@ class QuoteItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function productStock(): BelongsTo
+    {
+        return $this->belongsTo(ProductStock::class, 'product_stock_id');
+    }
+
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
@@ -113,6 +118,4 @@ class QuoteItem extends Model
 
         return implode(' | ', $specs);
     }
-
-    
 }

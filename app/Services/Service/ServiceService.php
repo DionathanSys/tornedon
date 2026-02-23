@@ -431,18 +431,8 @@ class ServiceService
         }
     }
 
-    /**
-     * Ativa ou desativa um serviço.
-     */
-    public function toggleActive(Service $service, bool $active, int $updatedBy): ?Service
+    public function getSalePrice(int $serviceId): ?float
     {
-        Log::debug('ServiceService: Alternando status ativo de serviço', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
-            'service_id' => $service->id,
-            'active'     => $active,
-            'user_id'    => $updatedBy,
-        ]);
-
-        return $this->update($service, ['is_active' => $active], $updatedBy);
+        return Service::select('sale_price')->find($serviceId)->sale_price ?? null;
     }
 }

@@ -2,15 +2,25 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions;
 
+use App\Filament\Clusters\Inventory\Resources\Products\Tables\ProductsTable;
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
+use App\Filament\Tables\ProductsStockTable;
+use App\Filament\Tables\ProductTable;
+use App\Filament\Tables\ServiceTable;
 use App\Models\QuoteItem;
 use App\Notification\NotifyService as notify;
+use App\Services\Product\ProductSalePriceService;
+use App\Services\Product\ProductService;
 use App\Services\QuoteItem\QuoteItemService;
+use App\Services\Service\ServiceService;
 use App\Traits\AuthorizesQuoteItemActions;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
@@ -30,15 +40,86 @@ final class EditItemAction
     {
         return EditAction::make()
             ->label('Editar')
-            ->visible(fn (RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
+            ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema([
-                SelectProduct::make()
-                    ->after(fn (Get $get, Set $set) => self::calculateValues($get, $set)),
                 Group::make()
                     ->columns(3)
                     ->columnSpanFull()
                     ->schema([
-                        \Filament\Forms\Components\TextInput::make('quantity')
+                        ModalTableSelect::make('product_stock_id')
+                            ->label('Produto Em Estoque')
+                            ->relationship('productStock', 'name')
+                            ->tableConfiguration(ProductsStockTable::class)
+                            ->selectAction(
+                                fn(Action $action) => $action
+                                    ->label('Selecionar')
+                                    ->modalHeading('Buscar Produto')
+                                    ->modalSubmitActionLabel('Confirmar seleção'),
+                            )
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                if ($state) {
+                                    $salePrice = app(ProductSalePriceService::class)->resolve($state);
+                                    $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($state);
+                                    $set('service_id', null);
+                                    $set('product_id', null);
+                                    $set('unit_of_measure', $unitOfMeasure);
+                                    $set('unit_price', number_format($salePrice, 2, ',', '.'));
+                                    $set('discount_amount', number_format(0, 2, ',', '.'));
+                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                    self::calculateValues($get, $set);
+                                }
+                            }),
+                        ModalTableSelect::make('product_id')
+                            ->label('Produto')
+                            ->relationship('product', 'name')
+                            ->tableConfiguration(ProductTable::class)
+                            ->selectAction(
+                                fn(Action $action) => $action
+                                    ->label('Selecionar')
+                                    ->modalHeading('Buscar Produto')
+                                    ->modalSubmitActionLabel('Confirmar seleção'),
+                            )
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                if ($state) {
+                                    $salePrice = app(ProductSalePriceService::class)->resolve($state);
+                                    $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($state);
+                                    $set('service_id', null);
+                                    $set('product_stock_id', null);
+                                    $set('unit_of_measure', $unitOfMeasure);
+                                    $set('unit_price', number_format($salePrice, 2, ',', '.'));
+                                    $set('discount_amount', number_format(0, 2, ',', '.'));
+                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                    self::calculateValues($get, $set);
+                                }
+                            }),
+                        ModalTableSelect::make('service_id')
+                            ->label('Serviço')
+                            ->relationship('service', 'name')
+                            ->tableConfiguration(ServiceTable::class)
+                            ->selectAction(
+                                fn(Action $action) => $action
+                                    ->label('Selecionar')
+                                    ->modalHeading('Buscar Serviço')
+                                    ->modalSubmitActionLabel('Confirmar seleção'),
+                            )
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                if ($state) {
+                                    $salePrice = app(ServiceService::class)->getSalePrice($state);
+                                    $set('product_id', null);
+                                    $set('product_stock_id', null);
+                                    $set('unit_of_measure', null);
+                                    $set('unit_price', number_format($salePrice, 2, ',', '.'));
+                                    $set('discount_amount', number_format(0, 2, ',', '.'));
+                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
+                                    self::calculateValues($get, $set);
+                                }
+                            }),
+                    ]),
+                Group::make()
+                    ->columns(3)
+                    ->columnSpanFull()
+                    ->schema([
+                        TextInput::make('quantity')
                             ->label('Quantidade')
                             ->required()
                             ->numeric()
@@ -72,7 +153,7 @@ final class EditItemAction
                             ->suffix('%')
                             ->prefix(null)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $percentage = self::parseMoneyValue($state);
                                 $discountAmount = $subtotal * ($percentage / 100);
@@ -90,7 +171,7 @@ final class EditItemAction
                         Money::make('discount_amount')
                             ->label('Desconto (R$)')
                             ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
                                 $subtotal = self::parseMoneyValue($get('subtotal'));
                                 $discountAmount = self::parseMoneyValue($state);
                                 if ($subtotal > 0) {

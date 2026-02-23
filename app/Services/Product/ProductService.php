@@ -389,16 +389,8 @@ class ProductService
         }
     }
 
-    /**
-     * Ativa ou desativa um produto.
-     *
-     * @param Product $product
-     * @param bool $active
-     * @param int $updatedBy
-     * @return Product|null
-     */
-    public function toggleActive(Product $product, bool $active, int $updatedBy): ?Product
+    public function getUnitOfMeasure(int $productId): ?string
     {
-        return $this->update($product, ['is_active' => $active], $updatedBy);
+        return Product::select('unit_of_measure')->find($productId)->unit_of_measure ?? null;
     }
 }

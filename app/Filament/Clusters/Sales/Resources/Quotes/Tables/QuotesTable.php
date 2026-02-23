@@ -29,12 +29,13 @@ class QuotesTable
                     ->label('Status')
                     ->badge()
                     ->colors([
-                        'gray' => Status::DRAFT->value,
-                        'info' => Status::SENT->value,
-                        'success' => Status::APPROVED->value,
-                        'danger' => Status::REJECTED->value,
-                        'warning' => Status::EXPIRED->value,
+                        'gray'      => Status::DRAFT->value,
+                        'info'      => Status::SENT->value,
+                        'success'   => Status::APPROVED->value,
+                        'danger'    => Status::REJECTED->value,
+                        'warning'   => Status::EXPIRED->value,
                     ])
+                    ->formatStateUsing(fn ($state) => $state->description())
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')

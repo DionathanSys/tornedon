@@ -18,10 +18,12 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class QuoteForm
@@ -45,27 +47,25 @@ class QuoteForm
                                 'lg' => 12,
                             ])
                             ->schema([
-                                TextInput::make('quote_number')
+                                TextEntry::make('quote_number')
                                     ->label('Número')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                    ->visibleOn('edit')
-                                    ->disabled(),
-                                Select::make('status')
+                                    ->visibleOn('edit'),
+                                TextEntry::make('status')
                                     ->label('Status')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                    ->options(Status::toSelectArray())
-                                    ->native(false)
-                                    ->default(Status::DRAFT->value)
-                                    ->visibleOn('edit')
-                                    ->disabled(),
-                                SelectPartner::make('partner_id', 'customer')
-                                    ->label('Cliente'),
+                                    ->formatStateUsing(fn($state) => Str::upper($state->description()))
+                                    ->visibleOn('edit'),
                                 DatePicker::make('valid_until')
                                     ->label('Válido até')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                     ->minDate(now())
                                     ->default(now()->addDays(CompanyPreference::get(key: 'default_quote_validity_days', default: 30)))
                                     ->required(),
+                                SelectPartner::make('partner_id', 'customer')
+                                    ->label('Cliente')
+                                    ->columnSpan(['md' => 2, 'lg' => 6])
+                                    ->disabledOn('edit'),
                                 Textarea::make('description')
                                     ->label('Descrição')
                                     ->columnSpan(['md' => 6, 'lg' => 12])
@@ -115,18 +115,11 @@ class QuoteForm
                         Tabs\Tab::make('Itens do Orçamento')
                             ->visibleOn('edit')
                             ->schema([
-                                Section::make()
-                                    ->columnSpanFull()
-                                    ->visibleOn('edit')
-                                    ->collapsible()
-                                    ->persistCollapsed()
-                                    ->schema([
-                                        Livewire::make(ItemsRelationManager::class, fn(Quote $record) => [
-                                            'ownerRecord' => $record,
-                                            'pageClass' => EditQuote::class,
-                                        ])
-                                            ->columnSpanFull(),
-                                    ])
+                                Livewire::make(ItemsRelationManager::class, fn(Quote $record) => [
+                                    'ownerRecord' => $record,
+                                    'pageClass' => EditQuote::class,
+                                ])
+                                    ->columnSpanFull(),
                             ]),
 
                     ]),

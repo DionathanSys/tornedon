@@ -17,53 +17,42 @@ class ServiceTable
             ->query(fn (): Builder => Service::query())
             ->columns([
                 TextColumn::make('name')
+                    ->label('Serviço')
                     ->searchable(),
                 TextColumn::make('unit_of_measure')
+                    ->label('Unidade de Medida')
                     ->searchable(),
                 TextColumn::make('price')
-                    ->money()
+                    ->label('Preço')
+                    ->money('BRL', 100)
                     ->sortable(),
                 TextColumn::make('cost')
-                    ->money()
+                    ->label('Custo')
+                    ->money('BRL', 100)
                     ->sortable(),
                 TextColumn::make('category')
+                    ->label('Categoria')
                     ->searchable(),
                 IconColumn::make('is_active')
+                    ->label('Ativo')
                     ->boolean(),
                 IconColumn::make('requires_approval')
-                    ->boolean(),
-                TextColumn::make('tax_classification')
-                    ->searchable(),
-                TextColumn::make('tax_rate')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('nbs_code')
-                    ->searchable(),
-                TextColumn::make('cnae_code')
-                    ->searchable(),
-                TextColumn::make('municipal_tax_code')
-                    ->searchable(),
-                TextColumn::make('iss_exigibility')
-                    ->badge()
-                    ->searchable(),
-                TextColumn::make('created_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('updated_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('company.name')
-                    ->searchable(),
+                    ->label('Requer Aprovação')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Criado Em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Atualizado Em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')
-                    ->dateTime()
+                    ->label('Excluído Em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

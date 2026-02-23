@@ -3,6 +3,9 @@
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages;
 
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
+use App\Filament\Clusters\Partners\Resources\Equipments\EquipmentResource;
+use App\Filament\Clusters\Partners\Resources\Equipments\Pages\Actions\CreateEquipmentAction;
+use App\Models\CompanyPartner;
 use App\Models\Partner;
 use App\Services\Partner\CompanyPartnerService;
 use Filament\Actions\DeleteAction;
@@ -12,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Partner\PartnerService;
+use Filament\Actions\Action;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Log;
 
 class EditCompanyPartner extends EditRecord
@@ -21,7 +26,22 @@ class EditCompanyPartner extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
+            Action::make('manager_equipments')
+                ->label('Gerenciar Equipamentos')
+                ->url(fn(CompanyPartner $record) => EquipmentResource::getUrl(
+                    'index',
+                    [
+                        'filters' => [
+                            'owner_id' => [
+                                'value' => $record->partner_id,
+                            ]
+                        ]
+                    ]
+                ))
+                ->openUrlInNewTab()
+                ->icon(Heroicon::Wrench)
+                ->color('primary')
+                ->badge(),
             DeleteAction::make()
                 ->visible(false),
         ];
@@ -41,16 +61,16 @@ class EditCompanyPartner extends EditRecord
         $data['company_partner']['type']                = $data['type'];
         $data['company_partner']['invoice_threshold']   = $data['invoice_threshold'];
         $data['company_partner']['is_active']           = $data['is_active'];
-        
+
         Log::debug('Mutate Form Data Before Fill:', $data);
-        
+
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
         Log::debug('Mutate Form Data Before Save - Received Data:', $data);
-        
+
         // Separa os dados do partner dos dados do company_partner
         $partnerData = [
             'name' => $data['name'] ?? null,
@@ -66,13 +86,13 @@ class EditCompanyPartner extends EditRecord
         if (!empty($partnerData['name'])) {
             $partnerService = new PartnerService();
             $partner = $partnerService->getPartnerById($this->record->partner_id);
-            
+
             if ($partner) {
                 $partnerData['id'] = $partner->id;
                 Log::debug('Updating Partner with data:', $partnerData);
-                
+
                 $partnerService->editPartner(Auth::id(), $partner, $partnerData);
-                
+
                 if ($partnerService->hasError()) {
                     notify::error(message: $partnerService->getMessageUser());
                     $this->halt();
@@ -83,7 +103,7 @@ class EditCompanyPartner extends EditRecord
         // Retorna apenas os dados do company_partner para serem salvos
         $companyPartnerData = $data['company_partner'] ?? [];
         Log::debug('Returning CompanyPartner data:', $companyPartnerData);
-        
+
         return $companyPartnerData;
     }
 
@@ -92,7 +112,7 @@ class EditCompanyPartner extends EditRecord
         $service = new CompanyPartnerService();
         $result = $service->update($record, $data);
 
-        if($service->hasError()){ 
+        if ($service->hasError()) {
             notify::error(message: $service->getMessageUser());
             $this->halt();
         }
