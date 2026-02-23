@@ -2,45 +2,70 @@
 
 namespace App\Services\Quote\Validators;
 
+use App\Enum\Quote\Status;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class QuoteValidator
 {
-    public static function validate(array $data): array
+    /**
+     * Valida dados para criação de orçamento.
+     *
+     * @param  array  $data  Dados a validar
+     * @return array         Retorna dados validados
+     * @throws ValidationException Se a validação falhar
+     */
+    public static function validateCreate(array $data): array
     {
         $validator = Validator::make($data, [
-            'partner_id' => 'required|exists:partners,id',
-            'company_id' => 'required|exists:companies,id',
-            'description' => 'nullable|string',
-            'valid_until' => 'nullable|date|after:today',
-            'observations' => 'nullable|string',
-            'customer_observations' => 'nullable|string',
+            'company_id'             => 'required|integer|exists:companies,id',
+            'partner_id'             => 'required|integer|exists:partners,id',
+            'description'            => 'nullable|string|max:1000',
+            'valid_until'            => 'nullable|date|after:today',
+            'observations'           => 'nullable|string|max:2000',
+            'customer_observations'  => 'nullable|string|max:2000',
+            'additional_info'        => 'nullable|array',
         ], [
-            'partner_id.required' => 'Cliente é obrigatório',
-            'partner_id.exists' => 'Cliente não encontrado',
-            'company_id.required' => 'Empresa é obrigatória',
-            'company_id.exists' => 'Empresa não encontrada',
-            'valid_until.after' => 'Data de validade deve ser futura',
+            'company_id.required'    => 'A empresa é obrigatória.',
+            'company_id.exists'      => 'Empresa não encontrada.',
+            'partner_id.required'    => 'O cliente é obrigatório.',
+            'partner_id.exists'      => 'Cliente não encontrado.',
+            'description.max'        => 'A descrição não pode ter mais de 1000 caracteres.',
+            'valid_until.after'      => 'A data de validade deve ser uma data futura.',
+            'observations.max'       => 'As observações não podem ter mais de 2000 caracteres.',
+            'customer_observations.max' => 'As observações do cliente não podem ter mais de 2000 caracteres.',
         ]);
 
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
-        return $validator->validated();
+        return $validator->validate();
     }
 
-    public static function validateApproval(array $data): void
+    /**
+     * Valida dados para atualização de orçamento.
+     *
+     * @param  array  $data     Dados a validar
+     * @param  int    $quoteId  ID do orçamento sendo atualizado
+     * @return array            Retorna dados validados
+     * @throws ValidationException Se a validação falhar
+     */
+    public static function validateUpdate(array $data, int $quoteId): array
     {
         $validator = Validator::make($data, [
-            'status' => 'required|in:sent',
+            'partner_id'             => 'sometimes|required|integer|exists:partners,id',
+            'description'            => 'nullable|string|max:1000',
+            'valid_until'            => 'nullable|date',
+            'observations'           => 'nullable|string|max:2000',
+            'customer_observations'  => 'nullable|string|max:2000',
+            'additional_info'        => 'nullable|array',
         ], [
-            'status.in' => 'Apenas orçamentos enviados podem ser aprovados',
+            'partner_id.required'    => 'O cliente é obrigatório.',
+            'partner_id.exists'      => 'Cliente não encontrado.',
+            'description.max'        => 'A descrição não pode ter mais de 1000 caracteres.',
+            'observations.max'       => 'As observações não podem ter mais de 2000 caracteres.',
+            'customer_observations.max' => 'As observações do cliente não podem ter mais de 2000 caracteres.',
         ]);
 
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
+        return $validator->validate();
     }
+
 }

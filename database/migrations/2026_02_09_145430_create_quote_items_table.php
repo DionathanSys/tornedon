@@ -20,7 +20,8 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('products')
                 ->nullOnDelete();
-            $table->text('description');                            // Descrição do item/peça
+            $table->text('description')                             // Descrição do item/peça
+                ->nullable();                            
             $table->decimal('quantity', 15, 3)                      // Quantidade
                 ->default(1.000);
             $table->string('unit_of_measure')                       // Unidade de medida (PC, UN, KG, etc)

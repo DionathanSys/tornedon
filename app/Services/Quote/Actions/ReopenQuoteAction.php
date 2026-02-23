@@ -8,36 +8,35 @@ use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
-class RejectQuote
+class ReopenQuoteAction
 {
     use HandlesActionResponse;
 
     public function __construct(
-        private int $rejectedBy,
+        private int $userId,
     ) {}
 
     /**
-     * Rejeita o orçamento via State Machine (sent → rejected).
+     * Reabre o orçamento via State Machine (rejected|expired → draft).
      *
-     * @param  Quote   $quote
-     * @param  string  $reason
+     * @param  Quote  $quote
      * @return Quote|null
      */
-    public function execute(Quote $quote, string $reason): ?Quote
+    public function execute(Quote $quote): ?Quote
     {
         try {
-            Log::debug('RejectQuote: Iniciando rejeição de orçamento', [
+            Log::debug('ReopenQuoteAction: Reabrindo orçamento', [
                 'metodo'   => __METHOD__ . '@' . __LINE__,
                 'quote_id' => $quote->id,
                 'status'   => $quote->status,
-                'user_id'  => $this->rejectedBy,
+                'user_id'  => $this->userId,
             ]);
 
-            $quote->state()->reject($quote, $reason, $this->rejectedBy);
+            $quote->state()->reopen($quote, $this->userId);
 
             $quote->refresh();
 
-            Log::info('RejectQuote: Orçamento rejeitado com sucesso', [
+            Log::info('ReopenQuoteAction: Orçamento reaberto com sucesso', [
                 'metodo'   => __METHOD__ . '@' . __LINE__,
                 'quote_id' => $quote->id,
             ]);
@@ -48,7 +47,7 @@ class RejectQuote
         } catch (DomainValidationException $e) {
             $this->setError('Transição inválida', $e->errors);
 
-            Log::warning('RejectQuote: Transição inválida', [
+            Log::warning('ReopenQuoteAction: Transição inválida', [
                 'metodo'   => __METHOD__ . '@' . __LINE__,
                 'quote_id' => $quote->id,
                 'errors'   => $e->errors,
@@ -57,9 +56,9 @@ class RejectQuote
             return null;
 
         } catch (QueryException $e) {
-            $this->setError('Erro ao rejeitar orçamento no banco de dados');
+            $this->setError('Erro ao reabrir orçamento no banco de dados');
 
-            Log::error('RejectQuote: ' . $this->getMessage(), [
+            Log::error('ReopenQuoteAction: ' . $this->getMessage(), [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'error_code' => $this->getErrorCode(),
                 'exception'  => $e->getMessage(),
@@ -70,4 +69,3 @@ class RejectQuote
         }
     }
 }
-

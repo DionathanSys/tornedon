@@ -4,10 +4,9 @@ namespace App\Services\Quote\Actions;
 
 use App\Enum\Quote\Status;
 use App\Models\Quote;
-use App\Models\QuoteItem;
 use App\Services\Quote\Validators\QuoteValidator;
 use App\Traits\HandlesActionResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -19,54 +18,82 @@ class CreateQuote
         private int $createdBy,
     ) {}
 
+    /**
+     * Cria um novo orçamento.
+     *
+     * @param  array  $data
+     * @return Quote|null
+     */
     public function execute(array $data): ?Quote
     {
         try {
-            $validatedData = QuoteValidator::validate($data);
-            
-            DB::beginTransaction();
+            Log::debug('CreateQuote: Iniciando criação de orçamento', [
+                'metodo'  => __METHOD__ . '@' . __LINE__,
+                'user_id' => $this->createdBy,
+                'data'    => $data,
+            ]);
 
-            $quoteData = [
-                'company_id' => $validatedData['company_id'],
-                'partner_id' => $validatedData['partner_id'],
-                'description' => $validatedData['description'] ?? null,
-                'status' => Status::DRAFT->value,
-                'valid_until' => $validatedData['valid_until'] ?? now()->addDays(30),
-                'observations' => $validatedData['observations'] ?? null,
-                'customer_observations' => $validatedData['customer_observations'] ?? null,
-                'created_by' => $this->createdBy,
-            ];
+            $validated = QuoteValidator::validateCreate($data);
 
-            $quote = Quote::create($quoteData);
+            $validated['status']     = Status::DRAFT;
+            $validated['created_by'] = $this->createdBy;
 
-            DB::commit();
+            if (empty($validated['valid_until'])) {
+                $validated['valid_until'] = now()->addDays(30);
+            }
+
+            $quote = Quote::create($validated);
+
+            Log::info('CreateQuote: Orçamento criado com sucesso', [
+                'metodo'       => __METHOD__ . '@' . __LINE__,
+                'quote_id'     => $quote->id,
+                'quote_number' => $quote->quote_number,
+            ]);
+
             $this->setSuccess();
-            
             return $quote;
-            
+
         } catch (ValidationException $e) {
-            DB::rollBack();
             $this->setError('Falha de validação dos dados', $e->errors());
-            
-            Log::error(__METHOD__ . '@' . __LINE__, [
+
+            Log::error('CreateQuote: ' . $this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => 'Falha de validação dos dados',
                 'errors'     => $e->errors(),
                 'data'       => $data,
+                'user_id'    => $this->createdBy,
             ]);
-            
+
             return null;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->setError('Erro ao criar orçamento: ' . $e->getMessage());
-            
-            Log::error(__METHOD__ . '@' . __LINE__, [
+
+        } catch (QueryException $e) {
+            $this->setError('Erro ao salvar orçamento no banco de dados');
+
+            Log::error('CreateQuote: ' . $this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception'  => $e->getMessage(),
+                'sql'        => $e->getSql(),
+                'data'       => $data,
+                'user_id'    => $this->createdBy,
             ]);
-            
+
+            return null;
+
+        } catch (\Exception $e) {
+            $this->setError('Erro inesperado ao criar orçamento');
+
+            Log::error('CreateQuote: ' . $this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'error_code' => $this->getErrorCode(),
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
+                'user_id'    => $this->createdBy,
+            ]);
+
             return null;
         }
     }
 }
+

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\Quote\Status;
 use App\Services\Quote\QuoteNumberGenerator;
+use App\Services\Quote\States\QuoteState;
+use App\Services\Quote\States\StateResolver;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +46,8 @@ class Quote extends Model implements HasMedia
 
     protected $appends = [
         'total_amount',
+        'total_amount_services',
+        'total_amount_products',
     ];
 
     protected static function boot(): void
@@ -56,6 +60,10 @@ class Quote extends Model implements HasMedia
             }
         });
     }
+
+    /* ==============================
+     |  Relationships
+     |==============================*/
 
     public function company(): BelongsTo
     {
@@ -90,21 +98,19 @@ class Quote extends Model implements HasMedia
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    /**
-     * Calcula o valor total do orçamento somando todos os itens.
-     */
-    protected function totalAmount(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => $this->items->sum('total_amount'),
-        );
-    }
+    }    
 
     public function isExpired(): bool
     {
         return $this->valid_until && $this->valid_until->isPast();
+    }
+
+    /**
+     * Retorna o objeto de estado atual do orçamento (State Pattern).
+     */
+    public function state(): QuoteState
+    {
+        return StateResolver::resolve($this);
     }
 
     public function canBeApproved(): bool
@@ -121,4 +127,34 @@ class Quote extends Model implements HasMedia
     {
         return $this->status === Status::APPROVED && !$this->productionOrder()->exists();
     }
+
+    /* ==============================
+     |  Attributes
+     |==============================*/
+
+    /**
+     * Calcula o valor total do orçamento somando todos os itens.
+     */
+    protected function totalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->items->sum('total_amount'),
+        );
+    }
+
+    protected function totalAmountServices(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->items->whereNotNull('service_id')->sum('total_amount'),
+        );
+    }
+
+    protected function totalAmountProducts(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->items->whereNotNull('product_id')->sum('total_amount'),
+        );
+    }
+
+    
 }

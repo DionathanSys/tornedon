@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -39,6 +40,12 @@ class QuoteItem extends Model
         'additional_info' => 'array',
     ];
 
+    protected $appends = ['identifier', 'is_product'];
+
+    /* ==============================
+     |  Relationships
+     |==============================*/
+
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
@@ -58,6 +65,28 @@ class QuoteItem extends Model
     {
         return $this->hasOne(ProductionOrderItem::class);
     }
+
+    /* ==============================
+     |  Attributes
+     |==============================*/
+
+    public function identifier(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->isProduct() ? 'PC - ' . $this->product->name : 'MO - ' . $this->service->name,
+        );
+    }
+
+    public function isProduct(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->product_id !== null,
+        );
+    }
+
+    /* ==============================
+     |  Helpers
+     |==============================*/
 
     /**
      * Calcula o total do item.
@@ -84,4 +113,6 @@ class QuoteItem extends Model
 
         return implode(' | ', $specs);
     }
+
+    
 }

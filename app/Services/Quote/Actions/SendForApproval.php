@@ -2,9 +2,10 @@
 
 namespace App\Services\Quote\Actions;
 
-use App\Enum\Quote\Status;
+use App\Exceptions\DomainValidationException;
 use App\Models\Quote;
 use App\Traits\HandlesActionResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
 class SendForApproval
@@ -15,37 +16,57 @@ class SendForApproval
         private int $userId,
     ) {}
 
-    public function execute(Quote $quote): bool
+    /**
+     * Envia o orçamento para aprovação via State Machine (draft → sent).
+     *
+     * @param  Quote  $quote
+     * @return Quote|null
+     */
+    public function execute(Quote $quote): ?Quote
     {
         try {
-            if ($quote->status !== Status::DRAFT) {
-                $this->setError('Apenas orçamentos em rascunho podem ser enviados');
-                return false;
-            }
+            Log::debug('SendForApproval: Iniciando envio para aprovação', [
+                'metodo'   => __METHOD__ . '@' . __LINE__,
+                'quote_id' => $quote->id,
+                'status'   => $quote->status,
+                'user_id'  => $this->userId,
+            ]);
 
-            if ($quote->items->isEmpty()) {
-                $this->setError('Orçamento deve ter ao menos um item');
-                return false;
-            }
+            $quote->state()->sendForApproval($quote, $this->userId);
 
-            $quote->update([
-                'status' => Status::SENT->value,
-                'updated_by' => $this->userId,
+            $quote->refresh();
+
+            Log::info('SendForApproval: Orçamento enviado para aprovação com sucesso', [
+                'metodo'   => __METHOD__ . '@' . __LINE__,
+                'quote_id' => $quote->id,
             ]);
 
             $this->setSuccess();
-            return true;
-            
-        } catch (\Exception $e) {
-            $this->setError('Erro ao enviar orçamento: ' . $e->getMessage());
-            
-            Log::error(__METHOD__ . '@' . __LINE__, [
+            return $quote;
+
+        } catch (DomainValidationException $e) {
+            $this->setError('Transição inválida', $e->errors);
+
+            Log::warning('SendForApproval: Transição inválida', [
+                'metodo'   => __METHOD__ . '@' . __LINE__,
+                'quote_id' => $quote->id,
+                'errors'   => $e->errors,
+            ]);
+
+            return null;
+
+        } catch (QueryException $e) {
+            $this->setError('Erro ao enviar orçamento para aprovação no banco de dados');
+
+            Log::error('SendForApproval: ' . $this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
+                'exception'  => $e->getMessage(),
                 'quote_id'   => $quote->id,
             ]);
-            
-            return false;
+
+            return null;
         }
     }
 }
+
