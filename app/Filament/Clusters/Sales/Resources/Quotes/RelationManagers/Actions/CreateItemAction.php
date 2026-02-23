@@ -210,12 +210,27 @@ final class CreateItemAction
                     ->columnSpanFull(),
             ])
             ->mutateDataUsing(function (array $data) {
-                Log::debug('CreateItemAction (Quote RelationManager): Dados antes da mutação', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
-                    'data'   => $data,
-                ]);
-                if($data['product_stock_id'] ?? null) {
-                    $data['product_id'] = $data['product_stock_id'];
+                if(($data['product_stock_id'] ?? null) || ($data['product_id'] ?? null)) {
+                    Log::debug('CreateItemAction (Quote RelationManager): Produto selecionado, ajustando dados para criação do item', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'data'   => $data,
+                    ]);
+                    $data['product_id'] = $data['product_stock_id'] ?? $data['product_id'];
+                    unset($data['product_stock_id'], $data['service_id']);
+                    Log::debug('CreateItemAction (Quote RelationManager): Dados ajustados para item de produto', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'data'   => $data,
+                    ]);
+                } elseif ($data['service_id'] ?? null) {
+                    Log::debug('CreateItemAction (Quote RelationManager): Serviço selecionado, ajustando dados para criação do item', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'data'   => $data,
+                    ]);
+                    unset($data['product_stock_id'], $data['product_id']);
+                    Log::debug('CreateItemAction (Quote RelationManager): Dados ajustados para item de serviço', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'data'   => $data,
+                    ]);
                 }
                 return $data;
             })
