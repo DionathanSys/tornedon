@@ -41,7 +41,7 @@ class ItemsRelationManager extends RelationManager
                     ->summarize(Sum::make('quantity')->label('TT Qtde.')),
                 TextColumn::make('unit_price')
                     ->label('Vlr. Unitário')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('discount_percentage')
                     ->label('Desc. (%)')
