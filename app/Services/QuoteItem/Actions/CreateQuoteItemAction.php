@@ -34,10 +34,12 @@ class CreateQuoteItemAction
                 'metodo'   => __METHOD__ . '@' . __LINE__,
                 'quote_id' => $data['quote_id'],
                 'user_id'  => $this->createdBy,
+                'data'     => $data,
             ]);
 
             $validated = QuoteItemValidator::validateCreate($data);
             // $validated['created_by'] = $this->createdBy;
+
 
             $item = QuoteItem::create($validated);
 
@@ -45,6 +47,7 @@ class CreateQuoteItemAction
                 'metodo'   => __METHOD__ . '@' . __LINE__,
                 'item_id'  => $item->id,
                 'quote_id' => $item->quote_id,
+                'dataValida' => $validated,
             ]);
 
             $this->setSuccess();
