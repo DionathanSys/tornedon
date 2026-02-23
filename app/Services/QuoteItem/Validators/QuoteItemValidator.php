@@ -18,8 +18,8 @@ class QuoteItemValidator
     {
         $rules = [
             'quote_id'                   => 'required|integer|exists:quotes,id',
-            'product_id'                 => 'required_without:service_id|integer|exists:products,id',
-            'service_id'                 => 'required_without:product_id|integer|exists:services,id',
+            'product_id'                 => 'required_without:service_id|exists:products,id',
+            'service_id'                 => 'required_without:product_id|exists:services,id',
             'description'                => 'nullable|string|max:2000',
             'destination'                => 'nullable|string|max:255',
             'quantity'                   => 'required|numeric|min:0.001',
@@ -73,8 +73,8 @@ class QuoteItemValidator
     public static function validateUpdate(array $data): array
     {
         $rules = [
-            'product_id'                 => 'required_without:service_id|nullable|exists:products,id',
-            'service_id'                 => 'required_without:product_id|nullable|exists:services,id',
+            'product_id'                 => 'required_without:service_id|exists:products,id',
+            'service_id'                 => 'required_without:product_id|exists:services,id',
             'description'                => 'sometimes|required|string|max:2000',
             'destination'                => 'sometimes|required|string|max:255',
             'quantity'                   => 'sometimes|required|numeric|min:0.001',

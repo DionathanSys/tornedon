@@ -210,6 +210,10 @@ final class CreateItemAction
                     ->columnSpanFull(),
             ])
             ->mutateDataUsing(function (array $data) {
+                Log::debug('CreateItemAction (Quote RelationManager): Dados antes da mutação', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'data'   => $data,
+                ]);
                 if($data['product_stock_id'] ?? null) {
                     $data['product_id'] = $data['product_stock_id'];
                 }
