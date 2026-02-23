@@ -68,8 +68,6 @@ class QuotesTable
                     ->native(false),
             ])
             ->recordActions([
-                ViewAction::make()
-                    ->iconButton(),
                 EditAction::make()
                     ->iconButton(),
             ])

@@ -39,7 +39,7 @@ final class CreateItemAction
     public static function make(): CreateAction
     {
         return CreateAction::make()
-            ->label('Peças')
+            ->label('Item')
             ->icon(Heroicon::Plus)
             ->badge()
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
@@ -50,7 +50,7 @@ final class CreateItemAction
                     ->schema([
                         ModalTableSelect::make('product_stock_id')
                             ->label('Produto Em Estoque')
-                            ->relationship('productStock', 'name')
+                            ->relationship('productStock', 'product.name')
                             ->tableConfiguration(ProductsStockTable::class)
                             ->selectAction(
                                 fn(Action $action) => $action
@@ -59,12 +59,15 @@ final class CreateItemAction
                                     ->modalSubmitActionLabel('Confirmar seleção'),
                             )
                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                $productStock = app(ProductStockService::class)->find($state);
                                 if ($state) {
-                                    $salePrice = app(ProductSalePriceService::class)->resolve($state);
-                                    $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($state);
+                                    $salePrice = app(ProductSalePriceService::class)->resolve($productStock->product_id);
+                                    $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($productStock->product_id);
                                     $set('service_id', null);
                                     $set('product_id', null);
-                                    $set('unit_of_measure', $unitOfMeasure);
+                                    $set('product_stock_id', $productStock->product_id);
+                                    $set('destination', 'Requisição de Venda');
+                                    $set('unit_of_measure', $unitOfMeasure->value);
                                     $set('unit_price', number_format($salePrice, 2, ',', '.'));
                                     $set('discount_amount', number_format(0, 2, ',', '.'));
                                     $set('discount_percentage', number_format(0, 2, ',', '.'));
@@ -87,7 +90,8 @@ final class CreateItemAction
                                     $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($state);
                                     $set('service_id', null);
                                     $set('product_stock_id', null);
-                                    $set('unit_of_measure', $unitOfMeasure);
+                                    $set('destination', 'Ordem de Produção');
+                                    $set('unit_of_measure', $unitOfMeasure->value);
                                     $set('unit_price', number_format($salePrice, 2, ',', '.'));
                                     $set('discount_amount', number_format(0, 2, ',', '.'));
                                     $set('discount_percentage', number_format(0, 2, ',', '.'));
@@ -109,6 +113,7 @@ final class CreateItemAction
                                     $salePrice = app(ServiceService::class)->getSalePrice($state);
                                     $set('product_id', null);
                                     $set('product_stock_id', null);
+                                    $set('destination', 'Ordem de Serviço');
                                     $set('unit_of_measure', null);
                                     $set('unit_price', number_format($salePrice, 2, ',', '.'));
                                     $set('discount_amount', number_format(0, 2, ',', '.'));
@@ -123,7 +128,6 @@ final class CreateItemAction
                     ->schema([
                         TextInput::make('unit_of_measure')
                             ->label('Unidade de Medida')
-                            ->required()
                             ->disabled()
                             ->columnSpan(1),
                         TextInput::make('destination')
@@ -205,7 +209,13 @@ final class CreateItemAction
                     ->label('Observações')
                     ->columnSpanFull(),
             ])
-            ->using(function (array $data, RelationManager $livewire): ?Model {
+            ->mutateDataUsing(function (array $data) {
+                if($data['product_stock_id'] ?? null) {
+                    $data['product_id'] = $data['product_stock_id'];
+                }
+                return $data;
+            })
+            ->using(function (array $data, Action $action, RelationManager $livewire): ?Model {
                 $quote = $livewire->getOwnerRecord();
 
                 $data['quote_id'] = $quote->id;
@@ -221,7 +231,7 @@ final class CreateItemAction
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
-                    return null;
+                    $action->halt();
                 }
 
                 notify::success(message: $service->getMessageUser());

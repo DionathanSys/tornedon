@@ -25,7 +25,8 @@ return new class extends Migration
             $table->decimal('quantity', 15, 3)                      // Quantidade
                 ->default(1.000);
             $table->string('unit_of_measure')                       // Unidade de medida (PC, UN, KG, etc)
-                ->default('UN');
+                ->default('UN')
+                ->nullable();
             $table->decimal('unit_price', 15, 4)                    // Preço unitário
                 ->default(0.0000);
             $table->decimal('discount_percentage', 5, 2)            // Percentual de desconto

@@ -22,8 +22,18 @@ class ProductSalePriceService
      * @param  ProductStock|null $stock    Registro de estoque (necessário para CALCULATED e CALCULATED_II)
      * @return float|null
      */
-    public function resolve(Product $product, ?ProductStock $stock = null): ?float
+    public function resolve(int|Product $product, ?ProductStock $stock = null): ?float
     {
+        if (is_int($product)) {
+            $product = Product::with('stock')->find($product);
+            if (! $product) {
+                Log::warning('ProductSalePriceService: Produto não encontrado', [
+                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'product_id' => $product,
+                ]);
+                return null;
+            }
+        }
 
         $origin = $product->origin_sale_price;
 

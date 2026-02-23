@@ -433,6 +433,6 @@ class ServiceService
 
     public function getSalePrice(int $serviceId): ?float
     {
-        return Service::select('sale_price')->find($serviceId)->sale_price ?? null;
+        return Service::select('price')->find($serviceId)->price ?? null;
     }
 }

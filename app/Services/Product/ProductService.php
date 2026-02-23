@@ -2,6 +2,7 @@
 
 namespace App\Services\Product;
 
+use App\Enum\Product\Unit;
 use App\Models\Product;
 use App\Services\Product\Actions\CreateProductAction;
 use App\Services\Product\Actions\DeleteProductAction;
@@ -389,8 +390,8 @@ class ProductService
         }
     }
 
-    public function getUnitOfMeasure(int $productId): ?string
+    public function getUnitOfMeasure(int $productId): ?Unit
     {
-        return Product::select('unit_of_measure')->find($productId)->unit_of_measure ?? null;
+        return Product::select('unit')->find($productId)->unit ?? null;
     }
 }
