@@ -50,14 +50,14 @@ class ItemsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
+                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL')),
                 TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL', 100)),
+                    ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL')),
                 TextColumn::make('estimated_production_hours')
                     ->label('Hrs. Produção')
                     ->numeric(2, ',', '.')

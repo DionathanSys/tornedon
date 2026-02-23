@@ -24,11 +24,11 @@ class ServiceTable
                     ->searchable(),
                 TextColumn::make('price')
                     ->label('Preço')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('cost')
                     ->label('Custo')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('category')
                     ->label('Categoria')

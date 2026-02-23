@@ -77,9 +77,15 @@ class QuoteItem extends Model
 
     public function identifier(): Attribute
     {
-        return Attribute::make(
-            get: fn() => $this->isProduct() ? 'PC - ' . ($this->product->name ?? 'Item #' . $this->id) : 'MO - ' . ($this->service->name ?? 'Item #' . $this->id),
-        );
+        if($this->isProduct) {
+            return Attribute::make(
+                get: fn() => 'PC - ' . ($this->product->name ?? 'Produto Desconecido'),
+            );
+        } else {
+            return Attribute::make(
+                get: fn() => 'MO - ' . ($this->service->name ?? 'Serviço Desconecido'),
+            );
+        }
     }
 
     public function isProduct(): Attribute

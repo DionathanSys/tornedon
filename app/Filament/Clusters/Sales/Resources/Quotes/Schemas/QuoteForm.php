@@ -39,6 +39,7 @@ class QuoteForm
             ->components([
                 Tabs::make('quote_tabs')
                     ->columnSpanFull()
+                    ->persistTab('quote_tabs')
                     ->tabs([
                         Tabs\Tab::make('Dados do Orçamento')
                             ->columns([
