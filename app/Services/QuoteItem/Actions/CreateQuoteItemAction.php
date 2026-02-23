@@ -37,7 +37,7 @@ class CreateQuoteItemAction
             ]);
 
             $validated = QuoteItemValidator::validateCreate($data);
-            $validated['created_by'] = $this->createdBy;
+            // $validated['created_by'] = $this->createdBy;
 
             $item = QuoteItem::create($validated);
 

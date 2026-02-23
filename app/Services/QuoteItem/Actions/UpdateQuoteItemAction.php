@@ -41,7 +41,7 @@ class UpdateQuoteItemAction
             ]);
 
             $validated = QuoteItemValidator::validateUpdate($data);
-            $validated['updated_by'] = $this->updatedBy;
+            // $validated['updated_by'] = $this->updatedBy;
 
             $this->item->update($validated);
             $this->item->refresh();
