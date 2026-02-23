@@ -23,7 +23,7 @@ final class RejectQuoteAction
             ->modalHeading('Rejeitar Orçamento')
             ->modalDescription('Informe o motivo da rejeição deste orçamento.')
             ->modalSubmitActionLabel('Sim, rejeitar')
-            ->form([
+            ->schema([
                 Textarea::make('reason')
                     ->label('Motivo da Rejeição')
                     ->required()

@@ -26,7 +26,7 @@ final class ConvertToProductionOrderQuoteAction
             ->modalHeading('Converter em Ordem de Produção')
             ->modalDescription('Preencha as informações para criar a Ordem de Produção a partir deste orçamento.')
             ->modalSubmitActionLabel('Sim, converter')
-            ->form([
+            ->schema([
                 Select::make('priority')
                     ->label('Prioridade')
                     ->options(Priority::toSelectArray())
