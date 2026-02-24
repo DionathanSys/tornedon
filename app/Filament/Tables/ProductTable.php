@@ -21,7 +21,9 @@ class ProductTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(fn(): Builder => Product::query()->where('company_id', Filament::getTenant()->id))
+            ->query(fn(): Builder => Product::query()
+                ->where('company_id', Filament::getTenant()->id)
+                ->where('is_invoiceable', true))
             ->columns([
                 TextColumn::make('product_code')
                     ->label('Código')

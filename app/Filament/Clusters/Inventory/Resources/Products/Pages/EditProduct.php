@@ -84,21 +84,11 @@ class EditProduct extends EditRecord
 
         $data['tax']['ncm_code'] = str_replace('.', '', $data['tax']['ncm_code']);
 
-        Log::debug('Dados do formulário antes de salvar o produto', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data' => $data,
-        ]);
-
         return $data;
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        Log::debug('Iniciando atualização de produto', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'product_id' => $record->id,
-            'data' => $data,
-        ]);
         $service = app(ProductService::class);
         $product = $service->update($record, $data, Auth::id());
 

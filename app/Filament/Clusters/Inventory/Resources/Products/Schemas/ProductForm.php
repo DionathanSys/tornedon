@@ -159,12 +159,13 @@ class ProductForm
                                             ->columnSpan(['md' => 1, 'lg' => 1])
                                             ->inline(false)
                                             ->default(true),
+                                        //TODO: A ideia seria de ser um campo automatico para controlar se o produto pode ser vendido
                                         Toggle::make('is_invoiceable')
                                             ->label('Permite Venda')
                                             ->visibleOn('edit')
                                             ->columnSpan(['md' => 1, 'lg' => 1])
                                             ->inline(false)
-                                            ->disabled(),
+                                            ->default(true),
                                         KeyValue::make('external_reference_codes')
                                             ->label('Outros Códigos (Ref. / Cód.)')
                                             ->keyLabel('Ref.')
@@ -256,6 +257,7 @@ class ProductForm
                                             ->schema([
                                                 Select::make('tax.icms.tax_situation')
                                                     ->label('Situação Tributária')
+                                                    ->native(false)
                                                     ->options([
                                                         '00' => '00 - Tributada integralmente',
                                                         '10' => '10 - Tributada e com cobrança do ICMS por substituição tributária',
@@ -271,6 +273,7 @@ class ProductForm
                                                     ]), //TODO falta mais opções
                                                 Select::make('tax.icms.base_calculation_method')
                                                     ->label('Método de Cálculo da Base')
+                                                    ->native(false)
                                                     ->options([
                                                         0 => '0 - margem de valor agregado (%)',
                                                         1 => '1 - pauta (valor)',
@@ -301,6 +304,7 @@ class ProductForm
                                                     ->label('Cód. Enquadramento'),
                                                 Select::make('tax.ipi.tax_situation')
                                                     ->label('Situação Tributária')
+                                                    ->native(false)
                                                     ->options([
                                                         '00' => '00 - Entrada com recuperação de crédito',
                                                         '01' => '01 - Entrada tributada com alíquota zero',

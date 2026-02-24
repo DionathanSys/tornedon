@@ -74,7 +74,6 @@ class EquipmentForm
                             ->label('Placa')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(7)
-                            ->mask('AAA9*99')
                             ->placeholder('ABC1234')
                             ->required(fn(Get $get) => $get('type') === Enum\Equipment\Type::CAR->value || $get('type') === Enum\Equipment\Type::TRUCK->value)
                             ->hiddenJs(<<<'JS'

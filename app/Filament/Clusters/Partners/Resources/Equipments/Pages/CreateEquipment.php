@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Partners\Resources\Equipments\Pages;
 use App\Filament\Clusters\Partners\Resources\Equipments\EquipmentResource;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
 class CreateEquipment extends CreateRecord
@@ -28,5 +29,10 @@ class CreateEquipment extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    protected function preserveFormDataWhenCreatingAnother(array $data): array
+    {
+        return Arr::only($data, ['owner_id']);
     }
 }

@@ -4,17 +4,21 @@ namespace App\Filament\Tables;
 
 use App\Models\ProductStock;
 use Filament\Actions\BulkActionGroup;
+use Filament\Facades\Filament;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class ProductsStockTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(fn(): Builder => ProductStock::query())
+            ->query(fn(): Builder => ProductStock::query()
+                ->where('company_id', Filament::getTenant()->id)
+                ->whereHas('product', fn(Builder $query) => $query->where('is_invoiceable', true)))
             ->columns([
                 TextColumn::make('product.name')
                     ->label('Produto')
