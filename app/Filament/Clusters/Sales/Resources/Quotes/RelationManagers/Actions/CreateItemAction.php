@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions;
 
 use App\Enum\Quote\Destination;
+use App\Enum\Quote\Status;
 use App\Filament\Clusters\Inventory\Resources\Products\Tables\ProductsTable;
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\SchemaForm;
@@ -58,6 +59,7 @@ final class CreateItemAction
                 unset($data['item']);
 
                 $data['quote_id'] = $quote->id;
+                $data['status'] = Status::DRAFT;
                 
                 // Parse numeric values from PT-BR format to float
                 $data['quantity']            = self::parseMoneyValue($data['quantity'] ?? 0);

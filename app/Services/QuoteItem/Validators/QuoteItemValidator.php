@@ -33,6 +33,7 @@ class QuoteItemValidator
             'labor_cost'                 => 'nullable|numeric|min:0',
             'sequence'                   => 'nullable|integer|min:0',
             'additional_info'            => 'nullable|array',
+            'status'                     => 'required|string|max:50',
         ];
 
         $messages = [
@@ -58,6 +59,7 @@ class QuoteItemValidator
             'estimated_production_hours.min' => 'As horas estimadas não podem ser negativas.',
             'material_cost.min'         => 'O custo de material não pode ser negativo.',
             'labor_cost.min'            => 'O custo de mão de obra não pode ser negativo.',
+            'status.required'           => 'O status é obrigatório.',
         ];
 
         return Validator::make($data, $rules, $messages)->validate();
@@ -73,8 +75,8 @@ class QuoteItemValidator
     public static function validateUpdate(array $data): array
     {
         $rules = [
-            'product_id'                 => 'required_without:service_id|exists:products,id',
-            'service_id'                 => 'required_without:product_id|exists:services,id',
+            'product_id'                 => 'nullable|required_without:service_id|exists:products,id',
+            'service_id'                 => 'nullable|required_without:product_id|exists:services,id',
             'description'                => 'sometimes|required|string|max:2000',
             'destination'                => 'sometimes|required|string|max:255',
             'quantity'                   => 'sometimes|required|numeric|min:0.001',
@@ -88,6 +90,7 @@ class QuoteItemValidator
             'labor_cost'                 => 'nullable|numeric|min:0',
             'sequence'                   => 'nullable|integer|min:0',
             'additional_info'            => 'nullable|array',
+            'status'                     => 'sometimes|required|string|max:50',
         ];
 
         $messages = [
@@ -111,6 +114,7 @@ class QuoteItemValidator
             'estimated_production_hours.min' => 'As horas estimadas não podem ser negativas.',
             'material_cost.min'         => 'O custo de material não pode ser negativo.',
             'labor_cost.min'            => 'O custo de mão de obra não pode ser negativo.',
+            'status.required'           => 'O status é obrigatório.',
         ];
 
         return Validator::make($data, $rules, $messages)->validate();
