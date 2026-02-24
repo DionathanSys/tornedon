@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages;
 
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Partners\Resources\Equipments\EquipmentResource;
-use App\Filament\Clusters\Partners\Resources\Equipments\Pages\Actions\CreateEquipmentAction;
 use App\Models\CompanyPartner;
 use App\Models\Partner;
 use App\Services\Partner\CompanyPartnerService;

@@ -5,13 +5,17 @@ namespace App\Filament\Clusters\Partners\Resources\Equipments\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class EquipmentsTable
 {
@@ -72,6 +76,7 @@ class EquipmentsTable
                     )
                     ->searchable()
                     ->preload(),
+                TrashedFilter::make(),
             ])
             ->persistFiltersInSession()
             ->persistSortInSession()
@@ -83,6 +88,10 @@ class EquipmentsTable
             ])
             ->recordActions([
                 EditAction::make()
+                    ->iconButton(),
+                RestoreAction::make()
+                    ->iconButton(),
+                ForceDeleteAction::make()
                     ->iconButton(),
             ])
             ->toolbarActions([])

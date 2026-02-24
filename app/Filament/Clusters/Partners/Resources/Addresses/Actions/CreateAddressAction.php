@@ -38,33 +38,8 @@ final class CreateAddressAction
             ->action(function (Action $action, array $data, array $arguments) {
                 $record = $action->getRecord();
 
-                // Determina o partner_id baseado no contexto
-                if ($record && $record instanceof \App\Models\CompanyPartner) {
-                    // Está dentro do form do parceiro - usa o ID do record
-                    $partnerId = $record->partner_id;
-                } else {
-                    // Está no index de endereços - usa o partner_id do formulário
-                    $partnerId = $data['partner_id'] ?? 0;
-                }
-
-                Log::debug(__METHOD__ . '@' . __LINE__, [
-                    'message' => 'Iniciando criação de novo endereço para Parceiro',
-                    'data'    => $data,
-                    'args'    => $arguments,
-                    'partner_id' => $partnerId,
-                    'context' => $record ? 'partner_form' : 'addresses_index',
-                ]);
-
-                //TODO Remover caso seja removido o Resource de Address
-                $company_partner_id = CompanyPartnerService::getIdCompanyPartner($partnerId);
-
-                if (!$company_partner_id) {
-                    notify::error(message: 'Vínculo entre Empresa e Parceiro não encontrado. Não é possível cadastrar o endereço.');
-                    $action->halt();
-                }
-
                 $service = new AddressService();
-                $result = $service->create($company_partner_id, $data, Auth::id());
+                $result = $service->create($record->id, $data, Auth::id());
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser());

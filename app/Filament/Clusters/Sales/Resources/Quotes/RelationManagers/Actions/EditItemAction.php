@@ -8,6 +8,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\QuoteItem\QuoteItemService;
 use App\Traits\AuthorizesQuoteItemActions;
 use App\Traits\ParsesMoneyValues;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
@@ -26,7 +27,7 @@ final class EditItemAction
             ->label('Editar')
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema(SchemaForm::make('edit'))
-            ->action(function (QuoteItem $record, array $data, RelationManager $livewire): ?Model {
+            ->action(function (QuoteItem $record, array $data, Action $action, RelationManager $livewire): ?Model {
                 $quote = $livewire->getOwnerRecord();
 
                 // Extração dos IDs do container 'item'
@@ -54,7 +55,7 @@ final class EditItemAction
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
-                    return null;
+                    $action->halt();
                 }
 
                 notify::success(message: $service->getMessageUser());

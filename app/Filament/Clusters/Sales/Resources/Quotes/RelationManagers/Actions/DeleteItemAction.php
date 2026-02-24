@@ -6,6 +6,7 @@ use App\Models\QuoteItem;
 use App\Notification\NotifyService as notify;
 use App\Services\QuoteItem\QuoteItemService;
 use App\Traits\AuthorizesQuoteItemActions;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +23,7 @@ final class DeleteItemAction
             ->modalHeading('Excluir Item')
             ->modalDescription('Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.')
             ->modalSubmitActionLabel('Sim, excluir')
-            ->using(function (QuoteItem $record): bool {
+            ->using(function (QuoteItem $record, Action $action): bool {
                 Log::debug('DeleteItemAction (Quote RelationManager): Iniciando exclusão de item', [
                     'metodo'  => __METHOD__ . '@' . __LINE__,
                     'item_id' => $record->id,
@@ -33,7 +34,7 @@ final class DeleteItemAction
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
-                    return false;
+                    $action->halt();
                 }
 
                 notify::success(message: $service->getMessageUser());

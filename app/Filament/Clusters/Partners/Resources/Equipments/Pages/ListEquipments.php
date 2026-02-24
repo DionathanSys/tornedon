@@ -17,7 +17,8 @@ class ListEquipments extends ListRecords
             CreateAction::make()
                 ->label('Equipamento')
                 ->icon(Heroicon::Plus)
-                ->badge(),
+                ->badge()
+                ->preserveFormDataWhenCreatingAnother(['owner_id']),
         ];
     }
 }
