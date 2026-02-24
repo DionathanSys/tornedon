@@ -73,10 +73,6 @@ class ItemsRelationManager extends RelationManager
                     ->money('BRL', 100)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('sequence')
-                    ->label('Seq.')
-                    ->numeric(0)
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Criado Em')
                     ->dateTime('d/m/Y H:i')
