@@ -37,7 +37,7 @@ class UpdateServiceAction
             $validated = ServiceValidator::validateUpdate($data, $this->service->id, $this->service->company_id);
 
             // Remove campos imutáveis
-            unset($validated['company_id']);
+            unset($validated['service_code'], $validated['company_id']);
 
             $validated['updated_by'] = $this->updatedBy;
 

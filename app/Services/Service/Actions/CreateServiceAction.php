@@ -3,6 +3,7 @@
 namespace App\Services\Service\Actions;
 
 use App\Models\Service;
+use App\Services\Service\ServiceCodeService;
 use App\Services\Service\Validators\ServiceValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -34,6 +35,11 @@ class CreateServiceAction
 
             $validated = ServiceValidator::validateCreate($data);
 
+            // Geração automática do código do serviço
+            if (empty($validated['service_code'])) {
+                $validated['service_code'] = ServiceCodeService::generate($validated['company_id']);
+            }
+
             $validated['created_by'] = $this->createdBy;
 
             $service = Service::create($validated);
@@ -44,6 +50,7 @@ class CreateServiceAction
                 'name'       => $service->name,
                 'company_id' => $service->company_id,
                 'user_id'    => $this->createdBy,
+                'service_code' => $service->service_code,
             ]);
 
             $this->setSuccess();

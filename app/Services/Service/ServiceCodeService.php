@@ -1,0 +1,36 @@
+<?php
+
+namespace App\Services\Service;
+
+use App\Models\ServiceSequence;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class ServiceCodeService
+{
+    /**
+     * Gera o próximo código de serviço para a empresa informada.
+     * Usa lock pessimista para evitar duplicidade em concorrência.
+     */
+    public static function generate(int $companyId): string
+    {
+        return DB::transaction(function () use ($companyId) {
+            $sequence = ServiceSequence::lockForUpdate()
+                ->firstOrCreate(
+                    ['company_id' => $companyId],
+                    ['last_number' => 0]
+                );
+
+            Log::info('Gerando código de serviço', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'company_id' => $companyId,
+                'current_last_number' => $sequence->last_number,
+                'next_number' => $sequence->last_number + 1,
+            ]);
+
+            $sequence->increment('last_number');
+
+            return str_pad($sequence->last_number, 5, '0', STR_PAD_LEFT);
+        });
+    }
+}

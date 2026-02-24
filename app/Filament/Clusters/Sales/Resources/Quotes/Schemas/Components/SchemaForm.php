@@ -2,206 +2,261 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components;
 
+use App\Enum\Quote\Destination;
 use App\Filament\Tables\ProductsStockTable;
 use App\Filament\Tables\ProductTable;
 use App\Filament\Tables\ServiceTable;
-use App\Services\Product\ProductSalePriceService;
-use App\Services\Product\ProductService;
-use App\Services\ProductStock\ProductStockService;
-use App\Services\Service\ServiceService;
+use App\Services\QuoteItem\QuoteItemResolverService;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class SchemaForm
 {
     use ParsesMoneyValues;
-    
-    public static function configure(): array
+
+    /**
+     * O ponto de entrada do formulário.
+     */
+    public static function make(string $context = 'create'): array
     {
         return [
-            Group::make()
-                ->columns(3)
-                ->columnSpanFull()
-                ->schema([
-                    ModalTableSelect::make('product_stock_id')
-                        ->label('Produto Em Estoque')
-                        ->relationship('productStock', 'product.name')
-                        ->tableConfiguration(ProductsStockTable::class)
-                        ->selectAction(
-                            fn(Action $action) => $action
-                                ->label('Selecionar')
-                                ->modalHeading('Buscar Produto')
-                                ->modalSubmitActionLabel('Confirmar seleção'),
-                        )
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            $productStock = app(ProductStockService::class)->find($state);
-                            if ($state) {
-                                $salePrice = app(ProductSalePriceService::class)->resolve($productStock->product_id);
-                                $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($productStock->product_id);
-                                $set('service_id', null);
-                                $set('product_id', null);
-                                $set('product_stock_id', $productStock->product_id);
-                                $set('destination', 'Requisição de Venda');
-                                $set('unit_of_measure', $unitOfMeasure->value);
-                                $set('unit_price', number_format($salePrice, 2, ',', '.'));
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }
-                        }),
-                    ModalTableSelect::make('product_id')
-                        ->label('Produto')
-                        ->relationship('product', 'name')
-                        ->tableConfiguration(ProductTable::class)
-                        ->selectAction(
-                            fn(Action $action) => $action
-                                ->label('Selecionar')
-                                ->modalHeading('Buscar Produto')
-                                ->modalSubmitActionLabel('Confirmar seleção'),
-                        )
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            if ($state) {
-                                $salePrice = app(ProductSalePriceService::class)->resolve($state);
-                                $unitOfMeasure = app(ProductService::class)->getUnitOfMeasure($state);
-                                $set('service_id', null);
-                                $set('product_stock_id', null);
-                                $set('destination', 'Ordem de Produção');
-                                $set('unit_of_measure', $unitOfMeasure->value);
-                                $set('unit_price', number_format($salePrice, 2, ',', '.'));
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }
-                        }),
-                    ModalTableSelect::make('service_id')
-                        ->label('Serviço')
-                        ->relationship('service', 'name')
-                        ->tableConfiguration(ServiceTable::class)
-                        ->selectAction(
-                            fn(Action $action) => $action
-                                ->label('Selecionar')
-                                ->modalHeading('Buscar Serviço')
-                                ->modalSubmitActionLabel('Confirmar seleção'),
-                        )
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            if ($state) {
-                                $salePrice = app(ServiceService::class)->getSalePrice($state);
-                                $set('product_id', null);
-                                $set('product_stock_id', null);
-                                $set('destination', 'Ordem de Serviço');
-                                $set('unit_of_measure', null);
-                                $set('unit_price', number_format($salePrice, 2, ',', '.'));
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }
-                        }),
-                ]),
-            Group::make()
-                ->columns(3)
-                ->columnSpanFull()
-                ->schema([
-                    Hidden::make('item_id'),
-                    TextEntry::make('name')
-                        ->label('Item')
-                        ->disabled()
-                        ->columnSpanFull(),
-                    TextInput::make('unit_of_measure')
-                        ->label('Unidade de Medida')
-                        ->disabled()
-                        ->columnSpan(1),
-                    TextInput::make('destination')
-                        ->label('Finalidade')
-                        ->required()
-                        ->disabled()
-                        ->columnSpan(2),
-                ]),
-            Group::make()
-                ->columns(3)
-                ->columnSpanFull()
-                ->schema([
-                    TextInput::make('quantity')
-                        ->label('Quantidade')
-                        ->required()
-                        ->numeric()
-                        ->default(1)
-                        ->minValue(0)
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            $set('discount_amount', number_format(0, 2, ',', '.'));
-                            $set('discount_percentage', number_format(0, 2, ',', '.'));
-                            self::calculateValues($get, $set);
-                        }),
-                    Money::make('unit_price')
-                        ->label('Preço Unitário')
-                        ->required()
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            $set('discount_amount', number_format(0, 2, ',', '.'));
-                            $set('discount_percentage', number_format(0, 2, ',', '.'));
-                            self::calculateValues($get, $set);
-                        }),
-                    Money::make('subtotal')
-                        ->label('Subtotal')
-                        ->readOnly(),
-                ]),
-            Group::make()
-                ->columns(3)
-                ->columnSpanFull()
-                ->schema([
-                    Money::make('discount_percentage')
-                        ->label('Desconto (%)')
-                        ->suffix('%')
-                        ->prefix(null)
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                            $subtotal = self::parseMoneyValue($get('subtotal'));
-                            $percentage = self::parseMoneyValue($state);
-                            $discountAmount = $subtotal * ($percentage / 100);
-                            $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
-                            self::calculateValues($get, $set);
-                        })
-                        ->afterLabel(Action::make('reset_discount_percentage')
-                            ->label('')
-                            ->icon(Heroicon::ArrowPath)
-                            ->action(function (Set $set, Get $get) {
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            })),
-                    Money::make('discount_amount')
-                        ->label('Desconto (R$)')
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                            $subtotal = self::parseMoneyValue($get('subtotal'));
-                            $discountAmount = self::parseMoneyValue($state);
-                            if ($subtotal > 0) {
-                                $percentage = ($discountAmount / $subtotal) * 100;
-                                $set('discount_percentage', number_format($percentage, 2, ',', '.'));
-                            }
-                            self::calculateValues($get, $set);
-                        }),
-                    Money::make('total_amount')
-                        ->label('Valor Total')
-                        ->readOnly(),
-                ]),
+            self::getSelectionGroup(),
+            self::getInformationGroup(),
+            self::getValueGroup(),
             Textarea::make('observations')
                 ->label('Observações')
                 ->columnSpanFull(),
         ];
     }
 
-    protected static function calculateValues(callable $get, Set $set): void
+    /**
+     * Grupo de Seleção: Contém os campos de busca via ModalTableSelect.
+     */
+    private static function getSelectionGroup(): Group
     {
+        return Group::make()
+            ->columns(3)
+            ->columnSpanFull()
+            ->schema([
+                ModalTableSelect::make('item.product_stock_id')
+                    ->label('Produto Em Estoque')
+                    ->relationship('productStock', 'product.product_code')
+                    ->tableConfiguration(ProductsStockTable::class)
+                    ->selectAction(
+                        fn (Action $action) => $action
+                            ->label('Selecionar')
+                            ->modalHeading('Buscar Produto em Estoque')
+                            ->modalSubmitActionLabel('Confirmar seleção'),
+                    )
+                    ->afterStateUpdated(fn ($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::REQUISITION, $state)),
+
+                ModalTableSelect::make('item.product_id')
+                    ->label('Produto')
+                    ->relationship('product', 'product_code')
+                    ->tableConfiguration(ProductTable::class)
+                    ->selectAction(
+                        fn (Action $action) => $action
+                            ->label('Selecionar')
+                            ->modalHeading('Buscar Produto p/ Produção')
+                            ->modalSubmitActionLabel('Confirmar seleção'),
+                    )
+                    ->afterStateUpdated(fn ($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_PRODUCTION, $state)),
+
+                ModalTableSelect::make('item.service_id')
+                    ->label('Serviço')
+                    ->relationship('service', 'service_code')
+                    ->tableConfiguration(ServiceTable::class)
+                    ->selectAction(
+                        fn (Action $action) => $action
+                            ->label('Selecionar')
+                            ->modalHeading('Buscar Serviço')
+                            ->modalSubmitActionLabel('Confirmar seleção'),
+                    )
+                    ->afterStateUpdated(fn ($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_SERVICE, $state)),
+            ]);
+    }
+
+    /**
+     * Grupo de Informação: Exibe os dados de identificação do item selecionado.
+     */
+    private static function getInformationGroup(): Group
+    {
+        return Group::make()
+            ->columns(3)
+            ->columnSpanFull()
+            ->schema([
+                // Campos ocultos para metadados de seleção (dentro de item para não serem salvos direto)
+                Hidden::make('item.code'),
+                Hidden::make('item.name'),
+
+                TextInput::make('item.identification')
+                    ->label('Identificação do Item')
+                    ->readOnly()
+                    ->dehydrated(false)
+                    ->columnSpanFull(),
+
+                TextInput::make('unit_of_measure')
+                    ->label('Unidade de Medida')
+                    ->readOnly()
+                    ->columnSpan(1),
+
+                TextInput::make('destination')
+                    ->label('Finalidade')
+                    ->readOnly()
+                    ->placeholder('Aguardando seleção...')
+                    ->formatStateUsing(fn ($state) => $state ? Destination::tryFrom($state)?->description() : null)
+                    ->columnSpan(2),
+            ]);
+    }
+
+    /**
+     * Grupo de Valores: Cálculos de preço, quantidade e descontos.
+     */
+    private static function getValueGroup(): Group
+    {
+        return Group::make()
+            ->columns(3)
+            ->columnSpanFull()
+            ->schema([
+                TextInput::make('quantity')
+                    ->label('Quantidade')
+                    ->required()
+                    ->numeric()
+                    ->default(1)
+                    ->minValue(0)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                        $set('discount_amount', number_format(0, 2, ',', '.'));
+                        $set('discount_percentage', number_format(0, 2, ',', '.'));
+                        self::calculateValues($get, $set);
+                    }),
+
+                Money::make('unit_price')
+                    ->label('Preço Unitário')
+                    ->required()
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                        $set('discount_amount', number_format(0, 2, ',', '.'));
+                        $set('discount_percentage', number_format(0, 2, ',', '.'));
+                        self::calculateValues($get, $set);
+                    }),
+
+                Money::make('subtotal')
+                    ->label('Subtotal')
+                    ->readOnly(),
+
+                Money::make('discount_percentage')
+                    ->label('Desconto (%)')
+                    ->suffix('%')
+                    ->prefix(null)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                        $subtotal = self::parseMoneyValue($get('subtotal'));
+                        $percentage = self::parseMoneyValue($state);
+                        $discountAmount = $subtotal * ($percentage / 100);
+                        $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
+                        self::calculateValues($get, $set);
+                    })
+                    ->afterLabel(Action::make('reset_discount_percentage')
+                        ->label('')
+                        ->icon(Heroicon::ArrowPath)
+                        ->action(function (Set $set, Get $get) {
+                            $set('discount_percentage', number_format(0, 2, ',', '.'));
+                            $set('discount_amount', number_format(0, 2, ',', '.'));
+                            self::calculateValues($get, $set);
+                        })),
+
+                Money::make('discount_amount')
+                    ->label('Desconto (R$)')
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                        $subtotal = self::parseMoneyValue($get('subtotal'));
+                        $discountAmount = self::parseMoneyValue($state);
+                        if ($subtotal > 0) {
+                            $percentage = ($discountAmount / $subtotal) * 100;
+                            $set('discount_percentage', number_format($percentage, 2, ',', '.'));
+                        }
+                        self::calculateValues($get, $set);
+                    }),
+
+                Money::make('total_amount')
+                    ->label('Valor Total')
+                    ->readOnly(),
+            ]);
+    }
+
+    /**
+     * Resolve os dados do item através do serviço especialista.
+     */
+    protected static function resolveItem(Set $set, Get $get, Destination $type, $id): void
+    {
+        if (! $id) return;
+
+        // Limpa as outras seleções para manter integridade dentro do container 'item'
+        $set('item.product_stock_id',    $type === Destination::REQUISITION      ? $id : null);
+        $set('item.product_id',          $type === Destination::ORDER_PRODUCTION ? $id : null);
+        $set('item.service_id',          $type === Destination::ORDER_SERVICE    ? $id : null);
+
+        $service = app(QuoteItemResolverService::class);
+        
+        $dto = match ($type) {
+            Destination::REQUISITION        => $service->resolveForStock($id),
+            Destination::ORDER_PRODUCTION   => $service->resolveForProduct($id),
+            Destination::ORDER_SERVICE      => $service->resolveForService($id),
+        };
+
+        if ($dto) {
+            // Guardamos os IDs reais e metadados dentro de 'item.'
+            $set('item.real_product_id', $dto->productId);
+            $set('item.real_service_id', $dto->serviceId);
+            $set('item.code', $dto->code);
+            $set('item.name', $dto->name);
+            $set('item.identification', $dto->code ? "[{$dto->code}] {$dto->name}" : $dto->name);
+
+            // Campos de persistência (Root)
+            $set('unit_of_measure', $dto->unit);
+            $set('destination', $dto->destination->value);
+            $set('unit_price', number_format($dto->price, 2, ',', '.'));
+            
+            // Reseta descontos ao trocar de item
+            $set('discount_amount', '0,00');
+            $set('discount_percentage', '0,00');
+            
+            self::calculateValues($get, $set);
+        }
+    }
+
+    /**
+     * Recalcula os totais do formulário.
+     */
+    protected static function calculateValues(Get $get, Set $set): void
+    {
+        $quantity = self::parseMoneyValue($get('quantity'));
+        $unitPrice = self::parseMoneyValue($get('unit_price'));
+        $discountAmount = self::parseMoneyValue($get('discount_amount'));
+
+        $subtotal = $quantity * $unitPrice;
+        $set('subtotal', number_format($subtotal, 2, ',', '.'));
+
+        $totalAmount = $subtotal - $discountAmount;
+        $set('total_amount', number_format($totalAmount, 2, ',', '.'));
+
+        Log::debug('Quote SchemaForm: Valores recalculados', [
+            'quantity'        => $quantity,
+            'unit_price'      => $unitPrice,
+            'discount_amount' => $discountAmount,
+            'subtotal'        => $subtotal,
+            'total_amount'    => $totalAmount,
+        ]);
     }
 }

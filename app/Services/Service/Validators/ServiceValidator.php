@@ -30,6 +30,12 @@ class ServiceValidator
         $issValues     = array_map(fn ($e) => $e->value, IssExigibility::cases());
 
         $rules = [
+            'service_code'       => [
+                'nullable',
+                'string',
+                'max:20',
+                Rule::unique('services', 'service_code')->where('company_id', $data['company_id'] ?? null),
+            ],
             'name'               => [
                 'required',
                 'string',
@@ -51,6 +57,12 @@ class ServiceValidator
             'iss_exigibility'    => ['nullable', Rule::in($issValues)],
             'additional_info'    => 'nullable|array',
             'company_id'         => 'required|integer|exists:companies,id',
+            'service_code'       => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('services', 'service_code')->where('company_id', $data['company_id'] ?? null),
+            ],
         ];
 
         $messages = self::messages();
@@ -80,6 +92,15 @@ class ServiceValidator
         $issValues  = array_map(fn ($e) => $e->value, IssExigibility::cases());
 
         $rules = [
+            'service_code'       => [
+                'sometimes',
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('services', 'service_code')
+                    ->where('company_id', $companyId)
+                    ->ignore($serviceId),
+            ],
             'name'               => [
                 'sometimes',
                 'required',
@@ -107,6 +128,18 @@ class ServiceValidator
             $rules['name'][] = Rule::unique('services', 'name')
                 ->where('company_id', $companyId)
                 ->ignore($serviceId);
+        }
+
+        // Adiciona validação de service_code apenas se o campo estiver presente nos dados
+        if (isset($data['service_code']) && $companyId) {
+            $rules['service_code'] = [
+                'nullable',
+                'string',
+                'max:20',
+                Rule::unique('services', 'service_code')
+                    ->where('company_id', $companyId)
+                    ->ignore($serviceId),
+            ];
         }
 
         $messages = self::messages();
@@ -146,6 +179,8 @@ class ServiceValidator
             'company_id.required'        => 'É obrigatório informar a empresa',
             'company_id.exists'          => 'A empresa informada não existe',
             'company_id.integer'         => 'O ID da empresa deve ser um número inteiro',
+            'service_code.unique'        => 'Já existe um serviço com este código',
+            'service_code.max'           => 'O código do serviço não pode ter mais de 20 caracteres',
         ];
     }
 }

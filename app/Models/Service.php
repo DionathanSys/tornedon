@@ -12,7 +12,22 @@ class Service extends Model
 {
     use SoftDeletes;
 
-    protected $guarded = ['id'];
+    protected $fillable = [
+        'service_code',
+        'name',
+        'description',
+        'price',
+        'cost',
+        'category',
+        'is_active',
+        'requires_approval',
+        'tax_classification',
+        'tax_rate',
+        'additional_info',
+        'created_by',
+        'updated_by',
+        'company_id',
+    ];
 
     protected $casts = [
         'price'            => MoneyCast::class,

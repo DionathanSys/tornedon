@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Enum\Quote\Destination;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +39,7 @@ class QuoteItem extends Model
         'material_cost' => MoneyCast::class,
         'labor_cost' => MoneyCast::class,
         'additional_info' => 'array',
+        'destination' => Destination::class,
     ];
 
     protected $appends = ['identifier', 'is_product'];
