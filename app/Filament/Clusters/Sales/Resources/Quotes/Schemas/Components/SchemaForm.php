@@ -39,6 +39,7 @@ class SchemaForm
                 ->columnSpanFull(),
             TextInput::make('status')
                 ->label('Status')
+                ->visibleOn('edit')
                 ->readOnly()
                 ->formatStateUsing(fn ($state) => $state ? Status::tryFrom($state)?->description() : null),
 
