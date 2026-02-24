@@ -59,7 +59,7 @@ final class CreateItemAction
                 unset($data['item']);
 
                 $data['quote_id'] = $quote->id;
-                $data['status'] = Status::DRAFT;
+                $data['status'] = Status::DRAFT->value;
                 
                 // Parse numeric values from PT-BR format to float
                 $data['quantity']            = self::parseMoneyValue($data['quantity'] ?? 0);
