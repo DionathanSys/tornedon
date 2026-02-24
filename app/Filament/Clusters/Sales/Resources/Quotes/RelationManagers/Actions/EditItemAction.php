@@ -29,12 +29,11 @@ final class EditItemAction
             ->action(function (QuoteItem $record, array $data, RelationManager $livewire): ?Model {
                 $quote = $livewire->getOwnerRecord();
 
-                // Extração dos IDs e Descrição do container 'item'
+                // Extração dos IDs do container 'item'
                 $data['product_id']  = $data['item']['real_product_id'] ?? null;
                 $data['service_id']  = $data['item']['real_service_id'] ?? null;
-                $data['description'] = $data['item']['name'] ?? null;
 
-                // Removemos o container de seleção
+                // Removemos o container de seleção para não interferir no registro
                 unset($data['item']);
 
                 // Parse numeric values from PT-BR format to float

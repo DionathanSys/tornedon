@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components;
 
 use App\Enum\Quote\Destination;
+use App\Enum\Quote\Status;
 use App\Filament\Tables\ProductsStockTable;
 use App\Filament\Tables\ProductTable;
 use App\Filament\Tables\ServiceTable;
@@ -36,6 +37,11 @@ class SchemaForm
             Textarea::make('observations')
                 ->label('Observações')
                 ->columnSpanFull(),
+            TextInput::make('status')
+                ->label('Status')
+                ->readOnly()
+                ->formatStateUsing(fn ($state) => $state ? Status::tryFrom($state)?->description() : null),
+
         ];
     }
 
