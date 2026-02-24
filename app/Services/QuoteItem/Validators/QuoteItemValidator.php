@@ -18,8 +18,8 @@ class QuoteItemValidator
     {
         $rules = [
             'quote_id'                   => 'required|integer|exists:quotes,id',
-            'product_id'                 => 'required_without:service_id|exists:products,id',
-            'service_id'                 => 'required_without:product_id|exists:services,id',
+            'product_id'                 => 'nullable|required_without:service_id|exists:products,id',
+            'service_id'                 => 'nullable|required_without:product_id|exists:services,id',
             'description'                => 'nullable|string|max:2000',
             'destination'                => 'nullable|string|max:255',
             'quantity'                   => 'required|numeric|min:0.001',
