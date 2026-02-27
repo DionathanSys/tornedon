@@ -117,9 +117,7 @@ class RegisterCompany extends RegisterTenant
                                 FileUpload::make('certificate')
                                     ->label('Certificado Digital')
                                     ->disabled()
-                                    ->placeholder('Informações do certificado')
-                                    ->maxLength(255)
-                                    ->columnSpan(['md' => 2]),
+                                    ->columnSpanFull(),
                             ]),
                     ]),
             ]);
