@@ -42,14 +42,6 @@ class UpdateQuoteItemAction
 
             $validated = QuoteItemValidator::validateUpdate($data);
             // $validated['updated_by'] = $this->updatedBy;
-
-            Log::debug('UpdateQuoteItemAction: Dados validados para atualização', [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
-                'item'   => $this->item,
-                'validated' => $validated,
-            ]);
-            
-            Log::debug('Dirty attributes', $this->item->getDirty());
             
             $this->item->update($validated);
             $this->item->refresh();
