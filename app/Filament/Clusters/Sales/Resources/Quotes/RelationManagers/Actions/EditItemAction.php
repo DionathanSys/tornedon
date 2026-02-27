@@ -39,7 +39,7 @@ final class EditItemAction
                 $data['description'] = $record->description;
                 $data['status'] = $record->status->value ?? null;
                 $data['unit_of_measure'] = $record->unit_of_measure;
-                $data['destination'] = $record->destination->description() ?? null;
+                $data['destination'] = $record->destination->value;
                 $data['quantity'] = $record->quantity;
                 $data['unit_price'] = $record->unit_price;
                 $data['discount_amount'] = $record->discount_amount;

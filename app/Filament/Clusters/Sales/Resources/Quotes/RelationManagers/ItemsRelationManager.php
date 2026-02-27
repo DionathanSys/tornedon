@@ -71,7 +71,7 @@ class ItemsRelationManager extends RelationManager
                     ])
                     ->formatStateUsing(fn ($state) => $state->description())
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('estimated_production_hours')
                     ->label('Hrs. Produção')
                     ->numeric(2, ',', '.')

@@ -23,7 +23,7 @@ class QuoteItemValidator
             'product_id'                 => 'nullable|required_without:service_id|exists:products,id',
             'service_id'                 => 'nullable|required_without:product_id|exists:services,id',
             'description'                => 'nullable|string|max:2000',
-            'destination'                => ['nullable', 'string', 'max:255', Rule::enum(Destination::class)],
+            'destination'                => ['required', 'string', 'max:255', Rule::enum(Destination::class)],
             'quantity'                   => 'required|numeric|min:0.001',
             'unit_of_measure'            => 'nullable|string|max:20',
             'unit_price'                 => 'required|numeric|min:0',

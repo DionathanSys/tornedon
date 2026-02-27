@@ -12,6 +12,7 @@ use App\Traits\ParsesMoneyValues;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\ModalTableSelect;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
@@ -113,14 +114,11 @@ class SchemaForm
                     ->readOnly()
                     ->columnSpan(1),
 
-                TextInput::make('destination')
+                Select::make('destination')
                     ->label('Finalidade')
-                    ->readOnly()
-                    ->placeholder('Aguardando seleção...')
-                    ->dehydrateStateUsing(
-                        fn($state) =>
-                        $state instanceof Destination ? $state->value : $state
-                    )
+                    ->options(Destination::toSelectArray())
+                    ->disabled()
+                    ->saved(true)
                     ->columnSpan(2),
             ]);
     }
