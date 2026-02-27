@@ -22,10 +22,12 @@ final class EditItemAction
     use AuthorizesQuoteItemActions;
     use ParsesMoneyValues;
 
-    public static function make(): EditAction
+    public static function make(): Action
     {
-        return EditAction::make()
+        return Action::make('editItem')
             ->label('Editar')
+            ->icon(Heroicon::PencilSquare)
+            ->iconButton()
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema(SchemaForm::make('edit'))
             ->fillForm(function (array $data, QuoteItem $record) {

@@ -15,6 +15,7 @@ class QuoteItem extends Model
     protected $fillable = [
         'quote_id',
         'product_id',
+        'service_id',
         'description',
         'quantity',
         'unit_of_measure',
@@ -27,6 +28,8 @@ class QuoteItem extends Model
         'labor_cost',
         'sequence',
         'additional_info',
+        'destination',
+        'status',
     ];
 
     protected $casts = [
