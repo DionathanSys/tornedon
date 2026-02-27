@@ -11,6 +11,8 @@ use Filament\Pages\Tenancy\RegisterTenant;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Notification\NotifyService as notify;
 
 class RegisterCompany extends RegisterTenant
 {
@@ -136,21 +138,31 @@ class RegisterCompany extends RegisterTenant
         ]);
 
         // Criar a empresa
-        $company = Company::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
-            'address' => !empty($address) ? $address : null,
-            'municipal_tax_id' => $data['municipal_tax_id'] ?? null,
-            'state_tax_id' => $data['state_tax_id'] ?? null,
-            'certificate' => $data['certificate'] ?? null,
-            'is_active' => true,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
-        ]);
+        $company = DB::transaction(function () use ($data, $address) {
+            $company = Company::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'address' => !empty($address) ? $address : null,
+                'municipal_tax_id' => $data['municipal_tax_id'] ?? null,
+                'state_tax_id' => $data['state_tax_id'] ?? null,
+                'certificate' => $data['certificate'] ?? null,
+                'is_active' => true,
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
 
-        // Associar o usuário atual à empresa
-        $company->users()->attach(Auth::user());
+            // Associar o usuário atual à empresa como owner
+            $company->users()->attach(Auth::id(), [
+                'role' => 'owner',
+                'is_active' => true,
+            ]);
+            return $company;
+        });
+
+        if (!$company) {
+            notify::error('Erro ao registrar empresa', 'Ocorreu um erro inesperado ao criar a empresa. Por favor, tente novamente.');
+        }
 
         return $company;
     }
