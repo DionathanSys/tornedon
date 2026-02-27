@@ -4,11 +4,13 @@ namespace App\Filament\Clusters\Inventory\Resources\ProductStocks\Tables;
 
 use App\Notification\NotifyService as notify;
 use App\Services\ProductStock\ProductStockService;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -125,7 +127,9 @@ class ProductStocksTable
                 ViewAction::make()
                     ->iconButton()
             ])
-            ->toolbarActions([])
+            ->toolbarActions([
+                
+            ])
             ->defaultSort('created_at', 'desc');
     }
 }

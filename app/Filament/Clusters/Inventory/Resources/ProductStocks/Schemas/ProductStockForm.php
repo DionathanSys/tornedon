@@ -38,10 +38,16 @@ class ProductStockForm
                         TextEntry::make('product.origin_sale_price')
                             ->label('Modo Precificação')
                             ->formatStateUsing(fn(OriginSalePrice $state) => $state->description())
+                            ->badge()
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextEntry::make('product.min_sale_price')
                             ->label('Preço Mínimo de Venda')
                             ->money('BRL', 100)
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                        TextEntry::make('product.sale_price_value')
+                            ->label('Preço Fixo de Venda')
+                            ->money('BRL', 100)
+                            ->placeholder('Não definido')
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                     ]),
                 Section::make('Quantidades')

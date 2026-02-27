@@ -6,10 +6,12 @@ use App\Enum\Product\Unit;
 use App\Models\Category;
 use App\Notification\NotifyService as notify;
 use App\Services\Product\ProductService;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -120,6 +122,10 @@ class ProductsTable
                     ->iconButton(),
             ])
             ->toolbarActions([
+                CreateAction::make()
+                    ->label('Produto')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
     }

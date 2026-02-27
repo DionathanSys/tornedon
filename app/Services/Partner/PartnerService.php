@@ -213,6 +213,10 @@ class PartnerService
                 ->whereJsonContains('company_partner.type', $type)
                 ->where('company_partner.is_active', true);
         })
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('document_number', 'like', "%{$search}%");
+            })
             ->limit($limit)
             ->get()
             ->mapWithKeys(fn(Partner $partner) => [

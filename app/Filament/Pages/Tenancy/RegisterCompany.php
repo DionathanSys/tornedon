@@ -164,6 +164,7 @@ class RegisterCompany extends RegisterTenant
             notify::error('Erro ao registrar empresa', 'Ocorreu um erro inesperado ao criar a empresa. Por favor, tente novamente.');
         }
 
+        
         return $company;
     }
 }
