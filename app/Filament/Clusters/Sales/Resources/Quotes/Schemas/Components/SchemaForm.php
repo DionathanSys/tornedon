@@ -52,6 +52,7 @@ class SchemaForm
             ->schema([
                 ModalTableSelect::make('item.product_stock_id')
                     ->label('Produto Em Estoque')
+                    ->saved(false)
                     ->relationship('productStock', 'product.product_code')
                     ->tableConfiguration(ProductsStockTable::class)
                     ->selectAction(
@@ -64,6 +65,7 @@ class SchemaForm
 
                 ModalTableSelect::make('item.product_id')
                     ->label('Produto')
+                    ->saved(false)
                     ->relationship('product', 'product_code')
                     ->tableConfiguration(ProductTable::class)
                     ->selectAction(
@@ -76,6 +78,7 @@ class SchemaForm
 
                 ModalTableSelect::make('item.service_id')
                     ->label('Serviço')
+                    ->saved(false)
                     ->relationship('service', 'service_code')
                     ->tableConfiguration(ServiceTable::class)
                     ->selectAction(
