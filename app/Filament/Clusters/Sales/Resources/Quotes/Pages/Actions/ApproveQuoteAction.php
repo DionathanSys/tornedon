@@ -5,10 +5,12 @@ namespace App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Quote\Status;
+use App\Models\CompanyPreference;
 use App\Models\Quote;
 use App\Notification\NotifyService as notify;
 use App\Services\Quote\QuoteService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Support\Icons\Heroicon;
@@ -27,21 +29,19 @@ final class ApproveQuoteAction
                 Grid::make(2)
                     ->schema([
                         Select::make('payment_method')
-                            ->label('Método de Pagamento')
-                            ->options(array_combine(
-                                array_map(fn ($case) => $case->value, PaymentMethod::cases()),
-                                array_map(fn ($case) => $case->description(), PaymentMethod::cases())
-                            ))
-                            ->required()
-                            ->columnSpan(1),
+                            ->label('Forma de Pagamento')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->options(PaymentMethod::toSelectArray())
+                            ->native(false)
+                            ->searchable()
+                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
                         Select::make('payment_condition')
                             ->label('Condição de Pagamento')
-                            ->options(array_combine(
-                                array_map(fn ($case) => $case->value, PaymentCondition::cases()),
-                                array_map(fn ($case) => $case->description(), PaymentCondition::cases())
-                            ))
-                            ->required()
-                            ->columnSpan(1),
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->options(PaymentCondition::toGroupedSelectArray())
+                            ->native(false)
+                            ->searchable()
+                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
                     ]),
             ])
             ->modalHeading('Aprovar Orçamento')
