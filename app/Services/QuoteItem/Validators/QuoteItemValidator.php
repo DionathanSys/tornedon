@@ -79,7 +79,7 @@ class QuoteItemValidator
         $rules = [
             'product_id'                 => 'nullable|required_without:service_id|exists:products,id',
             'service_id'                 => 'nullable|required_without:product_id|exists:services,id',
-            'description'                => 'sometimes|required|string|max:2000',
+            'description'                => 'sometimes|nullable|string|max:2000',
             'destination'                => 'sometimes|required|string|max:255',
             'quantity'                   => 'sometimes|required|numeric|min:0.001',
             'unit_of_measure'            => 'sometimes|required|string|max:20',
