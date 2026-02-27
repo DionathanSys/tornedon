@@ -59,7 +59,6 @@ return new class extends Migration
             $table->index(['product_stock_id', 'created_at']);
             $table->index(['company_id', 'created_at']);
             $table->index(['type']);
-            $table->index(['source_type', 'source_id']);
         });
     }
 
