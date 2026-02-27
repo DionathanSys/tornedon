@@ -34,15 +34,9 @@ class SchemaForm
             self::getSelectionGroup(),
             self::getInformationGroup(),
             self::getValueGroup(),
-            Textarea::make('observations')
-                ->label('Observações')
+            Textarea::make('description')
+                ->label('Descrição')
                 ->columnSpanFull(),
-            TextInput::make('status')
-                ->label('Status')
-                ->visibleOn('edit')
-                ->readOnly()
-                ->formatStateUsing(fn ($state) => $state ? Status::tryFrom($state)?->description() : null),
-
         ];
     }
 
@@ -144,6 +138,7 @@ class SchemaForm
                     ->default(1)
                     ->minValue(0)
                     ->live(onBlur: true)
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $set('discount_amount', number_format(0, 2, ',', '.'));
                         $set('discount_percentage', number_format(0, 2, ',', '.'));
@@ -154,21 +149,20 @@ class SchemaForm
                     ->label('Preço Unitário')
                     ->required()
                     ->live(onBlur: true)
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $set('discount_amount', number_format(0, 2, ',', '.'));
                         $set('discount_percentage', number_format(0, 2, ',', '.'));
                         self::calculateValues($get, $set);
                     }),
 
-                Money::make('subtotal')
-                    ->label('Subtotal')
-                    ->readOnly(),
-
                 Money::make('discount_percentage')
                     ->label('Desconto (%)')
+                    ->columnStart(1)
                     ->suffix('%')
                     ->prefix(null)
                     ->live(onBlur: true)
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $subtotal = self::parseMoneyValue($get('subtotal'));
                         $percentage = self::parseMoneyValue($state);
@@ -188,6 +182,7 @@ class SchemaForm
                 Money::make('discount_amount')
                     ->label('Desconto (R$)')
                     ->live(onBlur: true)
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $subtotal = self::parseMoneyValue($get('subtotal'));
                         $discountAmount = self::parseMoneyValue($state);
@@ -200,6 +195,7 @@ class SchemaForm
 
                 Money::make('total_amount')
                     ->label('Valor Total')
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                     ->readOnly(),
             ]);
     }
@@ -234,7 +230,7 @@ class SchemaForm
 
             // Campos de persistência (Root)
             $set('unit_of_measure', $dto->unit);
-            $set('destination', $dto->destination->value);
+            $set('destination', $dto->destination->description());
             $set('unit_price', number_format($dto->price, 2, ',', '.'));
             
             // Reseta descontos ao trocar de item

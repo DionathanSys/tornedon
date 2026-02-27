@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Quote\Status;
 use App\Services\Quote\QuoteNumberGenerator;
 use App\Services\Quote\States\QuoteState;
@@ -32,6 +34,8 @@ class Quote extends Model implements HasMedia
         'approved_at',
         'approved_by',
         'rejected_reason',
+        'payment_method',
+        'payment_condition',
         'additional_info',
         'created_by',
         'updated_by',

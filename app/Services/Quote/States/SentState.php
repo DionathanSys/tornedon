@@ -23,6 +23,10 @@ class SentState implements QuoteState
     public function approve(Quote $quote, int $userId): void
     {
         if ($quote->isExpired()) {
+            $quote->update([
+                'status'     => Status::EXPIRED,
+            ]);
+            
             throw new DomainValidationException(
                 ['valid_until' => ['Não é possível aprovar um orçamento com prazo de validade expirado.']]
             );

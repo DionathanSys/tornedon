@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers;
 
+use App\Enum\Quote\Status;
 use App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions\CreateItemAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions\EditItemAction;
@@ -58,6 +59,19 @@ class ItemsRelationManager extends RelationManager
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL', 100)),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->colors([
+                        'gray'      => Status::DRAFT->value,
+                        'info'      => Status::SENT->value,
+                        'success'   => Status::APPROVED->value,
+                        'danger'    => Status::REJECTED->value,
+                        'warning'   => Status::EXPIRED->value,
+                    ])
+                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('estimated_production_hours')
                     ->label('Hrs. Produção')
                     ->numeric(2, ',', '.')
@@ -97,7 +111,7 @@ class ItemsRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                 ]),
             ]);
     }

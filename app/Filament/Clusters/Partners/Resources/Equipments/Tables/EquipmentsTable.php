@@ -3,12 +3,15 @@
 namespace App\Filament\Clusters\Partners\Resources\Equipments\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -94,7 +97,12 @@ class EquipmentsTable
                 ForceDeleteAction::make()
                     ->iconButton(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions([
+                CreateAction::make()
+                    ->label('Equipamento')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
+            ])
             ->defaultSort('id', 'desc');
     }
 }

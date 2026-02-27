@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "state-machine-production-order.md",
+                "file": "COMECE-AQUI.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "state-machine-production-order"
+              "title": "COMECE-AQUI"
             }
           }
         ]
@@ -185,6 +185,9 @@
   },
   "active": "8c225daca83e0282",
   "lastOpenFiles": [
+    "stock-movement-control.md",
+    "CHECKLIST.md",
+    "state-machine-production-order.md",
     "SETUP-SHIELD.md",
     "service-order-authorization.md",
     "permissions-guide.md",

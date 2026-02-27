@@ -2,9 +2,14 @@
 
 namespace App\Providers;
 
+use App\Events\Quote\QuoteApproved;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Events\RequisitionItem\RequisitionItemUpdated;
+use App\Listeners\Quote\CreateProductionOrderFromApprovedQuoteListener;
+use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
+use App\Listeners\Quote\CreateServiceOrderFromApprovedQuoteListener;
+use App\Listeners\Quote\UpdateQuoteItemsStatusListener;
 use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
@@ -39,5 +44,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(RequisitionItemCreated::class, HandleStockReservationCreated::class);
         Event::listen(RequisitionItemUpdated::class, HandleStockReservationUpdated::class);
         Event::listen(RequisitionItemDeleted::class, HandleStockReservationDeleted::class);
+
+        // Eventos de orçamento aprovado
+        Event::listen(QuoteApproved::class, UpdateQuoteItemsStatusListener::class);
+        Event::listen(QuoteApproved::class, CreateRequisitionFromApprovedQuoteListener::class);
+        Event::listen(QuoteApproved::class, CreateProductionOrderFromApprovedQuoteListener::class);
+        Event::listen(QuoteApproved::class, CreateServiceOrderFromApprovedQuoteListener::class);
     }
 }

@@ -4,9 +4,13 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Tables;
 
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\EditCompanyPartnerAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -53,7 +57,11 @@ class CompanyPartnersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                ]),
+                ])->size(Size::Small),
+                CreateAction::make()
+                    ->label('Parceiro')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ]);
     }
 }

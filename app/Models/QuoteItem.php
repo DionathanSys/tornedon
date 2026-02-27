@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enum\Quote\Destination;
+use App\Enum\Quote\Status;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,7 +32,7 @@ class QuoteItem extends Model
     protected $casts = [
         'quantity' => 'decimal:3',
         'unit_price' => MoneyCast::class,
-        'discount_percentage' => 'decimal:2',
+        'discount_percentage' => 'decimal:3',
         'discount_amount' => MoneyCast::class,
         'total_amount' => MoneyCast::class,
         'technical_specifications' => 'array',
@@ -40,6 +41,7 @@ class QuoteItem extends Model
         'labor_cost' => MoneyCast::class,
         'additional_info' => 'array',
         'destination' => Destination::class,
+        'status' => Status::class,
     ];
 
     protected $appends = ['identifier', 'is_product'];
@@ -88,6 +90,19 @@ class QuoteItem extends Model
                 get: fn() => 'MO - ' . ($this->service->name ?? 'Serviço Desconecido'),
             );
         }
+    }
+
+    public function codeItem(): Attribute
+    {
+        return Attribute::make(
+            get: function() {
+                if ($this->isProduct) {
+                    return $this->product->product_code ?? '###';
+                } else {
+                    return $this->service->service_code ?? '###';
+                }
+            },
+        );
     }
 
     public function isProduct(): Attribute

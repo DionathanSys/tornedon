@@ -39,6 +39,7 @@ final class DeleteItemAction
 
                 notify::success(message: $service->getMessageUser());
                 return $result;
-            });
+            })
+            ->successNotification(null);
     }
 }

@@ -34,9 +34,27 @@ class DraftState implements QuoteState
 
     public function approve(Quote $quote, int $userId): void
     {
-        throw new DomainValidationException(
-            ['status' => ['Apenas orçamentos enviados podem ser aprovados. Envie o orçamento para aprovação primeiro.']]
-        );
+        if ($quote->isExpired()) {
+            $quote->update([
+                'status'     => Status::EXPIRED,
+            ]);
+            
+            throw new DomainValidationException(
+                ['valid_until' => ['Não é possível aprovar um orçamento com prazo de validade expirado.']]
+            );
+        }
+
+        Log::info('Quote: Aprovando orçamento (draft → approved)', [
+            'quote_id' => $quote->id,
+            'user_id'  => $userId,
+        ]);
+
+        $quote->update([
+            'status'      => Status::APPROVED,
+            'approved_at' => now(),
+            'approved_by' => $userId,
+            'updated_by'  => $userId,
+        ]);
     }
 
     public function reject(Quote $quote, string $reason, int $userId): void

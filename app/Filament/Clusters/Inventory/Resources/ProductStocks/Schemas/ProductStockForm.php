@@ -2,11 +2,13 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\ProductStocks\Schemas;
 
+use App\Enum\Product\OriginSalePrice;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -30,19 +32,17 @@ class ProductStockForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        Select::make('product_id')
+                        TextEntry::make('product.name')
                             ->label('Produto')
-                            ->relationship('product', 'name')
-                            ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->searchable()
-                            ->required()
-                            ->preload()
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label('Nome')
-                                    ->required(),
-                            ])
-                            ->unique(ignoreRecord: true),
+                            ->columnSpanFull(),
+                        TextEntry::make('product.origin_sale_price')
+                            ->label('Modo Precificação')
+                            ->formatStateUsing(fn(OriginSalePrice $state) => $state->description())
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                        TextEntry::make('product.min_sale_price')
+                            ->label('Preço Mínimo de Venda')
+                            ->money('BRL', 100)
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                     ]),
                 Section::make('Quantidades')
                     ->columns([

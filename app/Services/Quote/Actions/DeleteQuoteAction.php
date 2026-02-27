@@ -129,11 +129,8 @@ class DeleteQuoteAction
      */
     private function validateCanDelete(): bool
     {
-        if (
-            $this->quote->status === Status::APPROVED
-            && $this->quote->productionOrder()->exists()
-        ) {
-            $this->setError('Não é possível excluir um orçamento aprovado que já possui uma ordem de produção vinculada.');
+        if( $this->quote->status === Status::APPROVED){
+            $this->setError('Não é possível excluir um orçamento aprovado. Reabra o orçamento para poder excluí-lo.');
             return false;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions;
 
+use App\Enum\Quote\Destination;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\SchemaForm;
 use App\Models\QuoteItem;
 use App\Notification\NotifyService as notify;
@@ -27,6 +28,26 @@ final class EditItemAction
             ->label('Editar')
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema(SchemaForm::make('edit'))
+            ->fillForm(function (array $data, QuoteItem $record) {
+                $data['item'] = [
+                    'real_product_id' => $record->product_id,
+                    'real_service_id' => $record->service_id,
+                    'code'            => $record->codeItem,
+                    'name'            => $record->name,
+                    'identification'  => $record->codeItem ? "[{$record->codeItem}] {$record->identifier}" : $record->identifier,
+                ];
+                $data['description'] = $record->description;
+                $data['status'] = $record->status->value ?? null;
+                $data['unit_of_measure'] = $record->unit_of_measure;
+                $data['destination'] = $record->destination->description() ?? null;
+                $data['quantity'] = $record->quantity;
+                $data['unit_price'] = $record->unit_price;
+                $data['discount_amount'] = $record->discount_amount;
+                $data['discount_percentage'] = $record->discount_percentage;
+                $data['total'] = $record->total;
+
+                return $data;
+            })
             ->action(function (QuoteItem $record, array $data, Action $action, RelationManager $livewire): ?Model {
                 $quote = $livewire->getOwnerRecord();
 
@@ -60,6 +81,7 @@ final class EditItemAction
 
                 notify::success(message: $service->getMessageUser());
                 return $item;
-            });
+            })
+            ->successNotification(null);
     }
 }

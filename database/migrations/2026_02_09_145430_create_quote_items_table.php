@@ -29,8 +29,8 @@ return new class extends Migration
                 ->nullable();
             $table->decimal('unit_price', 15, 4)                    // Preço unitário
                 ->default(0.0000);
-            $table->decimal('discount_percentage', 5, 2)            // Percentual de desconto
-                ->default(0.00);
+            $table->decimal('discount_percentage', 5, 3)            // Percentual de desconto
+                ->default(0.000);
             $table->decimal('discount_amount', 15, 2)               // Valor do desconto
                 ->default(0.00);
             $table->decimal('total_amount', 15, 2)                  // Valor total do item

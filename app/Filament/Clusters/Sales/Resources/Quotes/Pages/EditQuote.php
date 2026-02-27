@@ -26,8 +26,8 @@ class EditQuote extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            SendForApprovalQuoteAction::make(),
             ActionGroup::make([
+                // SendForApprovalQuoteAction::make(),
                 ApproveQuoteAction::make(),
                 RejectQuoteAction::make(),
                 ReopenQuoteAction::make(),

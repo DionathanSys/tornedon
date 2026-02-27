@@ -14,10 +14,7 @@ class ListEquipments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Equipamento')
-                ->icon(Heroicon::Plus)
-                ->badge(),
+            
         ];
     }
 }

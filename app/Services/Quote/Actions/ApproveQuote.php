@@ -2,6 +2,7 @@
 
 namespace App\Services\Quote\Actions;
 
+use App\Events\Quote\QuoteApproved;
 use App\Exceptions\DomainValidationException;
 use App\Models\Quote;
 use App\Traits\HandlesActionResponse;
@@ -35,6 +36,9 @@ class ApproveQuote
             $quote->state()->approve($quote, $this->approvedBy);
 
             $quote->refresh();
+
+            // Dispara evento de orçamento aprovado
+            QuoteApproved::dispatch($quote, $this->approvedBy);
 
             Log::info('ApproveQuote: Orçamento aprovado com sucesso', [
                 'metodo'   => __METHOD__ . '@' . __LINE__,
