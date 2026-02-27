@@ -233,7 +233,7 @@ class SchemaForm
 
             // Campos de persistência (Root)
             $set('unit_of_measure', $dto->unit);
-            $set('destination', $dto->destination->description());
+            $set('destination', $dto->destination->value);
             $set('unit_price', number_format($dto->price, 2, ',', '.'));
 
             // Reseta descontos ao trocar de item
