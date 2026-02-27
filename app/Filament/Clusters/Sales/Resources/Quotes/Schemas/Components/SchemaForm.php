@@ -117,7 +117,7 @@ class SchemaForm
                     ->label('Finalidade')
                     ->readOnly()
                     ->placeholder('Aguardando seleção...')
-                    ->formatStateUsing(fn ($state) => $state ? Destination::tryFrom($state)?->description() : null)
+                    ->formatStateUsing(fn (Destination $state) => $state ? $state->description() : null)
                     ->columnSpan(2),
             ]);
     }

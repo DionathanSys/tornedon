@@ -105,6 +105,8 @@ class QuoteForm
                     ]),
                 Section::make('Observações')
                     ->columnSpanFull()
+                    ->collapsible()
+                    ->persistCollapsed()
                     ->columns([
                         'sm' => 1,
                         'md' => 4,

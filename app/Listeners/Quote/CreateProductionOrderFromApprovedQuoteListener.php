@@ -6,8 +6,8 @@ use App\Enum\Quote\Destination;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Events\Quote\QuoteApproved;
-use App\Models\ProductionOrderItem;
 use App\Services\ProductionOrder\ProductionOrderService;
+use App\Services\ProductionOrderItem\ProductionOrderItemService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -49,8 +49,8 @@ class CreateProductionOrderFromApprovedQuoteListener
                 })->toArray();
 
                 // Cria a ordem de produção via service
-                $service = app(ProductionOrderService::class);
-                $productionOrder = $service->create([
+                $productionOrderService = app(ProductionOrderService::class);
+                $productionOrder = $productionOrderService->create([
                     'company_id' => $event->quote->company_id,
                     'partner_id' => $event->quote->partner_id,
                     'quote_id' => $event->quote->id,
@@ -61,16 +61,29 @@ class CreateProductionOrderFromApprovedQuoteListener
                 ], $event->approvedBy);
 
                 if (!$productionOrder) {
-                    throw new \Exception('Erro ao criar ordem de produção através do service: ' . $service->getMessage());
+                    throw new \Exception('Erro ao criar ordem de produção através do service: ' . $productionOrderService->getMessage());
                 }
 
-                // Atualiza os items para manter referência ao quote_item_id
-                foreach ($productionOrder->items as $productionOrderItem) {
-                    $quoteItem = $quoteItems->firstWhere('product_id', $productionOrderItem->product_id);
-                    if ($quoteItem) {
-                        $productionOrderItem->update([
+                // Cria os itens da ordem de produção via ProductionOrderItemService
+                $itemService = app(ProductionOrderItemService::class);
+                $sequence = 1;
+                foreach ($quoteItems as $quoteItem) {
+                    // Encontra o item criado da ordem de produção
+                    $productionOrderItem = $productionOrder->items()
+                        ->where('product_id', $quoteItem->product_id)
+                        ->where('description', $quoteItem->description)
+                        ->first();
+
+                    if ($productionOrderItem) {
+                        // Atualiza com quote_item_id
+                        $item = $itemService->update($productionOrderItem, [
                             'quote_item_id' => $quoteItem->id,
-                        ]);
+                            'sequence' => $sequence++,
+                        ], $event->approvedBy);
+
+                        if (!$item) {
+                            throw new \Exception('Erro ao atualizar item da ordem de produção: ' . $itemService->getMessage());
+                        }
                     }
                 }
 

@@ -7,8 +7,8 @@ use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type;
 use App\Events\Quote\QuoteApproved;
-use App\Models\ServiceOrderItem;
 use App\Services\ServiceOrder\ServiceOrderService;
+use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -42,8 +42,8 @@ class CreateServiceOrderFromApprovedQuoteListener
                 $totalEstimatedHours = $quoteItems->sum('estimated_production_hours');
 
                 // Cria a ordem de serviço via service
-                $service = app(ServiceOrderService::class);
-                $serviceOrder = $service->create([
+                $serviceOrderService = app(ServiceOrderService::class);
+                $serviceOrder = $serviceOrderService->create([
                     'customer_id' => $event->quote->partner_id,
                     'company_id' => $event->quote->company_id,
                     'order_date' => now()->toDateString(),
@@ -58,12 +58,13 @@ class CreateServiceOrderFromApprovedQuoteListener
                 ], $event->approvedBy);
 
                 if (!$serviceOrder) {
-                    throw new \Exception('Erro ao criar ordem de serviço através do service: ' . $service->getMessage());
+                    throw new \Exception('Erro ao criar ordem de serviço através do service: ' . $serviceOrderService->getMessage());
                 }
 
-                // Cria os itens da ordem de serviço
+                // Cria os itens da ordem de serviço via ServiceOrderItemService
+                $itemService = app(ServiceOrderItemService::class);
                 foreach ($quoteItems as $quoteItem) {
-                    ServiceOrderItem::create([
+                    $item = $itemService->create([
                         'service_order_id' => $serviceOrder->id,
                         'service_id' => $quoteItem->service_id,
                         'unit_of_measure' => $quoteItem->unit_of_measure,
@@ -72,9 +73,11 @@ class CreateServiceOrderFromApprovedQuoteListener
                         'discount_percentage' => $quoteItem->discount_percentage,
                         'discount_amount' => $quoteItem->discount_amount,
                         'observations' => $quoteItem->description,
-                        'created_by' => $event->approvedBy,
-                        'updated_by' => $event->approvedBy,
-                    ]);
+                    ], $event->approvedBy);
+
+                    if (!$item) {
+                        throw new \Exception('Erro ao criar item da ordem de serviço: ' . $itemService->getMessage());
+                    }
                 }
 
                 Log::info('CreateServiceOrderFromApprovedQuoteListener: Ordem de serviço criada com sucesso', [
