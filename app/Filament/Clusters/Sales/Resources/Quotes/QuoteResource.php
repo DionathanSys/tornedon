@@ -45,7 +45,6 @@ class QuoteResource extends Resource
         return [
             'index' => ListQuotes::route('/'),
             'create' => CreateQuote::route('/create'),
-            'view' => ViewQuote::route('/{record}'),
             'edit' => EditQuote::route('/{record}/edit'),
         ];
     }

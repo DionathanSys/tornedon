@@ -54,36 +54,36 @@ class SchemaForm
                     ->relationship('productStock', 'product.product_code')
                     ->tableConfiguration(ProductsStockTable::class)
                     ->selectAction(
-                        fn (Action $action) => $action
+                        fn(Action $action) => $action
                             ->label('Selecionar')
                             ->modalHeading('Buscar Produto em Estoque')
                             ->modalSubmitActionLabel('Confirmar seleção'),
                     )
-                    ->afterStateUpdated(fn ($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::REQUISITION, $state)),
+                    ->afterStateUpdated(fn($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::REQUISITION, $state)),
 
                 ModalTableSelect::make('item.product_id')
                     ->label('Produto')
                     ->relationship('product', 'product_code')
                     ->tableConfiguration(ProductTable::class)
                     ->selectAction(
-                        fn (Action $action) => $action
+                        fn(Action $action) => $action
                             ->label('Selecionar')
                             ->modalHeading('Buscar Produto p/ Produção')
                             ->modalSubmitActionLabel('Confirmar seleção'),
                     )
-                    ->afterStateUpdated(fn ($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_PRODUCTION, $state)),
+                    ->afterStateUpdated(fn($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_PRODUCTION, $state)),
 
                 ModalTableSelect::make('item.service_id')
                     ->label('Serviço')
                     ->relationship('service', 'service_code')
                     ->tableConfiguration(ServiceTable::class)
                     ->selectAction(
-                        fn (Action $action) => $action
+                        fn(Action $action) => $action
                             ->label('Selecionar')
                             ->modalHeading('Buscar Serviço')
                             ->modalSubmitActionLabel('Confirmar seleção'),
                     )
-                    ->afterStateUpdated(fn ($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_SERVICE, $state)),
+                    ->afterStateUpdated(fn($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_SERVICE, $state)),
             ]);
     }
 
@@ -117,7 +117,10 @@ class SchemaForm
                     ->label('Finalidade')
                     ->readOnly()
                     ->placeholder('Aguardando seleção...')
-                    ->formatStateUsing(fn (Destination $state) => $state ? $state->description() : null)
+                    ->dehydrateStateUsing(
+                        fn($state) =>
+                        $state instanceof Destination ? $state->value : $state
+                    )
                     ->columnSpan(2),
             ]);
     }
@@ -138,7 +141,7 @@ class SchemaForm
                     ->default(1)
                     ->minValue(0)
                     ->live(onBlur: true)
-                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $set('discount_amount', number_format(0, 2, ',', '.'));
                         $set('discount_percentage', number_format(0, 2, ',', '.'));
@@ -149,7 +152,7 @@ class SchemaForm
                     ->label('Preço Unitário')
                     ->required()
                     ->live(onBlur: true)
-                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $set('discount_amount', number_format(0, 2, ',', '.'));
                         $set('discount_percentage', number_format(0, 2, ',', '.'));
@@ -162,7 +165,7 @@ class SchemaForm
                     ->suffix('%')
                     ->prefix(null)
                     ->live(onBlur: true)
-                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $subtotal = self::parseMoneyValue($get('subtotal'));
                         $percentage = self::parseMoneyValue($state);
@@ -182,7 +185,7 @@ class SchemaForm
                 Money::make('discount_amount')
                     ->label('Desconto (R$)')
                     ->live(onBlur: true)
-                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $subtotal = self::parseMoneyValue($get('subtotal'));
                         $discountAmount = self::parseMoneyValue($state);
@@ -195,7 +198,7 @@ class SchemaForm
 
                 Money::make('total_amount')
                     ->label('Valor Total')
-                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                     ->readOnly(),
             ]);
     }
@@ -213,7 +216,7 @@ class SchemaForm
         $set('item.service_id',          $type === Destination::ORDER_SERVICE    ? $id : null);
 
         $service = app(QuoteItemResolverService::class);
-        
+
         $dto = match ($type) {
             Destination::REQUISITION        => $service->resolveForStock($id),
             Destination::ORDER_PRODUCTION   => $service->resolveForProduct($id),
@@ -232,11 +235,11 @@ class SchemaForm
             $set('unit_of_measure', $dto->unit);
             $set('destination', $dto->destination->description());
             $set('unit_price', number_format($dto->price, 2, ',', '.'));
-            
+
             // Reseta descontos ao trocar de item
             $set('discount_amount', '0,00');
             $set('discount_percentage', '0,00');
-            
+
             self::calculateValues($get, $set);
         }
     }

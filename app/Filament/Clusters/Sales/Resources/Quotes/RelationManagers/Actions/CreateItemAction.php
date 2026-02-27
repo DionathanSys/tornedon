@@ -29,6 +29,7 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -45,7 +46,7 @@ final class CreateItemAction
         return CreateAction::make()
             ->label('Item')
             ->icon(Heroicon::Plus)
-            ->badge()
+            ->size(Size::Small)
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema(SchemaForm::make('create'))
             ->action(function (array $data, Action $action, RelationManager $livewire): ?Model {
