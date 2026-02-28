@@ -17,6 +17,15 @@ enum Destination: string
         };
     }
 
+    public function descriptionAbbreviated(): string
+    {
+        return match ($this) {
+            self::ORDER_PRODUCTION => 'OP',
+            self::ORDER_SERVICE => 'OS',
+            self::REQUISITION => 'REQ',
+        };
+    }
+
     public static function toSelectArray(): array
     {
         return collect(self::cases())

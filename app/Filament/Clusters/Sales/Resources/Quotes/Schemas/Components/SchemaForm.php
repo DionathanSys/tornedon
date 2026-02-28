@@ -4,6 +4,9 @@ namespace App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components;
 
 use App\Enum\Quote\Destination;
 use App\Enum\Quote\Status;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductForProduction;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
 use App\Filament\Tables\ProductsStockTable;
 use App\Filament\Tables\ProductTable;
 use App\Filament\Tables\ServiceTable;
@@ -50,44 +53,9 @@ class SchemaForm
             ->columns(3)
             ->columnSpanFull()
             ->schema([
-                ModalTableSelect::make('item.product_stock_id')
-                    ->label('Produto Em Estoque')
-                    ->saved(false)
-                    ->relationship('productStock', 'product.product_code')
-                    ->tableConfiguration(ProductsStockTable::class)
-                    ->selectAction(
-                        fn(Action $action) => $action
-                            ->label('Selecionar')
-                            ->modalHeading('Buscar Produto em Estoque')
-                            ->modalSubmitActionLabel('Confirmar seleção'),
-                    )
-                    ->afterStateUpdated(fn($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::REQUISITION, $state)),
-
-                ModalTableSelect::make('item.product_id')
-                    ->label('Produto')
-                    ->saved(false)
-                    ->relationship('product', 'product_code')
-                    ->tableConfiguration(ProductTable::class)
-                    ->selectAction(
-                        fn(Action $action) => $action
-                            ->label('Selecionar')
-                            ->modalHeading('Buscar Produto p/ Produção')
-                            ->modalSubmitActionLabel('Confirmar seleção'),
-                    )
-                    ->afterStateUpdated(fn($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_PRODUCTION, $state)),
-
-                ModalTableSelect::make('item.service_id')
-                    ->label('Serviço')
-                    ->saved(false)
-                    ->relationship('service', 'service_code')
-                    ->tableConfiguration(ServiceTable::class)
-                    ->selectAction(
-                        fn(Action $action) => $action
-                            ->label('Selecionar')
-                            ->modalHeading('Buscar Serviço')
-                            ->modalSubmitActionLabel('Confirmar seleção'),
-                    )
-                    ->afterStateUpdated(fn($state, Set $set, Get $get) => self::resolveItem($set, $get, Destination::ORDER_SERVICE, $state)),
+                ModalSelectProductStock::make(),
+                ModalSelectProductForProduction::make(),
+                ModalSelectService::make(),
             ]);
     }
 
@@ -103,6 +71,9 @@ class SchemaForm
                 // Campos ocultos para metadados de seleção (dentro de item para não serem salvos direto)
                 Hidden::make('item.real_product_id'),
                 Hidden::make('item.real_service_id'),
+                Hidden::make('item.min_sale_price')
+                    ->saved(false)
+                    ->default(0),
                 Hidden::make('item.code')
                     ->saved(false),
                 Hidden::make('item.name')
@@ -158,6 +129,12 @@ class SchemaForm
                     ->required()
                     ->live(onBlur: true)
                     ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                    ->helperText(function (Get $get): ?string {
+                        $minPrice = (float) ($get('item.min_sale_price') ?? 0);
+                        return $minPrice > 0
+                            ? 'Preço mínimo de venda: R$ ' . number_format($minPrice, 2, ',', '.')
+                            : null;
+                    })
                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         $set('discount_amount', number_format(0, 2, ',', '.'));
                         $set('discount_percentage', number_format(0, 2, ',', '.'));
@@ -211,7 +188,7 @@ class SchemaForm
     /**
      * Resolve os dados do item através do serviço especialista.
      */
-    protected static function resolveItem(Set $set, Get $get, Destination $type, $id): void
+    public static function resolveItem(Set $set, Get $get, Destination $type, $id): void
     {
         if (! $id) return;
 
@@ -240,6 +217,7 @@ class SchemaForm
             $set('unit_of_measure', $dto->unit);
             $set('destination', $dto->destination->value);
             $set('unit_price', number_format($dto->price, 2, ',', '.'));
+            $set('item.min_sale_price', $dto->minSalePrice);
 
             // Reseta descontos ao trocar de item
             $set('discount_amount', '0,00');
