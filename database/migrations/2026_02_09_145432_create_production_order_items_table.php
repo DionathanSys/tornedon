@@ -24,7 +24,8 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('products')
                 ->nullOnDelete();
-            $table->text('description');                            // Descrição do item/peça
+            $table->text('description')                             // Descrição do item/peça
+                ->nullable();                            
             $table->decimal('quantity', 15, 3)                      // Quantidade solicitada
                 ->default(1.000);
             $table->decimal('quantity_produced', 15, 3)             // Quantidade produzida
