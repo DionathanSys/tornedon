@@ -479,7 +479,7 @@ class QuoteService
     }
 
     /**
-     * Rejeita um orçamento (sent → rejected).
+     * Rejeita um orçamento.
      */
     public function reject(Quote $quote, string $reason, int $rejectedBy): ?Quote
     {

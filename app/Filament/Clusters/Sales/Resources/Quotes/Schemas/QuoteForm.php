@@ -19,11 +19,13 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\Str;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -97,11 +99,18 @@ class QuoteForm
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->minDate(now())
                             ->default(now()->addDays(CompanyPreference::get(key: 'default_quote_validity_days', default: 30)))
+                            ->disabled(fn($get) => $get('status') !== Status::DRAFT)
                             ->required(),
                         SelectPartner::make('partner_id', 'customer')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 6])
                             ->disabledOn('edit'),
+                        Callout::make('Orçamento recusado/cancelado')
+                            ->columnSpanFull()
+                            ->danger()
+                            ->color(Color::Red)
+                            ->description(fn($record) => $record->rejected_reason)
+                            ->visible(fn($get) => $get('status') === Status::REJECTED),
                     ]),
                 Section::make('Observações')
                     ->columnSpanFull()

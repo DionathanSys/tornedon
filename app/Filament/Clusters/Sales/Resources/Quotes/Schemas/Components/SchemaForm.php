@@ -101,10 +101,8 @@ class SchemaForm
             ->columnSpanFull()
             ->schema([
                 // Campos ocultos para metadados de seleção (dentro de item para não serem salvos direto)
-                Hidden::make('item.real_product_id')
-                    ->saved(false),
-                Hidden::make('item.real_service_id')
-                    ->saved(false),
+                Hidden::make('item.real_product_id'),
+                Hidden::make('item.real_service_id'),
                 Hidden::make('item.code')
                     ->saved(false),
                 Hidden::make('item.name')
@@ -119,7 +117,8 @@ class SchemaForm
 
                 TextInput::make('unit_of_measure')
                     ->label('Unidade de Medida')
-                    ->readOnly()
+                    ->disabled()
+                    ->saved(true)
                     ->columnSpan(1),
 
                 Select::make('destination')

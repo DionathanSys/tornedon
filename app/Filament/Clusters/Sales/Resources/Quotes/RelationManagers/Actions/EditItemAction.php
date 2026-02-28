@@ -38,15 +38,14 @@ final class EditItemAction
                     'name'            => $record->name,
                     'identification'  => $record->codeItem ? "[{$record->codeItem}] {$record->identifier}" : $record->identifier,
                 ];
-                $data['description'] = $record->description;
-                $data['status'] = $record->status->value ?? null;
-                $data['unit_of_measure'] = $record->unit_of_measure;
-                $data['destination'] = $record->destination->value;
-                $data['quantity'] = $record->quantity;
-                $data['unit_price'] = $record->unit_price;
-                $data['discount_amount'] = $record->discount_amount;
-                $data['discount_percentage'] = $record->discount_percentage;
-                $data['total'] = $record->total;
+                $data['description']            = $record->description;
+                $data['unit_of_measure']        = $record->unit_of_measure;
+                $data['destination']            = $record->destination->value;
+                $data['quantity']               = $record->quantity;
+                $data['unit_price']             = $record->unit_price;
+                $data['discount_amount']        = $record->discount_amount;
+                $data['discount_percentage']    = $record->discount_percentage;
+                $data['total_amount']           = $record->total_amount;
 
                 return $data;
             })

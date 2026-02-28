@@ -30,7 +30,7 @@ final class RejectQuoteAction
                     ->rows(3)
                     ->placeholder('Descreva o motivo da rejeição...'),
             ])
-            ->visible(fn (Quote $record): bool => $record->status === Status::SENT)
+            ->visible(fn (Quote $record): bool => in_array($record->status, [Status::DRAFT, Status::SENT, Status::APPROVED]))
             ->action(function (Quote $record, array $data): void {
                 Log::debug('RejectQuoteAction (Filament): Rejeitando orçamento', [
                     'metodo'   => __METHOD__ . '@' . __LINE__,

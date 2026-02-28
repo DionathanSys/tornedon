@@ -10,7 +10,6 @@ use App\Services\Requisition\States\StateResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Requisition extends Model
@@ -22,6 +21,7 @@ class Requisition extends Model
         'customer_id',
         'company_id',
         'service_order_id',
+        'quote_id',
         'sale_date',
         'status',
         'discount_amount',
@@ -65,6 +65,11 @@ class Requisition extends Model
     public function serviceOrder(): BelongsTo
     {
         return $this->belongsTo(ServiceOrder::class);
+    }
+
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class);
     }
 
     public function salesperson(): BelongsTo

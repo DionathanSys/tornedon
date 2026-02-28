@@ -22,7 +22,7 @@ interface QuoteState
     public function approve(Quote $quote, int $userId): void;
 
     /**
-     * Rejeita o orçamento (sent → rejected).
+     * Rejeita o orçamento.
      *
      * @throws DomainValidationException
      */

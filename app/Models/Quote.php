@@ -84,6 +84,16 @@ class Quote extends Model implements HasMedia
         return $this->hasMany(QuoteItem::class);
     }
 
+    public function requisitions(): HasMany
+    {
+        return $this->hasMany(Requisition::class);
+    }
+
+    public function serviceOrders(): HasMany
+    {
+        return $this->hasMany(ServiceOrder::class);
+    }
+
     public function productionOrder(): HasOne
     {
         return $this->hasOne(ProductionOrder::class);

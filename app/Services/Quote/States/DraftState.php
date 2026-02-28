@@ -59,9 +59,22 @@ class DraftState implements QuoteState
 
     public function reject(Quote $quote, string $reason, int $userId): void
     {
-        throw new DomainValidationException(
-            ['status' => ['Apenas orçamentos enviados podem ser rejeitados.']]
-        );
+        if (empty(trim($reason))) {
+            throw new DomainValidationException(
+                ['rejected_reason' => ['O motivo da rejeição é obrigatório.']]
+            );
+        }
+
+        Log::info('Quote: Rejeitando orçamento (draft → rejected)', [
+            'quote_id' => $quote->id,
+            'user_id'  => $userId,
+        ]);
+
+        $quote->update([
+            'status'          => Status::REJECTED,
+            'rejected_reason' => $reason,
+            'updated_by'      => $userId,
+        ]);
     }
 
     public function expire(Quote $quote, int $userId): void

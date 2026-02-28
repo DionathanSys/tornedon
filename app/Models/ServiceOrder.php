@@ -23,6 +23,7 @@ class ServiceOrder extends Model
         'number',
         'customer_id',
         'company_id',
+        'quote_id',
         'order_date',
         'scheduled_date',
         'limit_date',
@@ -90,6 +91,11 @@ class ServiceOrder extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Partner::class, 'customer_id');
+    }
+
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class);
     }
 
     public function company(): BelongsTo

@@ -30,11 +30,9 @@ class ItemsRelationManager extends RelationManager
             ->heading('Itens do Orçamento')
             ->columns([
                 TextColumn::make('identifier')
-                    ->label('Produto/Serviço')
-                    ->searchable(),
+                    ->label('Produto/Serviço'),
                 TextColumn::make('unit_of_measure')
-                    ->label('Un.')
-                    ->searchable(),
+                    ->label('Un.'),
                 TextColumn::make('quantity')
                     ->label('Qtde.')
                     ->numeric(2, ',', '.')
