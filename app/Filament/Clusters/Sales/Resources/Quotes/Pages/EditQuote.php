@@ -7,6 +7,9 @@ use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ConvertToProducti
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\RejectQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ReopenQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\SendForApprovalQuoteAction;
+use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ViewLinkedProductionOrderAction;
+use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ViewLinkedRequisitionsAction;
+use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ViewLinkedServiceOrdersAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\QuoteResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Quote\QuoteService;
@@ -26,6 +29,9 @@ class EditQuote extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ViewLinkedRequisitionsAction::make(),
+            ViewLinkedServiceOrdersAction::make(),
+            ViewLinkedProductionOrderAction::make(),
             ActionGroup::make([
                 // SendForApprovalQuoteAction::make(),
                 ApproveQuoteAction::make(),
