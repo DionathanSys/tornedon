@@ -2,6 +2,7 @@
 
 namespace App\Services\StockMovement\Actions;
 
+use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Services\StockMovement\Validators\StockMovementValidator;
 use App\Traits\HandlesActionResponse;
@@ -35,7 +36,20 @@ class CreateStockMovementAction
             $validated = StockMovementValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
 
+            // Bloqueia o ProductStock antes de criar o movimento para evitar race conditions
+            $stock = ProductStock::where('id', $validated['product_stock_id'])
+                ->lockForUpdate()
+                ->first();
+
+            if (!$stock) {
+                $this->setError('Registro de estoque não encontrado', [], 422);
+                return null;
+            }
+
             $movement = StockMovement::create($validated);
+
+            // Aplica o efeito do movimento no estoque de forma incremental
+            (new ApplyMovementToProductStockAction())->apply($stock, $movement);
 
             $this->setSuccess();
 

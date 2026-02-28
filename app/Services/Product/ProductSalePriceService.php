@@ -45,12 +45,28 @@ class ProductSalePriceService
             return 0;
         }
 
-        return match ($origin) {
-            OriginSalePrice::FIXED        => $this->resolveFixed($product),
-            OriginSalePrice::CALCULATED   => $this->resolveCalculated($product, $stock),
-            OriginSalePrice::CALCULATED_II => $this->resolveCalculatedII($product, $stock),
-            OriginSalePrice::FREE         => null,
+        $price = match ($origin) {
+            OriginSalePrice::FIXED         => $this->resolveFixed($product),
+            OriginSalePrice::CALCULATED    => $this->resolveCalculated($product, $stock ?? $product->stock),
+            OriginSalePrice::CALCULATED_II => $this->resolveCalculatedII($product, $stock ?? $product->stock),
+            OriginSalePrice::FREE          => null,
         };
+
+        // Garante que o preço calculado nunca seja inferior ao mínimo de venda configurado
+        if ($price !== null && $product->min_sale_price > 0) {
+            $minPrice = (float) $product->min_sale_price;
+            if ($price < $minPrice) {
+                Log::debug('ProductSalePriceService: Preço calculado abaixo do mínimo, usando min_sale_price', [
+                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'product_id'     => $product->id,
+                    'calculated'     => $price,
+                    'min_sale_price' => $minPrice,
+                ]);
+                $price = $minPrice;
+            }
+        }
+
+        return $price;
     }
 
     /**
@@ -104,10 +120,19 @@ class ProductSalePriceService
     /**
      * CALCULATED: Custo médio + margem de lucro.
      * Fórmula: average_cost × (1 + profit_margin / 100)
+     * Se o estoque não for carregado ou não existir, retorna 0.
      */
     private function resolveCalculated(Product $product, ?ProductStock $stock): float
     {
-        $cost   = (float) ($stock?->average_cost ?? 0);
+        if ($stock === null) {
+            Log::warning('ProductSalePriceService: CALCULATED sem estoque disponível para o produto', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'product_id' => $product->id,
+            ]);
+            return 0;
+        }
+
+        $cost   = (float) ($stock->average_cost ?? 0);
         $margin = (float) ($product->profit_margin ?? 0);
 
         if ($cost === 0.0) {
@@ -124,11 +149,20 @@ class ProductSalePriceService
      * CALCULATED_II: Último custo de compra + margem de lucro.
      * Fórmula: last_cost × (1 + profit_margin / 100)
      * Fallback para average_cost quando last_cost não estiver disponível.
+     * Se o estoque não for carregado ou não existir, retorna 0.
      */
     private function resolveCalculatedII(Product $product, ?ProductStock $stock): float
     {
-        $lastCost    = (float) ($stock?->last_cost ?? 0);
-        $averageCost = (float) ($stock?->average_cost ?? 0);
+        if ($stock === null) {
+            Log::warning('ProductSalePriceService: CALCULATED_II sem estoque disponível para o produto', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'product_id' => $product->id,
+            ]);
+            return 0;
+        }
+
+        $lastCost    = (float) ($stock->last_cost ?? 0);
+        $averageCost = (float) ($stock->average_cost ?? 0);
 
         // Fallback para custo médio se o último custo não estiver disponível
         $cost   = $lastCost > 0 ? $lastCost : $averageCost;
