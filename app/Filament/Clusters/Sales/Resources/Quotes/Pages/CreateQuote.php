@@ -15,11 +15,6 @@ class CreateQuote extends CreateRecord
 {
     protected static string $resource = QuoteResource::class;
 
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
-    }
-
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         Log::debug('CreateQuote: Mutando dados antes de criar', [

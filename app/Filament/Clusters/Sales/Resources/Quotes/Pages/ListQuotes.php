@@ -14,10 +14,7 @@ class ListQuotes extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Orçamento')
-                ->icon(Heroicon::Plus)
-                ->badge(),
+            
         ];
     }
 }

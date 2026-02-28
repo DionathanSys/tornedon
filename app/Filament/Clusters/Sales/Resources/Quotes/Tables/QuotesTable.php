@@ -4,9 +4,11 @@ namespace App\Filament\Clusters\Sales\Resources\Quotes\Tables;
 
 use App\Enum\Quote\Status;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -35,7 +37,7 @@ class QuotesTable
                         'danger'    => Status::REJECTED->value,
                         'warning'   => Status::EXPIRED->value,
                     ])
-                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->formatStateUsing(fn($state) => $state->description())
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
@@ -75,6 +77,10 @@ class QuotesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
+                CreateAction::make()
+                    ->label('Orçamento')
+                    ->icon(Heroicon::Plus)
+                    ->badge(),
             ])
             ->defaultSort('created_at', 'desc');
     }

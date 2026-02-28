@@ -26,6 +26,7 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\Str;
@@ -101,7 +102,10 @@ class QuoteForm
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->minDate(now())
                             ->default(now()->addDays(CompanyPreference::get(key: 'default_quote_validity_days', default: 30)))
-                            ->disabled(fn($get) => $get('status') !== Status::DRAFT)
+                            ->disabled(function(Get $get, $operation) {
+                                $status = $get('status');
+                                return $operation === 'edit' && in_array($status, [Status::APPROVED->value, Status::REJECTED->value]);
+                            })
                             ->required(),
                         SelectPartner::make('partner_id', 'customer')
                             ->label('Cliente')
