@@ -13,15 +13,12 @@ class DeleteStockMovementAction
     use HandlesActionResponse;
 
     /**
-     * Exclui (soft delete) uma movimentaÃ§Ã£o e recalcula o estoque.
-     *
-     * @param StockMovement $movement
-     * @return bool
+     * Exclui (soft delete) uma movimentação e recalcula o estoque.
      */
     public function execute(StockMovement $movement): bool
     {
         try {
-            Log::debug('DeleteStockMovementAction: Iniciando exclusÃ£o de movimentaÃ§Ã£o', [
+            Log::debug('DeleteStockMovementAction: Iniciando exclusão de movimentação', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
             ]);
@@ -30,7 +27,7 @@ class DeleteStockMovementAction
                 ->lockForUpdate()
                 ->first();
 
-            // Soft delete primeiro para que o recÃ¡lculo exclua este movimento
+            // Soft delete primeiro para que o recálculo exclua este movimento
             $movement->delete();
 
             if ($stock) {
@@ -39,16 +36,16 @@ class DeleteStockMovementAction
 
             $this->setSuccess();
 
-            Log::info('DeleteStockMovementAction: MovimentaÃ§Ã£o de estoque excluÃ­da com sucesso', [
+            Log::info('DeleteStockMovementAction: Movimentação de estoque excluída com sucesso', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
             ]);
 
             return true;
         } catch (QueryException $e) {
-            $this->setError('Erro ao excluir movimentaÃ§Ã£o de estoque', [], 422);
+            $this->setError('Erro ao excluir movimentação de estoque', [], 422);
 
-            Log::error('DeleteStockMovementAction: Erro ao excluir movimentaÃ§Ã£o', [
+            Log::error('DeleteStockMovementAction: Erro ao excluir movimentação', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'exception'          => $e->getMessage(),
@@ -57,7 +54,7 @@ class DeleteStockMovementAction
 
             return false;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao excluir movimentaÃ§Ã£o', [], 500);
+            $this->setError('Erro inesperado ao excluir movimentação', [], 500);
 
             Log::error('DeleteStockMovementAction: Erro inesperado', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -71,15 +68,12 @@ class DeleteStockMovementAction
     }
 
     /**
-     * Exclui permanentemente (force delete) uma movimentaÃ§Ã£o e recalcula o estoque.
-     *
-     * @param StockMovement $movement
-     * @return bool
+     * Exclui permanentemente (force delete) uma movimentação e recalcula o estoque.
      */
     public function forceDelete(StockMovement $movement): bool
     {
         try {
-            Log::debug('DeleteStockMovementAction: Iniciando exclusÃ£o permanente', [
+            Log::debug('DeleteStockMovementAction: Iniciando exclusão permanente', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
             ]);
@@ -88,7 +82,7 @@ class DeleteStockMovementAction
                 ->lockForUpdate()
                 ->first();
 
-            // Force delete primeiro para que o recÃ¡lculo exclua este movimento
+            // Force delete primeiro para que o recálculo exclua este movimento
             $movement->forceDelete();
 
             if ($stock) {
@@ -97,118 +91,14 @@ class DeleteStockMovementAction
 
             $this->setSuccess();
 
-            Log::info('DeleteStockMovementAction: MovimentaÃ§Ã£o excluÃ­da permanentemente com sucesso', [
+            Log::info('DeleteStockMovementAction: Movimentação excluída permanentemente com sucesso', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
             ]);
 
             return true;
         } catch (QueryException $e) {
-            $this->setError('Erro ao excluir permanentemente movimentaÃ§Ã£o', [], 422);
-
-            Log::error('DeleteStockMovementAction: Erro ao excluir permanentemente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
-            ]);
-
-            return false;
-        } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao excluir permanentemente', [], 500);
-
-            Log::error('DeleteStockMovementAction: Erro inesperado ao excluir permanentemente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
-            ]);
-
-            return false;
-        }
-    }
-}
-
-
-class DeleteStockMovementAction
-{
-    use HandlesActionResponse;
-
-    /**
-     * Exclui (soft delete) uma movimentaÃ§Ã£o de estoque.
-     *
-     * @param StockMovement $movement
-     * @return bool
-     */
-    public function execute(StockMovement $movement): bool
-    {
-        try {
-            Log::debug('DeleteStockMovementAction: Iniciando exclusÃ£o de movimentaÃ§Ã£o', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-            ]);
-
-            $movement->delete();
-
-            $this->setSuccess();
-
-            Log::info('DeleteStockMovementAction: MovimentaÃ§Ã£o de estoque excluÃ­da com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-            ]);
-
-            return true;
-        } catch (QueryException $e) {
-            $this->setError('Erro ao excluir movimentaÃ§Ã£o de estoque', [], 422);
-
-            Log::error('DeleteStockMovementAction: Erro ao excluir movimentaÃ§Ã£o', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
-            ]);
-
-            return false;
-        } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao excluir movimentaÃ§Ã£o', [], 500);
-
-            Log::error('DeleteStockMovementAction: Erro inesperado', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Exclui permanentemente (force delete) uma movimentaÃ§Ã£o de estoque.
-     *
-     * @param StockMovement $movement
-     * @return bool
-     */
-    public function forceDelete(StockMovement $movement): bool
-    {
-        try {
-            Log::debug('DeleteStockMovementAction: Iniciando exclusÃ£o permanente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-            ]);
-
-            $movement->forceDelete();
-
-            $this->setSuccess();
-
-            Log::info('DeleteStockMovementAction: MovimentaÃ§Ã£o excluÃ­da permanentemente com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-            ]);
-
-            return true;
-        } catch (QueryException $e) {
-            $this->setError('Erro ao excluir permanentemente movimentaÃ§Ã£o', [], 422);
+            $this->setError('Erro ao excluir permanentemente movimentação', [], 422);
 
             Log::error('DeleteStockMovementAction: Erro ao excluir permanentemente', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,

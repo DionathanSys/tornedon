@@ -2,10 +2,11 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Actions;
 
-use App\Models\StockMovement;
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Schemas\StockMovementForm;
 use App\Notification\NotifyService as notify;
 use App\Services\StockMovement\StockMovementService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -17,10 +18,13 @@ final class CreateStockMovementFromModalAction
         return Action::make('createFromModal')
             ->label('Registrar Movimentação')
             ->icon(Heroicon::Plus)
-            ->schema([
-                // Formulário será definido no componente que usa esta action
-            ])
+            ->modalWidth('2xl')
+            ->modalHeading('Registrar Movimentação de Estoque')
+            ->schema(StockMovementForm::schema())
             ->action(function (Action $action, array $data): void {
+                // Garante company_id mesmo que o hidden não seja enviado
+                $data['company_id'] ??= Filament::getTenant()->id;
+
                 Log::debug('CreateStockMovementFromModalAction: Criando movimentação via action', [
                     'metodo'  => __METHOD__ . '@' . __LINE__,
                     'data'    => $data,
@@ -43,6 +47,7 @@ final class CreateStockMovementFromModalAction
                     );
 
                     $action->halt();
+                    return;
                 }
 
                 Log::info('CreateStockMovementFromModalAction: Movimentação criada com sucesso', [
@@ -54,3 +59,4 @@ final class CreateStockMovementFromModalAction
             });
     }
 }
+

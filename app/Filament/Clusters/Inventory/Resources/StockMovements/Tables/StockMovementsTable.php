@@ -3,8 +3,11 @@
 namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Tables;
 
 use App\Enum\StockMovement\Type;
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\CheckProductStockBulkAction;
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\FixProductStockBulkAction;
 use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\CreateStockMovementFromModalAction;
 use App\Models\StockMovement;
+use Filament\Actions\BulkActionGroup;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -75,39 +78,11 @@ class StockMovementsTable
                 //     ->label('Período de Movimentação'),
             ])
             ->toolbarActions([
-                CreateStockMovementFromModalAction::make()
-                    ->schema([
-                        \Filament\Forms\Components\DateTimePicker::make('created_at')
-                            ->label('Data')
-                            ->required(),
-                        \Filament\Forms\Components\Select::make('product_id')
-                            ->label('Produto')
-                            ->relationship('product', 'name')
-                            ->required()
-                            ->searchable(),
-                        \Filament\Forms\Components\Select::make('type')
-                            ->label('Tipo de Mov.')
-                            ->options(collect(Type::cases())->mapWithKeys(fn($type) => [$type->value => $type->label()])->toArray())
-                            ->required(),
-                        \Filament\Forms\Components\TextInput::make('quantity')
-                            ->label('Qtde.')
-                            ->numeric()
-                            ->required(),
-                        \Filament\Forms\Components\TextInput::make('unit_price')
-                            ->label('Custo Un.')
-                            ->numeric()
-                            ->required(),
-                        \Filament\Forms\Components\TextInput::make('total_amount')
-                            ->label('Custo Total')
-                            ->numeric()
-                            ->disabled(),
-                        \Filament\Forms\Components\TextInput::make('reason')
-                            ->label('Motivo'),
-                        \Filament\Forms\Components\TextInput::make('reference_type')
-                            ->label('Referência'),
-                        \Filament\Forms\Components\Textarea::make('observations')
-                            ->label('Observações'),
-                    ]),
+                CreateStockMovementFromModalAction::make(),
+                BulkActionGroup::make([
+                    CheckProductStockBulkAction::make(),
+                    FixProductStockBulkAction::make(),
+                ])->label('Estoque'),
             ])
             ->defaultSort('created_at', 'desc');
     }
