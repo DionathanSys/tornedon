@@ -4,6 +4,7 @@ namespace App\Services\Quote\States;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\Quote;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Estado: Aprovado
@@ -42,6 +43,13 @@ class ApprovedState implements QuoteState
 
     public function reopen(Quote $quote, int $userId): void
     {
+        Log::debug('ApprovedState: Tentativa de reabrir orçamento aprovado', [
+            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'quote_id' => $quote->id,
+            'user_id'  => $userId,
+            'key'      => 'reopen_quote_action',
+        ]);
+        
         throw new DomainValidationException(
             ['status' => ['Não é possível reabrir um orçamento aprovado.']]
         );

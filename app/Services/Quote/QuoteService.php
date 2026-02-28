@@ -138,7 +138,6 @@ class QuoteService
 
                 return $quote;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao criar orçamento');
 
@@ -197,7 +196,6 @@ class QuoteService
 
                 return $updated;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar orçamento');
 
@@ -252,7 +250,6 @@ class QuoteService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao excluir orçamento');
 
@@ -306,7 +303,6 @@ class QuoteService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao excluir permanentemente o orçamento');
 
@@ -360,7 +356,6 @@ class QuoteService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao restaurar orçamento');
 
@@ -413,7 +408,6 @@ class QuoteService
                 $this->setSuccess('Orçamento enviado para aprovação');
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao enviar orçamento para aprovação');
 
@@ -462,7 +456,6 @@ class QuoteService
                 $this->setSuccess('Orçamento aprovado com sucesso');
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao aprovar orçamento');
 
@@ -511,7 +504,6 @@ class QuoteService
                 $this->setSuccess('Orçamento rejeitado');
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao rejeitar orçamento');
 
@@ -533,6 +525,13 @@ class QuoteService
     public function reopen(Quote $quote, int $userId): ?Quote
     {
         $this->resetResponse();
+
+        Log::debug('QuoteService: Iniciando processo de reabertura de orçamento', [
+            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'quote_id' => $quote->id,
+            'user_id'  => $userId,
+            'key'      => 'reopen_quote_action',
+        ]);
 
         try {
             return DB::transaction(function () use ($quote, $userId) {
@@ -560,7 +559,6 @@ class QuoteService
                 $this->setSuccess('Orçamento reaberto com sucesso');
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao reabrir orçamento');
 
@@ -616,7 +614,6 @@ class QuoteService
 
                 return $productionOrder;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao converter orçamento em Ordem de Produção');
 
@@ -632,4 +629,3 @@ class QuoteService
         }
     }
 }
-

@@ -30,6 +30,7 @@ class ReopenQuoteAction
                 'quote_id' => $quote->id,
                 'status'   => $quote->status,
                 'user_id'  => $this->userId,
+                'key'      => 'reopen_quote_action',
             ]);
 
             $quote->state()->reopen($quote, $this->userId);

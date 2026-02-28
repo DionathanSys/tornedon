@@ -17,10 +17,4 @@ class QuoteApproved
         public readonly int $approvedBy,
     ) {}
 
-    // public function broadcastOn(): array
-    // {
-    //     return [
-    //         new PrivateChannel('quote.' . $this->quote->id),
-    //     ];
-    // }
 }

@@ -25,11 +25,12 @@ final class ReopenQuoteAction
             ->modalSubmitActionLabel('Sim, reabrir')
             ->visible(fn (Quote $record): bool => in_array($record->status, [Status::REJECTED, Status::EXPIRED, Status::APPROVED]))
             ->action(function (Quote $record): void {
-                dd(1);
+                
                 Log::debug('ReopenQuoteAction (Filament): Reabrindo orçamento', [
                     'metodo'   => __METHOD__ . '@' . __LINE__,
                     'quote_id' => $record->id,
                     'user_id'  => Auth::id(),
+                    'key'      => 'reopen_quote_action',
                 ]);
 
                 $service = app(QuoteService::class);
@@ -41,6 +42,7 @@ final class ReopenQuoteAction
                         'quote_id'   => $record->id,
                         'error_code' => $service->getErrorCode(),
                         'message'    => $service->getMessage(),
+                        'key'      => 'reopen_quote_action',
                     ]);
 
                     notify::error(

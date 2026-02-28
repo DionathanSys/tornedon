@@ -8,6 +8,8 @@ use App\Services\ProductionOrder\Actions\CreateProductionOrder;
 use App\Services\ProductionOrder\Actions\StartProduction;
 use App\Services\ProductionOrder\Actions\UpdateProgress;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProductionOrderService
 {
@@ -15,16 +17,56 @@ class ProductionOrderService
 
     public function create(array $data, int $createdBy): ?ProductionOrder
     {
-        $action = new CreateProductionOrder($createdBy);
-        $productionOrder = $action->execute($data);
+        $this->resetResponse();
 
-        if ($action->isSuccess()) {
-            $this->setSuccess('Ordem de produção criada com sucesso');
-            return $productionOrder;
+        try {
+            return DB::transaction(function () use ($data, $createdBy) {
+                $action = new CreateProductionOrder($createdBy);
+                $productionOrder = $action->execute($data);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error('ProductionOrderService: ' . $this->getMessage(), [
+                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'error_code' => $this->getErrorCode(),
+                        'errors'     => $action->getErrors(),
+                        'data'       => $data,
+                        'user_id'    => $createdBy,
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Ordem de produção criada com sucesso');
+
+                Log::info('ProductionOrderService: Ordem de produção criada com sucesso', [
+                    'metodo'       => __METHOD__ . '@' . __LINE__,
+                    'production_order_id'     => $productionOrder->id,
+                    'production_order_number' => $productionOrder->production_order_number,
+                ]);
+
+                return $productionOrder;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao criar ordem de produção');
+
+            Log::error('ProductionOrderService: ' . $this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'error_code' => $this->getErrorCode(),
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
+                'user_id'    => $createdBy,
+            ]);
+
+            return null;
         }
-
-        $this->setError($action->getMessage(), $action->getErrors());
-        return null;
     }
 
     public function start(ProductionOrder $productionOrder, int $userId): bool

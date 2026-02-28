@@ -7,38 +7,71 @@ use Illuminate\Validation\ValidationException;
 
 class ProductionOrderValidator
 {
-    public static function validate(array $data): array
+    /**
+     * Valida dados para criação de ordem de produção.
+     *
+     * @param  array $data
+     * @return array Dados validados
+     * @throws ValidationException
+     */
+    public static function validateCreate(array $data): array
     {
         $validator = Validator::make($data, [
-            'partner_id'                        => 'required|exists:partners,id',
-            'company_id'                        => 'required|exists:companies,id',
-            'quote_id'                          => 'nullable|exists:quotes,id',
-            'priority'                          => 'required|in:low,normal,high,urgent',
-            'destination_type'                  => 'required|in:stock,direct_delivery',
-            'observations'                      => 'nullable|string',
-            'assigned_operator'                 => 'nullable|exists:users,id',
-            'assigned_machine'                  => 'nullable|string',
-            'items'                             => 'required|array|min:1',
-            'items.*.product_id'                => 'nullable|exists:products,id',
-            'items.*.description'               => 'nullable|string',
-            'items.*.quantity'                  => 'required|numeric|min:0.001',
-            'items.*.unit_of_measure'           => 'required|string',
-            'items.*.technical_specifications'  => 'nullable|array',
+            'company_id'        => 'required|integer|exists:companies,id',
+            'partner_id'        => 'required|integer|exists:partners,id',
+            'quote_id'          => 'nullable|integer|exists:quotes,id',
+            'priority'          => 'required|in:low,normal,high,urgent',
+            'destination_type'  => 'required|in:stock,direct_delivery',
+            'observations'      => 'nullable|string',
+            'assigned_operator' => 'nullable|integer|exists:users,id',
+            'assigned_machine'  => 'nullable|string',
         ], [
-            'partner_id.required'       => 'Cliente é obrigatório',
-            'partner_id.exists'         => 'Cliente não encontrado',
-            'company_id.required'       => 'Empresa é obrigatória',
-            'company_id.exists'         => 'Empresa não encontrada',
-            'priority.required'         => 'Prioridade é obrigatória',
-            'destination_type.required' => 'Tipo de destino é obrigatório',
-            'items.required'            => 'É necessário adicionar ao menos um item',
-            'items.min'                 => 'É necessário adicionar ao menos um item',
+            'company_id.required'       => 'A empresa é obrigatória.',
+            'company_id.exists'         => 'Empresa não encontrada.',
+            'partner_id.required'       => 'O cliente é obrigatório.',
+            'partner_id.exists'         => 'Cliente não encontrado.',
+            'quote_id.exists'           => 'Orçamento não encontrado.',
+            'priority.required'         => 'A prioridade é obrigatória.',
+            'priority.in'               => 'Prioridade inválida.',
+            'destination_type.required' => 'O tipo de destino é obrigatório.',
+            'destination_type.in'       => 'Tipo de destino inválido.',
+            'assigned_operator.exists'  => 'Operador designado não encontrado.',
         ]);
 
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
+        return $validator->validate();
+    }
 
-        return $validator->validated();
+    /**
+     * Valida dados para atualização de ordem de produção.
+     *
+     * @param  array $data
+     * @return array Dados validados
+     * @throws ValidationException
+     */
+    public static function validateUpdate(array $data): array
+    {
+        $validator = Validator::make($data, [
+            'company_id'        => 'sometimes|required|integer|exists:companies,id',
+            'partner_id'        => 'sometimes|required|integer|exists:partners,id',
+            'quote_id'          => 'nullable|integer|exists:quotes,id',
+            'priority'          => 'sometimes|required|in:low,normal,high,urgent',
+            'destination_type'  => 'sometimes|required|in:stock,direct_delivery',
+            'observations'      => 'nullable|string',
+            'assigned_operator' => 'nullable|integer|exists:users,id',
+            'assigned_machine'  => 'nullable|string',
+        ], [
+            'company_id.required'       => 'A empresa é obrigatória.',
+            'company_id.exists'         => 'Empresa não encontrada.',
+            'partner_id.required'       => 'O cliente é obrigatório.',
+            'partner_id.exists'         => 'Cliente não encontrado.',
+            'quote_id.exists'           => 'Orçamento não encontrado.',
+            'priority.required'         => 'A prioridade é obrigatória.',
+            'priority.in'               => 'Prioridade inválida.',
+            'destination_type.required' => 'O tipo de destino é obrigatório.',
+            'destination_type.in'       => 'Tipo de destino inválido.',
+            'assigned_operator.exists'  => 'Operador designado não encontrado.',
+        ]);
+
+        return $validator->validate();
     }
 }
