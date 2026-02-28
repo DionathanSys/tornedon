@@ -178,8 +178,4 @@ class EditQuote extends EditRecord
         return 'Orçamento atualizado com sucesso';
     }
 
-    protected function getRedirectUrl(): ?string
-    {
-        return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
-    }
 }

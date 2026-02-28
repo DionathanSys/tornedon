@@ -23,7 +23,7 @@ final class ReopenQuoteAction
             ->modalHeading('Reabrir Orçamento')
             ->modalDescription('Tem certeza que deseja reabrir este orçamento? O status voltará para "Rascunho".')
             ->modalSubmitActionLabel('Sim, reabrir')
-            ->visible(fn (Quote $record): bool => in_array($record->status, [Status::REJECTED, Status::EXPIRED]))
+            ->visible(fn (Quote $record): bool => in_array($record->status, [Status::REJECTED, Status::EXPIRED, Status::APPROVED]))
             ->action(function (Quote $record): void {
                 Log::debug('ReopenQuoteAction (Filament): Reabrindo orçamento', [
                     'metodo'   => __METHOD__ . '@' . __LINE__,
