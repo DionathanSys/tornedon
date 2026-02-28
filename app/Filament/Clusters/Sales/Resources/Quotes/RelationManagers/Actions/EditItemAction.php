@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions;
 use App\Enum\Quote\Destination;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\SchemaForm;
 use App\Models\QuoteItem;
+use App\Services\Product\ProductSalePriceService;
 use App\Notification\NotifyService as notify;
 use App\Services\QuoteItem\QuoteItemService;
 use App\Traits\AuthorizesQuoteItemActions;
@@ -37,6 +38,9 @@ final class EditItemAction
                     'code'            => $record->codeItem,
                     'name'            => $record->name,
                     'identification'  => $record->codeItem ? "[{$record->codeItem}] {$record->identifier}" : $record->identifier,
+                    'min_sale_price'  => $record->product_id
+                        ? (new ProductSalePriceService())->getMinSalePriceById($record->product_id)
+                        : 0,
                 ];
                 $data['description']            = $record->description;
                 $data['unit_of_measure']        = $record->unit_of_measure;

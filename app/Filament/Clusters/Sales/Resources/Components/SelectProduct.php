@@ -22,12 +22,17 @@ class SelectProduct
             ->columnSpanFull()
             ->live(onBlur: true)
             ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                $salePrice = (new ProductSalePriceService())->resolveById($state);
+                $service = app(ProductSalePriceService::class);
+
+                $salePrice = $service->resolveById((int) $state);
                 if ($salePrice !== null) {
                     $set('unit_price', number_format($salePrice, 2, ',', '.'));
                 } else {
                     $set('unit_price', null);
                 }
+
+                // Preço mínimo de venda via service (sem acesso direto ao Model)
+                $set('_min_sale_price', $service->getMinSalePriceById((int) $state));
             });
     }
 }

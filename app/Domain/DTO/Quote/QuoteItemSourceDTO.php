@@ -14,6 +14,7 @@ class QuoteItemSourceDTO
         public readonly ?string $name = null,
         public readonly ?string $unit = null,
         public readonly ?float $price = null,
+        public readonly float $minSalePrice = 0,
         public readonly Destination $destination,
     ) {
     }

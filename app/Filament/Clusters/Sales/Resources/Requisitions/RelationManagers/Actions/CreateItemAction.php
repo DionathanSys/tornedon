@@ -8,6 +8,7 @@ use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -41,6 +42,9 @@ final class CreateItemAction
             ->badge()
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
+                Hidden::make('_min_sale_price')
+                    ->default(0)
+                    ->dehydrated(false),
                 SelectProduct::make()
                     ->after(fn(Get $get, Set $set) => self::calculateValues($get, $set)),
                 Group::make()
@@ -63,6 +67,12 @@ final class CreateItemAction
                             ->label('Preço Unitário')
                             ->required()
                             ->live(onBlur: true)
+                            ->helperText(function (Get $get): ?string {
+                                $minPrice = (float) ($get('_min_sale_price') ?? 0);
+                                return $minPrice > 0
+                                    ? 'Preço mínimo de venda: R$ ' . number_format($minPrice, 2, ',', '.')
+                                    : null;
+                            })
                             ->afterStateUpdated(function($state, Set $set, Get $get) {
                                 $set('discount_amount', number_format(0, 2, ',', '.'));
                                 $set('discount_percentage', number_format(0, 2, ',', '.'));

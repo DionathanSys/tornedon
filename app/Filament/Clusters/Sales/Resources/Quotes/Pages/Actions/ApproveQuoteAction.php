@@ -25,41 +25,16 @@ final class ApproveQuoteAction
             ->label('Aprovar')
             ->icon(Heroicon::CheckCircle)
             ->color('success')
-            ->schema([
-                Grid::make(2)
-                    ->schema([
-                        Select::make('payment_method')
-                            ->label('Forma de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->options(PaymentMethod::toSelectArray())
-                            ->native(false)
-                            ->searchable()
-                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
-                        Select::make('payment_condition')
-                            ->label('Condição de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->options(PaymentCondition::toGroupedSelectArray())
-                            ->native(false)
-                            ->searchable()
-                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
-                    ]),
-            ])
             ->modalHeading('Aprovar Orçamento')
             ->modalDescription('Preencha os dados de pagamento para aprovar o orçamento.')
             ->modalSubmitActionLabel('Aprovar')
             ->modalCancelActionLabel('Cancelar')
             ->visible(fn (Quote $record): bool => in_array($record->status, [Status::DRAFT, Status::SENT]))
-            ->action(function (Quote $record, array $data): void {
+            ->action(function (Quote $record): void {
                 Log::debug('ApproveQuoteAction (Filament): Aprovando orçamento', [
                     'metodo'   => __METHOD__ . '@' . __LINE__,
                     'quote_id' => $record->id,
                     'user_id'  => Auth::id(),
-                ]);
-
-                // Atualiza os dados de pagamento antes de aprovar
-                $record->update([
-                    'payment_method' => $data['payment_method'],
-                    'payment_condition' => $data['payment_condition'],
                 ]);
 
                 $service = app(QuoteService::class);

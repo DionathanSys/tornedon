@@ -2,6 +2,7 @@
 
 namespace App\Services\QuoteItem\Actions;
 
+use App\Models\Product;
 use App\Models\QuoteItem;
 use App\Services\QuoteItem\Validators\QuoteItemValidator;
 use App\Traits\AuthorizesQuoteItemActions;
@@ -30,6 +31,16 @@ class UpdateQuoteItemAction
         if (! self::canModifyQuoteItems($this->item->quote_id)) {
             $this->setError('Não é permitido atualizar itens deste orçamento. Apenas orçamentos em rascunho podem ter itens alterados.');
             return null;
+        }
+
+        // Valida preço mínimo de venda (somente para produtos; serviços não possuem restrição)
+        $productId = ! empty($data['product_id']) ? (int) $data['product_id'] : $this->item->product_id;
+        if ($productId && isset($data['unit_price'])) {
+            $priceError = $this->validateMinSalePrice($productId, (float) $data['unit_price']);
+            if ($priceError) {
+                $this->setError($priceError);
+                return null;
+            }
         }
 
         try {
@@ -91,6 +102,32 @@ class UpdateQuoteItemAction
 
             return null;
         }
+    }
+
+    /**
+     * Verifica se o preço unitário respeita o preço mínimo de venda do produto.
+     * Retorna null se OK, ou mensagem de erro caso contrário.
+     */
+    private function validateMinSalePrice(int $productId, float $unitPrice): ?string
+    {
+        $product = Product::find($productId);
+
+        if (! $product || ! $product->min_sale_price || $product->min_sale_price <= 0) {
+            return null;
+        }
+
+        $minPrice = (float) $product->min_sale_price;
+
+        if ($unitPrice < $minPrice) {
+            return sprintf(
+                'O preço unitário (R$ %s) está abaixo do preço mínimo de venda de "%s" (R$ %s).',
+                number_format($unitPrice, 2, ',', '.'),
+                $product->name,
+                number_format($minPrice, 2, ',', '.')
+            );
+        }
+
+        return null;
     }
 }
 

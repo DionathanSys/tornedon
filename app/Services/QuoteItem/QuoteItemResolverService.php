@@ -38,6 +38,7 @@ class QuoteItemResolverService
             name: $product->name,
             unit: $product->unit?->value,
             price: (float) $price,
+            minSalePrice: $this->productSalePriceService->getMinSalePriceById($product->id),
             destination: Destination::REQUISITION
         );
     }
@@ -60,6 +61,7 @@ class QuoteItemResolverService
             name: $product->name,
             unit: $product->unit?->value,
             price: (float) $price,
+            minSalePrice: $this->productSalePriceService->getMinSalePriceById($product->id),
             destination: Destination::ORDER_PRODUCTION
         );
     }

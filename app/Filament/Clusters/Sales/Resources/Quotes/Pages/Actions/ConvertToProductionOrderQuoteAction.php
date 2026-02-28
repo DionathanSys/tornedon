@@ -41,7 +41,7 @@ final class ConvertToProductionOrderQuoteAction
                     ->label('Observações')
                     ->rows(3),
             ])
-            ->visible(fn (Quote $record): bool => $record->status === Status::APPROVED)
+            ->visible(fn (Quote $record): bool => false)
             ->action(function (Quote $record, array $data): void {
                 Log::debug('ConvertToProductionOrderQuoteAction (Filament): Convertendo orçamento em OP', [
                     'metodo'   => __METHOD__ . '@' . __LINE__,

@@ -76,6 +76,24 @@ class ProductSalePriceService
     }
 
     /**
+     * Retorna o preço mínimo de venda configurado para um produto pelo ID.
+     * Retorna 0 quando não há preço mínimo definido.
+     *
+     * @param  int $productId
+     * @return float
+     */
+    public function getMinSalePriceById(int $productId): float
+    {
+        $product = Product::find($productId);
+
+        if (! $product || ! $product->min_sale_price || $product->min_sale_price <= 0) {
+            return 0;
+        }
+
+        return (float) $product->min_sale_price;
+    }
+
+    /**
      * FIXED: usa o valor fixo cadastrado no produto.
      */
     private function resolveFixed(Product $product): float

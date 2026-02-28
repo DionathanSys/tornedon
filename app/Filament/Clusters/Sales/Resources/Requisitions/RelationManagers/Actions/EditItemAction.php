@@ -5,8 +5,10 @@ namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Ac
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Models\RequisitionItem;
 use App\Models\ServiceOrderItem;
+use App\Services\Product\ProductSalePriceService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Hidden;
 use Filament\Facades\Filament;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Forms\Components\Select;
@@ -18,7 +20,6 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
-use App\Services\Product\ProductSalePriceService;
 use App\Services\Product\ProductService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use App\Services\Service\ServiceService;
@@ -39,7 +40,16 @@ final class EditItemAction
         return EditAction::make()
             ->label('Editar')
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->mutateRecordDataUsing(function (array $data, RequisitionItem $record): array {
+                $data['_min_sale_price'] = $record->product_id
+                    ? (new ProductSalePriceService())->getMinSalePriceById($record->product_id)
+                    : 0;
+                return $data;
+            })
             ->schema([
+                Hidden::make('_min_sale_price')
+                    ->default(0)
+                    ->dehydrated(false),
                 SelectProduct::make()
                     ->after(fn(Get $get, Set $set) => self::calculateValues($get, $set)),
                 Group::make()
@@ -62,6 +72,12 @@ final class EditItemAction
                             ->label('Preço Unitário')
                             ->required()
                             ->live(onBlur: true)
+                            ->helperText(function (Get $get): ?string {
+                                $minPrice = (float) ($get('_min_sale_price') ?? 0);
+                                return $minPrice > 0
+                                    ? 'Preço mínimo de venda: R$ ' . number_format($minPrice, 2, ',', '.')
+                                    : null;
+                            })
                             ->afterStateUpdated(function($state, Set $set, Get $get) {
                                 $set('discount_amount', number_format(0, 2, ',', '.'));
                                 $set('discount_percentage', number_format(0, 2, ',', '.'));

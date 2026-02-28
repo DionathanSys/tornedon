@@ -47,6 +47,15 @@ class CreateRequisitionItemAction
             }
         }
 
+        // Valida preço mínimo de venda
+        if (! empty($data['product_id']) && isset($data['unit_price'])) {
+            $priceError = $this->validateMinSalePrice((int) $data['product_id'], (float) $data['unit_price']);
+            if ($priceError) {
+                $this->setError($priceError);
+                return null;
+            }
+        }
+
         try {
             $validated = RequisitionItemValidator::validateCreate($data);
 
@@ -102,6 +111,32 @@ class CreateRequisitionItemAction
 
             return null;
         }
+    }
+
+    /**
+     * Verifica se o preço unitário respeita o preço mínimo de venda do produto.
+     * Retorna null se OK, ou mensagem de erro caso contrário.
+     */
+    private function validateMinSalePrice(int $productId, float $unitPrice): ?string
+    {
+        $product = Product::find($productId);
+
+        if (! $product || ! $product->min_sale_price || $product->min_sale_price <= 0) {
+            return null;
+        }
+
+        $minPrice = (float) $product->min_sale_price;
+
+        if ($unitPrice < $minPrice) {
+            return sprintf(
+                'O preço unitário (R$ %s) está abaixo do preço mínimo de venda de "%s" (R$ %s).',
+                number_format($unitPrice, 2, ',', '.'),
+                $product->name,
+                number_format($minPrice, 2, ',', '.')
+            );
+        }
+
+        return null;
     }
 
     /**

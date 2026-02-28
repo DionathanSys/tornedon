@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Schemas;
 
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Product\Unit;
 use App\Enum\Quote\Status;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
@@ -137,6 +139,31 @@ class QuoteForm
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->rows(2)
                             ->maxLength(1000),
+                    ]),
+                Section::make('Pagamento')
+                    ->columnSpanFull()
+                    ->collapsible()
+                    ->persistCollapsed()
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 3,
+                        'lg' => 6,
+                    ])
+                    ->schema([
+                        Select::make('payment_method')
+                            ->label('Forma de Pagamento')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->options(PaymentMethod::toSelectArray())
+                            ->native(false)
+                            ->searchable()
+                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
+                        Select::make('payment_condition')
+                            ->label('Condição de Pagamento')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->options(PaymentCondition::toGroupedSelectArray())
+                            ->native(false)
+                            ->searchable()
+                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(Quote $record) => [
                     'ownerRecord' => $record,
