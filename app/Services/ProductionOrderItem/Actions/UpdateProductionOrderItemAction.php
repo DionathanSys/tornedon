@@ -28,7 +28,6 @@ class UpdateProductionOrderItemAction
     {
         try {
             $validated = ProductionOrderItemValidator::validateUpdate($data);
-            $validated['updated_by'] = $this->updatedBy;
 
             $this->productionOrderItem->update($validated);
             $this->productionOrderItem->refresh();
