@@ -35,6 +35,9 @@ class CreateStockMovementAction
 
             $validated = StockMovementValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
+            // source_type e source_id são NOT NULL no banco; garante fallback se não informados
+            $validated['source_type'] ??= 'manual';
+            $validated['source_id']   ??= 0;
 
             // Bloqueia o ProductStock antes de criar o movimento para evitar race conditions
             $stock = ProductStock::where('id', $validated['product_stock_id'])

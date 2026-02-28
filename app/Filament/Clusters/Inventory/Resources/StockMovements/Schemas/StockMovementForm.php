@@ -112,6 +112,30 @@ class StockMovementForm
                 ->maxLength(500)
                 ->columnSpan(1),
 
+            // ── Origem / Referência ────────────────────────────────────────
+            Select::make('source_type')
+                ->label('Tipo de Origem')
+                ->placeholder('Selecione a origem (opcional)')
+                ->options([
+                    'requisition'      => 'Requisição',
+                    'service_order'    => 'Ordem de Serviço',
+                    'production_order' => 'Ordem de Produção',
+                    'quote'            => 'Orçamento',
+                    'manual'           => 'Manual',
+                ])
+                ->default('manual')
+                ->live()
+                ->columnSpan(1),
+
+            TextInput::make('source_id')
+                ->label('Nº da Origem')
+                ->placeholder('ID do documento de origem')
+                ->numeric()
+                ->minValue(1)
+                ->default(0)
+                ->visible(fn(Get $get): bool => filled($get('source_type')) && $get('source_type') !== 'manual')
+                ->columnSpan(1),
+
             // ── Observações ────────────────────────────────────────────────
             Textarea::make('observations')
                 ->label('Observações')

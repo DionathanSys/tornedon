@@ -21,7 +21,7 @@ class StockMovementsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(fn(): Builder => StockMovement::query()
+            ->modifyQueryUsing(fn(): Builder => StockMovement::query()
                 ->where('company_id', Filament::getTenant()->id))
             ->columns([
                 TextColumn::make('created_at')
