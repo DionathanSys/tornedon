@@ -56,9 +56,6 @@ final class CreateItemAction
                 $data['product_id']  = $data['item']['real_product_id'] ?? null;
                 $data['service_id']  = $data['item']['real_service_id'] ?? null;
 
-                // Removemos o container de seleção para não interferir no registro
-                unset($data['item']);
-
                 $data['quote_id'] = $quote->id;
                 $data['status'] = Status::DRAFT->value;
                 

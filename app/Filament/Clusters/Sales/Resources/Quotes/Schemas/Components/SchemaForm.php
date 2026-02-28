@@ -101,13 +101,18 @@ class SchemaForm
             ->columnSpanFull()
             ->schema([
                 // Campos ocultos para metadados de seleção (dentro de item para não serem salvos direto)
-                Hidden::make('item.real_product_id'),
-                Hidden::make('item.real_service_id'),
-                Hidden::make('item.code'),
-                Hidden::make('item.name'),
+                Hidden::make('item.real_product_id')
+                    ->saved(false),
+                Hidden::make('item.real_service_id')
+                    ->saved(false),
+                Hidden::make('item.code')
+                    ->saved(false),
+                Hidden::make('item.name')
+                    ->saved(false),
 
                 TextInput::make('item.identification')
                     ->label('Identificação do Item')
+                    ->saved(false)
                     ->readOnly()
                     ->dehydrated(false)
                     ->columnSpanFull(),

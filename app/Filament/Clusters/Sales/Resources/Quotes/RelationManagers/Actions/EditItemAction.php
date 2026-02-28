@@ -57,9 +57,6 @@ final class EditItemAction
                 $data['product_id']  = $data['item']['real_product_id'] ?? null;
                 $data['service_id']  = $data['item']['real_service_id'] ?? null;
 
-                // Removemos o container de seleção para não interferir no registro
-                unset($data['item']);
-
                 // Parse numeric values from PT-BR format to float
                 $data['quantity']            = self::parseMoneyValue($data['quantity'] ?? 0);
                 $data['unit_price']          = self::parseMoneyValue($data['unit_price'] ?? 0);
