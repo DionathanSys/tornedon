@@ -14,19 +14,17 @@ class StockMovementValidator
      */
     private static function rules(): array
     {
-        $typeValues = array_map(fn($type) => $type->value, Type::cases());
-
         return [
             'product_stock_id'  => 'required|integer|exists:product_stocks,id',
             'product_id'        => 'required|integer|exists:products,id',
-            'type'              => ['required', 'string', Rule::in($typeValues)],
+            'company_id'        => 'required|integer|exists:companies,id',
+            'type'              => ['required', 'string', Rule::enum(Type::class)],
             'quantity'          => 'required|numeric|min:0.001',
-            'unit_price'         => 'nullable|numeric|min:0',
-            'total_amount'        => 'nullable|numeric|min:0',
+            'unit_price'        => 'required|numeric|min:0',
             'reason'            => 'nullable|string|max:500',
             'observations'      => 'nullable|string|max:1000',
-            'source_type'    => 'nullable|string|max:50',
-            'source_id'      => 'nullable|integer',
+            'source_type'       => 'required|string|max:50',
+            'source_id'         => 'required|integer',
             'additional_info'   => 'nullable|array',
         ];
     }
@@ -41,15 +39,15 @@ class StockMovementValidator
             'product_stock_id.exists'       => 'O estoque do produto informado não existe.',
             'product_id.required'           => 'É obrigatório informar o produto.',
             'product_id.exists'             => 'O produto informado não existe.',
+            'company_id.required'           => 'É obrigatório informar a empresa.',
+            'company_id.exists'             => 'A empresa informada não existe.',
             'type.required'                 => 'É obrigatório informar o tipo de movimento.',
             'type.in'                       => 'Tipo de movimento inválido.',
             'quantity.required'             => 'É obrigatório informar a quantidade.',
             'quantity.numeric'              => 'A quantidade deve ser um número.',
             'quantity.min'                  => 'A quantidade deve ser maior que zero.',
-            'unit_price.numeric'             => 'O preço unitário deve ser um número.',
-            'unit_price.min'                 => 'O preço unitário não pode ser negativo.',
-            'total_amount.numeric'            => 'O valor total deve ser um número.',
-            'total_amount.min'                => 'O valor total não pode ser negativo.',
+            'unit_price.numeric'            => 'O preço unitário deve ser um número.',
+            'unit_price.min'                => 'O preço unitário não pode ser negativo.',
             'reason.max'                    => 'O motivo não pode ter mais de 500 caracteres.',
             'observations.max'              => 'As observações não podem ter mais de 1000 caracteres.',
             'source_type.max'               => 'O tipo de referência não pode ter mais de 50 caracteres.',
@@ -81,20 +79,7 @@ class StockMovementValidator
      */
     public static function validateUpdate(array $data): array
     {
-        $typeValues = array_map(fn($type) => $type->value, Type::cases());
-
-        $rules = [
-            'type'              => ['sometimes', 'string', Rule::in($typeValues)],
-            'quantity'          => 'sometimes|numeric|min:0.001',
-            'unit_price'        => 'nullable|numeric|min:0',
-            'total_amount'      => 'nullable|numeric|min:0',
-            'reason'            => 'nullable|string|max:500',
-            'observations'      => 'nullable|string|max:1000',
-            'source_type'       => 'nullable|string|max:50',
-            'source_id'         => 'nullable|integer',
-            'additional_info'   => 'nullable|array',
-        ];
-
+        $rules = self::rules();
         $messages = self::messages();
 
         return Validator::make($data, $rules, $messages)->validate();

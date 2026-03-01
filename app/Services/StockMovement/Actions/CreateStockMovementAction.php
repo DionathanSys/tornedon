@@ -35,6 +35,7 @@ class CreateStockMovementAction
 
             $validated = StockMovementValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
+
             // source_type e source_id são NOT NULL no banco; garante fallback se não informados
             $validated['source_type'] ??= 'manual';
             $validated['source_id']   ??= 0;
@@ -45,14 +46,14 @@ class CreateStockMovementAction
                 ->first();
 
             if (!$stock) {
-                $this->setError('Registro de estoque não encontrado', [], 422);
+                $this->setError('Registro de estoque não encontrado');
                 return null;
             }
 
             $movement = StockMovement::create($validated);
 
             // Aplica o efeito do movimento no estoque de forma incremental
-            (new ApplyMovementToProductStockAction())->apply($stock, $movement);
+            app(ApplyMovementToProductStockAction::class)->apply($stock, $movement);
 
             $this->setSuccess();
 
@@ -77,7 +78,7 @@ class CreateStockMovementAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao criar movimentação de estoque', [], 422);
+            $this->setError('Erro ao criar movimentação de estoque');
 
             Log::error('CreateStockMovementAction: ' . $this->getMessage(), [
                 'metodo'    => __METHOD__ . '@' . __LINE__,

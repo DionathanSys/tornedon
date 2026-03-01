@@ -3,8 +3,11 @@
 namespace App\Services\ProductionOrder;
 
 use App\Models\ProductionOrder;
+use App\Services\ProductionOrder\Actions\CancelProductionAction;
 use App\Services\ProductionOrder\Actions\CompleteProduction;
 use App\Services\ProductionOrder\Actions\CreateProductionOrder;
+use App\Services\ProductionOrder\Actions\ReturnToProductionAction;
+use App\Services\ProductionOrder\Actions\SendToQcAction;
 use App\Services\ProductionOrder\Actions\StartProduction;
 use App\Services\ProductionOrder\Actions\UpdateProgress;
 use App\Traits\HandlesServiceResponse;
@@ -104,6 +107,48 @@ class ProductionOrderService
 
         if ($action->isSuccess()) {
             $this->setSuccess('Produção concluída com sucesso');
+            return true;
+        }
+
+        $this->setError($action->getMessage(), $action->getErrors());
+        return false;
+    }
+
+    public function sendToQc(ProductionOrder $productionOrder, int $userId): bool
+    {
+        $action = new SendToQcAction($userId);
+        $result = $action->execute($productionOrder);
+
+        if ($action->isSuccess()) {
+            $this->setSuccess('Ordem enviada para controle de qualidade');
+            return true;
+        }
+
+        $this->setError($action->getMessage(), $action->getErrors());
+        return false;
+    }
+
+    public function returnToProduction(ProductionOrder $productionOrder, int $userId): bool
+    {
+        $action = new ReturnToProductionAction($userId);
+        $result = $action->execute($productionOrder);
+
+        if ($action->isSuccess()) {
+            $this->setSuccess('Ordem retornada para produção');
+            return true;
+        }
+
+        $this->setError($action->getMessage(), $action->getErrors());
+        return false;
+    }
+
+    public function cancel(ProductionOrder $productionOrder, int $userId): bool
+    {
+        $action = new CancelProductionAction($userId);
+        $result = $action->execute($productionOrder);
+
+        if ($action->isSuccess()) {
+            $this->setSuccess('Ordem de produção cancelada');
             return true;
         }
 

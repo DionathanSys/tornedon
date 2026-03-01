@@ -7,6 +7,7 @@ enum Status: string
     case DRAFT = 'draft';
     case SENT = 'sent';
     case APPROVED = 'approved';
+    case LINKED = 'linked';
     case REJECTED = 'rejected';
     case EXPIRED = 'expired';
 
@@ -16,6 +17,7 @@ enum Status: string
             self::DRAFT => 'Rascunho',
             self::SENT => 'Enviado',
             self::APPROVED => 'Aprovado',
+            self::LINKED => 'Vinculado',
             self::REJECTED => 'Rejeitado',
             self::EXPIRED => 'Expirado',
         };
@@ -27,6 +29,7 @@ enum Status: string
             self::DRAFT => 'gray',
             self::SENT => 'info',
             self::APPROVED => 'success',
+            self::LINKED => 'success',
             self::REJECTED => 'danger',
             self::EXPIRED => 'warning',
         };
@@ -44,9 +47,10 @@ enum Status: string
         return match ($this) {
             self::DRAFT => in_array($newStatus, [self::SENT, self::REJECTED]),
             self::SENT => in_array($newStatus, [self::APPROVED, self::REJECTED, self::EXPIRED]),
-            self::APPROVED => false, // Cannot transition from approved
-            self::REJECTED => false, // Cannot transition from rejected
-            self::EXPIRED => false, // Cannot transition from expired
+            self::APPROVED => in_array($newStatus, [self::LINKED]),
+            self::LINKED => false, // Estado final do item vinculado
+            self::REJECTED => false,
+            self::EXPIRED => false,
         };
     }
 }

@@ -80,6 +80,11 @@ class CreateServiceOrderFromApprovedQuoteListener
                     }
                 }
 
+                // Marca os itens do orçamento como vinculados (sem erros)
+                foreach ($quoteItems as $quoteItem) {
+                    $quoteItem->update(['status' => \App\Enum\Quote\Status::LINKED]);
+                }
+
                 Log::info('CreateServiceOrderFromApprovedQuoteListener: Ordem de serviço criada com sucesso', [
                     'quote_id' => $event->quote->id,
                     'service_order_id' => $serviceOrder->id,

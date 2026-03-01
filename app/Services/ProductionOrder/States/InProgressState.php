@@ -2,34 +2,29 @@
 
 namespace App\Services\ProductionOrder\States;
 
-use App\Enum\ProductionOrder\Status;
-use Illuminate\Support\Facades\Log;
+use App\Services\ProductionOrder\Actions\CancelProductionAction;
+use App\Services\ProductionOrder\Actions\SendToQcAction;
 
 class InProgressState extends ProductionOrderState
 {
     public function sendToQC(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::QC_CHECK,
-        ]);
+        $action = new SendToQcAction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Ordem enviada para QC', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao enviar para QC');
+        }
     }
 
     public function cancel(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::CANCELLED,
-            'cancelled_at' => now(),
-        ]);
+        $action = new CancelProductionAction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Ordem de produção cancelada durante produção', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao cancelar ordem de produção');
+        }
     }
 
     public function name(): string

@@ -2,47 +2,40 @@
 
 namespace App\Services\ProductionOrder\States;
 
-use App\Enum\ProductionOrder\Status;
-use Illuminate\Support\Facades\Log;
+use App\Services\ProductionOrder\Actions\CancelProductionAction;
+use App\Services\ProductionOrder\Actions\CompleteProduction;
+use App\Services\ProductionOrder\Actions\ReturnToProductionAction;
 
 class QcCheckState extends ProductionOrderState
 {
     public function complete(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::COMPLETED,
-            'completed_at' => now(),
-        ]);
+        $action = new CompleteProduction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Ordem de produção concluída', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao concluir ordem de produção');
+        }
     }
 
     public function returnToProduction(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::IN_PROGRESS,
-        ]);
+        $action = new ReturnToProductionAction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Ordem retornada para produção após QC', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao retornar para produção');
+        }
     }
 
     public function cancel(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::CANCELLED,
-            'cancelled_at' => now(),
-        ]);
+        $action = new CancelProductionAction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Ordem de produção cancelada durante QC', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao cancelar ordem de produção');
+        }
     }
 
     public function name(): string

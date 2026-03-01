@@ -4,21 +4,19 @@
     "type": "split",
     "children": [
       {
-        "id": "0a6b2c600977d5dd",
+        "id": "e3d13d65f2329171",
         "type": "tabs",
         "children": [
           {
-            "id": "8c225daca83e0282",
+            "id": "e59d883fddfc92d0",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "excalidraw",
               "state": {
-                "file": "COMECE-AQUI.md",
-                "mode": "preview",
-                "source": false
+                "file": "Excalidraw/Drawing 2026-03-01 00.21.36.excalidraw.md"
               },
-              "icon": "lucide-file",
-              "title": "COMECE-AQUI"
+              "icon": "excalidraw-icon",
+              "title": "Drawing 2026-03-01 00.21.36.excalidraw"
             }
           }
         ]
@@ -78,7 +76,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "a36137f84796124f",
@@ -180,11 +179,15 @@
       "daily-notes:Abrir a nota de hoje": false,
       "templates:Inserir modelo": false,
       "command-palette:Abrir paleta de comandos": false,
-      "bases:Criar nova base": false
+      "bases:Criar nova base": false,
+      "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "8c225daca83e0282",
+  "active": "e59d883fddfc92d0",
   "lastOpenFiles": [
+    "Excalidraw/Drawing 2026-03-01 00.21.36.excalidraw.md",
+    "Excalidraw",
+    "COMECE-AQUI.md",
     "stock-movement-control.md",
     "CHECKLIST.md",
     "state-machine-production-order.md",

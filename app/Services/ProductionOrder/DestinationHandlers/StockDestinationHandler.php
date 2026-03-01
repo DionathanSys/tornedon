@@ -2,8 +2,10 @@
 
 namespace App\Services\ProductionOrder\DestinationHandlers;
 
+use App\Enum\StockMovement\Type;
 use App\Models\ProductionOrder;
-use App\Models\ProductStock;
+use App\Services\ProductStock\ProductStockService;
+use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 
 class StockDestinationHandler
@@ -11,62 +13,92 @@ class StockDestinationHandler
     public function handle(ProductionOrder $productionOrder, int $userId): bool
     {
         try {
+            $stockMovementService = app(StockMovementService::class);
+            $productStockService  = app(ProductStockService::class);
+
             foreach ($productionOrder->items as $item) {
-                if (!$item->product_id) {
-                    // Skip items without product reference
-                    Log::warning('Production order item without product_id, skipping stock entry', [
+                if (! $item->product_id) {
+                    Log::warning('StockDestinationHandler: Item sem product_id, ignorando', [
                         'production_order_item_id' => $item->id,
-                        'description' => $item->description,
+                        'description'              => $item->description,
                     ]);
                     continue;
                 }
 
-                // Get or create product stock
-                $productStock = ProductStock::firstOrCreate(
-                    [
-                        'product_id' => $item->product_id,
-                    ],
-                    [
-                        'quantity_available' => 0,
-                        'quantity_reserved' => 0,
-                        'quantity_minimum' => 0,
-                        'average_cost' => 0,
-                        'is_active' => true,
-                        'allow_negative' => false,
-                        'company_id' => $productionOrder->company_id,
-                        'created_by' => $userId,
-                    ]
+                $quantityToAdd = (float) $item->quantity_approved;
+
+                if ($quantityToAdd <= 0) {
+                    continue;
+                }
+
+                // Busca ou cria o ProductStock via service
+                $productStock = $productStockService->findByProductId(
+                    $item->product_id,
+                    $productionOrder->company_id
                 );
 
-                // Add produced quantity to stock
-                $quantityToAdd = $item->quantity_approved;
-                
-                if ($quantityToAdd > 0) {
-                    $newQuantity = $productStock->quantity_available + $quantityToAdd;
-                    
-                    $productStock->update([
-                        'quantity_available' => $newQuantity,
-                        'last_movement_date' => now(),
-                        'last_movement_type' => 'PRODUCTION_ENTRY',
-                        'updated_by' => $userId,
-                    ]);
+                if (! $productStock) {
+                    $productStock = $productStockService->create([
+                        'product_id'         => $item->product_id,
+                        'company_id'         => $productionOrder->company_id,
+                        'quantity_available'  => 0,
+                        'quantity_reserved'   => 0,
+                        'quantity_minimum'    => 0,
+                        'average_cost'        => 0,
+                        'is_active'           => true,
+                        'allow_negative'      => false,
+                    ], $userId);
 
-                    Log::info('Stock updated from production', [
-                        'product_id' => $item->product_id,
-                        'quantity_added' => $quantityToAdd,
-                        'new_quantity' => $newQuantity,
-                        'production_order_id' => $productionOrder->id,
-                    ]);
+                    if (! $productStock) {
+                        Log::error('StockDestinationHandler: Falha ao criar ProductStock', [
+                            'product_id'          => $item->product_id,
+                            'production_order_id' => $productionOrder->id,
+                            'error'               => $productStockService->getMessage(),
+                        ]);
+                        return false;
+                    }
                 }
+
+                // Cria movimentação de ENTRADA via StockMovementService
+                $movement = $stockMovementService->create([
+                    'product_stock_id' => $productStock->id,
+                    'product_id'       => $item->product_id,
+                    'company_id'       => $productionOrder->company_id,
+                    'type'             => Type::ENTRY->value,
+                    'quantity'         => $quantityToAdd,
+                    'unit_price'       => 0,
+                    'reason'           => 'Entrada de produção - OP #' . $productionOrder->production_order_number,
+                    'source_type'      => 'production_order',
+                    'source_id'        => $productionOrder->id,
+                    'observations'     => "Produção concluída. Item: {$item->description}",
+                ], $userId);
+
+                if (! $movement) {
+                    Log::error('StockDestinationHandler: Falha ao criar movimentação de estoque', [
+                        'product_id'          => $item->product_id,
+                        'production_order_id' => $productionOrder->id,
+                        'error'               => $stockMovementService->getMessage(),
+                    ]);
+                    return false;
+                }
+
+                Log::info('StockDestinationHandler: Movimentação de estoque criada', [
+                    'product_id'          => $item->product_id,
+                    'quantity_added'      => $quantityToAdd,
+                    'movement_id'         => $movement->id,
+                    'production_order_id' => $productionOrder->id,
+                ]);
             }
 
             return true;
+
         } catch (\Exception $e) {
-            Log::error('Error updating stock from production: ' . $e->getMessage(), [
+            Log::error('StockDestinationHandler: Erro ao processar destino estoque', [
                 'production_order_id' => $productionOrder->id,
-                'trace' => $e->getTraceAsString(),
+                'error'               => $e->getMessage(),
+                'trace'               => $e->getTraceAsString(),
             ]);
-            
+
             return false;
         }
     }

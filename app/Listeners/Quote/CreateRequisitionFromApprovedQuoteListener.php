@@ -73,6 +73,11 @@ class CreateRequisitionFromApprovedQuoteListener
                     }
                 }
 
+                // Marca os itens do orçamento como vinculados (sem erros)
+                foreach ($quoteItems as $quoteItem) {
+                    $quoteItem->update(['status' => \App\Enum\Quote\Status::LINKED]);
+                }
+
                 Log::info('CreateRequisitionFromApprovedQuoteListener: Requisição criada com sucesso', [
                     'quote_id' => $event->quote->id,
                     'requisition_id' => $requisition->id,

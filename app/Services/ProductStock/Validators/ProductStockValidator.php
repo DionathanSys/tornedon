@@ -80,6 +80,10 @@ class ProductStockValidator
     /**
      * Valida dados para atualização de estoque de produto.
      *
+     * NOTA: quantity_available e quantity_reserved NÃO são editáveis por aqui.
+     * - quantity_available só pode ser alterado via StockMovement (ApplyMovementToProductStockAction)
+     * - quantity_reserved só pode ser alterado via UpdateStockReservationAction
+     *
      * @param array $data Dados a validar
      * @param int|null $productStockId ID do estoque sendo atualizado
      * @return array Retorna dados validados
@@ -97,8 +101,8 @@ class ProductStockValidator
                     ->ignore($productStockId)
                     ->whereNull('deleted_at'),
             ],
-            'quantity_available'    => 'nullable|numeric|min:0',
-            'quantity_reserved'     => 'nullable|numeric|min:0',
+            // quantity_available → somente via StockMovement
+            // quantity_reserved → somente via UpdateStockReservationAction
             'quantity_minimum'      => 'nullable|numeric|min:0',
             'quantity_maximum'      => 'nullable|numeric|min:0',
             'average_cost'          => 'nullable|numeric|min:0',
@@ -116,10 +120,6 @@ class ProductStockValidator
             'product_id.exists'             => 'O produto informado não existe',
             'product_id.integer'            => 'O ID do produto deve ser um número inteiro',
             'product_id.unique'             => 'Já existe um registro de estoque para este produto',
-            'quantity_available.numeric'    => 'A quantidade disponível deve ser um número',
-            'quantity_available.min'        => 'A quantidade disponível não pode ser negativa',
-            'quantity_reserved.numeric'     => 'A quantidade reservada deve ser um número',
-            'quantity_reserved.min'         => 'A quantidade reservada não pode ser negativa',
             'quantity_minimum.numeric'      => 'A quantidade mínima deve ser um número',
             'quantity_minimum.min'          => 'A quantidade mínima não pode ser negativa',
             'quantity_maximum.numeric'      => 'A quantidade máxima deve ser um número',

@@ -424,7 +424,7 @@ class QuoteService
     }
 
     /**
-     * Aprova um orçamento (sent → approved).
+     * Aprova um orçamento (approved).
      */
     public function approve(Quote $quote, int $approvedBy): ?Quote
     {

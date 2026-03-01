@@ -137,7 +137,7 @@ class StockMovementService
                     $this->setError(
                         $action->getMessage(),
                         $action->getErrors(),
-                        $action->getErrorCode(),
+                        422,
                         $action->getErrorCode()
                     );
 

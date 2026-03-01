@@ -99,6 +99,11 @@ class CreateProductionOrderFromApprovedQuoteListener
                     }
                 }
 
+                // Marca os itens do orçamento como vinculados (sem erros)
+                foreach ($quoteItems as $quoteItem) {
+                    $quoteItem->update(['status' => \App\Enum\Quote\Status::LINKED]);
+                }
+
                 Log::info('CreateProductionOrderFromApprovedQuoteListener: Ordem de produção criada com sucesso', [
                     'quote_id'            => $quote->id,
                     'production_order_id' => $productionOrder->id,

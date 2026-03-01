@@ -2,35 +2,29 @@
 
 namespace App\Services\ProductionOrder\States;
 
-use App\Enum\ProductionOrder\Status;
-use Illuminate\Support\Facades\Log;
+use App\Services\ProductionOrder\Actions\CancelProductionAction;
+use App\Services\ProductionOrder\Actions\StartProduction;
 
 class QueuedState extends ProductionOrderState
 {
     public function start(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::IN_PROGRESS,
-            'started_at' => now(),
-        ]);
+        $action = new StartProduction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Produção iniciada', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao iniciar produção');
+        }
     }
 
     public function cancel(): void
     {
-        $this->productionOrder->update([
-            'status' => Status::CANCELLED,
-            'cancelled_at' => now(),
-        ]);
+        $action = new CancelProductionAction($this->productionOrder->updated_by ?? $this->productionOrder->created_by);
+        $result = $action->execute($this->productionOrder);
 
-        Log::info('Ordem de produção cancelada', [
-            'production_order_id' => $this->productionOrder->id,
-            'production_order_number' => $this->productionOrder->production_order_number,
-        ]);
+        if (! $result) {
+            throw new \RuntimeException($action->getMessage() ?? 'Erro ao cancelar ordem de produção');
+        }
     }
 
     public function name(): string

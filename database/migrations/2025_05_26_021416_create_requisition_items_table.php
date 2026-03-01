@@ -53,7 +53,6 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
-            $table->softDeletes();                                  // Data de exclusão (soft delete)
 
             // Índices para otimizar consultas
             $table->index(['requisition_id', 'product_id']);        // Itens por venda e produto

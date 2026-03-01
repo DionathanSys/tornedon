@@ -30,8 +30,8 @@ return new class extends Migration
             $table->decimal('quantity', 12, 3);
             $table->decimal('unit_price', 12, 4)
                 ->nullable();
-            $table->decimal('total_amount', 12, 4)
-                ->nullable();
+            $table->decimal('total_amount', 15, 2)
+                ->virtualAs('quantity * unit_price');
 
             // Additional info
             $table->text('reason')
@@ -53,7 +53,6 @@ return new class extends Migration
                 ->nullOnDelete();
 
             $table->timestamps();
-            $table->softDeletes();
 
             // Indexes
             $table->index(['product_stock_id', 'created_at']);
