@@ -31,6 +31,8 @@ final class CreateStockMovementFromModalAction
                     'user_id' => Auth::id(),
                 ]);
 
+                $data['source_id'] = $data['source_id'] ?? 1;
+
                 $service = app(StockMovementService::class);
                 $movement = $service->create($data, Auth::id());
 
