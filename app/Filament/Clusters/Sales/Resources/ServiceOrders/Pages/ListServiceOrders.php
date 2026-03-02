@@ -14,10 +14,7 @@ class ListServiceOrders extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Ordem de Serviço')
-                ->icon(Heroicon::Plus)
-                ->badge(),
+            
         ];
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers;
 
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions\CreateItemAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions\EditItemAction;
@@ -41,39 +43,10 @@ class ItemsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Select::make('product_id')
-                    ->relationship('product', 'name')
+                ModalSelectProductStock::make('product_id')
+                    ->label('Produto')
                     ->required(),
-                TextInput::make('unit_of_measure')
-                    ->label('Unidade de Medida')
-                    ->required(),
-                TextInput::make('quantity')
-                    ->label('Quantidade')
-                    ->required()
-                    ->numeric(),
-                Money::make('unit_price')
-                    ->label('Vlr. Unitário')
-                    ->required(),
-                Money::make('unit_cost')
-                    ->label('Custo Unitário')
-                    ->required()
-                    ->prefix('R$'),
-                Money::make('discount_percentage')
-                    ->label('Desconto (%)')
-                    ->required()
-                    ->prefix(null)
-                    ->suffix('%'),
-                Money::make('discount_amount')
-                    ->label('Vlr. do Desconto')
-                    ->required(),
-                Money::make('subtotal')
-                    ->label('Subtotal')
-                    ->readOnly()
-                    ->required(),
-                Money::make('total_amount')
-                    ->label('Total')
-                    ->readOnly()
-                    ->required(),
+                ItemValueGroup::make(),
                 Toggle::make('stock_consumed')
                     ->disabled()
                     ->required(),

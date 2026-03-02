@@ -57,7 +57,7 @@ class ConvertToProductionOrder
             $productionOrderData = [
                 'company_id'       => $quote->company_id,
                 'quote_id'         => $quote->id,
-                'partner_id'       => $quote->partner_id,
+                'customer_id'       => $quote->customer_id,
                 'status'           => Status::QUEUED->value,
                 'priority'         => $data['priority'] ?? Priority::NORMAL->value,
                 'destination_type' => $data['destination_type'] ?? DestinationType::STOCK->value,

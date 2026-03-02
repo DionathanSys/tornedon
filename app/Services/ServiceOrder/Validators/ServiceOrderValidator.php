@@ -12,31 +12,12 @@ use Illuminate\Validation\ValidationException;
 class ServiceOrderValidator
 {
     /**
-     * Valida dados para criação de ordem de serviço.
-     *
-     * @param array $data Dados a validar
-     * @return array Retorna dados validados
-     * @throws ValidationException Se a validação falhar
+     * Regras de validação compartilhadas entre criação e atualização.
      */
-    public static function validateCreate(array $data): array
+    private static function commonRules(): array
     {
-        $statusValues = array_map(fn($status) => $status->value, State::cases());
-
-        $rules = [
-            'number'                    => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('service_orders', 'number')->where('company_id', $data['company_id'] ?? null),
-            ],
-            'customer_id'               => 'required|integer|exists:partners,id',
-            'order_date'                => 'required|date',
-            'scheduled_date'            => 'nullable|date|after_or_equal:order_date',
-            'limit_date'                => 'nullable|date|after_or_equal:order_date',
+        return [
             'completion_date'           => 'nullable|date',
-            'status'                    => ['required', Rule::in($statusValues)],
-            'priority'                  => 'required|string|max:20',
-            'type'                      => 'required|string|max:50',
             'solution'                  => 'nullable|string',
             'equipment_id'              => 'nullable|integer|exists:equipments,id',
             'location'                  => 'nullable|string|max:255',
@@ -47,7 +28,6 @@ class ServiceOrderValidator
             'travel_value'              => 'nullable|numeric|min:0',
             'discount_amount'           => 'nullable|numeric|min:0',
             'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
-            'payment_condition'         => 'nullable|string|max:100',
             'technician_id'             => 'nullable|integer|exists:users,id',
             'supervisor_id'             => 'nullable|integer|exists:users,id',
             'salesperson_id'            => 'nullable|integer|exists:users,id',
@@ -60,10 +40,37 @@ class ServiceOrderValidator
             'invoice_id'                => 'nullable|integer|exists:invoices,id',
             'additional_info'           => 'nullable|array',
         ];
+    }
 
-        $messages = self::messages();
+    /**
+     * Valida dados para criação de ordem de serviço.
+     *
+     * @param array $data Dados a validar
+     * @return array Retorna dados validados
+     * @throws ValidationException Se a validação falhar
+     */
+    public static function validateCreate(array $data): array
+    {
+        $statusValues = array_map(fn($status) => $status->value, State::cases());
 
-        return Validator::make($data, $rules, $messages)->validate();
+        $rules = array_merge(self::commonRules(), [
+            'number'                    => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('service_orders', 'number')->where('company_id', $data['company_id'] ?? null),
+            ],
+            'customer_id'               => 'required|integer|exists:partners,id',
+            'order_date'                => 'required|date',
+            'scheduled_date'            => 'nullable|date|after_or_equal:order_date',
+            'limit_date'                => 'nullable|date|after_or_equal:order_date',
+            'status'                    => ['required', Rule::in($statusValues)],
+            'priority'                  => 'required|string|max:20',
+            'type'                      => 'required|string|max:50',
+            'payment_condition'         => 'nullable|string|max:100',
+        ]);
+
+        return Validator::make($data, $rules, self::messages())->validate();
     }
 
     /**
@@ -79,38 +86,16 @@ class ServiceOrderValidator
     {
         $statusValues = array_map(fn($status) => $status->value, State::cases());
 
-        $rules = [
+        $rules = array_merge(self::commonRules(), [
             'customer_id'               => 'sometimes|required|integer|exists:partners,id',
             'order_date'                => 'sometimes|required|date',
             'scheduled_date'            => 'nullable|date',
             'limit_date'                => 'nullable|date',
-            'completion_date'           => 'nullable|date',
             'status'                    => ['sometimes', 'required', Rule::in($statusValues)],
             'priority'                  => 'sometimes|required|string|max:20',
             'type'                      => 'sometimes|required|string|max:50',
-            'solution'                  => 'nullable|string',
-            'equipment_id'              => 'nullable|integer|exists:equipments,id',
-            'location'                  => 'nullable|string|max:255',
-            'customer_observations'     => 'nullable|string',
-            'technician_observations'   => 'nullable|string',
-            'estimated_hours'           => 'nullable|numeric|min:0',
-            'actual_hours'              => 'nullable|numeric|min:0',
-            'travel_value'              => 'nullable|numeric|min:0',
-            'discount_amount'           => 'nullable|numeric|min:0',
-            'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
-            'technician_id'             => 'nullable|integer|exists:users,id',
-            'supervisor_id'             => 'nullable|integer|exists:users,id',
-            'salesperson_id'            => 'nullable|integer|exists:users,id',
-            'warranty_expires_at'       => 'nullable|date',
-            'requires_approval'         => 'nullable|boolean',
-            'approved_by_customer'      => 'nullable|boolean',
-            'approved_at'               => 'nullable|date',
-            'customer_rating'           => 'nullable|numeric|min:0|max:5',
-            'customer_feedback'         => 'nullable|string',
-            'invoice_id'                => 'nullable|integer|exists:invoices,id',
-            'additional_info'           => 'nullable|array',
-        ];
+        ]);
 
         // Adiciona validação de number apenas se o campo estiver presente nos dados
         if (isset($data['number']) && $companyId) {
@@ -125,9 +110,7 @@ class ServiceOrderValidator
             ];
         }
 
-        $messages = self::messages();
-
-        return Validator::make($data, $rules, $messages)->validate();
+        return Validator::make($data, $rules, self::messages())->validate();
     }
 
     /**

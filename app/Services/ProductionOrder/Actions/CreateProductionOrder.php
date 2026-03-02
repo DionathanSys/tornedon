@@ -24,7 +24,7 @@ class CreateProductionOrder
 
             $productionOrder = ProductionOrder::create([
                 'company_id'        => $validatedData['company_id'],
-                'partner_id'        => $validatedData['partner_id'],
+                'customer_id'        => $validatedData['customer_id'],
                 'quote_id'          => $validatedData['quote_id'] ?? null,
                 'status'            => Status::QUEUED->value,
                 'priority'          => $validatedData['priority'],

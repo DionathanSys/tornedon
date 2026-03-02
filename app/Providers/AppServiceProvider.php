@@ -16,6 +16,7 @@ use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
 use App\Models\ServiceOrder;
 use App\Policies\ServiceOrderPolicy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -36,6 +37,14 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::unguard();
+
+        // Mapa de aliases para relacionamentos polimórficos de StockMovement
+        Relation::morphMap([
+            'requisition'       => \App\Models\Requisition::class,
+            'quote'             => \App\Models\Quote::class,
+            'service_order'     => \App\Models\ServiceOrder::class,
+            'production_order'  => \App\Models\ProductionOrder::class,
+        ]);
 
         // Registrar policies
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);

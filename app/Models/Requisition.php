@@ -10,6 +10,7 @@ use App\Services\Requisition\States\StateResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Requisition extends Model
@@ -55,6 +56,11 @@ class Requisition extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Partner::class, 'customer_id');
+    }
+
+    public function stockMovements(): MorphMany
+    {
+        return $this->morphMany(StockMovement::class, 'source', 'source_type', 'source_id');
     }
 
     public function company(): BelongsTo

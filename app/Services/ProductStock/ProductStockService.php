@@ -508,6 +508,31 @@ class ProductStockService
     }
 
     /**
+     * Verifica se há saldo líquido disponível para um produto em uma empresa.
+     * Saldo líquido = quantity_available - quantity_reserved.
+     *
+     * Retorna false (sem estoque) somente quando há controle de estoque,
+     * allow_negative é false e o saldo líquido está abaixo da quantidade solicitada.
+     *
+     * @param int   $productId
+     * @param int   $companyId
+     * @param float $requestedQuantity
+     * @return bool
+     */
+    public function hasNetAvailableStock(int $productId, int $companyId, float $requestedQuantity): bool
+    {
+        $productStock = $this->findByProductId($productId, $companyId);
+
+        if (! $productStock || $productStock->allow_negative) {
+            return true;
+        }
+
+        $netAvailable = (float) $productStock->quantity_available - (float) $productStock->quantity_reserved;
+
+        return $netAvailable >= $requestedQuantity;
+    }
+
+    /**
      * Valida se o registro de estoque pertence à company informada.
      *
      * @param ProductStock $productStock

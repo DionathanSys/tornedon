@@ -4,6 +4,7 @@ namespace App\Services\Requisition\Actions;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
+use App\Services\ProductStock\ProductStockService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -27,16 +28,34 @@ class CloseRequisitionAction
             ]);
 
             return DB::transaction(function () use ($requisition) {
-                // 1. Transição de estado (open → closed)
+                // 1. Valida saldo disponível para todos os itens antes de prosseguir
+                $productStockService = app(ProductStockService::class);
+                $items = $requisition->items()->where('stock_consumed', false)->with('product')->get();
+
+                foreach ($items as $item) {
+                    if (! $item->product_id || ! $item->product?->has_stock_control) {
+                        continue;
+                    }
+
+                    if (! $productStockService->hasNetAvailableStock($item->product_id, $requisition->company_id, (float) $item->quantity)) {
+                        $this->setError(sprintf(
+                            'Saldo insuficiente para "%s". Verifique o estoque antes de encerrar.',
+                            $item->product->name ?? "Produto #{$item->product_id}"
+                        ));
+                        return null;
+                    }
+                }
+
+                // 2. Transição de estado (open → closed)
                 $requisition->state()->close($requisition, $this->userId);
 
-                // 2. Consome o estoque gerando movimentações de saída
+                // 3. Reserva o estoque gerando movimentações de RESERVATION
                 $consumeAction = new ConsumeRequisitionStockAction($this->userId);
                 $consumed = $consumeAction->execute($requisition);
 
                 if (! $consumed) {
                     throw new \RuntimeException(
-                        'Falha ao consumir estoque: ' . $consumeAction->getMessage()
+                        'Falha ao reservar estoque: ' . $consumeAction->getMessage()
                     );
                 }
 

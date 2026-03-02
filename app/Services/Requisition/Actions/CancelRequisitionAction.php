@@ -7,6 +7,7 @@ use App\Models\Requisition;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class CancelRequisitionAction
 {
@@ -25,9 +26,17 @@ class CancelRequisitionAction
                 'user_id'        => $this->userId,
             ]);
 
-            $requisition->state()->cancel($requisition, $this->userId);
+            DB::transaction(function () use ($requisition) {
+                $requisition->state()->cancel($requisition, $this->userId);
 
-            $requisition->refresh();
+                // Libera eventuais reservas de estoque criadas ao encerrar a requisição
+                $releaseAction = new ReleaseRequisitionReservationAction($this->userId);
+                if (! $releaseAction->execute($requisition)) {
+                    throw new \RuntimeException($releaseAction->getMessage());
+                }
+
+                $requisition->refresh();
+            });
 
             $this->setSuccess();
             return $requisition;
@@ -45,6 +54,16 @@ class CancelRequisitionAction
             $this->setError('Erro ao cancelar requisição no banco de dados');
 
             Log::error('CancelRequisitionAction: QueryException', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'requisition_id' => $requisition->id,
+                'exception'      => $e->getMessage(),
+            ]);
+
+            return null;
+        } catch (\RuntimeException $e) {
+            $this->setError($e->getMessage());
+
+            Log::error('CancelRequisitionAction: RuntimeException', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'exception'      => $e->getMessage(),

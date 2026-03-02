@@ -4,19 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "e3d13d65f2329171",
+        "id": "26a9b15ca04cbda8",
         "type": "tabs",
         "children": [
           {
-            "id": "e59d883fddfc92d0",
+            "id": "d6c379abdbc6e9b0",
             "type": "leaf",
             "state": {
-              "type": "excalidraw",
+              "type": "markdown",
               "state": {
-                "file": "Excalidraw/Drawing 2026-03-01 00.21.36.excalidraw.md"
+                "file": "Requisition.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "excalidraw-icon",
-              "title": "Drawing 2026-03-01 00.21.36.excalidraw"
+              "icon": "lucide-file",
+              "title": "Requisition"
             }
           }
         ]
@@ -76,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "a36137f84796124f",
@@ -183,31 +184,41 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "e59d883fddfc92d0",
+  "active": "d6c379abdbc6e9b0",
   "lastOpenFiles": [
+    "regras-negocio/quote-production-workflow.md",
+    "Requisition.md",
+    "TABELAS-CAMPOS.md",
+    "Quote.md",
+    "REQUIREMENTS.md",
+    "DATABASE-STANDARDS.md",
+    "DEVELOPMENT-GUIDE.md",
+    "CODING-STANDARDS.md",
+    "CONTRIBUTING.md",
+    "Arquitetura e Padrões.md",
+    "Outros/state-machine-production-order.md",
+    "Outros/service-order-authorization.md",
+    "Outros/stock-movement-examples.md",
+    "Outros",
+    "regras-negocio/partner-creation.md",
+    "Outros/IMPLEMENTACAO-RELATORIO.md",
+    "Outros/MAPA-IMPLEMENTACAO.md",
+    "Outros/CHECKLIST.md",
+    "CIPA.md",
+    "Outros/authorization-summary.md",
     "Excalidraw/Drawing 2026-03-01 00.21.36.excalidraw.md",
     "Excalidraw",
-    "COMECE-AQUI.md",
-    "stock-movement-control.md",
-    "CHECKLIST.md",
-    "state-machine-production-order.md",
+    "Outros/COMECE-AQUI.md",
+    "Outros/stock-movement-control.md",
     "SETUP-SHIELD.md",
-    "service-order-authorization.md",
     "permissions-guide.md",
-    "authorization-summary.md",
-    "CIPA.md",
     "Pasted image 20260219092215.png",
     "Projeto/📥 Caixa de Entrada.md",
     "Pasted image 20260218133944.png",
     "Pasted image 20260218095557.png",
     "Pasted image 20260218092901.png",
     "Projeto/AÇÕES/⚡CRUD Product Stock.md",
-    "Projeto/AÇÕES/⚡CRUD Equipaments.md",
-    "Projeto/AÇÕES/⚡CRUD Product.md",
-    "regras-negocio/partner-creation.md",
-    "regras-negocio/quote-production-workflow.md",
     "Projeto/AÇÕES",
-    "Projeto",
-    "product-service-pattern.md"
+    "Projeto"
   ]
 }

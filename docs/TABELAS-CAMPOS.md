@@ -1,0 +1,193 @@
+# Tabelas e Campos
+
+Lista das tabelas e seus campos com características importantes.
+
+**quotes**
+- id: big integer (auto-increment) — chave primária
+- quote_number: string — nullable, índice, único por company_id
+- company_id: foreignId -> companies.id — cascade on delete, index
+- customer_id: foreignId -> partners.id — index
+- description: text — nullable
+- status: string — valores esperados: DRAFT, SENT, APPROVED, REJECTED, EXPIRED; index
+- total_amount: decimal(15,2) — default 0.00
+- valid_until: date — nullable; usado para expirar orçamentos
+- observations: text — nullable
+- customer_observations: text — nullable
+- approved_at: timestamp — nullable
+- approved_by: foreignId -> users.id — nullable, nullOnDelete
+- rejected_reason: text — nullable
+- additional_info: json — nullable
+- created_by: foreignId -> users.id — nullable, nullOnDelete
+- updated_by: foreignId -> users.id — nullable, nullOnDelete
+- created_at / updated_at: timestamps
+- deleted_at: softDeletes (timestamp) — nullable
+- índices: [company_id,status], [partner_id,status], [status,valid_until], quote_number, unique(company_id, quote_number)
+
+**requisitions**
+- number: string — único
+- customer_id: foreignId -> partners.id — obrigatório, index (como customer)
+- company_id: foreignId -> companies.id — cascade on delete, index
+- service_order_id: foreignId -> service_orders.id — nullable, nullOnDelete, index
+- sale_date: date — data da venda
+- status: string — index
+- discount_amount: decimal(15,2) — default 0.00, nullable
+- payment_method: string — nullable
+- payment_condition: string — nullable
+- observations: text — nullable
+- delivery_address: string — nullable
+- delivery_date: date — nullable
+- salesperson_id: foreignId -> users.id — nullable, nullOnDelete, index
+- invoice_id: foreignId -> invoices.id — nullable, nullOnDelete, index
+- invoiced_at: timestamp — nullable
+- equipment_id: foreignId -> equipments.id — nullable, nullOnDelete, index
+- stock_consumed: boolean — default true, index
+- additional_info: json — nullable
+- created_by: foreignId -> users.id — nullable, nullOnDelete
+- updated_by: foreignId -> users.id — nullable, nullOnDelete
+- created_at / updated_at: timestamps
+- deleted_at: softDeletes (timestamp) — nullable
+- índices: [customer_id,status], [status,sale_date], [company_id,status], [salesperson_id,status], invoice_id, [stock_consumed,status]
+
+**production_orders**
+- id: big integer (auto-increment) — chave primária
+- production_order_number: string — nullable, índice, único por company_id
+- company_id: foreignId -> companies.id — cascade on delete, index
+- quote_id: foreignId -> quotes.id — nullable, nullOnDelete, index
+- customer_id: foreignId -> partners.id — index
+- status: string — exemplos: QUEUED, IN_PROGRESS, QC_CHECK, COMPLETED, CANCELLED; index
+- priority: string — default 'NORMAL'; index (status, priority)
+- started_at: timestamp — nullable
+- completed_at: timestamp — nullable
+- destination_type: string — exemplo: STOCK ou DIRECT_DELIVERY; index (destination_type,status)
+- observations: text — nullable
+- assigned_operator: foreignId -> users.id — nullable, nullOnDelete, index
+- assigned_machine: string — nullable
+- total_estimated_hours: decimal(10,2) — nullable
+- total_actual_hours: decimal(10,2) — nullable
+- additional_info: json — nullable
+- created_by: foreignId -> users.id — nullable, nullOnDelete
+- updated_by: foreignId -> users.id — nullable, nullOnDelete
+- created_at / updated_at: timestamps
+- deleted_at: softDeletes (timestamp) — nullable
+- índices: [company_id,status], [partner_id,status], [status,priority], quote_id, requisition_id, production_order_number, assigned_operator, unique(company_id, production_order_number)
+
+**service_orders**
+- id: big integer (auto-increment) — chave primária
+- number: string — único
+- customer_id: foreignId -> partners.id — obrigatório, index
+- company_id: foreignId -> companies.id — cascade on delete, index
+- order_date: date — data da abertura
+- scheduled_date: date — nullable
+- limit_date: date — nullable
+- completion_date: date — nullable
+- status: string — index
+- priority: string — index
+- type: string — tipo de serviço (instalação, manutenção, etc.)
+- solution: text — nullable
+- equipment_id: foreignId -> equipments.id — nullable, nullOnDelete, index
+- location: string — nullable
+- customer_observations: text — nullable
+- technician_observations: text — nullable
+- estimated_hours: decimal(8,2) — default 0.00, nullable
+- actual_hours: decimal(8,2) — default 0.00, nullable
+- travel_value: decimal(15,2) — default 0.00
+- discount_amount: decimal(15,2) — default 0.00
+- payment_method: string — nullable
+- payment_condition: string — nullable
+- technician_id: foreignId -> users.id — nullable, nullOnDelete, index
+- supervisor_id: foreignId -> users.id — nullable, nullOnDelete, index
+- salesperson_id: foreignId -> users.id — nullable, nullOnDelete, index
+- warranty_expires_at: date — nullable
+- requires_approval: boolean — default false
+- approved_by_customer: boolean — default false
+- approved_at: timestamp — nullable
+- customer_rating: decimal(2,1) — nullable
+- customer_feedback: text — nullable
+- invoice_id: foreignId -> invoices.id — nullable, nullOnDelete, index
+- additional_info: json — nullable
+- created_by: foreignId -> users.id — nullable, nullOnDelete
+- updated_by: foreignId -> users.id — nullable, nullOnDelete
+- created_at / updated_at: timestamps
+- deleted_at: softDeletes (timestamp) — nullable
+- índices: [customer_id,status], [company_id,status], [technician_id,status], [status,priority,order_date], [type,status], equipment_id
+
+**quote_items**
+- id: big integer (auto-increment) — chave primária
+- quote_id: foreignId -> quotes.id — cascade on delete, index
+- product_id: foreignId -> products.id — nullable, nullOnDelete, index
+- description: text — nullable
+- quantity: decimal(15,3) — default 1.000
+- unit_of_measure: string — default 'UN', nullable
+- unit_price: decimal(15,4) — default 0.0000
+- discount_percentage: decimal(5,3) — default 0.000
+- discount_amount: decimal(15,2) — default 0.00
+- total_amount: decimal(15,2) — default 0.00
+- technical_specifications: json — nullable
+- estimated_production_hours: decimal(10,2) — nullable
+- material_cost: decimal(15,2) — nullable
+- labor_cost: decimal(15,2) — nullable
+- sequence: integer — default 0 (ordenação)
+- additional_info: json — nullable
+- created_at / updated_at: timestamps
+- índices: quote_id, product_id, [quote_id,sequence]
+
+**requisition_items**
+- id: big integer (auto-increment) — chave primária
+- requisition_id: foreignId -> requisitions.id — cascade on delete, index
+- product_id: foreignId -> products.id — obrigatório, index
+- unit_of_measure: string — obrigatório
+- quantity: decimal(15,3) — obrigatório
+- unit_price: decimal(15,4) — obrigatório
+- unit_cost: decimal(15,4) — nullable
+- discount_percentage: decimal(5,2) — default 0.00
+- discount_amount: decimal(15,2) — default 0.00
+- subtotal: decimal(15,2) — virtualAs('quantity * unit_price')
+- total_amount: decimal(15,2) — virtualAs('subtotal - discount_amount')
+- stock_consumed: boolean — default true, index
+- stock_consumed_at: timestamp — nullable
+- commission_percentage: decimal(5,2) — default 0.00, nullable
+- commission_amount: decimal(15,2) — virtualAs('(total_amount * commission_percentage) / 100')
+- observations: text — nullable
+- additional_info: json — nullable
+- created_by: foreignId -> users.id — nullable, nullOnDelete
+- updated_by: foreignId -> users.id — nullable, nullOnDelete
+- created_at / updated_at: timestamps
+- índices: [requisition_id,product_id], [product_id,stock_consumed]
+
+**production_order_items**
+- id: big integer (auto-increment) — chave primária
+- production_order_id: foreignId -> production_orders.id — cascade on delete, index
+- quote_item_id: foreignId -> quote_items.id — nullable, nullOnDelete, index
+- product_id: foreignId -> products.id — nullable, nullOnDelete, index
+- description: text — nullable
+- quantity: decimal(15,3) — default 1.000
+- quantity_produced: decimal(15,3) — default 0.000
+- quantity_approved: decimal(15,3) — default 0.000
+- quantity_rejected: decimal(15,3) — default 0.000
+- unit_of_measure: string — default 'UN'
+- technical_specifications: json — nullable
+- production_notes: text — nullable
+- qc_notes: text — nullable
+- actual_production_hours: decimal(10,2) — nullable
+- sequence: integer — default 0
+- additional_info: json — nullable
+- created_at / updated_at: timestamps
+- índices: production_order_id, quote_item_id, product_id, [production_order_id,sequence]
+
+**service_order_items**
+- id: big integer (auto-increment) — chave primária
+- service_order_id: foreignId -> service_orders.id — cascade on delete, index
+- service_id: foreignId -> services.id — obrigatório, index
+- unit_of_measure: string — obrigatório
+- quantity: decimal(15,3) — obrigatório
+- unit_price: decimal(15,4) — obrigatório
+- unit_cost: decimal(15,4) — nullable
+- discount_percentage: decimal(5,2) — default 0.00
+- discount_amount: decimal(15,2) — default 0.00
+- subtotal: decimal(15,2) — virtualAs('quantity * unit_price')
+- total_amount: decimal(15,2) — virtualAs('subtotal - discount_amount')
+- observations: text — nullable
+- additional_info: json — nullable
+- created_by: foreignId -> users.id — nullable, nullOnDelete
+- updated_by: foreignId -> users.id — nullable, nullOnDelete
+- created_at / updated_at: timestamps

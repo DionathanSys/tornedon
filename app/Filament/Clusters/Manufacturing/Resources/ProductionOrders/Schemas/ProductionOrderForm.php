@@ -48,7 +48,7 @@ class ProductionOrderForm
                             ->default(Status::QUEUED->value)
                             ->visibleOn('edit')
                             ->disabled(),
-                        Select::make('partner_id')
+                        Select::make('customer_id')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(function () {

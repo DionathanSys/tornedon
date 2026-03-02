@@ -44,7 +44,7 @@ class CreateProductionOrderFromApprovedQuoteListener
                 $productionOrderService = app(ProductionOrderService::class);
                 $productionOrder = $productionOrderService->create([
                     'company_id'       => $quote->company_id,
-                    'partner_id'       => $quote->partner_id,
+                    'customer_id'       => $quote->customer_id,
                     'quote_id'         => $quote->id,
                     'priority'         => Priority::NORMAL->value,
                     'destination_type' => DestinationType::DIRECT_DELIVERY->value,

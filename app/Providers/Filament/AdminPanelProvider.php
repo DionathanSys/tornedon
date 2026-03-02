@@ -29,8 +29,8 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
-            ->maxContentWidth(Width::ScreenTwoExtraLarge)
-            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth(Width::Full)
+            ->sidebarFullyCollapsibleOnDesktop()
             ->sidebarWidth('15rem')
             ->id('admin')
             ->path('admin')
@@ -38,7 +38,7 @@ class AdminPanelProvider extends PanelProvider
             ->tenant(Company::class)
             ->tenantRegistration(RegisterCompany::class)
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Zinc,
             ])
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

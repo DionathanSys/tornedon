@@ -44,8 +44,8 @@ class QuoteService
             $query->where('status', $filters['status']);
         }
 
-        if (isset($filters['partner_id'])) {
-            $query->where('partner_id', $filters['partner_id']);
+        if (isset($filters['customer_id'])) {
+            $query->where('customer_id', $filters['customer_id']);
         }
 
         if (isset($filters['search'])) {

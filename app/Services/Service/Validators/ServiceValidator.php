@@ -12,6 +12,29 @@ use Illuminate\Validation\ValidationException;
 class ServiceValidator
 {
     /**
+     * Regras de validação compartilhadas entre criação e atualização.
+     */
+    private static function commonRules(): array
+    {
+        $issValues = array_map(fn ($e) => $e->value, IssExigibility::cases());
+
+        return [
+            'description'        => 'nullable|string|max:2000',
+            'cost'               => 'nullable|numeric|min:0',
+            'category'           => 'nullable|string|max:255',
+            'is_active'          => 'nullable|boolean',
+            'requires_approval'  => 'nullable|boolean',
+            'tax_classification' => 'nullable|string|max:255',
+            'tax_rate'           => 'nullable|numeric|min:0|max:100',
+            'nbs_code'           => 'nullable|string|max:50',
+            'cnae_code'          => 'nullable|string|max:50',
+            'municipal_tax_code' => 'nullable|string|max:50',
+            'iss_exigibility'    => ['nullable', Rule::in($issValues)],
+            'additional_info'    => 'nullable|array',
+        ];
+    }
+
+    /**
      * Valida dados para criação de serviço.
      *
      * @param  array  $data  Dados a validar
@@ -26,12 +49,11 @@ class ServiceValidator
             'campos' => array_keys($data),
         ]);
 
-        $unitValues    = array_map(fn ($u) => $u->value, Unit::cases());
-        $issValues     = array_map(fn ($e) => $e->value, IssExigibility::cases());
+        $unitValues = array_map(fn ($u) => $u->value, Unit::cases());
 
-        $rules = [
+        $rules = array_merge(self::commonRules(), [
             'service_code'       => [
-                'nullable',
+                'required',
                 'string',
                 'max:20',
                 Rule::unique('services', 'service_code')->where('company_id', $data['company_id'] ?? null),
@@ -42,32 +64,12 @@ class ServiceValidator
                 'max:255',
                 Rule::unique('services', 'name')->where('company_id', $data['company_id'] ?? null),
             ],
-            'description'        => 'nullable|string|max:2000',
             'unit_of_measure'    => ['required', 'string', Rule::in($unitValues)],
             'price'              => 'required|numeric|min:0',
-            'cost'               => 'nullable|numeric|min:0',
-            'category'           => 'nullable|string|max:255',
-            'is_active'          => 'nullable|boolean',
-            'requires_approval'  => 'nullable|boolean',
-            'tax_classification' => 'nullable|string|max:255',
-            'tax_rate'           => 'nullable|numeric|min:0|max:100',
-            'nbs_code'           => 'nullable|string|max:50',
-            'cnae_code'          => 'nullable|string|max:50',
-            'municipal_tax_code' => 'nullable|string|max:50',
-            'iss_exigibility'    => ['nullable', Rule::in($issValues)],
-            'additional_info'    => 'nullable|array',
             'company_id'         => 'required|integer|exists:companies,id',
-            'service_code'       => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('services', 'service_code')->where('company_id', $data['company_id'] ?? null),
-            ],
-        ];
+        ]);
 
-        $messages = self::messages();
-
-        return Validator::make($data, $rules, $messages)->validate();
+        return Validator::make($data, $rules, self::messages())->validate();
     }
 
     /**
@@ -89,9 +91,8 @@ class ServiceValidator
         ]);
 
         $unitValues = array_map(fn ($u) => $u->value, Unit::cases());
-        $issValues  = array_map(fn ($e) => $e->value, IssExigibility::cases());
 
-        $rules = [
+        $rules = array_merge(self::commonRules(), [
             'service_code'       => [
                 'sometimes',
                 'required',
@@ -107,21 +108,9 @@ class ServiceValidator
                 'string',
                 'max:255',
             ],
-            'description'        => 'nullable|string|max:2000',
             'unit_of_measure'    => ['sometimes', 'required', 'string', Rule::in($unitValues)],
             'price'              => 'sometimes|required|numeric|min:0',
-            'cost'               => 'nullable|numeric|min:0',
-            'category'           => 'nullable|string|max:255',
-            'is_active'          => 'nullable|boolean',
-            'requires_approval'  => 'nullable|boolean',
-            'tax_classification' => 'nullable|string|max:255',
-            'tax_rate'           => 'nullable|numeric|min:0|max:100',
-            'nbs_code'           => 'nullable|string|max:50',
-            'cnae_code'          => 'nullable|string|max:50',
-            'municipal_tax_code' => 'nullable|string|max:50',
-            'iss_exigibility'    => ['nullable', Rule::in($issValues)],
-            'additional_info'    => 'nullable|array',
-        ];
+        ]);
 
         // Adiciona validação de unicidade de name apenas se o campo estiver presente nos dados e tiver company_id
         if (isset($data['name']) && $companyId) {
@@ -142,9 +131,7 @@ class ServiceValidator
             ];
         }
 
-        $messages = self::messages();
-
-        return Validator::make($data, $rules, $messages)->validate();
+        return Validator::make($data, $rules, self::messages())->validate();
     }
 
     /**

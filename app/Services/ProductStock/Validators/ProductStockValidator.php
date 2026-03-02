@@ -10,28 +10,11 @@ use Illuminate\Validation\ValidationException;
 class ProductStockValidator
 {
     /**
-     * Valida dados para criação de estoque de produto.
-     *
-     * @param array $data Dados a validar
-     * @return array Retorna dados validados
-     * @throws ValidationException Se a validação falhar
+     * Regras comuns de validação (campos compartilhados entre create e update).
      */
-    public static function validateCreate(array $data): array
+    private static function commonRules(): array
     {
-        Log::debug(__METHOD__ . '@' . __LINE__, [
-            'message' => 'Iniciando validação de dados para criação de estoque de produto',
-            'data'    => $data,
-        ]);
-
-        $rules = [
-            'product_id'            => [
-                'required',
-                'integer',
-                'exists:products,id',
-                Rule::unique('product_stocks', 'product_id'),
-            ],
-            'quantity_available'    => 'nullable|numeric|min:0',
-            'quantity_reserved'     => 'nullable|numeric|min:0',
+        return [
             'quantity_minimum'      => 'nullable|numeric|min:0',
             'quantity_maximum'      => 'nullable|numeric|min:0',
             'average_cost'          => 'nullable|numeric|min:0',
@@ -42,10 +25,15 @@ class ProductStockValidator
             'is_active'             => 'nullable|boolean',
             'allow_negative'        => 'nullable|boolean',
             'additional_info'       => 'nullable|array',
-            'company_id'            => 'required|integer|exists:companies,id',
         ];
+    }
 
-        $messages = [
+    /**
+     * Mensagens de validação compartilhadas.
+     */
+    private static function messages(): array
+    {
+        return [
             'product_id.required'           => 'É obrigatório informar o produto',
             'product_id.exists'             => 'O produto informado não existe',
             'product_id.integer'            => 'O ID do produto deve ser um número inteiro',
@@ -73,8 +61,35 @@ class ProductStockValidator
             'company_id.exists'             => 'A empresa informada não existe',
             'company_id.integer'            => 'O ID da empresa deve ser um número inteiro',
         ];
+    }
 
-        return Validator::make($data, $rules, $messages)->validate();
+    /**
+     * Valida dados para criação de estoque de produto.
+     *
+     * @param array $data Dados a validar
+     * @return array Retorna dados validados
+     * @throws ValidationException Se a validação falhar
+     */
+    public static function validateCreate(array $data): array
+    {
+        Log::debug(__METHOD__ . '@' . __LINE__, [
+            'message' => 'Iniciando validação de dados para criação de estoque de produto',
+            'data'    => $data,
+        ]);
+
+        $rules = array_merge(self::commonRules(), [
+            'product_id'         => [
+                'required',
+                'integer',
+                'exists:products,id',
+                Rule::unique('product_stocks', 'product_id'),
+            ],
+            'quantity_available' => 'nullable|numeric|min:0',
+            'quantity_reserved'  => 'nullable|numeric|min:0',
+            'company_id'         => 'required|integer|exists:companies,id',
+        ]);
+
+        return Validator::make($data, $rules, self::messages())->validate();
     }
 
     /**
@@ -91,8 +106,8 @@ class ProductStockValidator
      */
     public static function validateUpdate(array $data, ?int $productStockId = null): array
     {
-        $rules = [
-            'product_id'            => [
+        $rules = array_merge(self::commonRules(), [
+            'product_id' => [
                 'sometimes',
                 'required',
                 'integer',
@@ -103,40 +118,8 @@ class ProductStockValidator
             ],
             // quantity_available → somente via StockMovement
             // quantity_reserved → somente via UpdateStockReservationAction
-            'quantity_minimum'      => 'nullable|numeric|min:0',
-            'quantity_maximum'      => 'nullable|numeric|min:0',
-            'average_cost'          => 'nullable|numeric|min:0',
-            'last_cost'             => 'nullable|numeric|min:0',
-            'last_sale_price'       => 'nullable|numeric|min:0',
-            'last_movement_date'    => 'nullable|date',
-            'last_movement_type'    => 'nullable|string|max:50',
-            'is_active'             => 'nullable|boolean',
-            'allow_negative'        => 'nullable|boolean',
-            'additional_info'       => 'nullable|array',
-        ];
+        ]);
 
-        $messages = [
-            'product_id.required'           => 'É obrigatório informar o produto',
-            'product_id.exists'             => 'O produto informado não existe',
-            'product_id.integer'            => 'O ID do produto deve ser um número inteiro',
-            'product_id.unique'             => 'Já existe um registro de estoque para este produto',
-            'quantity_minimum.numeric'      => 'A quantidade mínima deve ser um número',
-            'quantity_minimum.min'          => 'A quantidade mínima não pode ser negativa',
-            'quantity_maximum.numeric'      => 'A quantidade máxima deve ser um número',
-            'quantity_maximum.min'          => 'A quantidade máxima não pode ser negativa',
-            'average_cost.numeric'          => 'O custo médio deve ser um número',
-            'average_cost.min'              => 'O custo médio não pode ser negativo',
-            'last_cost.numeric'             => 'O último custo deve ser um número',
-            'last_cost.min'                 => 'O último custo não pode ser negativo',
-            'last_sale_price.numeric'       => 'O último preço de venda deve ser um número',
-            'last_sale_price.min'           => 'O último preço de venda não pode ser negativo',
-            'last_movement_date.date'       => 'A data do último movimento deve ser uma data válida',
-            'last_movement_type.max'        => 'O tipo do último movimento não pode ter mais de 50 caracteres',
-            'is_active.boolean'             => 'O campo ativo deve ser verdadeiro ou falso',
-            'allow_negative.boolean'        => 'O campo permitir negativo deve ser verdadeiro ou falso',
-            'additional_info.array'         => 'As informações adicionais devem ser uma lista',
-        ];
-
-        return Validator::make($data, $rules, $messages)->validate();
+        return Validator::make($data, $rules, self::messages())->validate();
     }
 }

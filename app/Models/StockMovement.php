@@ -6,6 +6,7 @@ use App\Casts\MoneyCast;
 use App\Enum\StockMovement\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockMovement extends Model
@@ -63,5 +64,14 @@ class StockMovement extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Entidade de origem que gerou esta movimentação (ex: Requisition, Quote, ServiceOrder).
+     * Usa morph map registrado em AppServiceProvider para aliases curtos (ex: 'requisition').
+     */
+    public function source(): MorphTo
+    {
+        return $this->morphTo(__FUNCTION__, 'source_type', 'source_id');
     }
 }

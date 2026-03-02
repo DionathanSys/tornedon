@@ -6,6 +6,7 @@ use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ReopenRequisitionAction
@@ -25,9 +26,17 @@ class ReopenRequisitionAction
                 'user_id'        => $this->userId,
             ]);
 
-            $requisition->state()->reopen($requisition, $this->userId);
+            DB::transaction(function () use ($requisition) {
+                // Libera eventuais reservas de estoque antes de reabrir
+                $releaseAction = new ReleaseRequisitionReservationAction($this->userId);
+                if (! $releaseAction->execute($requisition)) {
+                    throw new \RuntimeException($releaseAction->getMessage());
+                }
 
-            $requisition->refresh();
+                $requisition->state()->reopen($requisition, $this->userId);
+
+                $requisition->refresh();
+            });
 
             $this->setSuccess();
             return $requisition;
@@ -45,6 +54,16 @@ class ReopenRequisitionAction
             $this->setError('Erro ao reabrir requisição no banco de dados');
 
             Log::error('ReopenRequisitionAction: QueryException', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'requisition_id' => $requisition->id,
+                'exception'      => $e->getMessage(),
+            ]);
+
+            return null;
+        } catch (\RuntimeException $e) {
+            $this->setError($e->getMessage());
+
+            Log::error('ReopenRequisitionAction: RuntimeException', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'exception'      => $e->getMessage(),

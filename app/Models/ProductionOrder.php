@@ -21,7 +21,7 @@ class ProductionOrder extends Model
         'production_order_number',
         'company_id',
         'quote_id',
-        'partner_id',
+        'customer_id',
         'status',
         'priority',
         'started_at',
@@ -72,9 +72,9 @@ class ProductionOrder extends Model
         return $this->belongsTo(Quote::class);
     }
 
-    public function partner(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(Partner::class);
+        return $this->belongsTo(Partner::class, 'customer_id');
     }
 
     public function requisition(): BelongsTo

@@ -15,8 +15,7 @@ return new class extends Migration
             $table->foreignId('quote_id')
                 ->nullable()
                 ->after('service_order_id')
-                ->constrained('quotes')
-                ->nullOnDelete();
+                ->constrained('quotes');
 
             $table->index('quote_id');
         });
@@ -25,8 +24,7 @@ return new class extends Migration
             $table->foreignId('quote_id')
                 ->nullable()
                 ->after('company_id')
-                ->constrained('quotes')
-                ->nullOnDelete();
+                ->constrained('quotes');
 
             $table->index('quote_id');
         });

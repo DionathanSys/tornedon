@@ -80,7 +80,7 @@ class DirectDeliveryDestinationHandler
 
         // Cria requisição via service
         $requisition = $requisitionService->create([
-            'customer_id'   => $productionOrder->partner_id,
+            'customer_id'   => $productionOrder->customer_id,
             'company_id'    => $productionOrder->company_id,
             'sale_date'     => now()->toDateString(),
             'status'        => Status::OPEN->value,

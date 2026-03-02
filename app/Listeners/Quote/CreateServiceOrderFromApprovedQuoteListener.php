@@ -44,7 +44,7 @@ class CreateServiceOrderFromApprovedQuoteListener
                 // Cria a ordem de serviço via service
                 $serviceOrderService = app(ServiceOrderService::class);
                 $serviceOrder = $serviceOrderService->create([
-                    'customer_id' => $event->quote->partner_id,
+                    'customer_id' => $event->quote->customer_id,
                     'company_id' => $event->quote->company_id,
                     'order_date' => now()->toDateString(),
                     'scheduled_date' => now()->addDays(7)->toDateString(), // Padrão: 7 dias

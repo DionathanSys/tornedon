@@ -41,7 +41,7 @@ class CreateRequisitionFromApprovedQuoteListener
                 $requisitionService = app(RequisitionService::class);
                 $requisition = $requisitionService->create([
                     'company_id'    => $event->quote->company_id,
-                    'customer_id'   => $event->quote->partner_id,
+                    'customer_id'   => $event->quote->customer_id,
                     'sale_date'     => now()->toDateString(),
                     'status'        => RequisitionStatus::OPEN,
                     'discount_amount' => $discountAmount,

@@ -24,8 +24,14 @@ class ApplyMovementToProductStockAction
     public function apply(ProductStock $stock, StockMovement $movement, bool $reverse = false): bool
     {
         /** @var Type $type */
-        $type     = $movement->type;
-        $quantity = (float) $movement->quantity;
+        $type = $movement->type;
+
+        // Tipos de reserva apenas afetam quantity_reserved — não tocam em quantity_available
+        if ($type->isReservationType()) {
+            return $this->applyReservation($stock, $movement, $reverse);
+        }
+
+        $quantity  = (float) $movement->quantity;
         $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
 
         // Calcula o delta positivo/negativo segundo o tipo de movimento
@@ -113,5 +119,41 @@ class ApplyMovementToProductStockAction
             (($currentQty * $currentAvg) + ($incomingQty * $incomingCost)) / $totalQty,
             4
         );
+    }
+
+    /**
+     * Aplica um movimento de reserva/liberação ao quantity_reserved do ProductStock.
+     * Não altera quantity_available nem custo médio.
+     */
+    private function applyReservation(ProductStock $stock, StockMovement $movement, bool $reverse): bool
+    {
+        $type     = $movement->type;
+        $quantity = (float) $movement->quantity;
+
+        $delta = $type->applyReservationDelta($quantity);
+
+        if ($reverse) {
+            $delta = -$delta;
+        }
+
+        $newReserved = max(0, (float) $stock->quantity_reserved + $delta);
+
+        $stock->update([
+            'quantity_reserved'  => $newReserved,
+            'last_movement_date' => now()->toDateString(),
+            'last_movement_type' => $type->value,
+        ]);
+
+        Log::debug('ApplyMovementToProductStockAction: Reserva atualizada', [
+            'metodo'              => __METHOD__ . '@' . __LINE__,
+            'product_stock_id'    => $stock->id,
+            'type'                => $type->value,
+            'reverse'             => $reverse,
+            'delta'               => $delta,
+            'reserved_before'     => (float) $stock->getOriginal('quantity_reserved'),
+            'reserved_after'      => $newReserved,
+        ]);
+
+        return true;
     }
 }

@@ -20,9 +20,8 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->foreignId('quote_id')                           // Orçamento relacionado (opcional)
                 ->nullable()
-                ->constrained('quotes')
-                ->nullOnDelete();
-            $table->foreignId('partner_id')                         // Cliente da produção
+                ->constrained('quotes');
+            $table->foreignId('customer_id')                         // Cliente da produção
                 ->constrained('partners');
             $table->string('status');                               // Status: QUEUED, IN_PROGRESS, QC_CHECK, COMPLETED, CANCELLED
             $table->string('priority')                              // Prioridade: LOW, NORMAL, HIGH, URGENT
@@ -32,10 +31,6 @@ return new class extends Migration
             $table->timestamp('completed_at')                       // Data/hora de conclusão
                 ->nullable();
             $table->string('destination_type');                     // STOCK (estoque) ou DIRECT_DELIVERY (entrega direta)
-            $table->foreignId('requisition_id')                     // Requisição vinculada (quando entrega direta)
-                ->nullable()
-                ->constrained('requisitions')
-                ->nullOnDelete();
             $table->text('observations')                            // Observações gerais
                 ->nullable();
             $table->foreignId('assigned_operator')                  // Operador responsável
@@ -59,11 +54,10 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
-            $table->softDeletes();                                  // Data de exclusão (soft delete)
 
             // Índices para otimizar consultas
             $table->index(['company_id', 'status']);                // Ordens por empresa e status
-            $table->index(['partner_id', 'status']);                // Ordens por cliente
+            $table->index(['customer_id', 'status']);                // Ordens por cliente
             $table->index(['status', 'priority']);                  // Por status e prioridade
             $table->index('quote_id');                              // Relação com orçamento
             $table->index('requisition_id');                        // Relação com requisição

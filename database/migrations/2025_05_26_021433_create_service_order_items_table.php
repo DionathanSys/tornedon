@@ -21,16 +21,12 @@ return new class extends Migration
             $table->string('unit_of_measure');
             $table->decimal('quantity', 15, 3);
             $table->decimal('unit_price', 15, 4);
-            $table->decimal('unit_cost', 15, 4)
-                ->nullable();
             $table->decimal('discount_percentage', 5, 2)
                 ->default(0.00);
             $table->decimal('discount_amount', 15, 2)
                 ->default(0.00);
-            $table->decimal('subtotal', 15, 2)
-                ->virtualAs('quantity * unit_price');
             $table->decimal('total_amount', 15, 2)
-                ->virtualAs('subtotal - discount_amount');
+                ->virtualAs('(quantity * unit_price) - discount_amount');
             $table->text('observations')
                 ->nullable();
             $table->json('additional_info')

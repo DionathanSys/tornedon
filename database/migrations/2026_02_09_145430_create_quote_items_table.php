@@ -22,19 +22,15 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->text('description')                             // Descrição do item/peça
                 ->nullable();                            
-            $table->decimal('quantity', 15, 3)                      // Quantidade
-                ->default(1.000);
-            $table->string('unit_of_measure')                       // Unidade de medida (PC, UN, KG, etc)
-                ->default('UN')
-                ->nullable();
-            $table->decimal('unit_price', 15, 4)                    // Preço unitário
-                ->default(0.0000);
-            $table->decimal('discount_percentage', 5, 3)            // Percentual de desconto
-                ->default(0.000);
-            $table->decimal('discount_amount', 15, 2)               // Valor do desconto
+            $table->string('unit_of_measure');
+            $table->decimal('quantity', 15, 3);
+            $table->decimal('unit_price', 15, 4);
+            $table->decimal('discount_percentage', 5, 2)
                 ->default(0.00);
-            $table->decimal('total_amount', 15, 2)                  // Valor total do item
+            $table->decimal('discount_amount', 15, 2)
                 ->default(0.00);
+            $table->decimal('total_amount', 15, 2)
+                ->virtualAs('(quantity * unit_price) - discount_amount');
             $table->json('technical_specifications')                // Especificações técnicas (dimensões, tolerâncias, material, operações)
                 ->nullable();
             $table->decimal('estimated_production_hours', 10, 2)    // Horas estimadas de produção

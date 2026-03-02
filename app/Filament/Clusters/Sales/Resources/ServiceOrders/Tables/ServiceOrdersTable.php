@@ -10,6 +10,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServi
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -174,6 +175,12 @@ class ServiceOrdersTable
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
                 ])
+            ])
+            ->toolbarActions([
+                CreateAction::make()
+                    ->label('Ordem de Serviço')
+                    ->icon(Heroicon::Plus)
+                    ->badge(),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }

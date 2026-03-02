@@ -18,19 +18,17 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->foreignId('product_id')                         // Produto vendido (obrigatório)
                 ->constrained('products');
-            $table->string('unit_of_measure');                      // Unidade de medida
-            $table->decimal('quantity', 15, 3);                     // Quantidade vendida
-            $table->decimal('unit_price', 15, 4);                   // Preço unitário de venda
-            $table->decimal('unit_cost', 15, 4)                     // Custo unitário (para margem)
+            $table->string('unit_of_measure');
+            $table->decimal('quantity', 15, 3);
+            $table->decimal('unit_price', 15, 4);
+            $table->decimal('unit_cost', 15, 4)
                 ->nullable();
-            $table->decimal('discount_percentage', 5, 2)            // Desconto em % no item
+            $table->decimal('discount_percentage', 5, 2)
                 ->default(0.00);
-            $table->decimal('discount_amount', 15, 2)               // Desconto em valor no item
+            $table->decimal('discount_amount', 15, 2)
                 ->default(0.00);
-            $table->decimal('subtotal', 15, 2)
-                ->virtualAs('quantity * unit_price');               // Subtotal (qty × unit_price)
             $table->decimal('total_amount', 15, 2)
-                ->virtualAs('subtotal - discount_amount');          // Total final (subtotal - desconto)
+                ->virtualAs('(quantity * unit_price) - discount_amount');
             $table->boolean('stock_consumed')                       // Estoque foi baixado?
                 ->default(true);
             $table->timestamp('stock_consumed_at')                  // Quando o estoque foi baixado

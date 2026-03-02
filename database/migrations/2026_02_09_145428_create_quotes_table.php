@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('company_id')                         // Empresa responsável
                 ->constrained('companies')
                 ->cascadeOnDelete();
-            $table->foreignId('partner_id')                         // Cliente que solicitou
+            $table->foreignId('customer_id')                         // Cliente que solicitou
                 ->constrained('partners');
             $table->text('description')                             // Descrição geral do orçamento
                 ->nullable();
@@ -54,7 +54,7 @@ return new class extends Migration
 
             // Índices para otimizar consultas
             $table->index(['company_id', 'status']);                // Orçamentos por empresa e status
-            $table->index(['partner_id', 'status']);                // Orçamentos por cliente
+            $table->index(['customer_id', 'status']);               // Orçamentos por cliente
             $table->index(['status', 'valid_until']);               // Orçamentos por status e validade
             $table->index('quote_number');                          // Busca por número
             $table->unique(['company_id', 'quote_number']);         // Número único por empresa

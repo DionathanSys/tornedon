@@ -20,15 +20,14 @@ return new class extends Migration
             $table->foreignId('company_id')                         // Empresa prestadora
                 ->constrained('companies')
                 ->cascadeOnDelete();
-            $table->foreignId('service_order_id')                     // Ordem de serviço vinculada
+            $table->foreignId('service_order_id')                   // Ordem de serviço vinculada
                 ->nullable()
-                ->constrained('service_orders')
-                ->nullOnDelete();
+                ->constrained('service_orders');
+            $table->foreignId('production_order_id')                // Ordem de produção vinculada
+                ->nullable()
+                ->constrained('production_orders');
             $table->date('sale_date');                              // Data da venda
             $table->string('status');
-            $table->decimal('discount_amount', 15, 2)               // Desconto aplicado
-                ->default(0.00)
-                ->nullable();
             $table->string('payment_method')                        // Forma de pagamento
                 ->nullable();
             $table->string('payment_condition')                     // Condição de pagamento (à vista, prazo)
@@ -51,8 +50,7 @@ return new class extends Migration
                 ->nullable();
             $table->foreignId('equipment_id')                       // Equipamento atendido
                 ->nullable()
-                ->constrained('equipments')
-                ->nullOnDelete();
+                ->constrained('equipments');
             $table->boolean('stock_consumed')                       // Estoque já foi consumido?
                 ->default(true);
             $table->json('additional_info')                         // Informações adicionais (JSON)
@@ -66,7 +64,6 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
             $table->timestamps();                                   // Data de criação e atualização
-            $table->softDeletes();                                  // Data de exclusão (soft delete)
 
             // Índices para otimizar consultas
             $table->index(['customer_id', 'status']);               // Vendas por cliente e status

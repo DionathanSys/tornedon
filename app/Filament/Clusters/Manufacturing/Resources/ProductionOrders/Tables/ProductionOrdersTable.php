@@ -23,7 +23,7 @@ class ProductionOrdersTable
                     ->label('Número')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('partner.name')
+                TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),

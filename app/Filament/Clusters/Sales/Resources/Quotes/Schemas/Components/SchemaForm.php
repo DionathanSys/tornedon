@@ -11,8 +11,7 @@ use App\Filament\Tables\ProductsStockTable;
 use App\Filament\Tables\ProductTable;
 use App\Filament\Tables\ServiceTable;
 use App\Services\QuoteItem\QuoteItemResolverService;
-use App\Traits\ParsesMoneyValues;
-use Filament\Actions\Action;
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
@@ -21,13 +20,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Log;
-use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class SchemaForm
 {
-    use ParsesMoneyValues;
 
     /**
      * O ponto de entrada do formulário.
@@ -37,7 +32,7 @@ class SchemaForm
         return [
             self::getSelectionGroup(),
             self::getInformationGroup(),
-            self::getValueGroup(),
+            ItemValueGroup::make(),
             Textarea::make('description')
                 ->label('Descrição')
                 ->columnSpanFull(),
@@ -102,90 +97,6 @@ class SchemaForm
     }
 
     /**
-     * Grupo de Valores: Cálculos de preço, quantidade e descontos.
-     */
-    private static function getValueGroup(): Group
-    {
-        return Group::make()
-            ->columns(3)
-            ->columnSpanFull()
-            ->schema([
-                TextInput::make('quantity')
-                    ->label('Quantidade')
-                    ->required()
-                    ->numeric()
-                    ->default(1)
-                    ->minValue(0)
-                    ->live(onBlur: true)
-                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                        $set('discount_amount', number_format(0, 2, ',', '.'));
-                        $set('discount_percentage', number_format(0, 2, ',', '.'));
-                        self::calculateValues($get, $set);
-                    }),
-
-                Money::make('unit_price')
-                    ->label('Preço Unitário')
-                    ->required()
-                    ->live(onBlur: true)
-                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                    ->helperText(function (Get $get): ?string {
-                        $minPrice = (float) ($get('item.min_sale_price') ?? 0);
-                        return $minPrice > 0
-                            ? 'Preço mínimo de venda: R$ ' . number_format($minPrice, 2, ',', '.')
-                            : null;
-                    })
-                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                        $set('discount_amount', number_format(0, 2, ',', '.'));
-                        $set('discount_percentage', number_format(0, 2, ',', '.'));
-                        self::calculateValues($get, $set);
-                    }),
-
-                Money::make('discount_percentage')
-                    ->label('Desconto (%)')
-                    ->columnStart(1)
-                    ->suffix('%')
-                    ->prefix(null)
-                    ->live(onBlur: true)
-                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                        $subtotal = self::parseMoneyValue($get('subtotal'));
-                        $percentage = self::parseMoneyValue($state);
-                        $discountAmount = $subtotal * ($percentage / 100);
-                        $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
-                        self::calculateValues($get, $set);
-                    })
-                    ->afterLabel(Action::make('reset_discount_percentage')
-                        ->label('')
-                        ->icon(Heroicon::ArrowPath)
-                        ->action(function (Set $set, Get $get) {
-                            $set('discount_percentage', number_format(0, 2, ',', '.'));
-                            $set('discount_amount', number_format(0, 2, ',', '.'));
-                            self::calculateValues($get, $set);
-                        })),
-
-                Money::make('discount_amount')
-                    ->label('Desconto (R$)')
-                    ->live(onBlur: true)
-                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                        $subtotal = self::parseMoneyValue($get('subtotal'));
-                        $discountAmount = self::parseMoneyValue($state);
-                        if ($subtotal > 0) {
-                            $percentage = ($discountAmount / $subtotal) * 100;
-                            $set('discount_percentage', number_format($percentage, 2, ',', '.'));
-                        }
-                        self::calculateValues($get, $set);
-                    }),
-
-                Money::make('total_amount')
-                    ->label('Valor Total')
-                    ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                    ->readOnly(),
-            ]);
-    }
-
-    /**
      * Resolve os dados do item através do serviço especialista.
      */
     public static function resolveItem(Set $set, Get $get, Destination $type, $id): void
@@ -223,31 +134,7 @@ class SchemaForm
             $set('discount_amount', '0,00');
             $set('discount_percentage', '0,00');
 
-            self::calculateValues($get, $set);
+            ItemValueGroup::recalculate($get, $set);
         }
-    }
-
-    /**
-     * Recalcula os totais do formulário.
-     */
-    protected static function calculateValues(Get $get, Set $set): void
-    {
-        $quantity = self::parseMoneyValue($get('quantity'));
-        $unitPrice = self::parseMoneyValue($get('unit_price'));
-        $discountAmount = self::parseMoneyValue($get('discount_amount'));
-
-        $subtotal = $quantity * $unitPrice;
-        $set('subtotal', number_format($subtotal, 2, ',', '.'));
-
-        $totalAmount = $subtotal - $discountAmount;
-        $set('total_amount', number_format($totalAmount, 2, ',', '.'));
-
-        Log::debug('Quote SchemaForm: Valores recalculados', [
-            'quantity'        => $quantity,
-            'unit_price'      => $unitPrice,
-            'discount_amount' => $discountAmount,
-            'subtotal'        => $subtotal,
-            'total_amount'    => $totalAmount,
-        ]);
     }
 }

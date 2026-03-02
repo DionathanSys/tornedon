@@ -25,7 +25,7 @@ class Quote extends Model implements HasMedia
     protected $fillable = [
         'quote_number',
         'company_id',
-        'partner_id',
+        'customer_id',
         'description',
         'status',
         'valid_until',
@@ -74,9 +74,9 @@ class Quote extends Model implements HasMedia
         return $this->belongsTo(Company::class);
     }
 
-    public function partner(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(Partner::class);
+        return $this->belongsTo(Partner::class, 'customer_id');
     }
 
     public function items(): HasMany
@@ -125,21 +125,6 @@ class Quote extends Model implements HasMedia
     public function state(): QuoteState
     {
         return StateResolver::resolve($this);
-    }
-
-    public function canBeApproved(): bool
-    {
-        return $this->status === Status::SENT && !$this->isExpired();
-    }
-
-    public function canBeRejected(): bool
-    {
-        return $this->status === Status::SENT;
-    }
-
-    public function canBeConverted(): bool
-    {
-        return $this->status === Status::APPROVED && !$this->productionOrder()->exists();
     }
 
     /* ==============================

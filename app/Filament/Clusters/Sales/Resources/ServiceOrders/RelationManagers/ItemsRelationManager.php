@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers;
 
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\CreateItemAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\CreateItemActionExample;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\DeleteItemAction;
@@ -24,37 +26,11 @@ class ItemsRelationManager extends RelationManager
             ->recordTitleAttribute('service_id')
             ->heading('Serviços')
             ->columns([
-                TextColumn::make('service.name')
+                ModalSelectService::make('service_id')
                     ->label('Serviço')
-                    ->searchable(),
-                TextColumn::make('quantity')
-                    ->label('Qtde.')
-                    ->numeric(2, ',', '.')
-                    ->sortable(),
-                TextColumn::make('unit_price')
-                    ->label('Vlr. Unit.')
-                    ->money('BRL')
-                    ->sortable(),
-                TextColumn::make('discount_percentage')
-                    ->label('Desc. (%)')
-                    ->numeric(2, ',', '.')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('discount_amount')
-                    ->label('Desc. (R$)')
-                    ->money('BRL')
-                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100))
-                    ->sortable(),
-                TextColumn::make('subtotal')
-                    ->label('Subtotal')
-                    ->money('BRL')
-                    ->summarize(Sum::make('subtotal')->label('TT Subtotal')->money('BRL', 100))
-                    ->sortable(),
-                TextColumn::make('total_amount')
-                    ->label('Total')
-                    ->money('BRL')
-                    ->summarize(Sum::make('total_amount')->label('TT Geral')->money('BRL', 100))
-                    ->sortable(),
+                    ->searchable()
+                    ->getOptionLabelUsing(fn($value) => $this->getServiceName($value)),
+                ItemValueGroup::make(),
                 TextColumn::make('createdBy')
                     ->label('Criado por')
                     ->sortable()

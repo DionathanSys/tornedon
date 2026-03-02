@@ -107,7 +107,7 @@ class QuoteForm
                                 return $operation === 'edit' && in_array($status, [Status::APPROVED->value, Status::REJECTED->value]);
                             })
                             ->required(),
-                        SelectPartner::make('partner_id', 'customer')
+                        SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 6])
                             ->disabledOn('edit'),
