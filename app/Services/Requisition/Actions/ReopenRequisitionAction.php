@@ -30,7 +30,7 @@ class ReopenRequisitionAction
                 // Libera eventuais reservas de estoque antes de reabrir
                 $releaseAction = new ReleaseRequisitionReservationAction($this->userId);
                 if (! $releaseAction->execute($requisition)) {
-                    throw new \RuntimeException($releaseAction->getMessage());
+                    throw new \Exception($releaseAction->getMessage());
                 }
 
                 $requisition->state()->reopen($requisition, $this->userId);
@@ -60,13 +60,14 @@ class ReopenRequisitionAction
             ]);
 
             return null;
-        } catch (\RuntimeException $e) {
-            $this->setError($e->getMessage());
+        } catch (\Exception $e) {
+            $this->setError('Erro ao reabrir requisição: ' . $e->getMessage());
 
-            Log::error('ReopenRequisitionAction: RuntimeException', [
+            Log::error('ReopenRequisitionAction: Erro inesperado', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'exception'      => $e->getMessage(),
+                'trace'          => $e->getTraceAsString(),
             ]);
 
             return null;

@@ -7,12 +7,9 @@ use App\Enum\StockMovement\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockMovement extends Model
 {
-    use SoftDeletes;
-
     protected $fillable = [
         'product_stock_id',
         'product_id',
@@ -38,7 +35,6 @@ class StockMovement extends Model
         'additional_info' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
     ];
 
     public function productStock(): BelongsTo

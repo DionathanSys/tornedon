@@ -32,7 +32,7 @@ class CancelRequisitionAction
                 // Libera eventuais reservas de estoque criadas ao encerrar a requisição
                 $releaseAction = new ReleaseRequisitionReservationAction($this->userId);
                 if (! $releaseAction->execute($requisition)) {
-                    throw new \RuntimeException($releaseAction->getMessage());
+                    throw new \Exception($releaseAction->getMessage());
                 }
 
                 $requisition->refresh();
@@ -60,13 +60,14 @@ class CancelRequisitionAction
             ]);
 
             return null;
-        } catch (\RuntimeException $e) {
-            $this->setError($e->getMessage());
+        } catch (\Exception $e) {
+            $this->setError('Erro ao cancelar requisição: ' . $e->getMessage());
 
-            Log::error('CancelRequisitionAction: RuntimeException', [
+            Log::error('CancelRequisitionAction: Erro inesperado', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'exception'      => $e->getMessage(),
+                'trace'          => $e->getTraceAsString(),
             ]);
 
             return null;

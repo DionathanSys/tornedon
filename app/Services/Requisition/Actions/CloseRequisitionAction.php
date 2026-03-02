@@ -54,7 +54,7 @@ class CloseRequisitionAction
                 $consumed = $consumeAction->execute($requisition);
 
                 if (! $consumed) {
-                    throw new \RuntimeException(
+                    throw new \Exception(
                         'Falha ao reservar estoque: ' . $consumeAction->getMessage()
                     );
                 }

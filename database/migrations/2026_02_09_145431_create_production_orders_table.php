@@ -60,7 +60,6 @@ return new class extends Migration
             $table->index(['customer_id', 'status']);                // Ordens por cliente
             $table->index(['status', 'priority']);                  // Por status e prioridade
             $table->index('quote_id');                              // Relação com orçamento
-            $table->index('requisition_id');                        // Relação com requisição
             $table->index(['destination_type', 'status']);          // Por destino e status
             $table->index('production_order_number');               // Busca por número
             $table->index('assigned_operator');                     // Por operador

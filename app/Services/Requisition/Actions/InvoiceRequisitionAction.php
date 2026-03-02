@@ -61,13 +61,14 @@ class InvoiceRequisitionAction
             ]);
 
             return null;
-        } catch (\RuntimeException $e) {
-            $this->setError($e->getMessage());
+        } catch (\Exception $e) {
+            $this->setError('Erro ao faturar requisição: ' . $e->getMessage());
 
-            Log::error('InvoiceRequisitionAction: RuntimeException', [
+            Log::error('InvoiceRequisitionAction: Erro inesperado', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'exception'      => $e->getMessage(),
+                'trace'          => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -124,7 +125,7 @@ class InvoiceRequisitionAction
                     'requisition_id' => $requisition->id,
                     'item_id'        => $item->id,
                 ]);
-                throw new \RuntimeException(
+                throw new \Exception(
                     'Estoque não encontrado para o produto #' . $item->product_id
                 );
             }
@@ -147,7 +148,7 @@ class InvoiceRequisitionAction
             ]), $this->userId);
 
             if (! $release) {
-                throw new \RuntimeException(
+                throw new \Exception(
                     'Falha ao liberar reserva para produto #' . $item->product_id
                     . ': ' . $stockMovementService->getMessage()
                 );
@@ -160,7 +161,7 @@ class InvoiceRequisitionAction
             ]), $this->userId);
 
             if (! $exit) {
-                throw new \RuntimeException(
+                throw new \Exception(
                     'Falha ao criar saída de estoque para produto #' . $item->product_id
                     . ': ' . $stockMovementService->getMessage()
                 );

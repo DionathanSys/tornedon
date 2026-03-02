@@ -23,9 +23,6 @@ return new class extends Migration
             $table->foreignId('service_order_id')                   // Ordem de serviço vinculada
                 ->nullable()
                 ->constrained('service_orders');
-            $table->foreignId('production_order_id')                // Ordem de produção vinculada
-                ->nullable()
-                ->constrained('production_orders');
             $table->date('sale_date');                              // Data da venda
             $table->string('status');
             $table->string('payment_method')                        // Forma de pagamento
