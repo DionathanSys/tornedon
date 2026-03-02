@@ -34,6 +34,7 @@ class Requisition extends Model
         'equipment_id',
         'stock_consumed',
         'additional_info',
+        'production_order_id',
         'created_by',
         'updated_by',
     ];
@@ -93,6 +94,11 @@ class Requisition extends Model
     public function items(): HasMany
     {
         return $this->hasMany(RequisitionItem::class);
+    }
+
+    public function productionOrder(): BelongsTo
+    {
+        return $this->belongsTo(ProductionOrder::class);
     }
 
     public function productionOrders(): HasMany

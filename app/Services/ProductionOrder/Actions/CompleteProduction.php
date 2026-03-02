@@ -5,7 +5,6 @@ namespace App\Services\ProductionOrder\Actions;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
-use App\Services\ProductionOrder\DestinationHandlers\DirectDeliveryDestinationHandler;
 use App\Services\ProductionOrder\DestinationHandlers\StockDestinationHandler;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\DB;
@@ -36,39 +35,43 @@ class CompleteProduction
                 'updated_by' => $this->userId,
             ]);
 
-            // Handle destination (stock or direct delivery)
-            $handler = $this->getDestinationHandler($productionOrder->destination_type);
-            $result = $handler->handle($productionOrder, $this->userId);
+            // 1. SEMPRE envia produtos aprovados para o estoque
+            $stockHandler = new StockDestinationHandler();
+            $stockResult = $stockHandler->handle($productionOrder, $this->userId);
 
-            if (!$result) {
+            if (!$stockResult) {
                 DB::rollBack();
-                $this->setError('Erro ao processar destino da produção');
+                $this->setError('Erro ao registrar entrada de produção no estoque');
                 return false;
+            }
+
+            // 2. Se destino é ENTREGA DIRETA, gera requisição automaticamente
+            if ($productionOrder->destination_type === DestinationType::DIRECT_DELIVERY) {
+                $requisitionAction = new GenerateRequisitionFromProductionAction($this->userId);
+                $requisition = $requisitionAction->execute($productionOrder->fresh());
+
+                if ($requisitionAction->hasError()) {
+                    DB::rollBack();
+                    $this->setError('Erro ao gerar requisição: ' . $requisitionAction->getMessage());
+                    return false;
+                }
             }
 
             DB::commit();
             $this->setSuccess();
             return true;
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             $this->setError('Erro ao concluir produção: ' . $e->getMessage());
-            
+
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'error_code' => $this->getErrorCode(),
                 'message'    => $e->getMessage(),
                 'production_order_id' => $productionOrder->id,
             ]);
-            
+
             return false;
         }
-    }
-
-    private function getDestinationHandler(DestinationType $destinationType): StockDestinationHandler|DirectDeliveryDestinationHandler
-    {
-        return match ($destinationType) {
-            DestinationType::STOCK => new StockDestinationHandler(),
-            DestinationType::DIRECT_DELIVERY => new DirectDeliveryDestinationHandler(),
-        };
     }
 }

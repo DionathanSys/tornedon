@@ -11,6 +11,7 @@ use App\Services\ProductionOrder\States\ProductionOrderState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ProductionOrder extends Model
 {
@@ -82,6 +83,11 @@ class ProductionOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ProductionOrderItem::class);
+    }
+
+    public function stockMovements(): MorphMany
+    {
+        return $this->morphMany(StockMovement::class, 'source', 'source_type', 'source_id');
     }
 
     public function assignedOperator(): BelongsTo

@@ -3,9 +3,11 @@
 namespace App\Services\ProductionOrder;
 
 use App\Models\ProductionOrder;
+use App\Models\Requisition;
 use App\Services\ProductionOrder\Actions\CancelProductionAction;
 use App\Services\ProductionOrder\Actions\CompleteProduction;
 use App\Services\ProductionOrder\Actions\CreateProductionOrder;
+use App\Services\ProductionOrder\Actions\GenerateRequisitionFromProductionAction;
 use App\Services\ProductionOrder\Actions\ReturnToProductionAction;
 use App\Services\ProductionOrder\Actions\SendToQcAction;
 use App\Services\ProductionOrder\Actions\StartProduction;
@@ -154,5 +156,64 @@ class ProductionOrderService
 
         $this->setError($action->getMessage(), $action->getErrors());
         return false;
+    }
+
+    /**
+     * Gera uma requisição a partir de uma ordem de produção concluída.
+     * Os itens aprovados da PO são convertidos em itens da requisição.
+     * A requisição fica vinculada à PO (bidirecional).
+     */
+    public function generateRequisition(ProductionOrder $productionOrder, int $userId): ?Requisition
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($productionOrder, $userId) {
+                $action = new GenerateRequisitionFromProductionAction($userId);
+                $requisition = $action->execute($productionOrder);
+
+                if ($action->hasError() || $requisition === null) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error('ProductionOrderService: ' . $this->getMessage(), [
+                        'metodo'              => __METHOD__ . '@' . __LINE__,
+                        'error_code'          => $this->getErrorCode(),
+                        'errors'              => $action->getErrors(),
+                        'production_order_id' => $productionOrder->id,
+                        'user_id'             => $userId,
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Requisição gerada com sucesso a partir da ordem de produção');
+
+                Log::info('ProductionOrderService: Requisição gerada com sucesso', [
+                    'metodo'              => __METHOD__ . '@' . __LINE__,
+                    'production_order_id' => $productionOrder->id,
+                    'requisition_id'      => $requisition->id,
+                ]);
+
+                return $requisition;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar requisição a partir da ordem de produção');
+
+            Log::error('ProductionOrderService: ' . $this->getMessage(), [
+                'metodo'              => __METHOD__ . '@' . __LINE__,
+                'error_code'          => $this->getErrorCode(),
+                'exception'           => $e->getMessage(),
+                'trace'               => $e->getTraceAsString(),
+                'production_order_id' => $productionOrder->id,
+                'user_id'             => $userId,
+            ]);
+
+            return null;
+        }
     }
 }

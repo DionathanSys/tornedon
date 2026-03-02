@@ -80,12 +80,13 @@ class DirectDeliveryDestinationHandler
 
         // Cria requisição via service
         $requisition = $requisitionService->create([
-            'customer_id'   => $productionOrder->customer_id,
-            'company_id'    => $productionOrder->company_id,
-            'sale_date'     => now()->toDateString(),
-            'status'        => Status::OPEN->value,
-            'observations'  => 'Gerado automaticamente pela ordem de produção #' . $productionOrder->production_order_number,
-            'stock_consumed' => false,
+            'customer_id'         => $productionOrder->customer_id,
+            'company_id'          => $productionOrder->company_id,
+            'production_order_id' => $productionOrder->id,
+            'sale_date'           => now()->toDateString(),
+            'status'              => Status::OPEN->value,
+            'observations'        => 'Gerado automaticamente pela ordem de produção #' . $productionOrder->production_order_number,
+            'stock_consumed'      => false,
         ], $userId);
 
         if (! $requisition) {
