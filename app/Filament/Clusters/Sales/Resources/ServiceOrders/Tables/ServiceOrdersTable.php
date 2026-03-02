@@ -162,9 +162,6 @@ class ServiceOrdersTable
                     ->trueLabel('Aprovado')
                     ->falseLabel('Não Aprovado')
                     ->native(false),
-                TrashedFilter::make()
-                    ->label('Excluídos')
-                    ->native(false),
             ])
             ->defaultSort('order_date', 'desc')
             ->recordActions([

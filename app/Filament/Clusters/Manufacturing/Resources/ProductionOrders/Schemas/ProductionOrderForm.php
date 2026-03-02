@@ -6,6 +6,10 @@ use App\Enum\Product\Unit;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\EditProductionOrder;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\RelationManagers\ItemsRelationManager;
+use App\Models\ProductionOrder;
+use App\Models\ProductionOrderItem;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
@@ -13,6 +17,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -53,10 +58,10 @@ class ProductionOrderForm
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(function () {
                                 return \App\Models\Partner::whereHas('companies', function ($query) {
-                                        $query->where('companies.id', Filament::getTenant()->id)
-                                            ->whereJsonContains('company_partner.type', 'customer')
-                                            ->where('company_partner.is_active', true);
-                                    })
+                                    $query->where('companies.id', Filament::getTenant()->id)
+                                        ->whereJsonContains('company_partner.type', 'customer')
+                                        ->where('company_partner.is_active', true);
+                                })
                                     ->orderBy('name')
                                     ->pluck('name', 'id');
                             })
@@ -99,111 +104,18 @@ class ProductionOrderForm
                             ->rows(3)
                             ->maxLength(1000),
                         Hidden::make('company_id')
-                            ->default(fn () => Filament::getTenant()->id),
+                            ->default(fn() => Filament::getTenant()->id),
                     ]),
                 Section::make('Itens da Produção')
                     ->columnSpanFull()
+                    ->visibleOn('edit')
                     ->schema([
-                        Repeater::make('items')
-                            ->label('')
-                            ->relationship()
-                            ->columns([
-                                'sm' => 1,
-                                'md' => 6,
-                                'lg' => 12,
-                            ])
-                            ->schema([
-                                Select::make('product_id')
-                                    ->label('Produto')
-                                    ->columnSpan(['md' => 2, 'lg' => 3])
-                                    ->relationship(
-                                        name: 'product',
-                                        titleAttribute: 'name',
-                                        modifyQueryUsing: fn ($query) => $query
-                                            ->where('company_id', Filament::getTenant()->id)
-                                            ->where('is_active', true)
-                                            ->orderBy('name')
-                                    )
-                                    ->searchable()
-                                    ->preload()
-                                    ->nullable(),
-                                TextInput::make('description')
-                                    ->label('Descrição')
-                                    ->columnSpan(['md' => 4, 'lg' => 5])
-                                    ->required()
-                                    ->maxLength(500),
-                                TextInput::make('quantity')
-                                    ->label('Qtd Solicitada')
-                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                    ->columnStart(1)
-                                    ->numeric()
-                                    ->minValue(0.001)
-                                    ->default(1)
-                                    ->required(),
-                                Select::make('unit_of_measure')
-                                    ->label('Unid.')
-                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                    ->options(Unit::toSelectArray())
-                                    ->native(false)
-                                    ->default('UN')
-                                    ->required(),
-                                TextInput::make('quantity_produced')
-                                    ->label('Qtd Produzida')
-                                    ->columnSpan(['md' => 1, 'lg' => 1])
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->default(0)
-                                    ->visibleOn('edit'),
-                                TextInput::make('quantity_approved')
-                                    ->label('Qtd Aprovada')
-                                    ->columnSpan(['md' => 1, 'lg' => 1])
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->default(0)
-                                    ->visibleOn('edit'),
-                                TextInput::make('quantity_rejected')
-                                    ->label('Qtd Rejeitada')
-                                    ->columnSpan(['md' => 1, 'lg' => 1])
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->default(0)
-                                    ->visibleOn('edit'),
-                                KeyValue::make('technical_specifications')
-                                    ->label('Especificações Técnicas')
-                                    ->columnSpan(['md' => 6, 'lg' => 6])
-                                    ->columnStart(1)
-                                    ->keyLabel('Propriedade')
-                                    ->valueLabel('Valor')
-                                    ->addActionLabel('Adicionar especificação')
-                                    ->reorderable(),
-                                Textarea::make('production_notes')
-                                    ->label('Notas de Produção')
-                                    ->columnSpan(['md' => 6, 'lg' => 6])
-                                    ->rows(2)
-                                    ->maxLength(500)
-                                    ->visibleOn('edit'),
-                                Textarea::make('qc_notes')
-                                    ->label('Notas de Controle de Qualidade')
-                                    ->columnSpan(['md' => 6, 'lg' => 6])
-                                    ->rows(2)
-                                    ->maxLength(500)
-                                    ->visibleOn('edit'),
-                                TextInput::make('actual_production_hours')
-                                    ->label('Horas Reais de Produção')
-                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->suffix('h')
-                                    ->visibleOn('edit'),
-                            ])
-                            ->defaultItems(1)
-                            ->addActionLabel('Adicionar item')
-                            ->reorderableWithButtons()
-                            ->collapsible()
-                            ->cloneable()
-                            ->itemLabel(fn (array $state): ?string => $state['description'] ?? 'Item')
-                            ->minItems(1)
-                            ->required(),
+                        Livewire::make(ItemsRelationManager::class, fn(ProductionOrder $record) => [
+                            'ownerRecord' => $record,
+                            'pageClass' => EditProductionOrder::class,
+                        ])
+                            ->key('items-relation-manager')
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

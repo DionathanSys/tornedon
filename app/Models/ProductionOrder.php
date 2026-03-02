@@ -11,12 +11,9 @@ use App\Services\ProductionOrder\States\ProductionOrderState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProductionOrder extends Model
 {
-    use SoftDeletes;
-
     protected $fillable = [
         'production_order_number',
         'company_id',

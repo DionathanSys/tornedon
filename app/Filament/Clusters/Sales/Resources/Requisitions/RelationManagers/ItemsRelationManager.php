@@ -149,11 +149,6 @@ class ItemsRelationManager extends RelationManager
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('deleted_at')
-                    ->label('Excluído Em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
             ])
