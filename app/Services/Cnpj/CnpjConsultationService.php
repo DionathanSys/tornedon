@@ -162,27 +162,69 @@ class CnpjConsultationService
      */
     private function fetchFromApi(string $cnpj): ?CnpjVO
     {
+        $url = self::API_BASE_URL . '/' . $cnpj;
+
+        Log::debug('Iniciando consulta CNPJ na API', [
+            'metodo'                  => __METHOD__ . '@' . __LINE__,
+            'url'                     => $url,
+            'cnpj'                    => $cnpj,
+            'rate_limiter_remaining'  => RateLimiter::remaining(self::RATE_LIMITER_KEY, self::RATE_LIMIT_MAX_ATTEMPTS),
+        ]);
+
         try {
             /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::timeout(15)
                 ->acceptJson()
-                ->get(self::API_BASE_URL . '/' . $cnpj);
+                ->get($url);
 
-            if ($response->failed()) {
-                $statusCode = $response->status();
+            $statusCode      = $response->status();
+            $responseHeaders = $response->headers();
+            $responseBody    = $response->body();
+
+            Log::debug('Resposta recebida da API de CNPJ', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'cnpj'             => $cnpj,
+                'url'              => $url,
+                'status'           => $statusCode,
+                'response_headers' => $responseHeaders,
+                'response_body'    => $responseBody,
+            ]);
+
+            if ($statusCode === 429) {
+                // Esgota o rate limiter interno para bloquear novas tentativas pelo período de decay
+                RateLimiter::clear(self::RATE_LIMITER_KEY);
 
                 $this->setError(
+                    'Limite de requisições da API atingido. Aguarde 1 minuto antes de tentar novamente.',
+                    [],
+                    429,
+                );
+
+                Log::warning($this->getMessage(), [
+                    'metodo'           => __METHOD__ . '@' . __LINE__,
+                    'cnpj'             => $cnpj,
+                    'retry_after'      => $responseHeaders['Retry-After'][0] ?? $responseHeaders['retry-after'][0] ?? null,
+                    'x_ratelimit'      => array_filter($responseHeaders, fn($k) => str_starts_with(strtolower($k), 'x-ratelimit'), ARRAY_FILTER_USE_KEY),
+                    'response_body'    => $responseBody,
+                ]);
+
+                return null;
+            }
+
+            if ($response->failed()) {
+                $this->setError(
                     "Erro ao consultar CNPJ na API. Status: {$statusCode}",
-                    [$response->body()],
+                    [$responseBody],
                     $statusCode,
                 );
 
                 Log::error($this->getMessage(), [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
-                    'message' => 'Erro na resposta da API de consulta CNPJ',
-                    'cnpj' => $cnpj,
-                    'status' => $statusCode,
-                    'body' => $response->body(),
+                    'metodo'           => __METHOD__ . '@' . __LINE__,
+                    'cnpj'             => $cnpj,
+                    'url'              => $url,
+                    'status'           => $statusCode,
+                    'response_headers' => $responseHeaders,
+                    'response_body'    => $responseBody,
                 ]);
 
                 return null;
@@ -198,21 +240,25 @@ class CnpjConsultationService
             $this->setSuccess('Consulta CNPJ realizada com sucesso');
 
             Log::info($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,        
-                'message' => 'CNPJ consultado com sucesso na API',
-                'cnpj' => $cnpj,
+                'metodo'       => __METHOD__ . '@' . __LINE__,
+                'cnpj'         => $cnpj,
                 'company_name' => $vo->companyName,
+                'status_cnpj'  => $vo->statusText,
+                'city'         => $vo->address->city,
+                'state'        => $vo->address->state,
             ]);
 
             return $vo;
         } catch (\Exception $e) {
             $this->setError('Erro ao consultar CNPJ', [$e->getMessage()]);
-            Log::error(__METHOD__ . '@' . __LINE__, [
+            Log::error($this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message' => 'Erro inesperado ao consultar API de CNPJ',
-                'cnpj' => $cnpj,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'cnpj'       => $cnpj,
+                'url'        => $url,
+                'exception'  => $e->getMessage(),
+                'exception_class' => get_class($e),
+                'trace'      => $e->getTraceAsString(),
             ]);
             return null;
         }
