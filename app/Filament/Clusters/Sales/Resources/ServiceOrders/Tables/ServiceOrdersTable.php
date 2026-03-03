@@ -12,6 +12,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServ
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -177,7 +178,7 @@ class ServiceOrdersTable
                 CreateAction::make()
                     ->label('Ordem de Serviço')
                     ->icon(Heroicon::Plus)
-                    ->badge(),
+                    ->size(Size::Small),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }

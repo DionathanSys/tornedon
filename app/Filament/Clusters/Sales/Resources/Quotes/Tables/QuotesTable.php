@@ -8,6 +8,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -80,7 +81,7 @@ class QuotesTable
                 CreateAction::make()
                     ->label('Orçamento')
                     ->icon(Heroicon::Plus)
-                    ->badge(),
+                    ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
     }
