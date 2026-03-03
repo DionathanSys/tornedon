@@ -85,11 +85,11 @@ class ItemsRelationManager extends RelationManager
                     ->summarize(Sum::make('quantity')->label('TT Qtde.')),
                 TextColumn::make('unit_price')
                     ->label('Vlr. Unitário')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('unit_cost')
                     ->label('Custo Unitário')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_percentage')
@@ -99,17 +99,12 @@ class ItemsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
-                TextColumn::make('subtotal')
-                    ->label('Subtotal')
-                    ->money('BRL', 100)
-                    ->sortable()
-                    ->summarize(Sum::make('subtotal')->label('TT Subtotal')->money('BRL', 100)),
                 TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL', 100)),
                 IconColumn::make('stock_consumed')

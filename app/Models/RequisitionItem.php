@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -28,10 +29,11 @@ class RequisitionItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:3',
-        'unit_price' => 'decimal:4',
-        'unit_cost' => 'decimal:4',
+        'unit_price' => MoneyCast::class,
+        'total_amount' => MoneyCast::class,
+        'unit_cost' => MoneyCast::class,
         'discount_percentage' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
+        'discount_amount' => MoneyCast::class,
         'stock_consumed' => 'boolean',
         'stock_consumed_at' => 'datetime',
         'commission_percentage' => 'decimal:2',
