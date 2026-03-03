@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\ProductStocks\Tables;
 
+use App\Enum\StockMovement\Type;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductStock\ProductStockService;
 use Filament\Actions\CreateAction;
@@ -70,20 +71,7 @@ class ProductStocksTable
                     ->label('Tipo')
                     ->width('1%')
                     ->badge()
-                    ->formatStateUsing(fn(?string $state) => match ($state) {
-                        'entrada' => 'Entrada',
-                        'saida' => 'Saída',
-                        'ajuste' => 'Ajuste',
-                        'transferencia' => 'Transferência',
-                        default => '-',
-                    })
-                    ->color(fn(?string $state) => match ($state) {
-                        'entrada' => 'success',
-                        'saida' => 'danger',
-                        'ajuste' => 'warning',
-                        'transferencia' => 'info',
-                        default => 'gray',
-                    })
+                    ->formatStateUsing(fn(?Type $state) => $state?->description ?? '-')
                     ->sortable()
                     ->toggleable(),
                 IconColumn::make('is_active')

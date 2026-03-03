@@ -45,14 +45,14 @@ class StockMovementsTable
                     ->sortable(),
                 TextColumn::make('unit_price')
                     ->label('Custo Un.')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Custo Total')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('reason')
                     ->label('Motivo')
                     ->searchable()

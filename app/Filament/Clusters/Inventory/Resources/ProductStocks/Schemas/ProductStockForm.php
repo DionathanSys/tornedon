@@ -101,15 +101,18 @@ class ProductStockForm
                         Money::make('average_cost')
                             ->label('Custo Médio Unitário')
                             ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 'R$ 0,00')
                             ->default(0)
                             ->prefix('R$'),
                         Money::make('last_cost')
                             ->label('Último Custo de Compra')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 'R$ 0,00')
                             ->prefix('R$'),
                         Money::make('last_sale_price')
                             ->label('Último Preço de Venda')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 'R$ 0,00')
                             ->prefix('R$'),
                     ]),
                 Section::make('Último Movimento')

@@ -37,21 +37,21 @@ class ProductsStockTable
                 TextColumn::make('average_cost')
                     ->label('Custo Médio')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('total_cost')
                     ->label('Custo Total')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('last_cost')
                     ->label('Últ. Custo')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('last_sale_price')
                     ->label('Últ. Venda (R$)')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('last_movement_date')

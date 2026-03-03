@@ -44,13 +44,15 @@ class StockMovementForm
             // ── Produto / Estoque ──────────────────────────────────────────
             Select::make('product_stock_id')
                 ->label('Produto')
-                ->options(fn(): array => ProductStock::where('company_id', Filament::getTenant()->id)
-                    ->with('product')
-                    ->get()
-                    ->mapWithKeys(fn(ProductStock $s) => [
-                        $s->id => $s->product?->name ?? "Estoque #{$s->id}",
-                    ])
-                    ->toArray()
+                ->native(false)
+                ->options(
+                    fn(): array => ProductStock::where('company_id', Filament::getTenant()->id)
+                        ->with('product')
+                        ->get()
+                        ->mapWithKeys(fn(ProductStock $s) => [
+                            $s->id => $s->product?->name ?? "Estoque #{$s->id}",
+                        ])
+                        ->toArray()
                 )
                 ->searchable()
                 ->required()
@@ -95,6 +97,7 @@ class StockMovementForm
                 ->label('Custo Unitário')
                 ->helperText(fn(Get $get): ?string => self::unitPriceHint((int) $get('product_stock_id')))
                 ->live(onBlur: true)
+                ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
                 ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
                 ->columnSpan(1),
 
@@ -103,6 +106,7 @@ class StockMovementForm
                 ->label('Custo Total')
                 ->readOnly()
                 ->helperText('Preenchido automaticamente (qtde × custo unit.)')
+                ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
                 ->columnSpan(1),
 
             // ── Motivo ─────────────────────────────────────────────────────
@@ -269,4 +273,3 @@ class StockMovementForm
         return (float) str_replace(',', '.', str_replace('.', '', $value));
     }
 }
-
