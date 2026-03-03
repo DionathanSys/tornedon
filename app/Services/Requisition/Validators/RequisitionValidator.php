@@ -79,7 +79,7 @@ class RequisitionValidator
             'company_id'    => 'required|integer|exists:companies,id',
             'customer_id'   => 'required|integer|exists:partners,id',
             'sale_date'     => 'required|date',
-            'status'        => ['required', Rule::in($statusValues)],
+            'status'        => ['required', Rule::enum(Status::class)],
             'delivery_date' => 'nullable|date|after_or_equal:sale_date',
         ]);
 
@@ -112,7 +112,7 @@ class RequisitionValidator
             'company_id'    => 'sometimes|required|integer|exists:companies,id',
             'customer_id'   => 'sometimes|required|integer|exists:partners,id',
             'sale_date'     => 'sometimes|required|date',
-            'status'        => ['sometimes', 'required', Rule::in($statusValues)],
+            'status'        => ['sometimes', 'required', Rule::enum(Status::class)],
             'delivery_date' => 'nullable|date',
         ]);
 
