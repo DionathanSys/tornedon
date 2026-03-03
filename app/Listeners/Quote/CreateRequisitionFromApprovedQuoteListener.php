@@ -42,9 +42,9 @@ class CreateRequisitionFromApprovedQuoteListener
                 $requisition = $requisitionService->create([
                     'company_id'    => $event->quote->company_id,
                     'customer_id'   => $event->quote->customer_id,
+                    'quote_id'      => $event->quote->id,
                     'sale_date'     => now()->toDateString(),
                     'status'        => RequisitionStatus::OPEN,
-                    'discount_amount' => $discountAmount,
                     'payment_method' => $event->quote->payment_method,
                     'payment_condition' => $event->quote->payment_condition,
                     'observations'  => "Gerada a partir do orçamento #{$event->quote->quote_number}\n{$event->quote->observations}",
@@ -84,7 +84,6 @@ class CreateRequisitionFromApprovedQuoteListener
                     'items_count' => $quoteItems->count(),
                 ]);
             });
-
         } catch (\Exception $e) {
             Log::error('CreateRequisitionFromApprovedQuoteListener: Erro ao criar requisição', [
                 'quote_id' => $event->quote->id,

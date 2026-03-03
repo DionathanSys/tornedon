@@ -130,11 +130,6 @@ class EditRequisition extends EditRecord
         ];
     }
 
-    protected function resolveRecord(int|string $key): Model
-    {
-        return static::getModel()::withTrashed()->findOrFail($key);
-    }
-
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         Log::debug('EditRequisition: Iniciando atualização de requisição', [

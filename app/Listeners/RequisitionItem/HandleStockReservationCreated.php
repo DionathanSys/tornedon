@@ -2,6 +2,7 @@
 
 namespace App\Listeners\RequisitionItem;
 
+use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Models\ProductStock;
 use App\Services\ProductStock\ProductStockService;
@@ -46,7 +47,7 @@ class HandleStockReservationCreated
             stock:        $stock,
             quantityDelta: (float) $item->quantity,
             lastSalePrice: (float) $item->unit_price,
-            movementType:  'requisition_item_created',
+            movementType:  Type::EXIT,
             updatedBy:     $event->createdBy,
         );
 

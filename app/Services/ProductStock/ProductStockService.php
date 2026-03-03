@@ -2,6 +2,7 @@
 
 namespace App\Services\ProductStock;
 
+use App\Enum\StockMovement\Type;
 use App\Models\ProductStock;
 use App\Services\ProductStock\Actions\CreateProductStockAction;
 use App\Services\ProductStock\Actions\DeleteProductStockAction;
@@ -441,7 +442,7 @@ class ProductStockService
      * @param  ProductStock $stock
      * @param  float        $quantityDelta  Variação (+/-) na quantidade reservada
      * @param  float        $lastSalePrice  Último preço de venda praticado no item
-     * @param  string       $movementType   Tipo do movimento para auditoria
+     * @param  Type         $movementType   Tipo do movimento para auditoria
      * @param  int          $updatedBy
      * @return bool
      */
@@ -449,7 +450,7 @@ class ProductStockService
         ProductStock $stock,
         float        $quantityDelta,
         float        $lastSalePrice,
-        string       $movementType,
+        Type       $movementType,
         int          $updatedBy,
     ): bool {
         $this->resetResponse();

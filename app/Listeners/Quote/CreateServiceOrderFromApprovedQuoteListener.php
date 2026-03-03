@@ -46,9 +46,10 @@ class CreateServiceOrderFromApprovedQuoteListener
                 $serviceOrder = $serviceOrderService->create([
                     'customer_id' => $event->quote->customer_id,
                     'company_id' => $event->quote->company_id,
+                    'quote_id' => $event->quote->id,
                     'order_date' => now()->toDateString(),
                     'scheduled_date' => now()->addDays(7)->toDateString(), // Padrão: 7 dias
-                    'status' => ServiceOrderState::OPEN,
+                    'status' => ServiceOrderState::OPEN->value,
                     'priority' => Priority::NORMAL->value,
                     'type' => Type::MAINTENANCE->value, // Tipo padrão
                     'estimated_hours' => $totalEstimatedHours,

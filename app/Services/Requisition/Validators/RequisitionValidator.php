@@ -17,6 +17,7 @@ class RequisitionValidator
     private static function commonRules(): array
     {
         return [
+            'quote_id'          => 'nullable|integer|exists:quotes,id',
             'service_order_id'  => 'nullable|integer|exists:service_orders,id',
             'discount_amount'   => 'nullable|numeric|min:0',
             'payment_method'    => ['nullable', Rule::enum(PaymentMethod::class)],

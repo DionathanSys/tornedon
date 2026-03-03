@@ -4,14 +4,10 @@ namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Ac
 
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Models\RequisitionItem;
-use App\Models\ServiceOrderItem;
 use App\Services\Product\ProductSalePriceService;
-use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
-use Filament\Facades\Filament;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
@@ -20,10 +16,8 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
-use App\Services\Product\ProductService;
 use App\Services\RequisitionItem\RequisitionItemService;
-use App\Services\Service\ServiceService;
-use App\Traits\AuthorizesServiceOrderItemActions;
+use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
@@ -32,7 +26,7 @@ use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class EditItemAction
 {
-    use AuthorizesServiceOrderItemActions;
+    use AuthorizesRequisitionItemActions;
     use ParsesMoneyValues;
 
     public static function make(): EditAction

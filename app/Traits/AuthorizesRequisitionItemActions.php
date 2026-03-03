@@ -1,17 +1,19 @@
-<?php
+﻿<?php
 
 namespace App\Traits;
 
 use App\Enum\Requisition\Status;
 use App\Models\Requisition;
+use App\Services\Requisition\RequisitionService;
 use Illuminate\Support\Facades\Auth;
 
 /**
  * Centraliza as verificações de estado + permissão para operações em itens de Requisição.
  *
  * Regra de negócio:
- *  - Somente requisições com status "open" (Status::OPEN) podem ter itens criados/editados/excluídos.
- *  - O usuário precisa ter permissão de `update` (para criar/editar) ou `delete` (para excluir).
+ *  - Somente requisições com status "aberta" (Status::OPEN) podem ter itens criados/editados/excluídos.
+ *  - O usuário precisa ter permissão de `update` (para criar/editar) ou `delete` (para excluir)
+ *    conforme definido em RequisitionPolicy.
  *
  * Uso:
  *  - Na camada Filament: use nas Action classes para controlar visibilidade dos botões.
@@ -26,10 +28,10 @@ trait AuthorizesRequisitionItemActions
     protected static function canModifyItems(int|Requisition $requisition): bool
     {
         if (is_int($requisition)) {
-            $requisition = Requisition::find($requisition);
+            $requisition = (new RequisitionService())->find($requisition);
         }
 
-        return $requisition?->status === Status::OPEN;
+        return $requisition->status === Status::OPEN;
             // && Auth::user()?->can('update', $requisition);
     }
 
@@ -40,10 +42,10 @@ trait AuthorizesRequisitionItemActions
     protected static function canDeleteItem(int|Requisition $requisition): bool
     {
         if (is_int($requisition)) {
-            $requisition = Requisition::find($requisition);
+            $requisition = (new RequisitionService())->find($requisition);
         }
 
-        return $requisition?->status === Status::OPEN;
+        return $requisition->status === Status::OPEN;
             // && Auth::user()?->can('delete', $requisition);
     }
 }

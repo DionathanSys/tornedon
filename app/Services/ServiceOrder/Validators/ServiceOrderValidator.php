@@ -17,6 +17,7 @@ class ServiceOrderValidator
     private static function commonRules(): array
     {
         return [
+            'quote_id'                  => 'nullable|integer|exists:quotes,id',
             'completion_date'           => 'nullable|date',
             'solution'                  => 'nullable|string',
             'equipment_id'              => 'nullable|integer|exists:equipments,id',

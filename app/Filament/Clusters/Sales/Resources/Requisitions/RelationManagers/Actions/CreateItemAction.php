@@ -3,13 +3,10 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
-use App\Services\ServiceOrderItem\ServiceOrderItemService;
-use App\Traits\AuthorizesServiceOrderItemActions;
+use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\CreateAction;
-use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -20,10 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Product\ProductSalePriceService;
-use App\Services\Product\ProductService;
 use App\Services\RequisitionItem\RequisitionItemService;
-use App\Services\Service\ServiceService;
-use App\Traits\AuthorizesRequisitionItemActions;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Facades\Log;

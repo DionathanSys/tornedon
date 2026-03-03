@@ -2,6 +2,7 @@
 
 namespace App\Services\ProductStock\Actions;
 
+use App\Enum\StockMovement\Type;
 use App\Models\ProductStock;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -26,9 +27,9 @@ class UpdateStockReservationAction
     /**
      * @param  float  $quantityDelta  Variação na quantidade reservada (+/-)
      * @param  float  $lastSalePrice  Último preço de venda registrado no item
-     * @param  string $movementType   Tipo do movimento (ex: 'requisition_created', 'requisition_updated', 'requisition_deleted')
+     * @param  Type $movementType   Tipo do movimento (ex: 'requisition_created', 'requisition_updated', 'requisition_deleted')
      */
-    public function execute(float $quantityDelta, float $lastSalePrice, string $movementType): bool
+    public function execute(float $quantityDelta, float $lastSalePrice, Type $movementType): bool
     {
         try {
             Log::debug('UpdateStockReservationAction: Atualizando reserva de estoque', [

@@ -130,11 +130,6 @@ class EditServiceOrder extends EditRecord
         ];
     }
 
-    protected function resolveRecord(int|string $key): Model
-    {
-        return static::getModel()::withTrashed()->findOrFail($key);
-    }
-
     protected function mutateFormDataBeforeSave(array $data): array
     {
         Log::debug('EditServiceOrder: Mutando dados antes de salvar', [
