@@ -16,6 +16,7 @@ use App\Filament\Clusters\Partners\Resources\Contacts\Actions\CreateContactActio
 use App\Filament\Clusters\Partners\Resources\Contacts\Actions\DeleteContactAction;
 use App\Filament\Clusters\Partners\Resources\Contacts\Actions\EditContactAction;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Models\CompanyPartner;
 use Filament\Forms\Components\Hidden;
@@ -55,7 +56,8 @@ class CompanyPartnerForm
                     ->persistCollapsed()
                     ->compact()
                     ->afterHeader([
-                        UpdatePartner::make()
+                        UpdatePartner::make(),
+                        ImportCnpjData::make(),
                     ])
                     ->schema([
                         Select::make('document_type')
@@ -142,6 +144,7 @@ class CompanyPartnerForm
                     ->columnSpanFull()
                     ->description('Endereço(s) do Parceiro')
                     ->afterHeader([
+
                         CreateAddressAction::make(),
                     ])
                     ->collapsible()

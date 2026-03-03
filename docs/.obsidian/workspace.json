@@ -20,6 +20,20 @@
               "icon": "lucide-file",
               "title": "Requisition"
             }
+          },
+          {
+            "id": "069cd65932a9d263",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Consulta CNPJ.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Consulta CNPJ"
+            }
           }
         ]
       }
@@ -78,7 +92,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "a36137f84796124f",
@@ -186,8 +201,10 @@
   },
   "active": "d6c379abdbc6e9b0",
   "lastOpenFiles": [
-    "regras-negocio/quote-production-workflow.md",
+    "Consulta CNPJ.md",
     "Requisition.md",
+    "Sem título",
+    "regras-negocio/quote-production-workflow.md",
     "TABELAS-CAMPOS.md",
     "Quote.md",
     "REQUIREMENTS.md",
@@ -213,11 +230,9 @@
     "SETUP-SHIELD.md",
     "permissions-guide.md",
     "Pasted image 20260219092215.png",
-    "Projeto/📥 Caixa de Entrada.md",
     "Pasted image 20260218133944.png",
     "Pasted image 20260218095557.png",
     "Pasted image 20260218092901.png",
-    "Projeto/AÇÕES/⚡CRUD Product Stock.md",
     "Projeto/AÇÕES",
     "Projeto"
   ]
