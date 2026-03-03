@@ -68,10 +68,11 @@ class ProductStocksTable
                     ->placeholder('-')
                     ->toggleable(),
                 TextColumn::make('last_movement_type')
-                    ->label('Tipo')
+                    ->label('Tipo Últ. Mov.')
                     ->width('1%')
                     ->badge()
-                    ->formatStateUsing(fn(?Type $state) => $state?->description ?? '-')
+                    ->formatStateUsing(fn(?Type $state) => $state?->label() ?? '-')
+                    ->color(fn(?Type $state) => $state?->color() ?? 'secondary')
                     ->sortable()
                     ->toggleable(),
                 IconColumn::make('is_active')

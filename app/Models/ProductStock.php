@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enum\StockMovement\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -38,6 +39,7 @@ class ProductStock extends Model
         'last_cost' => 'decimal:4',
         'last_sale_price' => 'decimal:4',
         'last_movement_date' => 'date',
+        'last_movement_type' => Type::class,
         'is_active' => 'boolean',
         'allow_negative' => 'boolean',
         'additional_info' => 'array',
