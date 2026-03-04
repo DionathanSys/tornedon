@@ -32,6 +32,13 @@ class ProductStocksTable
                     ->sortable()
                     ->limit(50)
                     ->icon(Heroicon::Cube),
+                TextColumn::make('quantity_total')
+                    ->label('Saldo Total')
+                    ->width('1%')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(),
                 TextColumn::make('quantity_available')
                     ->label('Qtd. Disponível')
                     ->width('1%')

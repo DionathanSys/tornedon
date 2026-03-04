@@ -41,7 +41,7 @@ class StockDestinationHandler
                     $productStock = $productStockService->create([
                         'product_id'         => $item->product_id,
                         'company_id'         => $productionOrder->company_id,
-                        'quantity_available'  => 0,
+                        'quantity_total'      => 0,
                         'quantity_reserved'   => 0,
                         'quantity_minimum'    => 0,
                         'average_cost'        => 0,

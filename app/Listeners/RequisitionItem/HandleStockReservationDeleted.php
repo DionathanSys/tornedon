@@ -2,6 +2,7 @@
 
 namespace App\Listeners\RequisitionItem;
 
+use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Models\ProductStock;
 use App\Services\ProductStock\ProductStockService;
@@ -40,7 +41,7 @@ class HandleStockReservationDeleted
             stock:         $stock,
             quantityDelta: -(float) $item->quantity,
             lastSalePrice: (float) $item->unit_price,
-            movementType:  'requisition_item_deleted',
+            movementType:  Type::RESERVATION_RELEASE,
             updatedBy:     $event->deletedBy,
         );
 

@@ -26,7 +26,7 @@ class ApplyMovementToProductStockAction
         /** @var Type $type */
         $type = $movement->type;
 
-        // Tipos de reserva apenas afetam quantity_reserved — não tocam em quantity_available
+        // Tipos de reserva apenas afetam quantity_reserved — não tocam em quantity_total
         if ($type->isReservationType()) {
             return $this->applyReservation($stock, $movement, $reverse);
         }
@@ -42,7 +42,7 @@ class ApplyMovementToProductStockAction
             $delta = -$delta;
         }
 
-        $currentQty  = (float) $stock->quantity_available;
+        $currentQty  = (float) $stock->quantity_total;
         $currentAvg  = (float) $stock->average_cost;
         $newQty      = $currentQty + $delta;
 
@@ -60,7 +60,7 @@ class ApplyMovementToProductStockAction
         }
 
         $updates = [
-            'quantity_available'  => $newQty,
+            'quantity_total'      => $newQty,
             'last_movement_date'  => now()->toDateString(),
             'last_movement_type'  => $type->value,
         ];
@@ -86,13 +86,13 @@ class ApplyMovementToProductStockAction
         $stock->update($updates);
 
         Log::debug('ApplyMovementToProductStockAction: Estoque atualizado', [
-            'metodo'           => __METHOD__ . '@' . __LINE__,
-            'product_stock_id' => $stock->id,
-            'reverse'          => $reverse,
-            'type'             => $type->value,
-            'delta'            => $delta,
-            'qty_before'       => $currentQty,
-            'qty_after'        => $newQty,
+            'metodo'              => __METHOD__ . '@' . __LINE__,
+            'product_stock_id'    => $stock->id,
+            'reverse'             => $reverse,
+            'type'                => $type->value,
+            'delta'               => $delta,
+            'qty_total_before'    => $currentQty,
+            'qty_total_after'     => $newQty,
             'avg_before'       => $currentAvg,
             'avg_after'        => $updates['average_cost'] ?? $currentAvg,
         ]);
@@ -123,7 +123,7 @@ class ApplyMovementToProductStockAction
 
     /**
      * Aplica um movimento de reserva/liberação ao quantity_reserved do ProductStock.
-     * Não altera quantity_available nem custo médio.
+     * Não altera quantity_total nem custo médio.
      */
     private function applyReservation(ProductStock $stock, StockMovement $movement, bool $reverse): bool
     {

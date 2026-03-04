@@ -38,8 +38,10 @@ class ProductStockValidator
             'product_id.exists'             => 'O produto informado não existe',
             'product_id.integer'            => 'O ID do produto deve ser um número inteiro',
             'product_id.unique'             => 'Já existe um registro de estoque para este produto',
-            'quantity_available.numeric'    => 'A quantidade disponível deve ser um número',
+            'quantity_available.numeric'    => 'A quantidade disponível deve ser um número (somente leitura)',
             'quantity_available.min'        => 'A quantidade disponível não pode ser negativa',
+            'quantity_total.numeric'        => 'A quantidade total deve ser um número',
+            'quantity_total.min'            => 'A quantidade total não pode ser negativa',
             'quantity_reserved.numeric'     => 'A quantidade reservada deve ser um número',
             'quantity_reserved.min'         => 'A quantidade reservada não pode ser negativa',
             'quantity_minimum.numeric'      => 'A quantidade mínima deve ser um número',
@@ -84,7 +86,7 @@ class ProductStockValidator
                 'exists:products,id',
                 Rule::unique('product_stocks', 'product_id'),
             ],
-            'quantity_available' => 'nullable|numeric|min:0',
+            'quantity_total'     => 'nullable|numeric|min:0',
             'quantity_reserved'  => 'nullable|numeric|min:0',
             'company_id'         => 'required|integer|exists:companies,id',
         ]);
@@ -95,8 +97,9 @@ class ProductStockValidator
     /**
      * Valida dados para atualização de estoque de produto.
      *
-     * NOTA: quantity_available e quantity_reserved NÃO são editáveis por aqui.
-     * - quantity_available só pode ser alterado via StockMovement (ApplyMovementToProductStockAction)
+     * NOTA: quantity_total e quantity_reserved NÃO são editáveis por aqui.
+     * - quantity_total só pode ser alterado via StockMovement (ApplyMovementToProductStockAction)
+     * - quantity_available é uma coluna virtual (quantity_total - quantity_reserved)
      * - quantity_reserved só pode ser alterado via UpdateStockReservationAction
      *
      * @param array $data Dados a validar
@@ -116,7 +119,8 @@ class ProductStockValidator
                     ->ignore($productStockId)
                     ->whereNull('deleted_at'),
             ],
-            // quantity_available → somente via StockMovement
+            // quantity_total → somente via StockMovement (ApplyMovementToProductStockAction)
+            // quantity_available → coluna virtual (somente leitura, não editável)
             // quantity_reserved → somente via UpdateStockReservationAction
         ]);
 

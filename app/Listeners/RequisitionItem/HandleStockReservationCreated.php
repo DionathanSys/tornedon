@@ -47,7 +47,7 @@ class HandleStockReservationCreated
             stock:        $stock,
             quantityDelta: (float) $item->quantity,
             lastSalePrice: (float) $item->unit_price,
-            movementType:  Type::EXIT,
+            movementType:  Type::RESERVATION,
             updatedBy:     $event->createdBy,
         );
 

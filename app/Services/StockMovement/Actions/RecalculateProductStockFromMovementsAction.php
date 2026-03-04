@@ -21,7 +21,7 @@ class RecalculateProductStockFromMovementsAction
      *
      * @param  ProductStock $stock    Registro bloqueado com lockForUpdate()
      * @return array{
-     *     quantity_available: float,
+     *     quantity_total: float,
      *     average_cost: float,
      *     last_cost: float|null,
      *     last_sale_price: float|null,
@@ -38,7 +38,7 @@ class RecalculateProductStockFromMovementsAction
             ->orderBy('id', 'asc')
             ->get();
 
-        $quantityAvailable = 0.0;
+        $quantityTotal     = 0.0;
         $totalInboundCost  = 0.0;  // numerador para custo médio
         $totalInboundQty   = 0.0;  // denominador para custo médio
 
@@ -54,7 +54,7 @@ class RecalculateProductStockFromMovementsAction
             $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
 
             $delta = $type->applyDelta($quantity);
-            $quantityAvailable += $delta;
+            $quantityTotal += $delta;
 
             // Custo médio: acumula apenas entradas com preço
             if ($type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
@@ -81,7 +81,7 @@ class RecalculateProductStockFromMovementsAction
             : (float) $stock->average_cost;  // mantém o custo existente se não houve entradas
 
         $result = [
-            'quantity_available' => round($quantityAvailable, 3),
+            'quantity_total'     => round($quantityTotal, 3),
             'average_cost'       => $averageCost,
             'last_cost'          => $lastCost,
             'last_sale_price'    => $lastSalePrice,

@@ -111,8 +111,8 @@ class ReconcileProductStockCommand extends Command
     {
         $expected = $this->calculateExpected($stock->id);
 
-        $storedQty = round((float) $stock->quantity_available, 3);
-        $expQty    = round($expected['quantity_available'], 3);
+        $storedQty = round((float) $stock->quantity_total, 3);
+        $expQty    = round($expected['quantity_total'], 3);
 
         $storedAvg = round((float) $stock->average_cost, 4);
         $expAvg    = round($expected['average_cost'], 4);
@@ -128,7 +128,7 @@ class ReconcileProductStockCommand extends Command
 
             if ($qtyDivergence) {
                 $this->line(sprintf(
-                    '     qty_available: armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
+                    '     qty_total    : armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
                     number_format($storedQty, 3, ',', '.'),
                     number_format($expQty, 3, ',', '.'),
                     number_format($storedQty - $expQty, 3, ',', '.'),
@@ -148,8 +148,8 @@ class ReconcileProductStockCommand extends Command
                 'product_stock_id'       => $stock->id,
                 'product_id'             => $stock->product_id,
                 'company_id'             => $stock->company_id,
-                'stored_qty_available'   => $storedQty,
-                'expected_qty_available' => $expQty,
+                'stored_qty_total'       => $storedQty,
+                'expected_qty_total'     => $expQty,
                 'stored_average_cost'    => $storedAvg,
                 'expected_average_cost'  => $expAvg,
             ]);
@@ -168,7 +168,7 @@ class ReconcileProductStockCommand extends Command
                     }
 
                     $locked->update([
-                        'quantity_available' => $expected['quantity_available'],
+                        'quantity_total'     => $expected['quantity_total'],
                         'average_cost'       => $expected['average_cost'],
                         'last_cost'          => $expected['last_cost'],
                         'last_sale_price'    => $expected['last_sale_price'],
@@ -214,7 +214,7 @@ class ReconcileProductStockCommand extends Command
             ->orderBy('id', 'asc')
             ->get();
 
-        $quantityAvailable = 0.0;
+        $quantityTotal    = 0.0;
         $totalInboundCost  = 0.0;
         $totalInboundQty   = 0.0;
 
@@ -230,7 +230,7 @@ class ReconcileProductStockCommand extends Command
             $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
 
             $delta = $type->applyDelta($quantity);
-            $quantityAvailable += $delta;
+            $quantityTotal += $delta;
 
             if ($type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
                 $totalInboundQty  += abs($quantity);
@@ -255,7 +255,7 @@ class ReconcileProductStockCommand extends Command
             : 0.0;
 
         return [
-            'quantity_available' => round($quantityAvailable, 3),
+            'quantity_total'     => round($quantityTotal, 3),
             'average_cost'       => $averageCost,
             'last_cost'          => $lastCost,
             'last_sale_price'    => $lastSalePrice,

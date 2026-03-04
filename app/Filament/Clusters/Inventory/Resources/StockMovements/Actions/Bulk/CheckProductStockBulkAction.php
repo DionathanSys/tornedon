@@ -54,8 +54,8 @@ final class CheckProductStockBulkAction
                     $totalChecked++;
                     $expected = self::calculateExpected($stockId);
 
-                    $storedQty = round((float) $stock->quantity_available, 3);
-                    $expQty    = round($expected['quantity_available'], 3);
+                    $storedQty = round((float) $stock->quantity_total, 3);
+                    $expQty    = round($expected['quantity_total'], 3);
                     $storedAvg = round((float) $stock->average_cost, 4);
                     $expAvg    = round($expected['average_cost'], 4);
 
@@ -67,7 +67,7 @@ final class CheckProductStockBulkAction
                         $lines = ["**{$productName}** (stock #{$stock->id})"];
 
                         if ($qtyDiv) {
-                            $lines[] = "- Qtde: armazenado=" . number_format($storedQty, 3, ',', '.') .
+                            $lines[] = "- Qtde total: armazenado=" . number_format($storedQty, 3, ',', '.') .
                                 ' | esperado=' . number_format($expQty, 3, ',', '.') .
                                 ' | diff=' . number_format($storedQty - $expQty, 3, ',', '.');
                         }
@@ -82,8 +82,8 @@ final class CheckProductStockBulkAction
                         Log::warning('CheckProductStockBulkAction: Divergência detectada', [
                             'product_stock_id'       => $stock->id,
                             'product_id'             => $stock->product_id,
-                            'stored_qty_available'   => $storedQty,
-                            'expected_qty_available' => $expQty,
+                            'stored_qty_total'       => $storedQty,
+                            'expected_qty_total'     => $expQty,
                             'stored_average_cost'    => $storedAvg,
                             'expected_average_cost'  => $expAvg,
                         ]);
@@ -119,7 +119,7 @@ final class CheckProductStockBulkAction
             ->orderBy('id', 'asc')
             ->get();
 
-        $quantityAvailable = 0.0;
+        $quantityTotal    = 0.0;
         $totalInboundCost  = 0.0;
         $totalInboundQty   = 0.0;
         $lastCost          = null;
@@ -132,7 +132,7 @@ final class CheckProductStockBulkAction
             $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
 
             $delta = $type->applyDelta($quantity);
-            $quantityAvailable += $delta;
+            $quantityTotal += $delta;
 
             if ($type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
                 $totalInboundQty  += abs($quantity);
@@ -150,8 +150,8 @@ final class CheckProductStockBulkAction
         }
 
         return [
-            'quantity_available' => round($quantityAvailable, 3),
-            'average_cost'       => $totalInboundQty > 0
+            'quantity_total'  => round($quantityTotal, 3),
+            'average_cost'    => $totalInboundQty > 0
                 ? round($totalInboundCost / $totalInboundQty, 4)
                 : 0.0,
             'last_cost'      => $lastCost,

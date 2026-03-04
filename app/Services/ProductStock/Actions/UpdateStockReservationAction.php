@@ -27,7 +27,7 @@ class UpdateStockReservationAction
     /**
      * @param  float  $quantityDelta  Variação na quantidade reservada (+/-)
      * @param  float  $lastSalePrice  Último preço de venda registrado no item
-     * @param  Type $movementType   Tipo do movimento (ex: 'requisition_created', 'requisition_updated', 'requisition_deleted')
+     * @param  Type   $movementType   Tipo do movimento (ex: 'requisition_created', 'requisition_updated', 'requisition_deleted')
      */
     public function execute(float $quantityDelta, float $lastSalePrice, Type $movementType): bool
     {

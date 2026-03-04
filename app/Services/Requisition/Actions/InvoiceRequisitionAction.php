@@ -77,8 +77,9 @@ class InvoiceRequisitionAction
 
     /**
      * Para cada item ainda não consumido:
-     *  1. Cria movimentação RESERVATION_RELEASE (devolve a reserva)
-     *  2. Cria movimentação EXIT (saída física do estoque)
+     *  1. Cria movimentação EXIT (saída física decrementa quantity_total)
+     *  2. Libera a reserva diretamente via updateReservation (decrementa quantity_reserved)
+     *     — o quantity_available virtual permanece igual (total −X, reservado −X → disponível inalterado)
      *  3. Marca o item como consumido
      * Ao final, marca a requisição como stock_consumed.
      */
@@ -141,20 +142,7 @@ class InvoiceRequisitionAction
                 'observations'     => $item->observations,
             ];
 
-            // 2a. Libera a reserva criada no fechamento
-            $release = $stockMovementService->create(array_merge($baseData, [
-                'type'   => Type::RESERVATION_RELEASE->value,
-                'reason' => 'Liberação de reserva — faturamento requisição #' . $requisition->number,
-            ]), $this->userId);
-
-            if (! $release) {
-                throw new \Exception(
-                    'Falha ao liberar reserva para produto #' . $item->product_id
-                    . ': ' . $stockMovementService->getMessage()
-                );
-            }
-
-            // 2b. Saída física do estoque
+            // 1. Saída física: decrementa quantity_total
             $exit = $stockMovementService->create(array_merge($baseData, [
                 'type'   => Type::EXIT->value,
                 'reason' => 'Saída por faturamento — requisição #' . $requisition->number,
@@ -167,7 +155,24 @@ class InvoiceRequisitionAction
                 );
             }
 
-            // 2c. Marca o item como consumido
+            // 2. Libera reserva diretamente (decrementa quantity_reserved)
+            //    A reserva foi criada pelos listeners ao adicionar o item — não há StockMovement de RESERVATION.
+            $released = $productStockService->updateReservation(
+                stock:         $productStock,
+                quantityDelta: -(float) $item->quantity,
+                lastSalePrice: (float) ($item->unit_price ?? 0),
+                movementType:  Type::RESERVATION_RELEASE,
+                updatedBy:     $this->userId,
+            );
+
+            if (! $released) {
+                throw new \Exception(
+                    'Falha ao liberar reserva de estoque para produto #' . $item->product_id
+                    . ': ' . $productStockService->getMessage()
+                );
+            }
+
+            // 3. Marca o item como consumido
             $item->update([
                 'stock_consumed'    => true,
                 'stock_consumed_at' => now(),
@@ -176,13 +181,12 @@ class InvoiceRequisitionAction
             Log::info('InvoiceRequisitionAction: Saída de estoque processada', [
                 'product_id'     => $item->product_id,
                 'quantity'       => $item->quantity,
-                'release_id'     => $release->id,
                 'exit_id'        => $exit->id,
                 'requisition_id' => $requisition->id,
             ]);
         }
 
-        // 3. Marca a requisição como consumida
+        // 4. Marca a requisição como consumida
         $requisition->update(['stock_consumed' => true]);
     }
 }

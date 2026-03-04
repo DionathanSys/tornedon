@@ -182,7 +182,8 @@ class UpdateRequisitionItemAction
             return null;
         }
 
-        $netAvailable = (float) $stock->quantity_available - (float) $stock->quantity_reserved;
+        // quantity_available é coluna virtual: quantity_total - quantity_reserved
+        $netAvailable = (float) $stock->quantity_available;
 
         if ($netAvailable < $quantityNeeded) {
             $label = $newProductId !== $oldProductId

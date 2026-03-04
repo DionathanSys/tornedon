@@ -2,6 +2,7 @@
 
 namespace App\Listeners\RequisitionItem;
 
+use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemUpdated;
 use App\Models\ProductStock;
 use App\Services\ProductStock\ProductStockService;
@@ -39,7 +40,7 @@ class HandleStockReservationUpdated
                         stock:         $newStock,
                         quantityDelta: (float) $item->quantity,
                         lastSalePrice: (float) $item->unit_price,
-                        movementType:  'requisition_item_updated',
+                        movementType:  Type::RESERVATION,
                         updatedBy:     $event->updatedBy,
                     );
                 }
@@ -74,7 +75,7 @@ class HandleStockReservationUpdated
             stock:         $stock,
             quantityDelta: $quantityDelta,
             lastSalePrice: (float) $item->unit_price,
-            movementType:  'requisition_item_updated',
+            movementType:  $quantityDelta >= 0 ? Type::RESERVATION : Type::RESERVATION_RELEASE,
             updatedBy:     $event->updatedBy,
         );
 
@@ -100,7 +101,7 @@ class HandleStockReservationUpdated
             stock:         $oldStock,
             quantityDelta: -$quantity,
             lastSalePrice: (float) $oldStock->last_sale_price,
-            movementType:  'requisition_item_product_changed',
+            movementType:  Type::RESERVATION_RELEASE,
             updatedBy:     $updatedBy,
         );
 

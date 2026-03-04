@@ -39,7 +39,7 @@ class SyncProductStockAction
                     // Cria novo registro de estoque usando o service
                     $stockData = [
                         'product_id'            => $this->product->id,
-                        'quantity_available'    => 0,
+                        'quantity_total'        => 0,
                         'quantity_reserved'     => 0,
                         'quantity_minimum'      => 0,
                         'quantity_maximum'      => null,

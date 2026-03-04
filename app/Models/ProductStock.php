@@ -13,7 +13,7 @@ class ProductStock extends Model
 
     protected $fillable = [
         'product_id',
-        'quantity_available',
+        'quantity_total',
         'quantity_reserved',
         'quantity_minimum',
         'quantity_maximum',
@@ -31,7 +31,8 @@ class ProductStock extends Model
     ];
 
     protected $casts = [
-        'quantity_available' => 'decimal:3',
+        'quantity_total' => 'decimal:3',
+        'quantity_available' => 'decimal:3', // coluna virtual: quantity_total - quantity_reserved
         'quantity_reserved' => 'decimal:3',
         'quantity_minimum' => 'decimal:3',
         'quantity_maximum' => 'decimal:3',

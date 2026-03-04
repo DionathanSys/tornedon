@@ -58,14 +58,20 @@ class ProductStockForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('quantity_available')
-                            ->label('Quantidade Disponível')
+                        TextInput::make('quantity_total')
+                            ->label('Saldo Total (Fiscal)')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->numeric()
                             ->default(0)
                             ->minValue(0)
                             ->step(0.001)
                             ->required(),
+                        TextInput::make('quantity_available')
+                            ->label('Quantidade Disponível')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->numeric()
+                            ->disabled()
+                            ->helperText('Calculado automaticamente: Saldo Total − Reservado'),
                         TextInput::make('quantity_reserved')
                             ->label('Quantidade Reservada')
                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -73,7 +79,8 @@ class ProductStockForm
                             ->default(0)
                             ->minValue(0)
                             ->step(0.001)
-                            ->required(),
+                            ->disabled()
+                            ->helperText('Gerenciado automaticamente pelo sistema'),
                         TextInput::make('quantity_minimum')
                             ->label('Estoque Mínimo')
                             ->columnSpan(['md' => 2, 'lg' => 2])

@@ -161,10 +161,9 @@ class CreateRequisitionItemAction
             return null;
         }
 
-        $netAvailable = $stock->quantity_available - $stock->quantity_reserved;
-
-        if ($netAvailable < $requestedQty) {
-            return "Saldo insuficiente no estoque. Disponível: {$netAvailable}, Solicitado: {$requestedQty}";
+        // quantity_available é coluna virtual: quantity_total - quantity_reserved
+        if ((float) $stock->quantity_available < $requestedQty) {
+            return "Saldo insuficiente no estoque. Disponível: {$stock->quantity_available}, Solicitado: {$requestedQty}";
         }
 
         return null;

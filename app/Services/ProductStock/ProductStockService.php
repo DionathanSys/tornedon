@@ -447,11 +447,11 @@ class ProductStockService
      * @return bool
      */
     public function updateReservation(
-        ProductStock $stock,
-        float        $quantityDelta,
-        float        $lastSalePrice,
-        Type       $movementType,
-        int          $updatedBy,
+        ProductStock    $stock,
+        float           $quantityDelta,
+        float           $lastSalePrice,
+        Type            $movementType,
+        int             $updatedBy,
     ): bool {
         $this->resetResponse();
 
@@ -528,9 +528,8 @@ class ProductStockService
             return true;
         }
 
-        $netAvailable = (float) $productStock->quantity_available - (float) $productStock->quantity_reserved;
-
-        return $netAvailable >= $requestedQuantity;
+        // quantity_available é coluna virtual: quantity_total - quantity_reserved
+        return (float) $productStock->quantity_available >= $requestedQuantity;
     }
 
     /**

@@ -47,17 +47,9 @@ class CloseRequisitionAction
                 }
 
                 // 2. Transição de estado (open → closed)
+                // A reserva já foi realizada pelos listeners quando os itens foram adicionados.
+                // Não há necessidade de criar movimentos RESERVATION aqui.
                 $requisition->state()->close($requisition, $this->userId);
-
-                // 3. Reserva o estoque gerando movimentações de RESERVATION
-                $consumeAction = new ConsumeRequisitionStockAction($this->userId);
-                $consumed = $consumeAction->execute($requisition);
-
-                if (! $consumed) {
-                    throw new \Exception(
-                        'Falha ao reservar estoque: ' . $consumeAction->getMessage()
-                    );
-                }
 
                 $requisition->refresh();
 
