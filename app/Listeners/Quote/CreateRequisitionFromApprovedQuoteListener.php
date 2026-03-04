@@ -6,6 +6,7 @@ use App\Enum\Quote\Destination;
 use App\Enum\Quote\Status;
 use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Events\Quote\QuoteApproved;
+use App\Services\Quote\QuoteService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use App\Services\Requisition\RequisitionService;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class CreateRequisitionFromApprovedQuoteListener
             DB::transaction(function () use ($event, $quoteItems, $discountAmount) {
                 // Guarda de idempotência: evita criar uma segunda requisição se o evento
                 // for disparado mais de uma vez (duplo clique, retry de rede, etc.)
-                $alreadyExists = app(RequisitionService::class)->findByQuoteId($event->quote->id) !== null;
+                $alreadyExists = app(QuoteService::class)->hasRequisition($event->quote);
                 if ($alreadyExists) {
                     Log::warning('CreateRequisitionFromApprovedQuoteListener: Requisição já existe para este orçamento — execução ignorada', [
                         'quote_id' => $event->quote->id,

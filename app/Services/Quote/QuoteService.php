@@ -93,6 +93,14 @@ class QuoteService
         ])->first();
     }
 
+    /**
+     * Verifica se já existe uma requisição vinculada ao orçamento.
+     */
+    public function hasRequisition(Quote $quote): bool
+    {
+        return $quote->requisitions()->exists();
+    }
+
     /* ==============================
      |  Operações de Escrita
      |==============================*/
