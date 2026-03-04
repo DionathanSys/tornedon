@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +45,11 @@ class FiscalDocument extends Model
         'canceled_at',
         'errors_messages',
         'logs',
+        'nfe_status',
+        'nfe_ambiente',
+        'nfe_protocolo',
+        'nfe_payload',
+        'nfe_sequence_id',
     ];
 
     protected $casts = [
@@ -62,9 +68,12 @@ class FiscalDocument extends Model
         'confirmed_at' => 'datetime',
         'canceled_at' => 'datetime',
         'errors_messages' => 'array',
-        'logs' => 'array',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'logs'            => 'array',
+        'nfe_status'      => NfeStatus::class,
+        'nfe_payload'     => 'array',
+        'nfe_ambiente'    => 'integer',
+        'created_at'      => 'datetime',
+        'updated_at'      => 'datetime',
     ];
 
     /* ==============================
@@ -114,5 +123,45 @@ class FiscalDocument extends Model
     public function accountPayables(): HasMany
     {
         return $this->hasMany(AccountPayable::class);
+    }
+
+    public function nfeSequence(): BelongsTo
+    {
+        return $this->belongsTo(NfeSequence::class);
+    }
+
+    /* ==============================
+     |  Helpers
+     |==============================*/
+
+    public function isPendente(): bool
+    {
+        return $this->nfe_status === NfeStatus::PENDENTE;
+    }
+
+    public function isEmProcessamento(): bool
+    {
+        return $this->nfe_status === NfeStatus::EM_PROCESSAMENTO;
+    }
+
+    public function isAutorizado(): bool
+    {
+        return $this->nfe_status === NfeStatus::AUTORIZADO;
+    }
+
+    public function isRejeitado(): bool
+    {
+        return $this->nfe_status === NfeStatus::REJEITADO;
+    }
+
+    public function isCancelado(): bool
+    {
+        return $this->nfe_status === NfeStatus::CANCELADO;
+    }
+
+    public function nfeEnviada(): bool
+    {
+        return $this->nfe_status !== null
+            && $this->nfe_status !== NfeStatus::PENDENTE;
     }
 }
