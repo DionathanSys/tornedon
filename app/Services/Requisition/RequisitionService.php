@@ -106,6 +106,19 @@ class RequisitionService
         ])->first();
     }
 
+    /**
+     * Busca a requisição vinculada a um orçamento pelo ID do orçamento.
+     */
+    public function findByQuoteId(int $quoteId): ?Requisition
+    {
+        Log::debug('Buscando requisição por quote_id', [
+            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'quote_id' => $quoteId,
+        ]);
+
+        return Requisition::where('quote_id', $quoteId)->first();
+    }
+
     /* ==============================
      |  Operações de Escrita
      |==============================*/

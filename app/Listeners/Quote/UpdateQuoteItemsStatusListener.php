@@ -18,10 +18,13 @@ class UpdateQuoteItemsStatusListener
                 'quote_id' => $event->quote->id,
             ]);
 
-            // Atualiza o status de todos os itens para aprovado
-            $event->quote->items()->update([
-                'status' => Status::APPROVED,
-            ]);
+            // Atualiza apenas os itens que ainda não foram vinculados (LINKED),
+            // evitando reverter o status de itens já processados por outros listeners
+            $event->quote->items()
+                ->where('status', '!=', Status::LINKED->value)
+                ->update([
+                    'status' => Status::APPROVED,
+                ]);
 
             Log::info('UpdateQuoteItemsStatusListener: Status dos itens atualizado com sucesso', [
                 'quote_id' => $event->quote->id,

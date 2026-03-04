@@ -3,6 +3,7 @@
 namespace App\Listeners\Quote;
 
 use App\Enum\Quote\Destination;
+use App\Enum\Quote\Status;
 use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Events\Quote\QuoteApproved;
 use App\Services\RequisitionItem\RequisitionItemService;
@@ -18,9 +19,10 @@ class CreateRequisitionFromApprovedQuoteListener
     public function handle(QuoteApproved $event): void
     {
         try {
-            // Busca apenas os itens com destinação de requisição
+            // Busca apenas os itens com destinação de requisição que ainda não foram vinculados
             $quoteItems = $event->quote->items()
                 ->where('destination', Destination::REQUISITION->value)
+                ->where('status', '!=', Status::LINKED->value)
                 ->get();
 
             if ($quoteItems->isEmpty()) {
@@ -33,6 +35,16 @@ class CreateRequisitionFromApprovedQuoteListener
             $discountAmount = $quoteItems->sum('discount_amount');
 
             DB::transaction(function () use ($event, $quoteItems, $discountAmount) {
+                // Guarda de idempotência: evita criar uma segunda requisição se o evento
+                // for disparado mais de uma vez (duplo clique, retry de rede, etc.)
+                $alreadyExists = app(RequisitionService::class)->findByQuoteId($event->quote->id) !== null;
+                if ($alreadyExists) {
+                    Log::warning('CreateRequisitionFromApprovedQuoteListener: Requisição já existe para este orçamento — execução ignorada', [
+                        'quote_id' => $event->quote->id,
+                    ]);
+                    return;
+                }
+
                 Log::debug('CreateRequisitionFromApprovedQuoteListener: Criando requisição', [
                     'quote_id' => $event->quote->id,
                     'items_count' => $quoteItems->count(),

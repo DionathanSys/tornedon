@@ -102,10 +102,7 @@ class QuoteForm
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->minDate(now())
                             ->default(now()->addDays(CompanyPreference::get(key: 'default_quote_validity_days', default: 30)))
-                            ->disabled(function(Get $get, $operation) {
-                                $status = $get('status');
-                                return $operation === 'edit' && in_array($status, [Status::APPROVED->value, Status::REJECTED->value]);
-                            })
+                            ->disabled(fn(Get $get) => in_array($get('status'), [Status::APPROVED->value, Status::REJECTED->value]))
                             ->required(),
                         SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')

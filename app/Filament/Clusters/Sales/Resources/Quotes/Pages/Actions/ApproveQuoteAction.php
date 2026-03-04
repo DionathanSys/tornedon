@@ -26,17 +26,11 @@ final class ApproveQuoteAction
             ->icon(Heroicon::CheckCircle)
             ->color('success')
             ->modalHeading('Aprovar Orçamento')
-            ->modalDescription('Preencha os dados de pagamento para aprovar o orçamento.')
+            ->modalDescription('Tem certeza de que deseja aprovar este orçamento?')
             ->modalSubmitActionLabel('Aprovar')
             ->modalCancelActionLabel('Cancelar')
             ->visible(fn (Quote $record): bool => in_array($record->status, [Status::DRAFT, Status::SENT]))
             ->action(function (Quote $record): void {
-                Log::debug('ApproveQuoteAction (Filament): Aprovando orçamento', [
-                    'metodo'   => __METHOD__ . '@' . __LINE__,
-                    'quote_id' => $record->id,
-                    'user_id'  => Auth::id(),
-                ]);
-
                 $service = app(QuoteService::class);
                 $service->approve($record, Auth::id());
 

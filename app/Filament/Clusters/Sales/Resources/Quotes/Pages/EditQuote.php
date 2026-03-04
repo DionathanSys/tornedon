@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Pages;
 
+use App\Enum\Quote\Status;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ApproveQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ConvertToProductionOrderQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\RejectQuoteAction;
@@ -138,6 +139,15 @@ class EditQuote extends EditRecord
         ];
     }
 
+    protected function getFormActions(): array
+    {
+        if(in_array($this->record->status, [Status::APPROVED->value, Status::REJECTED->value])) {
+            return [];
+        }
+
+        return parent::getFormActions();
+    }
+
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         Log::debug('EditQuote: Iniciando atualização de orçamento', [
@@ -178,5 +188,4 @@ class EditQuote extends EditRecord
     {
         return 'Orçamento atualizado com sucesso';
     }
-
 }
