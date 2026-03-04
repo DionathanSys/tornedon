@@ -5,13 +5,13 @@ namespace App\Listeners\RequisitionItem;
 use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Models\ProductStock;
-use App\Services\ProductStock\ProductStockService;
+use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 
 class HandleStockReservationDeleted
 {
     public function __construct(
-        private ProductStockService $stockService,
+        private StockMovementService $stockMovementService,
     ) {}
 
     public function handle(RequisitionItemDeleted $event): void
@@ -36,21 +36,24 @@ class HandleStockReservationDeleted
             return;
         }
 
-        // Libera a quantidade reservada (delta negativo)
-        $this->stockService->updateReservation(
-            stock:         $stock,
-            quantityDelta: -(float) $item->quantity,
-            lastSalePrice: (float) $item->unit_price,
-            movementType:  Type::RESERVATION_RELEASE,
-            updatedBy:     $event->deletedBy,
-        );
+        $movement = $this->stockMovementService->create([
+            'product_stock_id' => $stock->id,
+            'product_id'       => $product->id,
+            'company_id'       => $stock->company_id,
+            'type'             => Type::RESERVATION_RELEASE->value,
+            'quantity'         => (float) $item->quantity,
+            'unit_price'       => (float) ($item->unit_price ?? 0),
+            'reason'           => 'Liberação de reserva por exclusão de item de requisição',
+            'source_type'      => 'requisition_item',
+            'source_id'        => $item->id,
+        ], $event->deletedBy);
 
-        if ($this->stockService->hasError()) {
+        if (! $movement) {
             Log::error('HandleStockReservationDeleted: Erro ao liberar reserva de estoque', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'product_id' => $product->id,
                 'item_id'    => $item->id,
-                'error'      => $this->stockService->getMessage(),
+                'error'      => $this->stockMovementService->getMessage(),
             ]);
         }
     }

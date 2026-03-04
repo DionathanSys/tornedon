@@ -78,7 +78,7 @@ class InvoiceRequisitionAction
     /**
      * Para cada item ainda não consumido:
      *  1. Cria movimentação EXIT (saída física decrementa quantity_total)
-     *  2. Libera a reserva diretamente via updateReservation (decrementa quantity_reserved)
+     *  2. Cria movimentação RESERVATION_RELEASE (libera a reserva, decrementa quantity_reserved)
      *     — o quantity_available virtual permanece igual (total −X, reservado −X → disponível inalterado)
      *  3. Marca o item como consumido
      * Ao final, marca a requisição como stock_consumed.
@@ -155,20 +155,16 @@ class InvoiceRequisitionAction
                 );
             }
 
-            // 2. Libera reserva diretamente (decrementa quantity_reserved)
-            //    A reserva foi criada pelos listeners ao adicionar o item — não há StockMovement de RESERVATION.
-            $released = $productStockService->updateReservation(
-                stock:         $productStock,
-                quantityDelta: -(float) $item->quantity,
-                lastSalePrice: (float) ($item->unit_price ?? 0),
-                movementType:  Type::RESERVATION_RELEASE,
-                updatedBy:     $this->userId,
-            );
+            // 2. Libera a reserva via movimentação de RESERVATION_RELEASE
+            $release = $stockMovementService->create(array_merge($baseData, [
+                'type'   => Type::RESERVATION_RELEASE->value,
+                'reason' => 'Liberação de reserva por faturamento — requisição #' . $requisition->number,
+            ]), $this->userId);
 
-            if (! $released) {
+            if (! $release) {
                 throw new \Exception(
                     'Falha ao liberar reserva de estoque para produto #' . $item->product_id
-                    . ': ' . $productStockService->getMessage()
+                    . ': ' . $stockMovementService->getMessage()
                 );
             }
 
@@ -182,6 +178,7 @@ class InvoiceRequisitionAction
                 'product_id'     => $item->product_id,
                 'quantity'       => $item->quantity,
                 'exit_id'        => $exit->id,
+                'release_id'     => $release->id,
                 'requisition_id' => $requisition->id,
             ]);
         }

@@ -5,17 +5,15 @@ namespace App\Services\Requisition\Actions;
 use App\Enum\StockMovement\Type;
 use App\Models\Requisition;
 use App\Services\ProductStock\ProductStockService;
+use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Libera a reserva de estoque dos itens de uma requisição.
  *
- * Itera os itens ainda não consumidos e libera diretamente o quantity_reserved
- * via ProductStockService::updateReservation().
- *
- * A reserva foi criada pelos listeners (HandleStockReservation*) quando os itens
- * foram adicionados/atualizados — não há StockMovements do tipo RESERVATION.
+ * Itera os itens ainda não consumidos e cria movimentações de RESERVATION_RELEASE
+ * via StockMovementService, garantindo rastro de auditoria completo.
  *
  * Deve ser chamado ao cancelar (OPEN → CANCELLED) ou reabrir (CLOSED → OPEN) uma requisição.
  */
@@ -30,7 +28,8 @@ class ReleaseRequisitionReservationAction
     public function execute(Requisition $requisition): bool
     {
         try {
-            $productStockService = app(ProductStockService::class);
+            $productStockService  = app(ProductStockService::class);
+            $stockMovementService = app(StockMovementService::class);
 
             $items = $requisition->items()
                 ->where('stock_consumed', false)
@@ -70,20 +69,24 @@ class ReleaseRequisitionReservationAction
                     continue;
                 }
 
-                $released = $productStockService->updateReservation(
-                    stock:         $stock,
-                    quantityDelta: -(float) $item->quantity,
-                    lastSalePrice: (float) ($item->unit_price ?? 0),
-                    movementType:  Type::RESERVATION_RELEASE,
-                    updatedBy:     $this->userId,
-                );
+                $release = $stockMovementService->create([
+                    'product_stock_id' => $stock->id,
+                    'product_id'       => $item->product_id,
+                    'company_id'       => $requisition->company_id,
+                    'type'             => Type::RESERVATION_RELEASE->value,
+                    'quantity'         => (float) $item->quantity,
+                    'unit_price'       => (float) ($item->unit_price ?? 0),
+                    'reason'           => 'Liberação de reserva — requisição #' . $requisition->number,
+                    'source_type'      => 'requisition',
+                    'source_id'        => $requisition->id,
+                ], $this->userId);
 
-                if (! $released) {
-                    Log::error('ReleaseRequisitionReservationAction: Falha ao liberar reserva', [
+                if (! $release) {
+                    Log::error('ReleaseRequisitionReservationAction: Falha ao criar movimentação de liberação', [
                         'product_id'     => $item->product_id,
                         'item_id'        => $item->id,
                         'requisition_id' => $requisition->id,
-                        'error'          => $productStockService->getMessage(),
+                        'error'          => $stockMovementService->getMessage(),
                     ]);
                     $this->setError('Falha ao liberar reserva de estoque para produto #' . $item->product_id);
                     return false;
@@ -92,6 +95,7 @@ class ReleaseRequisitionReservationAction
                 Log::info('ReleaseRequisitionReservationAction: Reserva liberada', [
                     'product_id'     => $item->product_id,
                     'quantity'       => $item->quantity,
+                    'release_id'     => $release->id,
                     'item_id'        => $item->id,
                     'requisition_id' => $requisition->id,
                 ]);

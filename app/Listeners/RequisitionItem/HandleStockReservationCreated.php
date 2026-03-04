@@ -5,14 +5,14 @@ namespace App\Listeners\RequisitionItem;
 use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Models\ProductStock;
-use App\Services\ProductStock\ProductStockService;
+use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 use App\Notification\NotifyService as notify;
 
 class HandleStockReservationCreated
 {
     public function __construct(
-        private ProductStockService $stockService,
+        private StockMovementService $stockMovementService,
     ) {}
 
     public function handle(RequisitionItemCreated $event): void
@@ -34,7 +34,7 @@ class HandleStockReservationCreated
                 toDatabase: true,
                 users: $event->createdBy,
             );
-            
+
             Log::warning('HandleStockReservationCreated: Estoque não encontrado para o produto', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'product_id' => $product->id,
@@ -43,20 +43,24 @@ class HandleStockReservationCreated
             return;
         }
 
-        $this->stockService->updateReservation(
-            stock:        $stock,
-            quantityDelta: (float) $item->quantity,
-            lastSalePrice: (float) $item->unit_price,
-            movementType:  Type::RESERVATION,
-            updatedBy:     $event->createdBy,
-        );
+        $movement = $this->stockMovementService->create([
+            'product_stock_id' => $stock->id,
+            'product_id'       => $product->id,
+            'company_id'       => $stock->company_id,
+            'type'             => Type::RESERVATION->value,
+            'quantity'         => (float) $item->quantity,
+            'unit_price'       => (float) ($item->unit_price ?? 0),
+            'reason'           => 'Reserva por item de requisição',
+            'source_type'      => 'requisition_item',
+            'source_id'        => $item->id,
+        ], $event->createdBy);
 
-        if ($this->stockService->hasError()) {
+        if (! $movement) {
             Log::error('HandleStockReservationCreated: Erro ao reservar estoque', [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'product_id'    => $product->id,
-                'item_id'       => $item->id,
-                'error'         => $this->stockService->getMessage(),
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'product_id' => $product->id,
+                'item_id'    => $item->id,
+                'error'      => $this->stockMovementService->getMessage(),
             ]);
         }
     }
