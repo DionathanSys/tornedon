@@ -13,7 +13,7 @@ class UpdateQuoteItemsStatusListener
      */
     public function handle(QuoteApproved $event): void
     {
-        try {llg
+        try {
             Log::debug('UpdateQuoteItemsStatusListener: Atualizando status dos itens', [
                 'quote_id' => $event->quote->id,
             ]);
