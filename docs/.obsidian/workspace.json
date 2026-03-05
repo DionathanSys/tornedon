@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Quote-Scope.md",
+                "file": "Escopo Fiscal da Aplicação.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Quote-Scope"
+              "title": "Escopo Fiscal da Aplicação"
             }
           }
         ]
@@ -184,16 +184,15 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "975c578b539d9741",
+  "active": "7f0905ef69d023eb",
   "lastOpenFiles": [
-    "Quote-Scope.md",
     "docs/regras-negocio/quote-production-workflow.md",
+    "docs/TABELAS-CAMPOS.md",
     "docs/regras-negocio",
     "docs/DATABASE-STANDARDS.md",
-    "docs/TABELAS-CAMPOS.md",
-    "Sem título.md",
     "docs",
-    "Quote.md",
+    "Quote-Scope.md",
+    "Sem título.md",
     "Escopo Fiscal da Aplicação.md",
     "TABELAS-CAMPOS.md",
     "REQUIREMENTS.md",
@@ -201,6 +200,7 @@
     "Consulta CNPJ.md",
     "Sem título",
     "regras-negocio/quote-production-workflow.md",
+    "Quote.md",
     "DATABASE-STANDARDS.md",
     "DEVELOPMENT-GUIDE.md",
     "CODING-STANDARDS.md",

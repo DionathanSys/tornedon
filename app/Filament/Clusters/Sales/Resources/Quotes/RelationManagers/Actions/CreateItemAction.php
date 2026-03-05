@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\Actions;
 
+use App\Enum\Product\Unit;
 use App\Enum\Quote\Destination;
 use App\Enum\Quote\Status;
 use App\Filament\Clusters\Inventory\Resources\Products\Tables\ProductsTable;
@@ -59,6 +60,11 @@ final class CreateItemAction
                 $data['quote_id'] = $quote->id;
                 $data['status'] = Status::DRAFT->value;
                 
+                // Garante unit_of_measure para serviços (não possuem unidade própria)
+                if (empty($data['unit_of_measure']) && ! empty($data['service_id'])) {
+                    $data['unit_of_measure'] = Unit::UN->value;
+                }
+
                 // Parse numeric values from PT-BR format to float
                 $data['quantity']            = self::parseMoneyValue($data['quantity'] ?? 0);
                 $data['unit_price']          = self::parseMoneyValue($data['unit_price'] ?? 0);
