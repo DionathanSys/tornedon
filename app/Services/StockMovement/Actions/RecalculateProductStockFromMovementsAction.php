@@ -33,7 +33,6 @@ class RecalculateProductStockFromMovementsAction
     {
         // Busca todas as movimentações ativas desta stock, em ordem cronológica
         $movements = StockMovement::where('product_stock_id', $stock->id)
-            ->whereNull('deleted_at')
             ->orderBy('created_at', 'asc')
             ->orderBy('id', 'asc')
             ->get();
