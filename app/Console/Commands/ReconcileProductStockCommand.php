@@ -209,7 +209,6 @@ class ReconcileProductStockCommand extends Command
     private function calculateExpected(int $productStockId): array
     {
         $movements = StockMovement::where('product_stock_id', $productStockId)
-            ->whereNull('deleted_at')
             ->orderBy('created_at', 'asc')
             ->orderBy('id', 'asc')
             ->get();
