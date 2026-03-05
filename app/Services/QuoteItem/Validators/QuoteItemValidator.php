@@ -74,7 +74,7 @@ class QuoteItemValidator
             'description'       => 'nullable|string|max:2000',
             'destination'       => ['required', 'string', 'max:255', Rule::enum(Destination::class)],
             'quantity'          => 'required|numeric|min:0.001',
-            'unit_of_measure'   => 'nullable|string|max:20',
+            'unit_of_measure'   => 'required|string|max:20',
             'unit_price'        => 'required|numeric|min:0',
             'status'            => 'required|string|max:50',
         ]);

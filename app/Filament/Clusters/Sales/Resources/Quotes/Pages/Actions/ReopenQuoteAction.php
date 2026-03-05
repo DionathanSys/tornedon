@@ -9,6 +9,7 @@ use App\Services\Quote\QuoteService;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Log;
 
 final class ReopenQuoteAction
@@ -22,6 +23,7 @@ final class ReopenQuoteAction
             ->requiresConfirmation()
             ->modalHeading('Reabrir Orçamento')
             ->modalDescription('Tem certeza que deseja reabrir este orçamento? O status voltará para "Rascunho".')
+            ->modalWidth(Width::Small)
             ->modalSubmitActionLabel('Sim, reabrir')
             ->visible(fn (Quote $record): bool => in_array($record->status, [Status::REJECTED, Status::EXPIRED, Status::APPROVED]))
             ->action(function (Quote $record): void {
