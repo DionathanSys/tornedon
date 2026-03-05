@@ -95,6 +95,7 @@ class ProductionOrdersTable
                     ->label('Status')
                     ->options(Status::toSelectArray())
                     ->multiple()
+                    ->default([Status::IN_PROGRESS->value, Status::QC_CHECK->value, Status::QUEUED->value])
                     ->native(false),
                 SelectFilter::make('priority')
                     ->label('Prioridade')

@@ -127,6 +127,7 @@ class ServiceOrdersTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(State::toSelectArray())
+                    ->default(State::OPEN->value)
                     ->native(false)
                     ->multiple(),
                 SelectFilter::make('priority')

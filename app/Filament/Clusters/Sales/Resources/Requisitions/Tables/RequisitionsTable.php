@@ -81,6 +81,7 @@ class RequisitionsTable
                     ->label('Status')
                     ->options(Status::toSelectArray())
                     ->multiple()
+                    ->default([Status::OPEN->value])
                     ->native(false),
             ])
             ->recordActions([
