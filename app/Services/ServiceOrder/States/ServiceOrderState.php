@@ -39,4 +39,9 @@ interface ServiceOrderState
      * Retorna true se a transição que recebe o $transition é possível.
      */
     public function canTransitionTo(string $transition): bool;
+
+    /**
+     * Retorna true se a ordem de serviço pode ser editada neste estado.
+     */
+    public function canEdit(): bool;
 }

@@ -58,4 +58,9 @@ class OpenState implements ServiceOrderState
     {
         return in_array($transition, ['close', 'cancel']);
     }
+
+    public function canEdit(): bool
+    {
+        return true;
+    }
 }

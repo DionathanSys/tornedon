@@ -43,4 +43,9 @@ class InvoicedState implements ServiceOrderState
     {
         return false;
     }
+
+    public function canEdit(): bool
+    {
+        return false;
+    }
 }

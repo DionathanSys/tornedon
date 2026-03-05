@@ -6,7 +6,6 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
 use App\Models\CompanyPreference;
-use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
@@ -20,6 +19,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire as ComponentsLivewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -29,6 +30,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use Livewire\Livewire;
 
@@ -42,11 +44,6 @@ class ServiceOrderForm
                 'md' => 4,
                 'lg' => 12,
             ])
-            ->disabled(
-                fn(Schema $schema): bool =>
-                $schema->getOperation() === Operation::Edit
-                    && $schema->getRecord()?->status !== State::OPEN
-            )
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
@@ -65,14 +62,75 @@ class ServiceOrderForm
                                     ])
                                     ->columnSpanFull()
                                     ->schema([
-                                        TextInput::make('number')
-                                            ->label('Número da OS')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->visibleOn('edit')
-                                            ->disabled(),
+                                        Group::make()
+                                            ->columns([
+                                                'sm' => 1,
+                                                'md' => 4,
+                                                'lg' => 8,
+                                            ])
+                                            ->columnSpanFull()
+                                            ->schema([
+                                                TextEntry::make('number')
+                                                    ->label('Número da OS')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2]),
+                                                TextEntry::make('status')
+                                                    ->label('Status')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => Str::upper($state->description())),
+                                                Select::make('priority')
+                                                    ->label('Prioridade')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->required()
+                                                    ->options(Priority::toSelectArray())
+                                                    ->default(Priority::NORMAL->value)
+                                                    ->native(false)
+                                                    ->selectablePlaceholder(false),
+                                                Select::make('type')
+                                                    ->label('Tipo')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->required()
+                                                    ->options(Type::toSelectArray())
+                                                    ->default(Type::MAINTENANCE->value)
+                                                    ->native(false)
+                                                    ->selectablePlaceholder(false),
+                                            ]),
+                                        Group::make()
+                                            ->columns([
+                                                'sm' => 1,
+                                                'md' => 4,
+                                                'lg' => 8,
+                                            ])
+                                            ->columnSpanFull()
+                                            ->schema([
+                                                DatePicker::make('order_date')
+                                                    ->label('Data da Ordem')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->columnStart(1)
+                                                    ->required()
+                                                    ->default(now())
+                                                    ->displayFormat('d/m/Y')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                                DatePicker::make('scheduled_date')
+                                                    ->label('Data Agendada')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->displayFormat('d/m/Y')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                                DatePicker::make('limit_date')
+                                                    ->label('Data Limite')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->displayFormat('d/m/Y')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                                DatePicker::make('completion_date')
+                                                    ->label('Data de Conclusão')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->displayFormat('d/m/Y')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                            ]),
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->columnStart(1)
                                             ->required()
                                             ->searchable()
                                             ->preload()
@@ -100,52 +158,8 @@ class ServiceOrderForm
                                                 fn($value): ?string => (new EquipmentService())
                                                     ->getLabelForSelect((int) $value)
                                             )
-                                            ->disabled(fn($get) => !$get('customer_id'))
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->columnStart(1)
-                                            ->required()
-                                            ->options(State::toSelectArray())
-                                            ->default(State::OPEN->value)
-                                            ->native(false)
-                                            ->selectablePlaceholder(false),
-                                        Select::make('priority')
-                                            ->label('Prioridade')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->required()
-                                            ->options(Priority::toSelectArray())
-                                            ->default(Priority::NORMAL->value)
-                                            ->native(false)
-                                            ->selectablePlaceholder(false),
-                                        Select::make('type')
-                                            ->label('Tipo')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->required()
-                                            ->options(Type::toSelectArray())
-                                            ->default(Type::MAINTENANCE->value)
-                                            ->native(false)
-                                            ->selectablePlaceholder(false),
-                                        DatePicker::make('order_date')
-                                            ->label('Data da Ordem')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->columnStart(1)
-                                            ->required()
-                                            ->default(now())
-                                            ->displayFormat('d/m/Y'),
-                                        DatePicker::make('scheduled_date')
-                                            ->label('Data Agendada')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->displayFormat('d/m/Y'),
-                                        DatePicker::make('limit_date')
-                                            ->label('Data Limite')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->displayFormat('d/m/Y'),
-                                        DatePicker::make('completion_date')
-                                            ->label('Data de Conclusão')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->displayFormat('d/m/Y'),
                                     ]),
                                 Section::make('Atendimento')
                                     ->columns([
@@ -153,6 +167,8 @@ class ServiceOrderForm
                                         'md' => 4,
                                         'lg' => 12,
                                     ])
+                                    ->collapsible()
+                                    ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
                                         Select::make('technician_id')
@@ -161,20 +177,23 @@ class ServiceOrderForm
                                             ->searchable()
                                             ->preload()
                                             ->relationship('technician', 'name')
-                                            ->default(fn() => Auth::id()),
+                                            ->default(fn() => Auth::id())
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                         Select::make('supervisor_id')
                                             ->label('Supervisor')
                                             ->columnSpan(['md' => 1, 'lg' => 4])
                                             ->searchable()
                                             ->preload()
-                                            ->relationship('supervisor', 'name'),
+                                            ->relationship('supervisor', 'name')
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                         Select::make('salesperson_id')
                                             ->label('Vendedor')
                                             ->columnSpan(['md' => 1, 'lg' => 4])
                                             ->searchable()
                                             ->preload()
                                             ->relationship('salesperson', 'name')
-                                            ->default(fn() => Auth::id()),
+                                            ->default(fn() => Auth::id())
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
                                             ->columnSpan(['md' => 2, 'lg' => 6])
@@ -182,8 +201,15 @@ class ServiceOrderForm
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn() => Filament::getTenant()->service_provision_location)
-                                            ->helperText('Cidade - UF'),
+                                            ->helperText('Cidade - UF')
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                     ]),
+                                ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
+                                    'ownerRecord' => $record,
+                                    'pageClass' => EditServiceOrder::class,
+                                ])
+                                    ->key('items-relation-manager')
+                                    ->columnSpanFull()
                             ]),
                         Tab::make('Observações')
                             ->icon(Heroicon::ChatBubbleBottomCenterText)
@@ -332,24 +358,19 @@ class ServiceOrderForm
                                             ->reorderable(),
                                     ]),
                             ]),
-                        Tab::make('Serviços')
-                            ->icon(Heroicon::WrenchScrewdriver)
-                            ->visibleOn([Operation::Edit])
-                            ->schema([
-                                Section::make()
-                                    ->columnSpanFull()
-                                    ->contained(false)
-                                    ->schema([
-                                        ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
-                                            'ownerRecord' => $record,
-                                            'pageClass' => EditServiceOrder::class,
-                                        ])
-                                            ->key('items-relation-manager')
-                                            ->columnSpanFull()
+                        // Tab::make('Serviços')
+                        //     ->icon(Heroicon::WrenchScrewdriver)
+                        //     ->visibleOn([Operation::Edit])
+                        //     ->schema([
+                        //         Section::make()
+                        //             ->columnSpanFull()
+                        //             ->contained(false)
+                        //             ->schema([
 
-                                    ])
-                                    ->visibleOn([Operation::Edit]),
-                            ]),
+
+                        //             ])
+                        //             ->visibleOn([Operation::Edit]),
+                        //     ]),
                     ]),
             ]);
     }

@@ -74,6 +74,7 @@ class QuotesTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
+                    ->default([Status::DRAFT->value, Status::SENT->value, Status::EXPIRED->value])
                     ->multiple()
                     ->native(false),
             ])

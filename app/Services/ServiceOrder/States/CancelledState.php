@@ -51,4 +51,9 @@ class CancelledState implements ServiceOrderState
     {
         return $transition === 'reopen';
     }
+
+    public function canEdit(): bool
+    {
+        return false;
+    }
 }
