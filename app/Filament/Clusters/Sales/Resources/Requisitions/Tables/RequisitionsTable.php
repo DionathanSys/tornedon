@@ -3,9 +3,11 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Tables;
 
 use App\Enum\Requisition\Status;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -35,8 +37,8 @@ class RequisitionsTable
                     ->label('Status')
                     ->sortable()
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
-                    ->color(fn ($state) => $state?->color() ?? 'gray'),
+                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
+                    ->color(fn($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('salesperson.name')
                     ->label('Vendedor')
                     ->sortable()
@@ -82,7 +84,10 @@ class RequisitionsTable
                     ->iconButton(),
             ])
             ->toolbarActions([
-                DeleteBulkAction::make(),
+                CreateAction::make()
+                    ->label('Requisição')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ]);
     }
 }

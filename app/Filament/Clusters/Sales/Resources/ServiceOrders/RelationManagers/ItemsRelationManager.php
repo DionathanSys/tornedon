@@ -74,7 +74,7 @@ class ItemsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateItemAction::make(),
+                
             ])
             ->recordActions([
                 EditItemAction::make(),
@@ -84,6 +84,7 @@ class ItemsRelationManager extends RelationManager
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
+                CreateItemAction::make(),
             ]);
     }
 }

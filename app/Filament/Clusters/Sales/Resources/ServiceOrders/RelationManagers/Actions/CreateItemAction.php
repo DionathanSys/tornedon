@@ -22,6 +22,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\Size;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -35,7 +36,7 @@ final class CreateItemAction
         return CreateAction::make()
             ->label('Serviço')
             ->icon(Heroicon::Plus)
-            ->badge()
+            ->size((Size::Small))
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
                 ModalSelectService::make('service_id')

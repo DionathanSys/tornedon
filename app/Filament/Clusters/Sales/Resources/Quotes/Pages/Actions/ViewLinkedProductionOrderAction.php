@@ -6,20 +6,31 @@ use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrd
 use App\Models\Quote;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 
 final class ViewLinkedProductionOrderAction
 {
     public static function make(): Action
     {
         return Action::make('viewLinkedProductionOrder')
-            ->label('Ver OP')
+            ->label('Ordem de Produção')
             ->icon(Heroicon::Cog6Tooth)
-            ->color('info')
-            ->badge(fn (Quote $record): ?string => $record->productionOrder ? $record->productionOrder->production_order_number : null)
+            ->color('gray')
+            ->badge(fn (Quote $record): int => $record->productionOrder()->count())
+            ->badgeColor('primary')
             ->visible(fn (Quote $record): bool => $record->productionOrder()->exists())
-            ->url(fn (Quote $record): string => ProductionOrderResource::getUrl('edit', [
-                'record' => $record->productionOrder,
-            ]))
-            ->openUrlInNewTab();
+            ->modalHeading('Ordem de Produção vinculada')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar')
+            ->modalContent(function (Quote $record): View {
+                return view('filament.actions.linked-production-order', [
+                    'productionOrders' => $record->productionOrder()->orderBy('production_order_number')
+                        ->get()
+                        ->map(fn ($po) => (object) [
+                            'url'    => ProductionOrderResource::getUrl('edit', ['record' => $po]),
+                            'number' => $po->production_order_number ?? $po->id,
+                        ]),
+                ]);
+            });
     }
 }

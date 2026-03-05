@@ -30,6 +30,9 @@ class ItemsRelationManager extends RelationManager
             ->recordTitleAttribute('id')
             ->heading('Itens do Orçamento')
             ->columns([
+                TextColumn::make('id')
+                    ->label('#')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('identifier')
                     ->label('Produto/Serviço'),
                 TextColumn::make('unit_of_measure')

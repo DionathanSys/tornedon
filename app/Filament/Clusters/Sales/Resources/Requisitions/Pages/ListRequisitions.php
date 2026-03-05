@@ -14,9 +14,7 @@ class ListRequisitions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Requisição')
-                ->icon(Heroicon::Plus),
+            
         ];
     }
 }
