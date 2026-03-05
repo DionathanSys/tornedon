@@ -49,8 +49,6 @@ class ServiceValidator
             'campos' => array_keys($data),
         ]);
 
-        $unitValues = array_map(fn ($u) => $u->value, Unit::cases());
-
         $rules = array_merge(self::commonRules(), [
             'service_code'       => [
                 'required',
@@ -64,7 +62,6 @@ class ServiceValidator
                 'max:255',
                 Rule::unique('services', 'name')->where('company_id', $data['company_id'] ?? null),
             ],
-            'unit_of_measure'    => ['required', 'string', Rule::in($unitValues)],
             'price'              => 'required|numeric|min:0',
             'company_id'         => 'required|integer|exists:companies,id',
         ]);
