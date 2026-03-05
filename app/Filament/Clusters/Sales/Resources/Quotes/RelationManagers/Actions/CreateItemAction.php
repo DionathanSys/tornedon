@@ -50,7 +50,7 @@ final class CreateItemAction
             ->size(Size::Small)
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema(SchemaForm::make('create'))
-            ->action(function (array $data, Action $action, RelationManager $livewire, $arguments): ?Model {
+            ->action(function (array $data, Action $action, Schema $schema, RelationManager $livewire, $arguments): ?Model {
                 $quote = $livewire->getOwnerRecord();
 
                 // Extração dos IDs do container 'item'
@@ -88,7 +88,7 @@ final class CreateItemAction
                 notify::success(message: $service->getMessageUser());
 
                 if (isset($arguments['another']) && $arguments['another'] === true) {
-                    $action->fillForm([]);
+                    $schema->fill();
                     $action->halt();
                 }
 

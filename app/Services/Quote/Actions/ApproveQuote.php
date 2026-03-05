@@ -33,6 +33,10 @@ class ApproveQuote
                 'user_id'  => $this->approvedBy,
             ]);
 
+            // Recarrega com lock de linha para evitar aprovações concorrentes
+            // (dentro da transaction de QuoteService::approve)
+            $quote = Quote::lockForUpdate()->findOrFail($quote->id);
+
             $quote->state()->approve($quote, $this->approvedBy);
 
             $quote->refresh();

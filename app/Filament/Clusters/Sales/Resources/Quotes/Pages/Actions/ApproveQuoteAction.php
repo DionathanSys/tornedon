@@ -25,6 +25,7 @@ final class ApproveQuoteAction
             ->label('Aprovar')
             ->icon(Heroicon::CheckCircle)
             ->color('success')
+            ->requiresConfirmation()
             ->modalHeading('Aprovar Orçamento')
             ->modalDescription('Tem certeza de que deseja aprovar este orçamento?')
             ->modalSubmitActionLabel('Aprovar')

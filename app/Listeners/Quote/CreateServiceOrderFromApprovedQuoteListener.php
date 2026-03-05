@@ -20,6 +20,14 @@ class CreateServiceOrderFromApprovedQuoteListener
     public function handle(QuoteApproved $event): void
     {
         try {
+            // Guarda de idempotência: evita criar OS duplicada caso o evento dispare mais de uma vez
+            if ($event->quote->serviceOrders()->exists()) {
+                Log::warning('CreateServiceOrderFromApprovedQuoteListener: Ordem de serviço já existe para este orçamento, ignorando', [
+                    'quote_id' => $event->quote->id,
+                ]);
+                return;
+            }
+
             // Busca apenas os itens com destinação de ordem de serviço
             $quoteItems = $event->quote->items()
                 ->where('destination', Destination::ORDER_SERVICE->value)

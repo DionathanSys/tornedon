@@ -55,6 +55,8 @@ class DraftState implements QuoteState
             'approved_by' => $userId,
             'updated_by'  => $userId,
         ]);
+
+        $quote->refresh();
     }
 
     public function reject(Quote $quote, string $reason, int $userId): void
