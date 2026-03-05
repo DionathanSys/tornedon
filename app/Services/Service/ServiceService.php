@@ -46,9 +46,9 @@ class ServiceService
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('nbs_code', 'like', "%{$search}%")
-                  ->orWhere('cnae_code', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('nbs_code', 'like', "%{$search}%")
+                    ->orWhere('cnae_code', 'like', "%{$search}%");
             });
         }
 
@@ -81,9 +81,9 @@ class ServiceService
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('nbs_code', 'like', "%{$search}%")
-                  ->orWhere('cnae_code', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('nbs_code', 'like', "%{$search}%")
+                    ->orWhere('cnae_code', 'like', "%{$search}%");
             });
         }
 
@@ -129,6 +129,10 @@ class ServiceService
             ]);
 
             return DB::transaction(function () use ($data, $createdBy) {
+                if (empty($data['service_code'])) {
+                    $data['service_code'] = ServiceCodeService::generate($data['company_id']);
+                }
+
                 $action  = new CreateServiceAction($createdBy);
                 $service = $action->execute($data);
 
@@ -160,7 +164,6 @@ class ServiceService
 
                 return $service;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao processar criação do serviço');
 
@@ -224,7 +227,6 @@ class ServiceService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao processar atualização do serviço');
 
@@ -288,7 +290,6 @@ class ServiceService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao processar exclusão do serviço');
 
@@ -351,7 +352,6 @@ class ServiceService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao processar exclusão permanente do serviço', ['error' => [$e->getMessage()]]);
 
@@ -414,7 +414,6 @@ class ServiceService
 
                 return $result;
             });
-
         } catch (\Exception $e) {
             $this->setError('Erro ao processar restauração do serviço', ['error' => [$e->getMessage()]]);
 

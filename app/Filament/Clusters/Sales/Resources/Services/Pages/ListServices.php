@@ -14,10 +14,7 @@ class ListServices extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Serviço')
-                ->icon(Heroicon::Plus)
-                ->badge(),
+            
         ];
     }
 }

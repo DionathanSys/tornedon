@@ -35,11 +35,6 @@ class CreateServiceAction
 
             $validated = ServiceValidator::validateCreate($data);
 
-            // Geração automática do código do serviço
-            if (empty($validated['service_code'])) {
-                $validated['service_code'] = ServiceCodeService::generate($validated['company_id']);
-            }
-
             $validated['created_by'] = $this->createdBy;
 
             $service = Service::create($validated);

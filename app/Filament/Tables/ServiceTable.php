@@ -4,6 +4,9 @@ namespace App\Filament\Tables;
 
 use App\Models\Service;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -60,7 +63,10 @@ class ServiceTable
                 //
             ])
             ->headerActions([
-                //
+                CreateAction::make()
+                ->label('Serviço')
+                ->icon(Heroicon::Plus)
+                ->size(Size::Small),
             ])
             ->recordActions([
                 //
