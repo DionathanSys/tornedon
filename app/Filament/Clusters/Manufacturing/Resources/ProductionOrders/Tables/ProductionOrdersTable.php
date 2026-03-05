@@ -85,9 +85,16 @@ class ProductionOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('customer_id')
+                    ->label('Cliente')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
+                    ->multiple()
                     ->native(false),
                 SelectFilter::make('priority')
                     ->label('Prioridade')

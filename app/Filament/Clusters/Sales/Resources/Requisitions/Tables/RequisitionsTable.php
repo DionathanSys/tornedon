@@ -71,6 +71,12 @@ class RequisitionsTable
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                SelectFilter::make('customer_id')
+                    ->label('Cliente')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
