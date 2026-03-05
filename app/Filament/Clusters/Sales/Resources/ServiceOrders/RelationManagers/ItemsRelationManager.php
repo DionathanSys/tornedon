@@ -26,11 +26,31 @@ class ItemsRelationManager extends RelationManager
             ->recordTitleAttribute('service_id')
             ->heading('Serviços')
             ->columns([
-                ModalSelectService::make('service_id')
-                    ->label('Serviço')
-                    ->searchable()
-                    ->getOptionLabelUsing(fn($value) => $this->getServiceName($value)),
-                ItemValueGroup::make(),
+                TextColumn::make('service.service_code')
+                    ->label('Código'),
+                TextColumn::make('service.name')
+                    ->label('Serviço'),
+                TextColumn::make('quantity')
+                    ->label('Quantidade')
+                    ->alignRight(),
+                TextColumn::make('unit_price')
+                    ->label('Valor Unitário')
+                    ->money('BRL', true)    
+                    ->alignRight(),
+                TextColumn::make('total_amount')
+                    ->label('Valor Total')
+                    ->money('BRL', true)
+                    ->alignRight()
+                    ->summarize(Sum::make()),
+                TextColumn::make('discount_percentage')
+                    ->label('Des. (%)')
+                    ->alignRight()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('discount_amount')
+                    ->label('Des. (R$)')
+                    ->money('BRL', true)
+                    ->alignRight()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('createdBy')
                     ->label('Criado por')
                     ->sortable()

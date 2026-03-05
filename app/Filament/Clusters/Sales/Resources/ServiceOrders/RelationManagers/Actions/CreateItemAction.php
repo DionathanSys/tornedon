@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions;
 
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Traits\AuthorizesServiceOrderItemActions;
 use App\Traits\ParsesMoneyValues;
@@ -36,15 +38,9 @@ final class CreateItemAction
             ->badge()
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
-                Select::make('service_id')
+                ModalSelectService::make('service_id')
                     ->label('Serviço')
-                    ->searchable()
-                    ->relationship('service', 'name', function ($query) {
-                        $query->where('services.company_id', Filament::getTenant()->id);
-                    })
-                    ->required()
-                    ->columnSpanFull()
-                    ->live(onBlur: true)
+                    ->saved(true)
                     ->afterStateUpdated(function (Set $set, callable $get, $state) {
                         $service = (new ServiceService())->find($state);
                         if ($service) {
@@ -54,75 +50,7 @@ final class CreateItemAction
                         }
                         self::calculateValues($get, $set);
                     }),
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        TextInput::make('quantity')
-                            ->label('Quantidade')
-                            ->required()
-                            ->numeric()
-                            ->default(1)
-                            ->minValue(0)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function($state, Set $set, Get $get) {
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('unit_price')
-                            ->label('Preço Unitário')
-                            ->required()
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function($state, Set $set, Get $get) {
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('subtotal')
-                            ->label('Subtotal')
-                            ->readOnly(),
-                    ]),
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        Money::make('discount_percentage')
-                            ->label('Desconto (%)')
-                            ->suffix('%')
-                            ->prefix(null)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                                $subtotal = self::parseMoneyValue($get('subtotal'));
-                                $percentage = self::parseMoneyValue($state);
-                                $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            })
-                            ->afterLabel(Action::make('reset_discount_percentage')
-                                ->label('')
-                                ->icon(Heroicon::ArrowPath)
-                                ->action(function (Set $set, Get $get) {
-                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                    $set('discount_amount', number_format(0, 2, ',', '.'));
-                                    self::calculateValues($get, $set);
-                                })),
-                        Money::make('discount_amount')
-                            ->label('Desconto (R$)')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, callable $get) {
-                                $subtotal = self::parseMoneyValue($get('subtotal'));
-                                $discountAmount = self::parseMoneyValue($state);
-                                if ($subtotal > 0) {
-                                    $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
-                                }
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('total_amount')
-                            ->label('Valor Total')
-                            ->readOnly(),
-                    ]),
+                ItemValueGroup::make(),
                 Textarea::make('observations')
                     ->label('Observações')
                     ->columnSpanFull(),
