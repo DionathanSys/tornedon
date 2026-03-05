@@ -33,6 +33,7 @@ class Requisition extends Model
         'invoiced_at',
         'equipment_id',
         'stock_consumed',
+        'stock_reserved',
         'additional_info',
         'production_order_id',
         'created_by',
@@ -47,6 +48,7 @@ class Requisition extends Model
         'delivery_date' => 'date',
         'invoiced_at' => 'datetime',
         'stock_consumed' => 'boolean',
+        'stock_reserved' => 'boolean',
         'discount_amount' => 'decimal:2',
         'additional_info' => 'array',
     ];

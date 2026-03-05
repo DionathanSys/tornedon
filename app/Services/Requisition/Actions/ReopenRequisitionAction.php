@@ -35,6 +35,9 @@ class ReopenRequisitionAction
 
                 $requisition->state()->reopen($requisition, $this->userId);
 
+                // Marca que as reservas foram liberadas — serão recriadas no próximo fechamento
+                $requisition->update(['stock_reserved' => false]);
+
                 $requisition->refresh();
             });
 
