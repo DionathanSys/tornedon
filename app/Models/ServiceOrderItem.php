@@ -12,7 +12,6 @@ class ServiceOrderItem extends Model
     protected $fillable = [
         'service_order_id',
         'service_id',
-        'unit_of_measure',
         'quantity',
         'unit_price',
         'unit_cost',
@@ -25,7 +24,6 @@ class ServiceOrderItem extends Model
     ];
 
     protected $casts = [
-        'unit_of_measure'      => Unit::class,
         'quantity'             => 'decimal:3',
         'unit_price'           => MoneyCast::class,
         'unit_cost'            => MoneyCast::class,

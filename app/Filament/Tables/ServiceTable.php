@@ -22,9 +22,6 @@ class ServiceTable
                 TextColumn::make('name')
                     ->label('Serviço')
                     ->searchable(),
-                TextColumn::make('unit_of_measure')
-                    ->label('Unidade de Medida')
-                    ->searchable(),
                 TextColumn::make('price')
                     ->label('Preço')
                     ->money('BRL')

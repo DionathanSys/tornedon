@@ -18,7 +18,6 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->foreignId('service_id')
                 ->constrained('services');
-            $table->string('unit_of_measure');
             $table->decimal('quantity', 15, 3);
             $table->decimal('unit_price', 15, 4);
             $table->decimal('discount_percentage', 5, 2)

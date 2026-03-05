@@ -68,7 +68,6 @@ class CreateServiceOrderFromApprovedQuoteListener
                     $item = $itemService->create([
                         'service_order_id' => $serviceOrder->id,
                         'service_id' => $quoteItem->service_id,
-                        'unit_of_measure' => $quoteItem->unit_of_measure,
                         'quantity' => $quoteItem->quantity,
                         'unit_price' => $quoteItem->unit_price,
                         'discount_percentage' => $quoteItem->discount_percentage,

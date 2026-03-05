@@ -2,6 +2,7 @@
 
 namespace App\Domain\DTO\Shared;
 
+use App\Enum\Product\Unit;
 use App\Models\ProductionOrderItem;
 use App\Models\QuoteItem;
 use App\Models\RequisitionItem;
@@ -164,7 +165,7 @@ class OrderItemDTO
         return new self(
             serviceOrderId:     $item->service_order_id,
             serviceId:          $item->service_id,
-            unitOfMeasure:      $item->unit_of_measure?->value ?? $item->unit_of_measure,
+            unitOfMeasure:      Unit::UN->value, // Força UN para serviços
             quantity:           (float) $item->quantity,
             unitPrice:          (float) $item->unit_price,
             discountPercentage: (float) $item->discount_percentage,

@@ -42,11 +42,6 @@ class ServicesTable
                     ->badge()
                     ->color('info')
                     ->toggleable(),
-                TextColumn::make('unit_of_measure')
-                    ->label('Unidade')
-                    ->badge()
-                    ->sortable()
-                    ->placeholder('-'),
                 TextColumn::make('price')
                     ->label('Preço')
                     ->money('BRL')
@@ -93,11 +88,6 @@ class ServicesTable
                     ->default(true),
                 SelectFilter::make('category')
                     ->label('Categoria')
-                    ->multiple()
-                    ->native(false),
-                SelectFilter::make('unit_of_measure')
-                    ->label('Unidade')
-                    ->options(Unit::toSelectArray())
                     ->multiple()
                     ->native(false),
                 TernaryFilter::make('requires_approval')

@@ -3,6 +3,7 @@
 namespace App\Services\QuoteItem;
 
 use App\Domain\DTO\Quote\QuoteItemSourceDTO;
+use App\Enum\Product\Unit;
 use App\Enum\Quote\Destination;
 use App\Services\Product\ProductSalePriceService;
 use App\Services\Product\ProductService;
@@ -80,7 +81,7 @@ class QuoteItemResolverService
             productId: null,
             code: $service->service_code,
             name: $service->name,
-            unit: $service->unit_of_measure,
+            unit: Unit::UN->value,
             price: (float) $service->price,
             minSalePrice: (float) $service->min_sale_price,
             destination: Destination::ORDER_SERVICE
