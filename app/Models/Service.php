@@ -17,6 +17,7 @@ class Service extends Model
         'name',
         'description',
         'price',
+        'min_sale_price',
         'cost',
         'category',
         'is_active',
@@ -31,6 +32,7 @@ class Service extends Model
 
     protected $casts = [
         'price'            => MoneyCast::class,
+        'min_sale_price'   => MoneyCast::class,
         'cost'             => MoneyCast::class,
         'tax_rate'         => 'decimal:2',
         'is_active'        => 'boolean',

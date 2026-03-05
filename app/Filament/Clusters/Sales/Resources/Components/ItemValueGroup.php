@@ -129,24 +129,25 @@ class ItemValueGroup
     }
 
     /**
-     * Recalcula subtotal e total.
+     * Recalcula o subtotal e o total.
      */
     public static function recalculate(
         Get    $get,
         Set    $set,
-        string $qtyField            = 'quantity',
-        string $unitPriceField      = 'unit_price',
-        string $discountAmountField = 'discount_amount',
-        string $totalAmountField    = 'total_amount',
+        string $qtyField,
+        string $unitPriceField,
+        string $discountAmountField,
+        string $subtotalField,
+        string $totalAmountField,
     ): void {
         $quantity       = self::parseMoneyValue($get($qtyField));
         $unitPrice      = self::parseMoneyValue($get($unitPriceField));
         $discountAmount = self::parseMoneyValue($get($discountAmountField));
 
-        $subtotal    = $quantity * $unitPrice;
-        $totalAmount = $subtotal - $discountAmount;
+        $subtotal = $quantity * $unitPrice;
+        $total    = $subtotal - $discountAmount;
 
-        $set($totalAmountField, number_format($totalAmount, 2, ',', '.'));
-        
+        $set($subtotalField, number_format($subtotal, 2, ',', '.'));
+        $set($totalAmountField, number_format($total, 2, ',', '.'));
     }
 }

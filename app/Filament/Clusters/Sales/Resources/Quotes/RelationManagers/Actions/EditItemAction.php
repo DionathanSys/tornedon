@@ -40,7 +40,7 @@ final class EditItemAction
                     'identification'  => $record->codeItem ? "[{$record->codeItem}] {$record->identifier}" : $record->identifier,
                     'min_sale_price'  => $record->product_id
                         ? (new ProductSalePriceService())->getMinSalePriceById($record->product_id)
-                        : 0,
+                        : ($record->service->min_sale_price ?? 0),
                 ];
                 $data['description']            = $record->description;
                 $data['unit_of_measure']        = $record->unit_of_measure;

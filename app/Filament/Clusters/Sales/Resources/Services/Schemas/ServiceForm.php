@@ -87,8 +87,13 @@ class ServiceForm
                                     ->schema([
                                         Money::make('price')
                                             ->label('Preço')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->required()
+                                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                            ->default(0),
+                                        Money::make('min_sale_price')
+                                            ->label('Preço Mínimo')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
                                         Money::make('cost')

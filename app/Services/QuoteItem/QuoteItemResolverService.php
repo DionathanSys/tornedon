@@ -82,6 +82,7 @@ class QuoteItemResolverService
             name: $service->name,
             unit: $service->unit_of_measure,
             price: (float) $service->price,
+            minSalePrice: (float) $service->min_sale_price,
             destination: Destination::ORDER_SERVICE
         );
     }

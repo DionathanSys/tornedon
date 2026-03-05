@@ -18,7 +18,10 @@ class UpdateQuoteItemAction
     public function __construct(
         private int       $updatedBy,
         private QuoteItem $item,
-    ) {}
+        private ?\App\Services\Service\ServiceService $serviceService = null,
+    ) {
+        $this->serviceService = $serviceService ?? app(\App\Services\Service\ServiceService::class);
+    }
 
     /**
      * Atualiza um item de orçamento existente.
@@ -33,10 +36,19 @@ class UpdateQuoteItemAction
             return null;
         }
 
-        // Valida preço mínimo de venda (somente para produtos; serviços não possuem restrição)
+        // Valida preço mínimo de venda
         $productId = ! empty($data['product_id']) ? (int) $data['product_id'] : $this->item->product_id;
         if ($productId && isset($data['unit_price'])) {
             $priceError = $this->validateMinSalePrice($productId, (float) $data['unit_price']);
+            if ($priceError) {
+                $this->setError($priceError);
+                return null;
+            }
+        }
+
+        $serviceId = ! empty($data['service_id']) ? (int) $data['service_id'] : $this->item->service_id;
+        if ($serviceId && isset($data['unit_price'])) {
+            $priceError = $this->validateMinServicePrice($serviceId, (float) $data['unit_price']);
             if ($priceError) {
                 $this->setError($priceError);
                 return null;
@@ -123,6 +135,32 @@ class UpdateQuoteItemAction
                 'O preço unitário (R$ %s) está abaixo do preço mínimo de venda de "%s" (R$ %s).',
                 number_format($unitPrice, 2, ',', '.'),
                 $product->name,
+                number_format($minPrice, 2, ',', '.')
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Verifica se o preço unitário respeita o preço mínimo de venda do serviço.
+     * Retorna null se OK, ou mensagem de erro caso contrário.
+     */
+    private function validateMinServicePrice(int $serviceId, float $unitPrice): ?string
+    {
+        $service = $this->serviceService->find($serviceId);
+
+        if (! $service || ! $service->min_sale_price || $service->min_sale_price <= 0) {
+            return null;
+        }
+
+        $minPrice = (float) $service->min_sale_price;
+
+        if ($unitPrice < $minPrice) {
+            return sprintf(
+                'O preço unitário (R$ %s) está abaixo do preço mínimo de venda do serviço "%s" (R$ %s).',
+                number_format($unitPrice, 2, ',', '.'),
+                $service->name,
                 number_format($minPrice, 2, ',', '.')
             );
         }
