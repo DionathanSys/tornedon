@@ -4,31 +4,31 @@ namespace App\Enum\FiscalDocument;
 
 enum NfeStatus: string
 {
-    case PENDENTE         = 'pendente';
-    case EM_PROCESSAMENTO = 'em_processamento';
-    case AUTORIZADO       = 'autorizado';
-    case REJEITADO        = 'rejeitado';
-    case CANCELADO        = 'cancelado';
+    case PENDING         = 'pending';
+    case IN_PROCESSING  = 'in_processing';
+    case AUTHORIZED     = 'authorized';
+    case REJECTED       = 'rejected';
+    case CANCELED       = 'canceled';
 
     public function description(): string
     {
         return match ($this) {
-            self::PENDENTE         => 'Pendente',
-            self::EM_PROCESSAMENTO => 'Em Processamento',
-            self::AUTORIZADO       => 'Autorizado',
-            self::REJEITADO        => 'Rejeitado',
-            self::CANCELADO        => 'Cancelado',
+            self::PENDING         => 'Pendente',
+            self::IN_PROCESSING   => 'Em Processamento',
+            self::AUTHORIZED      => 'Autorizado',
+            self::REJECTED        => 'Rejeitado',
+            self::CANCELED        => 'Cancelado',
         };
     }
 
     public function color(): string
     {
         return match ($this) {
-            self::PENDENTE         => 'info',
-            self::EM_PROCESSAMENTO => 'warning',
-            self::AUTORIZADO       => 'success',
-            self::REJEITADO        => 'danger',
-            self::CANCELADO        => 'gray',
+            self::PENDING         => 'info',
+            self::IN_PROCESSING   => 'warning',
+            self::AUTHORIZED      => 'success',
+            self::REJECTED        => 'danger',
+            self::CANCELED        => 'gray',
         };
     }
 

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Escopo Fiscal da Aplicação.md",
-                "mode": "source",
+                "file": "FISCAL-DOCUMENTS-LEVANTAMENTO.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Escopo Fiscal da Aplicação"
+              "title": "FISCAL-DOCUMENTS-LEVANTAMENTO"
             }
           }
         ]
@@ -186,6 +186,8 @@
   },
   "active": "7f0905ef69d023eb",
   "lastOpenFiles": [
+    "Escopo Fiscal da Aplicação.md",
+    "FISCAL-DOCUMENTS-LEVANTAMENTO.md",
     "docs/regras-negocio/quote-production-workflow.md",
     "docs/TABELAS-CAMPOS.md",
     "docs/regras-negocio",
@@ -193,7 +195,6 @@
     "docs",
     "Quote-Scope.md",
     "Sem título.md",
-    "Escopo Fiscal da Aplicação.md",
     "TABELAS-CAMPOS.md",
     "REQUIREMENTS.md",
     "Requisition.md",
@@ -215,7 +216,6 @@
     "Outros/MAPA-IMPLEMENTACAO.md",
     "Outros/CHECKLIST.md",
     "CIPA.md",
-    "Outros/authorization-summary.md",
     "Excalidraw",
     "Pasted image 20260219092215.png",
     "Pasted image 20260218133944.png",

@@ -38,7 +38,7 @@ class ConsultNfeJob implements ShouldQueue
         }
 
         // Se webhook já atualizou o status, não precisa consultar
-        if ($doc->nfe_status !== NfeStatus::EM_PROCESSAMENTO) {
+        if ($doc->nfe_status !== NfeStatus::IN_PROCESSING) {
             Log::info('ConsultNfeJob: status já atualizado (provavelmente via webhook)', [
                 'fiscal_document_id' => $this->fiscalDocumentId,
                 'nfe_status'         => $doc->nfe_status?->value,
@@ -52,7 +52,7 @@ class ConsultNfeJob implements ShouldQueue
         $doc->refresh();
 
         // Ainda em processamento — reagendar se não excedeu limite
-        if ($doc->nfe_status === NfeStatus::EM_PROCESSAMENTO) {
+        if ($doc->nfe_status === NfeStatus::IN_PROCESSING) {
             if ($this->tentativa < self::MAX_POLLING_ATTEMPTS) {
                 $delay = $this->tentativa * 15; // 15s, 30s, 45s, 60s
 

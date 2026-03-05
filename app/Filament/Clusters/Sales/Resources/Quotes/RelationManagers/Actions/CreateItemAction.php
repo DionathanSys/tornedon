@@ -50,7 +50,7 @@ final class CreateItemAction
             ->size(Size::Small)
             ->visible(fn(RelationManager $livewire): bool => self::canModifyQuoteItems($livewire->getOwnerRecord()))
             ->schema(SchemaForm::make('create'))
-            ->action(function (array $data, Action $action, RelationManager $livewire): ?Model {
+            ->action(function (array $data, Action $action, RelationManager $livewire, $arguments): ?Model {
                 $quote = $livewire->getOwnerRecord();
 
                 // Extração dos IDs do container 'item'
@@ -59,7 +59,7 @@ final class CreateItemAction
 
                 $data['quote_id'] = $quote->id;
                 $data['status'] = Status::DRAFT->value;
-                
+
                 // Garante unit_of_measure para serviços (não possuem unidade própria)
                 if (empty($data['unit_of_measure']) && ! empty($data['service_id'])) {
                     $data['unit_of_measure'] = Unit::UN->value;
@@ -86,10 +86,14 @@ final class CreateItemAction
                 }
 
                 notify::success(message: $service->getMessageUser());
+
+                if (isset($arguments['another']) && $arguments['another'] === true) {
+                    $action->fillForm([]);
+                    $action->halt();
+                }
+
                 return $item;
             })
             ->successNotification(null);
     }
-
-    
 }

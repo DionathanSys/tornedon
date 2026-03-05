@@ -94,7 +94,7 @@ class NfeWebhookController extends Controller
         $updates = [];
 
         if ($status === 'autorizado') {
-            $updates['nfe_status']   = NfeStatus::AUTORIZADO->value;
+            $updates['nfe_status']   = NfeStatus::AUTHORIZED->value;
             $updates['nfe_protocolo'] = $payload['protocolo'] ?? null;
             $updates['status']        = Status::CONFIRMED->value;
             $updates['confirmed_at']  = now();
@@ -112,7 +112,7 @@ class NfeWebhookController extends Controller
             ]);
 
         } elseif ($status === 'cancelado') {
-            $updates['nfe_status']  = NfeStatus::CANCELADO->value;
+            $updates['nfe_status']  = NfeStatus::CANCELED->value;
             $updates['status']      = Status::CANCELLED->value;
             $updates['canceled_at'] = now();
 
@@ -122,7 +122,7 @@ class NfeWebhookController extends Controller
 
         } else {
             // Rejeição
-            $updates['nfe_status'] = NfeStatus::REJEITADO->value;
+            $updates['nfe_status'] = NfeStatus::REJECTED->value;
             $updates['status']     = Status::CANCELLED->value;
 
             $errors   = $doc->errors_messages ?? [];

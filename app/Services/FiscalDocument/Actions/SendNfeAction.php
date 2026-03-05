@@ -30,7 +30,7 @@ class SendNfeAction
     {
         try {
             // Impede reenvio de NF-e já em processamento ou autorizada
-            if ($fiscalDocument->nfe_status !== null && ! $fiscalDocument->isRejeitado()) {
+            if ($fiscalDocument->nfe_status !== null && ! $fiscalDocument->isRejected()) {
                 $this->setError('Esta NF-e já foi enviada (status: ' . $fiscalDocument->nfe_status?->description() . ').');
                 return false;
             }
@@ -87,7 +87,7 @@ class SendNfeAction
                 // Lote em processamento — salva chave e aguarda webhook/polling
                 $fiscalDocument->update([
                     'document_key' => $resp->chave,
-                    'nfe_status'   => NfeStatus::EM_PROCESSAMENTO->value,
+                    'nfe_status'   => NfeStatus::IN_PROCESSING->value,
                     'nfe_ambiente' => $ambiente,
                     'nfe_payload'  => $payload,
                 ]);

@@ -51,7 +51,7 @@ class ConsultNfeAction
 
             if ($resp->sucesso ?? false) {
                 // Autorizada
-                $updates['nfe_status']   = NfeStatus::AUTORIZADO->value;
+                $updates['nfe_status']   = NfeStatus::AUTHORIZED->value;
                 $updates['nfe_protocolo'] = $resp->protocolo ?? null;
                 $updates['status']        = Status::CONFIRMED->value;
                 $updates['confirmed_at']  = now();
@@ -70,7 +70,7 @@ class ConsultNfeAction
                 ]);
             } else {
                 // Rejeitada
-                $updates['nfe_status'] = NfeStatus::REJEITADO->value;
+                $updates['nfe_status'] = NfeStatus::REJECTED->value;
                 $updates['status']     = Status::CANCELLED->value;
 
                 $errors   = $fiscalDocument->errors_messages ?? [];

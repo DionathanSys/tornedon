@@ -134,34 +134,34 @@ class FiscalDocument extends Model
      |  Helpers
      |==============================*/
 
-    public function isPendente(): bool
+    public function isPending(): bool
     {
-        return $this->nfe_status === NfeStatus::PENDENTE;
+        return $this->nfe_status === NfeStatus::PENDING;
     }
 
-    public function isEmProcessamento(): bool
+    public function isInProcessing(): bool
     {
-        return $this->nfe_status === NfeStatus::EM_PROCESSAMENTO;
+        return $this->nfe_status === NfeStatus::IN_PROCESSING;
     }
 
-    public function isAutorizado(): bool
+    public function isAuthorized(): bool
     {
-        return $this->nfe_status === NfeStatus::AUTORIZADO;
+        return $this->nfe_status === NfeStatus::AUTHORIZED;
     }
 
-    public function isRejeitado(): bool
+    public function isRejected(): bool
     {
-        return $this->nfe_status === NfeStatus::REJEITADO;
+        return $this->nfe_status === NfeStatus::REJECTED;
     }
 
-    public function isCancelado(): bool
+    public function isCanceled(): bool
     {
-        return $this->nfe_status === NfeStatus::CANCELADO;
+        return $this->nfe_status === NfeStatus::CANCELED;
     }
 
-    public function nfeEnviada(): bool
+    public function nfeSent(): bool
     {
         return $this->nfe_status !== null
-            && $this->nfe_status !== NfeStatus::PENDENTE;
+            && $this->nfe_status !== NfeStatus::PENDING;
     }
 }

@@ -32,7 +32,7 @@ class NfeDocumentService
         $this->resetResponse();
 
         try {
-            if ($doc->nfeEnviada() && ! $doc->isRejeitado()) {
+            if ($doc->nfeSent() && ! $doc->isRejected()) {
                 $this->setError('NF-e já enviada. Status atual: ' . $doc->nfe_status?->description());
                 return false;
             }
