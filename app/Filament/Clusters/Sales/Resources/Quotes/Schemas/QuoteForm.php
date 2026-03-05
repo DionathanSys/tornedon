@@ -102,7 +102,7 @@ class QuoteForm
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->minDate(now())
                             ->default(now()->addDays(CompanyPreference::get(key: 'default_quote_validity_days', default: 30)))
-                            ->disabled(fn($record) => !$record->state()->canEdit())
+                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                             ->required(),
                         SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')
@@ -118,7 +118,7 @@ class QuoteForm
                 Section::make('Observações')
                     ->columnSpanFull()
                     ->collapsible()
-                    ->disabled(fn($record) => !$record->state()->canEdit())
+                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                     ->persistCollapsed()
                     ->columns([
                         'sm' => 1,
@@ -145,7 +145,7 @@ class QuoteForm
                 Section::make('Pagamento')
                     ->columnSpanFull()
                     ->collapsible()
-                    ->disabled(fn($record) => !$record->state()->canEdit())
+                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                     ->persistCollapsed()
                     ->columns([
                         'sm' => 1,
