@@ -2,62 +2,61 @@
 
 namespace App\Services\Quote\States;
 
-use App\Enum\Quote\Status;
 use App\Exceptions\DomainValidationException;
 use App\Models\Quote;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Estado: Rejeitado
- * Transições permitidas: Reabrir (volta para rascunho)
+ * Estado: Vinculado
+ * O orçamento foi aprovado e seus itens já geraram documentos (requisição, OS, OP).
+ * Nenhuma transição de estado é permitida e o formulário é bloqueado para edição.
  */
-class RejectedState implements QuoteState
+class LinkedState implements QuoteState
 {
     public function sendForApproval(Quote $quote, int $userId): void
     {
         throw new DomainValidationException(
-            ['status' => ['Não é possível enviar para aprovação um orçamento rejeitado. Reabra-o primeiro.']]
+            ['status' => ['O orçamento já está vinculado a outros documentos.']]
         );
     }
 
     public function approve(Quote $quote, int $userId): void
     {
         throw new DomainValidationException(
-            ['status' => ['Não é possível aprovar um orçamento rejeitado.']]
+            ['status' => ['O orçamento já está vinculado a outros documentos.']]
         );
     }
 
     public function reject(Quote $quote, string $reason, int $userId): void
     {
         throw new DomainValidationException(
-            ['status' => ['O orçamento já está rejeitado.']]
+            ['status' => ['Não é possível rejeitar um orçamento vinculado.']]
         );
     }
 
     public function expire(Quote $quote, int $userId): void
     {
         throw new DomainValidationException(
-            ['status' => ['Não é possível expirar um orçamento rejeitado.']]
+            ['status' => ['Não é possível expirar um orçamento vinculado.']]
         );
     }
 
     public function reopen(Quote $quote, int $userId): void
     {
-        Log::info('Quote: Reabrindo orçamento rejeitado (rejected → draft)', [
+        Log::debug('LinkedState: Tentativa de reabrir orçamento vinculado', [
+            'metodo'   => __METHOD__ . '@' . __LINE__,
             'quote_id' => $quote->id,
             'user_id'  => $userId,
         ]);
 
-        $quote->update([
-            'status'          => Status::DRAFT,
-            'rejected_reason' => null,
-            'updated_by'      => $userId,
-        ]);
+        throw new DomainValidationException(
+            ['status' => ['Não é possível reabrir um orçamento vinculado a outros documentos.']]
+        );
     }
 
     public function canTransitionTo(string $transition): bool
     {
-        return $transition === 'reopen';
+        return false;
     }
 
     public function canEdit(): bool

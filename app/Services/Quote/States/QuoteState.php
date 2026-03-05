@@ -46,4 +46,9 @@ interface QuoteState
      * Retorna true se a transição nomeada é permitida a partir deste estado.
      */
     public function canTransitionTo(string $transition): bool;
+
+    /**
+     * Retorna true se o orçamento pode ser editado neste estado.
+     */
+    public function canEdit(): bool;
 }

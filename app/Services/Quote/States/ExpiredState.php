@@ -58,4 +58,9 @@ class ExpiredState implements QuoteState
     {
         return $transition === 'reopen';
     }
+
+    public function canEdit(): bool
+    {
+        return false;
+    }
 }

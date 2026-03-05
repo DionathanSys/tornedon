@@ -2,6 +2,7 @@
 
 namespace App\Services\Quote\Actions;
 
+use App\Events\Quote\QuoteReopened;
 use App\Exceptions\DomainValidationException;
 use App\Models\Quote;
 use App\Traits\HandlesActionResponse;
@@ -36,6 +37,8 @@ class ReopenQuoteAction
             $quote->state()->reopen($quote, $this->userId);
 
             $quote->refresh();
+
+            QuoteReopened::dispatch($quote, $this->userId);
 
             Log::info('ReopenQuoteAction: Orçamento reaberto com sucesso', [
                 'metodo'   => __METHOD__ . '@' . __LINE__,

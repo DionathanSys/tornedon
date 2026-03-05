@@ -2,8 +2,10 @@
 
 namespace App\Services\Quote\States;
 
+use App\Enum\Quote\Status;
 use App\Exceptions\DomainValidationException;
 use App\Models\Quote;
+use App\Services\Quote\QuoteService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -50,12 +52,24 @@ class ApprovedState implements QuoteState
             'key'      => 'reopen_quote_action',
         ]);
         
-        throw new DomainValidationException(
-            ['status' => ['Não é possível reabrir um orçamento aprovado.']]
-        );
+        if(QuoteService::hasChildRecords($quote)) {
+            throw new DomainValidationException(
+                ['status' => ['Não é possível reabrir um orçamento aprovado que já gerou outros documentos.']]
+            );
+        }
+
+        $quote->update([
+            'status'     => Status::DRAFT,
+            'updated_by' => $userId,
+        ]);
     }
 
     public function canTransitionTo(string $transition): bool
+    {
+        return false;
+    }
+
+    public function canEdit(): bool
     {
         return false;
     }

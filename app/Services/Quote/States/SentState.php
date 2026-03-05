@@ -80,13 +80,24 @@ class SentState implements QuoteState
 
     public function reopen(Quote $quote, int $userId): void
     {
-        throw new DomainValidationException(
-            ['status' => ['Não é possível reabrir um orçamento que está aguardando aprovação.']]
-        );
+        Log::info('Quote: Reabrindo orçamento enviado (sent → draft)', [
+            'quote_id' => $quote->id,
+            'user_id'  => $userId,
+        ]);
+
+        $quote->update([
+            'status'     => Status::DRAFT,
+            'updated_by' => $userId,
+        ]);
     }
 
     public function canTransitionTo(string $transition): bool
     {
         return in_array($transition, ['approve', 'reject', 'expire']);
+    }
+
+    public function canEdit(): bool
+    {
+        return false;
     }
 }

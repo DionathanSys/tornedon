@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Pages;
 
-use App\Enum\Quote\Status;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ApproveQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ConvertToProductionOrderQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\RejectQuoteAction;
@@ -71,77 +70,13 @@ class EditQuote extends EditRecord
 
                         return $result;
                     }),
-                ForceDeleteAction::make()
-                    ->using(function (Model $record): bool {
-                        Log::debug('EditQuote: Iniciando force delete de orçamento', [
-                            'metodo'   => __METHOD__ . '@' . __LINE__,
-                            'quote_id' => $record->id,
-                        ]);
-
-                        $service = app(QuoteService::class);
-                        $result = $service->forceDelete($record);
-
-                        if ($service->hasError()) {
-                            Log::error('EditQuote: Erro ao force delete orçamento', [
-                                'metodo'     => __METHOD__ . '@' . __LINE__,
-                                'error_code' => $service->getErrorCode(),
-                                'message'    => $service->getMessage(),
-                                'quote_id'   => $record->id,
-                            ]);
-
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
-                            return false;
-                        }
-
-                        Log::info('EditQuote: Orçamento force deleted com sucesso', [
-                            'metodo'   => __METHOD__ . '@' . __LINE__,
-                            'quote_id' => $record->id,
-                        ]);
-
-                        return $result;
-                    }),
-                RestoreAction::make()
-                    ->using(function (Model $record): bool {
-                        Log::debug('EditQuote: Iniciando restore de orçamento', [
-                            'metodo'   => __METHOD__ . '@' . __LINE__,
-                            'quote_id' => $record->id,
-                        ]);
-
-                        $service = app(QuoteService::class);
-                        $result = $service->restore($record);
-
-                        if ($service->hasError()) {
-                            Log::error('EditQuote: Erro ao restore orçamento', [
-                                'metodo'     => __METHOD__ . '@' . __LINE__,
-                                'error_code' => $service->getErrorCode(),
-                                'message'    => $service->getMessage(),
-                                'quote_id'   => $record->id,
-                            ]);
-
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
-                            return false;
-                        }
-
-                        Log::info('EditQuote: Orçamento restored com sucesso', [
-                            'metodo'   => __METHOD__ . '@' . __LINE__,
-                            'quote_id' => $record->id,
-                        ]);
-
-                        return $result;
-                    }),
             ])->button(),
         ];
     }
 
     protected function getFormActions(): array
     {
-        if(in_array($this->record->status, [Status::APPROVED->value, Status::REJECTED->value])) {
+        if (! $this->record->state()->canEdit()) {          
             return [];
         }
 

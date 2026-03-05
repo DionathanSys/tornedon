@@ -95,4 +95,9 @@ class DraftState implements QuoteState
     {
         return $transition === 'sendForApproval';
     }
+
+    public function canEdit(): bool
+    {
+        return true;
+    }
 }

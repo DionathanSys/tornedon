@@ -63,6 +63,11 @@ class ItemsRelationManager extends RelationManager
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state->descriptionAbbreviated())
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('estimated_production_hours')
                     ->label('Hrs. Produção')
                     ->numeric(2, ',', '.')

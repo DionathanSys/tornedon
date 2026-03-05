@@ -101,6 +101,14 @@ class QuoteService
         return $quote->requisitions()->exists();
     }
 
+    /**
+     * Verifica se o orçamento tem registros filhos (requisições/ordens de produção/ordens de serviço).
+     */
+    public static function hasChildRecords(Quote $quote): bool
+    {
+        return $quote->requisitions()->exists() || $quote->productionOrder()->exists() || $quote->serviceOrders()->exists();
+    }
+
     /* ==============================
      |  Operações de Escrita
      |==============================*/

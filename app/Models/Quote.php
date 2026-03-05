@@ -18,9 +18,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Quote extends Model implements HasMedia
+class Quote extends Model //implements HasMedia
 {
-    use InteractsWithMedia;
+    // use InteractsWithMedia;
 
     protected $fillable = [
         'quote_number',

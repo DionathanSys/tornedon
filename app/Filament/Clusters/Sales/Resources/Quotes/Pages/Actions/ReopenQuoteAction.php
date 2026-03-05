@@ -42,7 +42,6 @@ final class ReopenQuoteAction
                         'quote_id'   => $record->id,
                         'error_code' => $service->getErrorCode(),
                         'message'    => $service->getMessage(),
-                        'key'      => 'reopen_quote_action',
                     ]);
 
                     notify::error(

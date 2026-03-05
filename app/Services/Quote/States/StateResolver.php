@@ -13,6 +13,7 @@ class StateResolver
             Status::DRAFT    => new DraftState(),
             Status::SENT     => new SentState(),
             Status::APPROVED => new ApprovedState(),
+            Status::LINKED   => new LinkedState(),
             Status::REJECTED => new RejectedState(),
             Status::EXPIRED  => new ExpiredState(),
             default          => new DraftState(),
