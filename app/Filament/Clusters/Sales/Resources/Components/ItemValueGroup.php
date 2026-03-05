@@ -134,11 +134,11 @@ class ItemValueGroup
     public static function recalculate(
         Get    $get,
         Set    $set,
-        string $qtyField,
-        string $unitPriceField,
-        string $discountAmountField,
-        string $subtotalField,
-        string $totalAmountField,
+        string $qtyField            = 'quantity',
+        string $unitPriceField      = 'unit_price',
+        string $discountAmountField = 'discount_amount',
+        string $subtotalField       = 'subtotal',
+        string $totalAmountField    = 'total_amount',
     ): void {
         $quantity       = self::parseMoneyValue($get($qtyField));
         $unitPrice      = self::parseMoneyValue($get($unitPriceField));
