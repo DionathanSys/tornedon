@@ -56,13 +56,6 @@ class ServiceForm
                                             ->rows(3)
                                             ->maxLength(2000)
                                             ->autocomplete(false),
-                                        Select::make('unit_of_measure')
-                                            ->label('Unidade de Medida')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->options(Unit::toSelectArray())
-                                            ->required()
-                                            ->native(false)
-                                            ->default('UN'),
                                         TextInput::make('category')
                                             ->label('Categoria')
                                             ->columnSpan(['md' => 2, 'lg' => 3])
