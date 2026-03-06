@@ -8,6 +8,7 @@ enum Status: string
     case IN_PROGRESS = 'in_progress';
     case QC_CHECK = 'qc_check';
     case COMPLETED = 'completed';
+    case INVOICED = 'invoiced';
     case CANCELLED = 'cancelled';
 
     public function description(): string
@@ -17,6 +18,7 @@ enum Status: string
             self::IN_PROGRESS => 'Em Produção',
             self::QC_CHECK => 'Controle de Qualidade',
             self::COMPLETED => 'Concluído',
+            self::INVOICED  => 'Faturada',
             self::CANCELLED => 'Cancelado',
         };
     }
@@ -28,6 +30,7 @@ enum Status: string
             self::IN_PROGRESS => 'info',
             self::QC_CHECK => 'warning',
             self::COMPLETED => 'success',
+            self::INVOICED  => 'warning',
             self::CANCELLED => 'danger',
         };
     }
@@ -45,7 +48,8 @@ enum Status: string
             self::QUEUED => in_array($newStatus, [self::IN_PROGRESS, self::CANCELLED]),
             self::IN_PROGRESS => in_array($newStatus, [self::QC_CHECK, self::CANCELLED]),
             self::QC_CHECK => in_array($newStatus, [self::IN_PROGRESS, self::COMPLETED, self::CANCELLED]),
-            self::COMPLETED => false, // Cannot transition from completed
+            self::COMPLETED => in_array($newStatus, [self::INVOICED]), // Pode faturar
+            self::INVOICED  => false, // Estado terminal
             self::CANCELLED => false, // Cannot transition from cancelled
         };
     }

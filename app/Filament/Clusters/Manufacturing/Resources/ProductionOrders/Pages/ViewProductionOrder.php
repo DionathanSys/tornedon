@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages;
 
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\InvoiceProductionOrderAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -14,6 +15,7 @@ class ViewProductionOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            InvoiceProductionOrderAction::make(),
             EditAction::make(),
             DeleteAction::make(),
         ];

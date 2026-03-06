@@ -4,6 +4,7 @@ namespace App\Services\Invoice;
 
 use App\Enum\Invoice\Status;
 use App\Models\Invoice;
+use App\Models\InvoiceSequence;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
@@ -183,5 +184,25 @@ class InvoiceService
 
             return false;
         }
+    }
+
+    /* ==============================
+     |  Métodos Auxiliares
+     |==============================*/
+
+    /**
+     * Gera o próximo número de fatura para a empresa (lock pessimista).
+     */
+    public function generateNumber(int $companyId): string
+    {
+        $sequence = InvoiceSequence::lockForUpdate()
+            ->firstOrCreate(
+                ['company_id' => $companyId],
+                ['last_number' => 0]
+            );
+
+        $sequence->increment('last_number');
+
+        return str_pad($sequence->last_number, 6, '0', STR_PAD_LEFT);
     }
 }

@@ -91,4 +91,9 @@ class Invoice extends Model
     {
         return $this->hasMany(Requisition::class);
     }
+
+    public function serviceOrders(): HasMany
+    {
+        return $this->hasMany(ServiceOrder::class);
+    }
 }

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "FISCAL-DOCUMENTS-LEVANTAMENTO.md",
+                "file": "INVOICE-NF-IMPLEMENTATION.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "FISCAL-DOCUMENTS-LEVANTAMENTO"
+              "title": "INVOICE-NF-IMPLEMENTATION"
             }
           }
         ]
@@ -186,8 +186,10 @@
   },
   "active": "7f0905ef69d023eb",
   "lastOpenFiles": [
-    "Excalidraw/Drawing 2026-03-05 17.11.47.excalidraw.md",
+    "INVOICE-NF-IMPLEMENTATION-PLAN.md",
+    "INVOICE-NF-IMPLEMENTATION.md",
     "FISCAL-DOCUMENTS-LEVANTAMENTO.md",
+    "Excalidraw/Drawing 2026-03-05 17.11.47.excalidraw.md",
     "Escopo Fiscal da Aplicação.md",
     "docs/regras-negocio/quote-production-workflow.md",
     "docs/TABELAS-CAMPOS.md",
@@ -214,8 +216,6 @@
     "Outros",
     "regras-negocio/partner-creation.md",
     "Outros/IMPLEMENTACAO-RELATORIO.md",
-    "Outros/MAPA-IMPLEMENTACAO.md",
-    "Outros/CHECKLIST.md",
     "Excalidraw",
     "Pasted image 20260219092215.png",
     "Pasted image 20260218133944.png",

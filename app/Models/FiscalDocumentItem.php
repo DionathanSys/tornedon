@@ -11,6 +11,7 @@ class FiscalDocumentItem extends Model
     protected $fillable = [
         'fiscal_document_id',
         'product_id',
+        'service_id',
         'item_number',
         'origin_code',
         'ncm_code',
@@ -48,6 +49,11 @@ class FiscalDocumentItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
     }
 
     public function createdBy(): BelongsTo

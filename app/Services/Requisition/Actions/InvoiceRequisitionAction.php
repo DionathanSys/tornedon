@@ -5,6 +5,7 @@ namespace App\Services\Requisition\Actions;
 use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
+use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 class InvoiceRequisitionAction
 {
     use HandlesActionResponse;
+
+    private ?\App\Models\FiscalDocument $fiscalDocumentForNfe = null;
 
     public function __construct(
         private int $userId
@@ -30,14 +33,45 @@ class InvoiceRequisitionAction
                     'user_id'        => $this->userId,
                 ]);
 
-                // 1. Transição de estado
+                // 1. Cria Invoice → FiscalDocument → FiscalDocumentItems
+                $createAction   = new CreateInvoiceDocumentForRequisitionAction($this->userId);
+                $fiscalDocument = $createAction->execute($requisition);
+
+                if ($createAction->hasError() || ! $fiscalDocument) {
+                    $this->setError(
+                        $createAction->getMessage() ?: 'Falha ao criar cadeia fiscal da requisição.',
+                        $createAction->getErrors(),
+                    );
+                    throw new \RuntimeException($this->getMessage());
+                }
+
+                // 2. Transição de estado: CLOSED → INVOICED
                 $requisition->state()->invoice($requisition, $this->userId);
 
-                // 2. Libera reserva e gera saída física por item
+                // 3. Libera reserva e gera saída física por item
                 $this->processStockExits($requisition);
 
                 $requisition->refresh();
+
+                // 4. Despacha job de emissão da NF-e (assíncrono, fora da transaction)
+                // Não passa para dentro da transaction pois dispatch é side-effect externo
+                $this->fiscalDocumentForNfe = $fiscalDocument;
             });
+
+            // 5. Emite NF-e fora da transação (evita inconsistência de rollback)
+            if (isset($this->fiscalDocumentForNfe)) {
+                $nfeService = app(NfeDocumentService::class);
+                $nfeService->emitir($this->fiscalDocumentForNfe, $this->userId);
+
+                if ($nfeService->hasError()) {
+                    Log::warning('InvoiceRequisitionAction: NF-e não enfileirada', [
+                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'requisition_id'     => $requisition->id,
+                        'fiscal_document_id' => $this->fiscalDocumentForNfe->id,
+                        'nfe_error'          => $nfeService->getMessage(),
+                    ]);
+                }
+            }
 
             $this->setSuccess();
             return $requisition;

@@ -8,6 +8,7 @@ use App\Models\ProductionOrder;
 use App\Services\ProductionOrder\States\CancelledState;
 use App\Services\ProductionOrder\States\CompletedState;
 use App\Services\ProductionOrder\States\InProgressState;
+use App\Services\ProductionOrder\States\InvoicedState;
 use App\Services\ProductionOrder\States\ProductionOrderState;
 use App\Services\ProductionOrder\States\QcCheckState;
 use App\Services\ProductionOrder\States\QueuedState;
@@ -20,8 +21,9 @@ class StateResolver
             Status::QUEUED => new QueuedState($productionOrder),
             Status::IN_PROGRESS => new InProgressState($productionOrder),
             Status::QC_CHECK => new QcCheckState($productionOrder),
-            Status::COMPLETED => new CompletedState($productionOrder),
-            Status::CANCELLED => new CancelledState($productionOrder),
+            Status::COMPLETED  => new CompletedState($productionOrder),
+            Status::INVOICED   => new InvoicedState($productionOrder),
+            Status::CANCELLED  => new CancelledState($productionOrder),
             default => throw InvalidStateTransitionException::make('resolver estado', 'desconhecido'),
         };
     }

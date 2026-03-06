@@ -33,6 +33,7 @@ class ProductionOrder extends Model
         'total_estimated_hours',
         'total_actual_hours',
         'additional_info',
+        'invoice_id',
         'created_by',
         'updated_by',
     ];

@@ -216,4 +216,53 @@ class ProductionOrderService
             return null;
         }
     }
+
+    /**
+     * Fatura uma OP concluída: cria Invoice, FiscalDocument e despacha NF-e.
+     */
+    public function invoice(ProductionOrder $productionOrder, int $userId): ?ProductionOrder
+    {
+        $this->resetResponse();
+
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($productionOrder, $userId) {
+                $action = new \App\Services\ProductionOrder\Actions\InvoiceProductionOrderAction($userId);
+                $result = $action->execute($productionOrder);
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    \Illuminate\Support\Facades\Log::error('ProductionOrderService: Erro ao faturar OP', [
+                        'metodo'              => __METHOD__ . '@' . __LINE__,
+                        'production_order_id' => $productionOrder->id,
+                        'message'             => $this->getMessage(),
+                        'errors'              => $action->getErrors(),
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Ordem de produção faturada com sucesso');
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao faturar ordem de produção');
+
+            \Illuminate\Support\Facades\Log::error('ProductionOrderService: ' . $this->getMessage(), [
+                'metodo'              => __METHOD__ . '@' . __LINE__,
+                'error_code'          => $this->getErrorCode(),
+                'exception'           => $e->getMessage(),
+                'trace'               => $e->getTraceAsString(),
+                'production_order_id' => $productionOrder->id,
+                'user_id'             => $userId,
+            ]);
+
+            return null;
+        }
+    }
 }
