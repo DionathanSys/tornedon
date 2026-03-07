@@ -12,7 +12,6 @@ class RequisitionItem extends Model
     protected $fillable = [
         'requisition_id',
         'product_id',
-        'product_stock_id',
         'unit_of_measure',
         'quantity',
         'unit_price',
@@ -53,7 +52,7 @@ class RequisitionItem extends Model
 
     public function productStock(): BelongsTo
     {
-        return $this->belongsTo(ProductStock::class);
+        return $this->belongsTo(ProductStock::class, 'product_id');
     }
 
     public function createdBy(): BelongsTo

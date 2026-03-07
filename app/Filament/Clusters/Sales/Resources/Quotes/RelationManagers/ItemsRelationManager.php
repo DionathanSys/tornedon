@@ -109,9 +109,6 @@ class ItemsRelationManager extends RelationManager
                     ->iconButton(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    // DeleteBulkAction::make(),
-                ]),
                 CreateItemAction::make(),
             ])
             ->emptyStateDescription('Adicione itens ao orçamento para que eles sejam exibidos aqui.');

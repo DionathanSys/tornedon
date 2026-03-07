@@ -65,7 +65,7 @@ class QuoteItem extends Model
 
     public function productStock(): BelongsTo
     {
-        return $this->belongsTo(ProductStock::class, 'product_stock_id');
+        return $this->belongsTo(ProductStock::class, 'product_id');
     }
 
     public function service(): BelongsTo
