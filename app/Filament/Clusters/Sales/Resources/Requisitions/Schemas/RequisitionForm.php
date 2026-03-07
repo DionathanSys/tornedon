@@ -42,7 +42,7 @@ class RequisitionForm
             ])
             ->components([
                 Section::make('Dados da Requisição')
-                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Requisição #' . $get('number') . '# | ' . Status::from($get('status'))->description() : 'Dados da Requisição')
+                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Requisição Nº ' . $get('number') . ' | ' . Status::from($get('status'))->description() : 'Dados da Requisição')
                     ->columns([
                         'sm' => 1,
                         'md' => 6,
@@ -83,6 +83,7 @@ class RequisitionForm
                         SelectPartner::make('salesperson_id', 'salesperson')
                             ->label('Vendedor')
                             ->columnSpan(['md' => 4, 'lg' => 5, 'xl' => 3])
+                            ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                             ->required(false),
                     ]),
                 Section::make('Pagamento e Entrega')
@@ -121,17 +122,11 @@ class RequisitionForm
                             ->rows(3)
                             ->maxLength(1000),
                     ]),
-                Section::make()
-                    ->columnSpanFull()
-                    ->visibleOn('edit')
-                    ->collapsible()
-                    ->persistCollapsed()
-                    ->schema([
-                        Livewire::make(ItemsRelationManager::class, fn(Requisition $record) => [
-                            'ownerRecord' => $record,
-                            'pageClass' => EditRequisition::class,
-                        ]),
-                    ]),
+                Livewire::make(ItemsRelationManager::class, fn(Requisition $record) => [
+                    'ownerRecord' => $record,
+                    'pageClass' => EditRequisition::class,
+                ])
+                ->visibleOn('edit'),
                 Hidden::make('company_id'),
                 Hidden::make('created_by'),
                 Hidden::make('updated_by'),
