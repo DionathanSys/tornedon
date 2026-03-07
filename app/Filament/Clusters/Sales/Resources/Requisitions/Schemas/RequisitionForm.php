@@ -28,6 +28,7 @@ use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Operation;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class RequisitionForm
@@ -126,7 +127,9 @@ class RequisitionForm
                     'ownerRecord' => $record,
                     'pageClass' => EditRequisition::class,
                 ])
-                ->visibleOn('edit'),
+                    ->key('items-relation-manager')
+                    ->columnSpanFull()
+                    ->visibleOn([Operation::Edit]),
                 Hidden::make('company_id'),
                 Hidden::make('created_by'),
                 Hidden::make('updated_by'),
