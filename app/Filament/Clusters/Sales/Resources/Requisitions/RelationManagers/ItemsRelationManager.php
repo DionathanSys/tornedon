@@ -43,26 +43,7 @@ class ItemsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                ModalSelectProductStock::make('product_id')
-                    ->label('Produto')
-                    ->required(),
-                ItemValueGroup::make(),
-                Toggle::make('stock_consumed')
-                    ->disabled()
-                    ->required(),
-                DateTimePicker::make('stock_consumed_at')
-                    ->label('Data Consumo Estoque')
-                    ->disabled()
-                    ->required(),
-                Money::make('commission_percentage')
-                    ->label('Comissão (%)')
-                    ->disabled(),
-                Money::make('commission_amount')
-                    ->label('Vlr. Comissão')
-                    ->disabled(),
-                Textarea::make('observations')
-                    ->columnSpanFull(),
-                TextInput::make('additional_info'),
+                
             ]);
     }
 
@@ -164,10 +145,6 @@ class ItemsRelationManager extends RelationManager
                     RestoreBulkAction::make(),
                 ]),
                 CreateItemAction::make()
-            ])
-            ->modifyQueryUsing(fn(Builder $query) => $query
-                ->withoutGlobalScopes([
-                    SoftDeletingScope::class,
-                ]));
+            ]);
     }
 }
