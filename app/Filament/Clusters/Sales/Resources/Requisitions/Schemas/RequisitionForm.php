@@ -26,9 +26,13 @@ use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Operation;
+use Illuminate\Support\HtmlString;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class RequisitionForm
@@ -43,7 +47,9 @@ class RequisitionForm
             ])
             ->components([
                 Section::make('Dados da Requisição')
-                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Requisição Nº ' . $get('number') . ' | ' . Status::from($get('status'))->description() : 'Dados da Requisição')
+                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 
+                        new HtmlString('<span style="color: rgb(26, 4, 146); font-weight: 700;">Requisição Nº ' . e($get('number')) . ' | ' . e(Status::from($get('status'))->description()) . '</span>') : 
+                        'Dados da Requisição')
                     ->columns([
                         'sm' => 1,
                         'md' => 6,

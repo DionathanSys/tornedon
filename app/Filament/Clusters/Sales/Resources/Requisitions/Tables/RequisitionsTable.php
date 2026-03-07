@@ -26,7 +26,7 @@ class RequisitionsTable
                     ->searchable()
                     ->sortable()
                     ->icon(Heroicon::Hashtag),
-                TextColumn::make('customer.partner.name')
+                TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->searchable()
                     ->sortable()
