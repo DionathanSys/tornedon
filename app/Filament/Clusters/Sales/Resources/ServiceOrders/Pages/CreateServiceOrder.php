@@ -10,6 +10,7 @@ use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Enum\ServiceOrder\State;
 
 class CreateServiceOrder extends CreateRecord
 {
@@ -17,13 +18,9 @@ class CreateServiceOrder extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        Log::debug('CreateServiceOrder: Mutando dados antes de criar', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data' => $data,
-        ]);
-
-        $tenant = Filament::getTenant();
+        $tenant             = Filament::getTenant();
         $data['company_id'] = $tenant->id;
+        $data['status']     = State::OPEN;
 
         return $data;
     }
@@ -35,11 +32,6 @@ class CreateServiceOrder extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        Log::debug('CreateServiceOrder: Iniciando criação de ordem de serviço', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data' => $data,
-        ]);
-
         $service = app(ServiceOrderService::class);
         $serviceOrder = $service->create($data, Auth::id());
 

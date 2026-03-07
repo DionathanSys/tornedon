@@ -26,6 +26,7 @@ use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -41,27 +42,25 @@ class RequisitionForm
             ])
             ->components([
                 Section::make('Dados da Requisição')
+                    ->heading(fn(Get $get) => 'Requisição #' . $get('number') . '# | ' . Status::from($get('status'))->description())
                     ->columns([
                         'sm' => 1,
                         'md' => 6,
-                        'lg' => 12,
+                        'lg' => 8,
+                        'xl' => 12,
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('number')
-                            ->label('Número')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->visibleOn('edit'),
-                        TextEntry::make('status')
-                            ->label('Status')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->visibleOn('edit'),
+                        Hidden::make('number'),
+                        Hidden::make('status'),
                         SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')
-                            ->columnSpan(['md' => 3, 'lg' => 6]),
+                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
+                            ->columnStart(1)
+                            ->disabledOn('edit'),
                         Select::make('equipment_id')
                             ->label('Equipamento')
-                            ->columnSpan(['md' => 3, 'lg' => 6])
+                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                             ->searchable()
                             ->getSearchResultsUsing(
                                 fn(string $search): array => (new EquipmentService())
@@ -75,17 +74,20 @@ class RequisitionForm
                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                         DatePicker::make('sale_date')
                             ->label('Data da Venda')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->columnSpan(['md' => 2, 'lg' => 3, 'xl' => 3])
                             ->default(now())
+                            ->maxDate(now())
+                            ->disabledOn('edit')
                             ->required()
                             ->displayFormat('d/m/Y'),
                         SelectPartner::make('salesperson_id', 'salesperson')
                             ->label('Vendedor')
-                            ->columnSpan(['md' => 3, 'lg' => 3])
+                            ->columnSpan(['md' => 4, 'lg' => 5, 'xl' => 3])
                             ->required(false),
                     ]),
                 Section::make('Pagamento e Entrega')
                     ->columns(['md' => 6, 'lg' => 8, 'xl' => 12])
+                    ->disabled(fn($record) => $record->state()->canEdit() == false)
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()

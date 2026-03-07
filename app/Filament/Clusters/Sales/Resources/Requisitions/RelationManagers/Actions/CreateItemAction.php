@@ -20,6 +20,7 @@ use App\Services\Product\ProductSalePriceService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\Size;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -33,7 +34,7 @@ final class CreateItemAction
         return CreateAction::make()
             ->label('Peças')
             ->icon(Heroicon::Plus)
-            ->badge()
+            ->size(Size::Small)
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
                 Hidden::make('_min_sale_price')

@@ -5,8 +5,10 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
+use App\Enum\ServiceOrder\State;
 use App\Models\CompanyPreference;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Models\ServiceOrder;
@@ -14,6 +16,7 @@ use App\Services\Equipment\EquipmentService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -32,6 +35,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use Filament\Schemas\Components\Utilities\Get;
 use Livewire\Livewire;
 
 class ServiceOrderForm
@@ -55,6 +59,7 @@ class ServiceOrderForm
                             ->icon(Heroicon::InformationCircle)
                             ->schema([
                                 Section::make('Informações Principais')
+                                    ->heading(fn(Get $get) => 'Ordem de Serviço #' . $get('number') . '# | ' . State::from($get('status'))->description())
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 4,
@@ -70,14 +75,8 @@ class ServiceOrderForm
                                             ])
                                             ->columnSpanFull()
                                             ->schema([
-                                                TextEntry::make('number')
-                                                    ->label('Número da OS')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2]),
-                                                TextEntry::make('status')
-                                                    ->label('Status')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->badge()
-                                                    ->formatStateUsing(fn($state) => Str::upper($state->description())),
+                                                Hidden::make('number'),
+                                                Hidden::make('status'),
                                                 Select::make('priority')
                                                     ->label('Prioridade')
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
@@ -100,6 +99,7 @@ class ServiceOrderForm
                                                 'sm' => 1,
                                                 'md' => 4,
                                                 'lg' => 8,
+                                                'xl' => 12,
                                             ])
                                             ->columnSpanFull()
                                             ->schema([
@@ -127,28 +127,14 @@ class ServiceOrderForm
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                             ]),
-                                        Select::make('customer_id')
+                                        SelectPartner::make('customer_id', 'customer')
                                             ->label('Cliente')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                                             ->columnStart(1)
-                                            ->required()
-                                            ->searchable()
-                                            ->preload()
-                                            ->live()
-                                            ->disabledOn('edit')
-                                            ->afterStateUpdated(fn($state, $set) => $set('equipment_id', null))
-                                            ->options(function () {
-                                                return \App\Models\Partner::whereHas('companies', function ($query) {
-                                                    $query->where('companies.id', Filament::getTenant()->id)
-                                                        ->whereJsonContains('company_partner.type', 'customer')
-                                                        ->where('company_partner.is_active', true);
-                                                })
-                                                    ->orderBy('name')
-                                                    ->pluck('name', 'id');
-                                            }),
+                                            ->disabledOn('edit'),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
+                                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                                             ->searchable()
                                             ->getSearchResultsUsing(
                                                 fn(string $search): array => (new EquipmentService())
@@ -158,7 +144,7 @@ class ServiceOrderForm
                                                 fn($value): ?string => (new EquipmentService())
                                                     ->getLabelForSelect((int) $value)
                                             )
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
+                                            ->disabled(fn($get) => !$get('customer_id'))
                                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                                     ]),
                                 Section::make('Atendimento')

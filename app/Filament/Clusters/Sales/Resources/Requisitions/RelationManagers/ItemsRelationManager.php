@@ -148,7 +148,7 @@ class ItemsRelationManager extends RelationManager
             ->filters([
             ])
             ->headerActions([
-                CreateItemAction::make()
+                
             ])
             ->recordActions([
                 EditItemAction::make()
@@ -163,6 +163,7 @@ class ItemsRelationManager extends RelationManager
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
+                CreateItemAction::make()
             ])
             ->modifyQueryUsing(fn(Builder $query) => $query
                 ->withoutGlobalScopes([
