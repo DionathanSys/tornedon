@@ -26,7 +26,7 @@ class OpenState implements RequisitionState
         ]);
     }
 
-    public function invoice(Requisition $requisition, int $userId): void
+    public function invoice(Requisition $requisition, int $userId, int $invoiceId): void
     {
         throw new DomainValidationException(
             ['status' => ['Não é possível faturar uma requisição aberta. Encerre-a antes de faturar.']]

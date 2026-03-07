@@ -12,14 +12,16 @@ class CompletedState extends ProductionOrderState
         return 'Concluído';
     }
 
-    public function invoice(): void
+    public function invoice(int $invoiceId): void
     {
         Log::info('ProductionOrder: Faturando OP (concluída → faturada)', [
             'production_order_id' => $this->productionOrder->id,
+            'invoice_id'          => $invoiceId,
         ]);
 
         $this->productionOrder->update([
-            'status' => Status::INVOICED,
+            'status'     => Status::INVOICED,
+            'invoice_id' => $invoiceId,
         ]);
     }
 }

@@ -27,7 +27,7 @@ class OpenState implements ServiceOrderState
         ]);
     }
 
-    public function invoice(ServiceOrder $order, int $userId): void
+    public function invoice(ServiceOrder $order, int $userId, int $invoiceId): void
     {
         throw new DomainValidationException(
             ['status' => ['Não é possível faturar uma ordem aberta. Encerre-a antes de faturar.']]

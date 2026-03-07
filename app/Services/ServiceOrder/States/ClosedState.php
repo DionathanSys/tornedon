@@ -20,15 +20,17 @@ class ClosedState implements ServiceOrderState
         );
     }
 
-    public function invoice(ServiceOrder $order, int $userId): void
+    public function invoice(ServiceOrder $order, int $userId, int $invoiceId): void
     {
         Log::info('ServiceOrder: Faturando ordem de serviço (encerrada → faturada)', [
             'service_order_id' => $order->id,
             'user_id'          => $userId,
+            'invoice_id'       => $invoiceId,
         ]);
 
         $order->update([
             'status'     => State::INVOICED,
+            'invoice_id' => $invoiceId,
             'updated_by' => $userId,
         ]);
     }

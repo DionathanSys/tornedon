@@ -7,6 +7,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Requisition\Status;
 use App\Services\Requisition\States\RequisitionState;
 use App\Services\Requisition\States\StateResolver;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,7 +23,6 @@ class Requisition extends Model
         'quote_id',
         'sale_date',
         'status',
-        'discount_amount',
         'payment_method',
         'payment_condition',
         'observations',
@@ -49,7 +49,6 @@ class Requisition extends Model
         'invoiced_at' => 'datetime',
         'stock_consumed' => 'boolean',
         'stock_reserved' => 'boolean',
-        'discount_amount' => 'decimal:2',
         'additional_info' => 'array',
     ];
 
@@ -124,5 +123,35 @@ class Requisition extends Model
     public function state(): RequisitionState
     {
         return StateResolver::resolve($this);
+    }
+
+    /* ==============================
+     |  Computed Attributes
+     |==============================*/
+
+    /**
+     * Total de descontos da requisição: soma dos descontos dos itens.
+     */
+    protected function discountAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => round(
+                $this->items->sum(fn ($item) => (float) $item->discount_amount),
+                2
+            )
+        );
+    }
+
+    /**
+     * Total da requisição: soma dos totais dos itens.
+     */
+    protected function totalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => round(
+                $this->items->sum(fn ($item) => (float) $item->total_amount),
+                2
+            )
+        );
     }
 }

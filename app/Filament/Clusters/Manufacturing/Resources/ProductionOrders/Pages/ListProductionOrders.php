@@ -14,9 +14,7 @@ class ListProductionOrders extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Ordem de Produção')
-                ->icon(Heroicon::Plus),
+            
         ];
     }
 }

@@ -13,8 +13,9 @@ class InvoiceValidator
     {
         return [
             'invoice_date' => 'required|date',
-            'total_amount' => 'nullable|numeric|min:0',
-            'discount_amount' => 'nullable|numeric|min:0',
+            'pending' => 'boolean',
+            'confirmed' => 'boolean',
+            'canceled' => 'boolean',
         ];
     }
 
@@ -29,10 +30,11 @@ class InvoiceValidator
             'invoice_number.unique' => 'Já existe uma fatura com este número.',
             'invoice_date.required' => 'A data da fatura é obrigatória.',
             'invoice_date.date' => 'A data da fatura deve ser uma data válida.',
-            'total_amount.numeric' => 'O valor total deve ser numérico.',
-            'total_amount.min' => 'O valor total não pode ser negativo.',
-            'discount_amount.numeric' => 'O desconto deve ser numérico.',
-            'discount_amount.min' => 'O desconto não pode ser negativo.',
+            'status.required' => 'O status é obrigatório.',
+            'status.enum' => 'O status deve ser um valor válido.',
+            'pending.boolean' => 'O campo "pending" deve ser verdadeiro ou falso.',
+            'confirmed.boolean' => 'O campo "confirmed" deve ser verdadeiro ou falso.',
+            'canceled.boolean' => 'O campo "canceled" deve ser verdadeiro ou falso.',
         ];
     }
 
@@ -50,7 +52,7 @@ class InvoiceValidator
                 'max:50',
                 Rule::unique('invoices', 'invoice_number'),
             ],
-            'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
+            'status' => ['required', Rule::enum(Status::class)],
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();
@@ -62,16 +64,7 @@ class InvoiceValidator
     public static function validateUpdate(array $data, int $invoiceId): array
     {
         $rules = array_merge(self::commonRules(), [
-            'customer_id' => 'sometimes|required|integer|exists:partners,id',
-            'company_id' => 'sometimes|required|integer|exists:companies,id',
-            'invoice_number' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('invoices', 'invoice_number')->ignore($invoiceId),
-            ],
-            'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
+            'status' => ['sometimes', 'required', Rule::enum(Status::class)],
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();

@@ -58,7 +58,7 @@ abstract class ProductionOrderState
     /**
      * Fatura a ordem de produção (completed → invoiced)
      */
-    public function invoice(): void
+    public function invoice(int $invoiceId): void
     {
         throw InvalidStateTransitionException::make(
             'faturar',

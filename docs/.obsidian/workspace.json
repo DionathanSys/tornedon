@@ -13,15 +13,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "INVOICE-NF-IMPLEMENTATION.md",
+                "file": "INVOICE-NF-IMPLEMENTATION-PLAN.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "INVOICE-NF-IMPLEMENTATION"
+              "title": "INVOICE-NF-IMPLEMENTATION-PLAN"
+            }
+          },
+          {
+            "id": "54e82c84dad19847",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Invoice.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Invoice"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -184,9 +199,10 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "7f0905ef69d023eb",
+  "active": "54e82c84dad19847",
   "lastOpenFiles": [
     "INVOICE-NF-IMPLEMENTATION-PLAN.md",
+    "Invoice.md",
     "INVOICE-NF-IMPLEMENTATION.md",
     "FISCAL-DOCUMENTS-LEVANTAMENTO.md",
     "Excalidraw/Drawing 2026-03-05 17.11.47.excalidraw.md",
@@ -197,7 +213,6 @@
     "docs/DATABASE-STANDARDS.md",
     "docs",
     "Quote-Scope.md",
-    "Sem título.md",
     "TABELAS-CAMPOS.md",
     "REQUIREMENTS.md",
     "Requisition.md",

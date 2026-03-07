@@ -19,7 +19,7 @@ interface RequisitionState
      *
      * @throws DomainValidationException
      */
-    public function invoice(Requisition $requisition, int $userId): void;
+    public function invoice(Requisition $requisition, int $userId, int $invoiceId): void;
 
     /**
      * Cancela a requisição.

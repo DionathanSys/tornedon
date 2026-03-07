@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
 use Filament\Actions\ActionGroup;
@@ -19,6 +20,7 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ImportRecordsAction::make(),
             ActionGroup::make([
                 DeleteAction::make()
                     ->using(function (Model $record): bool {

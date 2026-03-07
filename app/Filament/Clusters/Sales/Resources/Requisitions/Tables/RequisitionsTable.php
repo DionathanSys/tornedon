@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Tables;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoiceRequisitionAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -91,6 +93,9 @@ class RequisitionsTable
                     ->iconButton(),
             ])
             ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkInvoiceRequisitionAction::make(),
+                ]),
                 CreateAction::make()
                     ->label('Requisição')
                     ->icon(Heroicon::Plus)

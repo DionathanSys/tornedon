@@ -26,6 +26,10 @@ class InvoiceService
 
         try {
             return DB::transaction(function () use ($data, $createdBy) {
+                if (empty($data['invoice_number']) && isset($data['company_id'])) {
+                    $data['invoice_number'] = $this->generateNumber($data['company_id']);
+                }
+
                 $data['status'] = $data['status'] ?? Status::PENDING->value;
 
                 $action = new CreateInvoiceAction($createdBy);

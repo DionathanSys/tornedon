@@ -7,6 +7,7 @@ use App\Models\ProductionOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductionOrder\ProductionOrderService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -21,14 +22,21 @@ final class InvoiceProductionOrderAction
             ->color('warning')
             ->requiresConfirmation()
             ->modalHeading('Faturar Ordem de Produção')
-            ->modalDescription('Tem certeza que deseja faturar esta ordem de produção? Esta ação criará a fatura, o documento fiscal e enfileirará a emissão da NF-e.')
+            ->modalDescription('Tem certeza que deseja faturar esta ordem de produção? Esta ação mudará o status para "Faturada" e não poderá ser desfeita.')
             ->modalSubmitActionLabel('Sim, faturar')
+            ->schema([
+                Checkbox::make('request_fiscal_document')
+                    ->label('Solicitar documento fiscal agora')
+                    ->helperText('Se desmarcado, a fatura será criada em aberto para posterior emissão do documento fiscal.')
+                    ->default(false),
+            ])
             ->visible(fn (ProductionOrder $record): bool => $record->status === Status::COMPLETED)
-            ->action(function (ProductionOrder $record): void {
+            ->action(function (ProductionOrder $record, array $data): void {
                 Log::debug('InvoiceProductionOrderAction (Filament): Faturando OP', [
-                    'metodo'              => __METHOD__ . '@' . __LINE__,
-                    'production_order_id' => $record->id,
-                    'user_id'             => Auth::id(),
+                    'metodo'                  => __METHOD__ . '@' . __LINE__,
+                    'production_order_id'     => $record->id,
+                    'user_id'                 => Auth::id(),
+                    'request_fiscal_document' => $data['request_fiscal_document'] ?? false,
                 ]);
 
                 $service = app(ProductionOrderService::class);

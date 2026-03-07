@@ -9,7 +9,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class InvoiceForm
 {
@@ -56,27 +55,6 @@ class InvoiceForm
                             ->searchable()
                             ->preload()
                             ->required(),
-                    ]),
-                Section::make('Valores')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 4,
-                        'lg' => 8,
-                    ])
-                    ->columnSpanFull()
-                    ->collapsible()
-                    ->persistCollapsed()
-                    ->schema([
-                        Money::make('total_amount')
-                            ->label('Valor Total')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->default(0)
-                            ->prefix('R$'),
-                        Money::make('discount_amount')
-                            ->label('Desconto')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->default(0)
-                            ->prefix('R$'),
                     ]),
                 Hidden::make('company_id'),
                 Hidden::make('created_by'),

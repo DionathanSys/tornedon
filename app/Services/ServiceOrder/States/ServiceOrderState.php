@@ -19,7 +19,7 @@ interface ServiceOrderState
      *
      * @throws DomainValidationException
      */
-    public function invoice(ServiceOrder $order, int $userId): void;
+    public function invoice(ServiceOrder $order, int $userId, int $invoiceId): void;
 
     /**
      * Cancela a ordem de serviço.

@@ -39,12 +39,10 @@ class InvoicesTable
                     ->color(fn($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL', 100)
-                    ->sortable(),
+                    ->money('BRL', 100),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
                     ->money('BRL', 100)
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')

@@ -7,7 +7,7 @@ use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
-use Filament\Support\Enums\ActionSize;
+use Filament\Forms\Components\Checkbox;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -24,12 +24,19 @@ final class InvoiceServiceOrderAction
             ->modalHeading('Faturar Ordem de Serviço')
             ->modalDescription('Tem certeza que deseja faturar esta ordem de serviço? Esta ação mudará o status para "Faturada" e não poderá ser desfeita.')
             ->modalSubmitActionLabel('Sim, faturar')
+            ->schema([
+                Checkbox::make('request_fiscal_document')
+                    ->label('Solicitar documento fiscal agora')
+                    ->helperText('Se desmarcado, a fatura será criada em aberto para posterior emissão do documento fiscal.')
+                    ->default(false),
+            ])
             ->visible(fn (ServiceOrder $record): bool => $record->status === State::CLOSED)
-            ->action(function (ServiceOrder $record): void {
+            ->action(function (ServiceOrder $record, array $data): void {
                 Log::debug('InvoiceServiceOrderAction (Filament): Faturando OS', [
-                    'metodo'           => __METHOD__ . '@' . __LINE__,
-                    'service_order_id' => $record->id,
-                    'user_id'          => Auth::id(),
+                    'metodo'                   => __METHOD__ . '@' . __LINE__,
+                    'service_order_id'         => $record->id,
+                    'user_id'                  => Auth::id(),
+                    'request_fiscal_document'  => $data['request_fiscal_document'] ?? false,
                 ]);
 
                 $service = app(ServiceOrderService::class);

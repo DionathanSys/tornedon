@@ -20,15 +20,17 @@ class ClosedState implements RequisitionState
         );
     }
 
-    public function invoice(Requisition $requisition, int $userId): void
+    public function invoice(Requisition $requisition, int $userId, int $invoiceId): void
     {
         Log::info('Requisition: Faturando requisição (closed → invoiced)', [
             'requisition_id' => $requisition->id,
             'user_id'        => $userId,
+            'invoice_id'     => $invoiceId,
         ]);
 
         $requisition->update([
             'status'      => Status::INVOICED,
+            'invoice_id'  => $invoiceId,
             'invoiced_at' => now(),
             'updated_by'  => $userId,
         ]);

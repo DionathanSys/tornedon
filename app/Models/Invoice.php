@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enum\Invoice\Status;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,8 +16,6 @@ class Invoice extends Model
         'company_id',
         'invoice_number',
         'invoice_date',
-        'total_amount',
-        'discount_amount',
         'status',
         'pending',
         'confirmed',
@@ -32,8 +31,6 @@ class Invoice extends Model
     protected $casts = [
         'status' => Status::class,
         'invoice_date' => 'date',
-        'total_amount' => MoneyCast::class,
-        'discount_amount' => MoneyCast::class,
         'pending' => 'boolean',
         'confirmed' => 'boolean',
         'canceled' => 'boolean',
@@ -95,5 +92,52 @@ class Invoice extends Model
     public function serviceOrders(): HasMany
     {
         return $this->hasMany(ServiceOrder::class);
+    }
+
+    public function productionOrders(): HasMany
+    {
+        return $this->hasMany(ProductionOrder::class);
+    }
+
+    /* ==============================
+     |  Computed Attributes
+     |==============================*/
+
+    /**
+     * Total geral da fatura: soma dos totais das OS, requisições e OPs vinculadas.
+     */
+    protected function totalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: function (): float {
+                $soTotal  = $this->serviceOrders->sum(fn ($so) => (float) $so->total_amount);
+                $reqTotal = $this->requisitions->sum(fn ($req) => (float) $req->total_amount);
+                $poTotal  = $this->productionOrders->sum(function ($po) {
+                    return $po->items->sum(function ($item) {
+                        $unitPrice = (float) ($item->quoteItem?->unit_price ?? 0);
+                        $qty = (float) ($item->quantity_approved ?: $item->quantity_produced ?: $item->quantity);
+
+                        return $unitPrice * $qty;
+                    });
+                });
+
+                return round($soTotal + $reqTotal + $poTotal, 2);
+            }
+        );
+    }
+
+    /**
+     * Total de descontos da fatura: soma dos descontos dos itens de OS e requisições vinculadas.
+     */
+    protected function discountAmount(): Attribute
+    {
+        return Attribute::make(
+            get: function (): float {
+                $soDiscount  = $this->serviceOrders->sum(fn ($so) => (float) $so->discount_amount);
+                $reqDiscount = $this->requisitions->sum(fn ($req) => (float) $req->discount_amount);
+
+                return round($soDiscount + $reqDiscount, 2);
+            }
+        );
     }
 }

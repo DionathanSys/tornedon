@@ -10,6 +10,7 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Services\ServiceOrder\StateResolver;
 use App\Services\ServiceOrder\States\ServiceOrderState;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -37,7 +38,6 @@ class ServiceOrder extends Model
         'estimated_hours',
         'actual_hours',
         'travel_value',
-        'discount_amount',
         'payment_method',
         'payment_condition',
         'technician_id',
@@ -68,7 +68,6 @@ class ServiceOrder extends Model
         'estimated_hours'       => 'decimal:2',
         'actual_hours'          => 'decimal:2',
         'travel_value'          => MoneyCast::class,
-        'discount_amount'       => MoneyCast::class,
         'warranty_expires_at'   => 'date',
         'requires_approval'     => 'boolean',
         'approved_by_customer'  => 'boolean',
@@ -139,5 +138,36 @@ class ServiceOrder extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /* ==============================
+     |  Computed Attributes
+     |==============================*/
+
+    /**
+     * Total de descontos da OS: soma dos descontos dos itens.
+     */
+    protected function discountAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => round(
+                $this->items->sum(fn ($item) => (float) $item->discount_amount),
+                2
+            )
+        );
+    }
+
+    /**
+     * Total da OS: soma dos totais dos itens + valor de deslocamento.
+     */
+    protected function totalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => round(
+                $this->items->sum(fn ($item) => (float) $item->total_amount)
+                    + (float) $this->travel_value,
+                2
+            )
+        );
     }
 }

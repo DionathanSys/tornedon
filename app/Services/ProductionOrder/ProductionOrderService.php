@@ -2,8 +2,10 @@
 
 namespace App\Services\ProductionOrder;
 
+use App\Domain\Exceptions\ProductionOrder\InvalidStateTransitionException;
 use App\Models\ProductionOrder;
 use App\Models\Requisition;
+use App\Services\Invoice\InvoiceService;
 use App\Services\ProductionOrder\Actions\CancelProductionAction;
 use App\Services\ProductionOrder\Actions\CompleteProduction;
 use App\Services\ProductionOrder\Actions\CreateProductionOrder;
@@ -13,6 +15,7 @@ use App\Services\ProductionOrder\Actions\SendToQcAction;
 use App\Services\ProductionOrder\Actions\StartProduction;
 use App\Services\ProductionOrder\Actions\UpdateProgress;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -218,48 +221,106 @@ class ProductionOrderService
     }
 
     /**
-     * Fatura uma OP concluída: cria Invoice, FiscalDocument e despacha NF-e.
+     * Fatura uma ou mais OPs concluídas: cria uma única Invoice agrupando todos os registros.
+     *
+     * @param  ProductionOrder|\Illuminate\Database\Eloquent\Collection  $records
      */
-    public function invoice(ProductionOrder $productionOrder, int $userId): ?ProductionOrder
+    public function invoice(ProductionOrder|\Illuminate\Database\Eloquent\Collection $records, int $userId): ?\App\Models\Invoice
     {
         $this->resetResponse();
 
+        $records = $records instanceof ProductionOrder
+            ? new \Illuminate\Database\Eloquent\Collection([$records])
+            : $records;
+
+        // Validação: mesmo cliente
+        $customerIds = $records->pluck('customer_id')->unique();
+        if ($customerIds->count() > 1) {
+            $this->setError('Todos os registros selecionados devem pertencer ao mesmo cliente.');
+            return null;
+        }
+
+        // Validação: todas concluídas
+        $notCompleted = $records->filter(fn (ProductionOrder $po) => $po->status !== \App\Enum\ProductionOrder\Status::COMPLETED);
+        if ($notCompleted->isNotEmpty()) {
+            $this->setError('Apenas ordens de produção com status "Concluída" podem ser faturadas.');
+            return null;
+        }
+
+        // Validação: todas devem possuir itens
+        foreach ($records as $record) {
+            if ($record->items()->count() === 0) {
+                $this->setError("A OP #{$record->production_order_number} não possui itens.");
+                return null;
+            }
+        }
+
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($productionOrder, $userId) {
-                $action = new \App\Services\ProductionOrder\Actions\InvoiceProductionOrderAction($userId);
-                $result = $action->execute($productionOrder);
+            return DB::transaction(function () use ($records, $userId): \App\Models\Invoice {
+                $first = $records->first();
 
-                if ($action->hasError()) {
+                // 1. Cria Invoice via InvoiceService
+                $invoiceService = app(InvoiceService::class);
+                $invoice = $invoiceService->create([
+                    'customer_id'  => $first->customer_id,
+                    'company_id'   => $first->company_id,
+                    'invoice_date' => now()->toDateString(),
+                ], $userId);
+
+                if ($invoiceService->hasError() || ! $invoice) {
                     $this->setError(
-                        $action->getMessage(),
-                        $action->getErrors(),
-                        422,
-                        $action->getErrorCode()
+                        'Falha ao criar fatura: ' . $invoiceService->getMessage(),
+                        $invoiceService->getErrors(),
                     );
-
-                    \Illuminate\Support\Facades\Log::error('ProductionOrderService: Erro ao faturar OP', [
-                        'metodo'              => __METHOD__ . '@' . __LINE__,
-                        'production_order_id' => $productionOrder->id,
-                        'message'             => $this->getMessage(),
-                        'errors'              => $action->getErrors(),
-                    ]);
-
-                    return null;
+                    throw new \RuntimeException($this->getMessage());
                 }
 
-                $this->setSuccess('Ordem de produção faturada com sucesso');
-                return $result;
-            });
-        } catch (\Exception $e) {
-            $this->setError('Erro ao faturar ordem de produção');
+                // 2. Transição de estado e vínculo com a invoice para cada OP
+                foreach ($records as $record) {
+                    $record->state()->invoice($invoice->id);
+                }
 
-            \Illuminate\Support\Facades\Log::error('ProductionOrderService: ' . $this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'error_code'          => $this->getErrorCode(),
-                'exception'           => $e->getMessage(),
-                'trace'               => $e->getTraceAsString(),
-                'production_order_id' => $productionOrder->id,
-                'user_id'             => $userId,
+                Log::info('ProductionOrderService: OP(s) faturada(s) com sucesso', [
+                    'metodo'               => __METHOD__ . '@' . __LINE__,
+                    'production_order_ids' => $records->pluck('id')->all(),
+                    'invoice_id'           => $invoice->id,
+                ]);
+
+                $this->setSuccess('Ordem(ns) de produção faturada(s) com sucesso');
+                return $invoice;
+            });
+        } catch (InvalidStateTransitionException $e) {
+            $this->setError($e->getMessage());
+
+            Log::warning('ProductionOrderService: Transição inválida ao faturar OP', [
+                'metodo'               => __METHOD__ . '@' . __LINE__,
+                'production_order_ids' => $records->pluck('id')->all(),
+                'exception'            => $e->getMessage(),
+            ]);
+
+            return null;
+        } catch (QueryException $e) {
+            $this->setError('Erro ao faturar OP no banco de dados');
+
+            Log::error('ProductionOrderService: QueryException ao faturar OP', [
+                'metodo'               => __METHOD__ . '@' . __LINE__,
+                'production_order_ids' => $records->pluck('id')->all(),
+                'exception'            => $e->getMessage(),
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            if (! $this->hasError()) {
+                $this->setError('Erro ao faturar ordem de produção');
+            }
+
+            Log::error('ProductionOrderService: Erro ao faturar OP', [
+                'metodo'               => __METHOD__ . '@' . __LINE__,
+                'error_code'           => $this->getErrorCode(),
+                'exception'            => $e->getMessage(),
+                'trace'                => $e->getTraceAsString(),
+                'production_order_ids' => $records->pluck('id')->all(),
+                'user_id'              => $userId,
             ]);
 
             return null;

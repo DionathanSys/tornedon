@@ -5,11 +5,13 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Tables;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
@@ -176,6 +178,9 @@ class ServiceOrdersTable
                 ])
             ])
             ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkInvoiceServiceOrderAction::make(),
+                ]),
                 CreateAction::make()
                     ->label('Ordem de Serviço')
                     ->icon(Heroicon::Plus)

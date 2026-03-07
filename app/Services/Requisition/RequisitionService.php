@@ -3,18 +3,23 @@
 namespace App\Services\Requisition;
 
 use App\Enum\Requisition\Status;
+use App\Enum\StockMovement\Type;
+use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
 use App\Models\RequisitionSequence;
+use App\Services\Invoice\InvoiceService;
+use App\Services\ProductStock\ProductStockService;
 use App\Services\Requisition\Actions\CancelRequisitionAction;
 use App\Services\Requisition\Actions\CloseRequisitionAction;
 use App\Services\Requisition\Actions\CreateRequisitionAction;
 use App\Services\Requisition\Actions\DeleteRequisitionAction;
-use App\Services\Requisition\Actions\InvoiceRequisitionAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\RestoreRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
+use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -468,52 +473,217 @@ class RequisitionService
     }
 
     /**
-     * Fatura uma requisição (encerrada → faturada).
+     * Fatura uma ou mais requisições (encerrada → faturada).
+     * Cria uma única Invoice agrupando todos os registros.
+     *
+     * @param  Requisition|Collection  $records  Uma requisição ou coleção de requisições
      */
-    public function invoice(Requisition $requisition, int $userId): ?Requisition
+    public function invoice(Requisition|Collection $records, int $userId): ?\App\Models\Invoice
     {
         $this->resetResponse();
 
+        $records = $records instanceof Requisition ? new Collection([$records]) : $records;
+
+        // Validação: mesmo cliente
+        $customerIds = $records->pluck('customer_id')->unique();
+        if ($customerIds->count() > 1) {
+            $this->setError('Todos os registros selecionados devem pertencer ao mesmo cliente.');
+            return null;
+        }
+
+        // Validação: todas encerradas
+        $notClosed = $records->filter(fn (Requisition $req) => $req->status !== Status::CLOSED);
+        if ($notClosed->isNotEmpty()) {
+            $this->setError('Apenas requisições com status "Encerrada" podem ser faturadas.');
+            return null;
+        }
+
+        // Validação: todas devem possuir itens
+        foreach ($records as $record) {
+            if ($record->items()->count() === 0) {
+                $this->setError("A requisição #{$record->number} não possui itens.");
+                return null;
+            }
+        }
+
         try {
-            return DB::transaction(function () use ($requisition, $userId) {
-                $action = new InvoiceRequisitionAction($userId);
-                $result = $action->execute($requisition);
+            return DB::transaction(function () use ($records, $userId): \App\Models\Invoice {
+                $first = $records->first();
 
-                if ($action->hasError()) {
+                // 1. Cria Invoice via InvoiceService
+                $invoiceService = app(InvoiceService::class);
+                $invoice = $invoiceService->create([
+                    'customer_id'  => $first->customer_id,
+                    'company_id'   => $first->company_id,
+                    'invoice_date' => now()->toDateString(),
+                ], $userId);
+
+                if ($invoiceService->hasError() || ! $invoice) {
                     $this->setError(
-                        $action->getMessage(),
-                        $action->getErrors(),
-                        422,
-                        $action->getErrorCode()
+                        'Falha ao criar fatura: ' . $invoiceService->getMessage(),
+                        $invoiceService->getErrors(),
                     );
-
-                    Log::error($action->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
-                        'errors'         => $action->getErrors(),
-                        'requisition_id' => $requisition->id,
-                    ]);
-
-                    return null;
+                    throw new \RuntimeException($this->getMessage());
                 }
 
-                $this->setSuccess('Requisição faturada com sucesso');
-                return $result;
-            });
-        } catch (\Exception $e) {
-            $this->setError('Erro ao faturar requisição');
+                // 2. Transição de estado e vínculo com a invoice para cada requisição
+                foreach ($records as $record) {
+                    $record->state()->invoice($record, $userId, $invoice->id);
 
-            Log::error('Erro ao faturar requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
-                'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'exception'      => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                    // Libera reserva e gera saída física por item
+                    $this->processStockExits($record, $userId);
+                }
+
+                Log::info('RequisitionService: Requisição(ões) faturada(s) com sucesso', [
+                    'metodo'          => __METHOD__ . '@' . __LINE__,
+                    'requisition_ids' => $records->pluck('id')->all(),
+                    'invoice_id'      => $invoice->id,
+                ]);
+
+                $this->setSuccess('Requisição(ões) faturada(s) com sucesso');
+                return $invoice;
+            });
+        } catch (DomainValidationException $e) {
+            $this->setError('Transição inválida', $e->errors);
+
+            Log::warning('RequisitionService: Transição inválida ao faturar', [
+                'metodo'          => __METHOD__ . '@' . __LINE__,
+                'requisition_ids' => $records->pluck('id')->all(),
+                'errors'          => $e->errors,
+            ]);
+
+            return null;
+        } catch (QueryException $e) {
+            $this->setError('Erro ao faturar requisição no banco de dados');
+
+            Log::error('RequisitionService: QueryException ao faturar', [
+                'metodo'          => __METHOD__ . '@' . __LINE__,
+                'requisition_ids' => $records->pluck('id')->all(),
+                'exception'       => $e->getMessage(),
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            if (! $this->hasError()) {
+                $this->setError('Erro ao faturar requisição');
+            }
+
+            Log::error('RequisitionService: Erro ao faturar', [
+                'metodo'          => __METHOD__ . '@' . __LINE__,
+                'requisition_ids' => $records->pluck('id')->all(),
+                'error_code'      => $this->getErrorCode(),
+                'exception'       => $e->getMessage(),
+                'trace'           => $e->getTraceAsString(),
             ]);
 
             return null;
         }
+    }
+
+    /**
+     * Para cada item ainda não consumido:
+     *  1. Cria movimentação EXIT (saída física decrementa quantity_total)
+     *  2. Cria movimentação RESERVATION_RELEASE (libera a reserva, decrementa quantity_reserved)
+     *  3. Marca o item como consumido
+     * Ao final, marca a requisição como stock_consumed.
+     */
+    private function processStockExits(Requisition $requisition, int $userId): void
+    {
+        $stockMovementService = app(StockMovementService::class);
+        $productStockService  = app(ProductStockService::class);
+
+        $items = $requisition->items()
+            ->where('stock_consumed', false)
+            ->get();
+
+        if ($items->isEmpty()) {
+            Log::info('RequisitionService: Nenhum item pendente de saída de estoque', [
+                'requisition_id' => $requisition->id,
+            ]);
+            return;
+        }
+
+        foreach ($items as $item) {
+            if (! $item->product_id) {
+                continue;
+            }
+
+            $product = $item->product;
+
+            if (! $product || ! $product->has_stock_control) {
+                $item->update([
+                    'stock_consumed'    => true,
+                    'stock_consumed_at' => now(),
+                ]);
+                continue;
+            }
+
+            $productStock = $productStockService->findByProductId(
+                $item->product_id,
+                $requisition->company_id
+            );
+
+            if (! $productStock) {
+                Log::warning('RequisitionService: ProductStock não encontrado', [
+                    'product_id'     => $item->product_id,
+                    'requisition_id' => $requisition->id,
+                    'item_id'        => $item->id,
+                ]);
+                throw new \Exception(
+                    'Estoque não encontrado para o produto #' . $item->product_id
+                );
+            }
+
+            $baseData = [
+                'product_stock_id' => $productStock->id,
+                'product_id'       => $item->product_id,
+                'company_id'       => $requisition->company_id,
+                'quantity'         => (float) $item->quantity,
+                'unit_price'       => (float) ($item->unit_price ?? 0),
+                'source_type'      => 'requisition',
+                'source_id'        => $requisition->id,
+                'observations'     => $item->observations,
+            ];
+
+            $exit = $stockMovementService->create(array_merge($baseData, [
+                'type'   => Type::EXIT->value,
+                'reason' => 'Saída por faturamento — requisição #' . $requisition->number,
+            ]), $userId);
+
+            if (! $exit) {
+                throw new \Exception(
+                    'Falha ao criar saída de estoque para produto #' . $item->product_id
+                    . ': ' . $stockMovementService->getMessage()
+                );
+            }
+
+            $release = $stockMovementService->create(array_merge($baseData, [
+                'type'   => Type::RESERVATION_RELEASE->value,
+                'reason' => 'Liberação de reserva por faturamento — requisição #' . $requisition->number,
+            ]), $userId);
+
+            if (! $release) {
+                throw new \Exception(
+                    'Falha ao liberar reserva de estoque para produto #' . $item->product_id
+                    . ': ' . $stockMovementService->getMessage()
+                );
+            }
+
+            $item->update([
+                'stock_consumed'    => true,
+                'stock_consumed_at' => now(),
+            ]);
+
+            Log::info('RequisitionService: Saída de estoque processada', [
+                'product_id'     => $item->product_id,
+                'quantity'       => $item->quantity,
+                'exit_id'        => $exit->id,
+                'release_id'     => $release->id,
+                'requisition_id' => $requisition->id,
+            ]);
+        }
+
+        $requisition->update(['stock_consumed' => true]);
     }
 
     /**

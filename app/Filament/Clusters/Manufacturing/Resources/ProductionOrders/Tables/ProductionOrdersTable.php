@@ -5,10 +5,14 @@ namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Tables;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\BulkInvoiceProductionOrderAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -114,8 +118,13 @@ class ProductionOrdersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkInvoiceProductionOrderAction::make(),
                     DeleteBulkAction::make(),
                 ]),
+                CreateAction::make()
+                    ->label('Ordem de Produção')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
     }

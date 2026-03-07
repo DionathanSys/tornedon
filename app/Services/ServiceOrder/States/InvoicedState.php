@@ -18,7 +18,7 @@ class InvoicedState implements ServiceOrderState
         );
     }
 
-    public function invoice(ServiceOrder $order, int $userId): void
+    public function invoice(ServiceOrder $order, int $userId, int $invoiceId): void
     {
         throw new DomainValidationException(
             ['status' => ['A ordem já está faturada.']]
