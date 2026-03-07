@@ -51,4 +51,9 @@ class CancelledState implements RequisitionState
     {
         return $transition === 'reopen';
     }
+
+    public function canEdit(): bool
+    {
+        return false;
+    }
 }

@@ -57,4 +57,9 @@ class OpenState implements RequisitionState
     {
         return in_array($transition, ['close', 'cancel']);
     }
+
+    public function canEdit(): bool
+    {
+        return true;
+    }
 }

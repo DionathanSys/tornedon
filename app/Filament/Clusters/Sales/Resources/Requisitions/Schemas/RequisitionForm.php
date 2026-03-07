@@ -42,7 +42,7 @@ class RequisitionForm
             ])
             ->components([
                 Section::make('Dados da Requisição')
-                    ->heading(fn(Get $get) => 'Requisição #' . $get('number') . '# | ' . Status::from($get('status'))->description())
+                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Requisição #' . $get('number') . '# | ' . Status::from($get('status'))->description() : 'Dados da Requisição')
                     ->columns([
                         'sm' => 1,
                         'md' => 6,
@@ -87,7 +87,7 @@ class RequisitionForm
                     ]),
                 Section::make('Pagamento e Entrega')
                     ->columns(['md' => 6, 'lg' => 8, 'xl' => 12])
-                    ->disabled(fn($record) => $record->state()->canEdit() == false)
+                    ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()

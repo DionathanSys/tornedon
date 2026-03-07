@@ -39,4 +39,9 @@ interface RequisitionState
      * Retorna true se a transição nomeada é permitida a partir deste estado.
      */
     public function canTransitionTo(string $transition): bool;
+
+    /**
+     * Retorna true se a requisição pode ser editada neste estado.
+     */
+    public function canEdit(): bool;
 }

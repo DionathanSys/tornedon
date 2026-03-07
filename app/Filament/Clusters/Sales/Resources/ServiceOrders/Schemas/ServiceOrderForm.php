@@ -59,7 +59,7 @@ class ServiceOrderForm
                             ->icon(Heroicon::InformationCircle)
                             ->schema([
                                 Section::make('Informações Principais')
-                                    ->heading(fn(Get $get) => 'Ordem de Serviço #' . $get('number') . '# | ' . State::from($get('status'))->description())
+                                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Ordem de Serviço #' . $get('number') . '# | ' . State::from($get('status'))->description() : 'Informações Principais')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 4,

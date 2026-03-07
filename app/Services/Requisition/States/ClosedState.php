@@ -60,4 +60,9 @@ class ClosedState implements RequisitionState
     {
         return in_array($transition, ['invoice', 'reopen']);
     }
+
+    public function canEdit(): bool
+    {
+        return false;
+    }
 }
