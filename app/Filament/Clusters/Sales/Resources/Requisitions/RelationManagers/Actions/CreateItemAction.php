@@ -66,7 +66,15 @@ final class CreateItemAction
             ->using(function (array $data, RelationManager $livewire): ?Model {
                 $requisition = $livewire->getOwnerRecord();
 
+                // Extração dos IDs do container 'item'
+                $data['product_id'] = $data['item']['real_product_id'] ?? null;
                 $data['requisition_id'] = $requisition->id;
+
+                // Parse numeric values from PT-BR format to float
+                $data['quantity']            = self::parseMoneyValue($data['quantity'] ?? 0);
+                $data['unit_price']          = self::parseMoneyValue($data['unit_price'] ?? 0);
+                $data['discount_amount']     = self::parseMoneyValue($data['discount_amount'] ?? 0);
+                $data['discount_percentage'] = self::parseMoneyValue($data['discount_percentage'] ?? 0);
 
                 Log::debug('Iniciando criação de item via RelationManager', [
                     'metodo'            => __METHOD__ . '@' . __LINE__,
