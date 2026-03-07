@@ -40,6 +40,7 @@ class ServiceOrderValidator
             'customer_feedback'         => 'nullable|string',
             'invoice_id'                => 'nullable|integer|exists:invoices,id',
             'additional_info'           => 'nullable|array',
+            'status'                    => ['required', Rule::enum(State::class)],
         ];
     }
 
@@ -52,8 +53,6 @@ class ServiceOrderValidator
      */
     public static function validateCreate(array $data): array
     {
-        $statusValues = array_map(fn($status) => $status->value, State::cases());
-
         $rules = array_merge(self::commonRules(), [
             'number'                    => [
                 'required',
@@ -65,7 +64,6 @@ class ServiceOrderValidator
             'order_date'                => 'required|date',
             'scheduled_date'            => 'nullable|date|after_or_equal:order_date',
             'limit_date'                => 'nullable|date|after_or_equal:order_date',
-            'status'                    => ['required', Rule::in($statusValues)],
             'priority'                  => 'required|string|max:20',
             'type'                      => 'required|string|max:50',
             'payment_condition'         => 'nullable|string|max:100',
@@ -85,14 +83,11 @@ class ServiceOrderValidator
      */
     public static function validateUpdate(array $data, ?int $serviceOrderId = null, ?int $companyId = null): array
     {
-        $statusValues = array_map(fn($status) => $status->value, State::cases());
-
         $rules = array_merge(self::commonRules(), [
             'customer_id'               => 'sometimes|required|integer|exists:partners,id',
             'order_date'                => 'sometimes|required|date',
             'scheduled_date'            => 'nullable|date',
             'limit_date'                => 'nullable|date',
-            'status'                    => ['sometimes', 'required', Rule::in($statusValues)],
             'priority'                  => 'sometimes|required|string|max:20',
             'type'                      => 'sometimes|required|string|max:50',
             'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],

@@ -43,11 +43,7 @@ class ServiceOrderForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns([
-                'sm' => 1,
-                'md' => 4,
-                'lg' => 12,
-            ])
+            ->columns(['sm' => 1,'md' => 4,'lg' => 12,])
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
@@ -60,26 +56,18 @@ class ServiceOrderForm
                             ->schema([
                                 Section::make('Informações Principais')
                                     ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Ordem de Serviço Nº ' . $get('number') . ' | ' . State::from($get('status'))->description() : 'Informações Principais')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
+                                    ->columns(['sm' => 1,'md' => 4,'lg' => 12,])
                                     ->columnSpanFull()
                                     ->schema([
+                                        Hidden::make('number'),
+                                        Hidden::make('status'),
                                         Group::make()
-                                            ->columns([
-                                                'sm' => 1,
-                                                'md' => 4,
-                                                'lg' => 8,
-                                            ])
+                                            ->columns(['sm' => 1,'md' => 6,'lg' => 8,'xl' => 12,])
                                             ->columnSpanFull()
                                             ->schema([
-                                                Hidden::make('number'),
-                                                Hidden::make('status'),
                                                 Select::make('priority')
                                                     ->label('Prioridade')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->required()
                                                     ->options(Priority::toSelectArray())
                                                     ->default(Priority::NORMAL->value)
@@ -87,45 +75,35 @@ class ServiceOrderForm
                                                     ->selectablePlaceholder(false),
                                                 Select::make('type')
                                                     ->label('Tipo')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->required()
                                                     ->options(Type::toSelectArray())
                                                     ->default(Type::MAINTENANCE->value)
                                                     ->native(false)
                                                     ->selectablePlaceholder(false),
-                                            ]),
-                                        Group::make()
-                                            ->columns([
-                                                'sm' => 1,
-                                                'md' => 4,
-                                                'lg' => 8,
-                                                'xl' => 12,
-                                            ])
-                                            ->columnSpanFull()
-                                            ->schema([
                                                 DatePicker::make('order_date')
                                                     ->label('Data da Ordem')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->columnStart(1)
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->required()
                                                     ->default(now())
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                                 DatePicker::make('scheduled_date')
                                                     ->label('Data Agendada')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                                 DatePicker::make('limit_date')
                                                     ->label('Data Limite')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                                 DatePicker::make('completion_date')
                                                     ->label('Data de Conclusão')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->displayFormat('d/m/Y')
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                                    ->visibleOn('edit')
+                                                    ->disabled(fn($record) => !$record?->state()?->canEdit()),
                                             ]),
                                         SelectPartner::make('customer_id', 'customer')
                                             ->label('Cliente')
