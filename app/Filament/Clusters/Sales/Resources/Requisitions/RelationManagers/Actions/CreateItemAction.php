@@ -3,7 +3,6 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Traits\AuthorizesRequisitionItemActions;
@@ -43,7 +42,7 @@ final class CreateItemAction
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->modalHeading('Adicionar Item à Requisição')
             ->schema([
-                ModalSelectProductStock::make('product_id')
+                ModalSelectProductStock::make()
                     ->label('Produto')
                     ->required(),
                 ItemValueGroup::make(),

@@ -145,6 +145,7 @@ class ItemsRelationManager extends RelationManager
                     RestoreBulkAction::make(),
                 ]),
                 CreateItemAction::make()
-            ]);
+            ])
+            ->emptyStateDescription('Adicione itens à requisição para que eles sejam exibidos aqui.');
     }
 }

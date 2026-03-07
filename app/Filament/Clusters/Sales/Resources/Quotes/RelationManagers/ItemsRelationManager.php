@@ -113,6 +113,7 @@ class ItemsRelationManager extends RelationManager
                     // DeleteBulkAction::make(),
                 ]),
                 CreateItemAction::make(),
-            ]);
+            ])
+            ->emptyStateDescription('Adicione itens ao orçamento para que eles sejam exibidos aqui.');
     }
 }
