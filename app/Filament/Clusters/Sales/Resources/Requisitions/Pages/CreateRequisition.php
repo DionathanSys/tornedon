@@ -17,11 +17,6 @@ class CreateRequisition extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        Log::debug('CreateRequisition: Mutando dados antes de criar', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data' => $data,
-        ]);
-
         $tenant = Filament::getTenant();
         $data['company_id'] = $tenant->id;
 
@@ -35,11 +30,6 @@ class CreateRequisition extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        Log::debug('CreateRequisition: Iniciando criação de requisição', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data' => $data,
-        ]);
-
         $service = app(RequisitionService::class);
         $requisition = $service->create($data, Auth::id());
 

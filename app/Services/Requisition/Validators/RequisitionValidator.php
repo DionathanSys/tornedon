@@ -19,7 +19,6 @@ class RequisitionValidator
         return [
             'quote_id'          => 'nullable|integer|exists:quotes,id',
             'service_order_id'  => 'nullable|integer|exists:service_orders,id',
-            'discount_amount'   => 'nullable|numeric|min:0',
             'payment_method'    => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
             'observations'      => 'nullable|string',
@@ -50,8 +49,6 @@ class RequisitionValidator
             'sale_date.date'               => 'A data da venda deve ser uma data válida.',
             'status.required'              => 'O status é obrigatório.',
             'status.in'                    => 'Status inválido.',
-            'discount_amount.numeric'      => 'O desconto deve ser um valor numérico.',
-            'discount_amount.min'          => 'O desconto não pode ser negativo.',
             'delivery_date.after_or_equal' => 'A data de entrega deve ser igual ou posterior à data da venda.',
             'salesperson_id.exists'        => 'Vendedor não encontrado.',
             'invoice_id.exists'            => 'Fatura não encontrada.',

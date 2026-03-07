@@ -21,6 +21,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Flex;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -40,40 +43,25 @@ class RequisitionForm
                 Section::make('Dados da Requisição')
                     ->columns([
                         'sm' => 1,
-                        'md' => 4,
+                        'md' => 6,
                         'lg' => 12,
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('number')
+                        TextEntry::make('number')
                             ->label('Número')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->visibleOn('edit')
-                            ->disabled(),
-                        Select::make('status')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->visibleOn('edit'),
+                        TextEntry::make('status')
                             ->label('Status')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->options(Status::toSelectArray())
-                            ->native(false)
-                            ->default(Status::OPEN->value)
-                            ->visibleOn('edit')
-                            ->disabled(),
-                        DatePicker::make('sale_date')
-                            ->label('Data da Venda')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->default(now())
-                            ->required()
-                            ->displayFormat('d/m/Y'),
-                        SelectPartner::make('salesperson_id', 'salesperson')
-                            ->label('Vendedor')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->required(false),
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->visibleOn('edit'),
                         SelectPartner::make('customer_id', 'customer')
-                            ->label('Cliente'),
+                            ->label('Cliente')
+                            ->columnSpan(['md' => 3, 'lg' => 6]),
                         Select::make('equipment_id')
                             ->label('Equipamento')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->columnStart(1)
+                            ->columnSpan(['md' => 3, 'lg' => 6])
                             ->searchable()
                             ->getSearchResultsUsing(
                                 fn(string $search): array => (new EquipmentService())
@@ -85,48 +73,49 @@ class RequisitionForm
                             )
                             ->disabled(fn($get) => !$get('customer_id'))
                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
+                        DatePicker::make('sale_date')
+                            ->label('Data da Venda')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->default(now())
+                            ->required()
+                            ->displayFormat('d/m/Y'),
+                        SelectPartner::make('salesperson_id', 'salesperson')
+                            ->label('Vendedor')
+                            ->columnSpan(['md' => 3, 'lg' => 3])
+                            ->required(false),
                     ]),
                 Section::make('Pagamento e Entrega')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 4,
-                        'lg' => 8,
-                    ])
+                    ->columns(['md' => 6, 'lg' => 8, 'xl' => 12])
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()
                     ->schema([
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable()
                             ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
                         Select::make('payment_condition')
                             ->label('Condição de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
                             ->searchable()
                             ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
-                        Money::make('discount_amount')
-                            ->label('Desconto')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->default(0)
-                            ->prefix('R$'),
                         DatePicker::make('delivery_date')
                             ->label('Data de Entrega')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 2])
                             ->displayFormat('d/m/Y')
                             ->nullable(),
                         TextInput::make('delivery_address')
                             ->label('Endereço de Entrega')
-                            ->columnSpan(['md' => 4, 'lg' => 8])
+                            ->columnSpan(['md' => 4, 'lg' => 6, 'xl' => 4])
                             ->maxLength(255),
                         Textarea::make('observations')
                             ->label('Observações')
-                            ->columnSpan(['md' => 4, 'lg' => 8])
+                            ->columnSpanFull()
                             ->rows(3)
                             ->maxLength(1000),
                     ]),

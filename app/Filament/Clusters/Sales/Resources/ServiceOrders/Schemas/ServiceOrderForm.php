@@ -210,6 +210,7 @@ class ServiceOrderForm
                                 ])
                                     ->key('items-relation-manager')
                                     ->columnSpanFull()
+                                    ->visibleOn([Operation::Edit])
                             ]),
                         Tab::make('Observações')
                             ->icon(Heroicon::ChatBubbleBottomCenterText)
@@ -358,19 +359,6 @@ class ServiceOrderForm
                                             ->reorderable(),
                                     ]),
                             ]),
-                        // Tab::make('Serviços')
-                        //     ->icon(Heroicon::WrenchScrewdriver)
-                        //     ->visibleOn([Operation::Edit])
-                        //     ->schema([
-                        //         Section::make()
-                        //             ->columnSpanFull()
-                        //             ->contained(false)
-                        //             ->schema([
-
-
-                        //             ])
-                        //             ->visibleOn([Operation::Edit]),
-                        //     ]),
                     ]),
             ]);
     }
