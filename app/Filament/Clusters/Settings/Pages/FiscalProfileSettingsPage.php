@@ -83,7 +83,10 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'ipi_enquadramento' => $version?->ipi_enquadramento,
 
             // CFOP
-            'cfop_rules' => $version?->cfop_rules ?? [],
+            'cfop_rules' => collect($version?->cfop_rules ?? [])
+                ->map(fn ($cfop, $nature) => ['operation_nature' => $nature, 'cfop' => $cfop])
+                ->values()
+                ->toArray(),
 
             // Info adicional
             'informacoes_complementares_padrao' => $version?->informacoes_complementares_padrao,
@@ -285,12 +288,26 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->description('Define automaticamente o CFOP com base na natureza da operação.')
                     ->icon('heroicon-o-document-magnifying-glass')
                     ->schema([
-                        Forms\Components\KeyValue::make('cfop_rules')
+                        Forms\Components\Repeater::make('cfop_rules')
                             ->label('')
-                            ->keyLabel('Natureza da Operação')
-                            ->valueLabel('CFOP')
-                            ->keyPlaceholder('Ex: VENDA DENTRO DO ESTADO')
-                            ->valuePlaceholder('Ex: 5102')
+                            ->schema([
+                                Forms\Components\Select::make('operation_nature')
+                                    ->label('Natureza da Operação')
+                                    ->options(OperationNature::toSelectArray())
+                                    ->native(false)
+                                    ->required()
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('cfop')
+                                    ->label('CFOP')
+                                    ->required()
+                                    ->maxLength(4)
+                                    ->placeholder('Ex: 5102')
+                                    ->columnSpan(['md' => 1]),
+                            ])
+                            ->columns(['md' => 2])
+                            ->addActionLabel('Adicionar regra CFOP')
+                            ->defaultItems(0)
                             ->columnSpanFull(),
                     ])
                     ->collapsible(),
@@ -378,7 +395,10 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'ipi_enquadramento' => $data['ipi_enquadramento'] ?? null,
 
             // CFOP
-            'cfop_rules' => $data['cfop_rules'] ?? null,
+            'cfop_rules' => collect($data['cfop_rules'] ?? [])
+                ->pluck('cfop', 'operation_nature')
+                ->filter()
+                ->toArray(),
 
             // Info complementar
             'informacoes_complementares_padrao' => $data['informacoes_complementares_padrao'] ?? null,
