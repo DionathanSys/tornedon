@@ -114,7 +114,7 @@ class NfeItemValidator
             'unit_of_measure'                               => 'required|string|max:6',
             'taxable_unit'                                  => 'nullable|string|max:6',
             'taxable_quantity'                              => 'nullable|numeric|min:0.0001',
-            'taxable_unit_price'                             => 'nullable|numeric|min:0',
+            'taxable_unit_price'                            => 'nullable|numeric|min:0',
             'discount_amount'                               => 'nullable|numeric|min:0',
             'freight_amount'                                => 'nullable|numeric|min:0',
             'insurance_amount'                              => 'nullable|numeric|min:0',
@@ -139,9 +139,9 @@ class NfeItemValidator
             'quantity.required'             => 'A quantidade é obrigatória.',
             'quantity.min'                  => 'A quantidade deve ser maior que zero.',
             'unit_price.required'           => 'O preço unitário é obrigatório.',
-            'unit_price.min'               => 'O preço unitário não pode ser negativo.',
+            'unit_price.min'                => 'O preço unitário não pode ser negativo.',
             'total_price.required'          => 'O preço total é obrigatório.',
-            'total_price.min'              => 'O preço total não pode ser negativo.',
+            'total_price.min'               => 'O preço total não pode ser negativo.',
             'unit_of_measure.required'      => 'A unidade de medida é obrigatória.',
         ];
     }

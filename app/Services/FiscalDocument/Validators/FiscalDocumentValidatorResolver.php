@@ -3,9 +3,10 @@
 namespace App\Services\FiscalDocument\Validators;
 
 use App\Enum\FiscalDocument\DocumentModel;
+use App\Models\FiscalDocument;
+use App\Models\OperationRule;
 use App\Services\FiscalDocument\Validators\Items\NfeItemValidator;
 use Illuminate\Validation\ValidationException;
-use App\Models\FiscalDocument;
 
 /**
  * Resolve os validators corretos com base no document_type (modelo do documento).
@@ -42,6 +43,11 @@ class FiscalDocumentValidatorResolver
 
                 if (! empty($data['items'])) {
                     FiscalProfileValidator::validateItemsTaxCompatibility($companyId, $data['items']);
+                }
+
+                // 4. Valida que existe OperationRule para a operação selecionada
+                if (! empty($data['operation_nature'])) {
+                    OperationRule::ensureExistsFor($companyId, $data['operation_nature']);
                 }
             }
         }

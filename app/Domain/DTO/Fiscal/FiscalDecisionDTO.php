@@ -130,28 +130,58 @@ class FiscalDecisionDTO
     public function toSnapshotArray(): array
     {
         return [
-            'cfop' => $this->cfop,
-            'cst_icms' => $this->cstIcms,
-            'csosn' => $this->csosn,
-            'mod_bc_icms' => $this->modBcIcms,
-            'aliquota_icms' => $this->aliquotaIcms,
+            'cfop'              => $this->cfop,
+            'cst_icms'          => $this->cstIcms,
+            'csosn'             => $this->csosn,
+            'mod_bc_icms'       => $this->modBcIcms,
+            'aliquota_icms'     => $this->aliquotaIcms,
             'reducao_base_icms' => $this->reducaoBaseIcms,
-            'mod_bc_st' => $this->modBcSt,
-            'aliquota_mva_st' => $this->aliquotaMvaSt,
-            'aliquota_st' => $this->aliquotaSt,
-            'reducao_base_st' => $this->reducaoBaseSt,
-            'cst_pis' => $this->cstPis,
-            'aliquota_pis' => $this->aliquotaPis,
-            'cst_cofins' => $this->cstCofins,
-            'aliquota_cofins' => $this->aliquotaCofins,
-            'cst_ipi' => $this->cstIpi,
-            'aliquota_ipi' => $this->aliquotaIpi,
+            'mod_bc_st'         => $this->modBcSt,
+            'aliquota_mva_st'   => $this->aliquotaMvaSt,
+            'aliquota_st'       => $this->aliquotaSt,
+            'reducao_base_st'   => $this->reducaoBaseSt,
+            'cst_pis'           => $this->cstPis,
+            'aliquota_pis'      => $this->aliquotaPis,
+            'cst_cofins'        => $this->cstCofins,
+            'aliquota_cofins'   => $this->aliquotaCofins,
+            'cst_ipi'           => $this->cstIpi,
+            'aliquota_ipi'      => $this->aliquotaIpi,
             'enquadramento_ipi' => $this->enquadramentoIpi,
-            'rule_id' => $this->ruleId,
-            'rule_version' => $this->ruleVersion,
-            'source' => $this->source,
-            'metadata' => $this->metadata,
+            'rule_id'           => $this->ruleId,
+            'rule_version'      => $this->ruleVersion,
+            'source'            => $this->source,
+            'metadata'          => $this->metadata,
         ];
+    }
+
+    /**
+     * Retorna uma cópia deste DTO com o CFOP substituído.
+     */
+    public function withCfop(string $cfop): self
+    {
+        return new self(
+            cfop:             $cfop,
+            cstIcms:          $this->cstIcms,
+            csosn:            $this->csosn,
+            modBcIcms:        $this->modBcIcms,
+            aliquotaIcms:     $this->aliquotaIcms,
+            reducaoBaseIcms:  $this->reducaoBaseIcms,
+            modBcSt:          $this->modBcSt,
+            aliquotaMvaSt:    $this->aliquotaMvaSt,
+            aliquotaSt:       $this->aliquotaSt,
+            reducaoBaseSt:    $this->reducaoBaseSt,
+            cstPis:           $this->cstPis,
+            aliquotaPis:      $this->aliquotaPis,
+            cstCofins:        $this->cstCofins,
+            aliquotaCofins:   $this->aliquotaCofins,
+            cstIpi:           $this->cstIpi,
+            aliquotaIpi:      $this->aliquotaIpi,
+            enquadramentoIpi: $this->enquadramentoIpi,
+            ruleId:           $this->ruleId,
+            ruleVersion:      $this->ruleVersion,
+            source:           $this->source,
+            metadata:         $this->metadata,
+        );
     }
 
     public static function fromArray(array $data): self

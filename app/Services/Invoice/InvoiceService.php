@@ -240,12 +240,35 @@ class InvoiceService
                         422,
                         $fiscalDocumentService->getErrorCode()
                     );
+                    Log::error($this->getMessage(), [
+                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'invoice_id' => $invoice->id,
+                        'message'    => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors'     => $fiscalDocumentService->getErrors(),
+                        'data'       => $documentData,
+                        'user_id'    => $userId,
+                    ]);
                     return null;
                 }
+
+                Log::info('Cabeçalho do documento fiscal criado via InvoiceService', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'         => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                ]);
 
                 // ------------------------------------------------------------------
                 // 2. Montar itens e criar via bulk insert
                 // ------------------------------------------------------------------
+
+                Log::info('Iniciando criação dos itens do documento fiscal via InvoiceService', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'         => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'total_requisitions' => $invoice->requisitions->count(),
+                ]);
+
                 $items = [];
                 $itemNumber = 1;
 
@@ -257,23 +280,30 @@ class InvoiceService
                         $items[] = [
                             'fiscal_document_id' => $fiscalDocument->id,
                             'product_id'         => $reqItem->product_id,
-                            'product_code'       => $product?->product_code,
-                            'description'        => $product?->name,
                             'item_number'        => $itemNumber,
+                            'product_code'       => $product?->product_code,
+                            'product_origin'     => $productTax?->product_origin?->value,
+                            'barcode'            => $product?->barcode,
+                            'description'        => $product?->name,
+                            'ncm_code'           => $productTax?->ncm_code,
+                            'cest_code'          => $productTax?->cest_code,
+                            'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
                             'quantity'           => (float) $reqItem->quantity,
                             'unit_price'         => (float) $reqItem->unit_price,
                             'total_price'        => round((float) $reqItem->quantity * (float) $reqItem->unit_price, 2),
-                            'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
                             'included_in_total'  => true,
-                            'product_origin'     => $productTax?->product_origin?->value,
-                            'ncm_code'           => $productTax?->ncm_code,
-                            'cest_code'          => $productTax?->cest_code,
-                            'barcode'            => $product?->barcode,
                         ];
 
                         $itemNumber++;
                     }
                 }
+
+                Log::info('Itens montados para criação do documento fiscal via InvoiceService', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'         => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'total_items'        => count($items),
+                ]);
 
                 $fiscalDocumentItemService = app(FiscalDocumentItemService::class);
                 $createdItems = $fiscalDocumentItemService->createMany($items, $userId);

@@ -32,26 +32,26 @@ class FiscalContextDTO
         FiscalDocument $document,
         FiscalDocumentItem $item,
     ): self {
-        $company = $document->company;
-        $customer = $document->customer;
-        $companyAddress = $company->address ?? [];
-        $customerAddress = $customer?->addresses?->first();
+        $company            = $document->company;
+        $customer           = $document->customer;
+        $companyAddress     = $company->address ?? [];
+        $customerAddress    = $customer?->addresses?->first();
 
         return new self(
-            companyId: $document->company_id,
-            documentType: $document->document_type ?? 'nfe',
-            operationType: self::resolveOperationType($document->operation_nature),
-            movementDirection: $document->operation_type === 1 ? 'out' : 'in',
-            issuerUf: $companyAddress['state'] ?? '',
-            recipientUf: $customerAddress?->state ?? null,
-            recipientTaxpayerType: $customer?->state_tax_indicator?->value,
+            companyId:              $document->company_id,
+            documentType:           $document->document_type ?? 'nfe',
+            operationType:          self::resolveOperationType($document->operation_nature),
+            movementDirection:      $document->operation_type === 1 ? 'out' : 'in',
+            issuerUf:               $companyAddress['state'] ?? '',
+            recipientUf:            $customerAddress?->state ?? null,
+            recipientTaxpayerType:  $customer?->state_tax_indicator?->value,
             recipientFinalConsumer: (bool) $document->is_final_consumer,
-            productId: $item->product_id,
-            productNcm: $item->ncm_code,
-            productCest: $item->cest_code,
-            productOrigin: $item->product_origin,
-            operationNature: $document->operation_nature,
-            issuedAt: $document->issued_at ?? now(),
+            productId:              $item->product_id,
+            productNcm:             $item->ncm_code,
+            productCest:            $item->cest_code,
+            productOrigin:          $item->product_origin,
+            operationNature:        $document->operation_nature,
+            issuedAt:               $document->issued_at ?? now(),
         );
     }
 

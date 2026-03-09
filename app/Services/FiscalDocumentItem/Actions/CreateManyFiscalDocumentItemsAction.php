@@ -26,7 +26,19 @@ class CreateManyFiscalDocumentItemsAction
     public function execute(array $items): ?array
     {
         try {
+            Log::debug('Iniciando criação em lote de itens de documento fiscal', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'items'      => $items,
+                'user_id'    => $this->createdBy,
+            ]);
+
             $validated = NfeItemValidator::validateCreateMany(['items' => $items]);
+
+            Log::debug('Validação dos itens de documento fiscal concluída', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'validated'  => $validated,
+                'user_id'    => $this->createdBy,
+            ]);
 
             $now = now();
             $records = array_map(fn (array $item) => array_merge($item, [
@@ -34,6 +46,12 @@ class CreateManyFiscalDocumentItemsAction
                 'created_at'  => $now,
                 'updated_at'  => $now,
             ]), $validated['items']);
+
+            Log::debug('Preparação dos registros para inserção em lote', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'records'    => $records,
+                'user_id'    => $this->createdBy,
+            ]);
 
             FiscalDocumentItem::insert($records);
 

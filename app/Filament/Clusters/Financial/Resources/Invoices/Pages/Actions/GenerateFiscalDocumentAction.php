@@ -48,6 +48,7 @@ final class GenerateFiscalDocumentAction
                                 ->label('Natureza da Operação')
                                 ->options(OperationNature::toSelectArray())
                                 ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
+                                ->columnSpanFull()
                                 ->searchable()
                                 ->required(),
 
@@ -78,6 +79,7 @@ final class GenerateFiscalDocumentAction
                         ])->columns(2),
 
                     Section::make('Frete')
+                        ->columnSpanFull()
                         ->schema([
                             Select::make('freight_modality')
                                 ->label('Modalidade de Frete')
@@ -100,6 +102,7 @@ final class GenerateFiscalDocumentAction
                                 ->columnSpanFull(),
 
                             Fieldset::make('Volumes')
+                                ->columnSpanFull()
                                 ->schema([
                                     TextInput::make('volume_quantidade')
                                         ->label('Quantidade')
