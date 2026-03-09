@@ -1,0 +1,491 @@
+<?php
+
+namespace App\Filament\Clusters\Settings\Pages;
+
+use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\Tax\CofinsCst;
+use App\Enum\Tax\IcmsCst;
+use App\Enum\Tax\PisCst;
+use App\Enum\Tax\TaxRegime;
+use App\Filament\Clusters\Settings\SettingsCluster;
+use App\Models\FiscalProfile;
+use App\Models\FiscalProfileVersion;
+use BackedEnum;
+use Filament\Facades\Filament;
+use Filament\Forms;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+
+class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
+{
+    use Forms\Concerns\InteractsWithForms;
+
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calculator';
+
+    protected string $view = 'filament.clusters.settings.pages.fiscal-profile-settings';
+
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $navigationLabel = 'Perfil Fiscal';
+
+    protected static ?string $title = 'Configuração do Perfil Fiscal';
+
+    protected static ?int $navigationSort = 8;
+
+    public ?array $data = [];
+
+    public static function canAccess(): bool
+    {
+        return true; // TODO: restringir por permissão (Shield)
+    }
+
+    public function mount(): void
+    {
+        $companyId = Filament::getTenant()?->id;
+
+        $profile = FiscalProfile::where('company_id', $companyId)->first();
+        $version = $profile?->getActiveVersion();
+
+        $this->form->fill([
+            'tax_regime' => $profile?->tax_regime?->value,
+            'cnae_principal' => $profile?->cnae_principal,
+
+            // ICMS
+            'icms_cst_default' => $version?->icms_cst_default,
+            'icms_csosn_default' => $version?->icms_csosn_default,
+            'icms_aliquota_interna' => $version?->icms_aliquota_interna,
+            'icms_reducao_base' => $version?->icms_reducao_base,
+            'icms_modalidade_base_calculo' => $version?->icms_modalidade_base_calculo,
+
+            // ICMS ST
+            'icms_st_aliquota' => $version?->icms_st_aliquota,
+            'icms_st_mva' => $version?->icms_st_mva,
+            'icms_st_reducao_base' => $version?->icms_st_reducao_base,
+
+            // Interestaduais
+            'icms_aliquotas_interestaduais' => $version?->icms_aliquotas_interestaduais ?? [],
+
+            // PIS
+            'pis_cst_default' => $version?->pis_cst_default,
+            'pis_aliquota_default' => $version?->pis_aliquota_default,
+
+            // COFINS
+            'cofins_cst_default' => $version?->cofins_cst_default,
+            'cofins_aliquota_default' => $version?->cofins_aliquota_default,
+
+            // IPI
+            'ipi_cst_default' => $version?->ipi_cst_default,
+            'ipi_aliquota_default' => $version?->ipi_aliquota_default,
+            'ipi_enquadramento' => $version?->ipi_enquadramento,
+
+            // CFOP
+            'cfop_rules' => $version?->cfop_rules ?? [],
+
+            // Info adicional
+            'informacoes_complementares_padrao' => $version?->informacoes_complementares_padrao,
+        ]);
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->schema([
+                // Regime Tributário
+                \Filament\Schemas\Components\Section::make('Regime Tributário')
+                    ->description('Define o regime tributário da empresa e impacta diretamente o cálculo de todos os impostos.')
+                    ->icon('heroicon-o-building-office')
+                    ->schema([
+                        Forms\Components\Select::make('tax_regime')
+                            ->label('Regime Tributário')
+                            ->options(TaxRegime::toSelectArray())
+                            ->native(false)
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(fn (Set $set, ?string $state) => $this->applyRegimeDefaults($set, $state))
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('cnae_principal')
+                            ->label('CNAE Principal')
+                            ->maxLength(10)
+                            ->placeholder('Ex: 4520-0/01')
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 2]),
+
+                // ICMS
+                \Filament\Schemas\Components\Section::make('ICMS')
+                    ->description('Configuração padrão do ICMS para operações de saída.')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->schema([
+                        Forms\Components\Select::make('icms_cst_default')
+                            ->label('CST ICMS Padrão')
+                            ->options(IcmsCst::toSelectArray())
+                            ->native(false)
+                            ->visible(fn (Get $get) => $this->isRegimeNormal($get('tax_regime')))
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Select::make('icms_csosn_default')
+                            ->label('CSOSN Padrão')
+                            ->options(self::csosnOptions())
+                            ->native(false)
+                            ->visible(fn (Get $get) => $this->isRegimeSimplesOrMei($get('tax_regime')))
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('icms_aliquota_interna')
+                            ->label('Alíquota Interna (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('icms_reducao_base')
+                            ->label('Redução de Base (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Select::make('icms_modalidade_base_calculo')
+                            ->label('Modalidade Base de Cálculo')
+                            ->options([
+                                '0' => '0 - Margem Valor Agregado (%)',
+                                '1' => '1 - Pauta (Valor)',
+                                '2' => '2 - Preço Tabelado Máx. (Valor)',
+                                '3' => '3 - Valor da operação',
+                            ])
+                            ->native(false)
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible(),
+
+                // ICMS ST
+                \Filament\Schemas\Components\Section::make('ICMS Substituição Tributária')
+                    ->description('Configuração padrão do ICMS-ST. Preencha apenas se aplicável.')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->schema([
+                        Forms\Components\TextInput::make('icms_st_aliquota')
+                            ->label('Alíquota ST (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('icms_st_mva')
+                            ->label('MVA (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->helperText('Margem de Valor Agregado')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('icms_st_reducao_base')
+                            ->label('Redução de Base ST (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 3])
+                    ->collapsible()
+                    ->collapsed(),
+
+                // Alíquotas Interestaduais
+                \Filament\Schemas\Components\Section::make('Alíquotas Interestaduais')
+                    ->description('Alíquotas de ICMS para vendas interestaduais por UF de destino.')
+                    ->icon('heroicon-o-map')
+                    ->schema([
+                        Forms\Components\KeyValue::make('icms_aliquotas_interestaduais')
+                            ->label('')
+                            ->keyLabel('UF')
+                            ->valueLabel('Alíquota (%)')
+                            ->keyPlaceholder('Ex: SP')
+                            ->valuePlaceholder('Ex: 12')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->collapsed(),
+
+                // PIS
+                \Filament\Schemas\Components\Section::make('PIS')
+                    ->description('Configuração padrão do PIS.')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->schema([
+                        Forms\Components\Select::make('pis_cst_default')
+                            ->label('CST PIS Padrão')
+                            ->options(PisCst::toSelectArray())
+                            ->native(false)
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('pis_aliquota_default')
+                            ->label('Alíquota PIS (%)')
+                            ->numeric()
+                            ->step(0.0001)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible(),
+
+                // COFINS
+                \Filament\Schemas\Components\Section::make('COFINS')
+                    ->description('Configuração padrão do COFINS.')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->schema([
+                        Forms\Components\Select::make('cofins_cst_default')
+                            ->label('CST COFINS Padrão')
+                            ->options(CofinsCst::toSelectArray())
+                            ->native(false)
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('cofins_aliquota_default')
+                            ->label('Alíquota COFINS (%)')
+                            ->numeric()
+                            ->step(0.0001)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible(),
+
+                // IPI
+                \Filament\Schemas\Components\Section::make('IPI')
+                    ->description('Configuração padrão do IPI. Preencha apenas se aplicável.')
+                    ->icon('heroicon-o-beaker')
+                    ->schema([
+                        Forms\Components\TextInput::make('ipi_cst_default')
+                            ->label('CST IPI Padrão')
+                            ->maxLength(3)
+                            ->placeholder('Ex: 50, 99')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('ipi_aliquota_default')
+                            ->label('Alíquota IPI (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('ipi_enquadramento')
+                            ->label('Código Enquadramento Legal')
+                            ->maxLength(10)
+                            ->placeholder('Ex: 999')
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 3])
+                    ->collapsible()
+                    ->collapsed(),
+
+                // CFOP Rules
+                \Filament\Schemas\Components\Section::make('Regras de CFOP por Operação')
+                    ->description('Define automaticamente o CFOP com base na natureza da operação.')
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->schema([
+                        Forms\Components\KeyValue::make('cfop_rules')
+                            ->label('')
+                            ->keyLabel('Natureza da Operação')
+                            ->valueLabel('CFOP')
+                            ->keyPlaceholder('Ex: VENDA DENTRO DO ESTADO')
+                            ->valuePlaceholder('Ex: 5102')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible(),
+
+                // Informações complementares
+                \Filament\Schemas\Components\Section::make('Informações Complementares')
+                    ->description('Texto padrão para informações adicionais da NF-e.')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        Forms\Components\Textarea::make('informacoes_complementares_padrao')
+                            ->label('Texto padrão')
+                            ->rows(3)
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->collapsed(),
+            ])
+            ->statePath('data');
+    }
+
+    public function save(): void
+    {
+        $data = $this->form->getState();
+        $companyId = Filament::getTenant()?->id;
+        $userId = Auth::id();
+
+        // Criar ou atualizar FiscalProfile
+        $profile = FiscalProfile::updateOrCreate(
+            ['company_id' => $companyId],
+            [
+                'tax_regime' => $data['tax_regime'],
+                'cnae_principal' => $data['cnae_principal'] ?? null,
+                'is_active' => true,
+                'updated_by' => $userId,
+            ]
+        );
+
+        if ($profile->wasRecentlyCreated) {
+            $profile->update(['created_by' => $userId]);
+        }
+
+        // Arquivar versão anterior (se existir)
+        $currentVersion = $profile->getActiveVersion();
+        if ($currentVersion) {
+            $currentVersion->update([
+                'status' => 'archived',
+                'valid_to' => now()->subDay(),
+            ]);
+        }
+
+        // Criar nova versão
+        FiscalProfileVersion::create([
+            'fiscal_profile_id' => $profile->id,
+            'version' => $profile->nextVersionNumber(),
+            'valid_from' => now()->toDateString(),
+            'valid_to' => null,
+            'status' => 'active',
+
+            // ICMS
+            'icms_cst_default' => $data['icms_cst_default'] ?? null,
+            'icms_csosn_default' => $data['icms_csosn_default'] ?? null,
+            'icms_aliquota_interna' => $data['icms_aliquota_interna'] ?? null,
+            'icms_reducao_base' => $data['icms_reducao_base'] ?? null,
+            'icms_modalidade_base_calculo' => $data['icms_modalidade_base_calculo'] ?? null,
+
+            // ICMS ST
+            'icms_st_aliquota' => $data['icms_st_aliquota'] ?? null,
+            'icms_st_mva' => $data['icms_st_mva'] ?? null,
+            'icms_st_reducao_base' => $data['icms_st_reducao_base'] ?? null,
+
+            // Interestaduais
+            'icms_aliquotas_interestaduais' => $data['icms_aliquotas_interestaduais'] ?? null,
+
+            // PIS
+            'pis_cst_default' => $data['pis_cst_default'] ?? null,
+            'pis_aliquota_default' => $data['pis_aliquota_default'] ?? null,
+
+            // COFINS
+            'cofins_cst_default' => $data['cofins_cst_default'] ?? null,
+            'cofins_aliquota_default' => $data['cofins_aliquota_default'] ?? null,
+
+            // IPI
+            'ipi_cst_default' => $data['ipi_cst_default'] ?? null,
+            'ipi_aliquota_default' => $data['ipi_aliquota_default'] ?? null,
+            'ipi_enquadramento' => $data['ipi_enquadramento'] ?? null,
+
+            // CFOP
+            'cfop_rules' => $data['cfop_rules'] ?? null,
+
+            // Info complementar
+            'informacoes_complementares_padrao' => $data['informacoes_complementares_padrao'] ?? null,
+
+            'created_by' => $userId,
+        ]);
+
+        // Limpar cache da relação
+        $profile->unsetRelation('activeVersion');
+
+        Notification::make()
+            ->title('Perfil fiscal salvo com sucesso!')
+            ->body('Uma nova versão do perfil fiscal foi criada.')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Aplica defaults sugeridos ao trocar de regime tributário.
+     */
+    private function applyRegimeDefaults(Set $set, ?string $regimeValue): void
+    {
+        if ($regimeValue === null) {
+            return;
+        }
+
+        $regime = TaxRegime::tryFrom($regimeValue);
+
+        if ($regime === null) {
+            return;
+        }
+
+        match ($regime) {
+            TaxRegime::MEI => $this->setMeiDefaults($set),
+            TaxRegime::SIMPLES_NACIONAL => $this->setSimplesDefaults($set),
+            TaxRegime::LUCRO_PRESUMIDO => $this->setLucroPresumidoDefaults($set),
+            TaxRegime::LUCRO_REAL => $this->setLucroRealDefaults($set),
+        };
+    }
+
+    private function setMeiDefaults(Set $set): void
+    {
+        $set('icms_csosn_default', '102');
+        $set('icms_cst_default', null);
+        $set('icms_aliquota_interna', 0);
+        $set('pis_cst_default', '99');
+        $set('pis_aliquota_default', 0);
+        $set('cofins_cst_default', '99');
+        $set('cofins_aliquota_default', 0);
+    }
+
+    private function setSimplesDefaults(Set $set): void
+    {
+        $set('icms_csosn_default', '102');
+        $set('icms_cst_default', null);
+        $set('icms_aliquota_interna', 0);
+        $set('pis_cst_default', '49');
+        $set('pis_aliquota_default', 0.65);
+        $set('cofins_cst_default', '49');
+        $set('cofins_aliquota_default', 3.00);
+    }
+
+    private function setLucroPresumidoDefaults(Set $set): void
+    {
+        $set('icms_cst_default', '00');
+        $set('icms_csosn_default', null);
+        $set('icms_modalidade_base_calculo', '3');
+        $set('pis_cst_default', '01');
+        $set('pis_aliquota_default', 1.65);
+        $set('cofins_cst_default', '01');
+        $set('cofins_aliquota_default', 7.60);
+    }
+
+    private function setLucroRealDefaults(Set $set): void
+    {
+        $set('icms_cst_default', '00');
+        $set('icms_csosn_default', null);
+        $set('icms_modalidade_base_calculo', '3');
+        $set('pis_cst_default', '01');
+        $set('pis_aliquota_default', 1.65);
+        $set('cofins_cst_default', '01');
+        $set('cofins_aliquota_default', 7.60);
+    }
+
+    private function isRegimeNormal(?string $regime): bool
+    {
+        return in_array($regime, [TaxRegime::LUCRO_PRESUMIDO->value, TaxRegime::LUCRO_REAL->value]);
+    }
+
+    private function isRegimeSimplesOrMei(?string $regime): bool
+    {
+        return in_array($regime, [TaxRegime::MEI->value, TaxRegime::SIMPLES_NACIONAL->value]);
+    }
+
+    public static function csosnOptions(): array
+    {
+        return [
+            '101' => '101 - Tributada com permissão de crédito',
+            '102' => '102 - Tributada sem permissão de crédito',
+            '103' => '103 - Isenção do ICMS para faixa de receita bruta',
+            '201' => '201 - Tributada com permissão de crédito e com cobrança do ICMS por ST',
+            '202' => '202 - Tributada sem permissão de crédito e com cobrança do ICMS por ST',
+            '203' => '203 - Isenção do ICMS para faixa de receita bruta e com cobrança do ICMS por ST',
+            '300' => '300 - Imune',
+            '400' => '400 - Não tributada',
+            '500' => '500 - ICMS cobrado anteriormente por ST ou por antecipação',
+            '900' => '900 - Outros',
+        ];
+    }
+}

@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
@@ -21,6 +22,7 @@ class EditInvoice extends EditRecord
     {
         return [
             ImportRecordsAction::make(),
+            GenerateFiscalDocumentAction::make(),
             ActionGroup::make([
                 DeleteAction::make()
                     ->using(function (Model $record): bool {

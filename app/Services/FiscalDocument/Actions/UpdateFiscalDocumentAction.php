@@ -3,7 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
-use App\Services\FiscalDocument\Validators\FiscalDocumentValidator;
+use App\Services\FiscalDocument\Validators\FiscalDocumentValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +28,10 @@ class UpdateFiscalDocumentAction
                 'data'               => $data,
             ]);
 
-            $validated = FiscalDocumentValidator::validateUpdate($data, $this->fiscalDocument->id);
+            $documentType = $data['document_type'] ?? $this->fiscalDocument->document_type;
+            $data['document_type'] = $documentType;
+
+            $validated = FiscalDocumentValidatorResolver::validateUpdate($data, $this->fiscalDocument->id);
 
             unset($validated['company_id']);
             $validated['updated_by'] = $this->updatedBy;

@@ -11,17 +11,32 @@ class FiscalDocumentItem extends Model
     protected $fillable = [
         'fiscal_document_id',
         'product_id',
+        'product_code',
+        'description',
         'service_id',
         'item_number',
-        'origin_code',
+        'product_origin',
         'ncm_code',
+        'cest_code',
+        'barcode',
         'cfop_code',
         'quantity',
         'unit_of_measure',
+        'taxable_unit',
+        'taxable_quantity',
+        'taxable_unit_price',
         'unit_price',
         'total_price',
+        'discount_amount',
+        'freight_amount',
+        'insurance_amount',
+        'other_expenses_amount',
         'included_in_total',
         'tax_data',
+        'fiscal_snapshot',
+        'fiscal_rule_id',
+        'fiscal_rule_version',
+        'additional_information',
         'created_by',
         'updated_by',
     ];
@@ -29,10 +44,18 @@ class FiscalDocumentItem extends Model
     protected $casts = [
         'item_number' => 'integer',
         'quantity' => 'decimal:4',
+        'taxable_quantity' => 'decimal:4',
+        'taxable_unit_price' => MoneyCast::class,
         'unit_price' => MoneyCast::class,
         'total_price' => MoneyCast::class,
+        'discount_amount' => MoneyCast::class,
+        'freight_amount' => MoneyCast::class,
+        'insurance_amount' => MoneyCast::class,
+        'other_expenses_amount' => MoneyCast::class,
         'included_in_total' => 'boolean',
         'tax_data' => 'array',
+        'fiscal_snapshot' => 'array',
+        'fiscal_rule_version' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -54,6 +77,11 @@ class FiscalDocumentItem extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function fiscalRule(): BelongsTo
+    {
+        return $this->belongsTo(FiscalRule::class);
     }
 
     public function createdBy(): BelongsTo

@@ -6,6 +6,8 @@ use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\CreateInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\ListInvoices;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
 use App\Filament\Clusters\Financial\Resources\Invoices\Tables\InvoicesTable;
 use App\Models\Invoice;
@@ -47,4 +49,5 @@ class InvoiceResource extends Resource
             'edit' => EditInvoice::route('/{record}/edit'),
         ];
     }
+
 }

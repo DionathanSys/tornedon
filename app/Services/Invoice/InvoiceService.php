@@ -2,9 +2,16 @@
 
 namespace App\Services\Invoice;
 
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Invoice\Status;
+use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
+use App\Services\FiscalDocument\FiscalDocumentService;
+use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
+use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
+use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
@@ -187,6 +194,136 @@ class InvoiceService
             ]);
 
             return false;
+        }
+    }
+
+    /* ==============================
+     |  Documento Fiscal
+     |==============================*/
+
+    /**
+     * Cria um documento fiscal (NF-e) a partir da fatura, importando os itens das
+     * requisições e ordens de serviço vinculadas.
+     */
+    public function createFiscalDocument(Invoice $invoice, array $fiscalData, int $userId): ?FiscalDocument
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($invoice, $fiscalData, $userId) {
+                $invoice->loadMissing([
+                    'requisitions.items.product.tax',
+                    'company',
+                    'customer',
+                ]);
+
+                // ------------------------------------------------------------------
+                // 1. Criar cabeçalho do Documento Fiscal via FiscalDocumentService
+                // ------------------------------------------------------------------
+                $documentData = array_merge($fiscalData, [
+                    'customer_id'   => $invoice->customer_id,
+                    'company_id'    => $invoice->company_id,
+                    'invoice_id'    => $invoice->id,
+                    'status'        => FiscalDocumentStatus::PENDING->value,
+                    'document_type' => $fiscalData['document_type'] ?? DocumentModel::NFE->value,
+                    'issued_at'     => $fiscalData['issued_at'] ?? now()->toDateString(),
+                    'movement_at'   => $fiscalData['movement_at'] ?? now()->toDateString(),
+                ]);
+
+                $fiscalDocumentService = app(FiscalDocumentService::class);
+                $fiscalDocument = $fiscalDocumentService->create($documentData, $userId);
+
+                if ($fiscalDocumentService->hasError() || $fiscalDocument === null) {
+                    $this->setError(
+                        $fiscalDocumentService->getMessage(),
+                        $fiscalDocumentService->getErrors(),
+                        422,
+                        $fiscalDocumentService->getErrorCode()
+                    );
+                    return null;
+                }
+
+                // ------------------------------------------------------------------
+                // 2. Montar itens e criar via bulk insert
+                // ------------------------------------------------------------------
+                $items = [];
+                $itemNumber = 1;
+
+                foreach ($invoice->requisitions as $requisition) {
+                    foreach ($requisition->items as $reqItem) {
+                        $product = $reqItem->product;
+                        $productTax = $product?->tax;
+
+                        $items[] = [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'product_id'         => $reqItem->product_id,
+                            'product_code'       => $product?->product_code,
+                            'description'        => $product?->name,
+                            'item_number'        => $itemNumber,
+                            'quantity'           => (float) $reqItem->quantity,
+                            'unit_price'         => (float) $reqItem->unit_price,
+                            'total_price'        => round((float) $reqItem->quantity * (float) $reqItem->unit_price, 2),
+                            'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
+                            'included_in_total'  => true,
+                            'product_origin'     => $productTax?->product_origin?->value,
+                            'ncm_code'           => $productTax?->ncm_code,
+                            'cest_code'          => $productTax?->cest_code,
+                            'barcode'            => $product?->barcode,
+                        ];
+
+                        $itemNumber++;
+                    }
+                }
+
+                $fiscalDocumentItemService = app(FiscalDocumentItemService::class);
+                $createdItems = $fiscalDocumentItemService->createMany($items, $userId);
+
+                if ($fiscalDocumentItemService->hasError() || $createdItems === null) {
+                    $this->setError(
+                        $fiscalDocumentItemService->getMessage(),
+                        $fiscalDocumentItemService->getErrors(),
+                        422,
+                        $fiscalDocumentItemService->getErrorCode()
+                    );
+                    return null;
+                }
+
+                // ------------------------------------------------------------------
+                // 3. Resolver decisão fiscal e persistir snapshot nos itens
+                // ------------------------------------------------------------------
+                $resolveAction = app(ResolveFiscalContextAction::class);
+                $decisions = $resolveAction->execute($fiscalDocument, $items);
+
+                if (!empty($decisions)) {
+                    $snapshotAction = new PersistFiscalSnapshotAction();
+                    $snapshotAction->execute($fiscalDocument, $decisions);
+                }
+
+                $this->setSuccess('Documento fiscal criado com sucesso a partir da fatura.');
+
+                Log::info('Documento fiscal criado a partir da fatura via InvoiceService', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'         => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'total_items'        => count($items),
+                ]);
+
+                return $fiscalDocument;
+            });
+
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar documento fiscal a partir da fatura');
+
+            Log::error($this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'error_code' => $this->getErrorCode(),
+                'message'    => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+            ]);
+
+            return null;
         }
     }
 

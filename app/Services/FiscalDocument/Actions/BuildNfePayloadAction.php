@@ -82,27 +82,29 @@ class BuildNfePayloadAction
                 $taxData   = $item->tax_data ?? [];
                 $itemPayload = [
                     'numero_item'              => $index + 1,
-                    'codigo_produto'           => (string) $item->product_id,
-                    'descricao'                => $item->product?->name ?? '',
+                    'codigo_produto'           => $item->product_code,
+                    'descricao'                => $item->description ?? $item->product?->name ?? '',
                     'codigo_ncm'               => $item->ncm_code,
                     'cfop'                     => $item->cfop_code,
                     'unidade_comercial'        => $item->unit_of_measure,
                     'quantidade_comercial'     => (float) $item->quantity,
                     'valor_unitario_comercial' => number_format((float) $item->unit_price, 2, '.', ''),
                     'valor_bruto'              => number_format((float) $item->total_price, 2, '.', ''),
-                    'unidade_tributavel'       => $item->unit_of_measure,
-                    'quantidade_tributavel'    => number_format((float) $item->quantity, 4, '.', ''),
-                    'valor_unitario_tributavel'=> number_format((float) $item->unit_price, 2, '.', ''),
-                    'origem'                   => $item->origin_code,
+                    'unidade_tributavel'       => $item->taxable_unit ?? $item->unit_of_measure,
+                    'quantidade_tributavel'    => number_format((float) ($item->taxable_quantity ?? $item->quantity), 4, '.', ''),
+                    'valor_unitario_tributavel'=> number_format((float) ($item->taxable_unit_price ?? $item->unit_price), 2, '.', ''),
+                    'origem'                   => $item->product_origin,
                     'inclui_no_total'          => $item->included_in_total ? '1' : '0',
                     'imposto'                  => $taxData['imposto'] ?? [],
-                    'valor_desconto'           => 0,
-                    'valor_frete'              => 0,
-                    'valor_seguro'             => 0,
-                    'valor_outras_despesas'    => 0,
+                    'valor_desconto'           => number_format((float) ($item->discount_amount ?? 0), 2, '.', ''),
+                    'valor_frete'              => number_format((float) ($item->freight_amount ?? 0), 2, '.', ''),
+                    'valor_seguro'             => number_format((float) ($item->insurance_amount ?? 0), 2, '.', ''),
+                    'valor_outras_despesas'    => number_format((float) ($item->other_expenses_amount ?? 0), 2, '.', ''),
                 ];
 
-                if (! empty($taxData['informacoes_adicionais'])) {
+                if (! empty($item->additional_information)) {
+                    $itemPayload['informacoes_adicionais'] = $item->additional_information;
+                } elseif (! empty($taxData['informacoes_adicionais'])) {
                     $itemPayload['informacoes_adicionais'] = $taxData['informacoes_adicionais'];
                 }
 

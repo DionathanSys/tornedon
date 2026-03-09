@@ -3,7 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
-use App\Services\FiscalDocument\Validators\FiscalDocumentValidator;
+use App\Services\FiscalDocument\Validators\FiscalDocumentValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +26,7 @@ class CreateFiscalDocumentAction
                 'data'    => $data,
             ]);
 
-            $validated = FiscalDocumentValidator::validateCreate($data);
+            $validated = FiscalDocumentValidatorResolver::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
 
             $fiscalDocument = FiscalDocument::create($validated);

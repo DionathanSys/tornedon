@@ -6,6 +6,8 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\Partner;
+use App\Enum\Product\Origin;
+use App\Enum\Product\Unit;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
@@ -130,10 +132,20 @@ class FiscalDocumentForm
                                     ->native(false)
                                     ->columnSpan(['md' => 2]),
 
+                                Forms\Components\TextInput::make('description')
+                                    ->label('Descrição')
+                                    ->maxLength(255)
+                                    ->columnSpan(['md' => 2]),
+
                                 Forms\Components\TextInput::make('ncm_code')
                                     ->label('NCM')
                                     ->required()
                                     ->maxLength(8)
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('cest_code')
+                                    ->label('CEST')
+                                    ->maxLength(9)
                                     ->columnSpan(['md' => 1]),
 
                                 Forms\Components\TextInput::make('cfop_code')
@@ -142,17 +154,23 @@ class FiscalDocumentForm
                                     ->maxLength(4)
                                     ->columnSpan(['md' => 1]),
 
-                                Forms\Components\TextInput::make('origin_code')
-                                    ->label('Origem')
-                                    ->default('0')
-                                    ->maxLength(1)
-                                    ->helperText('0 = Nacional')
+                                Forms\Components\TextInput::make('barcode')
+                                    ->label('Código de Barras')
+                                    ->maxLength(60)
                                     ->columnSpan(['md' => 1]),
 
-                                Forms\Components\TextInput::make('unit_of_measure')
-                                    ->label('Unidade')
+                                Forms\Components\Select::make('product_origin')
+                                    ->label('Origem')
+                                    ->options(Origin::toSelectArray())
+                                    ->default('0')
+                                    ->native(false)
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\Select::make('unit_of_measure')
+                                    ->label('Unidade Comercial')
+                                    ->options(Unit::toSelectArray())
                                     ->default('UN')
-                                    ->maxLength(3)
+                                    ->native(false)
                                     ->columnSpan(['md' => 1]),
 
                                 Forms\Components\TextInput::make('quantity')
@@ -176,14 +194,66 @@ class FiscalDocumentForm
                                     ->prefix('R$')
                                     ->columnSpan(['md' => 1]),
 
+                                Forms\Components\Select::make('taxable_unit')
+                                    ->label('Unidade Tributável')
+                                    ->options(Unit::toSelectArray())
+                                    ->native(false)
+                                    ->helperText('Se diferente da unidade comercial')
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('taxable_quantity')
+                                    ->label('Qtd. Tributável')
+                                    ->numeric()
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('taxable_unit_price')
+                                    ->label('Valor Unit. Tributável')
+                                    ->numeric()
+                                    ->prefix('R$')
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('discount_amount')
+                                    ->label('Desconto')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('R$')
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('freight_amount')
+                                    ->label('Frete')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('R$')
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('insurance_amount')
+                                    ->label('Seguro')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('R$')
+                                    ->columnSpan(['md' => 1]),
+
+                                Forms\Components\TextInput::make('other_expenses_amount')
+                                    ->label('Outras Despesas')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('R$')
+                                    ->columnSpan(['md' => 1]),
+
                                 Forms\Components\Toggle::make('included_in_total')
                                     ->label('Inclui no Total')
                                     ->default(true)
                                     ->columnSpan(['md' => 1]),
 
+                                Forms\Components\Textarea::make('additional_information')
+                                    ->label('Informações Adicionais do Item')
+                                    ->rows(2)
+                                    ->maxLength(500)
+                                    ->columnSpan(['md' => 2]),
+
                                 Forms\Components\KeyValue::make('tax_data')
                                     ->label('Dados Tributários (JSON)')
-                                    ->helperText('Campo avançado — structure: {imposto: {icms,pis,cofins}, informacoes_adicionais}')
+                                    ->helperText('Campo avançado — structure: {imposto: {icms,pis,cofins}}')
                                     ->columnSpan(['md' => 2]),
                             ])
                             ->columns(['md' => 2])
@@ -197,10 +267,10 @@ class FiscalDocumentForm
                         Forms\Components\Select::make('freight_data.modalidade_frete')
                             ->label('Modalidade do Frete')
                             ->options([
-                                '0' => '0 – Por conta do emitente (CIF)',
-                                '1' => '1 – Por conta do destinatário (FOB)',
-                                '2' => '2 – Por conta de terceiros',
-                                '9' => '9 – Sem frete',
+                                '0' => '0 Por conta do emitente (CIF)',
+                                '1' => '1 Por conta do destinatário (FOB)',
+                                '2' => '2 Por conta de terceiros',
+                                '9' => '9 Sem frete',
                             ])
                             ->default('9')
                             ->native(false)

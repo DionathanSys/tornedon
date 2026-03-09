@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Company extends Model
 {
@@ -45,6 +46,11 @@ class Company extends Model
     public function preferences(): HasMany
     {
         return $this->hasMany(CompanyPreference::class);
+    }
+
+    public function fiscalProfile(): HasOne
+    {
+        return $this->hasOne(FiscalProfile::class);
     }
 
     public function serviceProvisionLocation(): Attribute

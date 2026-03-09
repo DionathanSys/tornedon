@@ -55,7 +55,6 @@ final class ImportRecordsAction
                                         ])
                                 ),
                         ]),
-
                     Section::make('Requisições')
                         ->schema([
                             Select::make('requisition_ids')
@@ -71,25 +70,6 @@ final class ImportRecordsAction
                                         ->get()
                                         ->mapWithKeys(fn (Requisition $req) => [
                                             $req->id => "#{$req->number} — " . ($req->customer?->name ?? 'S/C'),
-                                        ])
-                                ),
-                        ]),
-
-                    Section::make('Ordens de Produção')
-                        ->schema([
-                            Select::make('production_order_ids')
-                                ->label('Ordens de Produção')
-                                ->multiple()
-                                ->searchable()
-                                ->preload()
-                                ->options(
-                                    ProductionOrder::query()
-                                        ->where('customer_id', $customerId)
-                                        ->where('status', ProductionOrderStatus::COMPLETED)
-                                        ->whereNull('invoice_id')
-                                        ->get()
-                                        ->mapWithKeys(fn (ProductionOrder $po) => [
-                                            $po->id => "#{$po->production_order_number} — " . ($po->customer?->name ?? 'S/C'),
                                         ])
                                 ),
                         ]),
