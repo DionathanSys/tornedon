@@ -97,16 +97,8 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'additional_purchase_information_default_nota_empenho' => data_get($profile?->additional_purchase_information_default, 'nota_empenho'),
             'additional_purchase_information_default_pedido' => data_get($profile?->additional_purchase_information_default, 'pedido'),
             'additional_purchase_information_default_contrato' => data_get($profile?->additional_purchase_information_default, 'contrato'),
-            'taxpayer_observations_default' => collect($profile?->taxpayer_observations_default ?? [])
-                ->map(fn ($item) => [
-                    'campo' => data_get($item, 'campo'),
-                    'texto' => data_get($item, 'texto'),
-                ])->toArray(),
-            'tax_observations_default' => collect($profile?->tax_observations_default ?? [])
-                ->map(fn ($item) => [
-                    'campo' => data_get($item, 'campo'),
-                    'texto' => data_get($item, 'texto'),
-                ])->toArray(),
+            'taxpayer_observations_default' => $this->toKeyValueState($profile?->taxpayer_observations_default),
+            'tax_observations_default' => $this->toKeyValueState($profile?->tax_observations_default),
             'informacoes_complementares_padrao' => $profile?->informacoes_complementares_padrao,
         ]);
     }
@@ -380,40 +372,20 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->columnSpanFull()
                             ->collapsible(),
 
-                        Forms\Components\Repeater::make('taxpayer_observations_default')
+                        Forms\Components\KeyValue::make('taxpayer_observations_default')
                             ->label('Observações do Contribuinte')
-                            ->schema([
-                                Forms\Components\TextInput::make('campo')
-                                    ->label('Campo')
-                                    ->maxLength(20),
-                                Forms\Components\TextInput::make('texto')
-                                    ->label('Texto')
-                                    ->maxLength(60),
-                            ])
-                            ->columns(['md' => 2])
-                            ->defaultItems(0)
-                            ->reorderable(false)
+                            ->keyLabel('Campo')
+                            ->valueLabel('Texto')
+                            ->keyPlaceholder('Ex: obs1')
+                            ->valuePlaceholder('Texto da observação')
                             ->columnSpanFull(),
 
-                        Forms\Components\Repeater::make('tax_observations_default')
+                        Forms\Components\KeyValue::make('tax_observations_default')
                             ->label('Observações do Fisco')
-                            ->schema([
-                                Forms\Components\TextInput::make('campo')
-                                    ->label('Campo')
-                                    ->maxLength(20),
-                                Forms\Components\TextInput::make('texto')
-                                    ->label('Texto')
-                                    ->maxLength(60),
-                            ])
-                            ->columns(['md' => 2])
-                            ->defaultItems(0)
-                            ->reorderable(false)
-                            ->columnSpanFull(),
-
-                        Forms\Components\Textarea::make('informacoes_complementares_padrao')
-                            ->label('Texto padrão')
-                            ->helperText('Campo legado. Preferir os campos estruturados acima (infAdFisco/infCpl/compra/observações).')
-                            ->rows(3)
+                            ->keyLabel('Campo')
+                            ->valueLabel('Texto')
+                            ->keyPlaceholder('Ex: obs_fisco1')
+                            ->valuePlaceholder('Texto da observação')
                             ->columnSpanFull(),
                     ])
                     ->collapsible()
@@ -497,14 +469,8 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                 'pedido' => $data['additional_purchase_information_default_pedido'] ?? null,
                 'contrato' => $data['additional_purchase_information_default_contrato'] ?? null,
             ],
-            'taxpayer_observations_default' => collect($data['taxpayer_observations_default'] ?? [])
-                ->filter(fn (array $item) => ! empty($item['campo']) || ! empty($item['texto']))
-                ->values()
-                ->toArray(),
-            'tax_observations_default' => collect($data['tax_observations_default'] ?? [])
-                ->filter(fn (array $item) => ! empty($item['campo']) || ! empty($item['texto']))
-                ->values()
-                ->toArray(),
+            'taxpayer_observations_default' => $this->toPayloadObservationList($data['taxpayer_observations_default'] ?? []),
+            'tax_observations_default' => $this->toPayloadObservationList($data['tax_observations_default'] ?? []),
             'informacoes_complementares_padrao' => $data['informacoes_complementares_padrao'] ?? null,
         ]);
 
@@ -606,5 +572,73 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             '500' => '500 - ICMS cobrado anteriormente por ST ou por antecipação',
             '900' => '900 - Outros',
         ];
+    }
+
+    /**
+     * Normaliza o estado para o componente KeyValue.
+     *
+     * Aceita tanto formato legado [{campo,texto}] quanto formato associativo {campo: texto}.
+     */
+    private function toKeyValueState(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        // Formato legado: lista de objetos [{campo, texto}]
+        if (array_is_list($value)) {
+            return collect($value)
+                ->filter(fn ($item) => is_array($item))
+                ->mapWithKeys(function (array $item): array {
+                    $key = trim((string) ($item['campo'] ?? ''));
+                    $text = trim((string) ($item['texto'] ?? ''));
+
+                    return $key !== '' ? [$key => $text] : [];
+                })
+                ->toArray();
+        }
+
+        // Formato já associativo
+        return collect($value)
+            ->mapWithKeys(function ($text, $key): array {
+                $normalizedKey = trim((string) $key);
+                $normalizedText = trim((string) $text);
+
+                return $normalizedKey !== '' ? [$normalizedKey => $normalizedText] : [];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Converte o estado do KeyValue para o formato persistido/consumido no payload.
+     */
+    private function toPayloadObservationList(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        // Se já estiver no formato legado, apenas normaliza.
+        if (array_is_list($value)) {
+            return collect($value)
+                ->filter(fn ($item) => is_array($item))
+                ->map(fn (array $item) => [
+                    'campo' => trim((string) ($item['campo'] ?? '')),
+                    'texto' => trim((string) ($item['texto'] ?? '')),
+                ])
+                ->filter(fn (array $item) => $item['campo'] !== '' || $item['texto'] !== '')
+                ->values()
+                ->toArray();
+        }
+
+        // Formato do KeyValue: {campo: texto}
+        return collect($value)
+            ->map(fn ($text, $key) => [
+                'campo' => trim((string) $key),
+                'texto' => trim((string) $text),
+            ])
+            ->filter(fn (array $item) => $item['campo'] !== '' || $item['texto'] !== '')
+            ->values()
+            ->toArray();
     }
 }

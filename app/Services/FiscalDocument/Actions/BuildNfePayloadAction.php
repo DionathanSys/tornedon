@@ -166,19 +166,19 @@ class BuildNfePayloadAction
             if (! empty($fiscalDocument->taxpayer_observations)) {
                 $obsContrib = json_decode($fiscalDocument->taxpayer_observations, true);
                 if (is_array($obsContrib)) {
-                    $payload['observacoes_contribuinte'] = $obsContrib;
+                    $payload['observacoes_contribuinte'] = $this->normalizeObservations($obsContrib);
                 }
             } elseif (! empty($fiscalDocument->fiscalProfile?->taxpayer_observations_default)) {
-                $payload['observacoes_contribuinte'] = $fiscalDocument->fiscalProfile->taxpayer_observations_default;
+                $payload['observacoes_contribuinte'] = $this->normalizeObservations($fiscalDocument->fiscalProfile->taxpayer_observations_default);
             }
 
             if (! empty($fiscalDocument->tax_observations)) {
                 $obsFisco = json_decode($fiscalDocument->tax_observations, true);
                 if (is_array($obsFisco)) {
-                    $payload['observacoes_fisco'] = $obsFisco;
+                    $payload['observacoes_fisco'] = $this->normalizeObservations($obsFisco);
                 }
             } elseif (! empty($fiscalDocument->fiscalProfile?->tax_observations_default)) {
-                $payload['observacoes_fisco'] = $fiscalDocument->fiscalProfile->tax_observations_default;
+                $payload['observacoes_fisco'] = $this->normalizeObservations($fiscalDocument->fiscalProfile->tax_observations_default);
             }
 
             $this->setSuccess();
@@ -196,5 +196,35 @@ class BuildNfePayloadAction
 
             return null;
         }
+    }
+
+    /**
+     * Normaliza observacoes para o formato esperado no payload:
+     * [ ['campo' => 'x', 'texto' => 'y'], ... ]
+     */
+    private function normalizeObservations(array $observations): array
+    {
+        // Formato legado/esperado: lista de objetos
+        if (array_is_list($observations)) {
+            return collect($observations)
+                ->filter(fn ($item) => is_array($item))
+                ->map(fn (array $item) => [
+                    'campo' => trim((string) ($item['campo'] ?? '')),
+                    'texto' => trim((string) ($item['texto'] ?? '')),
+                ])
+                ->filter(fn (array $item) => $item['campo'] !== '' || $item['texto'] !== '')
+                ->values()
+                ->toArray();
+        }
+
+        // Formato key-value: { campo: texto }
+        return collect($observations)
+            ->map(fn ($texto, $campo) => [
+                'campo' => trim((string) $campo),
+                'texto' => trim((string) $texto),
+            ])
+            ->filter(fn (array $item) => $item['campo'] !== '' || $item['texto'] !== '')
+            ->values()
+            ->toArray();
     }
 }

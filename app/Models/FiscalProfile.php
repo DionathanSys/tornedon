@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enum\Tax\TaxRegime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 
 class FiscalProfile extends Model
 {
@@ -104,8 +105,15 @@ class FiscalProfile extends Model
 
     public function resolveCfopForOperationNature(string $operationNature, ?string $ncmCode): ?string
     {
+        Log::debug("Resolvendo CFOP por natureza de operação '{$operationNature}' e código NCM '{$ncmCode}' usando perfil fiscal ID {$this->id}");
+
         $rules = $this->cfop_rules ?? [];
         $rule = $rules[$operationNature] ?? null;
+
+        Log::debug('Regra de CFOP encontrada para natureza de operação?', [
+            'rules' => $rules,
+            'rule' => $rule
+        ]);
 
         if (! is_array($rule)) {
             return null;
@@ -114,17 +122,28 @@ class FiscalProfile extends Model
         $defaultCfop = $rule['default_cfop'] ?? null;
         $exceptions = $rule['exceptions'] ?? [];
 
+        Log::debug('Exceções de CFOP encontradas para natureza de operação?', [
+            'exceptions' => $exceptions,
+            'ncmCode' => $ncmCode
+        ]);
+
         if (is_array($exceptions) && ! empty($ncmCode)) {
             foreach ($exceptions as $prefix => $cfop) {
+                Log::debug("Verificando exceção de CFOP: prefixo '{$prefix}' para NCM '{$ncmCode}'");
                 if (! is_string($prefix) || ! is_string($cfop)) {
                     continue;
                 }
 
                 if (str_starts_with($ncmCode, $prefix)) {
+                    Log::debug("Exceção de CFOP encontrada: prefixo '{$prefix}' para NCM '{$ncmCode}' => CFOP '{$cfop}'");
                     return $cfop;
                 }
             }
         }
+
+        Log::debug('CFOP resolvido para natureza de operação?', [
+            'cfop' => $defaultCfop
+        ]);
 
         return $defaultCfop;
     }

@@ -22,7 +22,7 @@ Documentar como a aplicação monta e emite NF-e no fluxo `criacao -> validacao 
 - Resolucao fiscal por item: `app/Services/Fiscal/Actions/ResolveFiscalContextAction.php`.
 - Motor de decisao: `app/Services/Fiscal/FiscalDecisionService.php`.
 - Persistencia da decisao em cada item: `app/Services/Fiscal/Actions/PersistFiscalSnapshotAction.php`.
-- Campos atualizados por item: `cfop_code`, `tax_data`, `fiscal_snapshot`, `fiscal_rule_id`, `fiscal_rule_version`.
+- Campos atualizados por item: `cfop_code`, `tax_data`, `fiscal_snapshot`.
 
 3. **Montagem do payload e emissao**
 - Serializacao para IntegraNotas: `app/Services/FiscalDocument/Actions/BuildNfePayloadAction.php`.
@@ -47,7 +47,7 @@ Documentar como a aplicação monta e emite NF-e no fluxo `criacao -> validacao 
 - Na criacao (`validateCreateMany`): campos fiscais podem iniciar `nullable`.
 - Na validacao completa (`validate`): exige `ncm_code`, `cfop_code`, origem e bloco `tax_data.imposto.icms/pis/cofins`.
 
-5. **Validacao de regras fiscais por empresa**
+5. **Validacao de perfil fiscal por empresa**
 - `app/Services/FiscalDocument/Validators/FiscalProfileValidator.php` (via resolver).
 - Exige perfil fiscal ativo e natureza de operacao configurada com CFOP.
 
@@ -65,7 +65,7 @@ Documentar como a aplicação monta e emite NF-e no fluxo `criacao -> validacao 
 - Modelo: `app/Models/FiscalDocumentItem.php`.
 - Migracao base: `database/migrations/2025_05_26_021928_create_fiscal_document_items_table.php`.
 - Campos adicionais de item NF-e: `description`, `barcode`, `cest_code`, `taxable_*`, descontos/frete/seguro/outras despesas, `additional_information` em `database/migrations/2026_03_08_000002_add_nfe_item_fields_to_fiscal_document_items.php`.
-- Snapshot fiscal imutavel: `fiscal_snapshot`, `fiscal_rule_id`, `fiscal_rule_version` em `database/migrations/2026_03_09_100004_add_fiscal_snapshot_to_fiscal_document_items_table.php`.
+- Snapshot fiscal imutavel: `fiscal_snapshot` em `database/migrations/2026_03_09_100004_add_fiscal_snapshot_to_fiscal_document_items_table.php`.
 
 ### 3) Fontes tributarias da decisao
 - Por produto: `product_taxes` (`app/Models/ProductTax.php`).

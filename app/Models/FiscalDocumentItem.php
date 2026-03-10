@@ -34,8 +34,6 @@ class FiscalDocumentItem extends Model
         'included_in_total',
         'tax_data',
         'fiscal_snapshot',
-        'fiscal_rule_id',
-        'fiscal_rule_version',
         'additional_information',
         'created_by',
         'updated_by',
@@ -55,7 +53,6 @@ class FiscalDocumentItem extends Model
         'included_in_total' => 'boolean',
         'tax_data' => 'array',
         'fiscal_snapshot' => 'array',
-        'fiscal_rule_version' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -77,11 +74,6 @@ class FiscalDocumentItem extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
-    }
-
-    public function fiscalRule(): BelongsTo
-    {
-        return $this->belongsTo(FiscalRule::class);
     }
 
     public function createdBy(): BelongsTo

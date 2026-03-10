@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "a36137f84796124f",
@@ -187,9 +186,10 @@
   },
   "active": "fb9ec39f7a7ce095",
   "lastOpenFiles": [
+    "Consideracoes plano fiscal.md",
+    "arquitetura-fiscal-criacao-validacao-emissao.md",
     "Considerações plano fiscal.md",
     "CODING-STANDARDS.md",
-    "arquitetura-fiscal-criacao-validacao-emissao.md",
     "integranotas-itens.md",
     "Invoice.md",
     "DOCUMENTOS-FISCAIS.md",
@@ -215,7 +215,6 @@
     "regras-negocio/quote-production-workflow.md",
     "Quote.md",
     "DATABASE-STANDARDS.md",
-    "DEVELOPMENT-GUIDE.md",
     "Outros",
     "Excalidraw",
     "Pasted image 20260219092215.png",

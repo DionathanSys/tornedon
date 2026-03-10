@@ -35,9 +35,7 @@ class FiscalDecisionDTO
         public readonly ?string $enquadramentoIpi,
 
         // Rastreabilidade
-        public readonly ?int $ruleId = null,
-        public readonly ?int $ruleVersion = null,
-        public readonly string $source = 'regime_default', // product_tax, fiscal_rule, regime_default
+        public readonly string $source = 'regime_default', // product_tax, regime_default
 
         // Extensível para IBS/CBS
         public readonly ?array $metadata = null,
@@ -147,8 +145,6 @@ class FiscalDecisionDTO
             'cst_ipi'           => $this->cstIpi,
             'aliquota_ipi'      => $this->aliquotaIpi,
             'enquadramento_ipi' => $this->enquadramentoIpi,
-            'rule_id'           => $this->ruleId,
-            'rule_version'      => $this->ruleVersion,
             'source'            => $this->source,
             'metadata'          => $this->metadata,
         ];
@@ -177,8 +173,6 @@ class FiscalDecisionDTO
             cstIpi:           $this->cstIpi,
             aliquotaIpi:      $this->aliquotaIpi,
             enquadramentoIpi: $this->enquadramentoIpi,
-            ruleId:           $this->ruleId,
-            ruleVersion:      $this->ruleVersion,
             source:           $this->source,
             metadata:         $this->metadata,
         );
@@ -204,8 +198,6 @@ class FiscalDecisionDTO
             cstIpi: $data['cst_ipi'] ?? null,
             aliquotaIpi: isset($data['aliquota_ipi']) ? (float) $data['aliquota_ipi'] : null,
             enquadramentoIpi: $data['enquadramento_ipi'] ?? null,
-            ruleId: $data['rule_id'] ?? null,
-            ruleVersion: $data['rule_version'] ?? null,
             source: $data['source'] ?? 'regime_default',
             metadata: $data['metadata'] ?? null,
         );

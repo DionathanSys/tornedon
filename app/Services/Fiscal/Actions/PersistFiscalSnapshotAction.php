@@ -49,8 +49,6 @@ class PersistFiscalSnapshotAction
                 $updateData = [
                     'fiscal_snapshot' => $decision->toSnapshotArray(),
                     'tax_data' => $taxData,
-                    'fiscal_rule_id' => $decision->ruleId,
-                    'fiscal_rule_version' => $decision->ruleVersion,
                 ];
 
                 // Atualizar CFOP se a decisão fiscal determinou um

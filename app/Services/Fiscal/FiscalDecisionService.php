@@ -14,8 +14,8 @@ class FiscalDecisionService
      * Resolve a decisão fiscal para um contexto.
      *
      * Separação de responsabilidades:
-    * - CFOP     → FiscalProfile (obrigatório por natureza da operação)
-     * - Alíquotas → ProductTax (por produto) ou estratégia do regime (fallback)
+        * - CFOP      → FiscalProfile (obrigatório por natureza da operação)
+        * - Alíquotas → ProductTax (por produto) ou estratégia do regime (fallback)
      */
     public function resolve(FiscalContextDTO $context): FiscalDecisionDTO
     {
