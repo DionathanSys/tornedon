@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('fiscal_rules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('fiscal_profile_version_id')
-                ->constrained('fiscal_profile_versions')
+            $table->foreignId('fiscal_profile_id')
+                ->constrained('fiscal_profiles')
                 ->cascadeOnDelete();
             $table->string('name');
             $table->string('operation_type', 30)->nullable(); // sale, return, transfer, remittance, bonus, repair, service
@@ -32,7 +32,7 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestamps();
 
-            $table->index(['fiscal_profile_version_id', 'is_enabled', 'priority'], 'fiscal_rules_lookup_idx');
+            $table->index(['fiscal_profile_id', 'is_enabled', 'priority'], 'fiscal_rules_lookup_idx');
         });
     }
 

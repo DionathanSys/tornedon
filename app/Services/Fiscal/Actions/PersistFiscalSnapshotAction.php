@@ -13,7 +13,7 @@ class PersistFiscalSnapshotAction
     use HandlesActionResponse;
 
     /**
-     * Persiste o snapshot fiscal imutável nos itens do documento e referencia a versão do perfil no header.
+     * Persiste o snapshot fiscal imutável nos itens do documento e referencia o perfil fiscal no header.
      *
      * @param  FiscalDocument  $document
      * @param  array<int, FiscalDecisionDTO>  $decisions Indexado por item_number
@@ -27,10 +27,8 @@ class PersistFiscalSnapshotAction
                 ->first();
 
             if ($profile) {
-                $version = $profile->getActiveVersion();
-
                 $document->update([
-                    'fiscal_profile_version_id' => $version?->id,
+                    'fiscal_profile_id' => $profile->id,
                     'tax_regime_used' => $profile->tax_regime->value,
                 ]);
             }

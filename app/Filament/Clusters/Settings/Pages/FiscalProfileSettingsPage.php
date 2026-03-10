@@ -9,7 +9,6 @@ use App\Enum\Tax\PisCst;
 use App\Enum\Tax\TaxRegime;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\FiscalProfile;
-use App\Models\FiscalProfileVersion;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -48,48 +47,67 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
         $companyId = Filament::getTenant()?->id;
 
         $profile = FiscalProfile::where('company_id', $companyId)->first();
-        $version = $profile?->getActiveVersion();
 
         $this->form->fill([
             'tax_regime' => $profile?->tax_regime?->value,
             'cnae_principal' => $profile?->cnae_principal,
 
             // ICMS
-            'icms_cst_default' => $version?->icms_cst_default,
-            'icms_csosn_default' => $version?->icms_csosn_default,
-            'icms_aliquota_interna' => $version?->icms_aliquota_interna,
-            'icms_reducao_base' => $version?->icms_reducao_base,
-            'icms_modalidade_base_calculo' => $version?->icms_modalidade_base_calculo,
+            'icms_cst_default' => $profile?->icms_cst_default,
+            'icms_csosn_default' => $profile?->icms_csosn_default,
+            'icms_aliquota_interna' => $profile?->icms_aliquota_interna,
+            'icms_reducao_base' => $profile?->icms_reducao_base,
+            'icms_modalidade_base_calculo' => $profile?->icms_modalidade_base_calculo,
 
             // ICMS ST
-            'icms_st_aliquota' => $version?->icms_st_aliquota,
-            'icms_st_mva' => $version?->icms_st_mva,
-            'icms_st_reducao_base' => $version?->icms_st_reducao_base,
+            'icms_st_aliquota' => $profile?->icms_st_aliquota,
+            'icms_st_mva' => $profile?->icms_st_mva,
+            'icms_st_reducao_base' => $profile?->icms_st_reducao_base,
 
             // Interestaduais
-            'icms_aliquotas_interestaduais' => $version?->icms_aliquotas_interestaduais ?? [],
+            'icms_aliquotas_interestaduais' => $profile?->icms_aliquotas_interestaduais ?? [],
 
             // PIS
-            'pis_cst_default' => $version?->pis_cst_default,
-            'pis_aliquota_default' => $version?->pis_aliquota_default,
+            'pis_cst_default' => $profile?->pis_cst_default,
+            'pis_aliquota_default' => $profile?->pis_aliquota_default,
 
             // COFINS
-            'cofins_cst_default' => $version?->cofins_cst_default,
-            'cofins_aliquota_default' => $version?->cofins_aliquota_default,
+            'cofins_cst_default' => $profile?->cofins_cst_default,
+            'cofins_aliquota_default' => $profile?->cofins_aliquota_default,
 
             // IPI
-            'ipi_cst_default' => $version?->ipi_cst_default,
-            'ipi_aliquota_default' => $version?->ipi_aliquota_default,
-            'ipi_enquadramento' => $version?->ipi_enquadramento,
+            'ipi_cst_default' => $profile?->ipi_cst_default,
+            'ipi_aliquota_default' => $profile?->ipi_aliquota_default,
+            'ipi_enquadramento' => $profile?->ipi_enquadramento,
 
             // CFOP
-            'cfop_rules' => collect($version?->cfop_rules ?? [])
-                ->map(fn ($cfop, $nature) => ['operation_nature' => $nature, 'cfop' => $cfop])
+            'cfop_rules' => collect($profile?->cfop_rules ?? [])
+                ->filter(fn ($rule) => is_array($rule))
+                ->map(fn ($rule, $nature) => [
+                    'operation_nature' => $nature,
+                    'cfop' => $rule['default_cfop'] ?? null,
+                    'cfop_exceptions' => $rule['exceptions'] ?? [],
+                ])
                 ->values()
                 ->toArray(),
 
             // Info adicional
-            'informacoes_complementares_padrao' => $version?->informacoes_complementares_padrao,
+            'informacoes_adicionais_fisco' => $profile?->informacoes_adicionais_fisco,
+            'informacoes_adicionais_contribuinte' => $profile?->informacoes_adicionais_contribuinte,
+            'informacoes_adicionais_compra_nota_empenho' => data_get($profile?->informacoes_adicionais_compra, 'nota_empenho'),
+            'informacoes_adicionais_compra_pedido' => data_get($profile?->informacoes_adicionais_compra, 'pedido'),
+            'informacoes_adicionais_compra_contrato' => data_get($profile?->informacoes_adicionais_compra, 'contrato'),
+            'observacoes_contribuinte' => collect($profile?->observacoes_contribuinte ?? [])
+                ->map(fn ($item) => [
+                    'campo' => data_get($item, 'campo'),
+                    'texto' => data_get($item, 'texto'),
+                ])->toArray(),
+            'observacoes_fisco' => collect($profile?->observacoes_fisco ?? [])
+                ->map(fn ($item) => [
+                    'campo' => data_get($item, 'campo'),
+                    'texto' => data_get($item, 'texto'),
+                ])->toArray(),
+            'informacoes_complementares_padrao' => $profile?->informacoes_complementares_padrao,
         ]);
     }
 
@@ -124,6 +142,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->description('Configuração padrão do ICMS para operações de saída.')
                     ->icon('heroicon-o-receipt-percent')
                     ->schema([
+                        // Somente exibe CST para regime normal, ocultar para Simples/MEI
                         Forms\Components\Select::make('icms_cst_default')
                             ->label('CST ICMS Padrão')
                             ->options(IcmsCst::toSelectArray())
@@ -131,6 +150,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->visible(fn (Get $get) => $this->isRegimeNormal($get('tax_regime')))
                             ->columnSpan(['md' => 1]),
 
+                        // Somente exibe CSOSN para Simples/MEI, ocultar para regime normal
                         Forms\Components\Select::make('icms_csosn_default')
                             ->label('CSOSN Padrão')
                             ->options(self::csosnOptions())
@@ -289,7 +309,8 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->icon('heroicon-o-document-magnifying-glass')
                     ->schema([
                         Forms\Components\Repeater::make('cfop_rules')
-                            ->label('')
+                            ->hiddenLabel()
+                            ->compact()
                             ->schema([
                                 Forms\Components\Select::make('operation_nature')
                                     ->label('Natureza da Operação')
@@ -299,15 +320,25 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                                     ->columnSpan(['md' => 1]),
 
                                 Forms\Components\TextInput::make('cfop')
-                                    ->label('CFOP')
+                                    ->label('CFOP Padrão')
                                     ->required()
                                     ->maxLength(4)
                                     ->placeholder('Ex: 5102')
                                     ->columnSpan(['md' => 1]),
+
+                                Forms\Components\KeyValue::make('cfop_exceptions')
+                                    ->label('Exceções por Prefixo NCM')
+                                    ->keyLabel('Prefixo NCM')
+                                    ->valueLabel('CFOP')
+                                    ->keyPlaceholder('Ex: 2710')
+                                    ->valuePlaceholder('Ex: 5405')
+                                    ->helperText('Quando o NCM do item começar com o prefixo informado, será usado o CFOP da exceção.')
+                                    ->columnSpanFull(),
                             ])
                             ->columns(['md' => 2])
                             ->addActionLabel('Adicionar regra CFOP')
                             ->defaultItems(0)
+                            ->reorderable(false)
                             ->columnSpanFull(),
                     ])
                     ->collapsible(),
@@ -317,8 +348,71 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->description('Texto padrão para informações adicionais da NF-e.')
                     ->icon('heroicon-o-document-text')
                     ->schema([
+                        Forms\Components\Textarea::make('informacoes_adicionais_fisco')
+                            ->label('Informações adicionais de interesse do fisco (infAdFisco)')
+                            ->rows(3)
+                            ->minLength(1)
+                            ->maxLength(2000)
+                            ->columnSpanFull(),
+
+                        Forms\Components\Textarea::make('informacoes_adicionais_contribuinte')
+                            ->label('Informações adicionais de interesse do contribuinte (infCpl)')
+                            ->rows(4)
+                            ->minLength(1)
+                            ->maxLength(5000)
+                            ->columnSpanFull(),
+
+                        \Filament\Schemas\Components\Section::make('Informações adicionais de compra')
+                            ->schema([
+                                Forms\Components\TextInput::make('informacoes_adicionais_compra_nota_empenho')
+                                    ->label('Nota de Empenho')
+                                    ->maxLength(60),
+
+                                Forms\Components\TextInput::make('informacoes_adicionais_compra_pedido')
+                                    ->label('Pedido')
+                                    ->maxLength(60),
+
+                                Forms\Components\TextInput::make('informacoes_adicionais_compra_contrato')
+                                    ->label('Contrato')
+                                    ->maxLength(60),
+                            ])
+                            ->columns(['md' => 3])
+                            ->columnSpanFull()
+                            ->collapsible(),
+
+                        Forms\Components\Repeater::make('observacoes_contribuinte')
+                            ->label('Observações do Contribuinte')
+                            ->schema([
+                                Forms\Components\TextInput::make('campo')
+                                    ->label('Campo')
+                                    ->maxLength(20),
+                                Forms\Components\TextInput::make('texto')
+                                    ->label('Texto')
+                                    ->maxLength(60),
+                            ])
+                            ->columns(['md' => 2])
+                            ->defaultItems(0)
+                            ->reorderable(false)
+                            ->columnSpanFull(),
+
+                        Forms\Components\Repeater::make('observacoes_fisco')
+                            ->label('Observações do Fisco')
+                            ->schema([
+                                Forms\Components\TextInput::make('campo')
+                                    ->label('Campo')
+                                    ->maxLength(20),
+                                Forms\Components\TextInput::make('texto')
+                                    ->label('Texto')
+                                    ->maxLength(60),
+                            ])
+                            ->columns(['md' => 2])
+                            ->defaultItems(0)
+                            ->reorderable(false)
+                            ->columnSpanFull(),
+
                         Forms\Components\Textarea::make('informacoes_complementares_padrao')
                             ->label('Texto padrão')
+                            ->helperText('Campo legado. Preferir os campos estruturados acima (infAdFisco/infCpl/compra/observações).')
                             ->rows(3)
                             ->columnSpanFull(),
                     ])
@@ -349,23 +443,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             $profile->update(['created_by' => $userId]);
         }
 
-        // Arquivar versão anterior (se existir)
-        $currentVersion = $profile->getActiveVersion();
-        if ($currentVersion) {
-            $currentVersion->update([
-                'status' => 'archived',
-                'valid_to' => now()->subDay(),
-            ]);
-        }
-
-        // Criar nova versão
-        FiscalProfileVersion::create([
-            'fiscal_profile_id' => $profile->id,
-            'version' => $profile->nextVersionNumber(),
-            'valid_from' => now()->toDateString(),
-            'valid_to' => null,
-            'status' => 'active',
-
+        $profile->update([
             // ICMS
             'icms_cst_default' => $data['icms_cst_default'] ?? null,
             'icms_csosn_default' => $data['icms_csosn_default'] ?? null,
@@ -396,22 +474,43 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 
             // CFOP
             'cfop_rules' => collect($data['cfop_rules'] ?? [])
-                ->pluck('cfop', 'operation_nature')
-                ->filter()
+                ->filter(fn (array $rule) => ! empty($rule['operation_nature']) && ! empty($rule['cfop']))
+                ->mapWithKeys(function (array $rule): array {
+                    $exceptions = collect($rule['cfop_exceptions'] ?? [])
+                        ->filter(fn ($cfop, $prefix) => ! empty($prefix) && ! empty($cfop))
+                        ->toArray();
+
+                    return [
+                        $rule['operation_nature'] => [
+                            'default_cfop' => $rule['cfop'],
+                            'exceptions' => $exceptions,
+                        ],
+                    ];
+                })
                 ->toArray(),
 
             // Info complementar
+            'informacoes_adicionais_fisco' => $data['informacoes_adicionais_fisco'] ?? null,
+            'informacoes_adicionais_contribuinte' => $data['informacoes_adicionais_contribuinte'] ?? null,
+            'informacoes_adicionais_compra' => [
+                'nota_empenho' => $data['informacoes_adicionais_compra_nota_empenho'] ?? null,
+                'pedido' => $data['informacoes_adicionais_compra_pedido'] ?? null,
+                'contrato' => $data['informacoes_adicionais_compra_contrato'] ?? null,
+            ],
+            'observacoes_contribuinte' => collect($data['observacoes_contribuinte'] ?? [])
+                ->filter(fn (array $item) => ! empty($item['campo']) || ! empty($item['texto']))
+                ->values()
+                ->toArray(),
+            'observacoes_fisco' => collect($data['observacoes_fisco'] ?? [])
+                ->filter(fn (array $item) => ! empty($item['campo']) || ! empty($item['texto']))
+                ->values()
+                ->toArray(),
             'informacoes_complementares_padrao' => $data['informacoes_complementares_padrao'] ?? null,
-
-            'created_by' => $userId,
         ]);
-
-        // Limpar cache da relação
-        $profile->unsetRelation('activeVersion');
 
         Notification::make()
             ->title('Perfil fiscal salvo com sucesso!')
-            ->body('Uma nova versão do perfil fiscal foi criada.')
+            ->body('As configurações do perfil fiscal foram atualizadas.')
             ->success()
             ->send();
     }

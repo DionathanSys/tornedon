@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enum;
 use App\Models\CompanyPartner;
+use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\Partner\Actions\CreatePartner;
@@ -31,17 +32,7 @@ class CommandTest extends Command
 
    public function handle() 
    {
-      $companyPartner = CompanyPartner::with('addresses', 'contacts', 'partner')->first();
-
-      $this->info('Company Partner:' . $companyPartner->id);
-      $this->info('Company:' . $companyPartner->company->name . ', ID: ' . $companyPartner->company->id);
-      $this->info('Partner:' . $companyPartner->partner->name . ', ID: ' . $companyPartner->partner->id);
-      foreach ($companyPartner->addresses as $address) {
-         $this->info('Address:' . $address->street . ', ID: ' . $address->id);
-      }
-      foreach ($companyPartner->contacts as $contact) {
-         $this->info('Contact:' . $contact->name . ', ID: ' . $contact->id);
-      }
+      $fields = FiscalProfileVer
 
 
    }

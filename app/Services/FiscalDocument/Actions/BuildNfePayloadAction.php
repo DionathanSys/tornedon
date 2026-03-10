@@ -31,6 +31,7 @@ class BuildNfePayloadAction
                 'company',
                 'customer.address',
                 'items.product',
+                'fiscalProfile',
             ]);
 
             $company  = $fiscalDocument->company;
@@ -140,10 +141,44 @@ class BuildNfePayloadAction
 
             if ($fiscalDocument->additional_tax_information) {
                 $payload['informacoes_adicionais_fisco'] = $fiscalDocument->additional_tax_information;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_adicionais_fisco)) {
+                $payload['informacoes_adicionais_fisco'] = $fiscalDocument->fiscalProfile->informacoes_adicionais_fisco;
             }
 
             if ($fiscalDocument->additional_taxpayer_information) {
                 $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->additional_taxpayer_information;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_adicionais_contribuinte)) {
+                $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->fiscalProfile->informacoes_adicionais_contribuinte;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_complementares_padrao)) {
+                // Fallback legado para manter compatibilidade durante a transicao.
+                $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->fiscalProfile->informacoes_complementares_padrao;
+            }
+
+            if (! empty($fiscalDocument->additional_purchase_information)) {
+                $purchaseInfo = json_decode($fiscalDocument->additional_purchase_information, true);
+                if (is_array($purchaseInfo)) {
+                    $payload['informacoes_adicionais_compra'] = $purchaseInfo;
+                }
+            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_adicionais_compra)) {
+                $payload['informacoes_adicionais_compra'] = $fiscalDocument->fiscalProfile->informacoes_adicionais_compra;
+            }
+
+            if (! empty($fiscalDocument->taxpayer_observations)) {
+                $obsContrib = json_decode($fiscalDocument->taxpayer_observations, true);
+                if (is_array($obsContrib)) {
+                    $payload['observacoes_contribuinte'] = $obsContrib;
+                }
+            } elseif (! empty($fiscalDocument->fiscalProfile?->observacoes_contribuinte)) {
+                $payload['observacoes_contribuinte'] = $fiscalDocument->fiscalProfile->observacoes_contribuinte;
+            }
+
+            if (! empty($fiscalDocument->tax_observations)) {
+                $obsFisco = json_decode($fiscalDocument->tax_observations, true);
+                if (is_array($obsFisco)) {
+                    $payload['observacoes_fisco'] = $obsFisco;
+                }
+            } elseif (! empty($fiscalDocument->fiscalProfile?->observacoes_fisco)) {
+                $payload['observacoes_fisco'] = $fiscalDocument->fiscalProfile->observacoes_fisco;
             }
 
             $this->setSuccess();

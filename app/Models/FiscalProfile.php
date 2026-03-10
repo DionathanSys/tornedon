@@ -5,8 +5,6 @@ namespace App\Models;
 use App\Enum\Tax\TaxRegime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FiscalProfile extends Model
 {
@@ -14,6 +12,30 @@ class FiscalProfile extends Model
         'company_id',
         'tax_regime',
         'cnae_principal',
+        'icms_cst_default',
+        'icms_csosn_default',
+        'icms_aliquota_interna',
+        'icms_reducao_base',
+        'icms_modalidade_base_calculo',
+        'icms_st_aliquota',
+        'icms_st_mva',
+        'icms_st_reducao_base',
+        'icms_aliquotas_interestaduais',
+        'pis_cst_default',
+        'pis_aliquota_default',
+        'cofins_cst_default',
+        'cofins_aliquota_default',
+        'ipi_cst_default',
+        'ipi_aliquota_default',
+        'ipi_enquadramento',
+        'cfop_rules',
+        'informacoes_adicionais_fisco',
+        'informacoes_adicionais_contribuinte',
+        'informacoes_adicionais_compra',
+        'observacoes_contribuinte',
+        'observacoes_fisco',
+        'informacoes_complementares_padrao',
+        'ruleset_checksum',
         'is_active',
         'created_by',
         'updated_by',
@@ -22,6 +44,19 @@ class FiscalProfile extends Model
     protected $casts = [
         'tax_regime' => TaxRegime::class,
         'is_active' => 'boolean',
+        'icms_aliquota_interna' => 'float',
+        'icms_reducao_base' => 'float',
+        'icms_st_aliquota' => 'float',
+        'icms_st_mva' => 'float',
+        'icms_st_reducao_base' => 'float',
+        'pis_aliquota_default' => 'float',
+        'cofins_aliquota_default' => 'float',
+        'ipi_aliquota_default' => 'float',
+        'icms_aliquotas_interestaduais' => 'array',
+        'cfop_rules' => 'array',
+        'informacoes_adicionais_compra' => 'array',
+        'observacoes_contribuinte' => 'array',
+        'observacoes_fisco' => 'array',
     ];
 
     /* ==============================
@@ -31,23 +66,6 @@ class FiscalProfile extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
-    }
-
-    public function versions(): HasMany
-    {
-        return $this->hasMany(FiscalProfileVersion::class);
-    }
-
-    public function activeVersion(): HasOne
-    {
-        return $this->hasOne(FiscalProfileVersion::class)
-            ->where('status', 'active')
-            ->where('valid_from', '<=', now())
-            ->where(function ($query) {
-                $query->whereNull('valid_to')
-                    ->orWhere('valid_to', '>=', now());
-            })
-            ->latest('version');
     }
 
     public function createdBy(): BelongsTo
@@ -64,16 +82,50 @@ class FiscalProfile extends Model
      |  Helpers
      |==============================*/
 
-    public function getActiveVersion(): ?FiscalProfileVersion
+    public function getAliquotaInterestadual(string $uf): ?float
     {
-        return $this->activeVersion;
+        $aliquotas = $this->icms_aliquotas_interestaduais ?? [];
+
+        return isset($aliquotas[$uf]) ? (float) $aliquotas[$uf] : null;
     }
 
-    /**
-     * Retorna o próximo número de versão disponível.
-     */
-    public function nextVersionNumber(): int
+    public function getCfopForNature(string $operationNature): ?string
     {
-        return ($this->versions()->max('version') ?? 0) + 1;
+        $rules = $this->cfop_rules ?? [];
+
+        $rule = $rules[$operationNature] ?? null;
+
+        if (! is_array($rule)) {
+            return null;
+        }
+
+        return $rule['default_cfop'] ?? null;
+    }
+
+    public function resolveCfopForOperationNature(string $operationNature, ?string $ncmCode): ?string
+    {
+        $rules = $this->cfop_rules ?? [];
+        $rule = $rules[$operationNature] ?? null;
+
+        if (! is_array($rule)) {
+            return null;
+        }
+
+        $defaultCfop = $rule['default_cfop'] ?? null;
+        $exceptions = $rule['exceptions'] ?? [];
+
+        if (is_array($exceptions) && ! empty($ncmCode)) {
+            foreach ($exceptions as $prefix => $cfop) {
+                if (! is_string($prefix) || ! is_string($cfop)) {
+                    continue;
+                }
+
+                if (str_starts_with($ncmCode, $prefix)) {
+                    return $cfop;
+                }
+            }
+        }
+
+        return $defaultCfop;
     }
 }

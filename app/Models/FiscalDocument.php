@@ -50,7 +50,7 @@ class FiscalDocument extends Model
         'nfe_protocolo',
         'nfe_payload',
         'nfe_sequence_id',
-        'fiscal_profile_version_id',
+        'fiscal_profile_id',
         'tax_regime_used',
     ];
 
@@ -132,9 +132,9 @@ class FiscalDocument extends Model
         return $this->belongsTo(NfeSequence::class);
     }
 
-    public function fiscalProfileVersion(): BelongsTo
+    public function fiscalProfile(): BelongsTo
     {
-        return $this->belongsTo(FiscalProfileVersion::class);
+        return $this->belongsTo(FiscalProfile::class);
     }
 
     /* ==============================

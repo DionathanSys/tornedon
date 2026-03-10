@@ -5,8 +5,6 @@ namespace App\Services\Fiscal;
 use App\Domain\DTO\Fiscal\FiscalContextDTO;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Models\FiscalProfile;
-use App\Models\FiscalProfileVersion;
-use App\Models\OperationRule;
 use App\Models\ProductTax;
 use App\Services\Fiscal\TaxRegimeStrategies\TaxRegimeStrategyFactory;
 
@@ -16,7 +14,7 @@ class FiscalDecisionService
      * Resolve a decisão fiscal para um contexto.
      *
      * Separação de responsabilidades:
-     * - CFOP     → OperationRule (obrigatório; bloqueia se não configurado)
+    * - CFOP     → FiscalProfile (obrigatório por natureza da operação)
      * - Alíquotas → ProductTax (por produto) ou estratégia do regime (fallback)
      */
     public function resolve(FiscalContextDTO $context): FiscalDecisionDTO
@@ -29,17 +27,11 @@ class FiscalDecisionService
             return $this->emptyDecision();
         }
 
-        $version = $profile->getActiveVersion();
-
-        if (! $version) {
-            return $this->emptyDecision();
-        }
-
-        // 1. CFOP — obrigatório via OperationRule (lança exceção se não configurado)
-        $cfop = $this->resolveCfopFromOperationRule($context);
+        // 1. CFOP — obrigatório via FiscalProfile (lança exceção se não configurado)
+        $cfop = $this->resolveCfopFromFiscalProfile($context, $profile);
 
         // 2. Alíquotas — ProductTax ou fallback de regime
-        $productDecision = $this->tryProductTax($context, $version);
+        $productDecision = $this->tryProductTax($context, $profile);
 
         if ($productDecision !== null) {
             return $productDecision->withCfop($cfop);
@@ -47,49 +39,42 @@ class FiscalDecisionService
 
         $strategy = TaxRegimeStrategyFactory::make($profile->tax_regime);
 
-        return $strategy->resolveDefaults($context, $version)->withCfop($cfop);
+        return $strategy->resolveDefaults($context, $profile)->withCfop($cfop);
     }
 
     /**
-     * Retorna a versão ativa do perfil fiscal da empresa.
+     * Retorna o perfil fiscal ativo da empresa.
      */
-    public function getActiveVersion(int $companyId): ?FiscalProfileVersion
+    public function getActiveProfile(int $companyId): ?FiscalProfile
     {
-        $profile = FiscalProfile::where('company_id', $companyId)
+        return FiscalProfile::where('company_id', $companyId)
             ->where('is_active', true)
             ->first();
-
-        return $profile?->getActiveVersion();
     }
 
-    /**
-     * Resolve o CFOP a partir da OperationRule configurada para a operação.
-     *
-     * A regra é OBRIGATÓRIA. Se não existe uma OperationRule ativa para a operação,
-     * lança RuntimeException impedindo a emissão.
-     */
-    private function resolveCfopFromOperationRule(FiscalContextDTO $context): string
+    private function resolveCfopFromFiscalProfile(FiscalContextDTO $context, FiscalProfile $profile): string
     {
-        $rule = OperationRule::where('company_id', $context->companyId)
-            ->where('operation_nature', $context->operationNature)
-            ->where('is_active', true)
-            ->first();
+        if ($context->operationNature === null) {
+            throw new \RuntimeException('Natureza da operação não informada para resolver CFOP.');
+        }
 
-        if (! $rule) {
+        $cfop = $profile->resolveCfopForOperationNature($context->operationNature, $context->productNcm);
+
+        if ($cfop === null) {
             throw new \RuntimeException(
-                "Nenhuma regra fiscal configurada para a operação \"{$context->operationNature}\". "
-                . 'Configure em Configurações → Regras por Operação.'
+                "Nenhum CFOP configurado para a operação \"{$context->operationNature}\" no Perfil Fiscal. "
+                . 'Configure em Configurações → Perfil Fiscal → Regras de CFOP por Operação.'
             );
         }
 
-        return $rule->resolveCfopForNcm($context->productNcm);
+        return $cfop;
     }
 
     /**
      * Tenta resolver alíquotas a partir do ProductTax do produto.
      * Retorna null se o produto não tem configuração fiscal suficiente.
      */
-    private function tryProductTax(FiscalContextDTO $context, FiscalProfileVersion $version): ?FiscalDecisionDTO
+    private function tryProductTax(FiscalContextDTO $context, FiscalProfile $profile): ?FiscalDecisionDTO
     {
         if ($context->productId === null) {
             return null;
@@ -118,20 +103,20 @@ class FiscalDecisionService
             cfop:             null,
             cstIcms:          $icms['situacao_tributaria'] ?? null,
             csosn:            $icms['csosn'] ?? null,
-            modBcIcms:        $icms['modalidade_base_calculo'] ?? $version->icms_modalidade_base_calculo,
-            aliquotaIcms:     isset($icms['aliquota']) ? (float) $icms['aliquota'] : ($version->icms_aliquota_interna ?? 0),
-            reducaoBaseIcms:  isset($icms['reducao_base']) ? (float) $icms['reducao_base'] : $version->icms_reducao_base,
+            modBcIcms:        $icms['modalidade_base_calculo'] ?? $profile->icms_modalidade_base_calculo,
+            aliquotaIcms:     isset($icms['aliquota']) ? (float) $icms['aliquota'] : ($profile->icms_aliquota_interna ?? 0),
+            reducaoBaseIcms:  isset($icms['reducao_base']) ? (float) $icms['reducao_base'] : $profile->icms_reducao_base,
             modBcSt:          null,
             aliquotaMvaSt:    null,
             aliquotaSt:       null,
             reducaoBaseSt:    null,
-            cstPis:           $pis['situacao_tributaria'] ?? $version->pis_cst_default,
-            aliquotaPis:      isset($pis['aliquota']) ? (float) $pis['aliquota'] : $version->pis_aliquota_default,
-            cstCofins:        $cofins['situacao_tributaria'] ?? $version->cofins_cst_default,
-            aliquotaCofins:   isset($cofins['aliquota']) ? (float) $cofins['aliquota'] : $version->cofins_aliquota_default,
-            cstIpi:           $ipi['situacao_tributaria'] ?? $version->ipi_cst_default,
-            aliquotaIpi:      isset($ipi['aliquota']) ? (float) $ipi['aliquota'] : $version->ipi_aliquota_default,
-            enquadramentoIpi: $ipi['enquadramento'] ?? $version->ipi_enquadramento,
+            cstPis:           $pis['situacao_tributaria'] ?? $profile->pis_cst_default,
+            aliquotaPis:      isset($pis['aliquota']) ? (float) $pis['aliquota'] : $profile->pis_aliquota_default,
+            cstCofins:        $cofins['situacao_tributaria'] ?? $profile->cofins_cst_default,
+            aliquotaCofins:   isset($cofins['aliquota']) ? (float) $cofins['aliquota'] : $profile->cofins_aliquota_default,
+            cstIpi:           $ipi['situacao_tributaria'] ?? $profile->ipi_cst_default,
+            aliquotaIpi:      isset($ipi['aliquota']) ? (float) $ipi['aliquota'] : $profile->ipi_aliquota_default,
+            enquadramentoIpi: $ipi['enquadramento'] ?? $profile->ipi_enquadramento,
             source:           'product_tax',
         );
     }

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FiscalRule extends Model
 {
     protected $fillable = [
-        'fiscal_profile_version_id',
+        'fiscal_profile_id',
         'name',
         'operation_type',
         'priority',
@@ -39,9 +39,9 @@ class FiscalRule extends Model
      |  Relationships
      |==============================*/
 
-    public function fiscalProfileVersion(): BelongsTo
+    public function fiscalProfile(): BelongsTo
     {
-        return $this->belongsTo(FiscalProfileVersion::class);
+        return $this->belongsTo(FiscalProfile::class);
     }
 
     public function createdBy(): BelongsTo

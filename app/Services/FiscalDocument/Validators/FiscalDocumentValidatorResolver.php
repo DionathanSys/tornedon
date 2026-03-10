@@ -4,7 +4,6 @@ namespace App\Services\FiscalDocument\Validators;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Models\FiscalDocument;
-use App\Models\OperationRule;
 use App\Services\FiscalDocument\Validators\Items\NfeItemValidator;
 use Illuminate\Validation\ValidationException;
 
@@ -45,9 +44,9 @@ class FiscalDocumentValidatorResolver
                     FiscalProfileValidator::validateItemsTaxCompatibility($companyId, $data['items']);
                 }
 
-                // 4. Valida que existe OperationRule para a operação selecionada
+                // 4. Valida que existe CFOP configurado para a operação selecionada
                 if (! empty($data['operation_nature'])) {
-                    OperationRule::ensureExistsFor($companyId, $data['operation_nature']);
+                    FiscalProfileValidator::validateOperationNatureConfigured($companyId, $data['operation_nature']);
                 }
             }
         }

@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 class FiscalProfileValidator
 {
     /**
-     * Valida que a empresa possui perfil fiscal ativo com versão válida.
+     * Valida que a empresa possui perfil fiscal ativo.
      *
      * @throws ValidationException
      */
@@ -26,12 +26,26 @@ class FiscalProfileValidator
                 'fiscal_profile' => 'A empresa não possui um Perfil Fiscal configurado. Configure em Configurações > Perfil Fiscal.',
             ]);
         }
+    }
 
-        $version = $profile->getActiveVersion();
+    /**
+     * Valida que a natureza da operação possui CFOP configurado no Perfil Fiscal.
+     *
+     * @throws ValidationException
+     */
+    public static function validateOperationNatureConfigured(int $companyId, string $operationNature): void
+    {
+        $profile = FiscalProfile::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->first();
 
-        if (! $version) {
+        if (! $profile) {
+            return;
+        }
+
+        if ($profile->getCfopForNature($operationNature) === null) {
             throw ValidationException::withMessages([
-                'fiscal_profile' => 'O Perfil Fiscal da empresa não possui uma versão ativa. Salve novamente o Perfil Fiscal.',
+                'operation_nature' => "Não existe CFOP configurado para a operação \"{$operationNature}\" no Perfil Fiscal. Configure em Configurações > Perfil Fiscal.",
             ]);
         }
     }

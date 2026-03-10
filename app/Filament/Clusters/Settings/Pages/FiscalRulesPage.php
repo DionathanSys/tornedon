@@ -46,23 +46,23 @@ class FiscalRulesPage extends Page implements Forms\Contracts\HasForms, HasTable
         return true; // TODO: restringir por permissão (Shield)
     }
 
-    protected function getActiveVersionId(): ?int
+    protected function getActiveProfileId(): ?int
     {
         $companyId = Filament::getTenant()?->id;
         $profile = FiscalProfile::where('company_id', $companyId)->first();
 
-        return $profile?->getActiveVersion()?->id;
+        return $profile?->id;
     }
 
     public function table(Table $table): Table
     {
-        $versionId = $this->getActiveVersionId();
+        $profileId = $this->getActiveProfileId();
 
         return $table
             ->query(
                 FiscalRule::query()
-                    ->when($versionId, fn (Builder $q) => $q->where('fiscal_profile_version_id', $versionId))
-                    ->when(!$versionId, fn (Builder $q) => $q->whereRaw('1 = 0'))
+                    ->when($profileId, fn (Builder $q) => $q->where('fiscal_profile_id', $profileId))
+                    ->when(! $profileId, fn (Builder $q) => $q->whereRaw('1 = 0'))
             )
             ->defaultSort('priority', 'asc')
             ->columns([
@@ -100,15 +100,15 @@ class FiscalRulesPage extends Page implements Forms\Contracts\HasForms, HasTable
                     ->icon('heroicon-o-plus')
                     ->modalHeading('Criar Regra Fiscal')
                     ->modalWidth('4xl')
-                    ->form(fn () => $this->ruleFormSchema())
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $data['fiscal_profile_version_id'] = $this->getActiveVersionId();
+                    ->schema(fn () => $this->ruleFormSchema())
+                    ->mutateDataUsing(function (array $data): array {
+                        $data['fiscal_profile_id'] = $this->getActiveProfileId();
 
                         return $data;
                     })
-                    ->visible(fn () => $this->getActiveVersionId() !== null),
+                    ->visible(fn () => $this->getActiveProfileId() !== null),
             ])
-            ->actions([
+            ->recordActions([
                 EditAction::make()
                     ->modalHeading('Editar Regra Fiscal')
                     ->modalWidth('4xl')
@@ -116,12 +116,12 @@ class FiscalRulesPage extends Page implements Forms\Contracts\HasForms, HasTable
 
                 DeleteAction::make(),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 DeleteBulkAction::make(),
             ])
             ->emptyStateHeading('Nenhuma regra fiscal configurada')
             ->emptyStateDescription(
-                $versionId
+                $profileId
                     ? 'Crie regras customizadas para sobrescrever os padrões do regime tributário.'
                     : 'Configure primeiro o Perfil Fiscal antes de criar regras.'
             )
