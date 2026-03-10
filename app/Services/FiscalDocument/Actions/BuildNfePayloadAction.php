@@ -141,14 +141,14 @@ class BuildNfePayloadAction
 
             if ($fiscalDocument->additional_tax_information) {
                 $payload['informacoes_adicionais_fisco'] = $fiscalDocument->additional_tax_information;
-            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_adicionais_fisco)) {
-                $payload['informacoes_adicionais_fisco'] = $fiscalDocument->fiscalProfile->informacoes_adicionais_fisco;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->additional_tax_information_default)) {
+                $payload['informacoes_adicionais_fisco'] = $fiscalDocument->fiscalProfile->additional_tax_information_default;
             }
 
             if ($fiscalDocument->additional_taxpayer_information) {
                 $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->additional_taxpayer_information;
-            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_adicionais_contribuinte)) {
-                $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->fiscalProfile->informacoes_adicionais_contribuinte;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->additional_taxpayer_information_default)) {
+                $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->fiscalProfile->additional_taxpayer_information_default;
             } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_complementares_padrao)) {
                 // Fallback legado para manter compatibilidade durante a transicao.
                 $payload['informacoes_adicionais_contribuinte'] = $fiscalDocument->fiscalProfile->informacoes_complementares_padrao;
@@ -159,8 +159,8 @@ class BuildNfePayloadAction
                 if (is_array($purchaseInfo)) {
                     $payload['informacoes_adicionais_compra'] = $purchaseInfo;
                 }
-            } elseif (! empty($fiscalDocument->fiscalProfile?->informacoes_adicionais_compra)) {
-                $payload['informacoes_adicionais_compra'] = $fiscalDocument->fiscalProfile->informacoes_adicionais_compra;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->additional_purchase_information_default)) {
+                $payload['informacoes_adicionais_compra'] = $fiscalDocument->fiscalProfile->additional_purchase_information_default;
             }
 
             if (! empty($fiscalDocument->taxpayer_observations)) {
@@ -168,8 +168,8 @@ class BuildNfePayloadAction
                 if (is_array($obsContrib)) {
                     $payload['observacoes_contribuinte'] = $obsContrib;
                 }
-            } elseif (! empty($fiscalDocument->fiscalProfile?->observacoes_contribuinte)) {
-                $payload['observacoes_contribuinte'] = $fiscalDocument->fiscalProfile->observacoes_contribuinte;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->taxpayer_observations_default)) {
+                $payload['observacoes_contribuinte'] = $fiscalDocument->fiscalProfile->taxpayer_observations_default;
             }
 
             if (! empty($fiscalDocument->tax_observations)) {
@@ -177,8 +177,8 @@ class BuildNfePayloadAction
                 if (is_array($obsFisco)) {
                     $payload['observacoes_fisco'] = $obsFisco;
                 }
-            } elseif (! empty($fiscalDocument->fiscalProfile?->observacoes_fisco)) {
-                $payload['observacoes_fisco'] = $fiscalDocument->fiscalProfile->observacoes_fisco;
+            } elseif (! empty($fiscalDocument->fiscalProfile?->tax_observations_default)) {
+                $payload['observacoes_fisco'] = $fiscalDocument->fiscalProfile->tax_observations_default;
             }
 
             $this->setSuccess();

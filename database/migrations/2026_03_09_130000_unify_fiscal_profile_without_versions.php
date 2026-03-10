@@ -86,24 +86,24 @@ return new class extends Migration
                 $table->text('informacoes_complementares_padrao')->nullable()->after('cfop_rules');
             }
 
-            if (! Schema::hasColumn('fiscal_profiles', 'informacoes_adicionais_fisco')) {
-                $table->text('informacoes_adicionais_fisco')->nullable()->after('cfop_rules');
+            if (! Schema::hasColumn('fiscal_profiles', 'additional_tax_information_default')) {
+                $table->text('additional_tax_information_default')->nullable()->after('cfop_rules');
             }
 
-            if (! Schema::hasColumn('fiscal_profiles', 'informacoes_adicionais_contribuinte')) {
-                $table->text('informacoes_adicionais_contribuinte')->nullable()->after('informacoes_adicionais_fisco');
+            if (! Schema::hasColumn('fiscal_profiles', 'additional_taxpayer_information_default')) {
+                $table->text('additional_taxpayer_information_default')->nullable()->after('additional_tax_information_default');
             }
 
-            if (! Schema::hasColumn('fiscal_profiles', 'informacoes_adicionais_compra')) {
-                $table->json('informacoes_adicionais_compra')->nullable()->after('informacoes_adicionais_contribuinte');
+            if (! Schema::hasColumn('fiscal_profiles', 'additional_purchase_information_default')) {
+                $table->json('additional_purchase_information_default')->nullable()->after('additional_taxpayer_information_default');
             }
 
-            if (! Schema::hasColumn('fiscal_profiles', 'observacoes_contribuinte')) {
-                $table->json('observacoes_contribuinte')->nullable()->after('informacoes_adicionais_compra');
+            if (! Schema::hasColumn('fiscal_profiles', 'taxpayer_observations_default')) {
+                $table->json('taxpayer_observations_default')->nullable()->after('additional_purchase_information_default');
             }
 
-            if (! Schema::hasColumn('fiscal_profiles', 'observacoes_fisco')) {
-                $table->json('observacoes_fisco')->nullable()->after('observacoes_contribuinte');
+            if (! Schema::hasColumn('fiscal_profiles', 'tax_observations_default')) {
+                $table->json('tax_observations_default')->nullable()->after('taxpayer_observations_default');
             }
 
             if (! Schema::hasColumn('fiscal_profiles', 'ruleset_checksum')) {

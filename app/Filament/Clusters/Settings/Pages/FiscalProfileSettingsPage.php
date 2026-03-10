@@ -92,17 +92,17 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                 ->toArray(),
 
             // Info adicional
-            'informacoes_adicionais_fisco' => $profile?->informacoes_adicionais_fisco,
-            'informacoes_adicionais_contribuinte' => $profile?->informacoes_adicionais_contribuinte,
-            'informacoes_adicionais_compra_nota_empenho' => data_get($profile?->informacoes_adicionais_compra, 'nota_empenho'),
-            'informacoes_adicionais_compra_pedido' => data_get($profile?->informacoes_adicionais_compra, 'pedido'),
-            'informacoes_adicionais_compra_contrato' => data_get($profile?->informacoes_adicionais_compra, 'contrato'),
-            'observacoes_contribuinte' => collect($profile?->observacoes_contribuinte ?? [])
+            'additional_tax_information_default' => $profile?->additional_tax_information_default,
+            'additional_taxpayer_information_default' => $profile?->additional_taxpayer_information_default,
+            'additional_purchase_information_default_nota_empenho' => data_get($profile?->additional_purchase_information_default, 'nota_empenho'),
+            'additional_purchase_information_default_pedido' => data_get($profile?->additional_purchase_information_default, 'pedido'),
+            'additional_purchase_information_default_contrato' => data_get($profile?->additional_purchase_information_default, 'contrato'),
+            'taxpayer_observations_default' => collect($profile?->taxpayer_observations_default ?? [])
                 ->map(fn ($item) => [
                     'campo' => data_get($item, 'campo'),
                     'texto' => data_get($item, 'texto'),
                 ])->toArray(),
-            'observacoes_fisco' => collect($profile?->observacoes_fisco ?? [])
+            'tax_observations_default' => collect($profile?->tax_observations_default ?? [])
                 ->map(fn ($item) => [
                     'campo' => data_get($item, 'campo'),
                     'texto' => data_get($item, 'texto'),
@@ -348,14 +348,14 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->description('Texto padrão para informações adicionais da NF-e.')
                     ->icon('heroicon-o-document-text')
                     ->schema([
-                        Forms\Components\Textarea::make('informacoes_adicionais_fisco')
+                        Forms\Components\Textarea::make('additional_tax_information_default')
                             ->label('Informações adicionais de interesse do fisco (infAdFisco)')
                             ->rows(3)
                             ->minLength(1)
                             ->maxLength(2000)
                             ->columnSpanFull(),
 
-                        Forms\Components\Textarea::make('informacoes_adicionais_contribuinte')
+                        Forms\Components\Textarea::make('additional_taxpayer_information_default')
                             ->label('Informações adicionais de interesse do contribuinte (infCpl)')
                             ->rows(4)
                             ->minLength(1)
@@ -364,15 +364,15 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 
                         \Filament\Schemas\Components\Section::make('Informações adicionais de compra')
                             ->schema([
-                                Forms\Components\TextInput::make('informacoes_adicionais_compra_nota_empenho')
+                                Forms\Components\TextInput::make('additional_purchase_information_default_nota_empenho')
                                     ->label('Nota de Empenho')
                                     ->maxLength(60),
 
-                                Forms\Components\TextInput::make('informacoes_adicionais_compra_pedido')
+                                Forms\Components\TextInput::make('additional_purchase_information_default_pedido')
                                     ->label('Pedido')
                                     ->maxLength(60),
 
-                                Forms\Components\TextInput::make('informacoes_adicionais_compra_contrato')
+                                Forms\Components\TextInput::make('additional_purchase_information_default_contrato')
                                     ->label('Contrato')
                                     ->maxLength(60),
                             ])
@@ -380,7 +380,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->columnSpanFull()
                             ->collapsible(),
 
-                        Forms\Components\Repeater::make('observacoes_contribuinte')
+                        Forms\Components\Repeater::make('taxpayer_observations_default')
                             ->label('Observações do Contribuinte')
                             ->schema([
                                 Forms\Components\TextInput::make('campo')
@@ -395,7 +395,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->reorderable(false)
                             ->columnSpanFull(),
 
-                        Forms\Components\Repeater::make('observacoes_fisco')
+                        Forms\Components\Repeater::make('tax_observations_default')
                             ->label('Observações do Fisco')
                             ->schema([
                                 Forms\Components\TextInput::make('campo')
@@ -490,18 +490,18 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                 ->toArray(),
 
             // Info complementar
-            'informacoes_adicionais_fisco' => $data['informacoes_adicionais_fisco'] ?? null,
-            'informacoes_adicionais_contribuinte' => $data['informacoes_adicionais_contribuinte'] ?? null,
-            'informacoes_adicionais_compra' => [
-                'nota_empenho' => $data['informacoes_adicionais_compra_nota_empenho'] ?? null,
-                'pedido' => $data['informacoes_adicionais_compra_pedido'] ?? null,
-                'contrato' => $data['informacoes_adicionais_compra_contrato'] ?? null,
+            'additional_tax_information_default' => $data['additional_tax_information_default'] ?? null,
+            'additional_taxpayer_information_default' => $data['additional_taxpayer_information_default'] ?? null,
+            'additional_purchase_information_default' => [
+                'nota_empenho' => $data['additional_purchase_information_default_nota_empenho'] ?? null,
+                'pedido' => $data['additional_purchase_information_default_pedido'] ?? null,
+                'contrato' => $data['additional_purchase_information_default_contrato'] ?? null,
             ],
-            'observacoes_contribuinte' => collect($data['observacoes_contribuinte'] ?? [])
+            'taxpayer_observations_default' => collect($data['taxpayer_observations_default'] ?? [])
                 ->filter(fn (array $item) => ! empty($item['campo']) || ! empty($item['texto']))
                 ->values()
                 ->toArray(),
-            'observacoes_fisco' => collect($data['observacoes_fisco'] ?? [])
+            'tax_observations_default' => collect($data['tax_observations_default'] ?? [])
                 ->filter(fn (array $item) => ! empty($item['campo']) || ! empty($item['texto']))
                 ->values()
                 ->toArray(),

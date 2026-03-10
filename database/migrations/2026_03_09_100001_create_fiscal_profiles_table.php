@@ -47,11 +47,11 @@ return new class extends Migration
 
             // CFOP rules e informacoes adicionais
             $table->json('cfop_rules')->nullable();
-            $table->text('informacoes_adicionais_fisco')->nullable();
-            $table->text('informacoes_adicionais_contribuinte')->nullable();
-            $table->json('informacoes_adicionais_compra')->nullable();
-            $table->json('observacoes_contribuinte')->nullable();
-            $table->json('observacoes_fisco')->nullable();
+            $table->text('additional_tax_information_default')->nullable();
+            $table->text('additional_taxpayer_information_default')->nullable();
+            $table->json('additional_purchase_information_default')->nullable();
+            $table->json('taxpayer_observations_default')->nullable();
+            $table->json('tax_observations_default')->nullable();
             $table->text('informacoes_complementares_padrao')->nullable();
 
             // Hash de integridade
