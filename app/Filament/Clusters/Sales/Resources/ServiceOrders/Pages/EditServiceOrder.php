@@ -222,9 +222,7 @@ class EditServiceOrder extends EditRecord
             message: 'Desconto aplicado com sucesso aos itens.'
         );
 
-        // // Recarrega os itens para refletir as mudanças
-        // $this->record->refresh();
-        // $this->fillForm();
+        $this->refreshFormData(['items']);
     }
 
     protected function getUpdatedNotificationTitle(): ?string

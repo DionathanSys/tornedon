@@ -36,10 +36,7 @@ class DiscountAmountField
                         if (method_exists($livewire, 'applyDiscount')) {
                             $livewire->applyDiscount();
                         }
-                        $livewire = $action->getLivewire();
-                        if ($livewire && method_exists($livewire, 'refreshFormData')) {
-                            $livewire->refreshFormData();
-                        }
+                        
                     })
             );
     }
