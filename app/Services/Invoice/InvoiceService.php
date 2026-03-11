@@ -315,19 +315,96 @@ class InvoiceService
                         422,
                         $fiscalDocumentItemService->getErrorCode()
                     );
+                    Log::error($this->getMessage(), [
+                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'invoice_id' => $invoice->id,
+                        'message'    => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors'     => $fiscalDocumentItemService->getErrors(),
+                        'data'       => $items,
+                        'user_id'    => $userId,
+                    ]);
                     return null;
                 }
 
                 // ------------------------------------------------------------------
                 // 3. Resolver decisão fiscal e persistir snapshot nos itens
                 // ------------------------------------------------------------------
+                $step3StartedAt = microtime(true);
+
+                Log::info('InvoiceService: Iniciando etapa 3 (resolver contexto fiscal e persistir snapshot)', [
+                    'metodo'               => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'           => $invoice->id,
+                    'fiscal_document_id'   => $fiscalDocument->id,
+                    'total_items_payload'  => count($items),
+                    'total_items_criados'  => is_countable($createdItems) ? count($createdItems) : null,
+                ]);
+
                 $resolveAction = app(ResolveFiscalContextAction::class);
                 $decisions = $resolveAction->execute($fiscalDocument, $items);
 
+                if ($resolveAction->hasError()) {
+                    Log::error('InvoiceService: Falha ao resolver contexto fiscal', [
+                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'invoice_id'         => $invoice->id,
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'error_code'         => $resolveAction->getErrorCode(),
+                        'message'            => $resolveAction->getMessage(),
+                        'errors'             => $resolveAction->getErrors(),
+                        'decisions_count'    => count($decisions),
+                    ]);
+                } else {
+                    Log::info('InvoiceService: Contexto fiscal resolvido', [
+                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'invoice_id'         => $invoice->id,
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'decisions_count'    => count($decisions),
+                    ]);
+                }
+
+                $snapshotPersisted = false;
+
                 if (!empty($decisions)) {
                     $snapshotAction = new PersistFiscalSnapshotAction();
-                    $snapshotAction->execute($fiscalDocument, $decisions);
+                    $snapshotPersisted = $snapshotAction->execute($fiscalDocument, $decisions);
+
+                    if (!$snapshotPersisted || $snapshotAction->hasError()) {
+                        Log::error('InvoiceService: Falha ao persistir snapshot fiscal nos itens', [
+                            'metodo'             => __METHOD__ . '@' . __LINE__,
+                            'invoice_id'         => $invoice->id,
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'error_code'         => $snapshotAction->getErrorCode(),
+                            'message'            => $snapshotAction->getMessage(),
+                            'errors'             => $snapshotAction->getErrors(),
+                            'decisions_count'    => count($decisions),
+                        ]);
+                    } else {
+                        Log::info('InvoiceService: Snapshot fiscal persistido com sucesso', [
+                            'metodo'             => __METHOD__ . '@' . __LINE__,
+                            'invoice_id'         => $invoice->id,
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'decisions_count'    => count($decisions),
+                        ]);
+                    }
+                } else {
+                    Log::warning('InvoiceService: Nenhuma decisão fiscal retornada; etapa de snapshot foi ignorada', [
+                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'invoice_id'         => $invoice->id,
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'total_items_payload'=> count($items),
+                    ]);
                 }
+
+                $step3ElapsedMs = (int) round((microtime(true) - $step3StartedAt) * 1000);
+
+                Log::info('InvoiceService: Etapa 3 finalizada', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'         => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'decisions_count'    => count($decisions),
+                    'snapshot_persisted' => $snapshotPersisted,
+                    'elapsed_ms'         => $step3ElapsedMs,
+                ]);
 
                 $this->setSuccess('Documento fiscal criado com sucesso a partir da fatura.');
 
@@ -336,6 +413,9 @@ class InvoiceService
                     'invoice_id'         => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
                     'total_items'        => count($items),
+                    'decisions_count'    => count($decisions),
+                    'snapshot_persisted' => $snapshotPersisted,
+                    'step3_elapsed_ms'   => $step3ElapsedMs,
                 ]);
 
                 return $fiscalDocument;

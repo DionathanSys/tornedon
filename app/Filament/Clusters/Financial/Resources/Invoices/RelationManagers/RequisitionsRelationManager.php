@@ -82,58 +82,79 @@ class RequisitionsRelationManager extends RelationManager
             ->recordTitleAttribute('number')
             ->columns([
                 TextColumn::make('number')
+                    ->label('Número')
                     ->searchable(),
                 TextColumn::make('customer.name')
+                    ->label('Cliente')
                     ->searchable(),
                 TextColumn::make('company.name')
+                    ->label('Empresa')
                     ->searchable(),
                 TextColumn::make('serviceOrder.id')
+                    ->label('Ordem de Serviço')
                     ->searchable(),
                 TextColumn::make('quote.id')
+                    ->label('Orçamento')
                     ->searchable(),
                 TextColumn::make('sale_date')
+                    ->label('Data da Venda')
                     ->date()
                     ->sortable(),
                 TextColumn::make('status')
+                    ->label('Status')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('payment_method')
+                    ->label('Forma de Pagamento')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('payment_condition')
+                    ->label('Condição de Pagamento')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('delivery_address')
+                    ->label('Endereço de Entrega')
                     ->searchable(),
                 TextColumn::make('delivery_date')
+                    ->label('Data de Entrega')
                     ->date()
                     ->sortable(),
                 TextColumn::make('salesperson.name')
+                    ->label('Vendedor')
                     ->searchable(),
                 TextColumn::make('invoiced_at')
+                    ->label('Faturado em')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('equipment.name')
+                    ->label('Equipamento')
                     ->searchable(),
                 IconColumn::make('stock_consumed')
+                    ->label('Estoque Consumido')
                     ->boolean(),
                 IconColumn::make('stock_reserved')
+                    ->label('Estoque Reservado')
                     ->boolean(),
                 TextColumn::make('created_by')
+                    ->label('Criado por')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('updated_by')
+                    ->label('Atualizado por')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')
+                    ->label('Criado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Atualizado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('productionOrder.id')
+                    ->label('Ordem de Produção')
                     ->searchable(),
             ])
             ->filters([
