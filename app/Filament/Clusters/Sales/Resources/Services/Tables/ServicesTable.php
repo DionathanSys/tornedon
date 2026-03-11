@@ -3,7 +3,9 @@
 namespace App\Filament\Clusters\Sales\Resources\Services\Tables;
 
 use App\Enum\Product\Unit;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -103,6 +105,10 @@ class ServicesTable
                     ->iconButton(),
             ])
             ->toolbarActions([
+                CreateAction::make()
+                    ->icon(Heroicon::Plus)
+                    ->label('Serviço')
+                    ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
     }

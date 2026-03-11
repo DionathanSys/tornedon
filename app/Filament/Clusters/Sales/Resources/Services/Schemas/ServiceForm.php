@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Services\Schemas;
 
+use App\Filament\Components\HelpPopover;
 use App\Enum\Product\Unit;
 use App\Enum\Tax\IssExigibility;
 use Filament\Forms\Components\KeyValue;
@@ -129,15 +130,23 @@ class ServiceForm
                                             ->helperText('Classificação Nacional de Atividades Econômicas'),
                                         TextInput::make('municipal_tax_code')
                                             ->label('Código Tributação Municipal')
+                                            ->belowContent(HelpPopover::make(
+                                                'Código de Tributação Municipal',
+                                                'Informe o código do serviço conforme tabela da prefeitura do município de incidência do ISS. Este valor pode variar por cidade (ex.: 14.01, 7.02, 0101).'
+                                            ))
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->maxLength(50)
-                                            ->autocomplete(false)
-                                            ->helperText('Código do serviço do município'),
+                                            ->autocomplete(false),
                                         TextInput::make('tax_classification')
                                             ->label('Classificação Fiscal')
+                                            ->beforeContent(HelpPopover::make(
+                                                'Classificação Fiscal do Serviço',
+                                                'Informe o item/subitem da LC 116/2003 correspondente ao serviço prestado. Essa classificação define o enquadramento fiscal do serviço.'
+                                            ))
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->maxLength(255)
                                             ->autocomplete(false)
+                                            ->visible(false)
                                             ->helperText('Código do serviço prestado Item da LC 116/2003'),
                                         Money::make('tax_rate')
                                             ->label('Alíquota Imposto (%)')

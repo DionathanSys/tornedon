@@ -19,6 +19,7 @@ use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartn
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Models\CompanyPartner;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -56,8 +57,10 @@ class CompanyPartnerForm
                     ->persistCollapsed()
                     ->compact()
                     ->afterHeader([
-                        UpdatePartner::make(),
-                        ImportCnpjData::make(),
+                        ActionGroup::make([
+                            UpdatePartner::make(),
+                            ImportCnpjData::make(),
+                        ])->buttonGroup(),
                     ])
                     ->schema([
                         Select::make('document_type')

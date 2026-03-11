@@ -39,12 +39,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Campos Payload NFS.md",
-                "mode": "source",
+                "file": "Projeto/📥 Caixa de Entrada.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Campos Payload NFS"
+              "title": "📥 Caixa de Entrada"
             }
           }
         ],
@@ -105,7 +105,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "a36137f84796124f",
@@ -213,6 +214,7 @@
   },
   "active": "4c63bdbf83b0e763",
   "lastOpenFiles": [
+    "Projeto/📥 Caixa de Entrada.md",
     "Campos Payload NFS.md",
     "Consideracoes plano fiscal.md",
     "arquitetura-fiscal-criacao-validacao-emissao.md",
@@ -241,7 +243,6 @@
     "Requisition.md",
     "Sem título",
     "regras-negocio/quote-production-workflow.md",
-    "Quote.md",
     "Outros",
     "Excalidraw",
     "Pasted image 20260219092215.png",

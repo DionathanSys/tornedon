@@ -6,6 +6,7 @@ use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
+use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\VolumeSpecies;
@@ -21,6 +22,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +36,7 @@ final class GenerateFiscalDocumentAction
             ->icon(Heroicon::DocumentPlus)
             ->color('primary')
             ->modalHeading('Gerar Documento Fiscal')
-            ->modalDescription('Um documento fiscal será criado a partir dos itens desta fatura. Preencha os dados obrigatórios abaixo.')
+            ->modalDescription('Um documento fiscal (NF-e ou NFS-e) será criado a partir dos itens desta fatura. Preencha os dados obrigatórios abaixo.')
             ->modalSubmitActionLabel('Gerar')
             ->visible(function (Invoice $record): bool {
                 return $record->fiscalDocuments()->doesntExist()
@@ -44,25 +46,44 @@ final class GenerateFiscalDocumentAction
                 return [
                     Section::make('Dados do Documento Fiscal')
                         ->schema([
+                            Select::make('document_type')
+                                ->label('Tipo de Documento')
+                                ->options(DocumentModel::toSelectArray())
+                                ->default(DocumentModel::NFE->value)
+                                ->native(false)
+                                ->required()
+                                ->live()
+                                ->columnSpanFull(),
+
+                            Select::make('nfse_model')
+                                ->label('Modelo NFS-e')
+                                ->options(NfseModel::toSelectArray())
+                                ->native(false)
+                                ->required(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value)
+                                ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),
+
                             Select::make('operation_nature')
                                 ->label('Natureza da Operação')
                                 ->options(OperationNature::toSelectArray())
                                 ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
                                 ->columnSpanFull()
                                 ->searchable()
-                                ->required(),
+                                ->required(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value)
+                                ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value),
 
                             Select::make('operation_type')
                                 ->label('Tipo de Operação')
                                 ->options(OperationType::toSelectArray())
                                 ->default(OperationType::SAIDA->value)
-                                ->required(),
+                                ->required(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value)
+                                ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value),
 
                             Select::make('issue_purpose')
                                 ->label('Finalidade de Emissão')
                                 ->options(IssuePurpose::toSelectArray())
                                 ->default(IssuePurpose::NORMAL->value)
-                                ->required(),
+                                ->required(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value)
+                                ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value),
                         ])->columns(3),
 
                     Section::make('Destinatário')
@@ -76,7 +97,9 @@ final class GenerateFiscalDocumentAction
                                 ->options(BuyerPresenceIndicator::toSelectArray())
                                 ->default(BuyerPresenceIndicator::PRESENCIAL->value)
                                 ->required(),
-                        ])->columns(2),
+                        ])
+                        ->columns(2)
+                        ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value),
 
                     Section::make('Frete')
                         ->columnSpanFull()
@@ -128,7 +151,9 @@ final class GenerateFiscalDocumentAction
                                         ->minValue(0)
                                         ->step(0.001),
                                 ])->columns(4),
-                        ])->columns(2),
+                        ])
+                        ->columns(2)
+                        ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value),
 
                     Section::make('Datas')
                         ->schema([
@@ -140,51 +165,62 @@ final class GenerateFiscalDocumentAction
                             DatePicker::make('movement_at')
                                 ->label('Data de Movimentação')
                                 ->default(now())
-                                ->required(),
+                                ->required(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value)
+                                ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFE->value),
                         ])->columns(2),
                 ];
             })
             ->action(function (Invoice $record, array $data): void {
-                $freightData = [
-                    'modalidade_frete' => $data['freight_modality'],
-                ];
+                $documentType = $data['document_type'] ?? DocumentModel::NFE->value;
 
-                if (! empty($data['carrier_id'])) {
-                    $freightData['transportador'] = [
-                        'id' => $data['carrier_id'],
+                if ($documentType === DocumentModel::NFSE->value) {
+                    $fiscalData = [
+                        'document_type' => DocumentModel::NFSE->value,
+                        'nfse_model'    => $data['nfse_model'],
+                        'issued_at'     => $data['issued_at'],
+                    ];
+                } else {
+                    $freightData = [
+                        'modalidade_frete' => $data['freight_modality'],
+                    ];
+
+                    if (! empty($data['carrier_id'])) {
+                        $freightData['transportador'] = [
+                            'id' => $data['carrier_id'],
+                        ];
+                    }
+
+                    if (! empty($data['volume_quantidade']) || ! empty($data['volume_especie'])) {
+                        $volume = [];
+
+                        if (! empty($data['volume_quantidade'])) {
+                            $volume['quantidade'] = (int) $data['volume_quantidade'];
+                        }
+                        if (! empty($data['volume_especie'])) {
+                            $volume['especie'] = $data['volume_especie'];
+                        }
+                        if (isset($data['volume_peso_liquido'])) {
+                            $volume['peso_liquido'] = (float) $data['volume_peso_liquido'];
+                        }
+                        if (isset($data['volume_peso_bruto'])) {
+                            $volume['peso_bruto'] = (float) $data['volume_peso_bruto'];
+                        }
+
+                        $freightData['volumes'] = [$volume];
+                    }
+
+                    $fiscalData = [
+                        'document_type'            => DocumentModel::NFE->value,
+                        'operation_nature'         => $data['operation_nature'],
+                        'operation_type'           => $data['operation_type'],
+                        'issue_purpose'            => $data['issue_purpose'],
+                        'is_final_consumer'        => $data['is_final_consumer'] ?? true,
+                        'buyer_presence_indicator' => $data['buyer_presence_indicator'],
+                        'issued_at'                => $data['issued_at'],
+                        'movement_at'              => $data['movement_at'],
+                        'freight_data'             => $freightData,
                     ];
                 }
-
-                if (! empty($data['volume_quantidade']) || ! empty($data['volume_especie'])) {
-                    $volume = [];
-
-                    if (! empty($data['volume_quantidade'])) {
-                        $volume['quantidade'] = (int) $data['volume_quantidade'];
-                    }
-                    if (! empty($data['volume_especie'])) {
-                        $volume['especie'] = $data['volume_especie'];
-                    }
-                    if (isset($data['volume_peso_liquido'])) {
-                        $volume['peso_liquido'] = (float) $data['volume_peso_liquido'];
-                    }
-                    if (isset($data['volume_peso_bruto'])) {
-                        $volume['peso_bruto'] = (float) $data['volume_peso_bruto'];
-                    }
-
-                    $freightData['volumes'] = [$volume];
-                }
-
-                $fiscalData = [
-                    'document_type'             => DocumentModel::NFE->value,
-                    'operation_nature'          => $data['operation_nature'],
-                    'operation_type'            => $data['operation_type'],
-                    'issue_purpose'             => $data['issue_purpose'],
-                    'is_final_consumer'         => $data['is_final_consumer'] ?? true,
-                    'buyer_presence_indicator'  => $data['buyer_presence_indicator'],
-                    'issued_at'                => $data['issued_at'],
-                    'movement_at'              => $data['movement_at'],
-                    'freight_data'             => $freightData,
-                ];
 
                 $userId = Auth::id();
 

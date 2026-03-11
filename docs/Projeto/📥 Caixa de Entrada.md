@@ -1,4 +1,4 @@
-- [ ] Registrar info. de tempo de garantia padrão 
+- [x] Registrar info. de tempo de garantia padrão 
 - [ ] Inserir campo no cadastro do parceiro para definir se requer aprovação.
 - [ ] Incluir valor total da OS.
 - [ ] Precisa atribuir valor de km para deslocamento padrão na edição
