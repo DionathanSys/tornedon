@@ -211,8 +211,11 @@ class InvoiceService
 
         try {
             return DB::transaction(function () use ($invoice, $fiscalData, $userId) {
+                $documentType = ($fiscalData['document_type'] ?? DocumentModel::NFE->value);
+
                 $invoice->loadMissing([
                     'requisitions.items.product.tax',
+                    'serviceOrders.items.service',
                     'company',
                     'customer',
                 ]);
@@ -225,7 +228,7 @@ class InvoiceService
                     'company_id'    => $invoice->company_id,
                     'invoice_id'    => $invoice->id,
                     'status'        => FiscalDocumentStatus::PENDING->value,
-                    'document_type' => $fiscalData['document_type'] ?? DocumentModel::NFE->value,
+                    'document_type' => $documentType,
                     'issued_at'     => $fiscalData['issued_at'] ?? now()->toDateString(),
                     'movement_at'   => $fiscalData['movement_at'] ?? now()->toDateString(),
                 ]);
@@ -279,30 +282,75 @@ class InvoiceService
                 $items = [];
                 $itemNumber = 1;
 
-                foreach ($invoice->requisitions as $requisition) {
-                    foreach ($requisition->items as $reqItem) {
-                        $product = $reqItem->product;
-                        $productTax = $product?->tax;
+                if ($documentType === DocumentModel::NFSE->value) {
+                    foreach ($invoice->serviceOrders as $serviceOrder) {
+                        foreach ($serviceOrder->items as $serviceOrderItem) {
+                            $service = $serviceOrderItem->service;
 
-                        $items[] = [
-                            'fiscal_document_id' => $fiscalDocument->id,
-                            'product_id'         => $reqItem->product_id,
-                            'item_number'        => $itemNumber,
-                            'product_code'       => $product?->product_code,
-                            'product_origin'     => $productTax?->product_origin?->value,
-                            'barcode'            => $product?->barcode,
-                            'description'        => $product?->name,
-                            'ncm_code'           => $productTax?->ncm_code,
-                            'cest_code'          => $productTax?->cest_code,
-                            'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
-                            'quantity'           => (float) $reqItem->quantity,
-                            'unit_price'         => (float) $reqItem->unit_price,
-                            'total_price'        => round((float) $reqItem->quantity * (float) $reqItem->unit_price, 2),
-                            'included_in_total'  => true,
-                        ];
+                            $items[] = [
+                                'fiscal_document_id' => $fiscalDocument->id,
+                                'service_id'         => $serviceOrderItem->service_id,
+                                'item_number'        => $itemNumber,
+                                'description'        => $service?->name ?? $serviceOrderItem->observations,
+                                'unit_of_measure'    => $service?->unit_of_measure ?? 'UN',
+                                'quantity'           => (float) $serviceOrderItem->quantity,
+                                'unit_price'         => (float) $serviceOrderItem->unit_price,
+                                'total_price'        => round((float) $serviceOrderItem->quantity * (float) $serviceOrderItem->unit_price, 2),
+                                'service_code'       => $service?->service_code,
+                                'nbs_code'           => $service?->nbs_code,
+                                'iss_exigibility'    => $service?->iss_exigibility?->value,
+                                'iss_rate'           => $service?->tax_rate !== null ? (float) $service->tax_rate : null,
+                                'included_in_total'  => true,
+                            ];
 
-                        $itemNumber++;
+                            $itemNumber++;
+                        }
                     }
+                } else {
+                    foreach ($invoice->requisitions as $requisition) {
+                        foreach ($requisition->items as $reqItem) {
+                            $product = $reqItem->product;
+                            $productTax = $product?->tax;
+
+                            $items[] = [
+                                'fiscal_document_id' => $fiscalDocument->id,
+                                'product_id'         => $reqItem->product_id,
+                                'item_number'        => $itemNumber,
+                                'product_code'       => $product?->product_code,
+                                'product_origin'     => $productTax?->product_origin?->value,
+                                'barcode'            => $product?->barcode,
+                                'description'        => $product?->name,
+                                'ncm_code'           => $productTax?->ncm_code,
+                                'cest_code'          => $productTax?->cest_code,
+                                'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
+                                'quantity'           => (float) $reqItem->quantity,
+                                'unit_price'         => (float) $reqItem->unit_price,
+                                'total_price'        => round((float) $reqItem->quantity * (float) $reqItem->unit_price, 2),
+                                'included_in_total'  => true,
+                            ];
+
+                            $itemNumber++;
+                        }
+                    }
+                }
+
+                if (empty($items)) {
+                    $this->setError(
+                        $documentType === DocumentModel::NFSE->value
+                            ? 'A fatura não possui itens de serviço para gerar a NFS-e.'
+                            : 'A fatura não possui itens de produto para gerar a NF-e.'
+                    );
+
+                    Log::warning('InvoiceService: Não foi possível montar itens para o documento fiscal', [
+                        'metodo'              => __METHOD__ . '@' . __LINE__,
+                        'invoice_id'          => $invoice->id,
+                        'fiscal_document_id'  => $fiscalDocument->id,
+                        'document_type'       => $documentType,
+                        'service_orders'      => $invoice->serviceOrders->count(),
+                        'requisitions'        => $invoice->requisitions->count(),
+                    ]);
+
+                    return null;
                 }
 
                 Log::info('Itens montados para criação do documento fiscal via InvoiceService', [
