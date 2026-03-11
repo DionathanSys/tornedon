@@ -15,5 +15,7 @@ class SalesCluster extends Cluster
 
     protected static ?string $navigationLabel = 'Vendas';
 
+    protected static ?string $clusterBreadcrumb = 'Vendas';
+
     protected static ?int $navigationSort = 3;
 }

@@ -118,8 +118,8 @@ class QuoteForm
                 Section::make('Observações')
                     ->columnSpanFull()
                     ->collapsible()
-                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                     ->persistCollapsed()
+                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                     ->columns([
                         'sm' => 1,
                         'md' => 4,

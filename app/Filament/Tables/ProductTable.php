@@ -23,7 +23,7 @@ class ProductTable
         return $table
             ->query(fn(): Builder => Product::query()
                 ->where('company_id', Filament::getTenant()->id)
-                ->where('is_invoiceable', true))
+                ->where('is_custom_manufacturing', true))
             ->columns([
                 TextColumn::make('product_code')
                     ->label('Código')
