@@ -222,7 +222,7 @@ class EditServiceOrder extends EditRecord
             message: 'Desconto aplicado com sucesso aos itens.'
         );
 
-        $this->dispatch('refresh-page');
+        redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
 
     /**
@@ -258,10 +258,7 @@ class EditServiceOrder extends EditRecord
             message: 'Descontos removidos com sucesso.'
         );
 
-        $this->record->refresh();
-        $this->record->load('items');  // Recarrega relação de itens
-        $this->fillForm();
-        
+        redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
 
     protected function getUpdatedNotificationTitle(): ?string
