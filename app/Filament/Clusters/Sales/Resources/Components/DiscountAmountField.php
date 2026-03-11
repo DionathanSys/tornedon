@@ -2,8 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Components;
 
-use Filament\Actions\Action as ActionsAction;
-use Filament\Forms\Components\Actions\Action;
+use Filament\Actions\Action;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class DiscountAmountField
@@ -23,7 +22,7 @@ class DiscountAmountField
             ->formatStateUsing(fn($state) => number_format($state ?? 0, 2, ',', '.'))
             ->default(0)
             ->suffixAction(
-                ActionsAction::make('apply_discount')
+                Action::make('apply_discount')
                     ->label('Aplicar')
                     ->icon('heroicon-m-check')
                     ->color('success')
@@ -33,9 +32,13 @@ class DiscountAmountField
                     ->modalDescription('Deseja aplicar este desconto igualmente entre todos os itens?')
                     ->modalSubmitActionLabel('Sim, aplicar')
                     ->modalCancelActionLabel('Cancelar')
-                    ->action(function ($livewire) {
+                    ->action(function ($livewire, Action $action) {
                         if (method_exists($livewire, 'applyDiscount')) {
                             $livewire->applyDiscount();
+                        }
+                        $livewire = $action->getLivewire();
+                        if ($livewire && method_exists($livewire, 'refreshFormData')) {
+                            $livewire->refreshFormData(['items']);
                         }
                     })
             );
