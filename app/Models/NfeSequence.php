@@ -78,4 +78,19 @@ class NfeSequence extends Model
             'sequence_id' => $sequence->id,
         ];
     }
+
+    /**
+     * Retorna o próximo número que SERIA reservado, sem incrementar.
+     *
+     * Útil para preview: mostra ao usuário o número correto sem consumir a sequência.
+     */
+    public static function peekNextNumber(int $companyId, string $serie, string $operationNature): int
+    {
+        $seq = self::where('company_id', $companyId)
+            ->where('serie', $serie)
+            ->where('operation_nature', $operationNature)
+            ->first();
+
+        return ($seq->last_number ?? 0) + 1;
+    }
 }

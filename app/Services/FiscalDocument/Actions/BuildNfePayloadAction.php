@@ -115,16 +115,29 @@ class BuildNfePayloadAction
             // ------------------------------------------------------------------
             // Monta payload raiz
             // ------------------------------------------------------------------
+            if (! $fiscalDocument->operation_nature) {
+                $this->setError('Natureza da operação não definida no documento fiscal.');
+                return null;
+            }
+
             $payload = [
-                'natureza_operacao'      => $fiscalDocument->operation_nature ?? 'VENDA',
+                'natureza_operacao'      => $fiscalDocument->operation_nature instanceof \App\Enum\FiscalDocument\OperationNature
+                                                ? $fiscalDocument->operation_nature->value
+                                                : (string) $fiscalDocument->operation_nature,
                 'serie'                  => $fiscalDocument->document_series ?? '1',
                 'numero'                 => (int) $fiscalDocument->document_number,
                 'data_emissao'           => $issuedAt,
                 'data_entrada_saida'     => $movementAt,
-                'tipo_operacao'          => $fiscalDocument->operation_type ?? 1,
-                'finalidade_emissao'     => $fiscalDocument->issue_purpose ?? '1',
+                'tipo_operacao'          => $fiscalDocument->operation_type instanceof \App\Enum\FiscalDocument\OperationType
+                                                ? $fiscalDocument->operation_type->value
+                                                : ($fiscalDocument->operation_type ?? '1'),
+                'finalidade_emissao'     => $fiscalDocument->issue_purpose instanceof \App\Enum\FiscalDocument\IssuePurpose
+                                                ? $fiscalDocument->issue_purpose->value
+                                                : ($fiscalDocument->issue_purpose ?? '1'),
                 'consumidor_final'       => $fiscalDocument->is_final_consumer ? '1' : '0',
-                'presenca_comprador'     => $fiscalDocument->buyer_presence_indicator ? '1' : '9',
+                'presenca_comprador'     => $fiscalDocument->buyer_presence_indicator instanceof \App\Enum\FiscalDocument\BuyerPresenceIndicator
+                                                ? $fiscalDocument->buyer_presence_indicator->value
+                                                : ($fiscalDocument->buyer_presence_indicator ? '1' : '9'),
                 'destinatario'           => $destinatario,
                 'itens'                  => $itens,
                 'frete'                  => $fiscalDocument->freight_data ?? ['modalidade_frete' => '9'],

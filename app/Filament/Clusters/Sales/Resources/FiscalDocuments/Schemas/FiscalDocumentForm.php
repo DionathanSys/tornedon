@@ -2,6 +2,10 @@
 
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas;
 
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\IssuePurpose;
+use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Models\Company;
 use App\Models\Invoice;
@@ -50,11 +54,12 @@ class FiscalDocumentForm
 
                 Section::make('Dados da NF-e')
                     ->schema([
-                        Forms\Components\TextInput::make('operation_nature')
+                        Forms\Components\Select::make('operation_nature')
                             ->label('Natureza da Operação')
+                            ->options(OperationNature::toSelectArray())
+                            ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
+                            ->searchable()
                             ->required()
-                            ->maxLength(100)
-                            ->default('VENDA DENTRO DO ESTADO')
                             ->columnSpan(['md' => 2]),
 
                         Forms\Components\DatePicker::make('issued_at')
@@ -73,24 +78,16 @@ class FiscalDocumentForm
 
                         Forms\Components\Select::make('operation_type')
                             ->label('Tipo de Operação')
-                            ->options([
-                                1 => 'Saída (Venda)',
-                                0 => 'Entrada (Compra)',
-                            ])
-                            ->default(1)
+                            ->options(OperationType::toSelectArray())
+                            ->default(OperationType::SAIDA->value)
                             ->required()
                             ->native(false)
                             ->columnSpan(['md' => 1]),
 
                         Forms\Components\Select::make('issue_purpose')
                             ->label('Finalidade de Emissão')
-                            ->options([
-                                '1' => '1 – NF-e Normal',
-                                '2' => '2 – NF-e Complementar',
-                                '3' => '3 – NF-e de Ajuste',
-                                '4' => '4 – Devolução de Mercadoria',
-                            ])
-                            ->default('1')
+                            ->options(IssuePurpose::toSelectArray())
+                            ->default(IssuePurpose::NORMAL->value)
                             ->required()
                             ->native(false)
                             ->columnSpan(['md' => 1]),
@@ -102,15 +99,8 @@ class FiscalDocumentForm
 
                         Forms\Components\Select::make('buyer_presence_indicator')
                             ->label('Indicador de Presença')
-                            ->options([
-                                '0' => '0 – Não se aplica',
-                                '1' => '1 – Operação presencial',
-                                '2' => '2 – Operação não presencial (internet)',
-                                '3' => '3 – Operação não presencial (teleatendimento)',
-                                '4' => '4 – NFC-e entrega domiciliar',
-                                '9' => '9 – Operação não presencial (outros)',
-                            ])
-                            ->default('9')
+                            ->options(BuyerPresenceIndicator::toSelectArray())
+                            ->default(BuyerPresenceIndicator::OUTROS->value)
                             ->native(false)
                             ->columnSpan(['md' => 1]),
                     ])

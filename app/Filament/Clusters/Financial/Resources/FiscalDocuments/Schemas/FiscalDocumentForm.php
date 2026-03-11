@@ -2,6 +2,11 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Schemas;
 
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\IssuePurpose;
+use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -45,10 +50,12 @@ class FiscalDocumentForm
                             ->searchable()
                             ->preload()
                             ->nullable(),
-                        TextInput::make('document_type')
+                        Select::make('document_type')
                             ->label('Tipo Documento')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->maxLength(10),
+                            ->options(DocumentModel::toSelectArray())
+                            ->native(false)
+                            ->required(),
                         Select::make('status')
                             ->label('Status')
                             ->columnSpan(['md' => 1, 'lg' => 3])
@@ -87,18 +94,24 @@ class FiscalDocumentForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('operation_type')
+                        Select::make('operation_type')
                             ->label('Tipo Operação')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->numeric(),
-                        TextInput::make('operation_nature')
+                            ->options(OperationType::toSelectArray())
+                            ->native(false)
+                            ->required(),
+                        Select::make('operation_nature')
                             ->label('Natureza Operação')
                             ->columnSpan(['md' => 1, 'lg' => 4])
-                            ->maxLength(100),
-                        TextInput::make('issue_purpose')
+                            ->options(OperationNature::toSelectArray())
+                            ->searchable()
+                            ->required(),
+                        Select::make('issue_purpose')
                             ->label('Finalidade Emissão')
                             ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->maxLength(50),
+                            ->options(IssuePurpose::toSelectArray())
+                            ->native(false)
+                            ->required(),
                         DatePicker::make('issued_at')
                             ->label('Data Emissão')
                             ->columnSpan(['md' => 1, 'lg' => 3])
@@ -120,10 +133,12 @@ class FiscalDocumentForm
                             ->label('Consumidor Final')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->default(false),
-                        Toggle::make('buyer_presence_indicator')
+                        Select::make('buyer_presence_indicator')
                             ->label('Presença do Comprador')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->default(false),
+                            ->options(BuyerPresenceIndicator::toSelectArray())
+                            ->native(false)
+                            ->default(BuyerPresenceIndicator::OUTROS->value),
                     ]),
                 Section::make('Observações')
                     ->columns([

@@ -2,7 +2,12 @@
 
 namespace App\Models;
 
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -55,12 +60,15 @@ class FiscalDocument extends Model
     ];
 
     protected $casts = [
-        'status' => Status::class,
+        'status'                    => Status::class,
+        'document_type'             => DocumentModel::class,
+        'operation_nature'          => OperationNature::class,
+        'operation_type'            => OperationType::class,
+        'issue_purpose'             => IssuePurpose::class,
+        'buyer_presence_indicator'  => BuyerPresenceIndicator::class,
         'issued_at' => 'date',
         'movement_at' => 'date',
-        'operation_type' => 'integer',
         'is_final_consumer' => 'boolean',
-        'buyer_presence_indicator' => 'boolean',
         'freight_data' => 'array',
         'payment_data' => 'array',
         'tax_data' => 'array',

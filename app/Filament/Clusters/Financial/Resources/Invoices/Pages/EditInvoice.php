@@ -13,6 +13,7 @@ use App\Services\Invoice\InvoiceService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Size;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -24,13 +25,19 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ImportRecordsAction::make(),
-            GenerateFiscalDocumentAction::make(),
-            ViewLinkedRequisitionsAction::make(),
-            ViewLinkedServiceOrdersAction::make(),
-            ViewLinkedProductionOrdersAction::make(),
+            ViewLinkedRequisitionsAction::make()
+                ->size(Size::Small),
+            ViewLinkedServiceOrdersAction::make()
+                ->size(Size::Small),
+            ViewLinkedProductionOrdersAction::make()
+                ->size(Size::Small),
             ActionGroup::make([
+                ImportRecordsAction::make()
+                    ->size(Size::Small),
+                GenerateFiscalDocumentAction::make()
+                    ->size(Size::Small),
                 DeleteAction::make()
+                    ->size(Size::Small)
                     ->using(function (Model $record): bool {
                         Log::debug('EditInvoice: Iniciando exclusão de fatura', [
                             'metodo'     => __METHOD__ . '@' . __LINE__,
@@ -62,7 +69,7 @@ class EditInvoice extends EditRecord
 
                         return $result;
                     }),
-            ])->button(),
+            ])->buttonGroup(),
         ];
     }
 

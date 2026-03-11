@@ -25,13 +25,16 @@ class FiscalDocumentValidatorResolver
         // 1. Regras comuns (cabeçalho)
         $validated = FiscalDocumentValidator::validateCreate($data);
 
-        // 2. Regras específicas por modelo
+        // 2. Regras específicas por modelo — merge para que campos
+        //    como operation_nature, operation_type, etc. sejam persistidos.
         $documentType = $data['document_type'] ?? null;
 
-        match ($documentType) {
+        $specificValidated = match ($documentType) {
             DocumentModel::NFE->value => NfeDocumentValidator::validateCreate($data),
-            default => null,
+            default => [],
         };
+
+        $validated = array_merge($validated, $specificValidated);
 
         // 3. Validação do perfil fiscal (NF-e)
         if ($documentType === DocumentModel::NFE->value) {
@@ -64,14 +67,17 @@ class FiscalDocumentValidatorResolver
         // 1. Regras comuns (cabeçalho)
         $validated = FiscalDocumentValidator::validateUpdate($data, $id);
 
-        // 2. Regras específicas por modelo (usa o document_type dos dados ou do registro existente)
+        // 2. Regras específicas por modelo — merge para que campos
+        //    como operation_nature, operation_type, etc. sejam persistidos.
         $documentType = $data['document_type'] ?? null;
 
         if ($documentType) {
-            match ($documentType) {
+            $specificValidated = match ($documentType) {
                 DocumentModel::NFE->value => NfeDocumentValidator::validateUpdate($data),
-                default => null,
+                default => [],
             };
+
+            $validated = array_merge($validated, $specificValidated);
         }
 
         // 3. Regras de itens por modelo (apenas se itens foram enviados na atualização)

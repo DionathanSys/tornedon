@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
+use App\Models\NfeSequence;
 use App\Services\Fiscal\NfeConfigService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,36 @@ class PrintNfePreviewAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            // Se o documento ainda não tem número reservado, usa peek para
+            // mostrar no preview o próximo número real sem consumir a sequência.
+            $rawNature = $fiscalDocument->operation_nature;
+            $natureValue = $rawNature instanceof \App\Enum\FiscalDocument\OperationNature
+                ? $rawNature->value
+                : $rawNature;
+
+            if (empty($natureValue)) {
+                $this->setError('Natureza da operação não definida. Preencha o campo antes de gerar o preview.');
+                return null;
+            }
+
+            if (empty($fiscalDocument->document_number) || (int) $fiscalDocument->document_number < 1) {
+                $configService = app(NfeConfigService::class);
+                $serie         = $fiscalDocument->document_series
+                                 ?? $configService->resolveSerie($fiscalDocument->company_id);
+                $nature        = $natureValue;
+
+                $previewNumber = NfeSequence::peekNextNumber(
+                    $fiscalDocument->company_id,
+                    $serie,
+                    $nature
+                );
+
+                // Atribui temporariamente (sem persistir) para o BuildNfePayloadAction
+                $fiscalDocument->document_number = (string) $previewNumber;
+                $fiscalDocument->document_series = $serie;
+                $fiscalDocument->operation_nature = $nature;
+            }
+
             // Monta o payload igual ao de envio real
             $buildAction = new BuildNfePayloadAction();
             $payload     = $buildAction->execute($fiscalDocument);

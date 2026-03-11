@@ -39,7 +39,17 @@ class SendNfeAction
 
             // Resolve série e natureza
             $serie            = $serie ?? $configService->resolveSerie($fiscalDocument->company_id);
-            $operationNature  = $operationNature ?? ($fiscalDocument->operation_nature ?? 'VENDA');
+
+            $rawNature = $fiscalDocument->operation_nature;
+            $natureValue = $rawNature instanceof \App\Enum\FiscalDocument\OperationNature
+                ? $rawNature->value
+                : $rawNature;
+            $operationNature  = $operationNature ?? $natureValue;
+
+            if (empty($operationNature)) {
+                $this->setError('Natureza da operação não definida. Preencha o campo antes de emitir a NF-e.');
+                return false;
+            }
 
             // ------------------------------------------------------------------
             // 1. Reservar número (somente se ainda não reservado, ex: reenvio)

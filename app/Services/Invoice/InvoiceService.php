@@ -230,6 +230,13 @@ class InvoiceService
                     'movement_at'   => $fiscalData['movement_at'] ?? now()->toDateString(),
                 ]);
 
+                Log::debug('Iniciando criação do documento fiscal a partir da fatura via InvoiceService', [
+                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'invoice_id' => $invoice->id,
+                    'data'       => $documentData,
+                    'user_id'    => $userId,
+                ]);
+
                 $fiscalDocumentService = app(FiscalDocumentService::class);
                 $fiscalDocument = $fiscalDocumentService->create($documentData, $userId);
 
