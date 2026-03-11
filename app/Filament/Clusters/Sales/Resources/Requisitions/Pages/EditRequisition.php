@@ -6,6 +6,7 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CancelRequi
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CloseRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\InvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ReopenRequisitionAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ViewInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
@@ -14,6 +15,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Size;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -26,11 +28,18 @@ class EditRequisition extends EditRecord
     {
         return [
             ActionGroup::make([
-                CloseRequisitionAction::make(),
-                InvoiceRequisitionAction::make(),
-                CancelRequisitionAction::make(),
-                ReopenRequisitionAction::make(),
+                CloseRequisitionAction::make()
+                    ->size(Size::Small),
+                InvoiceRequisitionAction::make()
+                    ->size(Size::Small),
+                ViewInvoiceRequisitionAction::make()
+                    ->size(Size::Small),
+                CancelRequisitionAction::make()
+                    ->size(Size::Small),
+                ReopenRequisitionAction::make()
+                    ->size(Size::Small),
                 DeleteAction::make()
+                    ->size(Size::Small)
                     ->using(function (Model $record): bool {
                         Log::debug('EditRequisition: Iniciando soft delete de requisição', [
                             'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -63,6 +72,7 @@ class EditRequisition extends EditRecord
                         return $result;
                     }),
                 ForceDeleteAction::make()
+                    ->size(Size::Small)
                     ->using(function (Model $record): bool {
                         Log::debug('EditRequisition: Iniciando force delete de requisição', [
                             'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -95,6 +105,7 @@ class EditRequisition extends EditRecord
                         return $result;
                     }),
                 RestoreAction::make()
+                    ->size(Size::Small)
                     ->using(function (Model $record): bool {
                         Log::debug('EditRequisition: Iniciando restore de requisição', [
                             'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -126,7 +137,7 @@ class EditRequisition extends EditRecord
 
                         return $result;
                     }),
-            ])->button(),
+            ])->buttonGroup(),
         ];
     }
 

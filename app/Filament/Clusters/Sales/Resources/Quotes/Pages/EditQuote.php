@@ -18,6 +18,8 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -29,16 +31,28 @@ class EditQuote extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ViewLinkedRequisitionsAction::make(),
-            ViewLinkedServiceOrdersAction::make(),
-            ViewLinkedProductionOrderAction::make(),
+            ActionGroup::make([
+                ViewLinkedRequisitionsAction::make()
+                    ->size(Size::Small),
+                ViewLinkedServiceOrdersAction::make()
+                    ->size(Size::Small),
+                ViewLinkedProductionOrderAction::make()
+                    ->size(Size::Small),
+            ])->buttonGroup(),
             ActionGroup::make([
                 // SendForApprovalQuoteAction::make(),
-                ApproveQuoteAction::make(),
-                RejectQuoteAction::make(),
-                ReopenQuoteAction::make(),
-                ConvertToProductionOrderQuoteAction::make(),
+                ApproveQuoteAction::make()
+                    ->color('primary')
+                    ->size(Size::Small),
+                RejectQuoteAction::make()
+                    ->size(Size::Small),
+                ReopenQuoteAction::make()
+                    ->size(Size::Small),
+                ConvertToProductionOrderQuoteAction::make()
+                    ->size(Size::Small),
                 DeleteAction::make()
+                    ->icon(Heroicon::Trash)
+                    ->size(Size::Small)
                     ->using(function (Model $record): bool {
                         Log::debug('EditQuote: Iniciando soft delete de orçamento', [
                             'metodo'   => __METHOD__ . '@' . __LINE__,
@@ -70,13 +84,13 @@ class EditQuote extends EditRecord
 
                         return $result;
                     }),
-            ])->button(),
+            ])->buttonGroup(),
         ];
     }
 
     protected function getFormActions(): array
     {
-        if (! $this->record->state()->canEdit()) {          
+        if (! $this->record->state()->canEdit()) {
             return [];
         }
 

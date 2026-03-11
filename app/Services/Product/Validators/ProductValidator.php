@@ -5,6 +5,7 @@ namespace App\Services\Product\Validators;
 use App\Enum\Product\ItemType;
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
+use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 class ProductValidator
 {
     /**
-     * Regras comuns de validação (campos compartilhados entre create e update).
+     * Regras comuns de validacao (campos compartilhados entre create e update).
      */
     private static function commonRules(): array
     {
@@ -21,74 +22,84 @@ class ProductValidator
         $itemTypeValues = array_map(fn($t) => $t->value, ItemType::cases());
 
         return [
-            'description'               => 'nullable|string|max:1000',
-            'category_id'               => 'nullable|integer|exists:categories,id',
-            'is_active'                 => 'nullable|boolean',
-            'is_custom_manufacturing'   => 'nullable|boolean',
-            'has_stock_control'         => 'nullable|boolean',
-            'alternative_units'         => 'nullable|array',
-            'alternative_units.*'       => ['string', Rule::in($unitValues)],
-            'profit_margin'             => 'nullable|numeric|min:0|max:100',
-            'min_sale_price'            => 'nullable|numeric|min:0',
-            'origin_sale_price'         => ['nullable', Rule::in($originSalePriceValues)],
-            'sale_price_value'          => 'nullable|numeric|min:0',
-            'external_reference_codes'  => 'nullable|array',
-            'item_type'                 => ['nullable', Rule::in($itemTypeValues)],
-            'manufacturer_code'         => 'nullable|string|max:100',
-            'gross_weight'              => 'nullable|numeric|min:0',
-            'net_weight'                => 'nullable|numeric|min:0',
-            'barcode'                   => 'nullable|string|max:60',
+            'description'                               => 'nullable|string|max:1000',
+            'category_id'                               => 'nullable|integer|exists:categories,id',
+            'is_active'                                 => 'nullable|boolean',
+            'is_custom_manufacturing'                   => 'nullable|boolean',
+            'has_stock_control'                         => 'nullable|boolean',
+            'alternative_units'                         => 'nullable|array',
+            'alternative_units.*'                       => ['string', Rule::in($unitValues)],
+            'alternative_unit_conversions'              => 'nullable|array',
+            'alternative_unit_conversions.*.unit'       => ['required_with:alternative_unit_conversions', 'string', Rule::in($unitValues), 'distinct'],
+            'alternative_unit_conversions.*.conversion_factor' => 'required_with:alternative_unit_conversions|numeric|gt:0',
+            'profit_margin'                             => 'nullable|numeric|min:0|max:100',
+            'min_sale_price'                            => 'nullable|numeric|min:0',
+            'origin_sale_price'                         => ['nullable', Rule::in($originSalePriceValues)],
+            'sale_price_value'                          => 'nullable|numeric|min:0',
+            'external_reference_codes'                  => 'nullable|array',
+            'item_type'                                 => ['nullable', Rule::in($itemTypeValues)],
+            'manufacturer_code'                         => 'nullable|string|max:100',
+            'gross_weight'                              => 'nullable|numeric|min:0',
+            'net_weight'                                => 'nullable|numeric|min:0',
+            'barcode'                                   => 'nullable|string|max:60',
         ];
     }
 
     /**
-     * Mensagens de validação compartilhadas.
+     * Mensagens de validacao compartilhadas.
      */
     private static function messages(): array
     {
         return [
-            'name.required'                     => 'É obrigatório informar o nome do produto',
-            'name.max'                          => 'O nome do produto não pode ter mais de 255 caracteres',
-            'description.max'                   => 'A descrição não pode ter mais de 1000 caracteres',
-            'category_id.exists'                => 'A categoria informada não existe',
-            'category_id.integer'               => 'O ID da categoria deve ser um número inteiro',
-            'is_active.boolean'                 => 'O campo ativo deve ser verdadeiro ou falso',
-            'is_custom_manufacturing.boolean'   => 'O campo fabricação customizada deve ser verdadeiro ou falso',
-            'has_stock_control.boolean'         => 'O campo controle de estoque deve ser verdadeiro ou falso',
-            'unit.required'                     => 'É obrigatório informar a unidade de medida',
-            'unit.in'                           => 'A unidade de medida informada é inválida',
-            'alternative_units.array'           => 'As unidades alternativas devem ser uma lista',
-            'alternative_units.*.in'            => 'Uma das unidades alternativas informadas é inválida',
-            'profit_margin.numeric'             => 'A margem de lucro deve ser um número',
-            'profit_margin.min'                 => 'A margem de lucro não pode ser negativa',
-            'profit_margin.max'                 => 'A margem de lucro não pode ser maior que 100%',
-            'min_sale_price.numeric'            => 'O preço mínimo de venda deve ser um número',
-            'min_sale_price.min'                => 'O preço mínimo de venda não pode ser negativo',
-            'origin_sale_price.in'              => 'A origem do preço de venda informada é inválida',
-            'sale_price_value.numeric'          => 'O valor de venda deve ser um número',
-            'sale_price_value.min'              => 'O valor de venda não pode ser negativo',
-            'external_reference_codes.array'    => 'Os códigos de referência externa devem ser uma lista',
-            'item_type.in'                      => 'O tipo de item informado é inválido',
-            'manufacturer_code.max'             => 'O código de fábrica não pode ter mais de 100 caracteres',
-            'gross_weight.numeric'              => 'O peso bruto deve ser um número',
-            'gross_weight.min'                  => 'O peso bruto não pode ser negativo',
-            'net_weight.numeric'                => 'O peso líquido deve ser um número',
-            'net_weight.min'                    => 'O peso líquido não pode ser negativo',
-            'barcode.max'                       => 'O código de barras não pode ter mais de 60 caracteres',
-            'company_id.required'               => 'É obrigatório informar a empresa',
-            'company_id.exists'                 => 'A empresa informada não existe',
-            'company_id.integer'                => 'O ID da empresa deve ser um número inteiro',
-            'product_code.unique'               => 'Já existe um produto com este código',
-            'product_code.max'                  => 'O código do produto não pode ter mais de 50 caracteres',
+            'name.required'                                     => 'E obrigatorio informar o nome do produto',
+            'name.max'                                          => 'O nome do produto nao pode ter mais de 255 caracteres',
+            'description.max'                                   => 'A descricao nao pode ter mais de 1000 caracteres',
+            'category_id.exists'                                => 'A categoria informada nao existe',
+            'category_id.integer'                               => 'O ID da categoria deve ser um numero inteiro',
+            'is_active.boolean'                                 => 'O campo ativo deve ser verdadeiro ou falso',
+            'is_custom_manufacturing.boolean'                   => 'O campo fabricacao customizada deve ser verdadeiro ou falso',
+            'has_stock_control.boolean'                         => 'O campo controle de estoque deve ser verdadeiro ou falso',
+            'unit.required'                                     => 'E obrigatorio informar a unidade de medida',
+            'unit.in'                                           => 'A unidade de medida informada e invalida',
+            'alternative_units.array'                           => 'As unidades alternativas devem ser uma lista',
+            'alternative_units.*.in'                            => 'Uma das unidades alternativas informadas e invalida',
+            'alternative_unit_conversions.array'                => 'As conversoes de unidade alternativa devem ser uma lista',
+            'alternative_unit_conversions.*.unit.required_with' => 'Informe a unidade da conversao alternativa',
+            'alternative_unit_conversions.*.unit.in'            => 'A unidade alternativa informada e invalida',
+            'alternative_unit_conversions.*.unit.distinct'      => 'Nao repita unidades alternativas na conversao',
+            'alternative_unit_conversions.*.conversion_factor.required_with' => 'Informe o fator de conversao da unidade alternativa',
+            'alternative_unit_conversions.*.conversion_factor.numeric' => 'O fator de conversao deve ser numerico',
+            'alternative_unit_conversions.*.conversion_factor.gt' => 'O fator de conversao deve ser maior que zero',
+            'profit_margin.numeric'                             => 'A margem de lucro deve ser um numero',
+            'profit_margin.min'                                 => 'A margem de lucro nao pode ser negativa',
+            'profit_margin.max'                                 => 'A margem de lucro nao pode ser maior que 100%',
+            'min_sale_price.numeric'                            => 'O preco minimo de venda deve ser um numero',
+            'min_sale_price.min'                                => 'O preco minimo de venda nao pode ser negativo',
+            'origin_sale_price.in'                              => 'A origem do preco de venda informada e invalida',
+            'sale_price_value.numeric'                          => 'O valor de venda deve ser um numero',
+            'sale_price_value.min'                              => 'O valor de venda nao pode ser negativo',
+            'external_reference_codes.array'                    => 'Os codigos de referencia externa devem ser uma lista',
+            'item_type.in'                                      => 'O tipo de item informado e invalido',
+            'manufacturer_code.max'                             => 'O codigo de fabrica nao pode ter mais de 100 caracteres',
+            'gross_weight.numeric'                              => 'O peso bruto deve ser um numero',
+            'gross_weight.min'                                  => 'O peso bruto nao pode ser negativo',
+            'net_weight.numeric'                                => 'O peso liquido deve ser um numero',
+            'net_weight.min'                                    => 'O peso liquido nao pode ser negativo',
+            'barcode.max'                                       => 'O codigo de barras nao pode ter mais de 60 caracteres',
+            'company_id.required'                               => 'E obrigatorio informar a empresa',
+            'company_id.exists'                                 => 'A empresa informada nao existe',
+            'company_id.integer'                                => 'O ID da empresa deve ser um numero inteiro',
+            'product_code.unique'                               => 'Ja existe um produto com este codigo',
+            'product_code.max'                                  => 'O codigo do produto nao pode ter mais de 50 caracteres',
         ];
     }
 
     /**
-     * Valida dados para criação de produto.
+     * Valida dados para criacao de produto.
      *
      * @param array $data Dados a validar
      * @return array Retorna dados validados
-     * @throws ValidationException Se a validação falhar
+     * @throws ValidationException Se a validacao falhar
      */
     public static function validateCreate(array $data): array
     {
@@ -106,16 +117,16 @@ class ProductValidator
             ],
         ]);
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        return self::validateWithBaseUnit($data, $rules);
     }
 
     /**
-     * Valida dados para atualização de produto.
+     * Valida dados para atualizacao de produto.
      *
      * @param array $data Dados a validar
-     * @param int|null $productId ID do produto sendo atualizado (para ignorar na validação unique)
+     * @param int|null $productId ID do produto sendo atualizado (para ignorar na validacao unique)
      * @return array Retorna dados validados
-     * @throws ValidationException Se a validação falhar
+     * @throws ValidationException Se a validacao falhar
      */
     public static function validateUpdate(array $data, ?int $productId = null, ?int $companyId = null): array
     {
@@ -126,7 +137,7 @@ class ProductValidator
             'unit' => ['sometimes', 'required', Rule::in($unitValues)],
         ]);
 
-        // Adiciona validação de product_code apenas se o campo estiver presente nos dados
+        // Adiciona validacao de product_code apenas se o campo estiver presente nos dados
         if (isset($data['product_code']) && $companyId) {
             $rules['product_code'] = [
                 'nullable',
@@ -138,6 +149,42 @@ class ProductValidator
             ];
         }
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        return self::validateWithBaseUnit($data, $rules, $productId);
+    }
+
+    private static function validateWithBaseUnit(array $data, array $rules, ?int $productId = null): array
+    {
+        $validator = Validator::make($data, $rules, self::messages());
+
+        $validator->after(function ($validator) use ($data, $productId): void {
+            if (empty($data['alternative_unit_conversions']) || !is_array($data['alternative_unit_conversions'])) {
+                return;
+            }
+
+            $baseUnit = $data['unit'] ?? null;
+
+            if ($baseUnit === null && $productId !== null) {
+                $baseUnit = (string) Product::query()
+                    ->whereKey($productId)
+                    ->value('unit');
+            }
+
+            if (!$baseUnit) {
+                return;
+            }
+
+            foreach ($data['alternative_unit_conversions'] as $index => $conversion) {
+                $alternativeUnit = $conversion['unit'] ?? null;
+
+                if ($alternativeUnit && $alternativeUnit === $baseUnit) {
+                    $validator->errors()->add(
+                        "alternative_unit_conversions.$index.unit",
+                        'A unidade alternativa nao pode ser igual a unidade padrao do produto'
+                    );
+                }
+            }
+        });
+
+        return $validator->validate();
     }
 }

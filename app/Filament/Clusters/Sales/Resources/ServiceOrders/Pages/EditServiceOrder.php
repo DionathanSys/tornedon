@@ -7,6 +7,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServ
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\ActionGroup;
@@ -28,6 +29,7 @@ class EditServiceOrder extends EditRecord
             ActionGroup::make([
                 CloseServiceOrderAction::make(),
                 InvoiceServiceOrderAction::make(),
+                ViewInvoiceServiceOrderAction::make(),
                 CancelServiceOrderAction::make(),
                 ReopenServiceOrderAction::make(),
                 DeleteAction::make()

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;   
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Partner extends Model
@@ -40,14 +41,28 @@ class Partner extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function address(): HasMany
+    public function address(): HasManyThrough
     {
-        return $this->hasMany(Address::class);
+        return $this->hasManyThrough(
+            Address::class,
+            CompanyPartner::class,
+            'partner_id',
+            'company_partner_id',
+            'id',
+            'id'
+        );
     }
 
-    public function contacts(): HasMany
+    public function contacts(): HasManyThrough
     {
-        return $this->hasMany(Contact::class);
+        return $this->hasManyThrough(
+            Contact::class,
+            CompanyPartner::class,
+            'partner_id',
+            'company_partner_id',
+            'id',
+            'id'
+        );
     }
 
     public function companies(): BelongsToMany

@@ -28,16 +28,22 @@ class UpdateProductAction
     public function execute(array $data): ?Product
     {
         try {
-            // Validação
+            // Validacao
             $validated = ProductValidator::validateUpdate($data, $this->product->id, $this->product->company_id);
+            $hasAlternativeUnitConversions = array_key_exists('alternative_unit_conversions', $validated);
+            $alternativeUnitConversions = $validated['alternative_unit_conversions'] ?? [];
 
-            // Remove campos que não devem ser atualizados
-            unset($validated['product_code'], $validated['company_id']);
+            // Remove campos que nao devem ser atualizados
+            unset($validated['product_code'], $validated['company_id'], $validated['alternative_unit_conversions']);
 
             $validated['updated_by'] = $this->updatedBy;
 
-            // Persistência
+            // Persistencia
             $this->product->update($validated);
+
+            if ($hasAlternativeUnitConversions) {
+                $this->syncAlternativeUnitConversions($alternativeUnitConversions);
+            }
 
             Log::debug('Produto atualizado com sucesso', [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -46,19 +52,19 @@ class UpdateProductAction
 
             // Sincroniza o estoque do produto se o campo has_stock_control foi atualizado
             if (isset($validated['has_stock_control'])) {
-                $this->product->refresh(); // Garante que temos os dados atualizados
+                $this->product->refresh();
                 $syncStockAction = new SyncProductStockAction($this->product, $this->updatedBy);
                 $syncStockAction->execute();
-                
+
                 if ($syncStockAction->hasError()) {
-                    Log::warning('Erro ao sincronizar estoque durante atualização do produto', [
+                    Log::warning('Erro ao sincronizar estoque durante atualizacao do produto', [
                         'metodo'        => __METHOD__ . '@' . __LINE__,
                         'product_id'    => $this->product->id,
                         'error_message' => $syncStockAction->getMessage(),
                     ]);
                 }
 
-                Log::debug('Sincronização de estoque executada durante atualização do produto', [
+                Log::debug('Sincronizacao de estoque executada durante atualizacao do produto', [
                     'metodo'        => __METHOD__ . '@' . __LINE__,
                     'product_id'    => $this->product->id,
                     'has_stock_control' => $validated['has_stock_control'],
@@ -73,7 +79,7 @@ class UpdateProductAction
                     'product_id' => $this->product->id,
                     'tax_data' => $data['tax'],
                 ]);
-                
+
                 $productTaxService = app(ProductTaxService::class);
                 $productTax = $productTaxService->update($this->product->id, $this->updatedBy, $data['tax']);
 
@@ -86,14 +92,12 @@ class UpdateProductAction
                         'errors'            => $productTaxService->getErrors(),
                     ]);
                 }
-
             }
 
             $this->setSuccess();
             return $this->product;
-
         } catch (ValidationException $e) {
-            $this->setError('Falha de validação dos dados', $e->errors());
+            $this->setError('Falha de validacao dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
@@ -105,7 +109,6 @@ class UpdateProductAction
             ]);
 
             return null;
-
         } catch (QueryException $e) {
             $this->setError('Erro ao atualizar produto no banco de dados');
 
@@ -120,7 +123,6 @@ class UpdateProductAction
             ]);
 
             return null;
-
         } catch (\Exception $e) {
             $this->setError('Erro inesperado ao atualizar produto');
 
@@ -136,5 +138,25 @@ class UpdateProductAction
 
             return null;
         }
+    }
+
+    private function syncAlternativeUnitConversions(array $conversions): void
+    {
+        $this->product->alternativeUnitConversions()->delete();
+
+        if ($conversions === []) {
+            return;
+        }
+
+        $payload = [];
+
+        foreach ($conversions as $conversion) {
+            $payload[] = [
+                'unit' => $conversion['unit'],
+                'conversion_factor' => $conversion['conversion_factor'],
+            ];
+        }
+
+        $this->product->alternativeUnitConversions()->createMany($payload);
     }
 }
