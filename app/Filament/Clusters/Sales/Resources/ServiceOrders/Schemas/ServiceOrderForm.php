@@ -165,6 +165,7 @@ class ServiceOrderForm
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn() => Filament::getTenant()->service_provision_location)
+                                            ->formatStateUsing(fn($state) => $state ?? Filament::getTenant()->service_provision_location)
                                             ->helperText('Cidade - UF')
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                     ]),
@@ -212,7 +213,7 @@ class ServiceOrderForm
                                 Section::make('Valores')
                                     ->columns([
                                         'sm' => 1,
-                                        'md' => 4,
+                                        'md' => 6,
                                         'lg' => 12,
                                     ])
                                     ->columnSpanFull()
@@ -220,17 +221,18 @@ class ServiceOrderForm
                                     ->schema([
                                         Money::make('value_km')
                                             ->label('Valor do KM')
-                                            ->columnSpan(['md' => 1, 'lg' => 3])
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->live(onBlur: true)
                                             ->afterStateUpdated(function ($state, Set $set, $get) {
                                                 $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
                                                 $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
                                                 $set('travel_value', number_format($valueKm * $distanceKm));
                                             })
-                                            ->default(350),
+                                            ->default(350)
+                                            ->formatStateUsing(fn($state) => $state ? number_format($state, 2, ',', '.') : '350,00'),
                                         Money::make('distance_km')
                                             ->label('Distância em KM')
-                                            ->columnSpan(['md' => 1, 'lg' => 3])
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->live(onBlur: true)
                                             ->afterStateUpdated(function ($state, Set $set, $get) {
                                                 $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
@@ -242,19 +244,19 @@ class ServiceOrderForm
                                             ->default(0),
                                         Money::make('travel_value')
                                             ->label('Valor de Deslocamento')
-                                            ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->columnStart(1)
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->disabled()
                                             ->dehydrated()
                                             ->default(0),
                                         Money::make('discount_amount')
                                             ->label('Desconto')
-                                            ->columnSpan(['md' => 1, 'lg' => 3])
+                                            ->saved(false)
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
                                         Select::make('payment_method')
                                             ->label('Forma de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->columnStart(1)
                                             ->options(PaymentMethod::toSelectArray())
                                             ->native(false)
@@ -262,7 +264,7 @@ class ServiceOrderForm
                                             ->default(fn() => CompanyPreference::getDefaultPaymentMethod()),
                                         Select::make('payment_condition')
                                             ->label('Condição de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->options(PaymentCondition::toGroupedSelectArray())
                                             ->native(false)
                                             ->searchable()

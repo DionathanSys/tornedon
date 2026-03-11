@@ -40,7 +40,7 @@
               "type": "markdown",
               "state": {
                 "file": "Projeto/📥 Caixa de Entrada.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
@@ -105,8 +105,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "a36137f84796124f",

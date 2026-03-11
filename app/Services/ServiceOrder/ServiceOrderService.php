@@ -758,6 +758,95 @@ class ServiceOrderService
      |==============================*/
 
     /**
+     * Aplica valor de desconto distribuído igualmente entre os itens da OS.
+     * O desconto é igualmente distribuído e, se o item já possuir desconto,
+     * o valor será incrementado. O discount_percentage também será calculado.
+     *
+     * @param  ServiceOrder  $serviceOrder
+     * @param  float         $discountAmount
+     * @return bool
+     */
+    public function applyDiscount(ServiceOrder $serviceOrder, float $discountAmount): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder, $discountAmount): bool {
+                // Recarrega itens para garantir dados atualizados
+                $serviceOrder->load('items');
+
+                $items = $serviceOrder->items;
+
+                if ($items->isEmpty()) {
+                    $this->setError('Esta ordem de serviço não possui itens.');
+                    return false;
+                }
+
+                // Calcula o desconto por item
+                $itemCount = $items->count();
+                $discountPerItem = round($discountAmount / $itemCount, 2);
+                $remainingDiscount = $discountAmount;
+
+                foreach ($items as $index => $item) {
+                    // Para o último item, usa o desconto restante para evitar arredondamentos
+                    $currentDiscount = $index === $itemCount - 1 ? $remainingDiscount : $discountPerItem;
+
+                    // Incrementa o desconto existente
+                    $newDiscountAmount = (float) $item->discount_amount + $currentDiscount;
+
+                    // Calcula o subtotal (quantity * unit_price)
+                    $subtotal = (float) $item->quantity * (float) $item->unit_price;
+
+                    // Calcula o percentual de desconto
+                    $discountPercentage = $subtotal > 0
+                        ? round(($newDiscountAmount / $subtotal) * 100, 2)
+                        : 0;
+
+                    // Atualiza o item
+                    $item->update([
+                        'discount_amount'       => $newDiscountAmount,
+                        'discount_percentage'   => $discountPercentage,
+                    ]);
+
+                    $remainingDiscount -= $currentDiscount;
+
+                    Log::debug('Desconto aplicado ao item de ordem de serviço', [
+                        'metodo'                    => __METHOD__ . '@' . __LINE__,
+                        'service_order_item_id'     => $item->id,
+                        'service_order_id'          => $serviceOrder->id,
+                        'discount_amount_applied'   => $currentDiscount,
+                        'new_discount_amount'       => $newDiscountAmount,
+                        'discount_percentage'       => $discountPercentage,
+                    ]);
+                }
+
+                $this->setSuccess('Desconto aplicado com sucesso aos itens.');
+
+                Log::info('Desconto aplicado com sucesso na ordem de serviço', [
+                    'metodo'            => __METHOD__ . '@' . __LINE__,
+                    'service_order_id'  => $serviceOrder->id,
+                    'total_discount'    => $discountAmount,
+                    'item_count'        => $itemCount,
+                ]);
+
+                return true;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao aplicar desconto na ordem de serviço.');
+
+            Log::error('Erro ao aplicar desconto na ordem de serviço', [
+                'metodo'            => __METHOD__ . '@' . __LINE__,
+                'service_order_id'  => $serviceOrder->id,
+                'discount_amount'   => $discountAmount,
+                'error_message'     => $e->getMessage(),
+                'trace'             => $e->getTraceAsString(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Gera o próximo número de ordem de serviço para a empresa.
      * Usa lock pessimista para evitar duplicidade.
      *
