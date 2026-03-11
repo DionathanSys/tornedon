@@ -878,6 +878,65 @@ class RequisitionService
     }
 
     /**
+     * Remove todos os descontos dos itens da requisição, zerando discount_amount e discount_percentage.
+     *
+     * @param  Requisition  $requisition
+     * @return bool
+     */
+    public function clearDiscount(Requisition $requisition): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($requisition): bool {
+                // Recarrega itens para garantir dados atualizados
+                $requisition->load('items');
+
+                $items = $requisition->items;
+
+                if ($items->isEmpty()) {
+                    $this->setError('Esta requisição não possui itens.');
+                    return false;
+                }
+
+                foreach ($items as $item) {
+                    $item->update([
+                        'discount_amount'       => 0,
+                        'discount_percentage'   => 0,
+                    ]);
+
+                    Log::debug('Desconto removido do item de requisição', [
+                        'metodo'              => __METHOD__ . '@' . __LINE__,
+                        'requisition_item_id' => $item->id,
+                        'requisition_id'      => $requisition->id,
+                    ]);
+                }
+
+                $this->setSuccess('Descontos removidos com sucesso.');
+
+                Log::info('Descontos removidos com sucesso da requisição', [
+                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'requisition_id' => $requisition->id,
+                    'item_count'     => $items->count(),
+                ]);
+
+                return true;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao remover descontos da requisição.');
+
+            Log::error('Erro ao remover descontos da requisição', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'requisition_id' => $requisition->id,
+                'error_message'  => $e->getMessage(),
+                'trace'          => $e->getTraceAsString(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Gera o próximo número de requisição para a empresa.
      * Usa lock pessimista para evitar duplicidade.
      */

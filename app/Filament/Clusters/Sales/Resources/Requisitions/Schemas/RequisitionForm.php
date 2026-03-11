@@ -6,6 +6,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Product\Unit;
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\EditRequisition;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
@@ -128,6 +129,7 @@ class RequisitionForm
                             ->columnSpanFull()
                             ->rows(3)
                             ->maxLength(1000),
+                        DiscountAmountField::make('requisition'),
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(Requisition $record) => [
                     'ownerRecord' => $record,

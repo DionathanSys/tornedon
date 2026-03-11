@@ -222,7 +222,43 @@ class EditServiceOrder extends EditRecord
             message: 'Desconto aplicado com sucesso aos itens.'
         );
 
-        $this->refreshFormData(['items']);
+        $this->dispatch('refresh-page');
+    }
+
+    /**
+     * Remove todos os descontos dos itens da OS.
+     */
+    public function clearDiscount(): void
+    {
+        $record = $this->record;
+
+        $service = app(ServiceOrderService::class);
+        $result = $service->clearDiscount($record);
+
+        if (! $result) {
+            Log::error('EditServiceOrder: Erro ao remover descontos', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $service->getMessage(),
+                'service_order_id' => $record->id,
+            ]);
+
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode()
+            );
+            return;
+        }
+
+        Log::info('EditServiceOrder: Descontos removidos com sucesso', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'service_order_id' => $record->id,
+        ]);
+
+        notify::success(
+            message: 'Descontos removidos com sucesso.'
+        );
+
+        $this->dispatch('refresh-page');
     }
 
     protected function getUpdatedNotificationTitle(): ?string

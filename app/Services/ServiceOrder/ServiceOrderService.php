@@ -847,6 +847,65 @@ class ServiceOrderService
     }
 
     /**
+     * Remove todos os descontos dos itens da OS, zerando discount_amount e discount_percentage.
+     *
+     * @param  ServiceOrder  $serviceOrder
+     * @return bool
+     */
+    public function clearDiscount(ServiceOrder $serviceOrder): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder): bool {
+                // Recarrega itens para garantir dados atualizados
+                $serviceOrder->load('items');
+
+                $items = $serviceOrder->items;
+
+                if ($items->isEmpty()) {
+                    $this->setError('Esta ordem de serviço não possui itens.');
+                    return false;
+                }
+
+                foreach ($items as $item) {
+                    $item->update([
+                        'discount_amount'       => 0,
+                        'discount_percentage'   => 0,
+                    ]);
+
+                    Log::debug('Desconto removido do item de ordem de serviço', [
+                        'metodo'                => __METHOD__ . '@' . __LINE__,
+                        'service_order_item_id' => $item->id,
+                        'service_order_id'      => $serviceOrder->id,
+                    ]);
+                }
+
+                $this->setSuccess('Descontos removidos com sucesso.');
+
+                Log::info('Descontos removidos com sucesso da ordem de serviço', [
+                    'metodo'            => __METHOD__ . '@' . __LINE__,
+                    'service_order_id'  => $serviceOrder->id,
+                    'item_count'        => $items->count(),
+                ]);
+
+                return true;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao remover descontos da ordem de serviço.');
+
+            Log::error('Erro ao remover descontos da ordem de serviço', [
+                'metodo'            => __METHOD__ . '@' . __LINE__,
+                'service_order_id'  => $serviceOrder->id,
+                'error_message'     => $e->getMessage(),
+                'trace'             => $e->getTraceAsString(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Gera o próximo número de ordem de serviço para a empresa.
      * Usa lock pessimista para evitar duplicidade.
      *
