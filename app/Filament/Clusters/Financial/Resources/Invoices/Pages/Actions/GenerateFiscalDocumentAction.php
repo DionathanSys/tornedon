@@ -30,9 +30,9 @@ final class GenerateFiscalDocumentAction
     public static function make(): Action
     {
         return Action::make('generateFiscalDocument')
-            ->label('Gerar Documento Fiscal')
-            ->icon(Heroicon::DocumentText)
-            ->color('success')
+            ->label('Gerar NF')
+            ->icon(Heroicon::DocumentPlus)
+            ->color('primary')
             ->modalHeading('Gerar Documento Fiscal')
             ->modalDescription('Um documento fiscal será criado a partir dos itens desta fatura. Preencha os dados obrigatórios abaixo.')
             ->modalSubmitActionLabel('Gerar')

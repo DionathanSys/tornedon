@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedFiscalDocumentsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedProductionOrdersAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedRequisitionsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedServiceOrdersAction;
@@ -25,12 +26,16 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ViewLinkedRequisitionsAction::make()
-                ->size(Size::Small),
-            ViewLinkedServiceOrdersAction::make()
-                ->size(Size::Small),
-            ViewLinkedProductionOrdersAction::make()
-                ->size(Size::Small),
+            ActionGroup::make([
+                ViewLinkedFiscalDocumentsAction::make()
+                    ->size(Size::Small),
+                ViewLinkedRequisitionsAction::make()
+                    ->size(Size::Small),
+                ViewLinkedServiceOrdersAction::make()
+                    ->size(Size::Small),
+                ViewLinkedProductionOrdersAction::make()
+                    ->size(Size::Small),
+            ])->buttonGroup(),
             ActionGroup::make([
                 ImportRecordsAction::make()
                     ->size(Size::Small),
