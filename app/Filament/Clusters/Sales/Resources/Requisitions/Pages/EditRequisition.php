@@ -177,6 +177,54 @@ class EditRequisition extends EditRecord
         return $updated;
     }
 
+    /**
+     * Aplica o desconto igualmente entre os itens da requisição.
+     */
+    public function applyDiscount(): void
+    {
+        $record = $this->record;
+        $discountAmount = (float) str_replace(['.', ','], ['', '.'], $this->data['discount_amount'] ?? '0');
+
+        if ($discountAmount <= 0) {
+            notify::warning(
+                message: 'Informe um valor de desconto maior que zero.',
+                errorCode: 'DISCOUNT_INVALID'
+            );
+            return;
+        }
+
+        $service = app(RequisitionService::class);
+        $result = $service->applyDiscount($record, $discountAmount);
+
+        if (! $result) {
+            Log::error('EditRequisition: Erro ao aplicar desconto', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'message'        => $service->getMessage(),
+                'requisition_id' => $record->id,
+            ]);
+
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode()
+            );
+            return;
+        }
+
+        Log::info('EditRequisition: Desconto aplicado com sucesso', [
+            'metodo'         => __METHOD__ . '@' . __LINE__,
+            'requisition_id' => $record->id,
+            'discount_amount' => $discountAmount,
+        ]);
+
+        notify::success(
+            message: 'Desconto aplicado com sucesso aos itens.'
+        );
+
+        // Recarrega os itens para refletir as mudanças
+        $this->record->refresh();
+        $this->fillForm();
+    }
+
     protected function getUpdatedNotificationTitle(): ?string
     {
         return 'Requisição atualizada com sucesso';

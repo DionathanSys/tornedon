@@ -179,6 +179,54 @@ class EditServiceOrder extends EditRecord
         return $updatedServiceOrder;
     }
 
+    /**
+     * Aplica o desconto igualmente entre os itens da OS.
+     */
+    public function applyDiscount(): void
+    {
+        $record = $this->record;
+        $discountAmount = (float) str_replace(['.', ','], ['', '.'], $this->data['discount_amount'] ?? '0');
+
+        if ($discountAmount <= 0) {
+            notify::warning(
+                message: 'Informe um valor de desconto maior que zero.',
+                errorCode: 'DISCOUNT_INVALID'
+            );
+            return;
+        }
+
+        $service = app(ServiceOrderService::class);
+        $result = $service->applyDiscount($record, $discountAmount);
+
+        if (! $result) {
+            Log::error('EditServiceOrder: Erro ao aplicar desconto', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $service->getMessage(),
+                'service_order_id' => $record->id,
+            ]);
+
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode()
+            );
+            return;
+        }
+
+        Log::info('EditServiceOrder: Desconto aplicado com sucesso', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'service_order_id' => $record->id,
+            'discount_amount' => $discountAmount,
+        ]);
+
+        notify::success(
+            message: 'Desconto aplicado com sucesso aos itens.'
+        );
+
+        // Recarrega os itens para refletir as mudanças
+        $this->record->refresh();
+        $this->fillForm();
+    }
+
     protected function getUpdatedNotificationTitle(): ?string
     {
         return 'Ordem de serviço atualizada com sucesso';

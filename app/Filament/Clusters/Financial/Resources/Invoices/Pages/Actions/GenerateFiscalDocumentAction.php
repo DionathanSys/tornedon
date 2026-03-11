@@ -39,8 +39,7 @@ final class GenerateFiscalDocumentAction
             ->modalDescription('Um documento fiscal (NF-e ou NFS-e) será criado a partir dos itens desta fatura. Preencha os dados obrigatórios abaixo.')
             ->modalSubmitActionLabel('Gerar')
             ->visible(function (Invoice $record): bool {
-                return $record->fiscalDocuments()->doesntExist()
-                    && $record->requisitions()->exists();
+                return $record->fiscalDocuments()->doesntExist();
             })
             ->schema(function (): array {
                 return [

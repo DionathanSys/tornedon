@@ -9,6 +9,7 @@ use App\Enum\ServiceOrder\State;
 use App\Models\CompanyPreference;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Models\ServiceOrder;
@@ -43,7 +44,7 @@ class ServiceOrderForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(['sm' => 1,'md' => 4,'lg' => 12,])
+            ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
@@ -56,13 +57,13 @@ class ServiceOrderForm
                             ->schema([
                                 Section::make('Informações Principais')
                                     ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 'Ordem de Serviço Nº ' . $get('number') . ' | ' . State::from($get('status'))->description() : 'Informações Principais')
-                                    ->columns(['sm' => 1,'md' => 4,'lg' => 12,])
+                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->schema([
                                         Hidden::make('number'),
                                         Hidden::make('status'),
                                         Group::make()
-                                            ->columns(['sm' => 1,'md' => 6,'lg' => 8,'xl' => 12,])
+                                            ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12,])
                                             ->columnSpanFull()
                                             ->schema([
                                                 Select::make('priority')
@@ -248,12 +249,6 @@ class ServiceOrderForm
                                             ->disabled()
                                             ->dehydrated()
                                             ->default(0),
-                                        Money::make('discount_amount')
-                                            ->label('Desconto')
-                                            ->saved(false)
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                                            ->default(0),
                                         Select::make('payment_method')
                                             ->label('Forma de Pagamento')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
@@ -269,6 +264,7 @@ class ServiceOrderForm
                                             ->native(false)
                                             ->searchable()
                                             ->default(fn() => CompanyPreference::getDefaultPaymentCondition()),
+                                        DiscountAmountField::make('service_order'),
                                     ]),
                             ]),
                         Tab::make('Aprovação')
