@@ -146,13 +146,11 @@ class RequisitionsRelationManager extends RelationManager
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->label('Atualizado em')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
                 TextColumn::make('productionOrder.id')
                     ->label('Ordem de Produção')
                     ->searchable(),

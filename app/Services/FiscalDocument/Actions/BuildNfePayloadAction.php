@@ -81,6 +81,10 @@ class BuildNfePayloadAction
             $itens = [];
             foreach ($fiscalDocument->items as $index => $item) {
                 $taxData   = $item->tax_data ?? [];
+                $quantityCommercial  = (float) number_format((float) $item->quantity, 4, '.', '');
+                $unitPriceCommercial = (float) number_format((float) $item->unit_price, 2, '.', '');
+                $grossValue          = number_format($quantityCommercial * $unitPriceCommercial, 2, '.', '');
+
                 $itemPayload = [
                     'numero_item'              => $index + 1,
                     'codigo_produto'           => $item->product_code,
@@ -88,9 +92,9 @@ class BuildNfePayloadAction
                     'codigo_ncm'               => $item->ncm_code,
                     'cfop'                     => $item->cfop_code,
                     'unidade_comercial'        => $item->unit_of_measure,
-                    'quantidade_comercial'     => (float) $item->quantity,
-                    'valor_unitario_comercial' => number_format((float) $item->unit_price, 2, '.', ''),
-                    'valor_bruto'              => number_format((float) $item->total_price, 2, '.', ''),
+                    'quantidade_comercial'     => $quantityCommercial,
+                    'valor_unitario_comercial' => number_format($unitPriceCommercial, 2, '.', ''),
+                    'valor_bruto'              => $grossValue,
                     'unidade_tributavel'       => $item->taxable_unit ?? $item->unit_of_measure,
                     'quantidade_tributavel'    => number_format((float) ($item->taxable_quantity ?? $item->quantity), 4, '.', ''),
                     'valor_unitario_tributavel'=> number_format((float) ($item->taxable_unit_price ?? $item->unit_price), 2, '.', ''),
