@@ -258,7 +258,10 @@ class EditServiceOrder extends EditRecord
             message: 'Descontos removidos com sucesso.'
         );
 
-        $this->dispatch('refresh-page');
+        $this->record->refresh();
+        $this->record->load('items');  // Recarrega relação de itens
+        $this->fillForm();
+        
     }
 
     protected function getUpdatedNotificationTitle(): ?string

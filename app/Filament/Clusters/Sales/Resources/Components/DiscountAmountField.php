@@ -37,7 +37,7 @@ class DiscountAmountField
                         if (method_exists($livewire, 'applyDiscount')) {
                             $livewire->applyDiscount();
                         }
-                    })->after(fn () => $this->dispatch('refresh-page')),
+                    }),
                 Action::make('clear_discount')
                     ->label('Limpar')
                     ->icon(Heroicon::XCircle)
@@ -52,7 +52,7 @@ class DiscountAmountField
                         if (method_exists($livewire, 'clearDiscount')) {
                             $livewire->clearDiscount();
                         }
-                    })->after(fn () => $this->dispatch('refresh-page')),
+                    }),
             ]);
     }
 }
