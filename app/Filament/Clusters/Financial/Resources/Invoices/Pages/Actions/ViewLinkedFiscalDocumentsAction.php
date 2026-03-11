@@ -2,7 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
-use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\Invoice;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
