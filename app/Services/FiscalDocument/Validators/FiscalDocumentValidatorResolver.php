@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument\Validators;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Validators\Items\NfeItemValidator;
+use App\Services\FiscalDocument\Validators\Items\NfseItemValidator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -30,13 +31,19 @@ class FiscalDocumentValidatorResolver
         $documentType = $data['document_type'] ?? null;
 
         $specificValidated = match ($documentType) {
-            DocumentModel::NFE->value => NfeDocumentValidator::validateCreate($data),
+            DocumentModel::NFE->value  => NfeDocumentValidator::validateCreate($data),
+            DocumentModel::NFSE->value => NfseDocumentValidator::validateCreate($data),
             default => [],
         };
 
         $validated = array_merge($validated, $specificValidated);
 
-        // 3. Validação do perfil fiscal (NF-e)
+        // 3. Validação de itens NFS-e
+        if ($documentType === DocumentModel::NFSE->value && ! empty($data['items'])) {
+            NfseItemValidator::validate($data);
+        }
+
+        // 4. Validação do perfil fiscal (NF-e)
         if ($documentType === DocumentModel::NFE->value) {
             $companyId = $data['company_id'] ?? null;
 
@@ -73,7 +80,8 @@ class FiscalDocumentValidatorResolver
 
         if ($documentType) {
             $specificValidated = match ($documentType) {
-                DocumentModel::NFE->value => NfeDocumentValidator::validateUpdate($data),
+                DocumentModel::NFE->value  => NfeDocumentValidator::validateUpdate($data),
+                DocumentModel::NFSE->value => NfseDocumentValidator::validateUpdate($data),
                 default => [],
             };
 
@@ -83,7 +91,8 @@ class FiscalDocumentValidatorResolver
         // 3. Regras de itens por modelo (apenas se itens foram enviados na atualização)
         if (! empty($data['items']) && $documentType) {
             match ($documentType) {
-                DocumentModel::NFE->value => NfeItemValidator::validate($data),
+                DocumentModel::NFE->value  => NfeItemValidator::validate($data),
+                DocumentModel::NFSE->value => NfseItemValidator::validate($data),
                 default => null,
             };
         }

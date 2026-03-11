@@ -2,11 +2,13 @@
 
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Tables;
 
+use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\NfeDocumentService;
+use App\Services\FiscalDocument\NfseDocumentService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -22,6 +24,16 @@ class FiscalDocumentsTable
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('document_type')
+                    ->label('Tipo')
+                    ->badge()
+                    ->formatStateUsing(fn (?DocumentModel $state) => $state?->description() ?? '—')
+                    ->color(fn (?DocumentModel $state) => match ($state) {
+                        DocumentModel::NFSE => 'info',
+                        default => 'gray',
+                    })
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('document_number')
                     ->label('Número')
                     ->searchable()
@@ -49,9 +61,13 @@ class FiscalDocumentsTable
                     ->date('d/m/Y')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('nfe_status')
-                    ->label('Status SEFAZ')
+                Tables\Columns\TextColumn::make('fiscal_status')
+                    ->label('Status Fiscal')
                     ->badge()
+                    ->state(fn (FiscalDocument $record): ?NfeStatus => $record->isNfse()
+                        ? $record->nfse_status
+                        : $record->nfe_status
+                    )
                     ->formatStateUsing(fn (?NfeStatus $state) => $state?->description() ?? 'Não enviado')
                     ->color(fn (?NfeStatus $state) => $state?->color() ?? 'gray'),
 
@@ -82,10 +98,21 @@ class FiscalDocumentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('document_type')
+                    ->label('Tipo de Documento')
+                    ->options(DocumentModel::toSelectArray()),
+
                 Tables\Filters\SelectFilter::make('nfe_status')
-                    ->label('Status SEFAZ')
+                    ->label('Status NF-e')
                     ->options(array_merge(
                         ['null' => 'Não enviado'],
+                        NfeStatus::toSelectArray()
+                    )),
+
+                Tables\Filters\SelectFilter::make('nfse_status')
+                    ->label('Status NFS-e')
+                    ->options(array_merge(
+                        ['null' => 'Não enviada'],
                         NfeStatus::toSelectArray()
                     )),
 
@@ -94,7 +121,8 @@ class FiscalDocumentsTable
                     ->options(Status::toSelectArray()),
             ])
             ->recordActions([
-                // --- Emitir NF-e ---
+                // ===== NF-e Actions =====
+
                 Action::make('emitir')
                     ->label('Emitir NF-e')
                     ->icon(Heroicon::PaperAirplane)
@@ -102,7 +130,7 @@ class FiscalDocumentsTable
                     ->requiresConfirmation()
                     ->modalHeading('Emitir Nota Fiscal Eletrônica')
                     ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
-                    ->visible(fn (FiscalDocument $record) => ! $record->nfeSent() || $record->isRejected())
+                    ->visible(fn (FiscalDocument $record) => ! $record->isNfse() && (! $record->nfeSent() || $record->isRejected()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->emitir($record, Auth::id());
@@ -114,12 +142,11 @@ class FiscalDocumentsTable
                         }
                     }),
 
-                // --- Consultar SEFAZ ---
                 Action::make('consultar')
                     ->label('Consultar SEFAZ')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn (FiscalDocument $record) => $record->isInProcessing())
+                    ->visible(fn (FiscalDocument $record) => ! $record->isNfse() && $record->isInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -131,11 +158,11 @@ class FiscalDocumentsTable
                         }
                     }),
 
-                // --- Preview DANFE ---
                 Action::make('preview')
                     ->label('Preview')
                     ->icon(Heroicon::Eye)
                     ->color('gray')
+                    ->visible(fn (FiscalDocument $record) => ! $record->isNfse())
                     ->modalHeading('Preview da NF-e')
                     ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
                         $service = app(NfeDocumentService::class);
@@ -153,19 +180,17 @@ class FiscalDocumentsTable
                     })
                     ->modalWidth('6xl'),
 
-                // --- Download DANFE ---
                 Action::make('danfe')
                     ->label('Download DANFE')
                     ->icon(Heroicon::ArrowDownTray)
                     ->color('success')
-                    ->visible(fn (FiscalDocument $record) => $record->isAuthorized())
+                    ->visible(fn (FiscalDocument $record) => ! $record->isNfse() && $record->isAuthorized())
                     ->action(function (FiscalDocument $record): StreamedResponse {
                         $service = app(NfeDocumentService::class);
                         $pdf     = $service->danfe($record, Auth::id());
 
                         if (! $pdf) {
                             Notification::make()->title($service->getMessage())->danger()->send();
-                            // Return a void response to avoid fatal error
                             return response()->streamDownload(fn () => null, 'danfe.pdf');
                         }
 
@@ -174,6 +199,90 @@ class FiscalDocumentsTable
                         return response()->streamDownload(function () use ($pdf) {
                             echo base64_decode($pdf);
                         }, $filename, ['Content-Type' => 'application/pdf']);
+                    }),
+
+                // ===== NFS-e Actions =====
+
+                Action::make('emitir_nfse')
+                    ->label('Emitir NFS-e')
+                    ->icon(Heroicon::PaperAirplane)
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Emitir Nota Fiscal de Serviço')
+                    ->modalDescription('O envio é assíncrono. Após confirmação, a NFS-e será processada em segundo plano.')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && (! $record->nfseSent() || $record->isNfseRejected()))
+                    ->action(function (FiscalDocument $record): void {
+                        $service = app(NfseDocumentService::class);
+                        $service->emitir($record, Auth::id());
+
+                        if ($service->isSuccess()) {
+                            Notification::make()->title($service->getMessage())->success()->send();
+                        } else {
+                            Notification::make()->title($service->getMessage())->danger()->send();
+                        }
+                    }),
+
+                Action::make('consultar_nfse')
+                    ->label('Consultar NFS-e')
+                    ->icon(Heroicon::MagnifyingGlass)
+                    ->color('warning')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseInProcessing())
+                    ->action(function (FiscalDocument $record): void {
+                        $service = app(NfseDocumentService::class);
+                        $service->consultar($record, Auth::id());
+
+                        if ($service->isSuccess()) {
+                            Notification::make()->title($service->getMessage())->success()->send();
+                        } else {
+                            Notification::make()->title($service->getMessage())->danger()->send();
+                        }
+                    }),
+
+                Action::make('pdf_nfse')
+                    ->label('Download PDF')
+                    ->icon(Heroicon::ArrowDownTray)
+                    ->color('success')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
+                    ->action(function (FiscalDocument $record): StreamedResponse {
+                        $service = app(NfseDocumentService::class);
+                        $pdf     = $service->pdf($record, Auth::id());
+
+                        if (! $pdf) {
+                            Notification::make()->title($service->getMessage())->danger()->send();
+                            return response()->streamDownload(fn () => null, 'nfse.pdf');
+                        }
+
+                        $filename = 'NFSE-' . ($record->document_number ?? $record->id) . '.pdf';
+
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo base64_decode($pdf);
+                        }, $filename, ['Content-Type' => 'application/pdf']);
+                    }),
+
+                Action::make('cancelar_nfse')
+                    ->label('Cancelar NFS-e')
+                    ->icon(Heroicon::XCircle)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar NFS-e')
+                    ->modalDescription('Esta ação não pode ser desfeita. A NFS-e será cancelada na prefeitura.')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
+                    ->schema([
+                        \Filament\Forms\Components\Textarea::make('motivo')
+                            ->label('Motivo do Cancelamento')
+                            ->required()
+                            ->minLength(15)
+                            ->maxLength(255),
+                    ])
+                    ->action(function (FiscalDocument $record, array $data): void {
+                        $service = app(NfseDocumentService::class);
+                        $service->cancelar($record, $data['motivo'], Auth::id());
+
+                        if ($service->isSuccess()) {
+                            Notification::make()->title($service->getMessage())->success()->send();
+                        } else {
+                            Notification::make()->title($service->getMessage())->danger()->send();
+                        }
                     }),
 
                 EditAction::make(),

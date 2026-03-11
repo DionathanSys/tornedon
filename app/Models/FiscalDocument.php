@@ -55,6 +55,14 @@ class FiscalDocument extends Model
         'nfe_protocolo',
         'nfe_payload',
         'nfe_sequence_id',
+        'nfse_model',
+        'nfse_status',
+        'nfse_payload',
+        'nfse_protocol',
+        'rps_number',
+        'rps_series',
+        'rps_type',
+        'nfse_sequence_id',
         'fiscal_profile_id',
         'tax_regime_used',
     ];
@@ -82,6 +90,8 @@ class FiscalDocument extends Model
         'nfe_status'      => NfeStatus::class,
         'nfe_payload'     => 'array',
         'nfe_ambiente'    => 'integer',
+        'nfse_status'     => NfeStatus::class,
+        'nfse_payload'    => 'array',
         'created_at'      => 'datetime',
         'updated_at'      => 'datetime',
     ];
@@ -140,6 +150,11 @@ class FiscalDocument extends Model
         return $this->belongsTo(NfeSequence::class);
     }
 
+    public function nfseSequence(): BelongsTo
+    {
+        return $this->belongsTo(NfseSequence::class);
+    }
+
     public function fiscalProfile(): BelongsTo
     {
         return $this->belongsTo(FiscalProfile::class);
@@ -178,5 +193,45 @@ class FiscalDocument extends Model
     {
         return $this->nfe_status !== null
             && $this->nfe_status !== NfeStatus::PENDING;
+    }
+
+    /* ==============================
+     |  NFS-e Helpers
+     |==============================*/
+
+    public function isNfse(): bool
+    {
+        return $this->document_type === DocumentModel::NFSE;
+    }
+
+    public function isNfsePending(): bool
+    {
+        return $this->nfse_status === NfeStatus::PENDING;
+    }
+
+    public function isNfseInProcessing(): bool
+    {
+        return $this->nfse_status === NfeStatus::IN_PROCESSING;
+    }
+
+    public function isNfseAuthorized(): bool
+    {
+        return $this->nfse_status === NfeStatus::AUTHORIZED;
+    }
+
+    public function isNfseRejected(): bool
+    {
+        return $this->nfse_status === NfeStatus::REJECTED;
+    }
+
+    public function isNfseCanceled(): bool
+    {
+        return $this->nfse_status === NfeStatus::CANCELED;
+    }
+
+    public function nfseSent(): bool
+    {
+        return $this->nfse_status !== null
+            && $this->nfse_status !== NfeStatus::PENDING;
     }
 }

@@ -8,6 +8,7 @@ use App\Enum\FiscalDocument\OperationType as DocumentOperationType;
 use App\Enum\Tax\FiscalOperationType;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\Service;
 use Carbon\Carbon;
 
 class FiscalContextDTO
@@ -27,6 +28,12 @@ class FiscalContextDTO
         public readonly ?string $productOrigin,
         public readonly ?string $operationNature,
         public readonly Carbon $issuedAt,
+        // NFS-e
+        public readonly ?string $nfseModel = null, // municipal, nacional
+        public readonly ?int $serviceId = null,
+        public readonly ?string $serviceCode = null, // código LC 116/2003
+        public readonly ?string $issExigibility = null,
+        public readonly ?float $serviceTaxRate = null, // aliquota ISS do cadastro do serviço
     ) {
     }
 
@@ -67,6 +74,43 @@ class FiscalContextDTO
             productOrigin:          $item->product_origin,
             operationNature:        $operationNature,
             issuedAt:               $document->issued_at ?? now(),
+        );
+    }
+
+    /**
+     * Cria contexto fiscal a partir de um item NFS-e (serviço).
+     */
+    public static function fromNfseItem(
+        FiscalDocument $document,
+        FiscalDocumentItem $item,
+    ): self {
+        $company         = $document->company;
+        $customer        = $document->customer;
+        $companyAddress  = $company->address ?? [];
+        $customerAddress = $customer?->address?->first();
+
+        $service = $item->service_id ? Service::find($item->service_id) : null;
+
+        return new self(
+            companyId:              $document->company_id,
+            documentType:           DocumentModel::NFSE->value,
+            operationType:          FiscalOperationType::SALE,
+            movementDirection:      'out',
+            issuerUf:               $companyAddress['state'] ?? '',
+            recipientUf:            $customerAddress?->state ?? null,
+            recipientTaxpayerType:  $customer?->state_tax_indicator?->value,
+            recipientFinalConsumer: true,
+            productId:              null,
+            productNcm:             null,
+            productCest:            null,
+            productOrigin:          null,
+            operationNature:        null,
+            issuedAt:               $document->issued_at ?? now(),
+            nfseModel:              $document->nfse_model,
+            serviceId:              $item->service_id,
+            serviceCode:            $service?->service_code,
+            issExigibility:         $service?->iss_exigibility?->value ?? $item->iss_exigibility,
+            serviceTaxRate:         $service?->tax_rate ? (float) $service->tax_rate : null,
         );
     }
 
@@ -116,6 +160,11 @@ class FiscalContextDTO
             'product_origin'            => $this->productOrigin,
             'operation_nature'          => $this->operationNature,
             'issued_at'                 => $this->issuedAt->toDateString(),
+            'nfse_model'                => $this->nfseModel,
+            'service_id'                => $this->serviceId,
+            'service_code'              => $this->serviceCode,
+            'iss_exigibility'           => $this->issExigibility,
+            'service_tax_rate'          => $this->serviceTaxRate,
         ];
     }
 }

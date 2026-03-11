@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
@@ -11,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Recebe notificações da API IntegraNotas após processamento da NF-e.
+ * Recebe notificações da API IntegraNotas após processamento de NF-e e NFS-e.
  *
  * A IntegraNotas exige:
  *   - Retorno HTTP 200 sempre (mesmo em erros internos nossos)
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\Log;
  *
  * A validação é feita via campo 'signature' do payload contra o
  * CompanyPreference 'integranotas.webhook_secret' da empresa emitente.
+ *
+ * O tipo de documento (NF-e ou NFS-e) é detectado automaticamente pelo
+ * document_type do FiscalDocument localizado pela chave de acesso.
  */
 class NfeWebhookController extends Controller
 {
@@ -89,13 +93,20 @@ class NfeWebhookController extends Controller
 
     private function processarRetorno(FiscalDocument $doc, array $payload): void
     {
+        // Detecta o tipo de documento para atualizar os campos corretos
+        $isNfse = $doc->document_type === DocumentModel::NFSE;
+
+        $statusField    = $isNfse ? 'nfse_status'    : 'nfe_status';
+        $protocoloField = $isNfse ? 'nfse_protocol'  : 'nfe_protocolo';
+        $logPrefix      = $isNfse ? 'NFS-e'           : 'NF-e';
+
         $status = $payload['status'] ?? null; // 'autorizado' | 'cancelado' | null (rejeitado)
 
         $updates = [];
 
         if ($status === 'autorizado') {
-            $updates['nfe_status']   = NfeStatus::AUTHORIZED->value;
-            $updates['nfe_protocolo'] = $payload['protocolo'] ?? null;
+            $updates[$statusField]    = NfeStatus::AUTHORIZED->value;
+            $updates[$protocoloField] = $payload['protocolo'] ?? null;
             $updates['status']        = Status::CONFIRMED->value;
             $updates['confirmed_at']  = now();
 
@@ -106,23 +117,23 @@ class NfeWebhookController extends Controller
                 $updates['document_series'] = $payload['serie'];
             }
 
-            Log::info('NfeWebhookController: NF-e autorizada via webhook', [
+            Log::info("NfeWebhookController: {$logPrefix} autorizada via webhook", [
                 'fiscal_document_id' => $doc->id,
                 'protocolo'          => $payload['protocolo'] ?? null,
             ]);
 
         } elseif ($status === 'cancelado') {
-            $updates['nfe_status']  = NfeStatus::CANCELED->value;
+            $updates[$statusField]  = NfeStatus::CANCELED->value;
             $updates['status']      = Status::CANCELLED->value;
             $updates['canceled_at'] = now();
 
-            Log::info('NfeWebhookController: NF-e cancelada via webhook', [
+            Log::info("NfeWebhookController: {$logPrefix} cancelada via webhook", [
                 'fiscal_document_id' => $doc->id,
             ]);
 
         } else {
             // Rejeição
-            $updates['nfe_status'] = NfeStatus::REJECTED->value;
+            $updates[$statusField] = NfeStatus::REJECTED->value;
             $updates['status']     = Status::CANCELLED->value;
 
             $errors   = $doc->errors_messages ?? [];
@@ -130,11 +141,11 @@ class NfeWebhookController extends Controller
                 'at'       => now()->toDateTimeString(),
                 'origem'   => 'webhook',
                 'codigo'   => $payload['codigo'] ?? null,
-                'mensagem' => $payload['mensagem'] ?? 'Rejeitada pela SEFAZ',
+                'mensagem' => $payload['mensagem'] ?? "Rejeitada",
             ];
             $updates['errors_messages'] = $errors;
 
-            Log::warning('NfeWebhookController: NF-e rejeitada via webhook', [
+            Log::warning("NfeWebhookController: {$logPrefix} rejeitada via webhook", [
                 'fiscal_document_id' => $doc->id,
                 'mensagem'           => $payload['mensagem'] ?? null,
             ]);

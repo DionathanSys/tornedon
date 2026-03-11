@@ -15,7 +15,7 @@ class ListFiscalDocuments extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('Nova NF-e')
+                ->label('Novo Documento Fiscal')
                 ->icon(Heroicon::Plus),
         ];
     }

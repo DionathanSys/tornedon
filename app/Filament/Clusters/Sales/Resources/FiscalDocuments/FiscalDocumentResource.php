@@ -23,9 +23,9 @@ class FiscalDocumentResource extends Resource
 
     protected static ?string $cluster = SalesCluster::class;
 
-    protected static ?string $modelLabel = 'Nota Fiscal';
+    protected static ?string $modelLabel = 'Documento Fiscal';
 
-    protected static ?string $pluralModelLabel = 'Notas Fiscais (NF-e)';
+    protected static ?string $pluralModelLabel = 'Documentos Fiscais';
 
     protected static ?int $navigationSort = 5;
 

@@ -35,6 +35,10 @@ class FiscalDocumentItem extends Model
         'tax_data',
         'fiscal_snapshot',
         'additional_information',
+        'iss_exigibility',
+        'iss_rate',
+        'iss_amount',
+        'iss_withheld',
         'created_by',
         'updated_by',
     ];
@@ -53,6 +57,9 @@ class FiscalDocumentItem extends Model
         'included_in_total' => 'boolean',
         'tax_data' => 'array',
         'fiscal_snapshot' => 'array',
+        'iss_rate' => 'float',
+        'iss_amount' => 'float',
+        'iss_withheld' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

@@ -35,9 +35,13 @@ class ResolveFiscalContextAction
                     ? $item
                     : $this->toFiscalDocumentItem($item);
 
-                $context = FiscalContextDTO::fromFiscalDocumentItem($document, $fiscalItem);
-
-                $decision = $this->decisionService->resolve($context);
+                if ($document->isNfse()) {
+                    $context  = FiscalContextDTO::fromNfseItem($document, $fiscalItem);
+                    $decision = $this->decisionService->resolveNfse($context);
+                } else {
+                    $context  = FiscalContextDTO::fromFiscalDocumentItem($document, $fiscalItem);
+                    $decision = $this->decisionService->resolve($context);
+                }
 
                 $itemNumber = $fiscalItem->item_number ?? $item['item_number'] ?? count($decisions) + 1;
                 $decisions[$itemNumber] = $decision;

@@ -3,8 +3,10 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers;
 
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\CreateItemAction;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\CreateNfseItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditItemAction;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditNfseItemAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -26,73 +28,123 @@ class ItemsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
+        $isNfse = $this->getOwnerRecord()->isNfse();
+
         return $table
             ->recordTitleAttribute('description')
-            ->heading('Itens da Nota Fiscal')
+            ->heading($isNfse ? 'Serviços da NFS-e' : 'Itens da Nota Fiscal')
             ->columns([
                 TextColumn::make('item_number')
                     ->label('Nº')
                     ->sortable(),
+
+                // NF-e columns
                 TextColumn::make('product.name')
                     ->label('Produto')
                     ->searchable()
-                    ->limit(40),
+                    ->limit(40)
+                    ->visible(! $isNfse),
+
+                TextColumn::make('ncm_code')
+                    ->label('NCM')
+                    ->searchable()
+                    ->visible(! $isNfse),
+
+                TextColumn::make('cfop_code')
+                    ->label('CFOP')
+                    ->searchable()
+                    ->visible(! $isNfse),
+
+                // NFS-e columns
+                TextColumn::make('service.name')
+                    ->label('Serviço')
+                    ->searchable()
+                    ->limit(40)
+                    ->visible($isNfse),
+
+                TextColumn::make('service_code')
+                    ->label('Cód. Serviço')
+                    ->visible($isNfse),
+
+                // Common columns
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->searchable()
                     ->limit(40)
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('ncm_code')
-                    ->label('NCM')
-                    ->searchable(),
-                TextColumn::make('cfop_code')
-                    ->label('CFOP')
-                    ->searchable(),
+                    ->toggleable(isToggledHiddenByDefault: ! $isNfse),
+
                 TextColumn::make('unit_of_measure')
-                    ->label('Un.'),
+                    ->label('Un.')
+                    ->visible(! $isNfse),
+
                 TextColumn::make('quantity')
                     ->label('Qtde.')
                     ->numeric(4, ',', '.')
                     ->sortable()
                     ->summarize(Sum::make('quantity')->label('TT Qtde.')),
+
                 TextColumn::make('unit_price')
                     ->label('Vlr. Unitário')
                     ->money('BRL')
                     ->sortable(),
-                TextColumn::make('discount_amount')
-                    ->label('Desconto')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
+
                 TextColumn::make('total_price')
                     ->label('Total')
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('total_price')->label('TT Total')->money('BRL', 100)),
+
+                // NFS-e ISS columns
+                TextColumn::make('iss_rate')
+                    ->label('ISS %')
+                    ->numeric(2, ',', '.')
+                    ->suffix('%')
+                    ->visible($isNfse),
+
+                TextColumn::make('iss_amount')
+                    ->label('ISS Valor')
+                    ->money('BRL')
+                    ->visible($isNfse),
+
+                IconColumn::make('iss_withheld')
+                    ->label('ISS Retido')
+                    ->boolean()
+                    ->visible($isNfse),
+
+                // NF-e toggleable columns
+                TextColumn::make('discount_amount')
+                    ->label('Desconto')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse)
+                    ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
+
                 TextColumn::make('freight_amount')
                     ->label('Frete')
                     ->money('BRL')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
                 TextColumn::make('insurance_amount')
                     ->label('Seguro')
                     ->money('BRL')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
                 TextColumn::make('other_expenses_amount')
                     ->label('Outras Desp.')
                     ->money('BRL')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
                 IconColumn::make('included_in_total')
                     ->label('No Total')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
                     ->label('Criado Em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->label('Atualizado Em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -100,17 +152,36 @@ class ItemsRelationManager extends RelationManager
             ->filters([])
             ->headerActions([])
             ->recordActions([
+                // NF-e actions
                 EditItemAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->visible(fn () => ! $isNfse),
                 DeleteItemAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->visible(fn () => ! $isNfse),
+
+                // NFS-e actions
+                EditNfseItemAction::make()
+                    ->iconButton()
+                    ->visible(fn () => $isNfse),
+                DeleteItemAction::make('deleteNfseItem')
+                    ->iconButton()
+                    ->visible(fn () => $isNfse),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-                CreateItemAction::make(),
+                // NF-e create
+                CreateItemAction::make()
+                    ->visible(fn () => ! $isNfse),
+                // NFS-e create
+                CreateNfseItemAction::make()
+                    ->visible(fn () => $isNfse),
             ])
-            ->emptyStateDescription('Adicione itens à nota fiscal para que sejam exibidos aqui.');
+            ->emptyStateDescription($isNfse
+                ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'
+                : 'Adicione itens à nota fiscal para que sejam exibidos aqui.'
+            );
     }
 }

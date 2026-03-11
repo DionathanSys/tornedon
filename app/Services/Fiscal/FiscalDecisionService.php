@@ -43,6 +43,50 @@ class FiscalDecisionService
     }
 
     /**
+     * Resolve a decisão fiscal para um item NFS-e (ISS).
+     *
+     * Prioridade da alíquota ISS:
+     *   1. Alíquota do cadastro do Serviço (context.serviceTaxRate)
+     *   2. Alíquota padrão do Perfil Fiscal (iss_rate_default)
+     */
+    public function resolveNfse(FiscalContextDTO $context): FiscalDecisionDTO
+    {
+        $profile = $this->getActiveProfile($context->companyId);
+
+        $issAliquota = $context->serviceTaxRate
+            ?? $profile?->iss_rate_default
+            ?? 0;
+
+        $issRetido = $profile?->iss_withheld_default ?? false;
+
+        $issExigibilidade = $context->issExigibility ?? '1'; // 1 = Exigível
+
+        return new FiscalDecisionDTO(
+            cfop:             null,
+            cstIcms:          null,
+            csosn:            null,
+            modBcIcms:        null,
+            aliquotaIcms:     null,
+            reducaoBaseIcms:  null,
+            modBcSt:          null,
+            aliquotaMvaSt:    null,
+            aliquotaSt:       null,
+            reducaoBaseSt:    null,
+            cstPis:           null,
+            aliquotaPis:      null,
+            cstCofins:        null,
+            aliquotaCofins:   null,
+            cstIpi:           null,
+            aliquotaIpi:      null,
+            enquadramentoIpi: null,
+            issAliquota:      $issAliquota,
+            issRetido:        $issRetido,
+            issExigibilidade: $issExigibilidade,
+            source:           'nfse_service',
+        );
+    }
+
+    /**
      * Retorna o perfil fiscal ativo da empresa.
      */
     public function getActiveProfile(int $companyId): ?FiscalProfile

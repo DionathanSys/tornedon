@@ -3,7 +3,9 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas;
 
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\IssuePurpose;
+use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
@@ -14,6 +16,7 @@ use App\Models\Invoice;
 use App\Models\Partner;
 use Filament\Forms;
 use Filament\Schemas\Components\Livewire;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Operation;
@@ -35,11 +38,20 @@ class FiscalDocumentForm
                             ->columnSpan(['md' => 1]),
 
                         Forms\Components\Select::make('customer_id')
-                            ->label('Cliente / Destinatário')
+                            ->label('Cliente / Tomador')
                             ->options(Partner::pluck('name', 'id'))
                             ->required()
                             ->searchable()
                             ->native(false)
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Select::make('document_type')
+                            ->label('Tipo de Documento')
+                            ->options(DocumentModel::toSelectArray())
+                            ->default(DocumentModel::NFE->value)
+                            ->required()
+                            ->native(false)
+                            ->live()
                             ->columnSpan(['md' => 1]),
 
                         Forms\Components\Select::make('invoice_id')
@@ -48,12 +60,34 @@ class FiscalDocumentForm
                             ->searchable()
                             ->nullable()
                             ->native(false)
-                            ->helperText('Opcional — associa a NF-e a uma fatura existente.')
-                            ->columnSpan(['md' => 2]),
+                            ->helperText('Opcional — associa o documento a uma fatura existente.')
+                            ->columnSpan(['md' => 1]),
                     ])
                     ->columns(['md' => 2])
                     ->collapsible(),
 
+                // === NFS-e: Modelo ===
+                Section::make('Dados da NFS-e')
+                    ->schema([
+                        Forms\Components\Select::make('nfse_model')
+                            ->label('Modelo NFS-e')
+                            ->options(NfseModel::toSelectArray())
+                            ->required()
+                            ->native(false)
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\DatePicker::make('issued_at')
+                            ->label('Data de Emissão')
+                            ->required()
+                            ->native(false)
+                            ->default(now())
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible()
+                    ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),
+
+                // === NF-e: Dados ===
                 Section::make('Dados da NF-e')
                     ->schema([
                         Forms\Components\Select::make('operation_nature')
@@ -107,7 +141,8 @@ class FiscalDocumentForm
                             ->columnSpan(['md' => 1]),
                     ])
                     ->columns(['md' => 2])
-                    ->collapsible(),
+                    ->collapsible()
+                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
 
                 Livewire::make(ItemsRelationManager::class, fn (FiscalDocument $record) => [
                     'ownerRecord' => $record,
@@ -117,6 +152,7 @@ class FiscalDocumentForm
                     ->columnSpanFull()
                     ->visibleOn([Operation::Edit]),
 
+                // === NF-e: Frete ===
                 Section::make('Frete')
                     ->schema([
                         Forms\Components\Select::make('freight_data.modalidade_frete')
@@ -132,7 +168,8 @@ class FiscalDocumentForm
                             ->columnSpan(['md' => 1]),
                     ])
                     ->columns(['md' => 2])
-                    ->collapsible(),
+                    ->collapsible()
+                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
 
                 Section::make('Informações Adicionais')
                     ->schema([

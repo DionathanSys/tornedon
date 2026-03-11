@@ -34,6 +34,11 @@ class FiscalDecisionDTO
         public readonly ?float $aliquotaIpi,
         public readonly ?string $enquadramentoIpi,
 
+        // ISS (NFS-e)
+        public readonly ?float $issAliquota = null,
+        public readonly ?bool $issRetido = null,
+        public readonly ?string $issExigibilidade = null,
+
         // Rastreabilidade
         public readonly string $source = 'regime_default', // product_tax, regime_default
 
@@ -123,6 +128,23 @@ class FiscalDecisionDTO
     }
 
     /**
+     * Monta dados tributários para um item NFS-e (ISS + retenções declaratórias).
+     */
+    public function toNfseTaxData(float $valorServicos): array
+    {
+        $issValor = round($valorServicos * ($this->issAliquota ?? 0) / 100, 2);
+
+        return [
+            'iss' => [
+                'exigibilidade' => $this->issExigibilidade ?? '1',
+                'aliquota'      => $this->issAliquota ?? 0,
+                'valor'         => $issValor,
+                'retido'        => $this->issRetido ?? false,
+            ],
+        ];
+    }
+
+    /**
      * Serializa o snapshot completo da decisão fiscal para persistência imutável.
      */
     public function toSnapshotArray(): array
@@ -145,6 +167,9 @@ class FiscalDecisionDTO
             'cst_ipi'           => $this->cstIpi,
             'aliquota_ipi'      => $this->aliquotaIpi,
             'enquadramento_ipi' => $this->enquadramentoIpi,
+            'iss_rate'      => $this->issAliquota,
+            'iss_withheld'        => $this->issRetido,
+            'iss_exigibilidade' => $this->issExigibilidade,
             'source'            => $this->source,
             'metadata'          => $this->metadata,
         ];
@@ -173,6 +198,9 @@ class FiscalDecisionDTO
             cstIpi:           $this->cstIpi,
             aliquotaIpi:      $this->aliquotaIpi,
             enquadramentoIpi: $this->enquadramentoIpi,
+            issAliquota:      $this->issAliquota,
+            issRetido:        $this->issRetido,
+            issExigibilidade: $this->issExigibilidade,
             source:           $this->source,
             metadata:         $this->metadata,
         );
@@ -198,6 +226,9 @@ class FiscalDecisionDTO
             cstIpi: $data['cst_ipi'] ?? null,
             aliquotaIpi: isset($data['aliquota_ipi']) ? (float) $data['aliquota_ipi'] : null,
             enquadramentoIpi: $data['enquadramento_ipi'] ?? null,
+            issAliquota: isset($data['iss_rate']) ? (float) $data['iss_rate'] : null,
+            issRetido: isset($data['iss_withheld']) ? (bool) $data['iss_withheld'] : null,
+            issExigibilidade: $data['iss_exigibilidade'] ?? null,
             source: $data['source'] ?? 'regime_default',
             metadata: $data['metadata'] ?? null,
         );

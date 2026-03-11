@@ -35,6 +35,7 @@ class PersistFiscalSnapshotAction
 
             // Gravar snapshot + tax_data em cada item
             $document->loadMissing('items');
+            $isNfse = $document->isNfse();
 
             foreach ($document->items as $item) {
                 $decision = $decisions[$item->item_number] ?? null;
@@ -44,16 +45,23 @@ class PersistFiscalSnapshotAction
                 }
 
                 $baseCalculo = (float) $item->total_price;
-                $taxData = $decision->toTaxData($baseCalculo);
 
                 $updateData = [
                     'fiscal_snapshot' => $decision->toSnapshotArray(),
-                    'tax_data' => $taxData,
                 ];
 
-                // Atualizar CFOP se a decisão fiscal determinou um
-                if ($decision->cfop !== null) {
-                    $updateData['cfop_code'] = $decision->cfop;
+                if ($isNfse) {
+                    $updateData['tax_data']       = $decision->toNfseTaxData($baseCalculo);
+                    $updateData['iss_rate']    = $decision->issAliquota;
+                    $updateData['iss_withheld']      = $decision->issRetido;
+                    $updateData['iss_exigibility'] = $decision->issExigibilidade;
+                    $updateData['iss_amount']       = round($baseCalculo * ($decision->issAliquota ?? 0) / 100, 2);
+                } else {
+                    $updateData['tax_data'] = $decision->toTaxData($baseCalculo);
+
+                    if ($decision->cfop !== null) {
+                        $updateData['cfop_code'] = $decision->cfop;
+                    }
                 }
 
                 $item->update($updateData);

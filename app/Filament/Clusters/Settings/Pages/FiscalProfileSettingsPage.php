@@ -100,6 +100,16 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'taxpayer_observations_default' => $this->toKeyValueState($profile?->taxpayer_observations_default),
             'tax_observations_default' => $this->toKeyValueState($profile?->tax_observations_default),
             'informacoes_complementares_padrao' => $profile?->informacoes_complementares_padrao,
+
+            // NFS-e / ISS
+            'iss_rate_default' => $profile?->iss_rate_default,
+            'iss_withheld_default' => $profile?->iss_withheld_default ?? false,
+            'nfse_special_tax_regime' => $profile?->nfse_special_tax_regime,
+            'default_service_code' => $profile?->default_service_code,
+            'service_cnae_code' => $profile?->service_cnae_code,
+            'default_nbs_code' => $profile?->default_nbs_code,
+            'default_municipal_tax_code' => $profile?->default_municipal_tax_code,
+            'default_nfse_additional_information' => $profile?->default_nfse_additional_information,
         ]);
     }
 
@@ -390,6 +400,72 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ])
                     ->collapsible()
                     ->collapsed(),
+
+                // NFS-e / ISS
+                \Filament\Schemas\Components\Section::make('NFS-e / ISS')
+                    ->description('Configuração padrão para emissão de Notas Fiscais de Serviço.')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->schema([
+                        Forms\Components\TextInput::make('iss_rate_default')
+                            ->label('Alíquota ISS Padrão (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix('%')
+                            ->helperText('Alíquota ISS usada quando o serviço não tem alíquota própria.')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Toggle::make('iss_withheld_default')
+                            ->label('ISS Retido por Padrão')
+                            ->helperText('Se ativado, novos itens de NFS-e terão ISS retido por padrão.')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Select::make('nfse_special_tax_regime')
+                            ->label('Regime Especial de Tributação')
+                            ->options([
+                                '0' => '0 - Nenhum',
+                                '1' => '1 - Microempresa Municipal',
+                                '2' => '2 - Estimativa',
+                                '3' => '3 - Sociedade de Profissionais',
+                                '4' => '4 - Cooperativa',
+                                '5' => '5 - MEI',
+                                '6' => '6 - ME/EPP',
+                            ])
+                            ->native(false)
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('default_service_code')
+                            ->label('Código Serviço Padrão (LC 116)')
+                            ->maxLength(10)
+                            ->placeholder('Ex: 14.01')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('service_cnae_code')
+                            ->label('CNAE Serviço')
+                            ->maxLength(7)
+                            ->placeholder('Ex: 6201500')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('default_nbs_code')
+                            ->label('Código NBS Padrão')
+                            ->maxLength(9)
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('default_municipal_tax_code')
+                            ->label('Código Tributação Município')
+                            ->maxLength(20)
+                            ->helperText('Código do item da lista de serviços no município.')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Textarea::make('default_nfse_additional_information')
+                            ->label('Informações Complementares NFS-e (padrão)')
+                            ->rows(3)
+                            ->maxLength(2000)
+                            ->helperText('Texto padrão nas informações complementares de cada NFS-e emitida.')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible()
+                    ->collapsed(),
             ])
             ->statePath('data');
     }
@@ -472,6 +548,16 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'taxpayer_observations_default' => $this->toPayloadObservationList($data['taxpayer_observations_default'] ?? []),
             'tax_observations_default' => $this->toPayloadObservationList($data['tax_observations_default'] ?? []),
             'informacoes_complementares_padrao' => $data['informacoes_complementares_padrao'] ?? null,
+
+            // NFS-e / ISS
+            'iss_rate_default' => $data['iss_rate_default'] ?? null,
+            'iss_withheld_default' => $data['iss_withheld_default'] ?? false,
+            'nfse_special_tax_regime' => $data['nfse_special_tax_regime'] ?? null,
+            'default_service_code' => $data['default_service_code'] ?? null,
+            'service_cnae_code' => $data['service_cnae_code'] ?? null,
+            'default_nbs_code' => $data['default_nbs_code'] ?? null,
+            'default_municipal_tax_code' => $data['default_municipal_tax_code'] ?? null,
+            'default_nfse_additional_information' => $data['default_nfse_additional_information'] ?? null,
         ]);
 
         Notification::make()
