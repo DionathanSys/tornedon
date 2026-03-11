@@ -44,10 +44,10 @@
             x-transition
             @click.outside="closePanel()"
             class="p-6 shadow-xl"
-            x-bind:style="`${panelStyle}; border-radius: 14px; background-color: #eff6ff; border: 1px solid #bfdbfe; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15); font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;`"
+            x-bind:style="`${panelStyle}; border-radius: 14px; m-6; p-6; background-color: #eff6ff; border: 1px solid #bfdbfe; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15); font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;`"
         >
             <div class="mb-2 text-sm font-semibold text-gray-900">{{ $title }}</div>
-            <div class="text-sm leading-6 text-gray-700">{{ $content }}</div>
+            <div class="text-sm m-6 p-6 leading-6 text-gray-700">{{ $content }}</div>
         </div>
     </template>
 </div>
