@@ -26,7 +26,7 @@ class ResolveFiscalContextAction
     public function execute(FiscalDocument $document, array $items): array
     {
         try {
-            $document->loadMissing(['company', 'customer.addresses']);
+            $document->loadMissing(['company', 'customer.address']);
 
             $decisions = [];
 

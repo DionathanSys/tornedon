@@ -35,7 +35,7 @@ class FiscalContextDTO
         $company            = $document->company;
         $customer           = $document->customer;
         $companyAddress     = $company->address ?? [];
-        $customerAddress    = $customer?->addresses?->first();
+        $customerAddress    = $customer?->address?->first();
 
         $operationNature = $document->operation_nature instanceof OperationNature
             ? $document->operation_nature->value
