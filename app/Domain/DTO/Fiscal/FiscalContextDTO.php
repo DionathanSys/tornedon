@@ -3,6 +3,8 @@
 namespace App\Domain\DTO\Fiscal;
 
 use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\OperationType as DocumentOperationType;
 use App\Enum\Tax\FiscalOperationType;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
@@ -42,13 +44,17 @@ class FiscalContextDTO
             : $document->operation_nature;
 
         $operationType = $document->operation_type;
-        $isOutbound = $operationType instanceof \App\Enum\FiscalDocument\OperationType
-            ? $operationType === \App\Enum\FiscalDocument\OperationType::SAIDA
+        $isOutbound = $operationType instanceof DocumentOperationType
+            ? $operationType === DocumentOperationType::SAIDA
             : (string) $operationType === '1';
+
+        $documentType = $document->document_type instanceof DocumentModel
+            ? $document->document_type->value
+            : (string) ($document->document_type ?? 'nfe');
 
         return new self(
             companyId:              $document->company_id,
-            documentType:           $document->document_type ?? 'nfe',
+            documentType:           $documentType,
             operationType:          self::resolveOperationType($operationNature),
             movementDirection:      $isOutbound ? 'out' : 'in',
             issuerUf:               $companyAddress['state'] ?? '',
