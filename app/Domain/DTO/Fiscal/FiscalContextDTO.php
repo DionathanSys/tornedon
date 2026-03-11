@@ -37,11 +37,20 @@ class FiscalContextDTO
         $companyAddress     = $company->address ?? [];
         $customerAddress    = $customer?->addresses?->first();
 
+        $operationNature = $document->operation_nature instanceof OperationNature
+            ? $document->operation_nature->value
+            : $document->operation_nature;
+
+        $operationType = $document->operation_type;
+        $isOutbound = $operationType instanceof \App\Enum\FiscalDocument\OperationType
+            ? $operationType === \App\Enum\FiscalDocument\OperationType::SAIDA
+            : (string) $operationType === '1';
+
         return new self(
             companyId:              $document->company_id,
             documentType:           $document->document_type ?? 'nfe',
-            operationType:          self::resolveOperationType($document->operation_nature),
-            movementDirection:      $document->operation_type === 1 ? 'out' : 'in',
+            operationType:          self::resolveOperationType($operationNature),
+            movementDirection:      $isOutbound ? 'out' : 'in',
             issuerUf:               $companyAddress['state'] ?? '',
             recipientUf:            $customerAddress?->state ?? null,
             recipientTaxpayerType:  $customer?->state_tax_indicator?->value,
@@ -50,7 +59,7 @@ class FiscalContextDTO
             productNcm:             $item->ncm_code,
             productCest:            $item->cest_code,
             productOrigin:          $item->product_origin,
-            operationNature:        $document->operation_nature,
+            operationNature:        $operationNature,
             issuedAt:               $document->issued_at ?? now(),
         );
     }

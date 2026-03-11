@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\Invoice;
 use Filament\Actions\Action;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
 
@@ -20,6 +21,8 @@ final class ViewLinkedFiscalDocumentsAction
             ->badgeColor('primary')
             ->visible(fn (Invoice $record): bool => $record->fiscalDocuments()->exists())
             ->modalHeading('Notas fiscais vinculadas')
+            ->modalWidth(Width::ExtraSmall)
+            ->modalAlignCenter()
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
             ->modalContent(function (Invoice $record): View {
