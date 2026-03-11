@@ -43,8 +43,11 @@ class SendNfeAction
 
             // ------------------------------------------------------------------
             // 1. Reservar número (somente se ainda não reservado, ex: reenvio)
+            // Também cobre casos inválidos como "000000", que viram 0 no payload.
             // ------------------------------------------------------------------
-            if (empty($fiscalDocument->document_number)) {
+            $currentNumber = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->document_number ?? ''));
+
+            if ($currentNumber < 1) {
                 $reserveAction = new ReserveNfeNumberAction();
                 if (! $reserveAction->execute($fiscalDocument, $serie, $operationNature)) {
                     $this->setError($reserveAction->getMessage());
