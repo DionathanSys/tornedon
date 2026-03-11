@@ -128,7 +128,7 @@ class EditServiceOrder extends EditRecord
 
                         return $result;
                     }),
-            ])->button()
+            ])->buttonGroup()
         ];
     }
 
@@ -191,6 +191,20 @@ class EditServiceOrder extends EditRecord
             notify::warning(
                 message: 'Informe um valor de desconto maior que zero.',
                 errorCode: 'DISCOUNT_INVALID'
+            );
+            return;
+        }
+
+        // Calcula o valor total dos itens para validação prévia
+        $record->load('items');
+        $totalItemsValue = $record->items->sum(function ($item) {
+            return (float) $item->quantity * (float) $item->unit_price;
+        });
+
+        if ($discountAmount > $totalItemsValue) {
+            notify::warning(
+                message: 'O desconto não pode ser maior que o valor total dos itens (R$ ' . number_format($totalItemsValue, 2, ',', '.') . ').',
+                errorCode: 'DISCOUNT_EXCEEDS_ITEMS'
             );
             return;
         }

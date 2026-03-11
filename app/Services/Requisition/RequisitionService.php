@@ -813,6 +813,17 @@ class RequisitionService
                     return false;
                 }
 
+                // Calcula o valor total dos itens
+                $totalItemsValue = $items->sum(function ($item) {
+                    return (float) $item->quantity * (float) $item->unit_price;
+                });
+
+                // Valida se o desconto não é maior que o total dos itens
+                if ($discountAmount > $totalItemsValue) {
+                    $this->setError('O desconto não pode ser maior que o valor total dos itens (R$ ' . number_format($totalItemsValue, 2, ',', '.') . ').');
+                    return false;
+                }
+
                 // Calcula o desconto por item
                 $itemCount = $items->count();
                 $discountPerItem = round($discountAmount / $itemCount, 2);

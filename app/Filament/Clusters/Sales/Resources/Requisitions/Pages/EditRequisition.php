@@ -193,6 +193,20 @@ class EditRequisition extends EditRecord
             return;
         }
 
+        // Calcula o valor total dos itens para validação prévia
+        $record->load('items');
+        $totalItemsValue = $record->items->sum(function ($item) {
+            return (float) $item->quantity * (float) $item->unit_price;
+        });
+
+        if ($discountAmount > $totalItemsValue) {
+            notify::warning(
+                message: 'O desconto não pode ser maior que o valor total dos itens (R$ ' . number_format($totalItemsValue, 2, ',', '.') . ').',
+                errorCode: 'DISCOUNT_EXCEEDS_ITEMS'
+            );
+            return;
+        }
+
         $service = app(RequisitionService::class);
         $result = $service->applyDiscount($record, $discountAmount);
 
@@ -220,9 +234,7 @@ class EditRequisition extends EditRecord
             message: 'Desconto aplicado com sucesso aos itens.'
         );
 
-        // Recarrega os itens para refletir as mudanças
-        $this->record->refresh();
-        $this->fillForm();
+        redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
 
     /**
@@ -258,9 +270,7 @@ class EditRequisition extends EditRecord
             message: 'Descontos removidos com sucesso.'
         );
 
-        // Recarrega os itens para refletir as mudanças
-        $this->record->refresh();
-        $this->fillForm();
+        redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
 
     protected function getUpdatedNotificationTitle(): ?string
