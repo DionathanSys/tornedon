@@ -41,11 +41,18 @@ class CreateManyFiscalDocumentItemsAction
             ]);
 
             $now = now();
-            $records = array_map(fn (array $item) => array_merge($item, [
-                'created_by'  => $this->createdBy,
-                'created_at'  => $now,
-                'updated_at'  => $now,
-            ]), $validated['items']);
+            $records = array_map(function (array $item) use ($now): array {
+                // O insert() em lote ignora casts do Eloquent.
+                // Fazemos fill() para aplicar casts (ex.: MoneyCast) antes de inserir.
+                $model = new FiscalDocumentItem();
+                $model->fill($item);
+
+                return array_merge($model->getAttributes(), [
+                    'created_by'  => $this->createdBy,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
+                ]);
+            }, $validated['items']);
 
             Log::debug('Preparação dos registros para inserção em lote', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,

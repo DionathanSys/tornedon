@@ -81,9 +81,22 @@ class BuildNfePayloadAction
             $itens = [];
             foreach ($fiscalDocument->items as $index => $item) {
                 $taxData   = $item->tax_data ?? [];
-                $quantityCommercial  = (float) number_format((float) $item->quantity, 4, '.', '');
-                $unitPriceCommercial = (float) number_format((float) $item->unit_price, 2, '.', '');
-                $grossValue          = number_format($quantityCommercial * $unitPriceCommercial, 2, '.', '');
+                $quantityCommercial = (float) number_format((float) $item->quantity, 4, '.', '');
+                $baseUnitPriceCommercial = (float) $item->unit_price;
+                $grossValueFloat = round($quantityCommercial * $baseUnitPriceCommercial, 2);
+
+                $quantityTaxable = (float) number_format((float) ($item->taxable_quantity ?? $item->quantity), 4, '.', '');
+                $baseUnitPriceTaxable = (float) ($item->taxable_unit_price ?? $item->unit_price);
+
+                $unitPriceCommercial = $quantityCommercial > 0
+                    ? ($grossValueFloat / $quantityCommercial)
+                    : $baseUnitPriceCommercial;
+
+                $unitPriceTaxable = $quantityTaxable > 0
+                    ? ($grossValueFloat / $quantityTaxable)
+                    : $baseUnitPriceTaxable;
+
+                $grossValue = number_format($grossValueFloat, 2, '.', '');
 
                 $itemPayload = [
                     'numero_item'              => $index + 1,
@@ -93,11 +106,11 @@ class BuildNfePayloadAction
                     'cfop'                     => $item->cfop_code,
                     'unidade_comercial'        => $item->unit_of_measure,
                     'quantidade_comercial'     => $quantityCommercial,
-                    'valor_unitario_comercial' => number_format($unitPriceCommercial, 2, '.', ''),
+                    'valor_unitario_comercial' => number_format($unitPriceCommercial, 10, '.', ''),
                     'valor_bruto'              => $grossValue,
                     'unidade_tributavel'       => $item->taxable_unit ?? $item->unit_of_measure,
-                    'quantidade_tributavel'    => number_format((float) ($item->taxable_quantity ?? $item->quantity), 4, '.', ''),
-                    'valor_unitario_tributavel'=> number_format((float) ($item->taxable_unit_price ?? $item->unit_price), 2, '.', ''),
+                    'quantidade_tributavel'    => number_format($quantityTaxable, 4, '.', ''),
+                    'valor_unitario_tributavel'=> number_format($unitPriceTaxable, 10, '.', ''),
                     'origem'                   => $item->product_origin,
                     'inclui_no_total'          => $item->included_in_total ? '1' : '0',
                     'imposto'                  => $taxData['imposto'] ?? [],

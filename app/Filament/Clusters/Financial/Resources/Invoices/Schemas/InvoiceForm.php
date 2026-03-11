@@ -62,22 +62,22 @@ class InvoiceForm
                                             ->required(),
                                     ]),
                             ]),
-                        Tab::make('Produtos')
-                            ->schema([
-                                Livewire::make(RequisitionsRelationManager::class, fn(Invoice $record) => [
-                                    'ownerRecord' => $record,
-                                    'pageClass' => EditInvoice::class,
-                                ])
-                                    ->columnSpanFull(),
-                            ]),
-                        Tab::make('Serviços')
-                            ->schema([
-                                Livewire::make(ServiceOrdersRelationManager::class, fn(Invoice $record) => [
-                                    'ownerRecord' => $record,
-                                    'pageClass' => EditInvoice::class,
-                                ])
-                                    ->columnSpanFull(),
-                            ]),
+                        // Tab::make('Produtos')
+                        //     ->schema([
+                        //         Livewire::make(RequisitionsRelationManager::class, fn(Invoice $record) => [
+                        //             'ownerRecord' => $record,
+                        //             'pageClass' => EditInvoice::class,
+                        //         ])
+                        //             ->columnSpanFull(),
+                        //     ]),
+                        // Tab::make('Serviços')
+                        //     ->schema([
+                        //         Livewire::make(ServiceOrdersRelationManager::class, fn(Invoice $record) => [
+                        //             'ownerRecord' => $record,
+                        //             'pageClass' => EditInvoice::class,
+                        //         ])
+                        //             ->columnSpanFull(),
+                        //     ]),
                     ]),
 
                 Hidden::make('company_id'),
