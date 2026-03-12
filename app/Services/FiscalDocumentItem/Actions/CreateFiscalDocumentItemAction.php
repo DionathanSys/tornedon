@@ -2,8 +2,11 @@
 
 namespace App\Services\FiscalDocumentItem\Actions;
 
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\Product\Origin;
+use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
-use App\Services\FiscalDocument\Validators\Items\NfeItemValidator;
+use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +23,19 @@ class CreateFiscalDocumentItemAction
     public function execute(array $data): ?FiscalDocumentItem
     {
         try {
-            $validated = NfeItemValidator::validateCreate($data);
+            $validated = FiscalDocumentItemValidatorResolver::validateCreate($data);
+
+            $documentType = FiscalDocument::query()
+                ->whereKey($validated['fiscal_document_id'] ?? null)
+                ->value('document_type');
+
+            if (
+                $documentType !== DocumentModel::NFSE->value
+                && (! isset($validated['product_origin']) || $validated['product_origin'] === null || $validated['product_origin'] === '')
+            ) {
+                $validated['product_origin'] = Origin::NACIONAL->value;
+            }
+
             $validated['created_by'] = $this->createdBy;
 
             $item = FiscalDocumentItem::create($validated);

@@ -2,8 +2,11 @@
 
 namespace App\Services\FiscalDocumentItem\Actions;
 
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\Product\Origin;
+use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
-use App\Services\FiscalDocument\Validators\Items\NfeItemValidator;
+use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -32,16 +35,29 @@ class CreateManyFiscalDocumentItemsAction
                 'user_id'    => $this->createdBy,
             ]);
 
-            $validated = NfeItemValidator::validateCreateMany(['items' => $items]);
+            $validated = FiscalDocumentItemValidatorResolver::validateCreateMany(['items' => $items]);
+
+            $fiscalDocumentId = $validated['items'][0]['fiscal_document_id'] ?? null;
+            $documentType = FiscalDocument::query()
+                ->whereKey($fiscalDocumentId)
+                ->value('document_type');
 
             Log::debug('Validação dos itens de documento fiscal concluída', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'validated'  => $validated,
+                'document_type' => $documentType,
                 'user_id'    => $this->createdBy,
             ]);
 
             $now = now();
-            $records = array_map(function (array $item) use ($now): array {
+            $records = array_map(function (array $item) use ($now, $documentType): array {
+                if (
+                    $documentType !== DocumentModel::NFSE->value
+                    && (! isset($item['product_origin']) || $item['product_origin'] === null || $item['product_origin'] === '')
+                ) {
+                    $item['product_origin'] = Origin::NACIONAL->value;
+                }
+
                 // O insert() em lote ignora casts do Eloquent.
                 // Fazemos fill() para aplicar casts (ex.: MoneyCast) antes de inserir.
                 $model = new FiscalDocumentItem();
@@ -77,7 +93,6 @@ class CreateManyFiscalDocumentItemsAction
                 ->where('created_at', $now)
                 ->get()
                 ->all();
-
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos itens do documento fiscal', $e->errors());
 
@@ -90,7 +105,6 @@ class CreateManyFiscalDocumentItemsAction
             ]);
 
             return null;
-
         } catch (QueryException $e) {
             $this->setError('Erro ao salvar itens do documento fiscal no banco de dados');
 
@@ -103,7 +117,6 @@ class CreateManyFiscalDocumentItemsAction
             ]);
 
             return null;
-
         } catch (\Exception $e) {
             $this->setError('Erro inesperado ao criar itens do documento fiscal');
 

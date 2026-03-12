@@ -118,4 +118,32 @@ class NfseItemValidator
 
         return Validator::make($data, $rules, $messages)->validate();
     }
+
+    private static function updateRules(): array
+    {
+        return [
+            'service_id'          => 'sometimes|nullable|integer|exists:services,id',
+            'description'         => 'sometimes|required|string|max:2000',
+            'quantity'            => 'sometimes|required|numeric|min:0.0001',
+            'unit_price'          => 'sometimes|required|numeric|min:0',
+            'total_price'         => 'sometimes|required|numeric|min:0.01',
+            'unit_of_measure'     => 'sometimes|nullable|string|max:6',
+            'service_code'        => 'sometimes|nullable|string|max:20',
+            'nbs_code'            => 'sometimes|nullable|string|max:9',
+            'cnae_code'           => 'sometimes|nullable|string|max:7',
+            'municipal_tax_code'  => 'sometimes|nullable|string|max:20',
+            'iss_rate'            => 'sometimes|nullable|numeric|min:0|max:100',
+            'iss_exigibility'     => 'sometimes|nullable|string|max:2',
+            'iss_withheld'        => 'sometimes|nullable|boolean',
+            'tax_data'            => 'sometimes|nullable|array',
+        ];
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public static function validateUpdate(array $data): array
+    {
+        return Validator::make($data, self::updateRules(), self::createMessages())->validate();
+    }
 }
