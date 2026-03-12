@@ -206,8 +206,12 @@ class FiscalDocumentForm
                                                 Forms\Components\TextInput::make('at')
                                                     ->label('Data/Hora')
                                                     ->disabled(),
+                                                Forms\Components\TextInput::make('codigo')
+                                                    ->label('Código')
+                                                    ->disabled(),
                                                 Forms\Components\TextInput::make('job')
                                                     ->label('Origem')
+                                                    ->formatStateUsing(fn ($state, Get $get): ?string => $state ?? $get('origem'))
                                                     ->disabled(),
                                                 Forms\Components\Textarea::make('mensagem')
                                                     ->label('Mensagem')
@@ -219,7 +223,7 @@ class FiscalDocumentForm
                                             ->addable(false)
                                             ->deletable(false)
                                             ->reorderable(false)
-                                            ->collapsed()
+                                            ->collapsed(false)
                                             ->dehydrated(false)
                                             ->default([]),
                                     ]),
