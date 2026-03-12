@@ -50,6 +50,8 @@ class CreateManyFiscalDocumentItemsAction
                 'user_id'    => $this->createdBy,
             ]);
 
+            $validatedItems = $this->assignMissingItemNumbers($validated['items']);
+
             $now = now();
             $records = array_map(function (array $item) use ($now, $documentType): array {
                 if (
@@ -71,7 +73,7 @@ class CreateManyFiscalDocumentItemsAction
                     'created_at'  => $now,
                     'updated_at'  => $now,
                 ]);
-            }, $validated['items']);
+            }, $validatedItems);
 
             Log::debug('Preparação dos registros para inserção em lote', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
@@ -161,5 +163,30 @@ class CreateManyFiscalDocumentItemsAction
         }
 
         return $persistable;
+    }
+
+    private function assignMissingItemNumbers(array $items): array
+    {
+        $fiscalDocumentId = $items[0]['fiscal_document_id'] ?? null;
+
+        if (! $fiscalDocumentId) {
+            return $items;
+        }
+
+        $nextItemNumber = ((int) FiscalDocumentItem::query()
+            ->where('fiscal_document_id', (int) $fiscalDocumentId)
+            ->lockForUpdate()
+            ->max('item_number')) + 1;
+
+        foreach ($items as $index => $item) {
+            if (! empty($item['item_number'])) {
+                continue;
+            }
+
+            $items[$index]['item_number'] = $nextItemNumber;
+            $nextItemNumber++;
+        }
+
+        return $items;
     }
 }

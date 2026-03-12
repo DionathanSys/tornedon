@@ -38,6 +38,7 @@ class CreateFiscalDocumentItemAction
             }
 
             $validated = $this->normalizeForPersistence($validated);
+            $validated = $this->assignItemNumberIfMissing($validated);
             $validated['created_by'] = $this->createdBy;
 
             $item = FiscalDocumentItem::create($validated);
@@ -121,5 +122,21 @@ class CreateFiscalDocumentItemAction
         }
 
         return $persistable;
+    }
+
+    private function assignItemNumberIfMissing(array $data): array
+    {
+        if (! empty($data['item_number']) || empty($data['fiscal_document_id'])) {
+            return $data;
+        }
+
+        $lastItemNumber = FiscalDocumentItem::query()
+            ->where('fiscal_document_id', (int) $data['fiscal_document_id'])
+            ->lockForUpdate()
+            ->max('item_number');
+
+        $data['item_number'] = ((int) $lastItemNumber) + 1;
+
+        return $data;
     }
 }
