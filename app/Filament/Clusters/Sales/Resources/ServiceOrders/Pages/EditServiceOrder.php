@@ -5,8 +5,10 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
 use App\Notification\NotifyService as notify;
@@ -29,6 +31,8 @@ class EditServiceOrder extends EditRecord
         return [
             ActionGroup::make([
                 DuplicateServiceOrderAction::make(),
+                PreviewServiceOrderPdfAction::make(),
+                DownloadServiceOrderPdfAction::make(),
                 CloseServiceOrderAction::make(),
                 InvoiceServiceOrderAction::make(),
                 ViewInvoiceServiceOrderAction::make(),

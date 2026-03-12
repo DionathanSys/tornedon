@@ -4,7 +4,9 @@ namespace App\Filament\Clusters\Sales\Resources\Requisitions\Pages;
 
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CancelRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CloseRequisitionAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\InvoiceRequisitionAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ReopenRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ViewInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
@@ -29,6 +31,10 @@ class EditRequisition extends EditRecord
         return [
             ActionGroup::make([
                 CloseRequisitionAction::make()
+                    ->size(Size::Small),
+                PreviewRequisitionPdfAction::make()
+                    ->size(Size::Small),
+                DownloadRequisitionPdfAction::make()
                     ->size(Size::Small),
                 InvoiceRequisitionAction::make()
                     ->size(Size::Small),

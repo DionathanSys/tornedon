@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages;
 
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\InvoiceProductionOrderAction;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\DownloadProductionOrderPdfAction;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -17,6 +19,8 @@ class EditProductionOrder extends EditRecord
     {
         return [
             InvoiceProductionOrderAction::make(),
+            PreviewProductionOrderPdfAction::make(),
+            DownloadProductionOrderPdfAction::make(),
             ViewAction::make(),
             DeleteAction::make(),
         ];

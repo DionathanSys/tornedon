@@ -10,6 +10,7 @@ use App\Services\ProductionOrder\Actions\CancelProductionAction;
 use App\Services\ProductionOrder\Actions\CompleteProduction;
 use App\Services\ProductionOrder\Actions\CreateProductionOrder;
 use App\Services\ProductionOrder\Actions\GenerateRequisitionFromProductionAction;
+use App\Services\ProductionOrder\Actions\PrintProductionOrderPdfAction;
 use App\Services\ProductionOrder\Actions\ReturnToProductionAction;
 use App\Services\ProductionOrder\Actions\SendToQcAction;
 use App\Services\ProductionOrder\Actions\StartProduction;
@@ -321,6 +322,76 @@ class ProductionOrderService
                 'trace'                => $e->getTraceAsString(),
                 'production_order_ids' => $records->pluck('id')->all(),
                 'user_id'              => $userId,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera o PDF da ordem de producao em base64.
+     */
+    public function pdf(ProductionOrder $productionOrder, int $userId): ?string
+    {
+        $this->resetResponse();
+
+        try {
+            $action = new PrintProductionOrderPdfAction();
+            $pdf    = $action->execute($productionOrder);
+
+            if ($pdf === null || $action->hasError()) {
+                $this->setError($action->getMessage());
+                return null;
+            }
+
+            $this->setSuccess('PDF da ordem de producao gerado.');
+
+            Log::info('ProductionOrderService: PDF gerado com sucesso', [
+                'metodo'              => __METHOD__ . '@' . __LINE__,
+                'production_order_id' => $productionOrder->id,
+                'user_id'             => $userId,
+            ]);
+
+            return $pdf;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar PDF da ordem de producao: ' . $e->getMessage());
+
+            Log::error('ProductionOrderService::pdf', [
+                'metodo'              => __METHOD__ . '@' . __LINE__,
+                'production_order_id' => $productionOrder->id,
+                'user_id'             => $userId,
+                'exception'           => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera o preview do PDF da ordem de producao.
+     *
+     * @return array{pdf:string}|null
+     */
+    public function preview(ProductionOrder $productionOrder, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            $pdf = $this->pdf($productionOrder, $userId);
+
+            if ($pdf === null) {
+                return null;
+            }
+
+            return ['pdf' => $pdf];
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar preview da ordem de producao: ' . $e->getMessage());
+
+            Log::error('ProductionOrderService::preview', [
+                'metodo'              => __METHOD__ . '@' . __LINE__,
+                'production_order_id' => $productionOrder->id,
+                'user_id'             => $userId,
+                'exception'           => $e->getMessage(),
             ]);
 
             return null;

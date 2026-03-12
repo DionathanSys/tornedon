@@ -16,6 +16,7 @@ use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
 use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
+use App\Services\Invoice\Actions\PrintInvoicePdfAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
@@ -569,6 +570,76 @@ class InvoiceService
             'fiscal_document_id' => $fiscalDocument->id,
             'due_amount'         => $dueAmount,
         ]);
+    }
+
+    /**
+     * Gera o PDF da fatura em base64.
+     */
+    public function pdf(Invoice $invoice, int $userId): ?string
+    {
+        $this->resetResponse();
+
+        try {
+            $action = new PrintInvoicePdfAction();
+            $pdf    = $action->execute($invoice);
+
+            if ($pdf === null || $action->hasError()) {
+                $this->setError($action->getMessage());
+                return null;
+            }
+
+            $this->setSuccess('PDF da fatura gerado.');
+
+            Log::info('InvoiceService: PDF gerado com sucesso', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+            ]);
+
+            return $pdf;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar PDF da fatura: ' . $e->getMessage());
+
+            Log::error('InvoiceService::pdf', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+                'exception'  => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera o preview do PDF da fatura.
+     *
+     * @return array{pdf:string}|null
+     */
+    public function preview(Invoice $invoice, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            $pdf = $this->pdf($invoice, $userId);
+
+            if ($pdf === null) {
+                return null;
+            }
+
+            return ['pdf' => $pdf];
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar preview da fatura: ' . $e->getMessage());
+
+            Log::error('InvoiceService::preview', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+                'exception'  => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /* ==============================

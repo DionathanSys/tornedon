@@ -6,6 +6,8 @@ use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\BulkInvoiceProductionOrderAction;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\DownloadProductionOrderPdfAction;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -111,6 +113,10 @@ class ProductionOrdersTable
                     ->native(false),
             ])
             ->recordActions([
+                PreviewProductionOrderPdfAction::make()
+                    ->iconButton(),
+                DownloadProductionOrderPdfAction::make()
+                    ->iconButton(),
                 ViewAction::make()
                     ->iconButton(),
                 EditAction::make()
