@@ -22,7 +22,7 @@ class BuildNfseMunicipalPayloadAction
             $fiscalDocument->loadMissing([
                 'company',
                 'customer.address',
-                'items',
+                'items.service',
                 'fiscalProfile',
             ]);
 

@@ -9,6 +9,7 @@ use App\Models\FiscalDocumentItem;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -36,6 +37,7 @@ class CreateFiscalDocumentItemAction
                 $validated['product_origin'] = Origin::NACIONAL->value;
             }
 
+            $validated = $this->normalizeForPersistence($validated);
             $validated['created_by'] = $this->createdBy;
 
             $item = FiscalDocumentItem::create($validated);
@@ -92,5 +94,32 @@ class CreateFiscalDocumentItemAction
 
             return null;
         }
+    }
+
+    private function normalizeForPersistence(array $data): array
+    {
+        static $tableColumns = null;
+
+        if ($tableColumns === null) {
+            $tableColumns = array_flip(Schema::getColumnListing((new FiscalDocumentItem())->getTable()));
+        }
+
+        $persistable = [];
+        $snapshot = is_array($data['fiscal_snapshot'] ?? null) ? $data['fiscal_snapshot'] : [];
+
+        foreach ($data as $key => $value) {
+            if (isset($tableColumns[$key])) {
+                $persistable[$key] = $value;
+                continue;
+            }
+
+            $snapshot[$key] = $value;
+        }
+
+        if (! empty($snapshot)) {
+            $persistable['fiscal_snapshot'] = $snapshot;
+        }
+
+        return $persistable;
     }
 }

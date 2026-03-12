@@ -92,4 +92,34 @@ class FiscalDocumentItem extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    public function getServiceCodeAttribute(): ?string
+    {
+        $value = $this->attributes['service_code']
+            ?? $this->fiscal_snapshot['service_code']
+            ?? $this->service?->service_code
+            ?? null;
+
+        return $value !== null ? (string) $value : null;
+    }
+
+    public function getNbsCodeAttribute(): ?string
+    {
+        $value = $this->attributes['nbs_code']
+            ?? $this->fiscal_snapshot['nbs_code']
+            ?? $this->service?->nbs_code
+            ?? null;
+
+        return $value !== null ? (string) $value : null;
+    }
+
+    public function getCnaeCodeAttribute(): ?string
+    {
+        $value = $this->attributes['cnae_code']
+            ?? $this->fiscal_snapshot['cnae_code']
+            ?? $this->service?->cnae_code
+            ?? null;
+
+        return $value !== null ? (string) $value : null;
+    }
 }

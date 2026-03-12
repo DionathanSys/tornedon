@@ -10,6 +10,7 @@ use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorReso
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CreateManyFiscalDocumentItemsAction
@@ -57,6 +58,8 @@ class CreateManyFiscalDocumentItemsAction
                 ) {
                     $item['product_origin'] = Origin::NACIONAL->value;
                 }
+
+                $item = $this->normalizeForPersistence($item);
 
                 // O insert() em lote ignora casts do Eloquent.
                 // Fazemos fill() para aplicar casts (ex.: MoneyCast) antes de inserir.
@@ -131,5 +134,32 @@ class CreateManyFiscalDocumentItemsAction
 
             return null;
         }
+    }
+
+    private function normalizeForPersistence(array $data): array
+    {
+        static $tableColumns = null;
+
+        if ($tableColumns === null) {
+            $tableColumns = array_flip(Schema::getColumnListing((new FiscalDocumentItem())->getTable()));
+        }
+
+        $persistable = [];
+        $snapshot = is_array($data['fiscal_snapshot'] ?? null) ? $data['fiscal_snapshot'] : [];
+
+        foreach ($data as $key => $value) {
+            if (isset($tableColumns[$key])) {
+                $persistable[$key] = $value;
+                continue;
+            }
+
+            $snapshot[$key] = $value;
+        }
+
+        if (! empty($snapshot)) {
+            $persistable['fiscal_snapshot'] = $snapshot;
+        }
+
+        return $persistable;
     }
 }
