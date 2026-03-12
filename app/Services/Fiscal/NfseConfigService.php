@@ -32,9 +32,12 @@ class NfseConfigService
      */
     public function resolveSerie(int $companyId): string
     {
-        $pref = CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId, 'RPS');
+        $pref = CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId, '1');
 
-        return (string) (is_array($pref) ? ($pref['value'] ?? 'RPS') : ($pref ?? 'RPS'));
+        $serie = (string) (is_array($pref) ? ($pref['value'] ?? '1') : ($pref ?? '1'));
+        $digits = preg_replace('/\D/', '', $serie);
+
+        return $digits !== '' ? substr($digits, 0, 5) : '1';
     }
 
     /**

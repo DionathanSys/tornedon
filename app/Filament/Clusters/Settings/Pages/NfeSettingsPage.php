@@ -57,6 +57,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             'token_homologacao' => CompanyPreference::get('integranotas.token_homologacao', $companyId),
             'ambiente'          => (string) (CompanyPreference::get('integranotas.ambiente', $companyId) ?? NfeConfigService::AMBIENTE_HOMOLOGACAO),
             'serie_padrao'      => CompanyPreference::get('integranotas.serie_padrao', $companyId) ?? '1',
+            'nfse_serie_padrao' => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
             'webhook_secret'    => CompanyPreference::get('integranotas.webhook_secret', $companyId),
         ]);
     }
@@ -87,8 +88,20 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->default('1')
                             ->helperText('Normalmente "1". Só altere se a SEFAZ exigir outra série.')
                             ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('nfse_serie_padrao')
+                            ->label('Série Padrão da NFS-e (RPS)')
+                            ->numeric()
+                            ->maxLength(5)
+                            ->minLength(1)
+                            ->rule('regex:/^[0-9]{1,5}$/')
+                            ->required()
+                            ->default('1')
+                            ->dehydrateStateUsing(fn ($state) => substr(preg_replace('/\D/', '', (string) $state) ?: '1', 0, 5))
+                            ->helperText('Informe de 1 a 5 dígitos numéricos, conforme exigência do município/provedor.')
+                            ->columnSpan(['md' => 1]),
                     ])
-                    ->columns(['md' => 2])
+                    ->columns(['md' => 3])
                     ->collapsible(),
 
                 \Filament\Schemas\Components\Section::make('Tokens de Acesso')
@@ -145,6 +158,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
         CompanyPreference::set('integranotas.ambiente', (int) $data['ambiente'], $companyId);
         CompanyPreference::set('integranotas.serie_padrao', $data['serie_padrao'], $companyId);
+        CompanyPreference::set('integranotas.nfse_serie_padrao', $data['nfse_serie_padrao'], $companyId);
 
         if (! empty($data['token_homologacao'])) {
             CompanyPreference::set('integranotas.token_homologacao', $data['token_homologacao'], $companyId);
