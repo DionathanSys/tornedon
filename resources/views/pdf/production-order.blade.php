@@ -2,12 +2,12 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Ordem de Producao {{ $record->production_order_number }}</title>
+    <title>Ordem de Produção {{ $record->production_order_number }}</title>
     @include('pdf.partials.document-styles')
 </head>
 <body>
     <div class="head">
-        <h1>Ordem de Producao #{{ $record->production_order_number }}</h1>
+        <h1>Ordem de Produção #{{ $record->production_order_number }}</h1>
         <div class="line muted">Empresa: {{ $record->company?->name ?? '-' }}</div>
         <div class="line">Cliente: {{ $record->customer?->name ?? '-' }}</div>
         <div class="line">Status: {{ $record->status?->description() ?? '-' }}</div>
@@ -16,18 +16,18 @@
 
     <div class="box">
         <div class="line">Operador: {{ $record->assignedOperator?->name ?? '-' }}</div>
-        <div class="line">Requisicao vinculada: {{ $record->requisition?->number ?? '-' }}</div>
+        <div class="line">Requisição vinculada: {{ $record->requisition?->number ?? '-' }}</div>
         <div class="line">Inicio: {{ $record->started_at?->format('d/m/Y H:i') ?? '-' }}</div>
         <div class="line">Conclusao: {{ $record->completed_at?->format('d/m/Y H:i') ?? '-' }}</div>
         <div class="line">Observacoes: {{ $record->observations ?? '-' }}</div>
     </div>
 
-    <h2>Itens da Ordem de Producao</h2>
+    <h2>Itens da Ordem de Produção</h2>
     <table class="grid">
         <thead>
             <tr>
                 <th>Produto</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th>Qtd Prevista</th>
                 <th>Qtd Produzida</th>
                 <th>Qtd Aprovada</th>

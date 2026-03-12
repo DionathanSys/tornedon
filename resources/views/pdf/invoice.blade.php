@@ -50,7 +50,7 @@
     <table class="grid">
         <thead>
             <tr>
-                <th>Requisicao</th>
+                <th>Requisição</th>
                 <th>Status</th>
                 <th>Itens</th>
                 <th>Total</th>
@@ -78,7 +78,7 @@
         </tbody>
     </table>
 
-    <h2>Ordens de Producao Vinculadas</h2>
+    <h2>Ordens de Produção Vinculadas</h2>
     <table class="grid">
         <thead>
             <tr>
@@ -114,7 +114,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" class="text-right">Sem ordens de producao vinculadas.</td>
+                    <td colspan="4" class="text-right">Sem ordens de produção vinculadas.</td>
                 </tr>
             @endforelse
         </tbody>

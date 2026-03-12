@@ -15,7 +15,9 @@ use App\Listeners\Quote\UpdateQuoteItemsStatusOnReopenListener;
 use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
+use App\Models\Company;
 use App\Models\ServiceOrder;
+use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -49,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         // Registrar policies
+        Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
 
         // Eventos de item de requisição → atualização da quantidade reservada no estoque

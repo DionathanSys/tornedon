@@ -2,12 +2,12 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Requisicao {{ $record->number }}</title>
+    <title>Requisição {{ $record->number }}</title>
     @include('pdf.partials.document-styles')
 </head>
 <body>
     <div class="head">
-        <h1>Requisicao #{{ $record->number }}</h1>
+        <h1>Requisição #{{ $record->number }}</h1>
         <div class="line muted">Empresa: {{ $record->company?->name ?? '-' }}</div>
         <div class="line">Cliente: {{ $record->customer?->name ?? '-' }}</div>
         <div class="line">Data da Venda: {{ $record->sale_date?->format('d/m/Y') ?? '-' }}</div>
@@ -21,7 +21,7 @@
         <div class="line">Observacoes: {{ $record->observations ?? '-' }}</div>
     </div>
 
-    <h2>Itens da Requisicao</h2>
+    <h2>Itens da Requisição</h2>
     <table class="grid">
         <thead>
             <tr>
