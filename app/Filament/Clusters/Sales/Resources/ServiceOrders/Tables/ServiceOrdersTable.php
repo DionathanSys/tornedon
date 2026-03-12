@@ -8,6 +8,7 @@ use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use Filament\Actions\ActionGroup;
@@ -170,6 +171,7 @@ class ServiceOrdersTable
             ->defaultSort('order_date', 'desc')
             ->recordActions([
                 ActionGroup::make([
+                    DuplicateServiceOrderAction::make(),
                     CloseServiceOrderAction::make(),
                     InvoiceServiceOrderAction::make(),
                     CancelServiceOrderAction::make(),

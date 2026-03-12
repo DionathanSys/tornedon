@@ -25,12 +25,17 @@ class ProductStocksTable
     {
         return $table
             ->columns([
+                TextColumn::make('product.product_code')
+                    ->label('#')
+                    ->width('1%')
+                    ->searchable()
+                    ->sortable()
+                    ->icon(Heroicon::Hashtag),
                 TextColumn::make('product.name')
                     ->label('Produto')
                     ->width('1%')
                     ->searchable()
                     ->sortable()
-                    ->limit(50)
                     ->icon(Heroicon::Cube),
                 TextColumn::make('quantity_total')
                     ->label('Saldo Total')
