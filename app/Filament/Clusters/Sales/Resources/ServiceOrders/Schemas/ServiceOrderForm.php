@@ -265,6 +265,7 @@ class ServiceOrderForm
                                             ->searchable()
                                             ->default(fn() => CompanyPreference::getDefaultPaymentCondition()),
                                         DiscountAmountField::make('service_order')
+                                            ->saved(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                     ]),
                             ]),

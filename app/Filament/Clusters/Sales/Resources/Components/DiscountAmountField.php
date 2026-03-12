@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Components;
 
 use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -27,7 +28,7 @@ class DiscountAmountField
                     ->label('Aplicar')
                     ->icon(Heroicon::CheckCircle)
                     ->color('success')
-                    ->size('sm')
+                    ->size(Size::Small)
                     ->requiresConfirmation()
                     ->modalHeading('Aplicar Desconto')
                     ->modalDescription('Deseja aplicar este desconto igualmente entre todos os itens?')
