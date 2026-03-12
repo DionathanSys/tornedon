@@ -11,9 +11,9 @@ use Filament\Schemas\Components\Utilities\Set;
 
 class ModalSelectService
 {
-    public static function make(): ModalTableSelect
+    public static function make(?string $field = 'item.service_id'): ModalTableSelect
     {
-        return ModalTableSelect::make('item.service_id')
+        return ModalTableSelect::make($field)
             ->label('Serviço')
             ->saved(false)
             ->relationship('service', 'service_code')
