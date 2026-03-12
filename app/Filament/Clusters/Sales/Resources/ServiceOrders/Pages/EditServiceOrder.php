@@ -140,6 +140,8 @@ class EditServiceOrder extends EditRecord
             'data' => $data,
         ]);
 
+        unset($data['discount_amount']);
+
         return $data;
     }
 
