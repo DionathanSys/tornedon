@@ -30,8 +30,9 @@ class EditCompanyPartner extends EditRecord
         return [
             ActionGroup::make([
                 ReplicateToCompaniesAction::make('replicate')
-                    ->size(Size::Small),
-            ])->button(),
+                    ,
+            ])
+            ->size(Size::Small)->button(),
             ActionGroup::make([
 
                 Action::make('new-partner')
