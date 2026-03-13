@@ -19,7 +19,7 @@ Route::get('/', function () {
 */
 Route::post('/webhook/nfe', [NfeWebhookController::class, 'handle'])
     ->name('webhook.nfe')
-    ->withoutMiddleware(['auth', 'verified']);
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, 'auth', 'verified']);
 
 Route::post('/error-tickets/create', [ErrorTicketController::class, 'create'])
     ->name('error-tickets.create')
