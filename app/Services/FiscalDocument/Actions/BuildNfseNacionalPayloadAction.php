@@ -109,7 +109,7 @@ class BuildNfseNacionalPayloadAction
             }
 
             if ($serviceCode === '') {
-                $this->setError('NFS-e Nacional requer o codigo do servico (cTribNac) com 6 digitos.');
+                $this->setError('NFS-e requer o codigo do servico (LC 116/2003) no formato XX.XX (ex: 01.01).');
                 return null;
             }
 
@@ -130,7 +130,7 @@ class BuildNfseNacionalPayloadAction
                 'valor_servicos'=> round($valorServicosTotal, 2),
             ];
 
-            $ctm = $firstItem->municipal_tax_code ?? $profile?->default_municipal_tax_code ?? null;
+            $ctm = $firstItem->service?->municipal_tax_code ?? $profile?->default_service_code ?? null;
             if ($ctm) {
                 $servico['codigo_tributacao_municipio'] = $ctm;
             }
@@ -268,7 +268,9 @@ class BuildNfseNacionalPayloadAction
             return '';
         }
 
-        return str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_LEFT);
+        // LC 116/2003: formato deve ser XX.XX (2 dígitos.2 dígitos)
+        $padded = str_pad(substr($digits, 0, 4), 4, '0', STR_PAD_LEFT);
+        return substr($padded, 0, 2) . '.' . substr($padded, 2, 2);
     }
 
     private function normalizeNbsCode(?string $code): string
