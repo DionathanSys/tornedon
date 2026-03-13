@@ -105,10 +105,11 @@ final class EditNfseItemAction
                     ->label('Inclui no Total')
                     ->default(true),
 
-                TextInput::make('additional_information')
+                Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')
+                    ->rows(2)
                     ->maxLength(500)
-                    ->autocapitalize('words')
+                    ->dehydrateStateUsing(fn (string $state): string => ucwords($state))
                     ->columnSpanFull(),
             ])
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
