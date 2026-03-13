@@ -272,6 +272,7 @@ class ServiceOrderForm
                         Tab::make('Aprovação')
                             ->icon(Heroicon::CheckCircle)
                             ->schema([
+                                //TODO Rever
                                 Section::make('Aprovação e Avaliação')
                                     ->columns([
                                         'sm' => 1,
@@ -295,6 +296,7 @@ class ServiceOrderForm
                                             ->label('Data de Aprovação')
                                             ->columnSpan(['md' => 1, 'lg' => 4])
                                             ->columnStart(1)
+                                            ->disabled()
                                             ->displayFormat('d/m/Y H:i'),
                                         DatePicker::make('warranty_expires_at')
                                             ->label('Garantia Válida Até')

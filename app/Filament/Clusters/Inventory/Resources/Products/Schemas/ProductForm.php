@@ -201,6 +201,7 @@ class ProductForm
                                             ->default(0),
                                         Select::make('origin_sale_price')
                                             ->label('Origem do Preço de Venda')
+                                            ->native(false)
                                             ->options(OriginSalePrice::toSelectArray())
                                             ->default(OriginSalePrice::CALCULATED->value)
                                             ->columnSpan(['md' => 1, 'lg' => 2]),

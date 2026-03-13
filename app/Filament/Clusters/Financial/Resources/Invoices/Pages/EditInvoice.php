@@ -3,8 +3,10 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedFiscalDocumentsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedProductionOrdersAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedRequisitionsAction;
@@ -37,6 +39,10 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
             ])->buttonGroup(),
             ActionGroup::make([
+                PreviewInvoicePdfAction::make()
+                    ->size(Size::Small),
+                DownloadInvoicePdfAction::make()
+                    ->size(Size::Small),
                 ImportRecordsAction::make()
                     ->size(Size::Small),
                 GenerateFiscalDocumentAction::make()

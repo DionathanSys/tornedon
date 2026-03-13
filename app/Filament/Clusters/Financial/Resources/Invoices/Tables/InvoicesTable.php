@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Tables;
 
 use App\Enum\Invoice\Status;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -69,6 +71,10 @@ class InvoicesTable
                     ->native(false),
             ])
             ->recordActions([
+                PreviewInvoicePdfAction::make()
+                    ->iconButton(),
+                DownloadInvoicePdfAction::make()
+                    ->iconButton(),
                 EditAction::make()
                     ->iconButton(),
                 DeleteAction::make()

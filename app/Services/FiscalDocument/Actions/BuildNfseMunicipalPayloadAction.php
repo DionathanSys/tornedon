@@ -22,7 +22,7 @@ class BuildNfseMunicipalPayloadAction
             $fiscalDocument->loadMissing([
                 'company',
                 'customer.address',
-                'items',
+                'items.service',
                 'fiscalProfile',
             ]);
 
@@ -77,22 +77,55 @@ class BuildNfseMunicipalPayloadAction
             // Itens de serviço
             // ------------------------------------------------------------------
             $itens = [];
+            $valorServicosTotal = 0.0;
+            $discriminacoes = [];
+            $serviceCodeCandidates = [];
+            $nbsCodeCandidates = [];
+
             foreach ($fiscalDocument->items as $item) {
                 $taxData = $item->tax_data ?? [];
 
+                $codigoServico = $this->normalizeServiceCode(
+                    $item->service_code
+                    ?? $item->service?->service_code
+                    ?? $profile?->default_service_code
+                );
+
+                $codigoNbs = $this->normalizeNbsCode(
+                    $item->nbs_code
+                    ?? $item->service?->nbs_code
+                    ?? $profile?->default_nbs_code
+                );
+
+                $discriminacao = trim((string) ($item->description ?? ''));
+                if ($discriminacao === '') {
+                    $discriminacao = 'Servicos prestados conforme documento fiscal.';
+                }
+
+                $valorServicosItem = round((float) $item->total_price, 2);
+                $valorServicosTotal += $valorServicosItem;
+                $discriminacoes[] = $discriminacao;
+
+                if ($codigoServico !== '') {
+                    $serviceCodeCandidates[] = $codigoServico;
+                }
+
+                if ($codigoNbs !== '') {
+                    $nbsCodeCandidates[] = $codigoNbs;
+                }
+
                 $itemPayload = [
-                    'codigo'        => $item->service_code ?? $profile?->default_service_code ?? '',
-                    'discriminacao' => $item->description ?? '',
-                    'valor_servicos'=> round((float) $item->total_price, 2),
+                    'codigo'        => $codigoServico,
+                    'discriminacao' => substr($discriminacao, 0, 2000),
+                    'valor_servicos'=> $valorServicosItem,
                 ];
 
                 if ($item->ncm_code || $profile?->service_cnae_code) {
                     $itemPayload['codigo_cnae'] = $item->cnae_code ?? $profile?->service_cnae_code;
                 }
 
-                $nbsCode = $item->nbs_code ?? $profile?->default_nbs_code ?? null;
-                if ($nbsCode) {
-                    $itemPayload['codigo_nbs'] = $nbsCode;
+                if ($codigoNbs !== '') {
+                    $itemPayload['codigo_nbs'] = $codigoNbs;
                 }
 
                 $ctm = $item->municipal_tax_code ?? $profile?->default_municipal_tax_code ?? null;
@@ -132,6 +165,29 @@ class BuildNfseMunicipalPayloadAction
                 return null;
             }
 
+            $codigoServico = $serviceCodeCandidates[0] ?? '';
+            $codigoNbs = $nbsCodeCandidates[0] ?? '';
+            $discriminacaoGeral = trim(implode("\n", array_filter($discriminacoes)));
+
+            if ($discriminacaoGeral === '') {
+                $discriminacaoGeral = 'Servicos prestados conforme documento fiscal.';
+            }
+
+            if ($codigoServico === '') {
+                $this->setError('NFS-e requer o codigo do servico (cTribNac) com 6 digitos.');
+                return null;
+            }
+
+            if ($codigoNbs === '') {
+                $this->setError('NFS-e requer o codigo NBS (cNBS) com 9 digitos.');
+                return null;
+            }
+
+            if (round($valorServicosTotal, 2) <= 0) {
+                $this->setError('NFS-e requer valor de servicos maior que zero.');
+                return null;
+            }
+
             // ------------------------------------------------------------------
             // Serviço (wrapper)
             // ------------------------------------------------------------------
@@ -139,6 +195,11 @@ class BuildNfseMunicipalPayloadAction
                 'iss_retido' => (bool) ($fiscalDocument->items->first()?->iss_withheld
                     ?? $profile?->iss_withheld_default
                     ?? false),
+                // Compatibilidade com validadores que exigem o formato nacional no bloco servico.
+                'codigo' => $codigoServico,
+                'discriminacao' => substr($discriminacaoGeral, 0, 2000),
+                'codigo_nbs' => $codigoNbs,
+                'valor_servicos' => round($valorServicosTotal, 2),
                 'itens' => $itens,
             ];
 
@@ -157,9 +218,11 @@ class BuildNfseMunicipalPayloadAction
             // ------------------------------------------------------------------
             // Payload raiz
             // ------------------------------------------------------------------
+            $serie = $this->normalizeSerie($fiscalDocument->rps_series ?? null);
+
             $payload = [
                 'numero'       => (string) $fiscalDocument->rps_number,
-                'serie'        => $fiscalDocument->rps_series ?? 'RPS',
+                'serie'        => $serie,
                 'tipo'         => $fiscalDocument->rps_type ?? '1',
                 'data_emissao' => $issuedAt,
                 'status'       => '1',
@@ -193,5 +256,38 @@ class BuildNfseMunicipalPayloadAction
 
             return null;
         }
+    }
+
+    private function normalizeSerie(?string $serie): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $serie);
+
+        if ($digits === '') {
+            return '1';
+        }
+
+        return substr($digits, 0, 5);
+    }
+
+    private function normalizeServiceCode(?string $code): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $code);
+
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function normalizeNbsCode(?string $code): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $code);
+
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_pad(substr($digits, 0, 9), 9, '0', STR_PAD_LEFT);
     }
 }

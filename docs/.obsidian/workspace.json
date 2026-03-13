@@ -39,12 +39,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "integranotas-itens.md",
+                "file": "Projeto/📥 Caixa de Entrada.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "integranotas-itens"
+              "title": "📥 Caixa de Entrada"
             }
           }
         ],
@@ -213,13 +213,13 @@
   },
   "active": "4c63bdbf83b0e763",
   "lastOpenFiles": [
+    "integranotas-itens.md",
     "Consideracoes plano fiscal.md",
     "Projeto/📥 Caixa de Entrada.md",
     "Campos Payload NFS.md",
     "arquitetura-fiscal-criacao-validacao-emissao.md",
     "Considerações plano fiscal.md",
     "CODING-STANDARDS.md",
-    "integranotas-itens.md",
     "Invoice.md",
     "DOCUMENTOS-FISCAIS.md",
     "Escopo Fiscal da Aplicação.md",

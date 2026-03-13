@@ -81,9 +81,6 @@ class ItemsRelationManager extends RelationManager
                 DeleteItemAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
                 CreateItemAction::make(),
             ])
             ->emptyStateDescription('Adicione serviços à ordem de serviço para que eles sejam exibidos aqui.');

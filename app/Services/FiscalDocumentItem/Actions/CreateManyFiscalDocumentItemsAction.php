@@ -10,6 +10,7 @@ use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorReso
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CreateManyFiscalDocumentItemsAction
@@ -49,6 +50,8 @@ class CreateManyFiscalDocumentItemsAction
                 'user_id'    => $this->createdBy,
             ]);
 
+            $validatedItems = $this->assignMissingItemNumbers($validated['items']);
+
             $now = now();
             $records = array_map(function (array $item) use ($now, $documentType): array {
                 if (
@@ -57,6 +60,8 @@ class CreateManyFiscalDocumentItemsAction
                 ) {
                     $item['product_origin'] = Origin::NACIONAL->value;
                 }
+
+                $item = $this->normalizeForPersistence($item);
 
                 // O insert() em lote ignora casts do Eloquent.
                 // Fazemos fill() para aplicar casts (ex.: MoneyCast) antes de inserir.
@@ -68,7 +73,7 @@ class CreateManyFiscalDocumentItemsAction
                     'created_at'  => $now,
                     'updated_at'  => $now,
                 ]);
-            }, $validated['items']);
+            }, $validatedItems);
 
             Log::debug('Preparação dos registros para inserção em lote', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
@@ -131,5 +136,57 @@ class CreateManyFiscalDocumentItemsAction
 
             return null;
         }
+    }
+
+    private function normalizeForPersistence(array $data): array
+    {
+        static $tableColumns = null;
+
+        if ($tableColumns === null) {
+            $tableColumns = array_flip(Schema::getColumnListing((new FiscalDocumentItem())->getTable()));
+        }
+
+        $persistable = [];
+        $snapshot = is_array($data['fiscal_snapshot'] ?? null) ? $data['fiscal_snapshot'] : [];
+
+        foreach ($data as $key => $value) {
+            if (isset($tableColumns[$key])) {
+                $persistable[$key] = $value;
+                continue;
+            }
+
+            $snapshot[$key] = $value;
+        }
+
+        if (! empty($snapshot)) {
+            $persistable['fiscal_snapshot'] = $snapshot;
+        }
+
+        return $persistable;
+    }
+
+    private function assignMissingItemNumbers(array $items): array
+    {
+        $fiscalDocumentId = $items[0]['fiscal_document_id'] ?? null;
+
+        if (! $fiscalDocumentId) {
+            return $items;
+        }
+
+        $nextItemNumber = ((int) FiscalDocumentItem::query()
+            ->where('fiscal_document_id', (int) $fiscalDocumentId)
+            ->lockForUpdate()
+            ->max('item_number')) + 1;
+
+        foreach ($items as $index => $item) {
+            if (! empty($item['item_number'])) {
+                continue;
+            }
+
+            $items[$index]['item_number'] = $nextItemNumber;
+            $nextItemNumber++;
+        }
+
+        return $items;
     }
 }

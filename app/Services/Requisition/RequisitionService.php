@@ -13,6 +13,7 @@ use App\Services\Requisition\Actions\CancelRequisitionAction;
 use App\Services\Requisition\Actions\CloseRequisitionAction;
 use App\Services\Requisition\Actions\CreateRequisitionAction;
 use App\Services\Requisition\Actions\DeleteRequisitionAction;
+use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\RestoreRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
@@ -944,6 +945,76 @@ class RequisitionService
             ]);
 
             return false;
+        }
+    }
+
+    /**
+     * Gera o PDF da requisicao em base64.
+     */
+    public function pdf(Requisition $requisition, int $userId): ?string
+    {
+        $this->resetResponse();
+
+        try {
+            $action = new PrintRequisitionPdfAction();
+            $pdf    = $action->execute($requisition);
+
+            if ($pdf === null || $action->hasError()) {
+                $this->setError($action->getMessage());
+                return null;
+            }
+
+            $this->setSuccess('PDF da requisicao gerado.');
+
+            Log::info('RequisitionService: PDF gerado com sucesso', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'requisition_id' => $requisition->id,
+                'user_id'        => $userId,
+            ]);
+
+            return $pdf;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar PDF da requisicao: ' . $e->getMessage());
+
+            Log::error('RequisitionService::pdf', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'requisition_id' => $requisition->id,
+                'user_id'        => $userId,
+                'exception'      => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera o preview do PDF da requisicao.
+     *
+     * @return array{pdf:string}|null
+     */
+    public function preview(Requisition $requisition, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            $pdf = $this->pdf($requisition, $userId);
+
+            if ($pdf === null) {
+                return null;
+            }
+
+            return ['pdf' => $pdf];
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar preview da requisicao: ' . $e->getMessage());
+
+            Log::error('RequisitionService::preview', [
+                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'requisition_id' => $requisition->id,
+                'user_id'        => $userId,
+                'exception'      => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

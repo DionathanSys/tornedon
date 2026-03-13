@@ -11,6 +11,7 @@ use App\Services\ServiceOrder\Actions\CancelServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
 use App\Services\ServiceOrder\Actions\DeleteServiceOrderAction;
+use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use App\Services\ServiceOrder\Actions\ReopenServiceOrderAction;
 use App\Services\ServiceOrder\Actions\RestoreServiceOrderAction;
 use App\Services\ServiceOrder\Actions\UpdateServiceOrderAction;
@@ -913,6 +914,76 @@ class ServiceOrderService
             ]);
 
             return false;
+        }
+    }
+
+    /**
+     * Gera o PDF da ordem de servico em base64.
+     */
+    public function pdf(ServiceOrder $serviceOrder, int $userId): ?string
+    {
+        $this->resetResponse();
+
+        try {
+            $action = new PrintServiceOrderPdfAction();
+            $pdf    = $action->execute($serviceOrder);
+
+            if ($pdf === null || $action->hasError()) {
+                $this->setError($action->getMessage());
+                return null;
+            }
+
+            $this->setSuccess('PDF da ordem de servico gerado.');
+
+            Log::info('ServiceOrderService: PDF gerado com sucesso', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'user_id'          => $userId,
+            ]);
+
+            return $pdf;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar PDF da ordem de servico: ' . $e->getMessage());
+
+            Log::error('ServiceOrderService::pdf', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'user_id'          => $userId,
+                'exception'        => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera o preview do PDF da ordem de servico.
+     *
+     * @return array{pdf:string}|null
+     */
+    public function preview(ServiceOrder $serviceOrder, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            $pdf = $this->pdf($serviceOrder, $userId);
+
+            if ($pdf === null) {
+                return null;
+            }
+
+            return ['pdf' => $pdf];
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar preview da ordem de servico: ' . $e->getMessage());
+
+            Log::error('ServiceOrderService::preview', [
+                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'user_id'          => $userId,
+                'exception'        => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

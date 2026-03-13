@@ -23,7 +23,7 @@ class BuildNfseNacionalPayloadAction
             $fiscalDocument->loadMissing([
                 'company',
                 'customer.address',
-                'items',
+                'items.service',
                 'fiscalProfile',
             ]);
 
@@ -91,10 +91,42 @@ class BuildNfseNacionalPayloadAction
             $valorServicosTotal = $items->sum(fn ($i) => round((float) $i->total_price, 2));
             $discriminacoes     = $items->map(fn ($i) => $i->description ?? '')->filter()->implode("\n");
 
+            $serviceCode = $this->normalizeServiceCode(
+                $firstItem->service_code
+                ?? $firstItem->service?->service_code
+                ?? $profile?->default_service_code
+            );
+
+            $nbsCode = $this->normalizeNbsCode(
+                $firstItem->nbs_code
+                ?? $firstItem->service?->nbs_code
+                ?? $profile?->default_nbs_code
+            );
+
+            $discriminacao = trim((string) ($discriminacoes ?: ($firstItem->description ?? '')));
+            if ($discriminacao === '') {
+                $discriminacao = 'Servicos prestados conforme documento fiscal.';
+            }
+
+            if ($serviceCode === '') {
+                $this->setError('NFS-e Nacional requer o codigo do servico (cTribNac) com 6 digitos.');
+                return null;
+            }
+
+            if ($nbsCode === '') {
+                $this->setError('NFS-e Nacional requer o codigo NBS (cNBS) com 9 digitos.');
+                return null;
+            }
+
+            if (round($valorServicosTotal, 2) <= 0) {
+                $this->setError('NFS-e Nacional requer valor de servicos maior que zero.');
+                return null;
+            }
+
             $servico = [
-                'codigo'        => $firstItem->service_code ?? $profile?->default_service_code ?? '',
-                'discriminacao' => $discriminacoes ?: ($firstItem->description ?? ''),
-                'codigo_nbs'    => $firstItem->nbs_code ?? $profile?->default_nbs_code ?? '',
+                'codigo'        => $serviceCode,
+                'discriminacao' => substr($discriminacao, 0, 2000),
+                'codigo_nbs'    => $nbsCode,
                 'valor_servicos'=> round($valorServicosTotal, 2),
             ];
 
@@ -171,9 +203,11 @@ class BuildNfseNacionalPayloadAction
             // ------------------------------------------------------------------
             // Payload raiz
             // ------------------------------------------------------------------
+            $serie = $this->normalizeSerie($fiscalDocument->rps_series ?? null);
+
             $payload = [
                 'numero'       => (string) $fiscalDocument->rps_number,
-                'serie'        => $fiscalDocument->rps_series ?? 'RPS',
+                'serie'        => $serie,
                 'data_emissao' => $issuedAt,
                 'tomador'      => $tomador,
                 'servico'      => $servico,
@@ -213,5 +247,38 @@ class BuildNfseNacionalPayloadAction
 
             return null;
         }
+    }
+
+    private function normalizeSerie(?string $serie): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $serie);
+
+        if ($digits === '') {
+            return '1';
+        }
+
+        return substr($digits, 0, 5);
+    }
+
+    private function normalizeServiceCode(?string $code): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $code);
+
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function normalizeNbsCode(?string $code): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $code);
+
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_pad(substr($digits, 0, 9), 9, '0', STR_PAD_LEFT);
     }
 }

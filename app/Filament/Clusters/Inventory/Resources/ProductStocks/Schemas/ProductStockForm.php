@@ -57,6 +57,7 @@ class ProductStockForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
+                    ->visible(false)
                     ->schema([
                         TextInput::make('quantity_total')
                             ->label('Saldo Total (Fiscal)')

@@ -152,5 +152,27 @@ class NfeWebhookController extends Controller
         }
 
         $doc->update($updates);
+
+        if ($status === 'autorizado') {
+            $this->syncAccountReceivablesDocumentNumber($doc);
+        }
+    }
+
+    private function syncAccountReceivablesDocumentNumber(FiscalDocument $doc): void
+    {
+        if (! $doc->invoice_id) {
+            return;
+        }
+
+        $documentNumber = $doc->document_number ?? $doc->document_key;
+
+        if (! $documentNumber) {
+            return;
+        }
+
+        $doc->invoice
+            ?->accountReceivables()
+            ->whereNull('document_number')
+            ->update(['document_number' => $documentNumber]);
     }
 }

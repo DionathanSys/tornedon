@@ -45,8 +45,14 @@ class FiscalDocumentItemValidatorResolver
             return null;
         }
 
-        return FiscalDocument::query()
+        $documentType = FiscalDocument::query()
             ->whereKey($fiscalDocumentId)
             ->value('document_type');
+
+        if ($documentType instanceof \BackedEnum) {
+            return (string) $documentType->value;
+        }
+
+        return $documentType;
     }
 }

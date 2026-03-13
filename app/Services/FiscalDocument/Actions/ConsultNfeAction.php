@@ -90,6 +90,10 @@ class ConsultNfeAction
 
             $fiscalDocument->update($updates);
 
+            if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                $this->syncAccountReceivablesDocumentNumber($fiscalDocument);
+            }
+
             $this->setSuccess();
             return true;
 
@@ -105,5 +109,23 @@ class ConsultNfeAction
 
             return false;
         }
+    }
+
+    private function syncAccountReceivablesDocumentNumber(FiscalDocument $fiscalDocument): void
+    {
+        if (! $fiscalDocument->invoice_id) {
+            return;
+        }
+
+        $documentNumber = $fiscalDocument->document_number ?? $fiscalDocument->document_key;
+
+        if (! $documentNumber) {
+            return;
+        }
+
+        $fiscalDocument->invoice
+            ?->accountReceivables()
+            ->whereNull('document_number')
+            ->update(['document_number' => $documentNumber]);
     }
 }

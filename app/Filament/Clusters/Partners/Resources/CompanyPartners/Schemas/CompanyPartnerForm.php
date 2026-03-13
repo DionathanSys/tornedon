@@ -17,6 +17,7 @@ use App\Filament\Clusters\Partners\Resources\Contacts\Actions\DeleteContactActio
 use App\Filament\Clusters\Partners\Resources\Contacts\Actions\EditContactAction;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\FetchStateTaxIdAction;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Models\CompanyPartner;
 use Filament\Actions\ActionGroup;
@@ -91,7 +92,10 @@ class CompanyPartnerForm
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
                             ->numeric()
-                            ->disabledOn('edit'),
+                            ->disabledOn('edit')
+                            ->suffixActions([
+                                FetchStateTaxIdAction::make(),
+                            ]),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscrição Municipal')
                             ->placeholder('Não definido')

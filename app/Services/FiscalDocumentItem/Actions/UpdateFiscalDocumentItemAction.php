@@ -7,6 +7,7 @@ use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorReso
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class UpdateFiscalDocumentItemAction
@@ -34,6 +35,7 @@ class UpdateFiscalDocumentItemAction
             );
 
             unset($validated['fiscal_document_id']);
+            $validated = $this->normalizeForPersistence($validated);
             $validated['updated_by'] = $this->updatedBy;
 
             $this->fiscalDocumentItem->update($validated);
@@ -95,5 +97,34 @@ class UpdateFiscalDocumentItemAction
 
             return null;
         }
+    }
+
+    private function normalizeForPersistence(array $data): array
+    {
+        static $tableColumns = null;
+
+        if ($tableColumns === null) {
+            $tableColumns = array_flip(Schema::getColumnListing($this->fiscalDocumentItem->getTable()));
+        }
+
+        $persistable = [];
+        $snapshot = is_array($this->fiscalDocumentItem->fiscal_snapshot ?? null)
+            ? $this->fiscalDocumentItem->fiscal_snapshot
+            : [];
+
+        foreach ($data as $key => $value) {
+            if (isset($tableColumns[$key])) {
+                $persistable[$key] = $value;
+                continue;
+            }
+
+            $snapshot[$key] = $value;
+        }
+
+        if (! empty($snapshot)) {
+            $persistable['fiscal_snapshot'] = $snapshot;
+        }
+
+        return $persistable;
     }
 }

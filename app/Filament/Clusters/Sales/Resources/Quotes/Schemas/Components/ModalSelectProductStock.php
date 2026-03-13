@@ -11,9 +11,9 @@ use Filament\Schemas\Components\Utilities\Set;
 
 class ModalSelectProductStock
 {
-    public static function make(): ModalTableSelect
+    public static function make(?string $field = 'item.product_stock_id'): ModalTableSelect
     {
-        return ModalTableSelect::make('item.product_stock_id')
+        return ModalTableSelect::make($field)
             ->label('Produto Em Estoque')
             ->saved(false)
             ->relationship('productStock', 'product.product_code')

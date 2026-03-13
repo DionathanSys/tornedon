@@ -2,9 +2,11 @@
 
 namespace App\Services\Invoice;
 
+use App\Enum\AccountReceivable\Status as AccountReceivableStatus;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Invoice\Status;
+use App\Models\AccountReceivable;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
@@ -14,6 +16,7 @@ use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
 use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
+use App\Services\Invoice\Actions\PrintInvoicePdfAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
@@ -461,6 +464,12 @@ class InvoiceService
                     'elapsed_ms'         => $step3ElapsedMs,
                 ]);
 
+                // ------------------------------------------------------------------
+                // 4. Sincronizar financeiro da fatura
+                // ------------------------------------------------------------------
+                $this->syncInvoiceStatusAfterFiscalDocumentGeneration($invoice, $userId);
+                $this->ensureAccountReceivableLink($invoice, $fiscalDocument);
+
                 $this->setSuccess('Documento fiscal criado com sucesso a partir da fatura.');
 
                 Log::info('Documento fiscal criado a partir da fatura via InvoiceService', [
@@ -486,6 +495,147 @@ class InvoiceService
                 'trace'      => $e->getTraceAsString(),
                 'invoice_id' => $invoice->id,
                 'user_id'    => $userId,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function syncInvoiceStatusAfterFiscalDocumentGeneration(Invoice $invoice, int $userId): void
+    {
+        $invoice->update([
+            'status'       => Status::CONFIRMED->value,
+            'pending'      => false,
+            'confirmed'    => true,
+            'confirmed_at' => now(),
+            'updated_by'   => $userId,
+        ]);
+
+        Log::info('InvoiceService: Status da fatura atualizado após geração do documento fiscal', [
+            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'invoice_id' => $invoice->id,
+            'status'     => Status::CONFIRMED->value,
+        ]);
+    }
+
+    private function ensureAccountReceivableLink(Invoice $invoice, FiscalDocument $fiscalDocument): void
+    {
+        $invoice->loadMissing(['accountReceivables']);
+
+        $documentNumber = $fiscalDocument->document_number
+            ?? $fiscalDocument->document_key
+            ?? $invoice->invoice_number;
+
+        $dueDate = $invoice->invoice_date ?? now()->toDateString();
+        $dueAmount = round((float) $invoice->total_amount, 2);
+
+        if ($invoice->accountReceivables->isNotEmpty()) {
+            $invoice->accountReceivables
+                ->whereNull('document_number')
+                ->each(function (AccountReceivable $accountReceivable) use ($documentNumber): void {
+                    $accountReceivable->update([
+                        'document_number' => $documentNumber,
+                    ]);
+                });
+
+            Log::info('InvoiceService: Conta(s) a receber já vinculada(s) à fatura', [
+                'metodo'                     => __METHOD__ . '@' . __LINE__,
+                'invoice_id'                 => $invoice->id,
+                'total_account_receivables'  => $invoice->accountReceivables->count(),
+            ]);
+
+            return;
+        }
+
+        // Mantém consistência financeira quando a fatura ainda não possui parcela gerada.
+        AccountReceivable::create([
+            'customer_id'      => $invoice->customer_id,
+            'company_id'       => $invoice->company_id,
+            'invoice_id'       => $invoice->id,
+            'sequence_number'  => '01',
+            'status'           => AccountReceivableStatus::PENDING->value,
+            'due_date'         => $dueDate,
+            // Compatibilidade com schema legado que pode não aceitar nulos.
+            'paid_date'        => $dueDate,
+            'due_amount'       => $dueAmount,
+            'paid_amount'      => 0,
+            'document_number'  => $documentNumber,
+            'description'      => 'Gerada automaticamente pela emissão de documento fiscal da fatura ' . $invoice->invoice_number,
+            'paid'             => false,
+        ]);
+
+        Log::info('InvoiceService: Conta a receber criada automaticamente após geração do documento fiscal', [
+            'metodo'             => __METHOD__ . '@' . __LINE__,
+            'invoice_id'         => $invoice->id,
+            'fiscal_document_id' => $fiscalDocument->id,
+            'due_amount'         => $dueAmount,
+        ]);
+    }
+
+    /**
+     * Gera o PDF da fatura em base64.
+     */
+    public function pdf(Invoice $invoice, int $userId): ?string
+    {
+        $this->resetResponse();
+
+        try {
+            $action = new PrintInvoicePdfAction();
+            $pdf    = $action->execute($invoice);
+
+            if ($pdf === null || $action->hasError()) {
+                $this->setError($action->getMessage());
+                return null;
+            }
+
+            $this->setSuccess('PDF da fatura gerado.');
+
+            Log::info('InvoiceService: PDF gerado com sucesso', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+            ]);
+
+            return $pdf;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar PDF da fatura: ' . $e->getMessage());
+
+            Log::error('InvoiceService::pdf', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+                'exception'  => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera o preview do PDF da fatura.
+     *
+     * @return array{pdf:string}|null
+     */
+    public function preview(Invoice $invoice, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            $pdf = $this->pdf($invoice, $userId);
+
+            if ($pdf === null) {
+                return null;
+            }
+
+            return ['pdf' => $pdf];
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar preview da fatura: ' . $e->getMessage());
+
+            Log::error('InvoiceService::preview', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'user_id'    => $userId,
+                'exception'  => $e->getMessage(),
             ]);
 
             return null;

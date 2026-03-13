@@ -4,6 +4,9 @@ namespace App\Filament\Clusters\Sales\Resources\Requisitions\Tables;
 
 use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoiceRequisitionAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -87,9 +90,12 @@ class RequisitionsTable
                     ->native(false),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->iconButton(),
-                DeleteAction::make()
+                ActionGroup::make([
+                    PreviewRequisitionPdfAction::make(),
+                    DownloadRequisitionPdfAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ])
                     ->iconButton(),
             ])
             ->toolbarActions([

@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ModalSelectProductForProduction
 {
-    public static function make(): ModalTableSelect
+    public static function make(?string $field = 'item.product_id'): ModalTableSelect
     {
-        return ModalTableSelect::make('item.product_id')
+        return ModalTableSelect::make($field)
             ->label('Produto')
             ->saved(false)
             ->relationship('product', 'product_code')

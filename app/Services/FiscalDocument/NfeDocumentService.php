@@ -19,6 +19,30 @@ class NfeDocumentService
 {
     use HandlesServiceResponse;
 
+    public function canDelete(FiscalDocument $doc): bool
+    {
+        $this->resetResponse();
+
+        if ($doc->isNfse()) {
+            $this->setError('O documento informado é NFS-e. Use o fluxo de validação da NFS-e.');
+            return false;
+        }
+
+        if ($doc->isInProcessing()) {
+            $this->setError('Não é possível excluir uma NF-e em processamento. Aguarde a conclusão da SEFAZ.');
+            return false;
+        }
+
+        if ($doc->isAuthorized()) {
+            $this->setError('Não é possível excluir uma NF-e autorizada. Cancele a NF-e antes da exclusão.');
+            return false;
+        }
+
+        $this->setSuccess('Documento apto para exclusão.');
+
+        return true;
+    }
+
     /**
      * Enfileira o envio da NF-e (assíncrono via job).
      *
