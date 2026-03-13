@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -90,7 +91,18 @@ class ConsultNfseAction
             $fiscalDocument->update($updates);
 
             if (($updates['nfse_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
-                $this->syncAccountReceivablesDocumentNumber($fiscalDocument);
+                $generationService = app(AccountReceivableGenerationService::class);
+                $ok = $generationService->generateFromFiscalDocument($fiscalDocument->fresh(['invoice']));
+
+                if (! $ok) {
+                    Log::warning('ConsultNfseAction: falha ao gerar contas a receber após autorização', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'invoice_id'         => $fiscalDocument->invoice_id,
+                        'message'            => $generationService->getMessage(),
+                        'error_code'         => $generationService->getErrorCode(),
+                        'errors'             => $generationService->getErrors(),
+                    ]);
+                }
             }
 
             $this->setSuccess();
@@ -110,21 +122,4 @@ class ConsultNfseAction
         }
     }
 
-    private function syncAccountReceivablesDocumentNumber(FiscalDocument $fiscalDocument): void
-    {
-        if (! $fiscalDocument->invoice_id) {
-            return;
-        }
-
-        $documentNumber = $fiscalDocument->document_number ?? $fiscalDocument->document_key;
-
-        if (! $documentNumber) {
-            return;
-        }
-
-        $fiscalDocument->invoice
-            ?->accountReceivables()
-            ->whereNull('document_number')
-            ->update(['document_number' => $documentNumber]);
-    }
 }

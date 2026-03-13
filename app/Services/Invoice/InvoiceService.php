@@ -2,11 +2,9 @@
 
 namespace App\Services\Invoice;
 
-use App\Enum\AccountReceivable\Status as AccountReceivableStatus;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Invoice\Status;
-use App\Models\AccountReceivable;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
@@ -468,7 +466,6 @@ class InvoiceService
                 // 4. Sincronizar financeiro da fatura
                 // ------------------------------------------------------------------
                 $this->syncInvoiceStatusAfterFiscalDocumentGeneration($invoice, $userId);
-                $this->ensureAccountReceivableLink($invoice, $fiscalDocument);
 
                 $this->setSuccess('Documento fiscal criado com sucesso a partir da fatura.');
 
@@ -517,61 +514,6 @@ class InvoiceService
             'status'     => Status::CONFIRMED->value,
         ]);
     }
-
-    private function ensureAccountReceivableLink(Invoice $invoice, FiscalDocument $fiscalDocument): void
-    {
-        $invoice->loadMissing(['accountReceivables']);
-
-        $documentNumber = $fiscalDocument->document_number
-            ?? $fiscalDocument->document_key
-            ?? $invoice->invoice_number;
-
-        $dueDate = $invoice->invoice_date ?? now()->toDateString();
-        $dueAmount = round((float) $invoice->total_amount, 2);
-
-        if ($invoice->accountReceivables->isNotEmpty()) {
-            $invoice->accountReceivables
-                ->whereNull('document_number')
-                ->each(function (AccountReceivable $accountReceivable) use ($documentNumber): void {
-                    $accountReceivable->update([
-                        'document_number' => $documentNumber,
-                    ]);
-                });
-
-            Log::info('InvoiceService: Conta(s) a receber já vinculada(s) à fatura', [
-                'metodo'                     => __METHOD__ . '@' . __LINE__,
-                'invoice_id'                 => $invoice->id,
-                'total_account_receivables'  => $invoice->accountReceivables->count(),
-            ]);
-
-            return;
-        }
-
-        // Mantém consistência financeira quando a fatura ainda não possui parcela gerada.
-        AccountReceivable::create([
-            'customer_id'      => $invoice->customer_id,
-            'company_id'       => $invoice->company_id,
-            'invoice_id'       => $invoice->id,
-            'sequence_number'  => '01',
-            'status'           => AccountReceivableStatus::PENDING->value,
-            'due_date'         => $dueDate,
-            // Compatibilidade com schema legado que pode não aceitar nulos.
-            'paid_date'        => $dueDate,
-            'due_amount'       => $dueAmount,
-            'paid_amount'      => 0,
-            'document_number'  => $documentNumber,
-            'description'      => 'Gerada automaticamente pela emissão de documento fiscal da fatura ' . $invoice->invoice_number,
-            'paid'             => false,
-        ]);
-
-        Log::info('InvoiceService: Conta a receber criada automaticamente após geração do documento fiscal', [
-            'metodo'             => __METHOD__ . '@' . __LINE__,
-            'invoice_id'         => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'due_amount'         => $dueAmount,
-        ]);
-    }
-
     /**
      * Gera o PDF da fatura em base64.
      */
@@ -662,3 +604,4 @@ class InvoiceService
         return str_pad($sequence->last_number, 6, '0', STR_PAD_LEFT);
     }
 }
+

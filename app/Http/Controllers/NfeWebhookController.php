@@ -6,6 +6,7 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Fiscal\NfeConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -154,25 +155,18 @@ class NfeWebhookController extends Controller
         $doc->update($updates);
 
         if ($status === 'autorizado') {
-            $this->syncAccountReceivablesDocumentNumber($doc);
+            $generationService = app(AccountReceivableGenerationService::class);
+            $ok = $generationService->generateFromFiscalDocument($doc->fresh(['invoice']));
+
+            if (! $ok) {
+                Log::warning('NfeWebhookController: falha ao gerar contas a receber após autorização', [
+                    'fiscal_document_id' => $doc->id,
+                    'invoice_id'         => $doc->invoice_id,
+                    'message'            => $generationService->getMessage(),
+                    'error_code'         => $generationService->getErrorCode(),
+                    'errors'             => $generationService->getErrors(),
+                ]);
+            }
         }
-    }
-
-    private function syncAccountReceivablesDocumentNumber(FiscalDocument $doc): void
-    {
-        if (! $doc->invoice_id) {
-            return;
-        }
-
-        $documentNumber = $doc->document_number ?? $doc->document_key;
-
-        if (! $documentNumber) {
-            return;
-        }
-
-        $doc->invoice
-            ?->accountReceivables()
-            ->whereNull('document_number')
-            ->update(['document_number' => $documentNumber]);
     }
 }

@@ -14,6 +14,7 @@ class AccountReceivable extends Model
         'customer_id',
         'company_id',
         'invoice_id',
+        'fiscal_document_id',
         'sequence_number',
         'status',
         'due_date',
@@ -56,5 +57,10 @@ class AccountReceivable extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function fiscalDocument(): BelongsTo
+    {
+        return $this->belongsTo(FiscalDocument::class);
     }
 }

@@ -58,7 +58,7 @@ class InvoiceForm
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->disabled()
-                                            ->columnSpan(['md' => 2, 'lg' => 5])
+                            w                ->columnSpan(['md' => 2, 'lg' => 5])
                                             ->relationship('customer', 'name')
                                             ->searchable()
                                             ->preload()
@@ -66,21 +66,23 @@ class InvoiceForm
                                     ]),
                             ]),
                         Tab::make('Produtos')
+                            ->visible(fn($record) => $record->requisitions->count())
                             ->schema([
                                 Livewire::make(RequisitionsRelationManager::class, fn(Invoice $record) => [
                                     'ownerRecord' => $record,
                                     'pageClass' => EditInvoice::class,
                                 ])
-                                    ->visible(fn($record) => $record->requisitions->count())
+                                    
                                     ->columnSpanFull(),
                             ]),
                         Tab::make('Serviços')
+                            ->visible(fn($record) => $record->serviceOrders->count())
                             ->schema([
                                 Livewire::make(ServiceOrdersRelationManager::class, fn(Invoice $record) => [
                                     'ownerRecord' => $record,
                                     'pageClass' => EditInvoice::class,
                                 ])
-                                    ->visible(fn($record) => $record->serviceOrders->count())
+                                    
                                     ->columnSpanFull(),
                             ]),
                     ]),

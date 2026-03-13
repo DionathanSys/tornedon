@@ -145,6 +145,11 @@ class FiscalDocument extends Model
         return $this->hasMany(AccountPayable::class);
     }
 
+    public function accountReceivables(): HasMany
+    {
+        return $this->hasMany(AccountReceivable::class);
+    }
+
     public function nfeSequence(): BelongsTo
     {
         return $this->belongsTo(NfeSequence::class);
