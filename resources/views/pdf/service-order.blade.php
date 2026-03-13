@@ -61,7 +61,7 @@
     </table>
 
     <h2>Observações</h2>
-        <div class="line">{{$record->customer_observations ?? Sem observações}}</div>
+        <div class="line">{{$record->customer_observations ?? 'Sem observações'}}</div>
 
     <h2>Resumo</h2>
     @if($record->discount_amount > 0)
