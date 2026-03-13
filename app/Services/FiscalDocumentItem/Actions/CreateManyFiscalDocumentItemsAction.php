@@ -140,6 +140,11 @@ class CreateManyFiscalDocumentItemsAction
 
     private function normalizeForPersistence(array $data): array
     {
+        // Garante que iss_exigibility seja sempre string
+        if (isset($data['iss_exigibility']) && ! is_null($data['iss_exigibility'])) {
+            $data['iss_exigibility'] = (string) $data['iss_exigibility'];
+        }
+
         static $tableColumns = null;
 
         if ($tableColumns === null) {

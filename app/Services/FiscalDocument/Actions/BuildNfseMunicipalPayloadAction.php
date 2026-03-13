@@ -97,7 +97,7 @@ class BuildNfseMunicipalPayloadAction
                     ?? $profile?->default_nbs_code
                 );
 
-                $discriminacao = trim((string) ($item->description ?? ''));
+                $discriminacao = trim((string) ($item->description . ';' . $item->additional_information));
                 if ($discriminacao === '') {
                     $discriminacao = 'Servicos prestados conforme documento fiscal.';
                 }
@@ -134,7 +134,7 @@ class BuildNfseMunicipalPayloadAction
                 }
 
                 // Exigibilidade ISS
-                $exigibilidade = $item->iss_exigibility ?? '1';
+                $exigibilidade = $item->iss_exigibility ?? null;
                 $itemPayload['exigibilidade_iss'] = $exigibilidade;
 
                 // Alíquota e ISS

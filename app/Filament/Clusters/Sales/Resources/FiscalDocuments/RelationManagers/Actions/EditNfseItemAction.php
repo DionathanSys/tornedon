@@ -97,6 +97,7 @@ final class EditNfseItemAction
                             ->native(false),
                         Toggle::make('iss_withheld')
                             ->label('ISS Retido')
+                            ->inline(false)
                             ->default(false),
                     ]),
 
@@ -116,6 +117,11 @@ final class EditNfseItemAction
                     'item_id' => $record->id,
                     'data'    => $data,
                 ]);
+
+                // Garante que iss_exigibility seja sempre string
+                if (isset($data['iss_exigibility']) && ! is_null($data['iss_exigibility'])) {
+                    $data['iss_exigibility'] = (string) $data['iss_exigibility'];
+                }
 
                 $service = new FiscalDocumentItemService();
                 $item = $service->update($record, $data, Auth::id());

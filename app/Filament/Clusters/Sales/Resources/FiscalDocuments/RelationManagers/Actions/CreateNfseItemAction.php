@@ -138,6 +138,11 @@ final class CreateNfseItemAction
                 $data['fiscal_document_id'] = $fiscalDocument->id;
                 $data['unit_of_measure'] = 'UN';
 
+                // Garante que iss_exigibility seja sempre string
+                if (isset($data['iss_exigibility']) && ! is_null($data['iss_exigibility'])) {
+                    $data['iss_exigibility'] = (string) $data['iss_exigibility'];
+                }
+
                 Log::debug('Criando item NFS-e via RelationManager', [
                     'metodo'             => __METHOD__ . '@' . __LINE__,
                     'fiscal_document_id' => $fiscalDocument->id,
