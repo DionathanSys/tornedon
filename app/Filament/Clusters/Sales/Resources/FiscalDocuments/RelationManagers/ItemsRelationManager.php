@@ -7,6 +7,7 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actio
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditNfseItemAction;
+use App\Models\FiscalDocumentItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -15,6 +16,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -60,7 +62,8 @@ class ItemsRelationManager extends RelationManager
                     ->label('Serviço')
                     ->searchable()
                     ->limit(40)
-                    ->visible($isNfse),
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('service_code')
                     ->label('Cód. Serviço')
@@ -69,6 +72,7 @@ class ItemsRelationManager extends RelationManager
                 // Common columns
                 TextColumn::make('description')
                     ->label('Descrição')
+                    ->description(fn (FiscalDocumentItem $item) => Str::upper($item->additional_information))
                     ->searchable()
                     ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: ! $isNfse),
