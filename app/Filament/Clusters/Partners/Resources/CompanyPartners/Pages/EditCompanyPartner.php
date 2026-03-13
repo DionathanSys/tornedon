@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Pages;
 
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Partners\Resources\Equipments\EquipmentResource;
+use App\Filament\Shared\Actions\ReplicateToCompaniesAction;
 use App\Models\CompanyPartner;
 use App\Models\Partner;
 use App\Services\Partner\CompanyPartnerService;
@@ -27,6 +28,7 @@ class EditCompanyPartner extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ReplicateToCompaniesAction::make('replicate'),
             ActionGroup::make([
                 Action::make('new-partner')
                     ->label('Parceiro')

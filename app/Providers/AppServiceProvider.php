@@ -12,6 +12,8 @@ use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateServiceOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\UpdateQuoteItemsStatusListener;
 use App\Listeners\Quote\UpdateQuoteItemsStatusOnReopenListener;
+use App\Listeners\ReplicatePartnerOnCreate;
+use App\Listeners\ReplicateEquipmentOnCreate;
 use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
@@ -88,5 +90,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Eventos de orçamento reaberto
         Event::listen(QuoteReopened::class, UpdateQuoteItemsStatusOnReopenListener::class);
+
+        // Replicação de Partners e Equipments
+        ReplicatePartnerOnCreate::register(Event::getFacadeRoot());
+        ReplicateEquipmentOnCreate::register(Event::getFacadeRoot());
     }
 }

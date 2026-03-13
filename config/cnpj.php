@@ -22,7 +22,7 @@ return [
     */
     'provider_classes' => [
         'open_cnpja' => OpenCnpjaProvider::class,
-        'receitaws' => ReceitaWsProvider::class,
+        // 'receitaws' => ReceitaWsProvider::class,
     ],
 
     /*

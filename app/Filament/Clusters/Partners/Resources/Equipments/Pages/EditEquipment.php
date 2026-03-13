@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Partners\Resources\Equipments\Pages;
 
 use App\Filament\Clusters\Partners\Resources\Equipments\EquipmentResource;
+use App\Filament\Shared\Actions\ReplicateToCompaniesAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -16,6 +17,7 @@ class EditEquipment extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ReplicateToCompaniesAction::make('replicate'),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),

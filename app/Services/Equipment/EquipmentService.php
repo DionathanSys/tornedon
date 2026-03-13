@@ -12,6 +12,30 @@ class EquipmentService
     use HandlesServiceResponse;
 
     /* ==============================
+     |  Escrita
+     |==============================*/
+
+    /**
+     * Cria um novo equipamento
+     */
+    public function create(array $data): ?Equipment
+    {
+        try {
+            $equipment = Equipment::create($data);
+            $this->setSuccess('Equipamento criado com sucesso');
+            return $equipment;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao criar equipamento', [$e->getMessage()]);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro ao criar equipamento',
+                'exception' => $e->getMessage(),
+                'data' => $data,
+            ]);
+            return null;
+        }
+    }
+
+    /* ==============================
      |  Consultas
      |==============================*/
 

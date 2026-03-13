@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum\Equipment\Type;
+use App\Services\DataReplication\ReplicationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -122,5 +123,16 @@ class Equipment extends Model
     public function requisitions()
     {
         return $this->hasMany(Requisition::class);
+    }
+
+    /**
+     * Replica este Equipment para múltiplas empresas
+     *
+     * @param array $companyIds IDs das empresas alvo
+     * @return array Resultado da replicação
+     */
+    public function replicateTo(array $companyIds): array
+    {
+        return app(ReplicationService::class)->replicate($this, $companyIds, 'equipment');
     }
 }

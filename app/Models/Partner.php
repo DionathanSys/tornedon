@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum;
+use App\Services\DataReplication\ReplicationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;   
@@ -68,5 +69,16 @@ class Partner extends Model
     public function companies(): BelongsToMany
     {
         return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
+    }
+
+    /**
+     * Replica este Partner para múltiplas empresas
+     *
+     * @param array $companyIds IDs das empresas alvo
+     * @return array Resultado da replicação
+     */
+    public function replicateTo(array $companyIds): array
+    {
+        return app(ReplicationService::class)->replicate($this, $companyIds, 'partner');
     }
 }

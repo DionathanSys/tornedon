@@ -219,7 +219,7 @@ class CnpjConsultationService
 
             try {
                 $provider = app()->makeWith($providerClass, [
-                    'config' => (array) config("cnpj.provider_settings.{$providerName}", []),
+                    'config' => (array) config('cnpj.provider_settings.' . $providerName, []),
                 ]);
             } catch (\Throwable $e) {
                 Log::error('Falha ao instanciar provider de CNPJ.', [
@@ -342,7 +342,7 @@ class CnpjConsultationService
     private function getProviderRateLimitMaxAttempts(string $providerName): int
     {
         return (int) config(
-            "cnpj.provider_settings.{$providerName}.rate_limit.max_attempts",
+            'cnpj.provider_settings.' . $providerName . '.rate_limit.max_attempts',
             $this->getRateLimitMaxAttempts(),
         );
     }
@@ -350,7 +350,7 @@ class CnpjConsultationService
     private function getProviderRateLimitDecaySeconds(string $providerName): int
     {
         return (int) config(
-            "cnpj.provider_settings.{$providerName}.rate_limit.decay_seconds",
+            'cnpj.provider_settings.' . $providerName . '.rate_limit.decay_seconds',
             $this->getRateLimitDecaySeconds(),
         );
     }

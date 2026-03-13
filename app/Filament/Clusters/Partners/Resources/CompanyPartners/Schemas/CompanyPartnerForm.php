@@ -4,9 +4,11 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas;
 
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\MultiSelect;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use App\Enum;
+use App\Models\Company;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\EditAddressAction;
@@ -141,6 +143,28 @@ class CompanyPartnerForm
                             ->inline(false)
                             ->default(true)
                             ->required(),
+                    ]),
+                Section::make('Replicar para outras Empresas')
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 8,
+                    ])
+                    ->columnSpanFull()
+                    ->description('Copiar este parceiro para outras empresas')
+                    ->visibleOn('create')
+                    ->compact()
+                    ->schema([
+                        MultiSelect::make('replicate_to_companies')
+                            ->label('Empresas de destino')
+                            ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
+                            ->columnSpanFull()
+                            ->native(false)
+                            ->options(
+                                Company::pluck('name', 'id')->toArray()
+                            )
+                            ->searchable()
+                            ->preload(),
                     ]),
                 Section::make()
                     ->columns([

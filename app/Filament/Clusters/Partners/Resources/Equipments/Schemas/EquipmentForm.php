@@ -3,13 +3,16 @@
 namespace App\Filament\Clusters\Partners\Resources\Equipments\Schemas;
 
 use App\Enum;
+use App\Models\Company;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\MultiSelect;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class EquipmentForm
 {
@@ -98,6 +101,36 @@ class EquipmentForm
                             ->helperText('Identificação única do equipamento')
                             ->autocomplete(false),
                     ]),
+                Section::make('Replicar para outras Empresas')
+                    ->columns([
+                        'sm' => 1,
+                        'md' => 4,
+                        'lg' => 8,
+                    ])
+                    ->columnSpanFull()
+                    ->description('Copiar este equipamento para outras empresas')
+                    ->visibleOn('create')
+                    ->compact()
+                    ->schema([
+                        MultiSelect::make('replicate_to_companies')
+                            ->label('Empresas de destino')
+                            ->helperText('Selecione as empresas para as quais deseja copiar este equipamento')
+                            ->columnSpanFull()
+                            ->native(false)
+                            ->options(function () {
+                                $tenant = Filament::getTenant();
+                                $currentUser = Auth::user();
+                                $userCompanies = $currentUser->companies()->pluck('id');
+                                
+                                return Company::whereIn('id', $userCompanies)
+                                    ->where('id', '!=', $tenant->id)
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->preload(),
+                    ]),
             ]);
     }
 }
+
