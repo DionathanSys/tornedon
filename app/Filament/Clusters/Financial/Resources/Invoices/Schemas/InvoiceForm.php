@@ -58,7 +58,7 @@ class InvoiceForm
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->disabled()
-                            w                ->columnSpan(['md' => 2, 'lg' => 5])
+                                            ->columnSpan(['md' => 2, 'lg' => 5])
                                             ->relationship('customer', 'name')
                                             ->searchable()
                                             ->preload()
