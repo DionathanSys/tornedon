@@ -127,10 +127,11 @@ final class CreateNfseItemAction
                     ->label('Inclui no Total')
                     ->default(true),
 
-                TextInput::make('additional_information')
+                Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')
-                    ->autocapitalize('words')
+                    ->rows(2)
                     ->maxLength(500)
+                    ->dehydrateStateUsing(fn (string $state): string => Str::upper($state))
                     ->columnSpanFull(),
             ])
             ->using(function (array $data, RelationManager $livewire): ?Model {

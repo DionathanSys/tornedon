@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Group;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class EditNfseItemAction
 {
@@ -109,7 +110,7 @@ final class EditNfseItemAction
                     ->label('Informações Adicionais do Item')
                     ->rows(2)
                     ->maxLength(500)
-                    ->dehydrateStateUsing(fn (string $state): string => ucwords($state))
+                    ->dehydrateStateUsing(fn (string $state): string => Str::upper($state))
                     ->columnSpanFull(),
             ])
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
