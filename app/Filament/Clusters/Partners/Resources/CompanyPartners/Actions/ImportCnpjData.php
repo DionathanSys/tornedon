@@ -10,6 +10,7 @@ use App\Services\Cnpj\CnpjConsultationService;
 use App\Services\Contact\ContactService;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +22,7 @@ class ImportCnpjData
             ->label('Importar dados via CNPJ')
             ->icon(Heroicon::ArrowDownTray)
             ->color('info')
-            ->badge()
+            ->size(Size::Small)
             ->requiresConfirmation()
             ->modalHeading('Importar dados via CNPJ')
             ->modalDescription(

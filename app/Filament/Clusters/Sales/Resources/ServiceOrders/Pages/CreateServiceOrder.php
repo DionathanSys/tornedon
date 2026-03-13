@@ -22,6 +22,8 @@ class CreateServiceOrder extends CreateRecord
         $data['company_id'] = $tenant->id;
         $data['status']     = State::OPEN;
 
+        unset($data['discount_amount']);
+
         return $data;
     }
 

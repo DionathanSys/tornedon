@@ -1,4 +1,4 @@
-- [ ] Registrar info. de tempo de garantia padrão 
+- [x] Registrar info. de tempo de garantia padrão 
 - [ ] Inserir campo no cadastro do parceiro para definir se requer aprovação.
 - [ ] Incluir valor total da OS.
 - [ ] Precisa atribuir valor de km para deslocamento padrão na edição
@@ -26,3 +26,8 @@
 Realiza o reparo em um equipamento, compra produtos para utilizar, é interessante que esses produtos sejam registrados no cadastro de produto e armazenados no histórico do veículo;
 
 - Quando criar
+
+# TODO Atualizado
+## ServiceOrder
+- [ ] Criar informação para *Valor do KM* para cálculo do custo de deslocamento.
+- [ ] Persistir essa informação no banco de dados ou recalcular o valor na hora de preencher o form (Valor de Deslocament / Distância em KM)

@@ -3,7 +3,7 @@
 namespace App\Services\FiscalDocumentItem\Actions;
 
 use App\Models\FiscalDocumentItem;
-use App\Services\FiscalDocument\Validators\Items\NfeItemValidator;
+use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +28,10 @@ class UpdateFiscalDocumentItemAction
                 'data'                    => $data,
             ]);
 
-            $validated = NfeItemValidator::validateUpdate($data);
+            $validated = FiscalDocumentItemValidatorResolver::validateUpdate(
+                $data,
+                $this->fiscalDocumentItem->fiscal_document_id
+            );
 
             unset($validated['fiscal_document_id']);
             $validated['updated_by'] = $this->updatedBy;

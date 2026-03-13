@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Partner\PartnerService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Log;
 
@@ -25,22 +27,30 @@ class EditCompanyPartner extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('manager_equipments')
-                ->label('Gerenciar Equipamentos')
-                ->url(fn(CompanyPartner $record) => EquipmentResource::getUrl(
-                    'index',
-                    [
-                        'filters' => [
-                            'owner_id' => [
-                                'value' => $record->partner_id,
+            ActionGroup::make([
+                Action::make('new-partner')
+                    ->label('Parceiro')
+                    ->url(CompanyPartnerResource::getUrl('create'))
+                    ->icon(Heroicon::Plus)
+                    ->color('primary')
+                    ->size(Size::Small),
+                Action::make('manager_equipments')
+                    ->label('Equipamentos')
+                    ->url(fn(CompanyPartner $record) => EquipmentResource::getUrl(
+                        'index',
+                        [
+                            'filters' => [
+                                'owner_id' => [
+                                    'value' => $record->partner_id,
+                                ]
                             ]
                         ]
-                    ]
-                ))
-                ->openUrlInNewTab()
-                ->icon(Heroicon::Wrench)
-                ->color('primary')
-                ->badge(),
+                    ))
+                    ->openUrlInNewTab()
+                    ->icon(Heroicon::Wrench)
+                    ->color('primary')
+                    ->size(Size::Small),
+            ])->buttonGroup(),
             DeleteAction::make()
                 ->visible(false),
         ];

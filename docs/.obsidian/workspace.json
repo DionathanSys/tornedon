@@ -39,12 +39,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Campos Payload NFS.md",
+                "file": "integranotas-itens.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Campos Payload NFS"
+              "title": "integranotas-itens"
             }
           }
         ],
@@ -213,8 +213,9 @@
   },
   "active": "4c63bdbf83b0e763",
   "lastOpenFiles": [
-    "Campos Payload NFS.md",
     "Consideracoes plano fiscal.md",
+    "Projeto/📥 Caixa de Entrada.md",
+    "Campos Payload NFS.md",
     "arquitetura-fiscal-criacao-validacao-emissao.md",
     "Considerações plano fiscal.md",
     "CODING-STANDARDS.md",
@@ -241,7 +242,6 @@
     "Requisition.md",
     "Sem título",
     "regras-negocio/quote-production-workflow.md",
-    "Quote.md",
     "Outros",
     "Excalidraw",
     "Pasted image 20260219092215.png",

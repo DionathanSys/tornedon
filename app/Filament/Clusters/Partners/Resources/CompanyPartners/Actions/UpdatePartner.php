@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use App\Notification\NotifyService as notify;
+use Filament\Support\Enums\Size;
 use Illuminate\Support\Facades\Auth;
 
 class UpdatePartner
@@ -26,7 +27,7 @@ class UpdatePartner
             ->label('Editar Parceiro')
             ->icon(Heroicon::PencilSquare)
             ->modal()
-            ->badge()
+            ->size(Size::Small)
             ->visible(fn($operation): bool => $operation === 'edit')
             ->fillForm(function (Get $get): array {
                 $partner = (new PartnerService())->getPartnerById($get('partner_id'));

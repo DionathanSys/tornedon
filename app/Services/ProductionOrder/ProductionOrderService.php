@@ -326,4 +326,24 @@ class ProductionOrderService
             return null;
         }
     }
+
+    /**
+     * Aplica valor de desconto distribuído igualmente entre os itens da OP.
+     * O desconto é igualmente distribuído e, se o item já possuir desconto,
+     * o valor será incrementado. O discount_percentage também será calculado.
+     *
+     * @param  ProductionOrder  $productionOrder
+     * @param  float            $discountAmount
+     * @return bool
+     */
+    /**
+     * Recupera informações do formulário do ERP para a OP
+     *
+     * @param  array  $data
+     * @return \Illuminate\Http\Client\Response
+     */
+    private function fetchErpFormInfo(array $data)
+    {
+        // Implementar lógica de integração com ERP
+    }
 }
