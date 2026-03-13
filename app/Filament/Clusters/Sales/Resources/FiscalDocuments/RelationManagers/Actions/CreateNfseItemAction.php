@@ -129,6 +129,7 @@ final class CreateNfseItemAction
 
                 Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')
+                    ->autocapitalize('words')
                     ->rows(2)
                     ->maxLength(500)
                     ->columnSpanFull(),

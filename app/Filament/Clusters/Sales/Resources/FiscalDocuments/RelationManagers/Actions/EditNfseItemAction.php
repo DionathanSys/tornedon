@@ -109,6 +109,7 @@ final class EditNfseItemAction
                     ->label('Informações Adicionais do Item')
                     ->rows(2)
                     ->maxLength(500)
+                    ->autocapitalize('words')
                     ->columnSpanFull(),
             ])
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
