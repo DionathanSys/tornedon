@@ -36,6 +36,7 @@ class InvoiceForm
                                     ->schema([
                                         TextInput::make('invoice_number')
                                             ->label('Número da Fatura')
+                                            ->disabled()
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->required()
                                             ->maxLength(50),
@@ -49,12 +50,14 @@ class InvoiceForm
                                             ->disabled(),
                                         DatePicker::make('invoice_date')
                                             ->label('Data da Fatura')
+                                            ->disabled()
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->default(now())
                                             ->required()
                                             ->displayFormat('d/m/Y'),
                                         Select::make('customer_id')
                                             ->label('Cliente')
+                                            ->disabled()
                                             ->columnSpan(['md' => 2, 'lg' => 5])
                                             ->relationship('customer', 'name')
                                             ->searchable()
@@ -68,6 +71,7 @@ class InvoiceForm
                                     'ownerRecord' => $record,
                                     'pageClass' => EditInvoice::class,
                                 ])
+                                    ->visible(fn($record) => $record->requisitions->count())
                                     ->columnSpanFull(),
                             ]),
                         Tab::make('Serviços')
@@ -76,6 +80,7 @@ class InvoiceForm
                                     'ownerRecord' => $record,
                                     'pageClass' => EditInvoice::class,
                                 ])
+                                    ->visible(fn($record) => $record->serviceOrders->count())
                                     ->columnSpanFull(),
                             ]),
                     ]),
