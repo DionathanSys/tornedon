@@ -43,6 +43,7 @@ class FiscalDocumentForm
                                             ->required()
                                             ->searchable()
                                             ->native(false)
+                                            ->disabledOn('edit')
                                             ->columnSpan(['md' => 1]),
 
                                         Forms\Components\Select::make('customer_id')
@@ -51,6 +52,7 @@ class FiscalDocumentForm
                                             ->required()
                                             ->searchable()
                                             ->native(false)
+                                            ->disabledOn('edit')
                                             ->columnSpan(['md' => 1]),
 
                                         Forms\Components\Select::make('document_type')
@@ -60,6 +62,7 @@ class FiscalDocumentForm
                                             ->required()
                                             ->native(false)
                                             ->live()
+                                            ->disabledOn('edit')
                                             ->columnSpan(['md' => 1]),
 
                                         Forms\Components\Select::make('invoice_id')
@@ -68,6 +71,7 @@ class FiscalDocumentForm
                                             ->searchable()
                                             ->nullable()
                                             ->native(false)
+                                            ->disabled()
                                             ->helperText('Opcional — associa o documento a uma fatura existente.')
                                             ->columnSpan(['md' => 1]),
                                     ])
@@ -79,6 +83,7 @@ class FiscalDocumentForm
                                         Forms\Components\Select::make('nfse_model')
                                             ->label('Modelo NFS-e')
                                             ->options(NfseModel::toSelectArray())
+                                            ->disabledOn('edit')
                                             ->required()
                                             ->native(false)
                                             ->columnSpan(['md' => 1]),
@@ -88,6 +93,7 @@ class FiscalDocumentForm
                                             ->required()
                                             ->native(false)
                                             ->default(now())
+                                            ->displayFormat('d/m/Y')
                                             ->columnSpan(['md' => 1]),
                                     ])
                                     ->columns(['md' => 2])
@@ -177,6 +183,7 @@ class FiscalDocumentForm
                                     ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
 
                                 Section::make('Informações Adicionais')
+                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
                                     ->schema([
                                         Forms\Components\Textarea::make('additional_taxpayer_information')
                                             ->label('Informações ao Contribuinte')
