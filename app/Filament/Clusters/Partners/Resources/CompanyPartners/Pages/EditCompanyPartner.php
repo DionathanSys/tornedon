@@ -28,12 +28,12 @@ class EditCompanyPartner extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-
             ActionGroup::make([
-                ActionGroup::make([
-                    ReplicateToCompaniesAction::make('replicate')
-                        ->size(Size::Small),
-                ])->button(),
+                ReplicateToCompaniesAction::make('replicate')
+                    ->size(Size::Small),
+            ])->button(),
+            ActionGroup::make([
+
                 Action::make('new-partner')
                     ->label('Parceiro')
                     ->url(CompanyPartnerResource::getUrl('create'))

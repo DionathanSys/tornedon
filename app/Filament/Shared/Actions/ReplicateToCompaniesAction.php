@@ -36,6 +36,7 @@ class ReplicateToCompaniesAction extends Action
                             ->where('id', '!=', $currentCompanyId)
                             ->pluck('name', 'id');
                     })
+                    ->multiple()
                     ->required()
                     ->minItems(1),
             ])
