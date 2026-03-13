@@ -7,6 +7,7 @@ use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
 use App\Models\RequisitionSequence;
+use App\Services\Email\CustomerDocumentEmailService;
 use App\Services\Invoice\InvoiceService;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\Requisition\Actions\CancelRequisitionAction;
@@ -137,7 +138,7 @@ class RequisitionService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            $requisition = DB::transaction(function () use ($data, $createdBy) {
                 if (empty($data['number']) && isset($data['company_id'])) {
                     $data['number'] = $this->generateNumber($data['company_id']);
                 }
@@ -178,6 +179,12 @@ class RequisitionService
 
                 return $requisition;
             });
+
+            if ($requisition) {
+                app(CustomerDocumentEmailService::class)->sendRequisitionGenerated($requisition);
+            }
+
+            return $requisition;
         } catch (\Exception $e) {
             $this->setError('Erro ao criar requisição');
 

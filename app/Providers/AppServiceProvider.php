@@ -19,11 +19,14 @@ use App\Models\Company;
 use App\Models\ServiceOrder;
 use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
+use App\Services\Email\Contracts\EmailProviderInterface;
+use App\Services\Email\Providers\ResendEmailProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,7 +35,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(EmailProviderInterface::class, function ($app) {
+            $provider = (string) config('email_notifications.provider', 'resend');
+
+            if ($provider === 'resend') {
+                return $app->make(ResendEmailProvider::class);
+            }
+
+            if (class_exists($provider)) {
+                $instance = $app->make($provider);
+
+                if (! $instance instanceof EmailProviderInterface) {
+                    throw new RuntimeException("A classe {$provider} não implementa EmailProviderInterface.");
+                }
+
+                return $instance;
+            }
+
+            throw new RuntimeException("Provedor de e-mail não suportado: {$provider}");
+        });
     }
 
     /**

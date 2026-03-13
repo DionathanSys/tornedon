@@ -7,6 +7,7 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
+use App\Services\Email\CustomerDocumentEmailService;
 use App\Services\Fiscal\NfeConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -167,6 +168,9 @@ class NfeWebhookController extends Controller
                     'errors'             => $generationService->getErrors(),
                 ]);
             }
+
+            app(CustomerDocumentEmailService::class)
+                ->sendFiscalDocumentAuthorized($doc->fresh());
         }
     }
 }

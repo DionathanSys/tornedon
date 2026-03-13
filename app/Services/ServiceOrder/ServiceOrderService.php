@@ -6,6 +6,7 @@ use App\Enum\ServiceOrder\State;
 use App\Exceptions\DomainValidationException;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderSequence;
+use App\Services\Email\CustomerDocumentEmailService;
 use App\Services\Invoice\InvoiceService;
 use App\Services\ServiceOrder\Actions\CancelServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
@@ -216,7 +217,7 @@ class ServiceOrderService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            $serviceOrder = DB::transaction(function () use ($data, $createdBy) {
                 // Gera número automaticamente se não fornecido
                 if (empty($data['number']) && isset($data['company_id'])) {
                     $data['number'] = $this->generateNumber($data['company_id']);
@@ -256,6 +257,12 @@ class ServiceOrderService
 
                 return $serviceOrder;
             });
+
+            if ($serviceOrder) {
+                app(CustomerDocumentEmailService::class)->sendServiceOrderGenerated($serviceOrder);
+            }
+
+            return $serviceOrder;
         } catch (\Exception $e) {
             $this->setError('Erro ao criar ordem de serviço');
 
