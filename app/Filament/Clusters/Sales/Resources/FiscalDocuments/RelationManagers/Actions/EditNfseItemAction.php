@@ -45,6 +45,7 @@ final class EditNfseItemAction
                     ->required()
                     ->maxLength(2000)
                     ->rows(3)
+                    ->dehydrateStateUsing(fn (string $state): string => Str::upper($state))
                     ->columnSpanFull(),
 
                 Group::make()

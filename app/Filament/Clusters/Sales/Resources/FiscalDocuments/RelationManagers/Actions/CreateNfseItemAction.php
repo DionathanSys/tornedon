@@ -18,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class CreateNfseItemAction
 {
@@ -66,6 +67,7 @@ final class CreateNfseItemAction
                     ->required()
                     ->maxLength(2000)
                     ->rows(3)
+                    ->dehydrateStateUsing(fn (string $state): string => Str::upper($state))
                     ->columnSpanFull(),
 
                 Group::make()
