@@ -23,8 +23,9 @@ class NfseItemValidator
             'items.*.total_price'          => 'required|numeric|min:0.01',
             'items.*.service_code'         => 'nullable|string|max:20',
             'items.*.nbs_code'             => 'nullable|string|max:9',
-            'items.*.iss_rate'         => 'nullable|numeric|min:0|max:100',
+            'items.*.iss_rate'             => 'nullable|numeric|min:0|max:100',
             'items.*.iss_exigibility'      => 'nullable|string|max:2',
+            'items.*.additional_information' => 'nullable|string|max:500',
         ];
     }
 
@@ -57,21 +58,22 @@ class NfseItemValidator
     private static function createRules(): array
     {
         return [
-            'fiscal_document_id'  => 'required|integer|exists:fiscal_documents,id',
-            'service_id'          => 'nullable|integer|exists:services,id',
-            'description'         => 'required|string|max:2000',
-            'quantity'            => 'required|numeric|min:0.0001',
-            'unit_price'          => 'required|numeric|min:0',
-            'total_price'         => 'required|numeric|min:0.01',
-            'unit_of_measure'     => 'nullable|string|max:6',
-            'service_code'        => 'nullable|string|max:20',
-            'nbs_code'            => 'nullable|string|max:9',
-            'cnae_code'           => 'nullable|string|max:7',
-            'municipal_tax_code'  => 'nullable|string|max:20',
-            'iss_rate'        => 'nullable|numeric|min:0|max:100',
-            'iss_exigibility'     => 'nullable|string|max:2',
+            'fiscal_document_id'    => 'required|integer|exists:fiscal_documents,id',
+            'service_id'            => 'nullable|integer|exists:services,id',
+            'description'           => 'required|string|max:2000',
+            'quantity'              => 'required|numeric|min:0.0001',
+            'unit_price'            => 'required|numeric|min:0',
+            'total_price'           => 'required|numeric|min:0.01',
+            'unit_of_measure'       => 'nullable|string|max:6',
+            'service_code'          => 'nullable|string|max:20',
+            'nbs_code'              => 'nullable|string|max:9',
+            'cnae_code'             => 'nullable|string|max:7',
+            'municipal_tax_code'    => 'nullable|string|max:20',
+            'iss_rate'              => 'nullable|numeric|min:0|max:100',
+            'iss_exigibility'       => 'nullable|string|max:2',
             'iss_withheld'          => 'nullable|boolean',
-            'tax_data'            => 'nullable|array',
+            'additional_information' => 'nullable|string|max:500',
+            'tax_data'              => 'nullable|array',
         ];
     }
 
@@ -122,20 +124,21 @@ class NfseItemValidator
     private static function updateRules(): array
     {
         return [
-            'service_id'          => 'sometimes|nullable|integer|exists:services,id',
-            'description'         => 'sometimes|required|string|max:2000',
-            'quantity'            => 'sometimes|required|numeric|min:0.0001',
-            'unit_price'          => 'sometimes|required|numeric|min:0',
-            'total_price'         => 'sometimes|required|numeric|min:0.01',
-            'unit_of_measure'     => 'sometimes|nullable|string|max:6',
-            'service_code'        => 'sometimes|nullable|string|max:20',
-            'nbs_code'            => 'sometimes|nullable|string|max:9',
-            'cnae_code'           => 'sometimes|nullable|string|max:7',
-            'municipal_tax_code'  => 'sometimes|nullable|string|max:20',
-            'iss_rate'            => 'sometimes|nullable|numeric|min:0|max:100',
-            'iss_exigibility'     => 'sometimes|nullable|string|max:2',
-            'iss_withheld'        => 'sometimes|nullable|boolean',
-            'tax_data'            => 'sometimes|nullable|array',
+            'service_id'            => 'sometimes|nullable|integer|exists:services,id',
+            'description'           => 'sometimes|required|string|max:2000',
+            'quantity'              => 'sometimes|required|numeric|min:0.0001',
+            'unit_price'            => 'sometimes|required|numeric|min:0',
+            'total_price'           => 'sometimes|required|numeric|min:0.01',
+            'unit_of_measure'       => 'sometimes|nullable|string|max:6',
+            'service_code'          => 'sometimes|nullable|string|max:20',
+            'nbs_code'              => 'sometimes|nullable|string|max:9',
+            'cnae_code'             => 'sometimes|nullable|string|max:7',
+            'municipal_tax_code'    => 'sometimes|nullable|string|max:20',
+            'iss_rate'              => 'sometimes|nullable|numeric|min:0|max:100',
+            'iss_exigibility'       => 'sometimes|nullable|string|max:2',
+            'iss_withheld'          => 'sometimes|nullable|boolean',
+            'additional_information' => 'sometimes|nullable|string|max:500',
+            'tax_data'              => 'sometimes|nullable|array',
         ];
     }
 
