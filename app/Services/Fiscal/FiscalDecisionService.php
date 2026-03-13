@@ -102,7 +102,11 @@ class FiscalDecisionService
             throw new \RuntimeException('Natureza da operação não informada para resolver CFOP.');
         }
 
-        $cfop = $profile->resolveCfopForOperationNature($context->operationNature, $context->productNcm);
+        $cfop = $profile->resolveCfopForOperationNature(
+            $context->operationNature,
+            $context->productNcm,
+            $context->isCustomManufacturing
+        );
 
         if ($cfop === null) {
             throw new \RuntimeException(

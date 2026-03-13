@@ -21,10 +21,6 @@ Route::post('/webhook/nfe', [NfeWebhookController::class, 'handle'])
     ->name('webhook.nfe')
     ->withoutMiddleware(['auth', 'verified']);
 
-Route::post('/webhook/nfse', [NfeWebhookController::class, 'handle'])
-    ->name('webhook.nfse')
-    ->withoutMiddleware(['auth', 'verified']);
-
 Route::post('/error-tickets/create', [ErrorTicketController::class, 'create'])
     ->name('error-tickets.create')
     ->middleware(['web', 'auth']);

@@ -113,9 +113,9 @@ class FiscalProfile extends Model
         return $rule['default_cfop'] ?? null;
     }
 
-    public function resolveCfopForOperationNature(string $operationNature, ?string $ncmCode): ?string
+    public function resolveCfopForOperationNature(string $operationNature, ?string $ncmCode, bool $isCustomManufacturing = false): ?string
     {
-        Log::debug("Resolvendo CFOP por natureza de operação '{$operationNature}' e código NCM '{$ncmCode}' usando perfil fiscal ID {$this->id}");
+        Log::debug("Resolvendo CFOP por natureza de operação '{$operationNature}', código NCM '{$ncmCode}' e fabricação customizada: " . ($isCustomManufacturing ? 'sim' : 'não') . " usando perfil fiscal ID {$this->id}");
 
         $rules = $this->cfop_rules ?? [];
         $rule = $rules[$operationNature] ?? null;
@@ -129,6 +129,15 @@ class FiscalProfile extends Model
             return null;
         }
 
+        // 1. Verificar se é fabricação customizada (prioridade máxima)
+        if ($isCustomManufacturing && isset($rule['custom_manufacturing_cfop'])) {
+            $customCfop = $rule['custom_manufacturing_cfop'];
+            if (is_string($customCfop) && $customCfop !== '') {
+                Log::debug("CFOP para fabricação customizada encontrado: '{$customCfop}'");
+                return $customCfop;
+            }
+        }
+
         $defaultCfop = $rule['default_cfop'] ?? null;
         $exceptions = $rule['exceptions'] ?? [];
 
@@ -137,6 +146,7 @@ class FiscalProfile extends Model
             'ncmCode' => $ncmCode
         ]);
 
+        // 2. Verificar exceções por NCM
         if (is_array($exceptions) && ! empty($ncmCode)) {
             foreach ($exceptions as $prefix => $cfop) {
                 Log::debug("Verificando exceção de CFOP: prefixo '{$prefix}' para NCM '{$ncmCode}'");
@@ -151,6 +161,7 @@ class FiscalProfile extends Model
             }
         }
 
+        // 3. Usar CFOP padrão
         Log::debug('CFOP resolvido para natureza de operação?', [
             'cfop' => $defaultCfop
         ]);

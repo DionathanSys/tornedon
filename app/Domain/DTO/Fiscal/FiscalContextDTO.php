@@ -8,6 +8,7 @@ use App\Enum\FiscalDocument\OperationType as DocumentOperationType;
 use App\Enum\Tax\FiscalOperationType;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\Product;
 use App\Models\Service;
 use Carbon\Carbon;
 
@@ -28,6 +29,7 @@ class FiscalContextDTO
         public readonly ?string $productOrigin,
         public readonly ?string $operationNature,
         public readonly Carbon $issuedAt,
+        public readonly bool $isCustomManufacturing = false, // produto de fabricação customizada/sob encomenda
         // NFS-e
         public readonly ?string $nfseModel = null, // municipal, nacional
         public readonly ?int $serviceId = null,
@@ -59,6 +61,10 @@ class FiscalContextDTO
             ? $document->document_type->value
             : (string) ($document->document_type ?? 'nfe');
 
+        // Verifica se o produto é de fabricação customizada
+        $product = $item->product_id ? Product::find($item->product_id) : null;
+        $isCustomManufacturing = (bool) ($product?->is_custom_manufacturing ?? false);
+
         return new self(
             companyId:              $document->company_id,
             documentType:           $documentType,
@@ -74,6 +80,7 @@ class FiscalContextDTO
             productOrigin:          $item->product_origin,
             operationNature:        $operationNature,
             issuedAt:               $document->issued_at ?? now(),
+            isCustomManufacturing:  $isCustomManufacturing,
         );
     }
 
@@ -160,6 +167,7 @@ class FiscalContextDTO
             'product_origin'            => $this->productOrigin,
             'operation_nature'          => $this->operationNature,
             'issued_at'                 => $this->issuedAt->toDateString(),
+            'is_custom_manufacturing'   => $this->isCustomManufacturing,
             'nfse_model'                => $this->nfseModel,
             'service_id'                => $this->serviceId,
             'service_code'              => $this->serviceCode,

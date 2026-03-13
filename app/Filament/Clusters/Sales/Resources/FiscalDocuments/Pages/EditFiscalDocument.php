@@ -170,6 +170,28 @@ class EditFiscalDocument extends EditRecord
                         Notification::make()->title($service->getMessage())->danger()->send();
                     }),
 
+                Action::make('preview_nfse')
+                    ->label('Preview')
+                    ->icon(Heroicon::Eye)
+                    ->color('gray')
+                    ->visible(fn(FiscalDocument $record) => $record->isNfse())
+                    ->modalHeading('Preview da NFS-e')
+                    ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                        $service = app(NfseDocumentService::class);
+                        $data    = $service->preview($record, Auth::id());
+
+                        if (! $data || ! $data['pdf']) {
+                            return new HtmlString(
+                                '<p class="text-red-500">' . ($service->getMessage() ?: 'Não foi possível gerar o preview.') . '</p>'
+                            );
+                        }
+
+                        return new HtmlString(
+                            '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
+                        );
+                    })
+                    ->modalWidth('6xl'),
+
                 Action::make('pdf_nfse')
                     ->label('Download PDF')
                     ->icon(Heroicon::ArrowDownTray)

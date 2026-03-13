@@ -6,6 +6,7 @@ use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
+use App\Services\FiscalDocument\Actions\PrintNfsePreviewAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -135,6 +136,38 @@ class NfseDocumentService
             $this->setError('Erro ao gerar PDF da NFS-e: ' . $e->getMessage());
 
             Log::error('NfseDocumentService::pdf', [
+                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'fiscal_document_id' => $doc->id,
+                'exception'          => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Gera preview da NFS-e (não envia à API). Retorna ['pdf'=>base64, 'xml'=>base64].
+     */
+    public function preview(FiscalDocument $doc, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            $action = new PrintNfsePreviewAction();
+            $data   = $action->execute($doc);
+
+            if (! $data || $action->hasError()) {
+                $this->setError($action->getMessage());
+                return null;
+            }
+
+            $this->setSuccess('Preview gerado.');
+            return $data;
+
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar preview da NFS-e: ' . $e->getMessage());
+
+            Log::error('NfseDocumentService::preview', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $doc->id,
                 'exception'          => $e->getMessage(),
