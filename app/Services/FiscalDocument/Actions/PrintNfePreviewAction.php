@@ -21,6 +21,13 @@ class PrintNfePreviewAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            Log::debug('PrintNfePreviewAction: gerando preview de NF-e', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'document_number'    => $fiscalDocument->document_number,
+                'document_series'    => $fiscalDocument->document_series,
+                'operation_nature'   => $fiscalDocument->operation_nature,
+            ]);
+
             // Se o documento ainda não tem número reservado, usa peek para
             // mostrar no preview o próximo número real sem consumir a sequência.
             $rawNature = $fiscalDocument->operation_nature;
@@ -29,7 +36,11 @@ class PrintNfePreviewAction
                 : $rawNature;
 
             if (empty($natureValue)) {
-                $this->setError('Natureza da operação não definida. Preencha o campo antes de gerar o preview.');
+                $msgErro = 'Natureza da operação não definida. Preencha o campo antes de gerar o preview.';
+                $this->setError($msgErro);
+                Log::warning('PrintNfePreviewAction: natureza de operação ausente', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                ]);
                 return null;
             }
 
@@ -66,9 +77,22 @@ class PrintNfePreviewAction
             $resp = $sdk->preview($payload);
 
             if (! ($resp->sucesso ?? false)) {
-                $this->setError($resp->mensagem ?? 'Erro ao gerar preview da NF-e');
+                $msgErro = $resp->mensagem ?? 'Erro ao gerar preview da NF-e';
+                $this->setError($msgErro);
+                Log::warning('PrintNfePreviewAction: falha na geração do preview', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'codigo'             => $resp->codigo ?? null,
+                    'mensagem'           => $msgErro,
+                ]);
                 return null;
             }
+
+            Log::info('PrintNfePreviewAction: preview gerado com sucesso', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'document_number'    => $fiscalDocument->document_number,
+                'pdf_gerado'         => ! empty($resp->pdf ?? null),
+                'xml_gerado'         => ! empty($resp->xml ?? null),
+            ]);
 
             $this->setSuccess('Preview gerado com sucesso.');
 
@@ -78,12 +102,15 @@ class PrintNfePreviewAction
             ];
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da NF-e: ' . $e->getMessage());
+            $msgErro = 'Erro ao gerar preview da NF-e: ' . $e->getMessage();
+            $this->setError($msgErro);
 
-            Log::error('PrintNfePreviewAction: exceção', [
+            Log::error('PrintNfePreviewAction: exceção capturada', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
                 'exception'          => $e->getMessage(),
+                'erro_classe'        => get_class($e),
                 'trace'              => $e->getTraceAsString(),
             ]);
 

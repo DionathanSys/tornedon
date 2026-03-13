@@ -19,6 +19,15 @@ class BuildNfseMunicipalPayloadAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            Log::debug('BuildNfseMunicipalPayloadAction: iniciando montagem de payload', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
+                'items_count'        => $fiscalDocument->items->count(),
+                'rps_number'         => $fiscalDocument->rps_number,
+                'rps_series'         => $fiscalDocument->rps_series,
+            ]);
+
             $fiscalDocument->loadMissing([
                 'company',
                 'customer.address',
@@ -166,7 +175,13 @@ class BuildNfseMunicipalPayloadAction
             }
 
             if (empty($itens)) {
-                $this->setError('NFS-e Municipal requer ao menos um item de serviço.');
+                $msgErro = 'NFS-e Municipal requer ao menos um item de serviço.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseMunicipalPayloadAction: validação fallou', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                    'items_count'        => $fiscalDocument->items->count(),
+                ]);
                 return null;
             }
 
@@ -179,17 +194,38 @@ class BuildNfseMunicipalPayloadAction
             }
 
             if ($codigoServico === '') {
-                $this->setError('NFS-e requer o codigo do servico (LC 116/2003) no formato XX.XX (ex: 01.01).');
+                $msgErro = 'NFS-e requer o codigo do servico (LC 116/2003) no formato XX.XX (ex: 01.01).';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseMunicipalPayloadAction: código de serviço vazio', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                    'service_code_attempts' => array_merge(
+                        $fiscalDocument->items->pluck('service_code')->filter()->values()->toArray(),
+                        $fiscalDocument->items->pluck('service.service_code')->filter()->values()->toArray()
+                    ),
+                ]);
                 return null;
             }
 
             if ($codigoNbs === '') {
-                $this->setError('NFS-e requer o codigo NBS (cNBS) com 9 digitos.');
+                $msgErro = 'NFS-e requer o codigo NBS (cNBS) com 9 digitos.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseMunicipalPayloadAction: código NBS vazio', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                ]);
                 return null;
             }
 
             if (round($valorServicosTotal, 2) <= 0) {
-                $this->setError('NFS-e requer valor de servicos maior que zero.');
+                $msgErro = 'NFS-e requer valor de servicos maior que zero.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseMunicipalPayloadAction: valor total zerado', [
+                    'fiscal_document_id'   => $fiscalDocument->id,
+                    'erro'                 => $msgErro,
+                    'valor_total'          => $valorServicosTotal,
+                    'items_count'          => count($itens),
+                ]);
                 return null;
             }
 
@@ -246,16 +282,28 @@ class BuildNfseMunicipalPayloadAction
                 $payload['regime_tributacao'] = $regime;
             }
 
+            Log::info('BuildNfseMunicipalPayloadAction: payload montado com sucesso', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'rps_number'         => $payload['numero'] ?? null,
+                'items_count'        => count($itens),
+                'valor_total'        => $payload['servico']['valor_servicos'] ?? 0,
+                'codigo_servico'     => $codigoServico,
+            ]);
+
             $this->setSuccess();
             return $payload;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar payload NFS-e municipal: ' . $e->getMessage());
+            $msgErro = 'Erro ao montar payload NFS-e municipal: ' . $e->getMessage();
+            $this->setError($msgErro);
 
-            Log::error('BuildNfseMunicipalPayloadAction: erro', [
+            Log::error('BuildNfseMunicipalPayloadAction: exceção capturada', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
                 'exception'          => $e->getMessage(),
+                'erro_classe'        => get_class($e),
                 'trace'              => $e->getTraceAsString(),
             ]);
 

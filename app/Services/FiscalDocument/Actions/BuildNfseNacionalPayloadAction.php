@@ -20,6 +20,15 @@ class BuildNfseNacionalPayloadAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            Log::debug('BuildNfseNacionalPayloadAction: iniciando montagem de payload', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
+                'items_count'        => $fiscalDocument->items->count(),
+                'rps_number'         => $fiscalDocument->rps_number,
+                'rps_series'         => $fiscalDocument->rps_series,
+            ]);
+
             $fiscalDocument->loadMissing([
                 'company',
                 'customer.address',
@@ -80,7 +89,12 @@ class BuildNfseNacionalPayloadAction
             $items = $fiscalDocument->items;
 
             if ($items->isEmpty()) {
-                $this->setError('NFS-e Nacional requer ao menos um item de serviço.');
+                $msgErro = 'NFS-e Nacional requer ao menos um item de serviço.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseNacionalPayloadAction: validação fallou - sem itens', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                ]);
                 return null;
             }
 
@@ -112,17 +126,34 @@ class BuildNfseNacionalPayloadAction
             }
 
             if ($serviceCode === '') {
-                $this->setError('NFS-e requer o codigo do servico (LC 116/2003) no formato XX.XX (ex: 01.01).');
+                $msgErro = 'NFS-e requer o codigo do servico (LC 116/2003) no formato XX.XX (ex: 01.01).';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseNacionalPayloadAction: código de serviço vazio', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                ]);
                 return null;
             }
 
             if ($nbsCode === '') {
-                $this->setError('NFS-e Nacional requer o codigo NBS (cNBS) com 9 digitos.');
+                $msgErro = 'NFS-e Nacional requer o codigo NBS (cNBS) com 9 digitos.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseNacionalPayloadAction: código NBS vazio', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                ]);
                 return null;
             }
 
             if (round($valorServicosTotal, 2) <= 0) {
-                $this->setError('NFS-e Nacional requer valor de servicos maior que zero.');
+                $msgErro = 'NFS-e Nacional requer valor de servicos maior que zero.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseNacionalPayloadAction: valor total zerado', [
+                    'fiscal_document_id'   => $fiscalDocument->id,
+                    'erro'                 => $msgErro,
+                    'valor_total'          => $valorServicosTotal,
+                    'items_count'          => $items->count(),
+                ]);
                 return null;
             }
 
@@ -235,16 +266,29 @@ class BuildNfseNacionalPayloadAction
                 $payload['informacoes_complementares'] = $infoComplementar;
             }
 
+            Log::info('BuildNfseNacionalPayloadAction: payload montado com sucesso', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'rps_number'         => $payload['numero'] ?? null,
+                'items_count'        => $items->count(),
+                'valor_total'        => $payload['servico']['valor_servicos'] ?? 0,
+                'codigo_servico'     => $serviceCode,
+                'codigo_nbs'         => $nbsCode,
+            ]);
+
             $this->setSuccess();
             return $payload;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar payload NFS-e nacional: ' . $e->getMessage());
+            $msgErro = 'Erro ao montar payload NFS-e nacional: ' . $e->getMessage();
+            $this->setError($msgErro);
 
-            Log::error('BuildNfseNacionalPayloadAction: erro', [
+            Log::error('BuildNfseNacionalPayloadAction: exceção capturada', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
                 'exception'          => $e->getMessage(),
+                'erro_classe'        => get_class($e),
                 'trace'              => $e->getTraceAsString(),
             ]);
 

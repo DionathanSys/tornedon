@@ -27,6 +27,16 @@ class BuildNfePayloadAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            Log::debug('BuildNfePayloadAction: iniciando montagem de payload', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
+                'items_count'        => $fiscalDocument->items->count(),
+                'numero'             => $fiscalDocument->document_number,
+                'serie'              => $fiscalDocument->document_series,
+                'natureza'           => $fiscalDocument->operation_nature,
+            ]);
+
             $fiscalDocument->loadMissing([
                 'company',
                 'customer.address',
@@ -77,6 +87,11 @@ class BuildNfePayloadAction
             // ------------------------------------------------------------------
             // Monta itens
             // ------------------------------------------------------------------
+            Log::debug('BuildNfePayloadAction: processando itens do documento', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'items_count'        => $fiscalDocument->items->count(),
+            ]);
+
             $itens = [];
             foreach ($fiscalDocument->items as $index => $item) {
                 $taxData   = $item->tax_data ?? [];
@@ -132,7 +147,12 @@ class BuildNfePayloadAction
             // Monta payload raiz
             // ------------------------------------------------------------------
             if (! $fiscalDocument->operation_nature) {
-                $this->setError('Natureza da operação não definida no documento fiscal.');
+                $msgErro = 'Natureza da operação não definida no documento fiscal.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfePayloadAction: falta natureza da operação', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro'               => $msgErro,
+                ]);
                 return null;
             }
 
@@ -197,16 +217,28 @@ class BuildNfePayloadAction
                 }
             }
 
+            Log::info('BuildNfePayloadAction: payload montado com sucesso', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'numero'             => $payload['numero'] ?? null,
+                'serie'              => $payload['serie'] ?? null,
+                'items_count'        => count($itens),
+                'natureza'           => $payload['natureza_operacao'] ?? null,
+            ]);
+
             $this->setSuccess();
             return $payload;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar payload da NF-e: ' . $e->getMessage());
+            $msgErro = 'Erro ao montar payload da NF-e: ' . $e->getMessage();
+            $this->setError($msgErro);
 
-            Log::error('BuildNfePayloadAction: erro', [
+            Log::error('BuildNfePayloadAction: exceção capturada', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
                 'exception'          => $e->getMessage(),
+                'erro_classe'        => get_class($e),
                 'trace'              => $e->getTraceAsString(),
             ]);
 

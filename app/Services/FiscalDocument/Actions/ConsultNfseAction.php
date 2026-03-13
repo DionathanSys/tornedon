@@ -26,8 +26,18 @@ class ConsultNfseAction
     public function execute(FiscalDocument $fiscalDocument): bool
     {
         try {
+            Log::debug('ConsultNfseAction: consultando status de NFS-e', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'document_key'       => $fiscalDocument->document_key,
+                'status_atual'       => $fiscalDocument->nfse_status?->value,
+            ]);
+
             if (empty($fiscalDocument->document_key)) {
-                $this->setError('Chave de acesso não encontrada no documento fiscal.');
+                $msgErro = 'Chave de acesso não encontrada no documento fiscal.';
+                $this->setError($msgErro);
+                Log::warning('ConsultNfseAction: chave de acesso ausente', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                ]);
                 return false;
             }
 
@@ -36,14 +46,19 @@ class ConsultNfseAction
 
             $resp = $sdk->consulta(['chave' => $fiscalDocument->document_key]);
 
-            Log::info('ConsultNfseAction: resposta da API', [
+            Log::debug('ConsultNfseAction: resposta da API recebida', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'codigo'             => $resp->codigo ?? null,
                 'sucesso'            => $resp->sucesso ?? false,
+                'protocolo'          => $resp->protocolo ?? null,
             ]);
 
             // Ainda em processamento
             if (($resp->codigo ?? null) === 5023) {
+                Log::info('ConsultNfseAction: NFS-e ainda em processamento', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'codigo'             => $resp->codigo,
+                ]);
                 $this->setSuccess();
                 return true;
             }
@@ -64,10 +79,12 @@ class ConsultNfseAction
                     $updates['document_series'] = $resp->serie;
                 }
 
-                Log::info('ConsultNfseAction: NFS-e autorizada', [
+                Log::info('ConsultNfseAction: NFS-e autorizada com sucesso', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'protocolo'          => $resp->protocolo ?? null,
                     'chave'              => $fiscalDocument->document_key,
+                    'numero'             => $resp->numero ?? null,
+                    'serie'              => $resp->serie ?? null,
                 ]);
             } else {
                 // Rejeitada
@@ -82,7 +99,7 @@ class ConsultNfseAction
                 ];
                 $updates['errors_messages'] = $errors;
 
-                Log::warning('ConsultNfseAction: NFS-e rejeitada', [
+                Log::warning('ConsultNfseAction: NFS-e rejeitada pela API', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'codigo'             => $resp->codigo ?? null,
                     'mensagem'           => $resp->mensagem ?? null,
@@ -92,6 +109,10 @@ class ConsultNfseAction
             $fiscalDocument->update($updates);
 
             if (($updates['nfse_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                Log::debug('ConsultNfseAction: iniciando geração de contas a receber', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                ]);
+
                 $generationService = app(AccountReceivableGenerationService::class);
                 $ok = $generationService->generateFromFiscalDocument($fiscalDocument->fresh(['invoice']));
 
@@ -103,22 +124,34 @@ class ConsultNfseAction
                         'error_code'         => $generationService->getErrorCode(),
                         'errors'             => $generationService->getErrors(),
                     ]);
+                } else {
+                    Log::info('ConsultNfseAction: contas a receber geradas com sucesso', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'invoice_id'         => $fiscalDocument->invoice_id,
+                    ]);
                 }
 
                 app(CustomerDocumentEmailService::class)
                     ->sendFiscalDocumentAuthorized($fiscalDocument->fresh());
             }
 
+            Log::info('ConsultNfseAction: execução concluída com sucesso', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'status_final'       => $updates['nfse_status'] ?? null,
+            ]);
+
             $this->setSuccess();
             return true;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao consultar NFS-e: ' . $e->getMessage());
+            $msgErro = 'Erro ao consultar NFS-e: ' . $e->getMessage();
+            $this->setError($msgErro);
 
-            Log::error('ConsultNfseAction: exceção', [
+            Log::error('ConsultNfseAction: exceção capturada', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
                 'exception'          => $e->getMessage(),
+                'erro_classe'        => get_class($e),
                 'trace'              => $e->getTraceAsString(),
             ]);
 

@@ -29,9 +29,22 @@ class SendNfeAction
     public function execute(FiscalDocument $fiscalDocument, ?string $serie = null, ?string $operationNature = null): bool
     {
         try {
+            Log::debug('SendNfeAction: iniciando envio de NF-e', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
+                'customer_id'        => $fiscalDocument->customer_id,
+                'nfe_status_atual'   => $fiscalDocument->nfe_status?->value,
+                'serie'              => $serie,
+            ]);
+
             // Impede reenvio de NF-e já em processamento ou autorizada
             if ($fiscalDocument->nfe_status !== null && ! $fiscalDocument->isRejected()) {
-                $this->setError('Esta NF-e já foi enviada (status: ' . $fiscalDocument->nfe_status?->description() . ').');
+                $msgErro = 'Esta NF-e já foi enviada (status: ' . $fiscalDocument->nfe_status?->description() . ')';
+                $this->setError($msgErro);
+                Log::warning('SendNfeAction: tentativa de reenvio bloqueada', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'status_atual'       => $fiscalDocument->nfe_status?->value,
+                ]);
                 return false;
             }
 
@@ -84,14 +97,23 @@ class SendNfeAction
             $ambiente = $configService->resolveAmbiente($fiscalDocument->company_id);
             $sdk      = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($fiscalDocument->company_id));
 
-            Log::info('SendNfeAction: enviando NF-e', [
+            Log::info('SendNfeAction: enviando para API IntegraNotas', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'numero'             => $fiscalDocument->document_number,
                 'serie'              => $serie,
                 'ambiente'           => $ambiente,
+                'items_count'        => $fiscalDocument->items->count(),
+                'valor_total'        => $payload['infNFe']['ide']['natOp'] ?? null,
             ]);
 
             $resp = $sdk->cria($payload);
+
+            Log::debug('SendNfeAction: resposta da API recebida', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'codigo'             => $resp->codigo ?? null,
+                'sucesso'            => $resp->sucesso ?? false,
+                'chave'              => $resp->chave ?? null,
+            ]);
 
             // ------------------------------------------------------------------
             // 4. Processar resposta
@@ -105,9 +127,10 @@ class SendNfeAction
                     'nfe_payload'  => $payload,
                 ]);
 
-                Log::info('SendNfeAction: NF-e enviada, aguardando processamento', [
+                Log::info('SendNfeAction: NF-e enviada com sucesso, aguardando processamento', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'chave'              => $resp->chave,
+                    'codigo_resposta'    => $resp->codigo ?? null,
                     'ambiente'           => $ambiente,
                 ]);
 
@@ -131,7 +154,14 @@ class SendNfeAction
 
                 $fiscalDocument->update(['errors_messages' => $errors]);
 
-                $this->setError('Erro de validação nos dados da NF-e: ' . ($resp->mensagem ?? 'verifique os campos'));
+                $msgErro = 'Erro de validação nos dados da NF-e: ' . ($resp->mensagem ?? 'verifique os campos');
+                $this->setError($msgErro);
+                Log::warning('SendNfeAction: erro de validação na API', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'codigo'             => $resp->codigo ?? null,
+                    'mensagem'           => $resp->mensagem ?? null,
+                    'erros_detalhes'     => (array) ($resp->erros ?? []),
+                ]);
                 return false;
             }
 
@@ -144,16 +174,26 @@ class SendNfeAction
             ];
             $fiscalDocument->update(['errors_messages' => $errors]);
 
-            $this->setError($resp->mensagem ?? 'Erro ao enviar NF-e');
+            $msgErro = $resp->mensagem ?? 'Erro ao enviar NF-e';
+            $this->setError($msgErro);
+            Log::error('SendNfeAction: erro na resposta da API', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'codigo'             => $resp->codigo ?? null,
+                'mensagem'           => $resp->mensagem ?? null,
+                'sucesso'            => $resp->sucesso ?? false,
+            ]);
             return false;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao enviar NF-e: ' . $e->getMessage());
+            $msgErro = 'Erro ao enviar NF-e: ' . $e->getMessage();
+            $this->setError($msgErro);
 
-            Log::error('SendNfeAction: exceção', [
+            Log::error('SendNfeAction: exceção capturada', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
+                'company_id'         => $fiscalDocument->company_id,
                 'exception'          => $e->getMessage(),
+                'erro_classe'        => get_class($e),
                 'trace'              => $e->getTraceAsString(),
             ]);
 
