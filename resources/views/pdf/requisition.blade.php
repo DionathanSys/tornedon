@@ -18,7 +18,7 @@
         <div class="line">OS vinculada: {{ $record->serviceOrder?->number ?? '-' }}</div>
         <div class="line">Equipamento: {{ $record->equipment?->name ?? '-' }}</div>
         <div class="line">Vendedor: {{ $record->salesperson?->name ?? '-' }}</div>
-        <div class="line">Observacoes: {{ $record->observations ?? '-' }}</div>
+        <div class="line">Observações: {{ $record->observations ?? '-' }}</div>
     </div>
 
     <h2>Itens da Requisição</h2>

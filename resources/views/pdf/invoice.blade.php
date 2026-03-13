@@ -14,7 +14,7 @@
         <div class="line">Status: {{ $record->status?->description() ?? '-' }}</div>
     </div>
 
-    <h2>Ordens de Servico Vinculadas</h2>
+    <h2>Ordens de Serviço Vinculadas</h2>
     <table class="grid">
         <thead>
             <tr>
@@ -40,13 +40,13 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" class="text-right">Sem ordens de servico vinculadas.</td>
+                    <td colspan="4" class="text-right">Sem ordens de serviço vinculadas.</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
-    <h2>Requisicoes Vinculadas</h2>
+    <h2>Requisições Vinculadas</h2>
     <table class="grid">
         <thead>
             <tr>
