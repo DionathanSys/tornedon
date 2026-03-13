@@ -94,9 +94,6 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             // Info adicional
             'additional_tax_information_default' => $profile?->additional_tax_information_default,
             'additional_taxpayer_information_default' => $profile?->additional_taxpayer_information_default,
-            'additional_purchase_information_default_nota_empenho' => data_get($profile?->additional_purchase_information_default, 'nota_empenho'),
-            'additional_purchase_information_default_pedido' => data_get($profile?->additional_purchase_information_default, 'pedido'),
-            'additional_purchase_information_default_contrato' => data_get($profile?->additional_purchase_information_default, 'contrato'),
             'taxpayer_observations_default' => $this->toKeyValueState($profile?->taxpayer_observations_default),
             'tax_observations_default' => $this->toKeyValueState($profile?->tax_observations_default),
             'informacoes_complementares_padrao' => $profile?->informacoes_complementares_padrao,
@@ -364,24 +361,6 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->maxLength(5000)
                             ->columnSpanFull(),
 
-                        \Filament\Schemas\Components\Section::make('Informações adicionais de compra')
-                            ->schema([
-                                Forms\Components\TextInput::make('additional_purchase_information_default_nota_empenho')
-                                    ->label('Nota de Empenho')
-                                    ->maxLength(60),
-
-                                Forms\Components\TextInput::make('additional_purchase_information_default_pedido')
-                                    ->label('Pedido')
-                                    ->maxLength(60),
-
-                                Forms\Components\TextInput::make('additional_purchase_information_default_contrato')
-                                    ->label('Contrato')
-                                    ->maxLength(60),
-                            ])
-                            ->columns(['md' => 3])
-                            ->columnSpanFull()
-                            ->collapsible(),
-
                         Forms\Components\KeyValue::make('taxpayer_observations_default')
                             ->label('Observações do Contribuinte')
                             ->keyLabel('Campo')
@@ -540,11 +519,6 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             // Info complementar
             'additional_tax_information_default' => $data['additional_tax_information_default'] ?? null,
             'additional_taxpayer_information_default' => $data['additional_taxpayer_information_default'] ?? null,
-            'additional_purchase_information_default' => [
-                'nota_empenho' => $data['additional_purchase_information_default_nota_empenho'] ?? null,
-                'pedido' => $data['additional_purchase_information_default_pedido'] ?? null,
-                'contrato' => $data['additional_purchase_information_default_contrato'] ?? null,
-            ],
             'taxpayer_observations_default' => $this->toPayloadObservationList($data['taxpayer_observations_default'] ?? []),
             'tax_observations_default' => $this->toPayloadObservationList($data['tax_observations_default'] ?? []),
             'informacoes_complementares_padrao' => $data['informacoes_complementares_padrao'] ?? null,

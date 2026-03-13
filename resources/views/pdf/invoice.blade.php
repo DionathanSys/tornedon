@@ -89,7 +89,9 @@
             </tr>
         </thead>
         <tbody>
-            @php($productionTotal = 0)
+            @php
+                $productionTotal = 0;
+            @endphp
             @forelse ($record->productionOrders as $productionOrder)
                 @php
                     $lineTotal = $productionOrder->items->sum(function ($item) {

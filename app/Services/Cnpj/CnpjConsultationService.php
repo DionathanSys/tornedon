@@ -3,9 +3,10 @@
 namespace App\Services\Cnpj;
 
 use App\Domain\DTO\Cnpj\CnpjVO;
+use App\Services\Cnpj\Contracts\CnpjApiProviderInterface;
+use App\Services\Cnpj\DTO\CnpjProviderResult;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -13,50 +14,22 @@ class CnpjConsultationService
 {
     use HandlesServiceResponse;
 
-    private const API_BASE_URL = 'https://open.cnpja.com/office';
-
-    /** Cache TTL: 7 dias (em segundos) */
-    private const CACHE_TTL = 604800;
-
-    /** Rate limit: máximo 5 consultas por minuto */
-    private const RATE_LIMIT_MAX_ATTEMPTS = 5;
-    private const RATE_LIMIT_DECAY_SECONDS = 60;
-    private const RATE_LIMITER_KEY = 'cnpj-consultation';
+    private const DEFAULT_CACHE_TTL = 604800;
+    private const DEFAULT_RATE_LIMIT_MAX_ATTEMPTS = 5;
+    private const DEFAULT_RATE_LIMIT_DECAY_SECONDS = 60;
+    private const ROUND_ROBIN_COUNTER_KEY = 'cnpj-consultation:round-robin-counter';
 
     /**
-     * Consulta o CNPJ na API pública e retorna um Value Object com os dados.
-     * Utiliza cache para evitar consultas repetidas e rate limiter para respeitar
-     * o limite de 5 consultas por minuto.
+     * Consulta CNPJ com fallback entre provedores e cache local.
      */
     public function consult(string $cnpj): ?CnpjVO
     {
+        $this->resetResponse();
+
         $cnpj = $this->sanitize($cnpj);
 
         if (! $this->isValid($cnpj)) {
-            $this->setError('CNPJ inválido. Informe 14 dígitos numéricos.');
-            Log::warning($this->getMessage(), [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
-                'message'   => $this->getMessage(),
-                'cnpj'      => $cnpj,
-            ]);
-            return null;
-        }
-
-        // Tenta buscar do cache primeiro
-        $cached = $this->getFromCache($cnpj);
-
-        if ($cached instanceof CnpjVO) {
-            $this->setSuccess('Consulta CNPJ realizada com sucesso (cache)');
-            return $cached;
-        }
-
-        // Verifica rate limit antes de chamar a API
-        if (! $this->checkRateLimit()) {
-            $this->setError(
-                'Limite de consultas atingido. Aguarde um momento antes de tentar novamente.',
-                [],
-                429,
-            );
+            $this->setError('CNPJ invalido. Informe 14 digitos numericos.');
             Log::warning($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
                 'message' => $this->getMessage(),
@@ -65,12 +38,74 @@ class CnpjConsultationService
             return null;
         }
 
-        return $this->fetchFromApi($cnpj);
+        $cached = $this->getFromCache($cnpj);
+
+        if ($cached instanceof CnpjVO) {
+            $this->setSuccess('Consulta CNPJ realizada com sucesso (cache)');
+            return $cached;
+        }
+
+        $providers = $this->resolveProviders();
+
+        if ($providers === []) {
+            $this->setError('Nenhum provedor de consulta de CNPJ configurado.', [], 500);
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'cnpj' => $cnpj,
+            ]);
+            return null;
+        }
+
+        $orderedProviders = $this->orderProvidersByRoundRobin($providers);
+        $lastFailure = null;
+
+        foreach ($orderedProviders as $provider) {
+            $providerName = $provider->name();
+
+            if (! $this->checkRateLimit($providerName)) {
+                $lastFailure = CnpjProviderResult::failure(
+                    'Limite de consultas locais atingido para o provedor de CNPJ.',
+                    [],
+                    429,
+                );
+
+                Log::warning($lastFailure->message, [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'cnpj' => $cnpj,
+                    'provider' => $providerName,
+                ]);
+
+                continue;
+            }
+
+            $result = $provider->consult($cnpj);
+
+            if ($result->isSuccess()) {
+                return $this->handleProviderSuccess($cnpj, $providerName, $result);
+            }
+
+            Log::warning('Falha ao consultar CNPJ no provedor', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'cnpj' => $cnpj,
+                'provider' => $providerName,
+                'status' => $result->status,
+                'message' => $result->message,
+            ]);
+
+            $lastFailure = $result;
+        }
+
+        $this->setError(
+            $lastFailure?->message ?? 'Nao foi possivel consultar o CNPJ em nenhum provedor.',
+            $lastFailure?->errors ?? [],
+            $lastFailure?->status ?? 503,
+        );
+
+        return null;
     }
 
     /**
-     * Retorna o VO do cache sem consultar a API.
-     * Útil quando se deseja apenas recuperar dados já consultados.
+     * Retorna o VO do cache sem consultar API.
      */
     public function getFromCache(string $cnpj): ?CnpjVO
     {
@@ -87,7 +122,7 @@ class CnpjConsultationService
     }
 
     /**
-     * Invalida o cache para um CNPJ específico.
+     * Invalida o cache para um CNPJ especifico.
      */
     public function clearCache(string $cnpj): void
     {
@@ -100,24 +135,17 @@ class CnpjConsultationService
         ]);
     }
 
-    /**
-     * Sanitiza o CNPJ removendo caracteres não numéricos.
-     */
     private function sanitize(string $cnpj): string
     {
         return preg_replace('/\D/', '', $cnpj);
     }
 
-    /**
-     * Valida se o CNPJ possui 14 dígitos e se os dígitos verificadores são válidos.
-     */
     private function isValid(string $cnpj): bool
     {
         if (strlen($cnpj) !== 14) {
             return false;
         }
 
-        // Rejeita CNPJs com todos os dígitos iguais (ex: 00000000000000)
         if (preg_match('/^(\d)\1{13}$/', $cnpj)) {
             return false;
         }
@@ -137,138 +165,193 @@ class CnpjConsultationService
             return $remainder < 2 ? 0 : 11 - $remainder;
         };
 
-        $firstDigit  = $calcDigit($cnpj, 12);
+        $firstDigit = $calcDigit($cnpj, 12);
         $secondDigit = $calcDigit($cnpj, 13);
 
         return (int) $cnpj[12] === $firstDigit
             && (int) $cnpj[13] === $secondDigit;
     }
 
-    /**
-     * Verifica se ainda há tentativas disponíveis no rate limiter.
-     */
-    private function checkRateLimit(): bool
+    private function checkRateLimit(string $providerName): bool
     {
+        $maxAttempts = $this->getProviderRateLimitMaxAttempts($providerName);
+        $decaySeconds = $this->getProviderRateLimitDecaySeconds($providerName);
+
         return RateLimiter::attempt(
-            self::RATE_LIMITER_KEY,
-            self::RATE_LIMIT_MAX_ATTEMPTS,
-            fn() => true,
-            self::RATE_LIMIT_DECAY_SECONDS,
+            $this->buildRateLimiterKey($providerName),
+            $maxAttempts,
+            fn () => true,
+            $decaySeconds,
         );
     }
 
     /**
-     * Consulta a API e armazena o resultado em cache.
+     * Resolve e instancia os provedores configurados.
+     *
+     * @return array<int, CnpjApiProviderInterface>
      */
-    private function fetchFromApi(string $cnpj): ?CnpjVO
+    private function resolveProviders(): array
     {
-        $url = self::API_BASE_URL . '/' . $cnpj;
+        $providerNames = config('cnpj.providers', ['open_cnpja']);
 
-        Log::debug('Iniciando consulta CNPJ na API', [
-            'metodo'                  => __METHOD__ . '@' . __LINE__,
-            'url'                     => $url,
-            'cnpj'                    => $cnpj,
-            'rate_limiter_remaining'  => RateLimiter::remaining(self::RATE_LIMITER_KEY, self::RATE_LIMIT_MAX_ATTEMPTS),
-        ]);
-
-        try {
-            /** @var \Illuminate\Http\Client\Response $response */
-            $response = Http::timeout(15)
-                ->acceptJson()
-                ->get($url);
-
-            $statusCode      = $response->status();
-            $responseHeaders = $response->headers();
-            $responseBody    = $response->body();
-
-            Log::debug('Resposta recebida da API de CNPJ', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
-                'cnpj'             => $cnpj,
-                'url'              => $url,
-                'status'           => $statusCode,
-                'response_headers' => $responseHeaders,
-                'response_body'    => $responseBody,
-            ]);
-
-            if ($statusCode === 429) {
-                // Esgota o rate limiter interno para bloquear novas tentativas pelo período de decay
-                RateLimiter::clear(self::RATE_LIMITER_KEY);
-
-                $this->setError(
-                    'Limite de requisições da API atingido. Aguarde 1 minuto antes de tentar novamente.',
-                    [],
-                    429,
-                );
-
-                Log::warning($this->getMessage(), [
-                    'metodo'           => __METHOD__ . '@' . __LINE__,
-                    'cnpj'             => $cnpj,
-                    'retry_after'      => $responseHeaders['Retry-After'][0] ?? $responseHeaders['retry-after'][0] ?? null,
-                    'x_ratelimit'      => array_filter($responseHeaders, fn($k) => str_starts_with(strtolower($k), 'x-ratelimit'), ARRAY_FILTER_USE_KEY),
-                    'response_body'    => $responseBody,
-                ]);
-
-                return null;
-            }
-
-            if ($response->failed()) {
-                $this->setError(
-                    "Erro ao consultar CNPJ na API. Status: {$statusCode}",
-                    [$responseBody],
-                    $statusCode,
-                );
-
-                Log::error($this->getMessage(), [
-                    'metodo'           => __METHOD__ . '@' . __LINE__,
-                    'cnpj'             => $cnpj,
-                    'url'              => $url,
-                    'status'           => $statusCode,
-                    'response_headers' => $responseHeaders,
-                    'response_body'    => $responseBody,
-                ]);
-
-                return null;
-            }
-
-            $data = $response->json();
-
-            // Armazena resposta original em cache
-            Cache::put($this->buildCacheKey($cnpj), $data, self::CACHE_TTL);
-
-            $vo = CnpjVO::fromApiResponse($data);
-
-            $this->setSuccess('Consulta CNPJ realizada com sucesso');
-
-            Log::info($this->getMessage(), [
-                'metodo'       => __METHOD__ . '@' . __LINE__,
-                'cnpj'         => $cnpj,
-                'company_name' => $vo->companyName,
-                'status_cnpj'  => $vo->statusText,
-                'city'         => $vo->address->city,
-                'state'        => $vo->address->state,
-            ]);
-
-            return $vo;
-        } catch (\Exception $e) {
-            $this->setError('Erro ao consultar CNPJ', [$e->getMessage()]);
-            Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'error_code' => $this->getErrorCode(),
-                'cnpj'       => $cnpj,
-                'url'        => $url,
-                'exception'  => $e->getMessage(),
-                'exception_class' => get_class($e),
-                'trace'      => $e->getTraceAsString(),
-            ]);
-            return null;
+        if (is_string($providerNames)) {
+            $providerNames = array_values(array_filter(array_map(
+                static fn (string $name): string => trim($name),
+                explode(',', $providerNames),
+            )));
         }
+
+        $providerNames = is_array($providerNames) ? $providerNames : [];
+        $providerClasses = config('cnpj.provider_classes', []);
+        $providers = [];
+
+        foreach ($providerNames as $providerName) {
+            $providerClass = $providerClasses[$providerName] ?? null;
+
+            if (! is_string($providerClass) || ! class_exists($providerClass)) {
+                Log::error('Provider de CNPJ nao encontrado.', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'provider' => $providerName,
+                    'class' => $providerClass,
+                ]);
+                continue;
+            }
+
+            try {
+                $provider = app()->makeWith($providerClass, [
+                    'config' => (array) config("cnpj.provider_settings.{$providerName}", []),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Falha ao instanciar provider de CNPJ.', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'provider' => $providerName,
+                    'class' => $providerClass,
+                    'exception' => $e->getMessage(),
+                ]);
+                continue;
+            }
+
+            if (! $provider instanceof CnpjApiProviderInterface) {
+                Log::error('Classe do provider nao implementa o contrato esperado.', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'provider' => $providerName,
+                    'class' => $providerClass,
+                ]);
+                continue;
+            }
+
+            $providers[] = $provider;
+        }
+
+        return $providers;
     }
 
     /**
-     * Gera a chave de cache para um CNPJ.
+     * Alterna o provider inicial a cada chamada, mantendo fallback entre todos.
+     *
+     * @param array<int, CnpjApiProviderInterface> $providers
+     * @return array<int, CnpjApiProviderInterface>
      */
+    private function orderProvidersByRoundRobin(array $providers): array
+    {
+        $total = count($providers);
+
+        if ($total <= 1) {
+            return $providers;
+        }
+
+        $counter = (int) Cache::increment(self::ROUND_ROBIN_COUNTER_KEY);
+
+        if ($counter <= 0) {
+            $counter = 1;
+            Cache::forever(self::ROUND_ROBIN_COUNTER_KEY, $counter);
+        }
+
+        $startIndex = ($counter - 1) % $total;
+
+        return array_merge(
+            array_slice($providers, $startIndex),
+            array_slice($providers, 0, $startIndex),
+        );
+    }
+
+    private function handleProviderSuccess(
+        string $cnpj,
+        string $providerName,
+        CnpjProviderResult $result,
+    ): ?CnpjVO {
+        $data = $result->data ?? [];
+
+        Cache::put($this->buildCacheKey($cnpj), $data, $this->getCacheTtl());
+
+        try {
+            $vo = CnpjVO::fromApiResponse($data);
+        } catch (\Throwable $e) {
+            $this->setError('Erro ao transformar dados do CNPJ.', [$e->getMessage()], 500);
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'provider' => $providerName,
+                'cnpj' => $cnpj,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        $this->setSuccess("Consulta CNPJ realizada com sucesso ({$providerName})");
+
+        Log::info($this->getMessage(), [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'provider' => $providerName,
+            'cnpj' => $cnpj,
+            'company_name' => $vo->companyName,
+            'status_cnpj' => $vo->statusText,
+            'city' => $vo->address->city,
+            'state' => $vo->address->state,
+        ]);
+
+        return $vo;
+    }
+
     private function buildCacheKey(string $cnpj): string
     {
         return "cnpj_consultation:{$cnpj}";
+    }
+
+    private function buildRateLimiterKey(string $providerName): string
+    {
+        return "cnpj-consultation:{$providerName}";
+    }
+
+    private function getCacheTtl(): int
+    {
+        return (int) config('cnpj.cache_ttl', self::DEFAULT_CACHE_TTL);
+    }
+
+    private function getRateLimitMaxAttempts(): int
+    {
+        return (int) config('cnpj.rate_limit.max_attempts', self::DEFAULT_RATE_LIMIT_MAX_ATTEMPTS);
+    }
+
+    private function getRateLimitDecaySeconds(): int
+    {
+        return (int) config('cnpj.rate_limit.decay_seconds', self::DEFAULT_RATE_LIMIT_DECAY_SECONDS);
+    }
+
+    private function getProviderRateLimitMaxAttempts(string $providerName): int
+    {
+        return (int) config(
+            "cnpj.provider_settings.{$providerName}.rate_limit.max_attempts",
+            $this->getRateLimitMaxAttempts(),
+        );
+    }
+
+    private function getProviderRateLimitDecaySeconds(string $providerName): int
+    {
+        return (int) config(
+            "cnpj.provider_settings.{$providerName}.rate_limit.decay_seconds",
+            $this->getRateLimitDecaySeconds(),
+        );
     }
 }

@@ -13,6 +13,19 @@ class CreateFiscalDocument extends CreateRecord
 {
     protected static string $resource = FiscalDocumentResource::class;
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['additional_purchase_information'] = $this->buildAdditionalPurchaseInformation($data);
+
+        unset(
+            $data['additional_purchase_information_nota_empenho'],
+            $data['additional_purchase_information_pedido'],
+            $data['additional_purchase_information_contrato'],
+        );
+
+        return $data;
+    }
+
     /**
      * Dispara a resolução fiscal logo após a criação, quando os itens já estão persistidos.
      */
@@ -45,5 +58,22 @@ class CreateFiscalDocument extends CreateRecord
 
             notify::error(message: 'Documento criado, mas houve um erro ao calcular os impostos: ' . $e->getMessage());
         }
+    }
+
+    private function buildAdditionalPurchaseInformation(array $data): ?string
+    {
+        $payload = [
+            'nota_empenho' => trim((string) ($data['additional_purchase_information_nota_empenho'] ?? '')),
+            'pedido' => trim((string) ($data['additional_purchase_information_pedido'] ?? '')),
+            'contrato' => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
+        ];
+
+        $payload = array_filter($payload, fn (string $value): bool => $value !== '');
+
+        if ($payload === []) {
+            return null;
+        }
+
+        return json_encode($payload, JSON_UNESCAPED_UNICODE);
     }
 }

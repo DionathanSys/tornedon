@@ -31,3 +31,18 @@ Realiza o reparo em um equipamento, compra produtos para utilizar, é interessan
 ## ServiceOrder
 - [ ] Criar informação para *Valor do KM* para cálculo do custo de deslocamento.
 - [ ] Persistir essa informação no banco de dados ou recalcular o valor na hora de preencher o form (Valor de Deslocament / Distância em KM)
+
+## Documento Fiscal
+- [ ] Mover component de *info_complementares_compra* do Perfil Fiscal para dentro do documento fiscal para poder inserir informação na hora de emitir.
+- [ ] Montar modo automático para preencher essa informação.
+- [ ] Remover component de seleção da fatura
+
+## Fatura
+- [ ] Verificar alteração de status das faturas
+- [ ] Exibir OS e REQ vinculadas
+
+## Contas à Pagar/Receber
+- [ ] Implementar
+
+## Notas de Entrada
+- [ ] Modelar e unir com movimentação de estoque

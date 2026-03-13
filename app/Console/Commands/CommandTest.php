@@ -32,8 +32,5 @@ class CommandTest extends Command
 
    public function handle() 
    {
-      $fields = FiscalProfileVer
-
-
    }
 }

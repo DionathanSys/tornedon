@@ -189,6 +189,24 @@ class FiscalDocumentForm
                                             ->rows(3)
                                             ->maxLength(2000)
                                             ->columnSpan(['md' => 2]),
+
+                                        Section::make('Informações adicionais de compra')
+                                            ->schema([
+                                                Forms\Components\TextInput::make('additional_purchase_information_nota_empenho')
+                                                    ->label('Nota de Empenho')
+                                                    ->maxLength(60),
+
+                                                Forms\Components\TextInput::make('additional_purchase_information_pedido')
+                                                    ->label('Pedido')
+                                                    ->maxLength(60),
+
+                                                Forms\Components\TextInput::make('additional_purchase_information_contrato')
+                                                    ->label('Contrato')
+                                                    ->maxLength(60),
+                                            ])
+                                            ->columns(['md' => 3])
+                                            ->columnSpanFull()
+                                            ->collapsible(),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible(),

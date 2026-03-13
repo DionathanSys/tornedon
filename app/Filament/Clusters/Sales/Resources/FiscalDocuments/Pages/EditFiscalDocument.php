@@ -23,6 +23,32 @@ class EditFiscalDocument extends EditRecord
 {
     protected static string $resource = FiscalDocumentResource::class;
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $purchaseInfo = $this->parseAdditionalPurchaseInformation(
+            $data['additional_purchase_information'] ?? null
+        );
+
+        $data['additional_purchase_information_nota_empenho'] = $purchaseInfo['nota_empenho'] ?? null;
+        $data['additional_purchase_information_pedido'] = $purchaseInfo['pedido'] ?? null;
+        $data['additional_purchase_information_contrato'] = $purchaseInfo['contrato'] ?? null;
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['additional_purchase_information'] = $this->buildAdditionalPurchaseInformation($data);
+
+        unset(
+            $data['additional_purchase_information_nota_empenho'],
+            $data['additional_purchase_information_pedido'],
+            $data['additional_purchase_information_contrato'],
+        );
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -261,4 +287,35 @@ class EditFiscalDocument extends EditRecord
         return true;
     }
 
+    private function buildAdditionalPurchaseInformation(array $data): ?string
+    {
+        $payload = [
+            'nota_empenho' => trim((string) ($data['additional_purchase_information_nota_empenho'] ?? '')),
+            'pedido' => trim((string) ($data['additional_purchase_information_pedido'] ?? '')),
+            'contrato' => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
+        ];
+
+        $payload = array_filter($payload, fn (string $value): bool => $value !== '');
+
+        if ($payload === []) {
+            return null;
+        }
+
+        return json_encode($payload, JSON_UNESCAPED_UNICODE);
+    }
+
+    private function parseAdditionalPurchaseInformation(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
 }

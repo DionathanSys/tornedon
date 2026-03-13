@@ -36,7 +36,9 @@
             </tr>
         </thead>
         <tbody>
-            @php($total = 0)
+            @php
+                $total = 0;
+            @endphp
             @forelse ($record->items as $item)
                 @php
                     $qty = (float) ($item->quantity_approved ?: $item->quantity_produced ?: $item->quantity);

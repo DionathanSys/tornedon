@@ -104,7 +104,7 @@ class Invoice extends Model
      |==============================*/
 
     /**
-     * Total geral da fatura: soma dos totais das OS, requisições e OPs vinculadas.
+     * Total geral da fatura: soma dos totais das OS, requisições vinculadas.
      */
     protected function totalAmount(): Attribute
     {
@@ -112,16 +112,8 @@ class Invoice extends Model
             get: function (): float {
                 $soTotal  = $this->serviceOrders->sum(fn ($so) => (float) $so->total_amount);
                 $reqTotal = $this->requisitions->sum(fn ($req) => (float) $req->total_amount);
-                $poTotal  = $this->productionOrders->sum(function ($po) {
-                    return $po->items->sum(function ($item) {
-                        $unitPrice = (float) ($item->quoteItem?->unit_price ?? 0);
-                        $qty = (float) ($item->quantity_approved ?: $item->quantity_produced ?: $item->quantity);
 
-                        return $unitPrice * $qty;
-                    });
-                });
-
-                return round($soTotal + $reqTotal + $poTotal, 2);
+                return round($soTotal + $reqTotal, 2);
             }
         );
     }
@@ -137,6 +129,15 @@ class Invoice extends Model
                 $reqDiscount = $this->requisitions->sum(fn ($req) => (float) $req->discount_amount);
 
                 return round($soDiscount + $reqDiscount, 2);
+            }
+        );
+    }
+
+    public function netValue(): Attribute
+    {
+        return Attribute::make(
+            get: function (): float {
+                return round($this->totalAmount - $this->discountAmount, 2);
             }
         );
     }
