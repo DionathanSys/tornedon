@@ -27,7 +27,7 @@ class ReplicateToCompaniesAction extends Action
                     ->options(function (Model $record) {
                         // Obter empresas às quais o usuário pode ter acesso
                         $currentUser = Auth::user();
-                        $userCompanies = $currentUser->companies()->pluck('id');
+                        $userCompanies = $currentUser->companies()->pluck('companies.id');
 
                         // Excluir a empresa atual se aplicável
                         $currentCompanyId = $record->company_id ?? $currentUser->current_company_id;

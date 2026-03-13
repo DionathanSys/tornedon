@@ -28,7 +28,9 @@ class EditCompanyPartner extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ActionGroup::make([
             ReplicateToCompaniesAction::make('replicate'),
+            ])->button(),
             ActionGroup::make([
                 Action::make('new-partner')
                     ->label('Parceiro')
