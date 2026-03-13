@@ -127,10 +127,9 @@ final class CreateNfseItemAction
                     ->label('Inclui no Total')
                     ->default(true),
 
-                Textarea::make('additional_information')
+                TextInput::make('additional_information')
                     ->label('Informações Adicionais do Item')
                     ->autocapitalize('words')
-                    ->rows(2)
                     ->maxLength(500)
                     ->columnSpanFull(),
             ])
