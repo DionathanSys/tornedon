@@ -24,7 +24,6 @@ class ReplicateToCompaniesAction extends Action
             ->schema([
                 Select::make('target_company_ids')
                     ->label('Empresas de destino')
-                    ->description('Selecione as empresas para as quais deseja replicar este registro')
                     ->options(function (Model $record) {
                         // Obter empresas às quais o usuário pode ter acesso
                         $currentUser = Auth::user();
