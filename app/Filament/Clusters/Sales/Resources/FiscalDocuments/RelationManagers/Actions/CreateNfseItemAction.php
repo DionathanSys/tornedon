@@ -67,7 +67,7 @@ final class CreateNfseItemAction
                     ->required()
                     ->maxLength(2000)
                     ->rows(3)
-                    ->dehydrateStateUsing(fn (string $state): ?string => $state ? Str::upper($state) : '')
+                    ->dehydrateStateUsing(fn (string $state): ?string => $state ? Str::upper($state) : null)
                     ->columnSpanFull(),
 
                 Group::make()
@@ -133,7 +133,7 @@ final class CreateNfseItemAction
                     ->label('Informações Adicionais do Item')
                     ->rows(2)
                     ->maxLength(500)
-                    ->dehydrateStateUsing(fn (string $state): string => Str::upper($state))
+                    ->dehydrateStateUsing(fn (string $state): ?string => $state ? Str::upper($state) : null)
                     ->columnSpanFull(),
             ])
             ->using(function (array $data, RelationManager $livewire): ?Model {

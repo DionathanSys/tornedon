@@ -111,7 +111,7 @@ final class EditNfseItemAction
                     ->label('Informações Adicionais do Item')
                     ->rows(2)
                     ->maxLength(500)
-                    ->dehydrateStateUsing(fn (string $state): string => Str::upper($state))
+                    ->dehydrateStateUsing(fn (string $state): ?string => $state ? Str::upper($state) : null)
                     ->columnSpanFull(),
             ])
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
