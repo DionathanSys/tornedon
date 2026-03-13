@@ -97,7 +97,12 @@ class BuildNfseMunicipalPayloadAction
                     ?? $profile?->default_nbs_code
                 );
 
-                $discriminacao = trim((string) ($item->description . ';' . $item->additional_information));
+                $parts = array_filter([
+                    $item->description,
+                    $item->additional_information,
+                ], fn ($v) => !empty($v));
+                
+                $discriminacao = trim(implode('; ', $parts));
                 if ($discriminacao === '') {
                     $discriminacao = 'Servicos prestados conforme documento fiscal.';
                 }

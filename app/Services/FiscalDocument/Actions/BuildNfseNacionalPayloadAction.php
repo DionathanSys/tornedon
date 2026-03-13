@@ -89,7 +89,10 @@ class BuildNfseNacionalPayloadAction
             $taxData    = $firstItem->tax_data ?? [];
 
             $valorServicosTotal = $items->sum(fn ($i) => round((float) $i->total_price, 2));
-            $discriminacoes     = $items->map(fn ($i) => $i->description ?? '')->filter()->implode("\n");
+            $discriminacoes     = $items->map(fn ($i) => collect(array_filter([
+                $i->description,
+                $i->additional_information,
+            ]))->implode('; '))->filter()->implode("\n");
 
             $serviceCode = $this->normalizeServiceCode(
                 $firstItem->service_code
