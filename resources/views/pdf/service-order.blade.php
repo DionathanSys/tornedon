@@ -13,6 +13,7 @@
         <div class="line muted">Empresa: {{ $record->company?->name ?? '-' }}</div>
         <div class="line">Cliente: {{ $record->customer?->name ?? '-' }}</div>
         <div class="line">Data da Ordem: {{ $record->order_date?->format('d/m/Y') ?? '-' }}</div>
+        <div class="line">Data Finalização: {{ $record->completion_date?->format('d/m/Y') ?? '-' }}</div>
         <div class="line">Status: {{ $record->status?->description() ?? '-' }}</div>
     </div>
 
@@ -58,6 +59,9 @@
             @endforelse
         </tbody>
     </table>
+
+    <h2>Observações</h2>
+        <div class="line">{{$record->customer_observations ?? Sem observações}}</div>
 
     <h2>Resumo</h2>
     @if($record->discount_amount > 0)

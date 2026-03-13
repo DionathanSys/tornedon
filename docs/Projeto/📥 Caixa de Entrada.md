@@ -36,6 +36,7 @@ Realiza o reparo em um equipamento, compra produtos para utilizar, é interessan
 - [ ] Mover component de *info_complementares_compra* do Perfil Fiscal para dentro do documento fiscal para poder inserir informação na hora de emitir.
 - [ ] Montar modo automático para preencher essa informação.
 - [ ] Remover component de seleção da fatura
+- [ ] Buscar informações padrões que estão no perfil, para utilizar antes da emissão no momento da criação.
 
 ## Fatura
 - [ ] Verificar alteração de status das faturas
