@@ -29,9 +29,53 @@ class EquipmentService
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Erro ao criar equipamento',
                 'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'data' => $data,
             ]);
             return null;
+        }
+    }
+
+    /**
+     * Atualiza um equipamento existente
+     */
+    public function update(Equipment $equipment, array $data): ?Equipment
+    {
+        try {
+            $equipment->update($data);
+            $this->setSuccess('Equipamento atualizado com sucesso');
+            return $equipment;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao atualizar equipamento', [$e->getMessage()]);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro ao atualizar equipamento',
+                'equipment_id' => $equipment->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Deleta um equipamento
+     */
+    public function delete(Equipment $equipment): bool
+    {
+        try {
+            $equipment->delete();
+            $this->setSuccess('Equipamento deletado com sucesso');
+            return true;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao deletar equipamento', [$e->getMessage()]);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro ao deletar equipamento',
+                'equipment_id' => $equipment->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return false;
         }
     }
 
@@ -72,7 +116,24 @@ class EquipmentService
             $query->where('owner_id', $filters['owner_id']);
         }
 
+        if (isset($filters['partner_id'])) {
+            // Aceitar também como partner_id para compatibilidade
+            $query->where('owner_id', $filters['partner_id']);
+        }
+
         return $query->with(['owner'])->get();
+    }
+
+    /**
+     * Lista equipamentos de um partner em uma empresa específica
+     * Note: Equipment usa owner_id para referenciar o Partner
+     */
+    public function listByCompanyAndPartner(int $companyId, int $partnerId): Collection
+    {
+        return Equipment::where('company_id', $companyId)
+            ->where('owner_id', $partnerId)
+            ->with(['owner'])
+            ->get();
     }
 
     /**
