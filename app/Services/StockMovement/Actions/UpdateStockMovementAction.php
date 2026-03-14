@@ -19,7 +19,7 @@ class UpdateStockMovementAction
     ) {}
 
     /**
-     * Atualiza uma movimenta��o de estoque e recalcula o ProductStock do zero.
+     * Atualiza uma movimentação de estoque e recalcula o ProductStock do zero.
      *
      * @param StockMovement $movement
      * @param array $data
@@ -28,7 +28,7 @@ class UpdateStockMovementAction
     public function execute(StockMovement $movement, array $data): ?StockMovement
     {
         try {
-            Log::debug('UpdateStockMovementAction: Iniciando atualiza��o de movimenta��o', [
+            Log::debug('UpdateStockMovementAction: Iniciando atualização de movimentação', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'user_id'            => $this->updatedBy,
@@ -38,26 +38,26 @@ class UpdateStockMovementAction
             $validated = StockMovementValidator::validateUpdate($data);
             $validated['updated_by'] = $this->updatedBy;
 
-            // Bloqueia o ProductStock antes de qualquer altera��o
+            // Bloqueia o ProductStock antes de qualquer alteração
             $stock = ProductStock::where('id', $movement->product_stock_id)
                 ->lockForUpdate()
                 ->first();
 
             if (!$stock) {
-                $this->setError('Registro de estoque n�o encontrado para rec�lculo', [], 422);
+                $this->setError('Registro de estoque não encontrado para recálculo', [], 422);
                 return null;
             }
 
-            // Atualiza o registro da movimenta��o
+            // Atualiza o registro da movimentação
             $movement->update($validated);
             $movement->refresh();
 
-            // Recalcula o estoque do zero a partir de todas as movimenta��es ativas
+            // Recalcula o estoque do zero a partir de todas as movimentações ativas
             (new RecalculateProductStockFromMovementsAction())->recalculate($stock);
 
             $this->setSuccess();
 
-            Log::info('UpdateStockMovementAction: Movimenta��o de estoque atualizada com sucesso', [
+            Log::info('UpdateStockMovementAction: Movimentação de estoque atualizada com sucesso', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'product_id'         => $movement->product_id,
@@ -65,9 +65,9 @@ class UpdateStockMovementAction
 
             return $movement;
         } catch (ValidationException $e) {
-            $this->setError('Erro de valida��o', $e->errors());
+            $this->setError('Erro de validação', $e->errors());
 
-            Log::error('UpdateStockMovementAction: Erro de valida��o', [
+            Log::error('UpdateStockMovementAction: Erro de validação', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'errors'             => $e->errors(),
@@ -75,9 +75,9 @@ class UpdateStockMovementAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao atualizar movimenta��o de estoque', [], 422);
+            $this->setError('Erro ao atualizar movimentação de estoque', [], 422);
 
-            Log::error('UpdateStockMovementAction: Erro ao atualizar movimenta��o', [
+            Log::error('UpdateStockMovementAction: Erro ao atualizar movimentação', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'exception'          => $e->getMessage(),
@@ -86,7 +86,7 @@ class UpdateStockMovementAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao atualizar movimenta��o', [], 500);
+            $this->setError('Erro inesperado ao atualizar movimentação', [], 500);
 
             Log::error('UpdateStockMovementAction: Erro inesperado', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,

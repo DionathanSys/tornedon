@@ -28,9 +28,9 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
     protected static ?string $cluster = SettingsCluster::class;
 
-    protected static ?string $navigationLabel = 'PreferÃªncias';
+    protected static ?string $navigationLabel = 'Preferências';
 
-    protected static ?string $title = 'PreferÃªncias da Empresa';
+    protected static ?string $title = 'Preferências da Empresa';
 
     protected static ?int $navigationSort = 1;
 
@@ -66,21 +66,21 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'default_quote_validity_days' => CompanyPreference::getDefaultQuoteValidityDays($companyId) ?? 30,
             'default_profit_margin' => CompanyPreference::getDefaultProfitMargin($companyId),
             
-            // ConfiguraÃ§Ãµes de notificaÃ§Ã£o
+            // Configurações de notificação
             'notify_new_order' => CompanyPreference::get('notify_new_order', $companyId, true),
             'notify_status_change' => CompanyPreference::get('notify_status_change', $companyId, true),
             'notify_low_stock' => CompanyPreference::get('notify_low_stock', $companyId, true),
             'notify_overdue_payments' => CompanyPreference::get('notify_overdue_payments', $companyId, true),
             
-            // ConfiguraÃ§Ãµes de email
+            // Configurações de email
             'email_signature' => CompanyPreference::get('email_signature', $companyId),
             'email_cc' => CompanyPreference::get('email_cc', $companyId),
             
-            // Outras configuraÃ§Ãµes
+            // Outras configurações
             'default_warranty_days' => CompanyPreference::get('default_warranty_days', $companyId, 90),
             'require_approval_threshold' => CompanyPreference::get('require_approval_threshold', $companyId),
 
-            // NotificaÃ§Ãµes de status para cliente
+            // Notificações de status para cliente
             'customer_notify_service_order_enabled' => (bool) data_get($statusNotificationConfig, 'service_order.enabled', true),
             'customer_notify_service_order_statuses' => (array) data_get($statusNotificationConfig, 'service_order.statuses', ['encerrada']),
             'customer_notify_service_order_subject' => (string) data_get($statusNotificationTemplates, 'service_order.subject', ''),
@@ -108,105 +108,105 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         return $schema
             ->schema([
                 \Filament\Schemas\Components\Section::make('Pagamento')
-                    ->description('ConfiguraÃ§Ãµes padrÃ£o para pagamentos')
+                    ->description('Configurações padrão para pagamentos')
                     ->icon('heroicon-o-credit-card')
                     ->schema([
                         Forms\Components\Select::make('default_payment_method')
-                            ->label('MÃ©todo de Pagamento PadrÃ£o')
+                            ->label('Método de Pagamento Padrão')
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->placeholder('Selecione um mÃ©todo padrÃ£o')
-                            ->helperText('Este mÃ©todo serÃ¡ prÃ©-selecionado em novos pedidos')
+                            ->placeholder('Selecione um método padrão')
+                            ->helperText('Este método será pré-selecionado em novos pedidos')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\Select::make('default_payment_condition')
-                            ->label('CondiÃ§Ã£o de Pagamento PadrÃ£o')
+                            ->label('Condição de Pagamento Padrão')
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->placeholder('Selecione uma condiÃ§Ã£o padrÃ£o')
-                            ->helperText('Esta condiÃ§Ã£o serÃ¡ prÃ©-selecionada em novos pedidos')
+                            ->placeholder('Selecione uma condição padrão')
+                            ->helperText('Esta condição será pré-selecionada em novos pedidos')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Vendas e OrÃ§amentos')
-                    ->description('ConfiguraÃ§Ãµes relacionadas a vendas e orÃ§amentos')
+                \Filament\Schemas\Components\Section::make('Vendas e Orçamentos')
+                    ->description('Configurações relacionadas a vendas e orçamentos')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
                         Forms\Components\TextInput::make('default_quote_validity_days')
-                            ->label('Validade PadrÃ£o de OrÃ§amentos (dias)')
+                            ->label('Validade Padrão de Orçamentos (dias)')
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(365)
                             ->default(30)
-                            ->helperText('NÃºmero de dias que um orÃ§amento permanece vÃ¡lido')
+                            ->helperText('Número de dias que um orçamento permanece válido')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\TextInput::make('default_profit_margin')
-                            ->label('Margem de Lucro PadrÃ£o (%)')
+                            ->label('Margem de Lucro Padrão (%)')
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(100)
                             ->step(0.1)
                             ->suffix('%')
-                            ->helperText('Margem de lucro padrÃ£o aplicada em produtos')
+                            ->helperText('Margem de lucro padrão aplicada em produtos')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\TextInput::make('default_warranty_days')
-                            ->label('Garantia PadrÃ£o (dias)')
+                            ->label('Garantia Padrão (dias)')
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(3650)
                             ->default(90)
-                            ->helperText('PerÃ­odo de garantia padrÃ£o para serviÃ§os')
+                            ->helperText('Período de garantia padrão para serviços')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\TextInput::make('require_approval_threshold')
-                            ->label('Limite para AprovaÃ§Ã£o (R$)')
+                            ->label('Limite para Aprovação (R$)')
                             ->numeric()
                             ->minValue(0)
                             ->prefix('R$')
-                            ->helperText('Ordens acima deste valor requerem aprovaÃ§Ã£o')
+                            ->helperText('Ordens acima deste valor requerem aprovação')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('NotificaÃ§Ãµes')
-                    ->description('Configure quais notificaÃ§Ãµes vocÃª deseja receber')
+                \Filament\Schemas\Components\Section::make('Notificações')
+                    ->description('Configure quais notificações você deseja receber')
                     ->icon('heroicon-o-bell')
                     ->schema([
                         Forms\Components\Toggle::make('notify_new_order')
                             ->label('Notificar em Novos Pedidos')
-                            ->helperText('Receber notificaÃ§Ã£o quando um novo pedido for criado')
+                            ->helperText('Receber notificação quando um novo pedido for criado')
                             ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\Toggle::make('notify_status_change')
-                            ->label('Notificar MudanÃ§a de Status')
-                            ->helperText('Receber notificaÃ§Ã£o quando o status de um pedido mudar')
+                            ->label('Notificar Mudança de Status')
+                            ->helperText('Receber notificação quando o status de um pedido mudar')
                             ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\Toggle::make('notify_low_stock')
                             ->label('Notificar Estoque Baixo')
-                            ->helperText('Receber notificaÃ§Ã£o quando o estoque estiver abaixo do mÃ­nimo')
+                            ->helperText('Receber notificação quando o estoque estiver abaixo do mínimo')
                             ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         
                         Forms\Components\Toggle::make('notify_overdue_payments')
                             ->label('Notificar Pagamentos Atrasados')
-                            ->helperText('Receber notificaÃ§Ã£o de pagamentos vencidos')
+                            ->helperText('Receber notificação de pagamentos vencidos')
                             ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('NotificaÃ§Ãµes por Status para Cliente')
+                \Filament\Schemas\Components\Section::make('Notificações por Status para Cliente')
                     ->description('Defina quais documentos e status devem disparar e-mail para o cliente')
                     ->icon('heroicon-o-paper-airplane')
                     ->schema([
@@ -288,15 +288,15 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                         Forms\Components\Textarea::make('email_signature')
                             ->label('Assinatura de E-mail')
                             ->rows(4)
-                            ->placeholder('Digite a assinatura padrÃ£o para e-mails')
-                            ->helperText('Assinatura que serÃ¡ incluÃ­da nos e-mails enviados')
+                            ->placeholder('Digite a assinatura padrão para e-mails')
+                            ->helperText('Assinatura que será incluída nos e-mails enviados')
                             ->columnSpanFull(),
                         
                         Forms\Components\TextInput::make('email_cc')
-                            ->label('E-mail para CÃ³pia (CC)')
+                            ->label('E-mail para Cópia (CC)')
                             ->email()
                             ->placeholder('gerencia@empresa.com')
-                            ->helperText('E-mail que receberÃ¡ cÃ³pia de todas as comunicaÃ§Ãµes')
+                            ->helperText('E-mail que receberá cópia de todas as comunicações')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
@@ -313,14 +313,14 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         if (!$companyId) {
             Notification::make()
                 ->title('Erro ao salvar')
-                ->body('Empresa nÃ£o identificada.')
+                ->body('Empresa não identificada.')
                 ->danger()
                 ->send();
             return;
         }
 
         try {
-            // PreferÃªncias de pagamento
+            // Preferências de pagamento
             if (isset($data['default_payment_method'])) {
                 CompanyPreference::setDefaultPaymentMethod($data['default_payment_method'], $companyId);
             }
@@ -329,7 +329,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                 CompanyPreference::setDefaultPaymentCondition($data['default_payment_condition'], $companyId);
             }
 
-            // PreferÃªncias de vendas
+            // Preferências de vendas
             if (isset($data['default_quote_validity_days'])) {
                 CompanyPreference::setDefaultQuoteValidityDays($data['default_quote_validity_days'], $companyId);
             }
@@ -338,7 +338,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                 CompanyPreference::setDefaultProfitMargin($data['default_profit_margin'], $companyId);
             }
 
-            // Outras preferÃªncias de negÃ³cio
+            // Outras preferências de negócio
             if (isset($data['default_warranty_days'])) {
                 CompanyPreference::set('default_warranty_days', $data['default_warranty_days'], $companyId);
             }
@@ -347,13 +347,13 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                 CompanyPreference::set('require_approval_threshold', $data['require_approval_threshold'], $companyId);
             }
 
-            // NotificaÃ§Ãµes
+            // Notificações
             CompanyPreference::set('notify_new_order', $data['notify_new_order'] ?? false, $companyId);
             CompanyPreference::set('notify_status_change', $data['notify_status_change'] ?? false, $companyId);
             CompanyPreference::set('notify_low_stock', $data['notify_low_stock'] ?? false, $companyId);
             CompanyPreference::set('notify_overdue_payments', $data['notify_overdue_payments'] ?? false, $companyId);
 
-            // ConfiguraÃ§Ãµes de email
+            // Configurações de email
             if (isset($data['email_signature'])) {
                 CompanyPreference::set('email_signature', $data['email_signature'], $companyId);
             }
@@ -412,19 +412,20 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             CompanyPreference::clearCache($companyId);
 
             Notification::make()
-                ->title('PreferÃªncias salvas')
-                ->body('As preferÃªncias da empresa foram atualizadas com sucesso.')
+                ->title('Preferências salvas')
+                ->body('As preferências da empresa foram atualizadas com sucesso.')
                 ->success()
                 ->send();
 
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Erro ao salvar')
-                ->body('Ocorreu um erro ao salvar as preferÃªncias: ' . $e->getMessage())
+                ->body('Ocorreu um erro ao salvar as preferências: ' . $e->getMessage())
                 ->danger()
                 ->send();
         }
     }
 }
+
 
 
