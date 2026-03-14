@@ -23,6 +23,14 @@ class ReplicatePartnerOnCreate
     public static function register(Dispatcher $events): void
     {
         $events->listen('eloquent.created: ' . Partner::class, function ($event) {
+            // Guard: verificar se realmente é Partner
+            if (!($event instanceof Partner)) {
+                Log::warning('ReplicatePartnerOnCreate received non-Partner model', [
+                    'received_class' => get_class($event),
+                ]);
+                return;
+            }
+
             // Obter dados de replicação do request
             $replicateToCompanies = request()->input('replicate_to_companies', []);
             $sourceCompanyId = request()->input('source_company_id'); // Empresa onde o partner foi criado

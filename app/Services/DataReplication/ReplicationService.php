@@ -71,6 +71,13 @@ class ReplicationService
      */
     public function replicate(Model $source, array $targetCompanyIds, string $type = 'auto'): array
     {
+        Log::debug('ReplicationService::replicate called', [
+            'source_model' => get_class($source),
+            'source_id' => $source->id ?? null,
+            'type_argument' => $type,
+            'target_companies_count' => count($targetCompanyIds),
+        ]);
+
         // Auto-detectar tipo se não especificado
         if ($type === 'auto') {
             $type = $this->detectType($source);
@@ -135,7 +142,11 @@ class ReplicationService
             return 'equipment';
         }
 
-        throw new InvalidArgumentException("Tipo de modelo não suportado: " . get_class($source));
+        throw new InvalidArgumentException(
+            "Tipo de modelo não suportado: " . get_class($source) . ". "
+            . "Apenas Partner e Equipment podem ser replicados. "
+            . "Stack: " . json_encode(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5))
+        );
     }
 
     /**

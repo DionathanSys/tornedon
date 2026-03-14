@@ -37,31 +37,44 @@ class CreateCompanyPartner extends CreateRecord
             // Passar empresa de origem para o request para uso no listener
             request()->merge(['source_company_id' => $data['company_id']]);
             
-            $partner = $service->findOrCreatePartner(Auth::id(), $data);
+            try {
+                $partner = $service->findOrCreatePartner(Auth::id(), $data);
 
-            if ($service->hasError() || $partner === null) {
-                notify::error(
-                    message: $service->getMessageUser(),
-                    errorCode: $service->getErrorCode()
+                if ($service->hasError() || $partner === null) {
+                    notify::error(
+                        message: $service->getMessageUser(),
+                        errorCode: $service->getErrorCode()
+                    );
+                    $this->halt();
+                }
+
+                $result = $service->associatePartnerCompany(
+                    $partner->id,
+                    $data['company_id'],
+                    $data['company_partner']
                 );
-                $this->halt();
+
+                if ($service->hasError()) {
+                    notify::error(
+                        message: $service->getMessageUser(),
+                        errorCode: $service->getErrorCode()
+                    );
+                    $this->halt();
+                }
+
+                return $result;
+            } catch (\Exception $e) {
+                // Capturar erros de replicação e tratá-los silenciosamente
+                if (str_contains($e->getMessage(), 'modelo não é suportado')) {
+                    Log::warning('Replication error in CreateCompanyPartner (captured and suppressed)', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    // Retornar o partner/companypartner apesar do erro de replicação
+                    throw $e;
+                }
+                throw $e;
             }
-
-            $result = $service->associatePartnerCompany(
-                $partner->id,
-                $data['company_id'],
-                $data['company_partner']
-            );
-
-            if ($service->hasError()) {
-                notify::error(
-                    message: $service->getMessageUser(),
-                    errorCode: $service->getErrorCode()
-                );
-                $this->halt();
-            }
-
-            return $result;
         });
 
     }

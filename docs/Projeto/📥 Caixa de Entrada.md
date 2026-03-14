@@ -47,3 +47,6 @@ Realiza o reparo em um equipamento, compra produtos para utilizar, é interessan
 
 ## Notas de Entrada
 - [ ] Modelar e unir com movimentação de estoque
+
+## Analisar Funcionamento
+- [ ] Replicação dos dados de partners
