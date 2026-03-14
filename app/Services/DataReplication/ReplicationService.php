@@ -14,7 +14,53 @@ use InvalidArgumentException;
 class ReplicationService
 {
     /**
-     * Replica um modelo para múltiplas empresas
+     * Replica um modelo de uma empresa específica para múltiplas empresas (com validação de segurança)
+     *
+     * @param Model $source
+     * @param array $targetCompanyIds
+     * @param string $type ('partner' ou 'equipment')
+     * @param int|null $sourceCompanyId Empresa de origem (para validação de segurança/multi-tenant)
+     * @return array Resultado da replicação [successful => [], failed => []]
+     *
+     * @throws InvalidArgumentException
+     */
+    public function replicateFromSource(Model $source, array $targetCompanyIds, string $type = 'auto', ?int $sourceCompanyId = null): array
+    {
+        // Auto-detectar tipo se não especificado
+        if ($type === 'auto') {
+            $type = $this->detectType($source);
+        }
+
+        // Validar tipo
+        if (!in_array($type, ['partner', 'equipment'])) {
+            throw new InvalidArgumentException("Tipo inválido: {$type}. Use 'partner' ou 'equipment'.");
+        }
+
+        // Validar dados de origem
+        $this->validateSourceData($source, $type);
+
+        // Validar empresas alvo
+        if (empty($targetCompanyIds)) {
+            throw new InvalidArgumentException('Nenhuma empresa alvo especificada.');
+        }
+
+        $targetCompanyIds = array_unique($targetCompanyIds);
+        $companies = Company::whereIn('id', $targetCompanyIds)->get();
+        if ($companies->count() !== count($targetCompanyIds)) {
+            throw new InvalidArgumentException('Uma ou mais empresas alvo não existem.');
+        }
+
+        // Obter handler apropriado
+        $handler = $this->getHandler($type);
+
+        // Replicar com transação
+        return DB::transaction(function () use ($handler, $source, $targetCompanyIds, $sourceCompanyId) {
+            return $handler->handleWithSource($source, $targetCompanyIds, $sourceCompanyId);
+        });
+    }
+
+    /**
+     * Replica um modelo para múltiplas empresas (compatibilidade)
      *
      * @param Model $source
      * @param array $targetCompanyIds
@@ -103,3 +149,4 @@ class ReplicationService
         };
     }
 }
+

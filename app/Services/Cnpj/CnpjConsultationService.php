@@ -270,6 +270,8 @@ class CnpjConsultationService
 
         $this->setSuccess("Consulta CNPJ realizada com sucesso ({$providerName})");
 
+        $mainRegistration = $vo->getMainStateRegistration();
+
         Log::info($this->getMessage(), [
             'metodo' => __METHOD__ . '@' . __LINE__,
             'provider' => $providerName,
@@ -278,6 +280,17 @@ class CnpjConsultationService
             'status_cnpj' => $vo->statusText,
             'city' => $vo->address->city,
             'state' => $vo->address->state,
+            'registrations_count' => count($vo->registrations),
+            'registrations' => array_map(fn($r) => [
+                'number' => $r->number,
+                'state' => $r->state,
+                'enabled' => $r->enabled,
+                'status' => $r->statusText,
+            ], $vo->registrations),
+            'main_registration' => $mainRegistration ? [
+                'number' => $mainRegistration->number,
+                'state' => $mainRegistration->state,
+            ] : null,
         ]);
 
         return $vo;

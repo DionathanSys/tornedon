@@ -96,7 +96,7 @@ class CompanyPartnerForm
                             ->numeric()
                             ->disabledOn('edit')
                             ->suffixActions([
-                                FetchStateTaxIdAction::make(),
+                                // FetchStateTaxIdAction::make(),
                             ]),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscrição Municipal')

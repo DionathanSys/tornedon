@@ -13,6 +13,8 @@ class CompanyPartner extends Model
     protected $table = 'company_partner';
 
     protected $fillable = [
+        'partner_id',
+        'company_id',
         'type',
         'invoice_threshold',
         'is_active',

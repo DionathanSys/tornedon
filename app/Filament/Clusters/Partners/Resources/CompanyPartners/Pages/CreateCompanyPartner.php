@@ -33,6 +33,10 @@ class CreateCompanyPartner extends CreateRecord
     {
         return DB::transaction(function () use ($data) {
             $service = new PartnerService();
+            
+            // Passar empresa de origem para o request para uso no listener
+            request()->merge(['source_company_id' => $data['company_id']]);
+            
             $partner = $service->findOrCreatePartner(Auth::id(), $data);
 
             if ($service->hasError() || $partner === null) {

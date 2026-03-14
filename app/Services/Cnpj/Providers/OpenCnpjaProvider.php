@@ -5,6 +5,7 @@ namespace App\Services\Cnpj\Providers;
 use App\Services\Cnpj\Contracts\CnpjApiProviderInterface;
 use App\Services\Cnpj\DTO\CnpjProviderResult;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OpenCnpjaProvider implements CnpjApiProviderInterface
 {
@@ -51,7 +52,10 @@ class OpenCnpjaProvider implements CnpjApiProviderInterface
 
             $data = $response->json();
 
+            Log::info('Resposta da API de CNPJ', ['response' => $data]);
+
             if (! is_array($data)) {
+                Log::error('Resposta invalida da API de CNPJ', ['response' => $data]);
                 return CnpjProviderResult::failure(
                     'Resposta invalida da API de CNPJ.',
                     [$response->body()],
@@ -61,6 +65,7 @@ class OpenCnpjaProvider implements CnpjApiProviderInterface
 
             return CnpjProviderResult::success($data);
         } catch (\Throwable $e) {
+            Log::error('Erro ao consultar CNPJ', ['exception' => $e->getMessage()]);
             return CnpjProviderResult::failure(
                 'Erro ao consultar CNPJ',
                 [$e->getMessage()],

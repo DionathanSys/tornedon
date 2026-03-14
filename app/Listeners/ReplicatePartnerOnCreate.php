@@ -25,17 +25,34 @@ class ReplicatePartnerOnCreate
         $events->listen('eloquent.created: ' . Partner::class, function ($event) {
             // Obter dados de replicação do request
             $replicateToCompanies = request()->input('replicate_to_companies', []);
+            $sourceCompanyId = request()->input('source_company_id'); // Empresa onde o partner foi criado
 
             if (empty($replicateToCompanies)) {
                 return;
             }
 
             try {
-                app(ReplicationService::class)->replicate($event, $replicateToCompanies, 'partner');
-            } catch (\Exception $e) {
-                Log::warning('Failed to replicate Partner after creation', [
+                $result = app(ReplicationService::class)->replicateFromSource(
+                    $event,
+                    $replicateToCompanies,
+                    'partner',
+                    $sourceCompanyId
+                );
+                
+                Log::info('Partner replicated successfully', [
                     'partner_id' => $event->id,
+                    'source_company_id' => $sourceCompanyId,
+                    'successful' => count($result['successful']),
+                    'failed' => count($result['failed']),
+                    'result' => $result,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to replicate Partner after creation', [
+                    'partner_id' => $event->id ?? null,
+                    'source_company_id' => $sourceCompanyId,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'replicate_to_companies' => $replicateToCompanies,
                 ]);
             }
         });
