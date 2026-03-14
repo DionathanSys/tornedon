@@ -15,9 +15,9 @@ final class DownloadServiceOrderPdfAction
     public static function make(): Action
     {
         return Action::make('downloadServiceOrderPdf')
-            ->label('Download PDF')
+            ->label('PDF')
             ->icon(Heroicon::ArrowDownTray)
-            ->color('success')
+            ->color('primary')
             ->action(function (ServiceOrder $record): StreamedResponse {
                 $service = app(ServiceOrderService::class);
                 $pdf     = $service->pdf($record, Auth::id());

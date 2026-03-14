@@ -13,7 +13,7 @@ final class ViewLinkedServiceOrdersAction
     public static function make(): Action
     {
         return Action::make('viewLinkedServiceOrders')
-            ->label('Ordens de Servico')
+            ->label('OS.')
             ->icon(Heroicon::WrenchScrewdriver)
             ->color('gray')
             ->badge(fn (Invoice $record): int => $record->serviceOrders()->count())

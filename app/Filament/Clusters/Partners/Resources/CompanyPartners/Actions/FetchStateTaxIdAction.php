@@ -6,6 +6,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\Cnpj\CnpjConsultationService;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 
@@ -18,12 +19,10 @@ class FetchStateTaxIdAction
             ->icon(Heroicon::MagnifyingGlass)
             ->color('info')
             ->size(Size::Small)
-            ->action(function (Action $action): void {
-                $livewire = $action->getLivewire();
-                
+            ->action(function (Get $get, Set $set, Action $action): void {
                 // Obtém o valor do documento (CNPJ)
-                $documentNumber = $livewire->data['document_number'] ?? null;
-                $documentType = $livewire->data['document_type'] ?? null;
+                $documentNumber = $get('document_number') ?? null;
+                $documentType = $get('document_type') ?? null;
 
                 if (!$documentNumber) {
                     notify::warning(
@@ -66,7 +65,7 @@ class FetchStateTaxIdAction
                 }
 
                 // Preenche o campo com a inscrição estadual
-                $livewire->data['state_tax_id'] = $registration->number;
+                $set('state_tax_id', $registration->number);
 
                 notify::success(
                     title: 'Inscrição Estadual encontrada',

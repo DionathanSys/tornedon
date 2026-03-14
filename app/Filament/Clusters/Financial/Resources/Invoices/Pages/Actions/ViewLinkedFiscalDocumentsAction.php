@@ -15,7 +15,7 @@ final class ViewLinkedFiscalDocumentsAction
     public static function make(): Action
     {
         return Action::make('viewLinkedFiscalDocuments')
-            ->label('Notas Fiscais')
+            ->label('NF\'s')
             ->icon(Heroicon::DocumentText)
             ->color('gray')
             ->badge(fn (Invoice $record): int => $record->fiscalDocuments()->count())

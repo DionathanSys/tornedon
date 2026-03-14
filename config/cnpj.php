@@ -1,7 +1,6 @@
 <?php
 
 use App\Services\Cnpj\Providers\OpenCnpjaProvider;
-use App\Services\Cnpj\Providers\ReceitaWsProvider;
 
 return [
     /*
@@ -13,7 +12,7 @@ return [
     | de tentativa (fallback).
     |
     */
-    'providers' => env('CNPJ_PROVIDERS', 'open_cnpja,receitaws'),
+    'providers' => env('CNPJ_PROVIDERS', 'open_cnpja'),
 
     /*
     |--------------------------------------------------------------------------
@@ -22,7 +21,6 @@ return [
     */
     'provider_classes' => [
         'open_cnpja' => OpenCnpjaProvider::class,
-        // 'receitaws' => ReceitaWsProvider::class,
     ],
 
     /*
@@ -38,15 +36,6 @@ return [
             'rate_limit' => [
                 'max_attempts' => (int) env('CNPJ_OPEN_CNPJA_RATE_LIMIT_MAX_ATTEMPTS', 5),
                 'decay_seconds' => (int) env('CNPJ_OPEN_CNPJA_RATE_LIMIT_DECAY_SECONDS', 60),
-            ],
-        ],
-        'receitaws' => [
-            'base_url' => env('CNPJ_RECEITAWS_BASE_URL', 'https://www.receitaws.com.br/v1/cnpj'),
-            'timeout' => (int) env('CNPJ_RECEITAWS_TIMEOUT', 20),
-            'headers' => [],
-            'rate_limit' => [
-                'max_attempts' => (int) env('CNPJ_RECEITAWS_RATE_LIMIT_MAX_ATTEMPTS', 3),
-                'decay_seconds' => (int) env('CNPJ_RECEITAWS_RATE_LIMIT_DECAY_SECONDS', 60),
             ],
         ],
     ],

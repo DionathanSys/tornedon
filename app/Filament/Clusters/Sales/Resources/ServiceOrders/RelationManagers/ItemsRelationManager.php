@@ -41,7 +41,7 @@ class ItemsRelationManager extends RelationManager
                     ->label('Valor Total')
                     ->money('BRL', true)
                     ->alignRight()
-                    ->summarize(Sum::make()),
+                    ->summarize(Sum::make('total_amount')->label('Total')->money('BRL', 100)),
                 TextColumn::make('discount_percentage')
                     ->label('Des. (%)')
                     ->alignRight()
@@ -50,12 +50,16 @@ class ItemsRelationManager extends RelationManager
                     ->label('Des. (R$)')
                     ->money('BRL', true)
                     ->alignRight()
+                    ->summarize(Sum::make('discount_amount')->label('Desc.')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('createdBy')
+                TextColumn::make('observations')
+                    ->label('Observações')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updatedBy')
+                TextColumn::make('updatedBy.name')
                     ->label('Atualizado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

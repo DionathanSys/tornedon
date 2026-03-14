@@ -50,7 +50,6 @@ class ServiceOrderForm
                     ->columnSpanFull()
                     ->persistTab(true)
                     ->id('order-tabs')
-                    ->vertical()
                     ->tabs([
                         Tab::make('Dados Gerais')
                             ->icon(Heroicon::InformationCircle)
@@ -98,7 +97,12 @@ class ServiceOrderForm
                                                     ->label('Data Limite')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->displayFormat('d/m/Y')
+                                                    ->visible(false)
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                                DatePicker::make('warranty_expires_at')
+                                                    ->label('Garantia Válida Até')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->displayFormat('d/m/Y'),
                                                 DatePicker::make('completion_date')
                                                     ->label('Data de Conclusão')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
@@ -110,6 +114,7 @@ class ServiceOrderForm
                                             ->label('Cliente')
                                             ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                                             ->columnStart(1)
+                                            ->live(onBlur: true)
                                             ->disabledOn('edit'),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
@@ -127,42 +132,25 @@ class ServiceOrderForm
                                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                                     ]),
                                 Section::make('Atendimento')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
+                                    ->columns(['md' => 6,'lg' => 12,])
                                     ->collapsible()
+                                    ->collapsed()
                                     ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
-                                        Select::make('technician_id')
-                                            ->label('Técnico Responsável')
+                                        SelectPartner::make('technician_id', 'technician')
+                                            ->label('Técnico')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->searchable()
-                                            ->preload()
-                                            ->relationship('technician', 'name')
-                                            ->default(fn() => Auth::id())
+                                            ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
-                                        Select::make('supervisor_id')
-                                            ->label('Supervisor')
-                                            ->columnSpan(['md' => 1, 'lg' => 4])
-                                            ->searchable()
-                                            ->preload()
-                                            ->relationship('supervisor', 'name')
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
-                                        Select::make('salesperson_id')
+                                        SelectPartner::make('salesperson_id', 'salesperson')
                                             ->label('Vendedor')
-                                            ->columnSpan(['md' => 1, 'lg' => 4])
-                                            ->searchable()
-                                            ->preload()
-                                            ->relationship('salesperson', 'name')
-                                            ->default(fn() => Auth::id())
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->columnStart(1)
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn() => Filament::getTenant()->service_provision_location)
@@ -195,10 +183,20 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 4, 'lg' => 12])
                                             ->rows(3)
                                             ->autocomplete(false),
-                                        Textarea::make('technician_observations')
+                                        TextInput::make('technician_observations')
                                             ->label('Observações do Técnico')
                                             ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3)
+                                            // ->rows(3)
+                                            ->datalist(fn() => [
+                                                'Checar disponibilidade de peças',
+                                                'Entrar em contato com o cliente para alinhamento',
+                                                'Agendar visita técnica',
+                                                'Aguardar chegada de peças',
+                                                'Realizar manutenção preventiva',
+                                                'Realizar manutenção corretiva',
+                                                'Realizar testes de funcionamento',
+                                                'Fornecer orientações de uso ao cliente',
+                                            ])
                                             ->autocomplete(false),
                                         Textarea::make('solution')
                                             ->label('Solução Aplicada')
@@ -271,14 +269,11 @@ class ServiceOrderForm
                             ]),
                         Tab::make('Aprovação')
                             ->icon(Heroicon::CheckCircle)
+                            ->visible(false)
                             ->schema([
                                 //TODO Rever
                                 Section::make('Aprovação e Avaliação')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
+                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
@@ -298,10 +293,6 @@ class ServiceOrderForm
                                             ->columnStart(1)
                                             ->disabled()
                                             ->displayFormat('d/m/Y H:i'),
-                                        DatePicker::make('warranty_expires_at')
-                                            ->label('Garantia Válida Até')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->displayFormat('d/m/Y'),
                                     ]),
                             ]),
                         Tab::make('Outros')

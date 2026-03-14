@@ -40,8 +40,12 @@ class EditInvoice extends EditRecord
             ])->buttonGroup(),
             ActionGroup::make([
                 PreviewInvoicePdfAction::make()
+                    ->hiddenLabel()
+                    ->tooltip('Visualizar PDF')
                     ->size(Size::Small),
                 DownloadInvoicePdfAction::make()
+                    ->hiddenLabel()
+                    ->tooltip('Baixar PDF')
                     ->size(Size::Small),
                 ImportRecordsAction::make()
                     ->size(Size::Small),

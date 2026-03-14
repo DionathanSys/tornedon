@@ -13,7 +13,7 @@ final class ViewLinkedRequisitionsAction
     public static function make(): Action
     {
         return Action::make('viewLinkedRequisitions')
-            ->label('Requisicoes')
+            ->label('REQ.')
             ->icon(Heroicon::ClipboardDocumentList)
             ->color('gray')
             ->badge(fn (Invoice $record): int => $record->requisitions()->count())

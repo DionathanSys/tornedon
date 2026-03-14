@@ -17,7 +17,6 @@ class CnpjConsultationService
     private const DEFAULT_CACHE_TTL = 604800;
     private const DEFAULT_RATE_LIMIT_MAX_ATTEMPTS = 5;
     private const DEFAULT_RATE_LIMIT_DECAY_SECONDS = 60;
-    private const ROUND_ROBIN_COUNTER_KEY = 'cnpj-consultation:round-robin-counter';
 
     /**
      * Consulta CNPJ com fallback entre provedores e cache local.
@@ -56,10 +55,9 @@ class CnpjConsultationService
             return null;
         }
 
-        $orderedProviders = $this->orderProvidersByRoundRobin($providers);
         $lastFailure = null;
 
-        foreach ($orderedProviders as $provider) {
+        foreach ($providers as $provider) {
             $providerName = $provider->name();
 
             if (! $this->checkRateLimit($providerName)) {
@@ -109,7 +107,6 @@ class CnpjConsultationService
      */
     public function getFromCache(string $cnpj): ?CnpjVO
     {
-        $cnpj = $this->sanitize($cnpj);
         $cacheKey = $this->buildCacheKey($cnpj);
 
         $data = Cache::get($cacheKey);
@@ -137,7 +134,7 @@ class CnpjConsultationService
 
     private function sanitize(string $cnpj): string
     {
-        return preg_replace('/\D/', '', $cnpj);
+        return str_replace(['.', '-', '/'], '', $cnpj);
     }
 
     private function isValid(string $cnpj): bool
@@ -246,34 +243,6 @@ class CnpjConsultationService
         return $providers;
     }
 
-    /**
-     * Alterna o provider inicial a cada chamada, mantendo fallback entre todos.
-     *
-     * @param array<int, CnpjApiProviderInterface> $providers
-     * @return array<int, CnpjApiProviderInterface>
-     */
-    private function orderProvidersByRoundRobin(array $providers): array
-    {
-        $total = count($providers);
-
-        if ($total <= 1) {
-            return $providers;
-        }
-
-        $counter = (int) Cache::increment(self::ROUND_ROBIN_COUNTER_KEY);
-
-        if ($counter <= 0) {
-            $counter = 1;
-            Cache::forever(self::ROUND_ROBIN_COUNTER_KEY, $counter);
-        }
-
-        $startIndex = ($counter - 1) % $total;
-
-        return array_merge(
-            array_slice($providers, $startIndex),
-            array_slice($providers, 0, $startIndex),
-        );
-    }
 
     private function handleProviderSuccess(
         string $cnpj,

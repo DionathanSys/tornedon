@@ -13,11 +13,13 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServ
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -30,8 +32,17 @@ class EditServiceOrder extends EditRecord
     {
         return [
             ActionGroup::make([
-                DuplicateServiceOrderAction::make(),
-                PreviewServiceOrderPdfAction::make(),
+                Action::make('new-service-order')
+                    ->hiddenLabel()
+                    ->tooltip('Criar nova ordem de serviço')
+                    ->icon(Heroicon::Plus)
+                    ->url($this->getResource()::getUrl('create')),
+                DuplicateServiceOrderAction::make()
+                    ->hiddenLabel()
+                    ->tooltip('Duplicar ordem de serviço'),
+                PreviewServiceOrderPdfAction::make()
+                    ->hiddenLabel()
+                    ->tooltip('Preview PDF'),
                 DownloadServiceOrderPdfAction::make(),
                 CloseServiceOrderAction::make(),
                 InvoiceServiceOrderAction::make(),

@@ -13,7 +13,7 @@ final class ViewLinkedProductionOrdersAction
     public static function make(): Action
     {
         return Action::make('viewLinkedProductionOrders')
-            ->label('Ordens de Producao')
+            ->label('OP.')
             ->icon(Heroicon::Cog6Tooth)
             ->color('gray')
             ->badge(fn (Invoice $record): int => $record->productionOrders()->count())
