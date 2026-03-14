@@ -144,9 +144,7 @@ class ReplicationService
         }
 
         throw new InvalidArgumentException(
-            "Tipo de modelo não suportado: " . get_class($source) . ". "
-            . "Apenas Partner e Equipment podem ser replicados. "
-            . "Stack: " . json_encode(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5))
+            "Tipo de modelo não suportado para replicação: " . get_class($source)
         );
     }
 

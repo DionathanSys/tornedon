@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ReplicateToCompaniesAction extends Action
 {
@@ -55,8 +56,25 @@ class ReplicateToCompaniesAction extends Action
     protected function handleReplication(Model $record, array $targetCompanyIds): void
     {
         try {
+            // Se for CompanyPartner, extrair o Partner
+            $modelToReplicate = $record;
+            if ($record instanceof \App\Models\CompanyPartner) {
+                $modelToReplicate = $record->partner;
+                if (!$modelToReplicate) {
+                    throw new \InvalidArgumentException('Partner não encontrado para este vínculo.');
+                }
+            }
+
             $service = app(ReplicationService::class);
-            $result = $service->replicate($record, $targetCompanyIds);
+            
+            // Passar a empresa de origem como a empresa atual do CompanyPartner
+            $sourceCompanyId = $record->company_id ?? null;
+            $result = $service->replicateFromSource(
+                $modelToReplicate,
+                $targetCompanyIds,
+                'auto',
+                $sourceCompanyId
+            );
 
             $successCount = count($result['successful']);
             $failureCount = count($result['failed']);
@@ -71,7 +89,7 @@ class ReplicateToCompaniesAction extends Action
 
             if ($failureCount > 0) {
                 $failureDetails = implode(
-                    "\n",
+                    ", ",
                     array_map(
                         fn($f) => "Empresa ID {$f['company_id']}: {$f['error']}",
                         $result['failed']
@@ -80,14 +98,35 @@ class ReplicateToCompaniesAction extends Action
 
                 Notification::make()
                     ->title('Replicação com erros')
-                    ->body("Falha em {$failureCount} empresa(s):\n{$failureDetails}")
+                    ->body("Falha em {$failureCount} empresa(s): {$failureDetails}")
                     ->warning()
                     ->send();
             }
-        } catch (\Exception $e) {
+        } catch (\InvalidArgumentException $e) {
+            // Erros de argumento inválido devem ser exibidos ao usuário
+            Log::warning('Replication validation error', [
+                'record_class' => get_class($record),
+                'record_id' => $record->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            
             Notification::make()
                 ->title('Erro na replicação')
                 ->body($e->getMessage())
+                ->danger()
+                ->send();
+        } catch (\Exception $e) {
+            // Erros inesperados não devem expor detalhes técnicos
+            Log::error('Replication failed with exception', [
+                'record_class' => get_class($record),
+                'record_id' => $record->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            Notification::make()
+                ->title('Erro na replicação')
+                ->body('Ocorreu um erro ao tentar replicar o registro. Por favor, tente novamente ou contacte o suporte.')
                 ->danger()
                 ->send();
         }
