@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas;
 
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\MultiSelect;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use App\Enum;
@@ -23,6 +22,7 @@ use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\FetchStateT
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Models\CompanyPartner;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -155,7 +155,7 @@ class CompanyPartnerForm
                     ->visibleOn('create')
                     ->compact()
                     ->schema([
-                        MultiSelect::make('replicate_to_companies')
+                        CheckboxList::make('replicate_to_companies')
                             ->label('Empresas de destino')
                             ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
                             ->columnSpanFull()

@@ -9,6 +9,7 @@ use App\Services\DataReplication\Handlers\EquipmentReplicationHandler;
 use App\Services\DataReplication\Handlers\PartnerReplicationHandler;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 class ReplicationService
