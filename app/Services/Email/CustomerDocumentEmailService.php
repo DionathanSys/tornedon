@@ -5,6 +5,7 @@ namespace App\Services\Email;
 use App\Models\CompanyPartner;
 use App\Models\CompanyPreference;
 use App\Models\FiscalDocument;
+use App\Models\Invoice;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Services\Email\Contracts\EmailProviderInterface;
@@ -162,6 +163,119 @@ class CustomerDocumentEmailService
         return $sent;
     }
 
+
+    public function sendServiceOrderStatusUpdated(ServiceOrder $serviceOrder, string $oldStatus, string $newStatus): bool
+    {
+        return $this->sendStatusUpdateNotification(
+            documentType: 'service_order',
+            companyId: (int) $serviceOrder->company_id,
+            partnerId: (int) $serviceOrder->customer_id,
+            documentNumber: (string) ($serviceOrder->number ?: $serviceOrder->id),
+            oldStatus: $oldStatus,
+            newStatus: $newStatus,
+            partnerName: (string) ($serviceOrder->customer?->name ?? ''),
+            context: [
+                'document_id' => $serviceOrder->id,
+            ],
+        );
+    }
+
+    public function sendRequisitionStatusUpdated(Requisition $requisition, string $oldStatus, string $newStatus): bool
+    {
+        return $this->sendStatusUpdateNotification(
+            documentType: 'requisition',
+            companyId: (int) $requisition->company_id,
+            partnerId: (int) $requisition->customer_id,
+            documentNumber: (string) ($requisition->number ?: $requisition->id),
+            oldStatus: $oldStatus,
+            newStatus: $newStatus,
+            partnerName: (string) ($requisition->customer?->name ?? ''),
+            context: [
+                'document_id' => $requisition->id,
+            ],
+        );
+    }
+
+    public function sendInvoiceStatusUpdated(Invoice $invoice, string $oldStatus, string $newStatus): bool
+    {
+        return $this->sendStatusUpdateNotification(
+            documentType: 'invoice',
+            companyId: (int) $invoice->company_id,
+            partnerId: (int) $invoice->customer_id,
+            documentNumber: (string) ($invoice->invoice_number ?: $invoice->id),
+            oldStatus: $oldStatus,
+            newStatus: $newStatus,
+            partnerName: (string) ($invoice->customer?->name ?? ''),
+            context: [
+                'document_id' => $invoice->id,
+            ],
+        );
+    }
+
+    public function sendFiscalDocumentStatusUpdated(FiscalDocument $fiscalDocument, string $oldStatus, string $newStatus): bool
+    {
+        return $this->sendStatusUpdateNotification(
+            documentType: 'fiscal_document',
+            companyId: (int) $fiscalDocument->company_id,
+            partnerId: (int) $fiscalDocument->customer_id,
+            documentNumber: (string) ($fiscalDocument->document_number ?: $fiscalDocument->id),
+            oldStatus: $oldStatus,
+            newStatus: $newStatus,
+            partnerName: (string) ($fiscalDocument->customer?->name ?? ''),
+            context: [
+                'document_id' => $fiscalDocument->id,
+            ],
+        );
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     */
+    private function sendStatusUpdateNotification(
+        string $documentType,
+        int $companyId,
+        int $partnerId,
+        string $documentNumber,
+        string $oldStatus,
+        string $newStatus,
+        string $partnerName,
+        array $context = [],
+    ): bool {
+        if (! $this->isEnabled()) {
+            return false;
+        }
+
+        if (! $this->shouldNotifyStatusUpdate($documentType, $newStatus, $companyId)) {
+            return false;
+        }
+
+        [$subjectTemplate, $bodyTemplate] = $this->resolveStatusUpdateTemplates($documentType, $companyId);
+
+        $replace = [
+            '{{document_type}}' => $documentType,
+            '{{document_number}}' => $documentNumber,
+            '{{old_status}}' => $oldStatus,
+            '{{new_status}}' => $newStatus,
+            '{{partner_name}}' => $partnerName !== '' ? $partnerName : 'Cliente',
+        ];
+
+        $subject = strtr($subjectTemplate, $replace);
+        $body = strtr($bodyTemplate, $replace);
+
+        return $this->sendToCustomer(
+            companyId: $companyId,
+            partnerId: $partnerId,
+            subject: $subject,
+            bodyHtml: $body,
+            attachments: [],
+            context: array_merge($context, [
+                'document_type' => $documentType,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+            ]),
+        );
+    }
+
     /**
      * @param EmailAttachment[] $attachments
      * @param array<string,mixed> $context
@@ -309,6 +423,61 @@ class CustomerDocumentEmailService
                 mimeType: 'application/pdf',
             ),
         ];
+    }
+
+
+    private function shouldNotifyStatusUpdate(string $documentType, string $newStatus, int $companyId): bool
+    {
+        $config = CompanyPreference::get(
+            CompanyPreference::CUSTOMER_STATUS_NOTIFICATION_CONFIG_KEY,
+            $companyId,
+            CompanyPreference::getDefaultCustomerStatusNotificationConfig(),
+        );
+
+        if (! is_array($config)) {
+            $config = CompanyPreference::getDefaultCustomerStatusNotificationConfig();
+        }
+
+        $entry = $config[$documentType] ?? null;
+
+        if (! is_array($entry) || ! ($entry['enabled'] ?? false)) {
+            return false;
+        }
+
+        $statuses = collect($entry['statuses'] ?? [])
+            ->filter(fn ($status) => is_string($status) && trim($status) !== '')
+            ->map(fn (string $status) => trim($status))
+            ->values()
+            ->all();
+
+        return in_array($newStatus, $statuses, true);
+    }
+
+    /**
+     * @return array{string,string}
+     */
+    private function resolveStatusUpdateTemplates(string $documentType, int $companyId): array
+    {
+        $defaults = CompanyPreference::getDefaultCustomerStatusNotificationTemplates();
+        $templates = CompanyPreference::get(
+            CompanyPreference::CUSTOMER_STATUS_NOTIFICATION_TEMPLATES_KEY,
+            $companyId,
+            $defaults,
+        );
+
+        if (! is_array($templates)) {
+            $templates = $defaults;
+        }
+
+        $template = $templates[$documentType] ?? $defaults[$documentType] ?? [
+            'subject' => 'Atualização de status {{document_number}}',
+            'body' => 'Olá {{partner_name}},<br><br>O documento {{document_number}} foi atualizado para {{new_status}}.',
+        ];
+
+        $subject = is_string($template['subject'] ?? null) ? $template['subject'] : 'Atualização de status {{document_number}}';
+        $body = is_string($template['body'] ?? null) ? $template['body'] : 'Olá {{partner_name}},<br><br>O documento {{document_number}} foi atualizado para {{new_status}}.';
+
+        return [$subject, $body];
     }
 
     /**

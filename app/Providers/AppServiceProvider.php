@@ -18,6 +18,13 @@ use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
 use App\Models\Company;
+use App\Models\FiscalDocument;
+use App\Models\Invoice;
+use App\Models\Requisition;
+use App\Observers\FiscalDocumentObserver;
+use App\Observers\InvoiceObserver;
+use App\Observers\RequisitionObserver;
+use App\Observers\ServiceOrderObserver;
 use App\Models\ServiceOrder;
 use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
@@ -76,6 +83,11 @@ class AppServiceProvider extends ServiceProvider
         // Registrar policies
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
+
+        ServiceOrder::observe(ServiceOrderObserver::class);
+        Requisition::observe(RequisitionObserver::class);
+        Invoice::observe(InvoiceObserver::class);
+        FiscalDocument::observe(FiscalDocumentObserver::class);
 
         // Eventos de item de requisição → atualização da quantidade reservada no estoque
         Event::listen(RequisitionItemCreated::class, HandleStockReservationCreated::class);
