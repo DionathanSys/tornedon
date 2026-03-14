@@ -159,6 +159,7 @@ class CompanyPartnerForm
                     ->schema([
                         CheckboxList::make('target_company_ids')
                             ->label('Empresas de destino')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
                             ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
                             ->options(function () {
                                 // Obter empresas às quais o usuário pode ter acesso
