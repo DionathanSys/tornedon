@@ -5,6 +5,7 @@ namespace App\Filament\Shared\Actions;
 use App\Models\Company;
 use App\Services\DataReplication\ReplicationService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -22,8 +23,10 @@ class ReplicateToCompaniesAction extends Action
             ->icon(Heroicon::ArrowUturnRight)
             ->color('warning')
             ->schema([
-                Select::make('target_company_ids')
+                CheckboxList::make('target_company_ids')
                     ->label('Empresas de destino')
+                    ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
+                    ->columnSpanFull()
                     ->options(function (Model $record) {
                         // Obter empresas às quais o usuário pode ter acesso
                         $currentUser = Auth::user();
@@ -36,11 +39,11 @@ class ReplicateToCompaniesAction extends Action
                             ->where('id', '!=', $currentCompanyId)
                             ->pluck('name', 'id');
                     })
-                    ->multiple()
+                    ->columns(2)
                     ->required()
                     ->minItems(1),
             ])
-            ->action(fn (Model $record, array $data) => $this->handleReplication($record, $data['target_company_ids']))
+            ->action(fn(Model $record, array $data) => $this->handleReplication($record, $data['target_company_ids']))
             ->modalHeading('Replicar Registro')
             ->modalSubmitActionLabel('Replicar')
             ->modalCancelActionLabel('Cancelar');
@@ -70,7 +73,7 @@ class ReplicateToCompaniesAction extends Action
                 $failureDetails = implode(
                     "\n",
                     array_map(
-                        fn ($f) => "Empresa ID {$f['company_id']}: {$f['error']}",
+                        fn($f) => "Empresa ID {$f['company_id']}: {$f['error']}",
                         $result['failed']
                     )
                 );

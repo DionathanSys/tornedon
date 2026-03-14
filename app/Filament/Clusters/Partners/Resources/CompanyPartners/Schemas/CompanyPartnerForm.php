@@ -22,6 +22,7 @@ use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\FetchStateT
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Models\CompanyPartner;
 use Filament\Actions\ActionGroup;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -32,6 +33,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class CompanyPartnerForm
@@ -155,16 +157,24 @@ class CompanyPartnerForm
                     ->visibleOn('create')
                     ->compact()
                     ->schema([
-                        CheckboxList::make('replicate_to_companies')
+                        CheckboxList::make('target_company_ids')
                             ->label('Empresas de destino')
                             ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
-                            ->columnSpanFull()
-                            ->native(false)
-                            ->options(
-                                Company::pluck('name', 'id')->toArray()
-                            )
-                            ->searchable()
-                            ->preload(),
+                            ->options(function () {
+                                // Obter empresas às quais o usuário pode ter acesso
+                                $currentUser = Auth::user();
+                                $userCompanies = $currentUser->companies()->pluck('companies.id');
+
+                                // Excluir a empresa atual se aplicável
+                                $currentCompanyId = Filament::getTenant()->id;
+
+                                return Company::whereIn('id', $userCompanies)
+                                    ->where('id', '!=', $currentCompanyId)
+                                    ->pluck('name', 'id');
+                            })
+                            ->columns(2)
+                            ->required()
+                            ->minItems(1),
                     ]),
                 Section::make()
                     ->columns([
