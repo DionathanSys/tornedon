@@ -18,8 +18,7 @@ return new class extends Migration
             $table->foreignId('company_id')                         // Empresa prestadora
                 ->constrained('companies')
                 ->cascadeOnDelete();
-            $table->string('invoice_number')
-                ->unique();
+            $table->string('invoice_number');
             $table->date('invoice_date');
             $table->decimal('total_amount', 15, 4)
                 ->default(0);
@@ -53,6 +52,9 @@ return new class extends Migration
             $table->datetime('canceled_at')
                 ->nullable();
             $table->timestamps();
+            
+            // Índice único composto: permite duplicação de invoice_number em empresas diferentes (multi-tenant)
+            $table->unique(['company_id', 'invoice_number']);
         });
     }
 

@@ -50,7 +50,8 @@ class InvoiceValidator
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('invoices', 'invoice_number'),
+                Rule::unique('invoices', 'invoice_number')
+                    ->where('company_id', $data['company_id'] ?? null),
             ],
             'status' => ['required', Rule::enum(Status::class)],
         ]);

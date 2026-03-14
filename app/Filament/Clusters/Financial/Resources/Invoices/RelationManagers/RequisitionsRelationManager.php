@@ -87,36 +87,34 @@ class RequisitionsRelationManager extends RelationManager
                 TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->searchable(),
-                TextColumn::make('company.name')
-                    ->label('Empresa')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('serviceOrder.id')
-                    ->label('Ordem de Serviço')
+                    ->label('ID OS')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('quote.id')
-                    ->label('Orçamento')
+                    ->label('ID Orç.')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sale_date')
-                    ->label('Data da Venda')
-                    ->date()
+                    ->label('Dt. da Venda')
+                    ->date('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
+                    ->formatStateUsing(fn(Status $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('payment_method')
-                    ->label('Forma de Pagamento')
+                    ->label('Forma de Pagto')
                     ->badge()
-                    ->searchable()
+                    ->formatStateUsing(fn(Method $state) => $state->description())
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('payment_condition')
                     ->label('Condição de Pagamento')
                     ->badge()
+                    ->formatStateUsing(fn(Condition $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('delivery_address')
@@ -124,17 +122,16 @@ class RequisitionsRelationManager extends RelationManager
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('delivery_date')
-                    ->label('Data de Entrega')
-                    ->date()
+                    ->label('Dt. Entrega')
+                    ->date('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('salesperson.name')
                     ->label('Vendedor')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('invoiced_at')
                     ->label('Faturado em')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('equipment.name')
@@ -146,51 +143,37 @@ class RequisitionsRelationManager extends RelationManager
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('stock_reserved')
-                    ->label('Estoque Reservado')
+                    ->label('Reservado')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_by')
+                TextColumn::make('createdBy.name')
                     ->label('Criado por')
-                    ->numeric()
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_by')
+                TextColumn::make('updatedBy.name')
                     ->label('Atualizado por')
-                    ->numeric()
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->label('Atualizado em')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('productionOrder.id')
-                    ->label('Ordem de Produção')
+                    ->label('ID OP')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
             ])
             ->headerActions([
-                // CreateAction::make(),
-                // AssociateAction::make(),
             ])
             ->recordActions([
-                // EditAction::make(),
-                // DissociateAction::make(),
-                // DeleteAction::make(),
             ])
             ->toolbarActions([
-                // BulkActionGroup::make([
-                    // DissociateBulkAction::make(),
-                    // DeleteBulkAction::make(),
-                // ]),
             ]);
     }
 }
