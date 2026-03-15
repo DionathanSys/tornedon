@@ -9,6 +9,7 @@ use App\Services\Partner\Validators\CompanyPartnerValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -49,7 +50,15 @@ class AssociatePartnerCompany
             'message' => 'Dados preparados para criação de associação',
             'banansa' => $banansa,
         ]);
-        $companyPartner = CompanyPartner::create($banansa);
+        $payload = $banansa;
+        $payload['type'] = is_array($payload['type'] ?? null)
+            ? json_encode($payload['type'], JSON_UNESCAPED_UNICODE)
+            : ($payload['type'] ?? null);
+        $payload['created_at'] = now();
+        $payload['updated_at'] = now();
+
+        $companyPartnerId = DB::table('company_partner')->insertGetId($payload);
+        $companyPartner = CompanyPartner::query()->find($companyPartnerId);
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
 
