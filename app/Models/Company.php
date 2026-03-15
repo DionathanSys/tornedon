@@ -54,6 +54,11 @@ class Company extends Model
         return $this->hasOne(FiscalProfile::class);
     }
 
+    public function equipments(): HasMany
+    {
+        return $this->hasMany(Equipment::class);
+    }
+
     public function serviceProvisionLocation(): Attribute
     {
         return Attribute::make(
