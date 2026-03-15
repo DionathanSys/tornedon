@@ -179,6 +179,11 @@ class CompanyPartnerService
         ]);
 
         foreach ($targetCompanyIds as $targetCompanyId) {
+            Log::info(__METHOD__ . '@' . __LINE__, [
+                'message' => 'DEBUG - Iniciando iteracao de replicacao',
+                'target_company_id_atual' => $targetCompanyId,
+                'tipo_target_company_id' => gettype($targetCompanyId),
+            ]);
             try {
                 DB::transaction(function () use ($sourceCompanyPartner, $targetCompanyId, $userId, &$result) {
                     $existingAssociation = CompanyPartner::query()
