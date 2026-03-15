@@ -87,7 +87,7 @@ class ReplicateToCompaniesAction extends Action
                     try {
                         // 1. Associar Partner com Company
                         $companyPartnerData = [
-                            'type'              => json_encode($record->type, JSON_UNESCAPED_UNICODE),
+                            'type'              => 'customer', //json_encode($record->type, JSON_UNESCAPED_UNICODE),
                             'invoice_threshold' => $record->invoice_threshold,
                             'is_active'         => true,
                         ];
