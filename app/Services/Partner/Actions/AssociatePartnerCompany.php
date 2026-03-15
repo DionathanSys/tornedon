@@ -32,7 +32,7 @@ class AssociatePartnerCompany
         //     'company_id' => $companyId,
         // ]);
 
-        $data = [
+        $banansa = [
             'partner_id' => 3,
             'company_id' => 3,
             'type' => ['carrier'],
@@ -47,9 +47,10 @@ class AssociatePartnerCompany
         ];
         Log::debug(__METHOD__ . '@' . __LINE__, [
             'message' => 'Dados preparados para criação de associação',
-            'data' => $data,
+            'banansa' => $banansa,
         ]);
-        $companyPartner = CompanyPartner::create($data);
+        dd($banansa);
+        $companyPartner = CompanyPartner::create($banansa);
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
 
