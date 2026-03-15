@@ -53,7 +53,7 @@ class ReplicateToCompaniesAction
                     ->required()
                     ->minItems(1),
             ])
-            ->action(fn(CompanyPartner $record, array $data) => $this->handleReplication($record, $data['target_company_ids']))
+            ->action(fn(CompanyPartner $record, array $data) => self::handleReplication($record, $data['target_company_ids']))
             ->modalHeading('Replicar Registro')
             ->modalSubmitActionLabel('Replicar')
             ->modalCancelActionLabel('Cancelar');
@@ -62,7 +62,7 @@ class ReplicateToCompaniesAction
     /**
      * Processa a replicação com todas as entidades associadas
      */
-    protected function handleReplication(CompanyPartner $record, array $targetCompanyIds): void
+    protected static function handleReplication(CompanyPartner $record, array $targetCompanyIds): void
     {
         try {
             $result = DB::transaction(function () use ($record, $targetCompanyIds) {
