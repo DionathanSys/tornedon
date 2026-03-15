@@ -26,39 +26,20 @@ class AssociatePartnerCompany
             'data' => $data,
         ]);
 
-        // $validatedData = CompanyPartnerValidator::validate($data);
+        $validatedData = CompanyPartnerValidator::validate($data);
 
-        // $data = array_merge($validatedData, [
-        //     'partner_id' => $partnerId,
-        //     'company_id' => $companyId,
-        // ]);
+        $data = array_merge($validatedData, [
+            'partner_id' => $partnerId,
+            'company_id' => $companyId,
+        ]);
 
-        $banansa = [
-            'partner_id' => 3,
-            'company_id' => 3,
-            'type' => ['carrier'],
-            'invoice_threshold' => 11,
-            'is_active' => true,
-            'notify_service_order_closed' => false,
-            'notify_requisition_closed' => false,
-            'notify_fiscal_document_confirmed' => false,
-            'email_to_override' => null,
-            'email_cc_override' => null,
-            'email_bcc_override' => null,
-        ];
         Log::debug(__METHOD__ . '@' . __LINE__, [
             'message' => 'Dados preparados para criação de associação',
-            'banansa' => $banansa,
+            'data' => $data,
         ]);
-        $payload = $banansa;
-        $payload['type'] = is_array($payload['type'] ?? null)
-            ? json_encode($payload['type'], JSON_UNESCAPED_UNICODE)
-            : ($payload['type'] ?? null);
-        $payload['created_at'] = now();
-        $payload['updated_at'] = now();
 
-        $companyPartnerId = DB::table('company_partner')->insertGetId($payload);
-        $companyPartner = CompanyPartner::query()->find($companyPartnerId);
+        $companyPartner = CompanyPartner::create($data);
+
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
 

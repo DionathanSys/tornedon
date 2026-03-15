@@ -124,12 +124,12 @@ class EditCompanyPartner extends EditRecord
         // Retorna apenas os dados do company_partner para serem salvos
         $companyPartnerData = $data['company_partner'] ?? [];
         Log::debug('Returning CompanyPartner data:', $companyPartnerData);
-dd(1);
+
         return $companyPartnerData;
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
-    {dd(2);
+    {
         $service = new CompanyPartnerService();
         $result = $service->update($record, $data);
 
