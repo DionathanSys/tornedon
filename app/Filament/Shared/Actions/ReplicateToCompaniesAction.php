@@ -97,7 +97,13 @@ class ReplicateToCompaniesAction extends Action
                             ->where('partner_id', $record->partner_id)
                             ->first();
 
-                        dd($existingAssociation);
+                        if($existingAssociation) {
+                            Log::info('Associação já existe, pulando criação', [
+                                'company_id' => $companyId,
+                                'partner_id' => $record->partner_id,
+                            ]);
+                            continue;
+                        }
 
                         $newCompanyPartner = $partnerService->associatePartnerCompany(
                             $record->partner_id,
