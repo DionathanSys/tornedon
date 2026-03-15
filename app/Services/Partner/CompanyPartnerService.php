@@ -58,6 +58,11 @@ class CompanyPartnerService
         try {
             $validatedData = CompanyPartnerValidator::validate($data);
 
+            // Se type for string, converter para array
+            if (isset($validatedData['type']) && is_string($validatedData['type'])) {
+                $validatedData['type'] = [$validatedData['type']];
+            }
+
             $payload = array_merge($validatedData, [
                 'partner_id' => $partnerId,
                 'company_id' => $companyId,
@@ -94,6 +99,8 @@ class CompanyPartnerService
                     'partner_id' => $sourceCompanyPartner->partner_id ?? null,
                 ],
             ]);
+
+            Log::info('DEBUG sourceCompanyPartner completo', $sourceCompanyPartner->toArray());
 
             // Usar firstOrCreate para garantir que insira ou retorne o existente
             $companyPartner = CompanyPartner::firstOrCreate(
