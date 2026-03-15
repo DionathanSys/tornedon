@@ -80,20 +80,49 @@ class CompanyPartnerService
                 'update_columns' => $updateColumns,
             ]);
 
-            $result = CompanyPartner::query()->updateOrCreate(
-                $normalized,
-                ['company_id' => $companyId, 'partner_id' => $partnerId],
-            );
-
-            Log::debug(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Upsert executado para associacao de parceiro com empresa',
-                'result' => $result,
-            ]);
-
+            // Verificar se registro já existe
             $companyPartner = CompanyPartner::query()
                 ->where('company_id', $companyId)
                 ->where('partner_id', $partnerId)
                 ->first();
+
+            if (!$companyPartner) {
+                // Inserir novo registro usando DB::raw para timestamps
+                DB::table('company_partner')->insert([
+                    'company_id' => $companyId,
+                    'partner_id' => $partnerId,
+                    'type' => $normalized['type'],
+                    'invoice_threshold' => $normalized['invoice_threshold'],
+                    'is_active' => $normalized['is_active'],
+                    'notify_service_order_closed' => $normalized['notify_service_order_closed'] ?? false,
+                    'notify_requisition_closed' => $normalized['notify_requisition_closed'] ?? false,
+                    'notify_fiscal_document_confirmed' => $normalized['notify_fiscal_document_confirmed'] ?? false,
+                    'email_to_override' => $normalized['email_to_override'] ?? null,
+                    'email_cc_override' => $normalized['email_cc_override'] ?? null,
+                    'email_bcc_override' => $normalized['email_bcc_override'] ?? null,
+                    'created_at' => DB::raw('NOW()'),
+                    'updated_at' => DB::raw('NOW()'),
+                ]);
+
+                Log::debug(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Novo registro inserido para associacao de parceiro com empresa',
+                    'company_id' => $companyId,
+                    'partner_id' => $partnerId,
+                ]);
+
+                // Recuperar registro criado
+                $companyPartner = CompanyPartner::query()
+                    ->where('company_id', $companyId)
+                    ->where('partner_id', $partnerId)
+                    ->first();
+            } else {
+                Log::debug(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Registro ja existe, pulando insercao',
+                    'company_id' => $companyId,
+                    'partner_id' => $partnerId,
+                    'existing_id' => $companyPartner->id,
+                ]);
+            }
 
             if (! $companyPartner) {
                 throw new \RuntimeException('Nao foi possivel localizar o vinculo entre empresa e parceiro apos a gravacao.');
