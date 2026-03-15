@@ -95,6 +95,12 @@ class CompanyPartnerService
                 'createData_keys' => array_keys($createData),
             ]);
 
+            Log::info('SQL antes de firstOrCreate', [
+                'company_id' => $companyId,
+                'partner_id' => $partnerId,
+                'query' => CompanyPartner::where('company_id', $companyId)->where('partner_id', $partnerId)->toSql(),
+            ]);
+
             // Usar firstOrCreate para garantir que insira ou retorne o existente
             $companyPartner = CompanyPartner::firstOrCreate(
                 [
