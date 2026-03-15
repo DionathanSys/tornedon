@@ -54,7 +54,7 @@ class ReplicateToCompaniesAction
                 );
 
                 notify::info(
-                    title: 'Replicacao agendada',
+                    title: 'Replicação agendada',
                     message: 'O parceiro sera replicado em segundo plano. O resultado sera enviado por notificacao no sistema.'
                 );
             })

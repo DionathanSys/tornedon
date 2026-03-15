@@ -73,11 +73,23 @@ class CompanyPartnerService
                 'created_at',
             ]));
 
-            CompanyPartner::query()->upsert(
+            Log::debug(__METHOD__ . '@' . __LINE__, [
+                'message'    => 'Dados preparados para associacao de parceiro com empresa',
+                'payload'    => $payload,
+                'normalized' => $normalized,
+                'update_columns' => $updateColumns,
+            ]);
+
+            $result = CompanyPartner::query()->upsert(
                 [$normalized],
                 ['company_id', 'partner_id'],
                 $updateColumns
             );
+
+            Log::debug(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Upsert executado para associacao de parceiro com empresa',
+                'result' => $result,
+            ]);
 
             $companyPartner = CompanyPartner::query()
                 ->where('company_id', $companyId)
