@@ -49,7 +49,6 @@ class AssociatePartnerCompany
             'message' => 'Dados preparados para criação de associação',
             'banansa' => $banansa,
         ]);
-        dd($banansa);
         $companyPartner = CompanyPartner::create($banansa);
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
