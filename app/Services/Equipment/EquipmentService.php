@@ -19,10 +19,15 @@ class EquipmentService
     /**
      * Cria um novo equipamento
      */
-    public function create(array $data): ?Equipment
+    public function create(array $data, bool $bypassTenantAssociation = false): ?Equipment
     {
         try {
-            $equipment = Equipment::create($data);
+            $equipment = $bypassTenantAssociation
+                ? Equipment::withoutEvents(
+                    fn () => Equipment::query()->withoutGlobalScopes()->create($data)
+                )
+                : Equipment::create($data);
+
             $this->setSuccess('Equipamento criado com sucesso');
             return $equipment;
         } catch (\Exception $e) {

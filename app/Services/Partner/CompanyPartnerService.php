@@ -410,7 +410,7 @@ class CompanyPartnerService
             $equipmentData['company_id'] = $targetCompanyId;
             $equipmentData['created_by'] = $userId;
 
-            $createdEquipment = $equipmentService->create($equipmentData);
+            $createdEquipment = $equipmentService->create($equipmentData, bypassTenantAssociation: true);
 
             if (! $createdEquipment) {
                 throw new \RuntimeException($equipmentService->getMessageUser() ?: 'Falha ao replicar equipamento.');
