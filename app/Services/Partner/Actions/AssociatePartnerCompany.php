@@ -25,18 +25,28 @@ class AssociatePartnerCompany
             'data' => $data,
         ]);
 
-        $validatedData = CompanyPartnerValidator::validate($data);
+        // $validatedData = CompanyPartnerValidator::validate($data);
 
-        $data = array_merge($validatedData, [
-            'partner_id' => $partnerId,
-            'company_id' => $companyId,
-        ]);
+        // $data = array_merge($validatedData, [
+        //     'partner_id' => $partnerId,
+        //     'company_id' => $companyId,
+        // ]);
 
-        $companyPartner = CompanyPartner::query()->updateOrCreate([
-            'partner_id' => $partnerId,
-            'company_id' => $companyId,
-        ], $data);
-
+        $data = [
+            'partner_id' => 3,
+            'company_id' => 3,
+            'type' => ['customer'],
+            'invoice_threshold' => 0,
+            'is_active' => true,
+            'notify_service_order_closed' => false,
+            'notify_requisition_closed' => false,
+            'notify_fiscal_document_confirmed' => false,
+            'email_to_override' => null,
+            'email_cc_override' => null,
+            'email_bcc_override' => null,
+        ];
+        
+        $companyPartner = CompanyPartner::create($data);
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
 
