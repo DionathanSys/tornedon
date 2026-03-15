@@ -104,7 +104,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(QuoteReopened::class, UpdateQuoteItemsStatusOnReopenListener::class);
 
         // Replicação de Partners e Equipments
-        ReplicatePartnerOnCreate::register(Event::getFacadeRoot());
-        ReplicateEquipmentOnCreate::register(Event::getFacadeRoot());
+        // ReplicatePartnerOnCreate::register(Event::getFacadeRoot());
+        // ReplicateEquipmentOnCreate::register(Event::getFacadeRoot());
     }
 }
