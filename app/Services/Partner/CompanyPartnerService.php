@@ -127,7 +127,7 @@ class CompanyPartnerService
         }
     }
 
-    public function replicateToCompanies(int $sourceCompanyPartnerId, array $targetCompanyIds, int $userId): array
+    public function replicateToCompanies(int $sourceCompanyPartnerId, array $targetCompanyIds, int $userId)
     {
         $this->resetResponse();
 
@@ -155,8 +155,8 @@ class CompanyPartnerService
         ]);
 
         foreach ($targetCompanyIds as $targetCompanyId) {
-            try {
-                DB::transaction(function () use ($sourceCompanyPartner, $targetCompanyId, $userId, &$result) {
+            // try {
+                // DB::transaction(function () use ($sourceCompanyPartner, $targetCompanyId, $userId, &$result) {
                     $existingAssociation = CompanyPartner::query()
                         ->where('company_id', $targetCompanyId)
                         ->where('partner_id', $sourceCompanyPartner->partner_id)
@@ -199,23 +199,23 @@ class CompanyPartnerService
                         'partner_id' => $sourceCompanyPartner->partner_id,
                         'company_partner_id' => $newCompanyPartner->id,
                     ];
-                });
-            } catch (\Throwable $e) {
-                $result['failed'][] = [
-                    'company_id' => $targetCompanyId,
-                    'partner_id' => $sourceCompanyPartner->partner_id,
-                    'error' => $e->getMessage(),
-                ];
+            //     });
+            // } catch (\Throwable $e) {
+            //     $result['failed'][] = [
+            //         'company_id' => $targetCompanyId,
+            //         'partner_id' => $sourceCompanyPartner->partner_id,
+            //         'error' => $e->getMessage(),
+            //     ];
 
-                Log::error(__METHOD__ . '@' . __LINE__, [
-                    'message' => 'Falha ao replicar parceiro para empresa de destino',
-                    'source_company_partner_id' => $sourceCompanyPartner->id,
-                    'target_company_id' => $targetCompanyId,
-                    'partner_id' => $sourceCompanyPartner->partner_id,
-                    'exception' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
+            //     Log::error(__METHOD__ . '@' . __LINE__, [
+            //         'message' => 'Falha ao replicar parceiro para empresa de destino',
+            //         'source_company_partner_id' => $sourceCompanyPartner->id,
+            //         'target_company_id' => $targetCompanyId,
+            //         'partner_id' => $sourceCompanyPartner->partner_id,
+            //         'exception' => $e->getMessage(),
+            //         'trace' => $e->getTraceAsString(),
+            //     ]);
+            // }
         }
 
         if (count($result['failed']) > 0) {
