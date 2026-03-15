@@ -35,8 +35,8 @@ class AssociatePartnerCompany
         $data = [
             'partner_id' => 3,
             'company_id' => 3,
-            'type' => ['customer'],
-            'invoice_threshold' => 0,
+            'type' => ['carrier'],
+            'invoice_threshold' => 11,
             'is_active' => true,
             'notify_service_order_closed' => false,
             'notify_requisition_closed' => false,
