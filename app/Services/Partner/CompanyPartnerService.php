@@ -83,6 +83,18 @@ class CompanyPartnerService
             // Preparar dados para criar (remover chaves que serão usadas no firstOrCreate)
             $createData = Arr::except($normalized, ['company_id', 'partner_id']);
 
+            Log::info(__METHOD__ . '@' . __LINE__, [
+                'message' => 'DEBUG: Valores exatos antes de firstOrCreate',
+                'createData' => $createData,
+                'company_id_param' => $companyId,
+                'partner_id_param' => $partnerId,
+                'sourceCompanyPartner' => [
+                    'id' => $sourceCompanyPartner->id ?? null,
+                    'company_id' => $sourceCompanyPartner->company_id ?? null,
+                    'partner_id' => $sourceCompanyPartner->partner_id ?? null,
+                ],
+            ]);
+
             // Usar firstOrCreate para garantir que insira ou retorne o existente
             $companyPartner = CompanyPartner::firstOrCreate(
                 [
@@ -406,7 +418,7 @@ class CompanyPartnerService
             $details = implode(
                 '; ',
                 array_map(
-                    fn (array $item) => "Empresa {$item['company_id']}: {$item['error']}",
+                    fn(array $item) => "Empresa {$item['company_id']}: {$item['error']}",
                     $result['failed']
                 )
             );
@@ -423,7 +435,7 @@ class CompanyPartnerService
         $details = implode(
             '; ',
             array_map(
-                fn (array $item) => "Empresa {$item['company_id']}: {$item['error']}",
+                fn(array $item) => "Empresa {$item['company_id']}: {$item['error']}",
                 $result['failed']
             )
         );
