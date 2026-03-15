@@ -77,6 +77,12 @@ class ReplicateToCompaniesAction extends Action
                 $failed = [];
                 $userId = Auth::id() ?? 0;
 
+                Log::debug('Iniciando processo de replicação de parceiro para múltiplas empresas', [
+                    'source_company_partner_id' => $record->id,
+                    'partner_id' => $record->partner_id,
+                    'target_company_ids' => $targetCompanyIds,
+                ]);
+
                 foreach ($targetCompanyIds as $companyId) {
                     try {
                         // 1. Associar Partner com Company
