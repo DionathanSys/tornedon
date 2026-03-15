@@ -87,9 +87,9 @@ class ReplicateToCompaniesAction extends Action
                     try {
                         // 1. Associar Partner com Company
                         $companyPartnerData = [
-                            'type' => $record->type,
+                            'type'              => json_encode($record->type, JSON_UNESCAPED_UNICODE),
                             'invoice_threshold' => $record->invoice_threshold,
-                            'is_active' => true,
+                            'is_active'         => true,
                         ];
 
                         Log::info('Associando parceiro com empresa', [
@@ -103,7 +103,7 @@ class ReplicateToCompaniesAction extends Action
                             ->where('partner_id', $record->partner_id)
                             ->first();
 
-                        if($existingAssociation) {
+                        if ($existingAssociation) {
                             Log::info('Associação já existe, pulando criação', [
                                 'company_id' => $companyId,
                                 'partner_id' => $record->partner_id,
