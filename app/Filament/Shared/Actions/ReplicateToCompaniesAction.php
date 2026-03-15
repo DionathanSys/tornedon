@@ -86,6 +86,19 @@ class ReplicateToCompaniesAction extends Action
                             'is_active' => true,
                         ];
 
+                        Log::info('Associando parceiro com empresa', [
+                            'source_company_partner_id' => $record->id,
+                            'target_company_id'         => $companyId,
+                            'partner_id'                => $record->partner_id,
+                            'data'                      => $companyPartnerData,
+                        ]);
+
+                        $existingAssociation = CompanyPartner::where('company_id', $companyId)
+                            ->where('partner_id', $record->partner_id)
+                            ->first();
+
+                        dd($existingAssociation);
+
                         $newCompanyPartner = $partnerService->associatePartnerCompany(
                             $record->partner_id,
                             $companyId,
