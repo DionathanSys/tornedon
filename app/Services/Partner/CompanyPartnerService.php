@@ -3,6 +3,7 @@
 namespace App\Services\Partner;
 
 use App\Models\Address;
+use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\Contact;
 use App\Models\Equipment;
@@ -406,10 +407,9 @@ class CompanyPartnerService
         foreach ($equipments as $equipment) {
             $equipmentData = Arr::only($equipment->toArray(), (new Equipment())->getFillable());
             unset($equipmentData['company_id']);
-            $equipmentData['company_id'] = $targetCompanyId;
             $equipmentData['created_by'] = $userId;
 
-            $createdEquipment = $equipmentService->create($equipmentData);
+            $createdEquipment = $equipmentService->createForCompany(Company::find($targetCompanyId), $equipmentData);
 
             if (! $createdEquipment) {
                 throw new \RuntimeException($equipmentService->getMessageUser() ?: 'Falha ao replicar equipamento.');

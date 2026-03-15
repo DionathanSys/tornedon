@@ -125,14 +125,4 @@ class Equipment extends Model
         return $this->hasMany(Requisition::class);
     }
 
-    /**
-     * Replica este Equipment para múltiplas empresas
-     *
-     * @param array $companyIds IDs das empresas alvo
-     * @return array Resultado da replicação
-     */
-    public function replicateTo(array $companyIds): array
-    {
-        return app(ReplicationService::class)->replicate($this, $companyIds, 'equipment');
-    }
 }
