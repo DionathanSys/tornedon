@@ -88,7 +88,7 @@ class CompanyPartnerService
 
             if (!$companyPartner) {
                 // Inserir novo registro usando DB::raw para timestamps
-                DB::table('company_partner')->insert([
+                $r = DB::table('company_partner')->insert([
                     'company_id' => $companyId,
                     'partner_id' => $partnerId,
                     'type' => $normalized['type'],
@@ -103,6 +103,8 @@ class CompanyPartnerService
                     'created_at' => DB::raw('NOW()'),
                     'updated_at' => DB::raw('NOW()'),
                 ]);
+
+                dd($r);
 
                 Log::debug(__METHOD__ . '@' . __LINE__, [
                     'message' => 'Novo registro inserido para associacao de parceiro com empresa',
