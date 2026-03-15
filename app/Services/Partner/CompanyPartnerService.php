@@ -80,10 +80,9 @@ class CompanyPartnerService
                 'update_columns' => $updateColumns,
             ]);
 
-            $result = CompanyPartner::query()->createOrUpdate(
+            $result = CompanyPartner::query()->updateOrCreate(
                 $normalized,
                 ['company_id' => $companyId, 'partner_id' => $partnerId],
-                $updateColumns
             );
 
             Log::debug(__METHOD__ . '@' . __LINE__, [
