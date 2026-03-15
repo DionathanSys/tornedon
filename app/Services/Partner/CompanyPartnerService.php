@@ -407,9 +407,10 @@ class CompanyPartnerService
         foreach ($equipments as $equipment) {
             $equipmentData = Arr::only($equipment->toArray(), (new Equipment())->getFillable());
             unset($equipmentData['company_id']);
+            $equipmentData['company_id'] = $targetCompanyId;
             $equipmentData['created_by'] = $userId;
 
-            $createdEquipment = $equipmentService->createForCompany(Company::find($targetCompanyId), $equipmentData);
+            $createdEquipment = $equipmentService->create($equipmentData);
 
             if (! $createdEquipment) {
                 throw new \RuntimeException($equipmentService->getMessageUser() ?: 'Falha ao replicar equipamento.');
