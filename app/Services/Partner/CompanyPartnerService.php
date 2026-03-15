@@ -95,22 +95,51 @@ class CompanyPartnerService
                 'createData_keys' => array_keys($createData),
             ]);
 
-            // Usar firstOrCreate para garantir que insira ou retorne o existente
-            // Remover GlobalScopes para evitar filtros de tenant/empresa
-            $companyPartner = CompanyPartner::withoutGlobalScopes()->firstOrCreate(
-                [
+            // Usar DB::table para contornar GlobalScopes completamente
+            $existingPartner = DB::table('company_partner')
+                ->where('company_id', $companyId)
+                ->where('partner_id', $partnerId)
+                ->first();
+
+            if ($existingPartner) {
+                // Registro já existe, recuperar via modelo
+                $companyPartner = CompanyPartner::withoutGlobalScopes()
+                    ->where('company_id', $companyId)
+                    ->where('partner_id', $partnerId)
+                    ->first();
+                
+                Log::info(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Registro ja existente encontrado',
                     'company_id' => $companyId,
                     'partner_id' => $partnerId,
-                ],
-                $createData
-            );
+                ]);
+            } else {
+                // Criar novo registro com DB::table para evitar GlobalScope
+                $insertData = array_merge([
+                    'company_id' => $companyId,
+                    'partner_id' => $partnerId,
+                ], $createData);
+
+                DB::table('company_partner')->insert($insertData);
+
+                // Recuperar registro criado via modelo
+                $companyPartner = CompanyPartner::withoutGlobalScopes()
+                    ->where('company_id', $companyId)
+                    ->where('partner_id', $partnerId)
+                    ->first();
+
+                Log::info(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Novo registro criado via DB::table',
+                    'company_id' => $companyId,
+                    'partner_id' => $partnerId,
+                ]);
+            }
 
             Log::info(__METHOD__ . '@' . __LINE__, [
-                'message' => 'DEBUG: Valores DEPOIS de firstOrCreate',
+                'message' => 'DEBUG: Valores DEPOIS da operacao',
                 'company_id_result' => $companyPartner->company_id,
                 'partner_id_result' => $companyPartner->partner_id,
                 'company_partner_id' => $companyPartner->id,
-                'was_created' => $companyPartner->wasRecentlyCreated,
             ]);
 
             if (! $companyPartner) {
