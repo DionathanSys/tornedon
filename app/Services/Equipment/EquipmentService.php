@@ -2,6 +2,7 @@
 
 namespace App\Services\Equipment;
 
+use App\Models\Company;
 use App\Models\Equipment;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
@@ -22,6 +23,26 @@ class EquipmentService
     {
         try {
             $equipment = Equipment::create($data);
+            $this->setSuccess('Equipamento criado com sucesso');
+            return $equipment;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao criar equipamento', [$e->getMessage()]);
+            Log::error(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Erro ao criar equipamento',
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+            ]);
+            return null;
+        }
+    }
+    /**
+     * Cria um novo equipamento para uma empresa
+     */
+    public function createForCompany(Company $company, array $data): ?Equipment
+    {
+        try {
+            $equipment = $company->equipments()->create($data);
             $this->setSuccess('Equipamento criado com sucesso');
             return $equipment;
         } catch (\Exception $e) {
