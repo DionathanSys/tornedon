@@ -109,6 +109,11 @@ class ReplicateToCompaniesAction extends Action
                                 'partner_id' => $record->partner_id,
                             ]);
                             continue;
+                        } else {
+                            Log::info('Nenhuma associação existente encontrada, procedendo com criação', [
+                                'company_id' => $companyId,
+                                'partner_id' => $record->partner_id,
+                            ]);
                         }
 
                         $newCompanyPartner = $partnerService->associatePartnerCompany(

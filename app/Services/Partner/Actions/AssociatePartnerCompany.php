@@ -27,6 +27,11 @@ class AssociatePartnerCompany
 
         $validatedData = CompanyPartnerValidator::validate($data);
 
+        Log::debug(__METHOD__ . '@' . __LINE__, [
+            'message' => 'Dados validados para associação de parceiro com empresa',
+            'validated_data' => $validatedData,
+        ]);
+
         $data = array_merge($validatedData, [
             'partner_id' => $partnerId,
             'company_id' => $companyId,
@@ -38,11 +43,9 @@ class AssociatePartnerCompany
         ]);
 
         try {
-            CompanyPartner::query()->upsert(
-                [$data],
-                ['company_id', 'partner_id'],
-                array_keys($validatedData)
-            );
+            $companyPartner = CompanyPartner::query()->create($data);
+            $this->setSuccess('Parceiro associado à empresa com sucesso');
+            return $companyPartner;
         } catch (QueryException $e) {
             if ((int) $e->getCode() !== 23000) {
                 throw $e;
