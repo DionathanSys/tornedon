@@ -6,7 +6,6 @@ use App\Casts\MoneyCast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class CompanyPartner extends Model
 {
@@ -18,12 +17,21 @@ class CompanyPartner extends Model
         'type',
         'invoice_threshold',
         'is_active',
+        'notify_service_order_closed',
+        'notify_requisition_closed',
+        'notify_fiscal_document_confirmed',
+        'email_to_override',
+        'email_cc_override',
+        'email_bcc_override',
     ];
 
     protected $casts = [
         'invoice_threshold' => MoneyCast::class,
         'type'              => 'array',
         'is_active'         => 'boolean',
+        'notify_service_order_closed' => 'boolean',
+        'notify_requisition_closed' => 'boolean',
+        'notify_fiscal_document_confirmed' => 'boolean',
     ];
 
     public function company(): BelongsTo
@@ -44,5 +52,10 @@ class CompanyPartner extends Model
     public function contacts(): HasMany
     {
         return $this->hasMany(Contact::class, 'company_partner_id', 'id');
+    }
+
+    public function emailDispatches(): HasMany
+    {
+        return $this->hasMany(EmailDispatch::class, 'company_partner_id', 'id');
     }
 }

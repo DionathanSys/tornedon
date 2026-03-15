@@ -18,6 +18,7 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -40,8 +41,9 @@ class ReplicateToCompaniesAction extends Action
                     ->options(function (Model $record) {
                         // Obter empresas às quais o usuário pode ter acesso
                         $currentUser = Auth::user();
-                        $userCompanies = $currentUser->companies()->pluck('companies.id');
+                        $userCompanies = $currentUser->companies->pluck('id');
 
+                        ds($userCompanies)->label('User Companies');
                         // Excluir a empresa atual se aplicável
                         $currentCompanyId = $record->company_id ?? $currentUser->current_company_id;
 
@@ -97,21 +99,16 @@ class ReplicateToCompaniesAction extends Action
                         }
                         //TODO Usar Service
                         // 2. Replicar Endereços
-                        $addresses = Address::where('company_partner_id', $record->id)->get();
-                        foreach ($addresses as $address) {
-                            $addressData = [
-                                'type'          => $address->type,
-                                'street'        => $address->street,
-                                'number'        => $address->number,
-                                'complement'    => $address->complement,
-                                'neighborhood'  => $address->neighborhood,
-                                'city'          => $address->city,
-                                'state'         => $address->state,
-                                'postal_code'   => $address->postal_code,
-                                'country'       => $address->country,
-                                'is_primary'    => $address->is_primary,
-                            ];
-
+                        $addresses = $addressService->list($record->id);
+                        $addresses->each(function ($address) use ($addressService, $newCompanyPartner, $userId) {
+                            $addressData = Arr::except($address->toArray(), [
+                                'id',
+                                'company_partner_id',
+                                'created_at',
+                                'updated_at',
+                                'created_by',
+                                'updated_by'
+                            ]);
                             $createdAddress = $addressService->create(
                                 $newCompanyPartner->id,
                                 $addressData,
@@ -119,28 +116,25 @@ class ReplicateToCompaniesAction extends Action
                             );
 
                             if (!$createdAddress) {
-                                Log::warning('Failed to replicate address during company partner replication', [
-                                    'source_address_id' => $address->id,
+                                Log::warning($addressService->getMessage(), [
+                                    'source_address_id'         => $address->id,
                                     'target_company_partner_id' => $newCompanyPartner->id,
-                                    'error' => $addressService->getMessageUser(),
+                                    'message'                   => $addressService->getMessage(),
                                 ]);
                             }
-                        }
+                        });
 
                         // 3. Replicar Contatos
-                        $contacts = Contact::where('company_partner_id', $record->id)->get();
-                        foreach ($contacts as $contact) {
-                            $contactData = [
-                                'name'              => $contact->name,
-                                'email'             => $contact->email,
-                                'phone'             => $contact->phone,
-                                'mobile'            => $contact->mobile,
-                                'document_number'   => $contact->document_number,
-                                'is_primary'        => $contact->is_primary,
-                                'is_active'         => $contact->is_active ?? true,
-                                'notify'            => $contact->notify ?? false,
-                            ];
-
+                        $contacts = $contactService->list($record->id);
+                        $contacts->each(function ($contact) use ($contactService, $newCompanyPartner, $userId) {
+                            $contactData = Arr::except($contact->toArray(), [
+                                'id',
+                                'company_partner_id',
+                                'created_at',
+                                'updated_at',
+                                'created_by',
+                                'updated_by'
+                            ]);
                             $createdContact = $contactService->create(
                                 $newCompanyPartner->id,
                                 $contactData,
@@ -148,48 +142,46 @@ class ReplicateToCompaniesAction extends Action
                             );
 
                             if (!$createdContact) {
-                                Log::warning('Failed to replicate contact during company partner replication', [
-                                    'source_contact_id' => $contact->id,
+                                Log::warning($contactService->getMessage(), [
+                                    'source_contact_id'         => $contact->id,
                                     'target_company_partner_id' => $newCompanyPartner->id,
-                                    'error' => $contactService->getMessageUser(),
+                                    'message'                   => $contactService->getMessage(),
                                 ]);
                             }
-                        }
+                        });
 
                         // 4. Replicar Equipamentos (buscados por company_id e owner_id = partner_id)
-                        $equipments = Equipment::where('company_id', $record->company_id)
-                            ->where('owner_id', $record->partner_id)
-                            ->get();
+                        $equipments = $equipmentService->listByCompanyAndPartner($record->company_id, $record->partner_id);
 
-                        foreach ($equipments as $equipment) {
-                            $equipmentData = [
-                                'company_id'        => $companyId,
-                                'owner_id'          => $record->partner_id,
-                                'name'              => $equipment->name,
-                                'mark'              => $equipment->mark,
-                                'model'             => $equipment->model,
-                                'type'              => $equipment->type,
-                                'placa'             => $equipment->placa,
-                                'serial_number'     => $equipment->serial_number,
-                                'created_by'        => Auth::id(),
-                            ];
+                        $equipments->each(function ($equipment) use ($equipmentService, $newCompanyPartner, $companyId, $userId) {
+                            $equipmentData = Arr::except($equipment->toArray(), [
+                                'id',
+                                'company_id',
+                                'created_at',
+                                'updated_at',
+                                'created_by',
+                                'updated_by'
+                            ]);
+                            $equipmentData['company_id'] = $companyId;
 
-                            $createdEquipment = $equipmentService->create($equipmentData);
+                            $createdEquipment = $equipmentService->create(
+                                $equipmentData,
+                                $userId
+                            );
 
                             if (!$createdEquipment) {
-                                Log::warning('Failed to replicate equipment during company partner replication', [
+                                Log::warning($equipmentService->getMessage(), [
                                     'source_equipment_id' => $equipment->id,
                                     'target_company_id' => $companyId,
-                                    'error' => $equipmentService->getMessageUser(),
+                                    'target_partner_id' => $newCompanyPartner->partner_id,
+                                    'message' => $equipmentService->getMessage(),
                                 ]);
                             }
-                        }
-
+                        });
                         $successful[] = [
                             'company_id' => $companyId,
                             'partner_id' => $record->partner_id,
                         ];
-
                     } catch (\Exception $e) {
                         $failed[] = [
                             'company_id' => $companyId,
@@ -237,7 +229,6 @@ class ReplicateToCompaniesAction extends Action
                     ->warning()
                     ->send();
             }
-
         } catch (\Exception $e) {
             Log::error('Replication failed with exception', [
                 'record_class' => get_class($record),

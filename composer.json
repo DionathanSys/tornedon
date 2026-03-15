@@ -14,6 +14,7 @@
         "laravel/tinker": "^2.10.1",
         "leandrocfe/filament-ptbr-form-fields": "4.0",
         "opcodesio/log-viewer": "^3.21",
+        "resend/resend-laravel": "^1.3",
         "spatie/laravel-medialibrary": "^11.18"
     },
     "require-dev": {

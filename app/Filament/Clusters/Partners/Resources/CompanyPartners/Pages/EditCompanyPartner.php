@@ -76,6 +76,12 @@ class EditCompanyPartner extends EditRecord
         $data['company_partner']['type']                = $data['type'];
         $data['company_partner']['invoice_threshold']   = $data['invoice_threshold'];
         $data['company_partner']['is_active']           = $data['is_active'];
+        $data['company_partner']['notify_service_order_closed'] = $data['notify_service_order_closed'] ?? false;
+        $data['company_partner']['notify_requisition_closed'] = $data['notify_requisition_closed'] ?? false;
+        $data['company_partner']['notify_fiscal_document_confirmed'] = $data['notify_fiscal_document_confirmed'] ?? false;
+        $data['company_partner']['email_to_override'] = $data['email_to_override'] ?? null;
+        $data['company_partner']['email_cc_override'] = $data['email_cc_override'] ?? null;
+        $data['company_partner']['email_bcc_override'] = $data['email_bcc_override'] ?? null;
 
         Log::debug('Mutate Form Data Before Fill:', $data);
 

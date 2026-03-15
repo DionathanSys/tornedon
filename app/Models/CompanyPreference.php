@@ -9,10 +9,6 @@ use Illuminate\Support\Facades\Cache;
 
 class CompanyPreference extends Model
 {
-    public const CUSTOMER_STATUS_NOTIFICATION_CONFIG_KEY = 'customer_status_notification_config';
-
-    public const CUSTOMER_STATUS_NOTIFICATION_TEMPLATES_KEY = 'customer_status_notification_templates';
-
     protected $fillable = [
         'company_id',
         'key',
@@ -348,55 +344,4 @@ class CompanyPreference extends Model
         return self::set('notification_settings', $settings, $companyId);
     }
 
-    /**
-     * Configuração padrão de notificações por atualização de status para clientes.
-     *
-     * @return array<string, array{enabled: bool, statuses: array<int, string>}>
-     */
-    public static function getDefaultCustomerStatusNotificationConfig(): array
-    {
-        return [
-            'service_order' => [
-                'enabled' => true,
-                'statuses' => ['encerrada'],
-            ],
-            'requisition' => [
-                'enabled' => false,
-                'statuses' => ['closed'],
-            ],
-            'invoice' => [
-                'enabled' => true,
-                'statuses' => ['confirmed'],
-            ],
-            'fiscal_document' => [
-                'enabled' => true,
-                'statuses' => ['confirmed'],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, array{subject: string, body: string}>
-     */
-    public static function getDefaultCustomerStatusNotificationTemplates(): array
-    {
-        return [
-            'service_order' => [
-                'subject' => 'Ordem de Serviço {{document_number}} atualizada para {{new_status}}',
-                'body' => 'Olá {{partner_name}},<br><br>A Ordem de Serviço {{document_number}} teve o status alterado de {{old_status}} para {{new_status}}.',
-            ],
-            'requisition' => [
-                'subject' => 'Requisição {{document_number}} atualizada para {{new_status}}',
-                'body' => 'Olá {{partner_name}},<br><br>A Requisição {{document_number}} teve o status alterado de {{old_status}} para {{new_status}}.',
-            ],
-            'invoice' => [
-                'subject' => 'Fatura {{document_number}} atualizada para {{new_status}}',
-                'body' => 'Olá {{partner_name}},<br><br>A Fatura {{document_number}} teve o status alterado de {{old_status}} para {{new_status}}.',
-            ],
-            'fiscal_document' => [
-                'subject' => 'Documento Fiscal {{document_number}} atualizado para {{new_status}}',
-                'body' => 'Olá {{partner_name}},<br><br>O Documento Fiscal {{document_number}} teve o status alterado de {{old_status}} para {{new_status}}.',
-            ],
-        ];
-    }
 }

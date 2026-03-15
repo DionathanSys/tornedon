@@ -23,6 +23,12 @@ class CompanyPartnerValidator
             'type.*'            => 'required|string|min:1|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Partner\Type::cases())),
             'invoice_threshold' => 'required|numeric|min:0|max:99999999',
             'is_active'         => 'required|boolean',
+            'notify_service_order_closed' => 'sometimes|boolean',
+            'notify_requisition_closed' => 'sometimes|boolean',
+            'notify_fiscal_document_confirmed' => 'sometimes|boolean',
+            'email_to_override' => 'nullable|string',
+            'email_cc_override' => 'nullable|string',
+            'email_bcc_override' => 'nullable|string',
         ];
         
         $messages = [

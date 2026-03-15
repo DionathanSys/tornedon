@@ -8,11 +8,21 @@ use App\Services\Contact\Actions\CreateContact;
 use App\Services\Contact\Actions\UpdateContact;
 use App\Services\Contact\Actions\DeleteContact;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class ContactService
 {
     use HandlesServiceResponse;
+
+    /**
+     * Lista contatos de uma empresa, com filtros opcionais.
+     */
+    public function list(int $companyPartnerId, array $filters = []): Collection
+    {
+        $query = Contact::where('company_partner_id', $companyPartnerId);
+        return $query->get();
+    }
 
     /**
      * Cria um novo contato

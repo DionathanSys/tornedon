@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Requisition;
-use App\Services\Email\CustomerDocumentEmailService;
+use App\Services\Email\DocumentNotificationService;
 
 class RequisitionObserver
 {
@@ -13,11 +13,8 @@ class RequisitionObserver
             return;
         }
 
-        $requisition->loadMissing('customer');
-
-        app(CustomerDocumentEmailService::class)->sendRequisitionStatusUpdated(
+        app(DocumentNotificationService::class)->scheduleForRequisitionStatusChange(
             $requisition,
-            (string) $requisition->getOriginal('status'),
             (string) $requisition->status->value,
         );
     }

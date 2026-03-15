@@ -6,7 +6,6 @@ use App\Enum\ServiceOrder\State;
 use App\Exceptions\DomainValidationException;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderSequence;
-use App\Services\Email\CustomerDocumentEmailService;
 use App\Services\Invoice\InvoiceService;
 use App\Services\ServiceOrder\Actions\CancelServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
@@ -257,10 +256,6 @@ class ServiceOrderService
 
                 return $serviceOrder;
             });
-
-            if ($serviceOrder) {
-                app(CustomerDocumentEmailService::class)->sendServiceOrderGenerated($serviceOrder);
-            }
 
             return $serviceOrder;
         } catch (\Exception $e) {

@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
@@ -145,6 +146,39 @@ class CompanyPartnerForm
                             ->inline(false)
                             ->default(true)
                             ->required(),
+                        Toggle::make('company_partner.notify_service_order_closed')
+                            ->label('Notificar OS Encerrada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Toggle::make('company_partner.notify_requisition_closed')
+                            ->label('Notificar Requisição Encerrada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Toggle::make('company_partner.notify_fiscal_document_confirmed')
+                            ->label('Notificar NF Confirmada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Textarea::make('company_partner.email_to_override')
+                            ->label('TO Override')
+                            ->rows(2)
+                            ->placeholder('cliente@exemplo.com;compras@exemplo.com')
+                            ->helperText('Opcional: separador por ; ou ,')
+                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                        Textarea::make('company_partner.email_cc_override')
+                            ->label('CC Override')
+                            ->rows(2)
+                            ->placeholder('financeiro@exemplo.com')
+                            ->helperText('Opcional: separador por ; ou ,')
+                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                        Textarea::make('company_partner.email_bcc_override')
+                            ->label('BCC Override')
+                            ->rows(2)
+                            ->placeholder('auditoria@exemplo.com')
+                            ->helperText('Opcional: separador por ; ou ,')
+                            ->columnSpan(['md' => 2, 'lg' => 3]),
                     ]),
                 Section::make('Replicar para outras Empresas')
                     ->columns([

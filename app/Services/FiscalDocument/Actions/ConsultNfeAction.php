@@ -6,7 +6,6 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
-use App\Services\Email\CustomerDocumentEmailService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -106,8 +105,6 @@ class ConsultNfeAction
                     ]);
                 }
 
-                app(CustomerDocumentEmailService::class)
-                    ->sendFiscalDocumentAuthorized($fiscalDocument->fresh());
             }
 
             $this->setSuccess();

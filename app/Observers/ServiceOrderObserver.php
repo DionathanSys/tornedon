@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\ServiceOrder;
-use App\Services\Email\CustomerDocumentEmailService;
+use App\Services\Email\DocumentNotificationService;
 
 class ServiceOrderObserver
 {
@@ -13,11 +13,8 @@ class ServiceOrderObserver
             return;
         }
 
-        $serviceOrder->loadMissing('customer');
-
-        app(CustomerDocumentEmailService::class)->sendServiceOrderStatusUpdated(
+        app(DocumentNotificationService::class)->scheduleForServiceOrderStatusChange(
             $serviceOrder,
-            (string) $serviceOrder->getOriginal('status'),
             (string) $serviceOrder->status->value,
         );
     }

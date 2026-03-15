@@ -26,6 +26,9 @@ return [
 
     'resend' => [
         'key' => env('RESEND_KEY'),
+        'options' => [
+            'verify' => env('RESEND_VERIFY', true),
+        ],
     ],
 
     'slack' => [

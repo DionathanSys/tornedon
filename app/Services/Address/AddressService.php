@@ -5,12 +5,23 @@ namespace App\Services\Address;
 use App\Exceptions\DomainValidationException;
 use App\Models\Address;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class AddressService
 {
 
     use HandlesServiceResponse;
+
+    /**
+     * Lista endereços de uma empresa, com filtros opcionais.
+     */
+    public function list(int $companyPartnerId, array $filters = []): Collection
+    {
+        $query = Address::where('company_partner_id', $companyPartnerId);
+        return $query->get();
+    }
+
 
     public function create(int $companyPartnerId, array $input, int $userId): ?Address 
     {
@@ -110,4 +121,5 @@ class AddressService
             return false;
         }
     }
+
 }

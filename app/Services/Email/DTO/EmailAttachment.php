@@ -8,6 +8,7 @@ final readonly class EmailAttachment
         public string $filename,
         public string $contentBase64,
         public string $mimeType = 'application/octet-stream',
+        public bool $optional = false,
+        public ?string $kind = null,
     ) {}
 }
-

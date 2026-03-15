@@ -9,7 +9,7 @@ use RuntimeException;
 
 class ResendEmailProvider implements EmailProviderInterface
 {
-    public function send(EmailMessage $message): void
+    public function send(EmailMessage $message): array
     {
         $apiKey = config('services.resend.key');
 
@@ -64,6 +64,13 @@ class ResendEmailProvider implements EmailProviderInterface
         if ($response->failed()) {
             throw new RuntimeException('Erro ao enviar e-mail via Resend: ' . $response->body());
         }
+
+        /** @var array<string,mixed>|null $body */
+        $body = $response->json();
+
+        return [
+            'provider_message_id' => is_array($body) ? (($body['id'] ?? null) !== null ? (string) $body['id'] : null) : null,
+            'provider_payload' => is_array($body) ? $body : null,
+        ];
     }
 }
-

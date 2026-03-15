@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\FiscalDocument;
-use App\Services\Email\CustomerDocumentEmailService;
+use App\Services\Email\DocumentNotificationService;
 
 class FiscalDocumentObserver
 {
@@ -13,11 +13,8 @@ class FiscalDocumentObserver
             return;
         }
 
-        $fiscalDocument->loadMissing('customer');
-
-        app(CustomerDocumentEmailService::class)->sendFiscalDocumentStatusUpdated(
+        app(DocumentNotificationService::class)->scheduleForFiscalDocumentStatusChange(
             $fiscalDocument,
-            (string) $fiscalDocument->getOriginal('status'),
             (string) $fiscalDocument->status->value,
         );
     }

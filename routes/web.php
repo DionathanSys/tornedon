@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ErrorTicketController;
+use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\NfeWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,3 +25,7 @@ Route::post('/webhook/nfe', [NfeWebhookController::class, 'handle'])
 Route::post('/error-tickets/create', [ErrorTicketController::class, 'create'])
     ->name('error-tickets.create')
     ->middleware(['web', 'auth']);
+
+Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispatchAttachmentController::class, 'show'])
+    ->name('email-dispatch.attachment')
+    ->middleware('signed');
