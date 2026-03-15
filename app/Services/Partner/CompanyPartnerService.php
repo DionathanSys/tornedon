@@ -89,18 +89,11 @@ class CompanyPartnerService
             $createData = Arr::except($normalized, ['company_id', 'partner_id']);
 
             Log::info(__METHOD__ . '@' . __LINE__, [
-                'message' => 'DEBUG: Valores exatos antes de firstOrCreate',
-                'createData' => $createData,
+                'message' => 'DEBUG: Valores exatos ANTES de firstOrCreate',
                 'company_id_param' => $companyId,
                 'partner_id_param' => $partnerId,
-                'sourceCompanyPartner' => [
-                    'id' => $sourceCompanyPartner->id ?? null,
-                    'company_id' => $sourceCompanyPartner->company_id ?? null,
-                    'partner_id' => $sourceCompanyPartner->partner_id ?? null,
-                ],
+                'createData_keys' => array_keys($createData),
             ]);
-
-            
 
             // Usar firstOrCreate para garantir que insira ou retorne o existente
             $companyPartner = CompanyPartner::firstOrCreate(
@@ -111,10 +104,10 @@ class CompanyPartnerService
                 $createData
             );
 
-            Log::debug(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Associacao de parceiro com empresa processada',
-                'company_id' => $companyId,
-                'partner_id' => $partnerId,
+            Log::info(__METHOD__ . '@' . __LINE__, [
+                'message' => 'DEBUG: Valores DEPOIS de firstOrCreate',
+                'company_id_result' => $companyPartner->company_id,
+                'partner_id_result' => $companyPartner->partner_id,
                 'company_partner_id' => $companyPartner->id,
                 'was_created' => $companyPartner->wasRecentlyCreated,
             ]);
