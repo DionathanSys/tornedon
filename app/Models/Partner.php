@@ -71,14 +71,4 @@ class Partner extends Model
         return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
     }
 
-    /**
-     * Replica este Partner para múltiplas empresas
-     *
-     * @param array $companyIds IDs das empresas alvo
-     * @return array Resultado da replicação
-     */
-    public function replicateTo(array $companyIds): array
-    {
-        return app(ReplicationService::class)->replicate($this, $companyIds, 'partner');
-    }
 }
