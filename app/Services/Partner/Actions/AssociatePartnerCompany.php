@@ -32,7 +32,11 @@ class AssociatePartnerCompany
             'company_id' => $companyId,
         ]);
 
-        $companyPartner = CompanyPartner::create($data);
+        $companyPartner = CompanyPartner::query()->updateOrCreate([
+            'partner_id' => $partnerId,
+            'company_id' => $companyId,
+        ], $data);
+
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
 
