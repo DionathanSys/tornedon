@@ -100,7 +100,7 @@ class CompanyPartnerService
                 ],
             ]);
 
-            Log::info('DEBUG sourceCompanyPartner completo', $sourceCompanyPartner->toArray());
+            
 
             // Usar firstOrCreate para garantir que insira ou retorne o existente
             $companyPartner = CompanyPartner::firstOrCreate(
@@ -160,6 +160,8 @@ class CompanyPartnerService
         ];
 
         $sourceCompanyPartner = CompanyPartner::query()->find($sourceCompanyPartnerId);
+
+        Log::info('DEBUG sourceCompanyPartner completo', $sourceCompanyPartner->toArray());
 
         if (! $sourceCompanyPartner) {
             $message = 'Vinculo de parceiro nao encontrado para replicacao.';
