@@ -45,7 +45,10 @@ class AssociatePartnerCompany
             'email_cc_override' => null,
             'email_bcc_override' => null,
         ];
-        
+        Log::debug(__METHOD__ . '@' . __LINE__, [
+            'message' => 'Dados preparados para criação de associação',
+            'data' => $data,
+        ]);
         $companyPartner = CompanyPartner::create($data);
         $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
