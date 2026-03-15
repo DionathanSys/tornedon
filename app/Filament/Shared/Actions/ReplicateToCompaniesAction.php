@@ -23,13 +23,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
-class ReplicateToCompaniesAction extends Action
+class ReplicateToCompaniesAction
 {
-    protected function setUp(): void
+    public static function make(): Action
     {
-        parent::setUp();
-
-        $this
+        return Action::make('replicateToCompanies')
             ->label('Replicar para outras empresas')
             ->icon(Heroicon::ArrowUturnRight)
             ->color('warning')
@@ -103,7 +101,7 @@ class ReplicateToCompaniesAction extends Action
                             ->where('partner_id', $record->partner_id)
                             ->first();
 
-                        if($existingAssociation) {
+                        if ($existingAssociation) {
                             Log::info('Associação já existe, pulando criação', [
                                 'company_id' => $companyId,
                                 'partner_id' => $record->partner_id,
