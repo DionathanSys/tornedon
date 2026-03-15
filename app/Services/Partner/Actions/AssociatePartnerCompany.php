@@ -27,49 +27,14 @@ class AssociatePartnerCompany
 
         $validatedData = CompanyPartnerValidator::validate($data);
 
-        Log::debug(__METHOD__ . '@' . __LINE__, [
-            'message' => 'Dados validados para associação de parceiro com empresa',
-            'validated_data' => $validatedData,
-        ]);
-
         $data = array_merge($validatedData, [
             'partner_id' => $partnerId,
             'company_id' => $companyId,
         ]);
 
-        Log::debug(__METHOD__ . '@' . __LINE__, [
-            'message' => 'Criando/atualizando associação de parceiro com empresa',
-            'data' => $data,
-        ]);
-
-        try {
-            $companyPartner = CompanyPartner::query()->create($data);
-            $this->setSuccess('Parceiro associado à empresa com sucesso');
-            return $companyPartner;
-        } catch (QueryException $e) {
-            if ((int) $e->getCode() !== 23000) {
-                throw $e;
-            }
-
-            Log::warning(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Conflito de chave única ao associar parceiro e empresa; buscando registro existente',
-                'partner_id' => $partnerId,
-                'company_id' => $companyId,
-                'exception' => $e->getMessage(),
-            ]);
-        }
-
-        $companyPartner = CompanyPartner::query()
-            ->where('partner_id', $partnerId)
-            ->where('company_id', $companyId)
-            ->first();
-
-        if (! $companyPartner) {
-            throw new \RuntimeException('Não foi possível localizar o vínculo company_partner após o upsert.');
-        }
-
-        $this->setSuccess();
+        $companyPartner = CompanyPartner::create($data);
+        $this->setSuccess('Parceiro associado à empresa com sucesso');
         return $companyPartner;
-    }
 
+    }
 }
