@@ -91,7 +91,6 @@ final class CreateNfseItemAction
                     ->schema([
                         TextInput::make('iss_rate')
                             ->label('Alíquota ISS (%)')
-                            ->columnStart(1)
                             ->numeric()
                             ->step(0.01)
                             ->minValue(0)
@@ -102,13 +101,9 @@ final class CreateNfseItemAction
                             ->native(false),
                         Toggle::make('iss_withheld')
                             ->label('ISS Retido')
+                            ->inline(false)
                             ->default(false),
                     ]),
-
-                Toggle::make('included_in_total')
-                    ->label('Inclui no Total')
-                    ->default(true),
-
                 Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')
                     ->rows(2)

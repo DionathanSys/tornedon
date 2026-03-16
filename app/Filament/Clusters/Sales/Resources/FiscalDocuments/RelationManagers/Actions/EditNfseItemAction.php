@@ -47,7 +47,7 @@ final class EditNfseItemAction
                         }
 
                         $set('description', $service->name);
-                        $set('unit_price', $service->price ? (float) $service->price / 100 : null);
+                        $set('unit_price', $service->price ? number_format($service->price, 2, ',', '.') : null);
                         $set('service_code', $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode(Filament::getTenant()->id));
                         $set('nbs_code', $service->nbs_code ?? NfseDocumentService::getDefaultNbsCode(Filament::getTenant()->id));
                         $set('cnae_code', $service->cnae_code ?? NfseDocumentService::getDefaultCnaeCode(Filament::getTenant()->id));
@@ -100,10 +100,6 @@ final class EditNfseItemAction
                             ->inline(false)
                             ->default(false),
                     ]),
-
-                Toggle::make('included_in_total')
-                    ->label('Inclui no Total')
-                    ->default(true),
 
                 Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')
