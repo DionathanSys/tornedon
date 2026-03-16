@@ -52,6 +52,7 @@ final class CreateNfseItemAction
 
                         $set('description', $service->name);
                         $set('unit_price', $service->price ? number_format($service->price, 2, ',', '.') : null);
+                        $set('total_price', $service->price ? number_format($service->price, 2, ',', '.') : null);
                         $set('service_code', $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode(Filament::getTenant()->id));
                         $set('nbs_code', $service->nbs_code ?? NfseDocumentService::getDefaultNbsCode(Filament::getTenant()->id));
                         $set('cnae_code', $service->cnae_code ?? NfseDocumentService::getDefaultCnaeCode(Filament::getTenant()->id));
