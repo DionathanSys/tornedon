@@ -36,8 +36,8 @@ class SchemaFormItemsNfe
                     $product = $productStock->product;
 
                     // $set('product_code', $product->product_code);
-                    $set('description', $product->unit . '-' . $product->name);
-                    $set('unit', $product->unit);
+                    $set('description', $product->unit->value . '-' . $product->name);
+                    $set('unit', $product->unit->value);
                     $set('unit_price',  $product->price ? number_format($product->price, 2, ',', '.') : null);
                     $set('total_price', $product->price ? number_format($product->price, 2, ',', '.') : null);
                 }),
