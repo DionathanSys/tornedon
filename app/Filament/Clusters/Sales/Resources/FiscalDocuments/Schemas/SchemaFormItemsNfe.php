@@ -36,16 +36,18 @@ class SchemaFormItemsNfe
                     $product = $productStock->product;
 
                     // $set('product_code', $product->product_code);
-                    $set('description', $product->unit->value . ' - ' . $product->name);
+                    $set('description', $product->name);
                     $set('unit', $product->unit->value);
                     $set('unit_price',  $product->price ? number_format($product->price, 2, ',', '.') : null);
                     $set('total_price', $product->price ? number_format($product->price, 2, ',', '.') : null);
-                    $set('ncm_code', $product->ncm_code);
-                    $set('cest_code', $product->cest_code);
+                    $set('ncm_code', $product->tax?->ncm_code);
+                    $set('cest_code', $product->tax?->cest_code);
                 }),
 
-            Hidden::make('unit_of_measure')
-                ->saved(true),
+            TextInput::make('unit_of_measure')
+                ->label('UN')
+                ->saved(true)
+                ->disabled(),
 
             TextInput::make('description')
                 ->label('Descrição')
