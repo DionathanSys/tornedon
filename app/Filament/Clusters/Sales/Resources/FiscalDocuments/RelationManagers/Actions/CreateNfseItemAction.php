@@ -51,9 +51,10 @@ final class CreateNfseItemAction
                         }
 
                         $set('description', $service->name);
-                        $set('unit_price', $service->price ? (float) $service->price / 100 : null);
+                        $set('unit_price', $service->price ? (float) $service->price : null);
                         $set('service_code', $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode(Filament::getTenant()->id));
-                        $set('nbs_code', $service->nbs_code);
+                        $set('nbs_code', $service->nbs_code ?? NfseDocumentService::getDefaultNbsCode(Filament::getTenant()->id));
+                        $set('cnae_code', $service->cnae_code ?? NfseDocumentService::getDefaultCnaeCode(Filament::getTenant()->id));
                         $set('iss_rate', $service->tax_rate ? (float) $service->tax_rate : null);
                         $set('iss_exigibility', $service->iss_exigibility?->value);
                     })

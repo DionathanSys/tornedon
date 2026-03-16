@@ -214,4 +214,14 @@ class NfseDocumentService
     {
         return FiscalProfile::query()->where('company_id', $companyId)->value('default_service_code');
     }
+
+    public static function getDefaultNbsCode(int $companyId): string
+    {
+        return FiscalProfile::query()->where('company_id', $companyId)->value('default_nbs_code');
+    }
+
+    public static function getDefaultCnaeCode(int $companyId): string
+    {
+        return FiscalProfile::query()->where('company_id', $companyId)->value('service_cnae_code');
+    }
 }
