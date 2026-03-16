@@ -10,6 +10,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use Filament\Actions\CreateAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -51,7 +52,7 @@ final class CreateNfseItemAction
 
                         $set('description', $service->name);
                         $set('unit_price', $service->price ? (float) $service->price / 100 : null);
-                        $set('service_code', $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode($livewire->getOwnerRecord()->company_id));
+                        $set('service_code', $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode(Filament::getTenant()->id));
                         $set('nbs_code', $service->nbs_code);
                         $set('iss_rate', $service->tax_rate ? (float) $service->tax_rate : null);
                         $set('iss_exigibility', $service->iss_exigibility?->value);

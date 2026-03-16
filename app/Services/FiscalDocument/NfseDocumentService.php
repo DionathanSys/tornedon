@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument;
 
 use App\Models\FiscalDocument;
+use App\Models\FiscalProfile;
 use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
@@ -211,6 +212,6 @@ class NfseDocumentService
 
     public static function getDefaultServiceCode(int $companyId): string
     {
-        return FiscalDocument::query()->findOrFail($companyId)->nfse_default_service_code;
+        return FiscalProfile::query()->where('company_id', $companyId)->value('nfse_default_service_code');
     }
 }
