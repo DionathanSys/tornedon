@@ -5,15 +5,14 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers
 use App\Enum\Product\Origin;
 use App\Enum\Product\Unit;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\SchemaFormItemsNfe;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Models\FiscalDocumentItem;
 use App\Notification\NotifyService as notify;
+use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
+use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use Filament\Actions\CreateAction;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -32,56 +31,9 @@ final class CreateItemAction
             ->label('Adicionar Item')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
-            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent())
+            ->visible(fn(RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent())
             ->modalHeading('Adicionar Item à Nota Fiscal')
-            ->schema([
-                ModalSelectProductStock::make('product_id')
-                    ->label('Estoque do Produto')
-                    ->required()
-                    ->columnSpanFull(),
-
-                TextInput::make('description')
-                    ->label('Descrição')
-                    ->maxLength(255)
-                    ->columnSpanFull(),
-
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        TextInput::make('ncm_code')
-                            ->label('NCM')
-                            ->maxLength(8),
-                        TextInput::make('cest_code')
-                            ->label('CEST')
-                            ->maxLength(9),
-                        TextInput::make('cfop_code')
-                            ->label('CFOP')
-                            ->maxLength(4),
-                    ]),
-
-                ItemValueGroup::make(),
-
-                Section::make()
-                    ->columns(3)
-                    ->collapsible()
-                    ->collapsed()
-                    ->columnSpanFull()
-                    ->schema([
-                        Money::make('freight_amount')
-                            ->label('Frete'),
-                        Money::make('insurance_amount')
-                            ->label('Seguro'),
-                        Money::make('other_expenses_amount')
-                            ->label('Outras'),
-                    ]),
-
-                Textarea::make('additional_information')
-                    ->label('Informações Adicionais do Item')
-                    ->rows(2)
-                    ->maxLength(500)
-                    ->columnSpanFull(),
-            ])
+            ->schema(SchemaFormItemsNfe::make())
             ->using(function (array $data, RelationManager $livewire): ?Model {
                 $fiscalDocument = $livewire->getOwnerRecord();
 
@@ -103,6 +55,38 @@ final class CreateItemAction
 
                 notify::success(message: $service->getMessage());
                 return $item;
+            })
+            ->after(function (?FiscalDocumentItem $record, RelationManager $livewire) {
+                if (! $record) {
+                    return;
+                }
+
+                $document = $livewire->getOwnerRecord();
+
+                try {
+                    $decisions = app(ResolveFiscalContextAction::class)
+                        ->execute($document, [$record]);
+
+                    if (! empty($decisions)) {
+                        (new PersistFiscalSnapshotAction())->execute($document, $decisions);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('CreateFiscalDocument (Sales): Erro ao resolver contexto fiscal', [
+                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'fiscal_document_id' => $document->id,
+                        'error'              => $e->getMessage(),
+                    ]);
+
+                    notify::error(message: 'Documento criado, mas houve um erro ao calcular os impostos: ' . $e->getMessage());
+                }
+
+                Log::debug('Item de nota fiscal criado com sucesso', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'item_id' => $record->id,
+                ]);
+
+                notify::success(message: 'Impostos calculados com sucesso!');
+
             })
             ->successNotification(null);
     }
