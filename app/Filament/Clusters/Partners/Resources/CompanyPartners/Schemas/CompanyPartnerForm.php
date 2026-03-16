@@ -208,7 +208,6 @@ class CompanyPartnerForm
                                     ->pluck('name', 'id');
                             })
                             ->columns(2)
-                            ->required()
                             ->minItems(1),
                     ]),
                 Section::make()
