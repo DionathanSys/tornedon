@@ -11,6 +11,7 @@
         "cloud-dfe/sdk-php": "^0.4.8",
         "filament/filament": "^4.0",
         "laravel/framework": "^12.0",
+        "laravel/horizon": "^5.45",
         "laravel/tinker": "^2.10.1",
         "leandrocfe/filament-ptbr-form-fields": "4.0",
         "opcodesio/log-viewer": "^3.21",
