@@ -95,8 +95,7 @@ class BuildNfseMunicipalPayloadAction
                 $taxData = $item->tax_data ?? [];
 
                 $codigoServico = $this->normalizeServiceCode(
-                    $item->service_code
-                    ?? $item->service?->service_code
+                    $item->municipal_tax_code
                     ?? $profile?->default_service_code
                 );
 

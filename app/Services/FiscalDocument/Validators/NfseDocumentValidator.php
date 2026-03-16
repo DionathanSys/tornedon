@@ -21,7 +21,7 @@ class NfseDocumentValidator
             'nfse_model'  => ['required', Rule::enum(NfseModel::class)],
             'customer_id' => 'required|integer|exists:partners,id',
             'company_id'  => 'required|integer|exists:companies,id',
-            'issued_at'   => 'required|date',
+            'issued_at'   => 'nullable|date',
         ];
     }
 
@@ -43,7 +43,7 @@ class NfseDocumentValidator
             'customer_id.exists'   => 'Tomador do serviço não encontrado.',
             'company_id.required'  => 'A empresa emitente é obrigatória para NFS-e.',
             'company_id.exists'    => 'Empresa emitente não encontrada.',
-            'issued_at.required'   => 'A data de emissão é obrigatória para NFS-e.',
+            'issued_at.date'       => 'A data de emissão deve ser uma data válida.',
         ];
     }
 

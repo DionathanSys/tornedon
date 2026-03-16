@@ -8,6 +8,7 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
 use App\Models\Company;
@@ -15,6 +16,13 @@ use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\Partner;
 use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -34,28 +42,19 @@ class FiscalDocumentForm
                     ->persistTab(true)
                     ->tabs([
                         Tab::make('Principal')
+                            ->columns(['md' => 6, 'lg' => 12])
+                            ->columnSpanFull()
                             ->schema([
                                 Section::make('Identificação')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
-                                        Forms\Components\Select::make('company_id')
-                                            ->label('Empresa Emitente')
-                                            ->options(Company::pluck('name', 'id'))
-                                            ->required()
-                                            ->searchable()
-                                            ->native(false)
-                                            ->disabledOn('edit')
-                                            ->columnSpan(['md' => 1]),
-
-                                        Forms\Components\Select::make('customer_id')
+                                        SelectPartner::make('customer_id')
                                             ->label('Cliente / Tomador')
-                                            ->options(Partner::pluck('name', 'id'))
-                                            ->required()
-                                            ->searchable()
-                                            ->native(false)
-                                            ->disabledOn('edit')
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 6, 'lg' => 4])
+                                            ->disabledOn('edit'),
 
-                                        Forms\Components\Select::make('document_type')
+                                        Select::make('document_type')
                                             ->label('Tipo de Documento')
                                             ->options(DocumentModel::toSelectArray())
                                             ->default(DocumentModel::NFE->value)
@@ -63,46 +62,39 @@ class FiscalDocumentForm
                                             ->native(false)
                                             ->live()
                                             ->disabledOn('edit')
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
 
-                                        Forms\Components\Select::make('invoice_id')
+                                        TextEntry::make('invoice_id')
                                             ->label('Fatura Vinculada')
-                                            ->options(Invoice::pluck('invoice_number', 'id'))
-                                            ->searchable()
-                                            ->nullable()
-                                            ->native(false)
-                                            ->disabled()
-                                            ->helperText('Opcional — associa o documento a uma fatura existente.')
-                                            ->columnSpan(['md' => 1]),
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 1])
+                                            ->visible(fn($state): bool => $state !== null)
+                                            ->formatStateUsing(fn($record): ?string => $record ? $record->invoice_number : 'Sem fatura vinculada'),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible(),
 
                                 Section::make('Dados da NFS-e')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
-                                        Forms\Components\Select::make('nfse_model')
+                                        Select::make('nfse_model')
                                             ->label('Modelo NFS-e')
                                             ->options(NfseModel::toSelectArray())
                                             ->disabledOn('edit')
                                             ->required()
                                             ->native(false)
-                                            ->columnSpan(['md' => 1]),
-
-                                        Forms\Components\DatePicker::make('issued_at')
-                                            ->label('Data de Emissão')
-                                            ->required()
-                                            ->native(false)
-                                            ->default(now())
-                                            ->displayFormat('d/m/Y')
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 3]),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
-                                    ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),
+                                    ->visible(fn(Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),
 
                                 Section::make('Dados da NF-e')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
-                                        Forms\Components\Select::make('operation_nature')
+                                        Select::make('operation_nature')
                                             ->label('Natureza da Operação')
                                             ->options(OperationNature::toSelectArray())
                                             ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
@@ -110,53 +102,58 @@ class FiscalDocumentForm
                                             ->required()
                                             ->columnSpan(['md' => 2]),
 
-                                        Forms\Components\DatePicker::make('issued_at')
+                                        DatePicker::make('issued_at')
                                             ->label('Data de Emissão')
+                                            ->visibleOn('edit')
+                                            ->readOnly()
                                             ->required()
-                                            ->native(false)
+                                            ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->columnSpan(['md' => 1]),
 
-                                        Forms\Components\DatePicker::make('movement_at')
+                                        DatePicker::make('movement_at')
                                             ->label('Data Entrada/Saída')
+                                            ->visibleOn('edit')
+                                            ->readOnly()
                                             ->required()
-                                            ->native(false)
+                                            ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->columnSpan(['md' => 1]),
 
-                                        Forms\Components\Select::make('operation_type')
+                                        Select::make('operation_type')
                                             ->label('Tipo de Operação')
                                             ->options(OperationType::toSelectArray())
                                             ->default(OperationType::SAIDA->value)
                                             ->required()
                                             ->native(false)
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2]),
 
-                                        Forms\Components\Select::make('issue_purpose')
+                                        Select::make('issue_purpose')
                                             ->label('Finalidade de Emissão')
                                             ->options(IssuePurpose::toSelectArray())
                                             ->default(IssuePurpose::NORMAL->value)
                                             ->required()
                                             ->native(false)
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2]),
 
-                                        Forms\Components\Toggle::make('is_final_consumer')
+                                        Toggle::make('is_final_consumer')
                                             ->label('Consumidor Final')
+                                            ->inline(false)
                                             ->default(true)
                                             ->columnSpan(['md' => 1]),
 
-                                        Forms\Components\Select::make('buyer_presence_indicator')
+                                        Select::make('buyer_presence_indicator')
                                             ->label('Indicador de Presença')
                                             ->options(BuyerPresenceIndicator::toSelectArray())
                                             ->default(BuyerPresenceIndicator::OUTROS->value)
                                             ->native(false)
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2]),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
-                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
+                                    ->visible(fn(Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
 
-                                Livewire::make(ItemsRelationManager::class, fn (FiscalDocument $record) => [
+                                Livewire::make(ItemsRelationManager::class, fn(FiscalDocument $record) => [
                                     'ownerRecord' => $record,
                                     'pageClass'   => EditFiscalDocument::class,
                                 ])
@@ -165,8 +162,12 @@ class FiscalDocumentForm
                                     ->visibleOn([Operation::Edit]),
 
                                 Section::make('Frete')
+                                    ->columnSpanFull()
+                                    ->collapsed()
+                                    ->collapsible()
+                                    ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
-                                        Forms\Components\Select::make('freight_data.modalidade_frete')
+                                        Select::make('freight_data.modalidade_frete')
                                             ->label('Modalidade do Frete')
                                             ->options([
                                                 '0' => '0 Por conta do emitente (CIF)',
@@ -176,22 +177,24 @@ class FiscalDocumentForm
                                             ])
                                             ->default('9')
                                             ->native(false)
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 3]),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
-                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
+                                    ->visible(fn(Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
 
                                 Section::make('Informações Adicionais')
-                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->visible(fn(Get $get, $operation): bool => $get('document_type') !== DocumentModel::NFSE->value && $operation === 'edit')
                                     ->schema([
-                                        Forms\Components\Textarea::make('additional_taxpayer_information')
+                                        Textarea::make('additional_taxpayer_information')
                                             ->label('Informações ao Contribuinte')
                                             ->rows(3)
                                             ->maxLength(2000)
                                             ->columnSpan(['md' => 2]),
 
-                                        Forms\Components\Textarea::make('additional_tax_information')
+                                        Textarea::make('additional_tax_information')
                                             ->label('Informações ao Fisco')
                                             ->rows(3)
                                             ->maxLength(2000)
@@ -199,15 +202,15 @@ class FiscalDocumentForm
 
                                         Section::make('Informações adicionais de compra')
                                             ->schema([
-                                                Forms\Components\TextInput::make('additional_purchase_information_nota_empenho')
+                                                TextInput::make('additional_purchase_information_nota_empenho')
                                                     ->label('Nota de Empenho')
                                                     ->maxLength(60),
 
-                                                Forms\Components\TextInput::make('additional_purchase_information_pedido')
+                                                TextInput::make('additional_purchase_information_pedido')
                                                     ->label('Pedido')
                                                     ->maxLength(60),
 
-                                                Forms\Components\TextInput::make('additional_purchase_information_contrato')
+                                                TextInput::make('additional_purchase_information_contrato')
                                                     ->label('Contrato')
                                                     ->maxLength(60),
                                             ])
@@ -221,24 +224,26 @@ class FiscalDocumentForm
 
                         Tab::make('Erros')
                             ->visibleOn([Operation::Edit])
+                            ->columnSpanFull()
+                            ->columns(['md' => 6, 'lg' => 12])
                             ->schema([
                                 Section::make('Histórico de Erros de Emissão')
                                     ->description('Mensagens registradas no campo errors_messages do documento fiscal.')
                                     ->schema([
-                                        Forms\Components\Repeater::make('errors_messages')
+                                        Repeater::make('errors_messages')
                                             ->label('Erros')
                                             ->schema([
-                                                Forms\Components\TextInput::make('at')
+                                                TextInput::make('at')
                                                     ->label('Data/Hora')
                                                     ->disabled(),
-                                                Forms\Components\TextInput::make('codigo')
+                                                TextInput::make('codigo')
                                                     ->label('Código')
                                                     ->disabled(),
-                                                Forms\Components\TextInput::make('job')
+                                                TextInput::make('job')
                                                     ->label('Origem')
-                                                    ->formatStateUsing(fn ($state, Get $get): ?string => $state ?? $get('origem'))
+                                                    ->formatStateUsing(fn($state, Get $get): ?string => $state ?? $get('origem'))
                                                     ->disabled(),
-                                                Forms\Components\Textarea::make('mensagem')
+                                                Textarea::make('mensagem')
                                                     ->label('Mensagem')
                                                     ->rows(3)
                                                     ->columnSpanFull()

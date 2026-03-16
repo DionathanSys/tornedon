@@ -18,8 +18,8 @@ class FiscalDocumentValidator
     {
         return [
             'invoice_id'                        => 'nullable|integer|exists:invoices,id',
-            'issued_at'                         => 'required|date',
-            'movement_at'                       => 'required|date',
+            'issued_at'                         => 'nullable|date',
+            'movement_at'                       => 'nullable|date',
             'document_key'                      => 'nullable|string|max:255',
             'document_number'                   => 'nullable|string|max:50',
             'document_series'                   => 'nullable|string|max:10',

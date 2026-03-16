@@ -208,4 +208,9 @@ class NfseDocumentService
             return false;
         }
     }
+
+    public static function getDefaultServiceCode(int $companyId): string
+    {
+        return FiscalDocument::query()->findOrFail($companyId)->nfse_default_service_code;
+    }
 }

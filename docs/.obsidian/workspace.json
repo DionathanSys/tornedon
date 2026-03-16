@@ -34,9 +34,21 @@
               "icon": "lucide-file",
               "title": "deploy-script"
             }
+          },
+          {
+            "id": "95e697b08e77a82b",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Excalidraw/Drawing 2026-03-16 10.42.42.excalidraw.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "Drawing 2026-03-16 10.42.42.excalidraw"
+            }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -93,7 +105,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "a36137f84796124f",
@@ -199,11 +212,12 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "f3f8e6c4b7779fd1",
+  "active": "95e697b08e77a82b",
   "lastOpenFiles": [
+    "deploy-script.md",
+    "Excalidraw/Drawing 2026-03-16 10.42.42.excalidraw.md",
     "redis-filas-supervisor.md",
     "Projeto/📥 Caixa de Entrada.md",
-    "deploy-script.md",
     "WEBHOOK-FUNCIONAMENTO.md",
     "plano-geracao-contas-a-receber.md",
     "arquitetura-fiscal-criacao-validacao-emissao.md",
@@ -226,7 +240,6 @@
     "FISCAL-DOCUMENT-ARCHITECTURE.md",
     "Excalidraw/Drawing 2026-03-05 17.11.47.excalidraw.md",
     "docs/regras-negocio/quote-production-workflow.md",
-    "docs/TABELAS-CAMPOS.md",
     "docs/regras-negocio",
     "docs",
     "Sem título",
