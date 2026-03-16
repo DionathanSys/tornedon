@@ -26,6 +26,8 @@ Esse fluxo executa:
 10. `artisan horizon:terminate`
 11. `artisan up`
 
+Antes e depois do ciclo de cache/deploy, o script tambem normaliza permissoes em `storage` e `bootstrap/cache` para evitar que esses caminhos fiquem presos ao usuario que rodou o ultimo comando no servidor.
+
 ## Variaveis opcionais
 
 Voce pode personalizar o comportamento sem editar o script:
@@ -49,6 +51,12 @@ BUILD_FRONTEND=1 ./deploy/deploy.sh
 - `RELOAD_SUPERVISOR`: `1` ou `0`. Padrao `0`
 - `SUPERVISORCTL_BIN`: comando usado para chamar o supervisor. Padrao `sudo supervisorctl`
 - `SUPERVISOR_PROGRAMS`: programas do supervisor a reiniciar. Padrao `tornedon-horizon tornedon-schedule`
+- `FIX_PERMISSIONS`: `1` ou `0`. Padrao `1`
+- `WEB_USER`: usuario do PHP-FPM/web server. Padrao `www-data`
+- `WEB_GROUP`: grupo compartilhado entre deploy e web server. Padrao `www-data`
+- `DEPLOY_USER`: usuario que deve manter acesso apos o deploy. Padrao usuario atual
+- `WRITABLE_PATHS`: caminhos gravaveis normalizados. Padrao `storage bootstrap/cache`
+- `DEPLOY_UMASK`: umask aplicada durante o deploy. Padrao `0002`
 
 ## Exemplos
 
@@ -75,6 +83,35 @@ Deploy com programas customizados no supervisor:
 ```bash
 RELOAD_SUPERVISOR=1 SUPERVISOR_PROGRAMS="tornedon-horizon tornedon-schedule" ./deploy/deploy.sh
 ```
+
+Deploy com grupo compartilhado e normalizacao explicita de permissoes:
+
+```bash
+WEB_USER=www-data WEB_GROUP=www-data DEPLOY_USER=dionathan ./deploy/deploy.sh
+```
+
+## Permissoes recomendadas no servidor
+
+Para impedir que `storage/logs`, `storage/framework` e `bootstrap/cache` quebrem quando o deploy for executado por um usuario e o PHP rodar por outro, mantenha um grupo compartilhado e ACL/default ACL nesses caminhos.
+
+Exemplo no Ubuntu/Debian:
+
+```bash
+sudo usermod -a -G www-data dionathan
+sudo chgrp -R www-data /home/dionathan/tornedon/storage /home/dionathan/tornedon/bootstrap/cache
+sudo chmod -R ug+rwX /home/dionathan/tornedon/storage /home/dionathan/tornedon/bootstrap/cache
+sudo find /home/dionathan/tornedon/storage /home/dionathan/tornedon/bootstrap/cache -type d -exec chmod g+s {} +
+sudo setfacl -R -m u:dionathan:rwx -m u:www-data:rwx -m g:www-data:rwx /home/dionathan/tornedon/storage /home/dionathan/tornedon/bootstrap/cache
+sudo setfacl -R -d -m u:dionathan:rwx -m u:www-data:rwx -m g:www-data:rwx /home/dionathan/tornedon/storage /home/dionathan/tornedon/bootstrap/cache
+```
+
+Se `setfacl` nao estiver instalado:
+
+```bash
+sudo apt install -y acl
+```
+
+Com isso, arquivos novos herdarao o grupo correto e tanto o usuario de deploy quanto o `www-data` continuarao conseguindo escrever logs, cache compilado e views compiladas sem se bloquearem mutuamente.
 
 ## Fluxo recomendado no servidor
 

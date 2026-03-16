@@ -15,9 +15,21 @@ RESTART_QUEUES="${RESTART_QUEUES:-1}"
 RELOAD_SUPERVISOR="${RELOAD_SUPERVISOR:-0}"
 SUPERVISORCTL_BIN="${SUPERVISORCTL_BIN:-sudo supervisorctl}"
 SUPERVISOR_PROGRAMS="${SUPERVISOR_PROGRAMS:-tornedon-horizon tornedon-schedule}"
+FIX_PERMISSIONS="${FIX_PERMISSIONS:-1}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-www-data}"
+DEPLOY_USER="${DEPLOY_USER:-$(id -un)}"
+WRITABLE_PATHS="${WRITABLE_PATHS:-storage bootstrap/cache}"
+SETFACL_BIN="${SETFACL_BIN:-setfacl}"
+CHGRP_BIN="${CHGRP_BIN:-chgrp}"
+CHMOD_BIN="${CHMOD_BIN:-chmod}"
+FIND_BIN="${FIND_BIN:-find}"
+DEPLOY_UMASK="${DEPLOY_UMASK:-0002}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTISAN="${ROOT_DIR}/artisan"
+
+umask "${DEPLOY_UMASK}"
 
 log() {
     printf '[deploy] %s\n' "$1"
@@ -33,6 +45,30 @@ run_supervisorctl() {
     (cd "$ROOT_DIR" && "${supervisor_cmd[@]}" "$@")
 }
 
+normalize_permissions() {
+    if [[ "${FIX_PERMISSIONS}" != "1" ]]; then
+        return
+    fi
+
+    log "Normalizando permissoes em ${WRITABLE_PATHS}"
+
+    local path
+    for path in ${WRITABLE_PATHS}; do
+        if [[ ! -e "${ROOT_DIR}/${path}" ]]; then
+            continue
+        fi
+
+        "${CHGRP_BIN}" -R "${WEB_GROUP}" "${ROOT_DIR}/${path}" 2>/dev/null || true
+        "${CHMOD_BIN}" -R ug+rwX "${ROOT_DIR}/${path}"
+        "${FIND_BIN}" "${ROOT_DIR}/${path}" -type d -exec "${CHMOD_BIN}" g+s {} +
+
+        if command -v "${SETFACL_BIN}" >/dev/null 2>&1; then
+            "${SETFACL_BIN}" -R -m "u:${DEPLOY_USER}:rwx" -m "u:${WEB_USER}:rwx" -m "g:${WEB_GROUP}:rwx" "${ROOT_DIR}/${path}" 2>/dev/null || true
+            "${SETFACL_BIN}" -R -d -m "u:${DEPLOY_USER}:rwx" -m "u:${WEB_USER}:rwx" -m "g:${WEB_GROUP}:rwx" "${ROOT_DIR}/${path}" 2>/dev/null || true
+        fi
+    done
+}
+
 finish() {
     if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
         log "Tirando a aplicacao do modo de manutencao"
@@ -44,6 +80,8 @@ trap finish EXIT
 
 log "Atualizando o codigo da branch ${APP_BRANCH}"
 run_in_root "$GIT_BIN" pull origin main
+
+normalize_permissions
 
 if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
     log "Colocando a aplicacao em modo de manutencao"
@@ -75,6 +113,8 @@ run_in_root "$PHP_BIN" "$ARTISAN" route:cache
 run_in_root "$PHP_BIN" "$ARTISAN" view:cache
 run_in_root "$PHP_BIN" "$ARTISAN" optimize
 
+normalize_permissions
+
 if [[ "${RESTART_QUEUES}" == "1" ]]; then
     log "Finalizando o Horizon de forma graciosa"
     run_in_root "$PHP_BIN" "$ARTISAN" horizon:terminate
@@ -92,4 +132,3 @@ if [[ "${RELOAD_SUPERVISOR}" == "1" ]]; then
 fi
 
 log "Deploy concluido no ambiente ${APP_ENVIRONMENT}"
-
