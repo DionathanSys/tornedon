@@ -38,11 +38,11 @@ class AccountReceivablesTable
                     ->sortable(),
                 TextColumn::make('due_amount')
                     ->label('Valor a Receber')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('paid_amount')
                     ->label('Valor Recebido')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(),
                 IconColumn::make('paid')
