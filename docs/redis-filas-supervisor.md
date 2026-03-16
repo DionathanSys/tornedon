@@ -1,10 +1,10 @@
-# Filas com Redis e Supervisor
+# Filas com Redis, Horizon e Supervisor
 
-Este projeto ja possui jobs Laravel em `app/Jobs`, então o caminho recomendado para producao é:
+Este projeto ja possui jobs Laravel em `app/Jobs`, entao o caminho recomendado para producao e:
 
 1. Redis como backend de fila e cache
-2. `php artisan queue:work` como worker
-3. `supervisor` para manter os workers vivos
+2. `php artisan horizon` para gerenciar os workers
+3. `supervisor` para manter o Horizon vivo
 
 ## 1. Ajustes no `.env`
 
@@ -67,10 +67,10 @@ php artisan config:cache
 
 ## 4. Testar a fila manualmente
 
-Antes do `supervisor`, valide o worker manualmente:
+Antes do `supervisor`, valide a execucao do Horizon manualmente:
 
 ```bash
-php artisan queue:work redis --queue=default,emails --sleep=1 --tries=3 --timeout=300 --verbose
+php artisan horizon
 ```
 
 Nesse projeto existe pelo menos uma fila nomeada:
@@ -78,6 +78,12 @@ Nesse projeto existe pelo menos uma fila nomeada:
 - `emails`: usada por [SendDocumentNotificationJob.php](/c:/Users/elisa/Documents/tornedon/app/Jobs/SendDocumentNotificationJob.php)
 
 Os demais jobs atualmente vao para a fila padrao `default`.
+
+Se quiser validar apenas o processamento da fila sem subir o dashboard do Horizon, ainda pode usar temporariamente:
+
+```bash
+php artisan queue:work redis --queue=default,emails --sleep=1 --tries=3 --timeout=300 --verbose
+```
 
 ## 5. Configurar o Supervisor
 
@@ -89,32 +95,33 @@ sudo systemctl enable supervisor
 sudo systemctl start supervisor
 ```
 
-Crie o arquivo `/etc/supervisor/conf.d/tornedon-worker.conf` com este conteudo:
+Crie o arquivo `/etc/supervisor/conf.d/tornedon-horizon.conf` com este conteudo:
 
 ```ini
-[program:tornedon-worker]
-process_name=%(program_name)s_%(process_num)02d
+[program:tornedon-horizon]
+process_name=%(program_name)s
 directory=/var/www/tornedon
-command=/usr/bin/php artisan queue:work redis --queue=default,emails --sleep=1 --tries=3 --timeout=300 --max-time=3600
+command=/usr/bin/php artisan horizon
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
 user=www-data
-numprocs=2
 redirect_stderr=true
-stdout_logfile=/var/www/tornedon/storage/logs/worker.log
+stdout_logfile=/var/www/tornedon/storage/logs/horizon.log
 stopwaitsecs=3600
 ```
 
 Se o caminho do PHP ou do projeto for outro, ajuste `command` e `directory`.
+
+Existe um exemplo versionado em [deploy/supervisor/tornedon-horizon.conf.example](/c:/Users/elisa/Documents/tornedon/deploy/supervisor/tornedon-horizon.conf.example).
 
 ## 6. Aplicar a configuracao do Supervisor
 
 ```bash
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl start tornedon-worker:*
+sudo supervisorctl start tornedon-horizon
 sudo supervisorctl status
 ```
 
@@ -125,10 +132,10 @@ Sempre que publicar alteracoes na aplicacao:
 ```bash
 php artisan optimize:clear
 php artisan config:cache
-php artisan queue:restart
+php artisan horizon:terminate
 ```
 
-O `queue:restart` faz o worker reiniciar de forma graciosa e o `supervisor` sobe o processo de novo.
+O `horizon:terminate` faz o processo principal encerrar de forma graciosa e o `supervisor` sobe o Horizon de novo com o codigo atualizado.
 
 ## 8. Conferencias rapidas
 
@@ -148,12 +155,13 @@ Ver logs:
 
 ```bash
 tail -f storage/logs/laravel.log
-tail -f storage/logs/worker.log
+tail -f storage/logs/horizon.log
 ```
 
 ## 9. Observacoes para este projeto
 
 - [config/queue.php](/c:/Users/elisa/Documents/tornedon/config/queue.php) agora esta preparado para Redis por padrao.
 - [database.php](/c:/Users/elisa/Documents/tornedon/config/database.php) ja possui conexoes Redis configuraveis por `.env`.
-- [SendDocumentNotificationJob.php](/c:/Users/elisa/Documents/tornedon/app/Jobs/SendDocumentNotificationJob.php) usa a fila `emails`, entao o worker precisa escutar `default,emails`.
-- Se voce quiser separar carga, pode criar dois programas no `supervisor`: um so para `emails` e outro para `default`.
+- [SendDocumentNotificationJob.php](/c:/Users/elisa/Documents/tornedon/app/Jobs/SendDocumentNotificationJob.php) usa a fila `emails`.
+- Com Horizon, a separacao de filas e concorrencia passa a ser configurada no arquivo `config/horizon.php`.
+

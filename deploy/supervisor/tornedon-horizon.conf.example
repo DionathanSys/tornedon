@@ -1,0 +1,13 @@
+[program:tornedon-horizon]
+process_name=%(program_name)s
+directory=/var/www/tornedon
+command=/usr/bin/php artisan horizon
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/var/www/tornedon/storage/logs/horizon.log
+stopwaitsecs=3600
+
