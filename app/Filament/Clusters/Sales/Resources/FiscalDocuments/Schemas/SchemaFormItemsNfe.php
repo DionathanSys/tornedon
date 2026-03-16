@@ -46,8 +46,7 @@ class SchemaFormItemsNfe
 
             TextInput::make('unit_of_measure')
                 ->label('UN')
-                ->saved(true)
-                ->disabled(),
+                ->saved(true),
 
             TextInput::make('description')
                 ->label('Descrição')
