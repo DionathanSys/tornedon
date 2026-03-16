@@ -43,7 +43,7 @@ finish() {
 trap finish EXIT
 
 log "Atualizando o codigo da branch ${APP_BRANCH}"
-run_in_root "$GIT_BIN" pull origin main
+# run_in_root "$GIT_BIN" pull origin main
 
 if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
     log "Colocando a aplicacao em modo de manutencao"
