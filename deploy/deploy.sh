@@ -43,15 +43,15 @@ finish() {
 trap finish EXIT
 
 log "Atualizando o codigo da branch ${APP_BRANCH}"
-# run_in_root "$GIT_BIN" pull origin main
+run_in_root "$GIT_BIN" pull origin main
 
 if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
     log "Colocando a aplicacao em modo de manutencao"
     run_in_root "$PHP_BIN" "$ARTISAN" down
 fi
 
-log "Instalando dependencias do Composer"
-run_in_root "$COMPOSER_BIN" install --no-dev --optimize-autoloader
+# log "Instalando dependencias do Composer"
+# run_in_root "$COMPOSER_BIN" install --no-dev --optimize-autoloader
 
 if [[ "${BUILD_FRONTEND}" == "1" ]]; then
     log "Instalando dependencias do frontend"

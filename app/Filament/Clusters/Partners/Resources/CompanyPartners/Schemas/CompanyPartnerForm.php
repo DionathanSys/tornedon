@@ -198,7 +198,7 @@ class CompanyPartnerForm
                             ->options(function () {
                                 // Obter empresas às quais o usuário pode ter acesso
                                 $currentUser = Auth::user();
-                                $userCompanies = $currentUser->companies()->pluck('companies.id');
+                                $userCompanies = $currentUser->companies->pluck('companies.id');
 
                                 // Excluir a empresa atual se aplicável
                                 $currentCompanyId = Filament::getTenant()->id;
