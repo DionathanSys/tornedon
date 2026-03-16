@@ -222,6 +222,7 @@ class NfseDocumentService
 
     public static function getDefaultCnaeCode(int $companyId): string
     {
-        return FiscalProfile::query()->where('company_id', $companyId)->value('service_cnae_code');
+        $cnaeCode = FiscalProfile::query()->where('company_id', $companyId)->value('service_cnae_code');
+        return str_replace(['.', '-'], '', $cnaeCode ?? '');
     }
 }

@@ -83,7 +83,9 @@ final class CreateNfseItemAction
                             ->maxLength(10),
                     ]),
 
-                ItemValueGroup::make(),
+                ItemValueGroup::make([
+                    'totalAmountField' => 'total_price',
+                ]),
 
                 Group::make()
                     ->columns(3)
