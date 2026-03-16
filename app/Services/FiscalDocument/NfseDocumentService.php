@@ -212,6 +212,6 @@ class NfseDocumentService
 
     public static function getDefaultServiceCode(int $companyId): string
     {
-        return FiscalProfile::query()->where('company_id', $companyId)->value('nfse_default_service_code');
+        return FiscalProfile::query()->where('company_id', $companyId)->value('default_service_code');
     }
 }
