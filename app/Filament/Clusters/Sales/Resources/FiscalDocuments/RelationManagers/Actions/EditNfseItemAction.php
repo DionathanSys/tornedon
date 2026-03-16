@@ -3,17 +3,22 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions;
 
 use App\Enum\Tax\IssExigibility;
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
 use App\Models\FiscalDocumentItem;
 use App\Models\Service;
 use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -29,15 +34,26 @@ final class EditNfseItemAction
                 && ! $livewire->getOwnerRecord()->nfseSent()
             )
             ->schema([
-                Select::make('service_id')
-                    ->label('Serviço')
-                    ->options(fn (RelationManager $livewire) => Service::where('company_id', $livewire->getOwnerRecord()->company_id)
-                        ->where('is_active', true)
-                        ->pluck('name', 'id')
-                    )
-                    ->searchable()
-                    ->required()
-                    ->native(false)
+                ModalSelectService::make('service_id')
+                    ->label('Selecionar Serviço')
+                    ->afterStateUpdated(function ($state, Set $set) {
+                        if (! $state) {
+                            return;
+                        }
+
+                        $service = Service::find($state);
+                        if (! $service) {
+                            return;
+                        }
+
+                        $set('description', $service->name);
+                        $set('unit_price', $service->price ? number_format($service->price, 2, ',', '.') : null);
+                        $set('service_code', $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode(Filament::getTenant()->id));
+                        $set('nbs_code', $service->nbs_code ?? NfseDocumentService::getDefaultNbsCode(Filament::getTenant()->id));
+                        $set('cnae_code', $service->cnae_code ?? NfseDocumentService::getDefaultCnaeCode(Filament::getTenant()->id));
+                        $set('iss_rate', $service->tax_rate ? (float) $service->tax_rate : null);
+                        $set('iss_exigibility', $service->iss_exigibility?->value);
+                    })
                     ->columnSpanFull(),
 
                 Textarea::make('description')
@@ -63,25 +79,9 @@ final class EditNfseItemAction
                             ->maxLength(10),
                     ]),
 
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        TextInput::make('quantity')
-                            ->label('Quantidade')
-                            ->numeric()
-                            ->required(),
-                        TextInput::make('unit_price')
-                            ->label('Valor Unitário')
-                            ->numeric()
-                            ->required()
-                            ->prefix('R$'),
-                        TextInput::make('total_price')
-                            ->label('Valor Total')
-                            ->numeric()
-                            ->required()
-                            ->prefix('R$'),
-                    ]),
+                ItemValueGroup::make([
+                    'totalAmountField' => 'total_price',
+                ]),
 
                 Group::make()
                     ->columns(3)
@@ -102,10 +102,6 @@ final class EditNfseItemAction
                             ->inline(false)
                             ->default(false),
                     ]),
-
-                Toggle::make('included_in_total')
-                    ->label('Inclui no Total')
-                    ->default(true),
 
                 Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')

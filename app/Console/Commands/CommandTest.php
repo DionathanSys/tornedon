@@ -34,23 +34,6 @@ class CommandTest extends Command
 
    public function handle()
    {
-      $data = [
-            'partner_id' => 3,
-            'company_id' => 3,
-            'type' => ['carrier'],
-            'invoice_threshold' => 11,
-            'is_active' => true,
-            'notify_service_order_closed' => false,
-            'notify_requisition_closed' => false,
-            'notify_fiscal_document_confirmed' => false,
-            'email_to_override' => null,
-            'email_cc_override' => null,
-            'email_bcc_override' => null,
-        ];
-        Log::debug(__METHOD__ . '@' . __LINE__, [
-            'message' => 'Dados preparados para criação de associação',
-            'data' => $data,
-        ]);
-        $companyPartner = CompanyPartner::create($data);
+    dd(FiscalProfile::find(3));
    }
 }

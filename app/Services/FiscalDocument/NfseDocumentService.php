@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument;
 
 use App\Models\FiscalDocument;
+use App\Models\FiscalProfile;
 use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
@@ -207,5 +208,21 @@ class NfseDocumentService
 
             return false;
         }
+    }
+
+    public static function getDefaultServiceCode(int $companyId): string
+    {
+        return FiscalProfile::query()->where('company_id', $companyId)->value('default_service_code');
+    }
+
+    public static function getDefaultNbsCode(int $companyId): string
+    {
+        return FiscalProfile::query()->where('company_id', $companyId)->value('default_nbs_code');
+    }
+
+    public static function getDefaultCnaeCode(int $companyId): string
+    {
+        $cnaeCode = FiscalProfile::query()->where('company_id', $companyId)->value('service_cnae_code');
+        return str_replace(['.', '-'], '', $cnaeCode ?? '');
     }
 }

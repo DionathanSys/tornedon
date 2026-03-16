@@ -30,6 +30,8 @@ use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Flex;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Leandrocfe\FilamentPtbrFormFields\Document;
@@ -161,24 +163,29 @@ class CompanyPartnerForm
                             ->inline(false)
                             ->default(false)
                             ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Textarea::make('company_partner.email_to_override')
-                            ->label('TO Override')
-                            ->rows(2)
-                            ->placeholder('cliente@exemplo.com;compras@exemplo.com')
-                            ->helperText('Opcional: separador por ; ou ,')
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                        Textarea::make('company_partner.email_cc_override')
-                            ->label('CC Override')
-                            ->rows(2)
-                            ->placeholder('financeiro@exemplo.com')
-                            ->helperText('Opcional: separador por ; ou ,')
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                        Textarea::make('company_partner.email_bcc_override')
-                            ->label('BCC Override')
-                            ->rows(2)
-                            ->placeholder('auditoria@exemplo.com')
-                            ->helperText('Opcional: separador por ; ou ,')
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                        Grid::make()
+                            ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
+                            ->columnSpanFull()
+                            ->schema([
+                                Textarea::make('company_partner.email_to_override')
+                                    ->label('TO Override')
+                                    ->rows(1)
+                                    ->placeholder('cliente@exemplo.com;compras@exemplo.com')
+                                    ->helperText('Opcional: separador por ; ou ,')
+                                    ->columnSpan(['md' => 2, 'lg' => 4]),
+                                Textarea::make('company_partner.email_cc_override')
+                                    ->label('CC Override')
+                                    ->rows(1)
+                                    ->placeholder('financeiro@exemplo.com')
+                                    ->helperText('Opcional: separador por ; ou ,')
+                                    ->columnSpan(['md' => 2, 'lg' => 4]),
+                                Textarea::make('company_partner.email_bcc_override')
+                                    ->label('BCC Override')
+                                    ->rows(1)
+                                    ->placeholder('auditoria@exemplo.com')
+                                    ->helperText('Opcional: separador por ; ou ,')
+                                    ->columnSpan(['md' => 2, 'lg' => 4]),
+                            ]),
                     ]),
                 Section::make('Replicar para outras Empresas')
                     ->columns([

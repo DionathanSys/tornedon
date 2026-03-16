@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers
 
 use App\Enum\Product\Origin;
 use App\Enum\Product\Unit;
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Models\FiscalDocumentItem;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
@@ -76,26 +77,7 @@ final class EditItemAction
                             ->required(),
                     ]),
 
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        TextInput::make('unit_price')
-                            ->label('Valor Unitário')
-                            ->numeric()
-                            ->required()
-                            ->prefix('R$'),
-                        TextInput::make('discount_amount')
-                            ->label('Desconto')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('total_price')
-                            ->label('Valor Total')
-                            ->numeric()
-                            ->required()
-                            ->prefix('R$'),
-                    ]),
+                ItemValueGroup::make(),
 
                 Group::make()
                     ->columns(3)
