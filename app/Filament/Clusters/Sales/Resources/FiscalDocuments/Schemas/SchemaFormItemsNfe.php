@@ -6,6 +6,7 @@ use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Services\ProductStock\ProductStockService;
 use App\Traits\ParsesMoneyValues;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -35,19 +36,23 @@ class SchemaFormItemsNfe
                     $product = $productStock->product;
 
                     // $set('product_code', $product->product_code);
-                    $set('description', $product->name);
-                    $set('unit_price', $product->price ? number_format($product->price, 2, ',', '.') : null);
+                    $set('description', $product->unit . '-' . $product->name);
+                    $set('unit', $product->unit);
+                    $set('unit_price',  $product->price ? number_format($product->price, 2, ',', '.') : null);
                     $set('total_price', $product->price ? number_format($product->price, 2, ',', '.') : null);
-                    $set('ncm_code', $product->ncm_code);
-                    $set('cest_code', $product->cest_code);
                 }),
+
+            Hidden::make('unit_of_measure')
+                ->saved(true),
 
             TextInput::make('description')
                 ->label('Descrição')
                 ->maxLength(255)
                 ->columnSpanFull(),
 
-            ItemValueGroup::make(),
+            ItemValueGroup::make([
+                'totalAmountField' => 'total_price',
+            ]),
 
             Group::make()
                 ->columns(3)
