@@ -41,7 +41,7 @@ class AccountReceivablesTable
                     ->money('BRL')
                     ->sortable(),
                 TextColumn::make('paid_amount')
-                    ->label('Valor Recebido')
+                    ->label('Vlr. Recebido')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(),
