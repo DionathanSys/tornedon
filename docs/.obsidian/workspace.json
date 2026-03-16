@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Projeto/📥 Caixa de Entrada.md",
+                "file": "deploy-script.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "📥 Caixa de Entrada"
+              "title": "deploy-script"
             }
           }
         ],
@@ -201,9 +201,11 @@
   },
   "active": "f3f8e6c4b7779fd1",
   "lastOpenFiles": [
+    "redis-filas-supervisor.md",
+    "Projeto/📥 Caixa de Entrada.md",
+    "deploy-script.md",
     "WEBHOOK-FUNCIONAMENTO.md",
     "plano-geracao-contas-a-receber.md",
-    "Projeto/📥 Caixa de Entrada.md",
     "arquitetura-fiscal-criacao-validacao-emissao.md",
     "integranotas-itens.md",
     "Consideracoes plano fiscal.md",
@@ -226,9 +228,7 @@
     "docs/regras-negocio/quote-production-workflow.md",
     "docs/TABELAS-CAMPOS.md",
     "docs/regras-negocio",
-    "docs/DATABASE-STANDARDS.md",
     "docs",
-    "TABELAS-CAMPOS.md",
     "Sem título",
     "Outros",
     "Excalidraw",
