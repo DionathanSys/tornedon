@@ -78,6 +78,11 @@ class FiscalDocumentItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function productStock(): BelongsTo
+    {
+        return $this->belongsTo(ProductStock::class, 'product_id');
+    }
+
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
