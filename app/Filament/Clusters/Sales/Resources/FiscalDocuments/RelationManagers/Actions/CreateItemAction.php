@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers
 use App\Enum\Product\Origin;
 use App\Enum\Product\Unit;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Models\FiscalDocumentItem;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
@@ -15,11 +16,13 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class CreateItemAction
 {
@@ -32,12 +35,9 @@ final class CreateItemAction
             ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent())
             ->modalHeading('Adicionar Item à Nota Fiscal')
             ->schema([
-                Select::make('product_id')
-                    ->label('Produto')
-                    ->relationship('product', 'name')
-                    ->searchable()
+                ModalSelectProductStock::make('product_id')
+                    ->label('Estoque do Produto')
                     ->required()
-                    ->native(false)
                     ->columnSpanFull(),
 
                 TextInput::make('description')
@@ -46,7 +46,7 @@ final class CreateItemAction
                     ->columnSpanFull(),
 
                 Group::make()
-                    ->columns(4)
+                    ->columns(3)
                     ->columnSpanFull()
                     ->schema([
                         TextInput::make('ncm_code')
@@ -58,77 +58,23 @@ final class CreateItemAction
                         TextInput::make('cfop_code')
                             ->label('CFOP')
                             ->maxLength(4),
-                        TextInput::make('barcode')
-                            ->label('Código de Barras')
-                            ->maxLength(60),
-                    ]),
-
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        Select::make('product_origin')
-                            ->label('Origem')
-                            ->options(Origin::toSelectArray())
-                            ->default('0')
-                            ->native(false),
-                        Select::make('unit_of_measure')
-                            ->label('Unidade Comercial')
-                            ->options(Unit::toSelectArray())
-                            ->default('UN')
-                            ->required()
-                            ->native(false),
-                        TextInput::make('quantity')
-                            ->label('Quantidade')
-                            ->numeric()
-                            ->required()
-                            ->default(1),
                     ]),
 
                 ItemValueGroup::make(),
 
-                Group::make()
+                Section::make()
                     ->columns(3)
+                    ->collapsible()
+                    ->collapsed()
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('freight_amount')
-                            ->label('Frete')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('insurance_amount')
-                            ->label('Seguro')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('other_expenses_amount')
-                            ->label('Outras Despesas')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
+                        Money::make('freight_amount')
+                            ->label('Frete'),
+                        Money::make('insurance_amount')
+                            ->label('Seguro'),
+                        Money::make('other_expenses_amount')
+                            ->label('Outras'),
                     ]),
-
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        Select::make('taxable_unit')
-                            ->label('Unidade Tributável')
-                            ->options(Unit::toSelectArray())
-                            ->native(false)
-                            ->helperText('Se diferente da unidade comercial'),
-                        TextInput::make('taxable_quantity')
-                            ->label('Qtd. Tributável')
-                            ->numeric(),
-                        TextInput::make('taxable_unit_price')
-                            ->label('Valor Unit. Tributável')
-                            ->numeric()
-                            ->prefix('R$'),
-                    ]),
-
-                Toggle::make('included_in_total')
-                    ->label('Inclui no Total')
-                    ->default(true),
 
                 Textarea::make('additional_information')
                     ->label('Informações Adicionais do Item')
