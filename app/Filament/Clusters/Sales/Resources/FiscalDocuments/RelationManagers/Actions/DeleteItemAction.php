@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\Log;
 
 final class DeleteItemAction
 {
-    public static function make(): DeleteAction
+    public static function make(string $name = 'delete'): DeleteAction
     {
-        return DeleteAction::make()
-            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent())
+        return DeleteAction::make($name)
+            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent()
+                && ! $livewire->getOwnerRecord()->nfseSent()
+            )
             ->requiresConfirmation()
             ->modalHeading('Excluir Item')
             ->modalDescription('Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.')

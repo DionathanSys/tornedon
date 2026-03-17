@@ -2,15 +2,17 @@
 
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas;
 
+use App\Domain\DTO\FiscalDocument\FiscalDocumentItemSourceDTO;
+use App\Enum\Product\Origin;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
-use App\Services\ProductStock\ProductStockService;
-use App\Traits\ParsesMoneyValues;
+use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProduct;
+use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
@@ -18,58 +20,73 @@ use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class SchemaFormItemsNfe
 {
-
     public static function make(string $context = 'create'): array
     {
         return [
-            ModalSelectProductStock::make('product_id')
-                ->label('Estoque do Produto')
+           ModalSelectProduct::make('product_id')
+                ->label('Produto')
                 ->required()
                 ->afterStateUpdated(function ($state, Set $set) {
                     if (! $state) return;
 
-                    $productStockService = app(ProductStockService::class);
-                    $productStock = $productStockService->find($state);
-
-                    if (! $productStock) return;
-
-                    $product = $productStock->product;
-
-                    // $set('product_code', $product->product_code);
-                    $set('description', $product->name);
-                    $set('unit', $product->unit->value);
-                    $set('unit_price',  $product->price ? number_format($product->price, 2, ',', '.') : null);
-                    $set('total_price', $product->price ? number_format($product->price, 2, ',', '.') : null);
-                    $set('ncm_code', $product->tax?->ncm_code);
-                    $set('cest_code', $product->tax?->cest_code);
+                    self::resolveItem($set, $state);
                 }),
 
-            TextInput::make('unit_of_measure')
-                ->label('UN')
-                ->saved(true),
-
-            TextInput::make('description')
+            FusedGroup::make()
                 ->label('Descrição')
-                ->maxLength(255)
-                ->columnSpanFull(),
+                ->columns(6)
+                ->columnSpanFull()
+                ->schema([
+                    Hidden::make('product_stock_id')
+                        ->live(),
+                    TextInput::make('unit_of_measure')
+                        ->label('UN')
+                        ->saved(true)
+                        ->columnSpan(1),
+                    TextInput::make('description')
+                        ->label('Descrição')
+                        ->maxLength(255)
+                        ->columnSpan(5),
+                    Callout::make('alert')
+                        ->description('Produto não possui vínculo com estoque')
+                        ->visible(fn($get) => $get('product_stock_id'))
+                        ->columnSpanFull(),
+                ]),
 
             ItemValueGroup::make([
                 'totalAmountField' => 'total_price',
             ]),
 
+            // Códigos fiscais
             Group::make()
-                ->columns(3)
+                ->columns(['md' => 6, 'lg' => 12])
                 ->columnSpanFull()
                 ->schema([
+                    Select::make('product_origin')
+                        ->label('Origem')
+                        ->options(Origin::toSelectArray())
+                        ->required()
+                        ->columnSpan([ 'md' => 4, 'lg' => 8])
+                        ->native(false),
                     TextInput::make('ncm_code')
                         ->label('NCM')
-                        ->maxLength(8),
+                        ->maxLength(8)
+                        ->columnSpan([ 'md' => 2, 'lg' => 4]),
                     TextInput::make('cest_code')
                         ->label('CEST')
-                        ->maxLength(9),
+                        ->maxLength(9)
+                        ->visible(false)
+                        ->columnSpan([ 'md' => 3, 'lg' => 6]),
                     TextInput::make('cfop_code')
                         ->label('CFOP')
-                        ->maxLength(4),
+                        ->visible(false)
+                        ->maxLength(4)
+                        ->columnSpan([ 'md' => 3, 'lg' => 6]),
+                    TextInput::make('barcode')  
+                        ->label('Código de Barras')
+                        ->maxLength(60)
+                        ->visible(false)
+                        ->columnSpan([ 'md' => 3, 'lg' => 6]),
                 ]),
 
             Section::make('Outros Valores')
@@ -92,5 +109,37 @@ class SchemaFormItemsNfe
                 ->maxLength(500)
                 ->columnSpanFull(),
         ];
+    }
+
+    /**
+     * Resolve os dados do produto via serviço especialista e preenche o formulário.
+     */
+    public static function resolveItem(Set $set, int $productId): void
+    {
+        $dto = app(FiscalDocumentItemResolverService::class)
+            ->resolveForProduct($productId);
+
+        if (! $dto) {
+            return;
+        }
+
+        self::applyDto($set, $dto);
+    }
+
+    /**
+     * Aplica os valores do DTO nos campos do formulário.
+     */
+    private static function applyDto(Set $set, FiscalDocumentItemSourceDTO $dto): void
+    {
+        $set('product_stock_id', $dto->productStockId);
+        $set('product_code',     $dto->productCode);
+        $set('description',      $dto->name);
+        $set('unit_of_measure',  $dto->unit);
+        $set('unit_price',       $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('total_price',      $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('product_origin',   $dto->productOrigin);
+        $set('ncm_code',         $dto->ncmCode);
+        $set('cest_code',        $dto->cestCode);
+        $set('barcode',          $dto->barcode);
     }
 }
