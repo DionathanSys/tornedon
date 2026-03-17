@@ -16,6 +16,7 @@ use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class SchemaFormItemsNfe
@@ -123,6 +124,7 @@ class SchemaFormItemsNfe
             return;
         }
 
+        Log::debug('DTO: ' . json_encode($dto));
         self::applyDto($set, $dto);
     }
 
