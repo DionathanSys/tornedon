@@ -24,7 +24,7 @@ class FiscalDocumentItemResolverService
     public function resolveForProduct(int $productId): ?FiscalDocumentItemSourceDTO
     {
         $product = $this->productService->find($productId);
-        $stock = $product->stocks->first();
+        $stock = $product->stock;
 
         if (! $stock && ! $product) {
             return null;
