@@ -2,7 +2,9 @@
 
 namespace App\Services\FiscalDocument\Validators\Items;
 
+use App\Enum\Product\Origin;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -98,16 +100,15 @@ class NfeItemValidator
     {
         return [
             'fiscal_document_id'                            => 'required|integer|exists:fiscal_documents,id',
-            'product_id'                                    => 'nullable|integer|exists:products,id',
-            'product_code'                                  => 'nullable|string|max:60',
-            'description'                                   => 'nullable|string|max:255',
-            'service_id'                                    => 'nullable|integer|exists:services,id',
-            'item_number'                                   => 'nullable|integer|min:1',
+            'product_id'                                    => 'required|integer|exists:products,id',
+            'product_code'                                  => 'required|string|max:60',
+            'description'                                   => 'required|string|max:255',
+            'item_number'                                   => 'required|integer|min:1',
             'ncm_code'                                      => 'nullable|string|size:8',
             'cest_code'                                     => 'nullable|string|max:9',
             'barcode'                                       => 'nullable|string|max:60',
             'cfop_code'                                     => 'nullable|string|size:4',
-            'product_origin'                                => 'nullable|in:0,1,2,3,4,5,6,7,8',
+            'product_origin'                                => ['nullable', Rule::enum(Origin::class)],
             'quantity'                                      => 'required|numeric|min:0.0001',
             'unit_price'                                    => 'required|numeric|min:0',
             'total_price'                                   => 'required|numeric|min:0',
@@ -120,7 +121,6 @@ class NfeItemValidator
             'insurance_amount'                              => 'nullable|numeric|min:0',
             'other_expenses_amount'                         => 'nullable|numeric|min:0',
             'additional_information'                        => 'nullable|string|max:500',
-            'included_in_total'                             => 'nullable|boolean',
             'tax_data'                                      => 'nullable|array',
         ];
     }
@@ -135,7 +135,8 @@ class NfeItemValidator
             'service_id.exists'             => 'Serviço não encontrado.',
             'ncm_code.size'                 => 'O código NCM deve ter exatamente 8 dígitos.',
             'cfop_code.size'                => 'O código CFOP deve ter exatamente 4 dígitos.',
-            'product_origin.in'             => 'A origem do produto é inválida.',
+            'description.required'          => 'A descrição do produto é obrigatória.',
+            'product_origin.enum'           => 'A origem do produto é inválida.',
             'quantity.required'             => 'A quantidade é obrigatória.',
             'quantity.min'                  => 'A quantidade deve ser maior que zero.',
             'unit_price.required'           => 'O preço unitário é obrigatório.',
@@ -175,7 +176,6 @@ class NfeItemValidator
             'insurance_amount'                              => 'sometimes|nullable|numeric|min:0',
             'other_expenses_amount'                         => 'sometimes|nullable|numeric|min:0',
             'additional_information'                        => 'sometimes|nullable|string|max:500',
-            'included_in_total'                             => 'sometimes|nullable|boolean',
             'tax_data'                                      => 'sometimes|nullable|array',
         ];
     }

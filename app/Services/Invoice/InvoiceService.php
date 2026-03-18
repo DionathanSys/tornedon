@@ -281,7 +281,6 @@ class InvoiceService
                 ]);
 
                 $items = [];
-                $itemNumber = 1;
 
                 if ($documentType === DocumentModel::NFSE->value) {
                     foreach ($invoice->serviceOrders as $serviceOrder) {
@@ -291,7 +290,6 @@ class InvoiceService
                             $items[] = [
                                 'fiscal_document_id' => $fiscalDocument->id,
                                 'service_id'         => $serviceOrderItem->service_id,
-                                'item_number'        => $itemNumber,
                                 'description'        => $service?->name ?? $serviceOrderItem->observations,
                                 'unit_of_measure'    => $service?->unit_of_measure ?? 'UN',
                                 'quantity'           => (float) $serviceOrderItem->quantity,
@@ -303,8 +301,6 @@ class InvoiceService
                                 'iss_rate'           => $service?->tax_rate !== null ? (float) $service->tax_rate : null,
                                 'included_in_total'  => true,
                             ];
-
-                            $itemNumber++;
                         }
                     }
                 } else {
@@ -316,7 +312,6 @@ class InvoiceService
                             $items[] = [
                                 'fiscal_document_id' => $fiscalDocument->id,
                                 'product_id'         => $reqItem->product_id,
-                                'item_number'        => $itemNumber,
                                 'product_code'       => $product?->product_code,
                                 'product_origin'     => $productTax?->product_origin?->value,
                                 'barcode'            => $product?->barcode,
@@ -329,8 +324,6 @@ class InvoiceService
                                 'total_price'        => round((float) $reqItem->quantity * (float) $reqItem->unit_price, 2),
                                 'included_in_total'  => true,
                             ];
-
-                            $itemNumber++;
                         }
                     }
                 }

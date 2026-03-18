@@ -126,7 +126,7 @@ class BuildNfePayloadAction
                     'quantidade_tributavel'    => number_format($quantityTaxable, 4, '.', ''),
                     'valor_unitario_tributavel'=> number_format($unitPriceTaxable, 10, '.', ''),
                     'origem'                   => $item->product_origin,
-                    'inclui_no_total'          => $item->included_in_total ? '1' : '0',
+                    'inclui_no_total'          => '1',
                     'imposto'                  => $taxData['imposto'] ?? [],
                     'valor_desconto'           => number_format((float) ($item->discount_amount ?? 0), 2, '.', ''),
                     'valor_frete'              => number_format((float) ($item->freight_amount ?? 0), 2, '.', ''),

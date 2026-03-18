@@ -41,7 +41,7 @@ class NfseItemValidator
             'items.*.unit_price.required'         => 'O preço unitário é obrigatório no item :position.',
             'items.*.total_price.required'        => 'O valor do serviço é obrigatório no item :position.',
             'items.*.total_price.min'             => 'O valor do serviço deve ser maior que zero no item :position.',
-            'items.*.iss_rate.max'            => 'A alíquota ISS não pode exceder 100% no item :position.',
+            'items.*.iss_rate.max'                => 'A alíquota ISS não pode exceder 100% no item :position.',
         ];
     }
 
