@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enum;
+use App\Models\Address;
 use App\Models\CompanyPartner;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
@@ -34,6 +35,11 @@ class CommandTest extends Command
 
    public function handle()
    {
-    dd(FiscalProfile::find(3));
+         $companyPartner = CompanyPartner::where('company_id', 3)
+            ->where('partner_id', 2)
+            ->first();
+            
+            return $companyPartner->addresses()->first();
+        return $companyPartner ? $companyPartner->addresses()->first() : null;
    }
 }

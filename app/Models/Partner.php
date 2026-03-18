@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enum;
 use App\Services\DataReplication\ReplicationService;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;   
@@ -70,5 +71,8 @@ class Partner extends Model
     {
         return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
     }
+
+
+
 
 }

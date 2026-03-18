@@ -50,12 +50,14 @@ class ItemsRelationManager extends RelationManager
                 TextColumn::make('ncm_code')
                     ->label('NCM')
                     ->searchable()
-                    ->visible(! $isNfse),
+                    ->visible(! $isNfse)
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('cfop_code')
                     ->label('CFOP')
                     ->searchable()
-                    ->visible(! $isNfse),
+                    ->visible(! $isNfse)
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 // NFS-e columns
                 TextColumn::make('service.name')
@@ -141,11 +143,6 @@ class ItemsRelationManager extends RelationManager
                     ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visible(! $isNfse),
-
-                IconColumn::make('included_in_total')
-                    ->label('No Total')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Criado Em')

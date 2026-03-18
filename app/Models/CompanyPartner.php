@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CompanyPartner extends Model
 {
     protected $table = 'company_partner';
+
+    protected $appends = [
+        'address',
+    ];
 
     protected $fillable = [
         'partner_id',
@@ -57,5 +62,12 @@ class CompanyPartner extends Model
     public function emailDispatches(): HasMany
     {
         return $this->hasMany(EmailDispatch::class, 'company_partner_id', 'id');
+    }
+
+    public function address(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->company()->first()->address
+        );
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Address;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\Address;
+use App\Models\CompanyPartner;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,15 @@ class AddressService
     {
         $query = Address::where('company_partner_id', $companyPartnerId);
         return $query->get();
+    }
+
+    public function getByCompanyId(int $companyId, int $partnerId): ?Address
+    {
+        $companyPartner = CompanyPartner::where('company_id', $companyId)
+            ->where('partner_id', $partnerId)
+            ->first();
+            
+        return $companyPartner ? $companyPartner->addresses()->first() : null;
     }
 
 

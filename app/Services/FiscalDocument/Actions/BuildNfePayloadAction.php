@@ -47,8 +47,8 @@ class BuildNfePayloadAction
             $customer = $fiscalDocument->customer;
             $address  = $customer->address->first();
 
-            $issuedAt    = $fiscalDocument->issued_at->format('Y-m-d') . 'T00:00:00-03:00';
-            $movementAt  = $fiscalDocument->movement_at->format('Y-m-d') . 'T00:00:00-03:00';
+            $issuedAt    = now()->format('Y-m-d') . 'T00:00:00-03:00';
+            $movementAt  = now()->format('Y-m-d') . 'T00:00:00-03:00';
 
             // ------------------------------------------------------------------
             // Monta destinatário

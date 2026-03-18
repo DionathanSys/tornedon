@@ -6,9 +6,14 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
 class Address extends Model
 {
+    protected $appends = [
+        'inside_state',
+    ];
+
     protected $fillable = [
         'company_partner_id',
         'street',
@@ -43,6 +48,15 @@ class Address extends Model
     {
         return Attribute::make(
             get: fn() => $this->formatFullAddress()
+        );
+    }
+
+    protected function insideState(): Attribute
+    {
+        $companyAddress = $this->companyPartner->address;
+
+        return Attribute::make(
+            get: fn() => Str::upper($this->state) === Str::upper($companyAddress['state'])
         );
     }
 
@@ -84,4 +98,5 @@ class Address extends Model
 
         return implode(', ', $parts);
     }
+
 }

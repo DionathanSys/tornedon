@@ -29,6 +29,7 @@ use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Operation;
 
 class FiscalDocumentForm
@@ -51,7 +52,7 @@ class FiscalDocumentForm
                                     ->schema([
                                         SelectPartner::make('customer_id')
                                             ->label('Cliente / Tomador')
-                                            ->columnSpan(['md' => 6, 'lg' => 4])
+                                            ->columnSpan(['md' => 4, 'lg' => 8])
                                             ->disabledOn('edit'),
 
                                         Select::make('document_type')
@@ -62,7 +63,7 @@ class FiscalDocumentForm
                                             ->native(false)
                                             ->live()
                                             ->disabledOn('edit')
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                            ->columnSpan(['md' => 2, 'lg' => 4]),
 
                                         TextEntry::make('invoice_id')
                                             ->label('Fatura Vinculada')
@@ -100,7 +101,7 @@ class FiscalDocumentForm
                                             ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
                                             ->searchable()
                                             ->required()
-                                            ->columnSpan(['md' => 2]),
+                                            ->columnSpan(['md' => 2, 'lg' => 4]),
 
                                         DatePicker::make('issued_at')
                                             ->label('Data de Emissão')
@@ -109,16 +110,16 @@ class FiscalDocumentForm
                                             ->required()
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
 
                                         DatePicker::make('movement_at')
                                             ->label('Data Entrada/Saída')
-                                            ->visibleOn('edit')
+                                            ->visible(false)
                                             ->readOnly()
                                             ->required()
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
 
                                         Select::make('operation_type')
                                             ->label('Tipo de Operação')
@@ -126,7 +127,7 @@ class FiscalDocumentForm
                                             ->default(OperationType::SAIDA->value)
                                             ->required()
                                             ->native(false)
-                                            ->columnSpan(['md' => 2]),
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
 
                                         Select::make('issue_purpose')
                                             ->label('Finalidade de Emissão')
@@ -134,20 +135,21 @@ class FiscalDocumentForm
                                             ->default(IssuePurpose::NORMAL->value)
                                             ->required()
                                             ->native(false)
-                                            ->columnSpan(['md' => 2]),
-
-                                        Toggle::make('is_final_consumer')
-                                            ->label('Consumidor Final')
-                                            ->inline(false)
-                                            ->default(true)
-                                            ->columnSpan(['md' => 1]),
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnStart(1),
 
                                         Select::make('buyer_presence_indicator')
                                             ->label('Indicador de Presença')
                                             ->options(BuyerPresenceIndicator::toSelectArray())
                                             ->default(BuyerPresenceIndicator::OUTROS->value)
                                             ->native(false)
-                                            ->columnSpan(['md' => 2]),
+                                            ->columnSpan(['md' => 2, 'lg' => 4]),
+
+                                        Toggle::make('is_final_consumer')
+                                            ->label('Consumidor Final')
+                                            ->inline(false)
+                                            ->default(true)
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
@@ -192,34 +194,34 @@ class FiscalDocumentForm
                                             ->label('Informações ao Contribuinte')
                                             ->rows(3)
                                             ->maxLength(2000)
-                                            ->columnSpan(['md' => 2]),
+                                            ->columnSpan(['md' => 3, 'lg' => 6]),
 
                                         Textarea::make('additional_tax_information')
                                             ->label('Informações ao Fisco')
                                             ->rows(3)
                                             ->maxLength(2000)
-                                            ->columnSpan(['md' => 2]),
-
-                                        Section::make('Informações adicionais de compra')
-                                            ->schema([
-                                                TextInput::make('additional_purchase_information_nota_empenho')
-                                                    ->label('Nota de Empenho')
-                                                    ->maxLength(60),
-
-                                                TextInput::make('additional_purchase_information_pedido')
-                                                    ->label('Pedido')
-                                                    ->maxLength(60),
-
-                                                TextInput::make('additional_purchase_information_contrato')
-                                                    ->label('Contrato')
-                                                    ->maxLength(60),
-                                            ])
-                                            ->columns(['md' => 3])
-                                            ->columnSpanFull()
-                                            ->collapsible(),
+                                            ->columnSpan(['md' => 3, 'lg' => 6]),
                                     ])
-                                    ->columns(['md' => 2])
-                                    ->collapsible(),
+                                    ->collapsible()
+                                    ->collapsed(),
+                                Section::make('Informações adicionais de compra')
+                                    ->schema([
+                                        TextInput::make('additional_purchase_information_nota_empenho')
+                                            ->label('Nota de Empenho')
+                                            ->maxLength(60),
+
+                                        TextInput::make('additional_purchase_information_pedido')
+                                            ->label('Pedido')
+                                            ->maxLength(60),
+
+                                        TextInput::make('additional_purchase_information_contrato')
+                                            ->label('Contrato')
+                                            ->maxLength(60),
+                                    ])
+                                    ->columns(['md' => 3])
+                                    ->columnSpanFull()
+                                    ->collapsible()
+                                    ->collapsed(),
                             ]),
 
                         Tab::make('Erros')
