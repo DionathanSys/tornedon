@@ -40,7 +40,7 @@ class SendNfseAction
             // Impede reenvio de NFS-e já em processamento ou autorizada
             if ($fiscalDocument->nfse_status !== null && ! $fiscalDocument->isNfseRejected()) {
                 $msgErro = 'Esta NFS-e já foi enviada (status: ' . $fiscalDocument->nfse_status?->description() . ')';
-                $this->setError($msgErro, (array) ($resp->erros ?? []));
+                $this->setError($msgErro);
                 Log::warning('SendNfseAction: tentativa de reenvio bloqueada', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'status_atual'       => $fiscalDocument->nfse_status?->value,
@@ -139,7 +139,7 @@ class SendNfseAction
                 $fiscalDocument->update(['errors_messages' => $errors]);
 
                 $msgErro = 'Erro de validação nos dados da NFS-e: ' . ($resp->mensagem ?? 'verifique os campos');
-                $this->setError($msgErro);
+                $this->setError($msgErro, (array) ($resp->erros ?? []));
                 Log::warning('SendNfseAction: erro de validação na API', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'codigo'             => $resp->codigo ?? null,
