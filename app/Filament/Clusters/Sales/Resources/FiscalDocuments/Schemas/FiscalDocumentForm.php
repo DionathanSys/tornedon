@@ -235,15 +235,21 @@ class FiscalDocumentForm
                                     ->schema([
                                         Repeater::make('errors_messages')
                                             ->label('Erros')
+                                            ->columnSpanFull()
+                                            ->compact()
+                                            ->columns(['md' => 6, 'lg' => 12])
                                             ->schema([
                                                 TextInput::make('at')
                                                     ->label('Data/Hora')
+                                                    ->columnSpan(['md' => 2, 'lg' => 4])
                                                     ->disabled(),
                                                 TextInput::make('codigo')
                                                     ->label('Código')
+                                                    ->columnSpan(['md' => 2, 'lg' => 4])
                                                     ->disabled(),
                                                 TextInput::make('job')
                                                     ->label('Origem')
+                                                    ->columnSpan(['md' => 2, 'lg' => 4])
                                                     ->formatStateUsing(fn($state, Get $get): ?string => $state ?? $get('origem'))
                                                     ->disabled(),
                                                 Textarea::make('mensagem')
