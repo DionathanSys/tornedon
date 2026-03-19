@@ -37,7 +37,7 @@ class PrintNfePreviewAction
 
             if (empty($natureValue)) {
                 $msgErro = 'Natureza da operação não definida. Preencha o campo antes de gerar o preview.';
-                $this->setError($msgErro);
+                $this->setError($msgErro, (array) ($resp->erros ?? []));
                 Log::warning('PrintNfePreviewAction: natureza de operação ausente', [
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);

@@ -40,7 +40,7 @@ class SendNfeAction
             // Impede reenvio de NF-e já em processamento ou autorizada
             if ($fiscalDocument->nfe_status !== null && ! $fiscalDocument->isRejected()) {
                 $msgErro = 'Esta NF-e já foi enviada (status: ' . $fiscalDocument->nfe_status?->description() . ')';
-                $this->setError($msgErro);
+                $this->setError($msgErro, (array) ($resp->erros ?? []));
                 Log::warning('SendNfeAction: tentativa de reenvio bloqueada', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'status_atual'       => $fiscalDocument->nfe_status?->value,
@@ -175,7 +175,7 @@ class SendNfeAction
             $fiscalDocument->update(['errors_messages' => $errors]);
 
             $msgErro = $resp->mensagem ?? 'Erro ao enviar NF-e';
-            $this->setError($msgErro);
+            $this->setError($msgErro, (array) ($resp->erros ?? []));
             Log::error('SendNfeAction: erro na resposta da API', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'codigo'             => $resp->codigo ?? null,

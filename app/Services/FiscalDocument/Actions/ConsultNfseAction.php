@@ -103,6 +103,8 @@ class ConsultNfseAction
                     'codigo'             => $resp->codigo ?? null,
                     'mensagem'           => $resp->mensagem ?? null,
                 ]);
+
+                $this->setError($resp->mensagem ?? 'NFS-e rejeitada pela API.', (array) ($resp->erros ?? []));
             }
 
             $fiscalDocument->update($updates);
@@ -136,6 +138,10 @@ class ConsultNfseAction
                 'fiscal_document_id' => $fiscalDocument->id,
                 'status_final'       => $updates['nfse_status'] ?? null,
             ]);
+
+            if ($this->hasError()) {
+                return false;
+            }
 
             $this->setSuccess();
             return true;

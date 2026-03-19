@@ -37,7 +37,7 @@ class PrintNfeDanfeAction
             $resp = $sdk->pdf(['chave' => $fiscalDocument->document_key]);
 
             if (! ($resp->sucesso ?? false)) {
-                $this->setError($resp->mensagem ?? 'Erro ao gerar DANFE');
+                $this->setError($resp->mensagem ?? 'Erro ao gerar DANFE', (array) ($resp->erros ?? []));
                 return null;
             }
 
