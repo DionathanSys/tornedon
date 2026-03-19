@@ -196,6 +196,12 @@ class NfeDocumentService
                 $this->persistActionError($doc, 'preview', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
+                Log::error('NfeDocumentService::preview - falha ao gerar preview', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'fiscal_document_id' => $doc->id,
+                    'message'            => $this->getMessageUser(),
+                    'erros'              => $action->getErrors(),
+                ]);
                 return null;
             }
 
