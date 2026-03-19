@@ -37,6 +37,7 @@ final class DeleteItemAction
 
                 notify::success(message: $service->getMessage());
                 return $result;
-            });
+            })
+            ->successNotification(null);
     }
 }

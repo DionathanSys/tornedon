@@ -37,6 +37,7 @@ final class EditItemAction
 
                 notify::success(message: $service->getMessage());
                 return $item;
-            });
+            })
+            ->successNotification(null);
     }
 }
