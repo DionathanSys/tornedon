@@ -83,6 +83,7 @@ class PrintNfePreviewAction
                     'fiscal_document_id' => $fiscalDocument->id,
                     'codigo'             => $resp->codigo ?? null,
                     'mensagem'           => $msgErro,
+                    'resp'               => $resp,
                 ]);
                 return null;
             }
