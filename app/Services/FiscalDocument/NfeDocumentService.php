@@ -59,7 +59,7 @@ class NfeDocumentService
         try {
             if ($doc->nfeSent() && ! $doc->isRejected()) {
                 $this->setError('NF-e já enviada. Status atual: ' . $doc->nfe_status?->description());
-                $this->persistActionError($doc, 'emitir', $this->getMessage(), [
+                $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                     'contexto' => [
                         'status_atual' => $doc->nfe_status?->value,
                     ],
@@ -81,7 +81,7 @@ class NfeDocumentService
         } catch (\Exception $e) {
             $this->setError('Erro ao enfileirar emissão da NF-e: ' . $e->getMessage());
 
-            $this->persistActionError($doc, 'emitir', $this->getMessage(), [
+            $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                 'contexto' => [
                     'exception'       => $e->getMessage(),
                     'serie'           => $serie,
@@ -112,8 +112,8 @@ class NfeDocumentService
             $result = $action->execute($doc);
 
             if (! $result || $action->hasError()) {
-                $this->setError($action->getMessage());
-                $this->persistActionError($doc, 'consultar', $action->getMessage(), [
+                $this->setError($action->getMessage(), $action->getErrors());
+                $this->persistActionError($doc, 'consultar', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
                 return false;
@@ -124,7 +124,7 @@ class NfeDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao consultar NF-e: ' . $e->getMessage());
-            $this->persistActionError($doc, 'consultar', $this->getMessage(), [
+            $this->persistActionError($doc, 'consultar', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
                 ],
@@ -152,8 +152,8 @@ class NfeDocumentService
             $pdf    = $action->execute($doc);
 
             if ($pdf === null || $action->hasError()) {
-                $this->setError($action->getMessage());
-                $this->persistActionError($doc, 'danfe', $action->getMessage(), [
+                $this->setError($action->getMessage(), $action->getErrors());
+                $this->persistActionError($doc, 'danfe', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
                 return null;
@@ -164,7 +164,7 @@ class NfeDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao gerar DANFE: ' . $e->getMessage());
-            $this->persistActionError($doc, 'danfe', $this->getMessage(), [
+            $this->persistActionError($doc, 'danfe', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
                 ],
@@ -192,8 +192,8 @@ class NfeDocumentService
             $result = $action->execute($doc);
 
             if ($result === null || $action->hasError()) {
-                $this->setError($action->getMessage());
-                $this->persistActionError($doc, 'preview', $action->getMessage(), [
+                $this->setError($action->getMessage(), $action->getErrors());
+                $this->persistActionError($doc, 'preview', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
                 return null;
@@ -204,7 +204,7 @@ class NfeDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao gerar preview da NF-e: ' . $e->getMessage());
-            $this->persistActionError($doc, 'preview', $this->getMessage(), [
+            $this->persistActionError($doc, 'preview', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
                 ],

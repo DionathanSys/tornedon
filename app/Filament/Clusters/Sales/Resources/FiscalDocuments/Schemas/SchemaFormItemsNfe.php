@@ -38,6 +38,8 @@ class SchemaFormItemsNfe
                 ->columns(6)
                 ->columnSpanFull()
                 ->schema([
+                    Hidden::make('product_code')
+                        ->saved(),
                     Hidden::make('product_stock_id')
                         ->live(),
                     TextInput::make('unit_of_measure')

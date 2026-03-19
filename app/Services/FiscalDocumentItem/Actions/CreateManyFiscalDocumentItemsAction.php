@@ -6,6 +6,7 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\Product\Origin;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\Product;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -61,6 +62,7 @@ class CreateManyFiscalDocumentItemsAction
                     $item['product_origin'] = Origin::NACIONAL->value;
                 }
 
+                $item = $this->ensureProductCode($item);
                 $item = $this->normalizeForPersistence($item);
 
                 // O insert() em lote ignora casts do Eloquent.
@@ -193,5 +195,26 @@ class CreateManyFiscalDocumentItemsAction
         }
 
         return $items;
+    }
+
+    private function ensureProductCode(array $data): array
+    {
+        $productId = $data['product_id'] ?? null;
+
+        if (filled($data['product_code'] ?? null) || empty($productId)) {
+            return $data;
+        }
+
+        $data['product_code'] = Product::query()
+            ->whereKey($productId)
+            ->value('product_code');
+
+        if (filled($data['product_code'] ?? null)) {
+            return $data;
+        }
+
+        throw ValidationException::withMessages([
+            'product_code' => 'O codigo do produto e obrigatorio.',
+        ]);
     }
 }

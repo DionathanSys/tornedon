@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocumentItem\Actions;
 
 use App\Models\FiscalDocumentItem;
+use App\Models\Product;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -35,6 +36,7 @@ class UpdateFiscalDocumentItemAction
             );
 
             unset($validated['fiscal_document_id']);
+            $validated = $this->ensureProductCode($validated);
             $validated = $this->normalizeForPersistence($validated);
             $validated['updated_by'] = $this->updatedBy;
 
@@ -131,5 +133,31 @@ class UpdateFiscalDocumentItemAction
         }
 
         return $persistable;
+    }
+
+    private function ensureProductCode(array $data): array
+    {
+        $productId = $data['product_id'] ?? $this->fiscalDocumentItem->product_id;
+
+        if (empty($productId)) {
+            return $data;
+        }
+
+        if (filled($data['product_code'] ?? null)) {
+            return $data;
+        }
+
+        $data['product_code'] = Product::query()
+            ->whereKey($productId)
+            ->value('product_code')
+            ?? $this->fiscalDocumentItem->product_code;
+
+        if (filled($data['product_code'] ?? null)) {
+            return $data;
+        }
+
+        throw ValidationException::withMessages([
+            'product_code' => 'O codigo do produto e obrigatorio.',
+        ]);
     }
 }
