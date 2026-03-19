@@ -231,6 +231,7 @@ class FiscalDocumentForm
                             ->schema([
                                 Section::make('Histórico de Erros de Emissão')
                                     ->description('Mensagens registradas no campo errors_messages do documento fiscal.')
+                                    ->columnSpanFull()
                                     ->schema([
                                         Repeater::make('errors_messages')
                                             ->label('Erros')
