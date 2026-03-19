@@ -8,6 +8,7 @@ use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePreviewAction;
+use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -55,6 +56,11 @@ class NfseDocumentService
         try {
             if ($doc->nfseSent() && ! $doc->isNfseRejected()) {
                 $this->setError('NFS-e já enviada. Status atual: ' . $doc->nfse_status?->description());
+                $this->persistActionError($doc, 'emitir', $this->getMessage(), [
+                    'contexto' => [
+                        'status_atual' => $doc->nfse_status?->value,
+                    ],
+                ]);
                 return false;
             }
 
@@ -71,6 +77,14 @@ class NfseDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao enfileirar emissão da NFS-e: ' . $e->getMessage());
+
+            $this->persistActionError($doc, 'emitir', $this->getMessage(), [
+                'contexto' => [
+                    'exception' => $e->getMessage(),
+                    'serie'     => $serie,
+                    'user_id'   => $userId,
+                ],
+            ]);
 
             Log::error('NfseDocumentService::emitir', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -95,6 +109,9 @@ class NfseDocumentService
 
             if (! $result || $action->hasError()) {
                 $this->setError($action->getMessage());
+                $this->persistActionError($doc, 'consultar', $action->getMessage(), [
+                    'erros' => $action->getErrors(),
+                ]);
                 return false;
             }
 
@@ -103,6 +120,11 @@ class NfseDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao consultar NFS-e: ' . $e->getMessage());
+            $this->persistActionError($doc, 'consultar', $this->getMessage(), [
+                'contexto' => [
+                    'exception' => $e->getMessage(),
+                ],
+            ]);
 
             Log::error('NfseDocumentService::consultar', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -127,6 +149,9 @@ class NfseDocumentService
 
             if ($pdf === null || $action->hasError()) {
                 $this->setError($action->getMessage());
+                $this->persistActionError($doc, 'pdf', $action->getMessage(), [
+                    'erros' => $action->getErrors(),
+                ]);
                 return null;
             }
 
@@ -135,6 +160,11 @@ class NfseDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao gerar PDF da NFS-e: ' . $e->getMessage());
+            $this->persistActionError($doc, 'pdf', $this->getMessage(), [
+                'contexto' => [
+                    'exception' => $e->getMessage(),
+                ],
+            ]);
 
             Log::error('NfseDocumentService::pdf', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -159,6 +189,9 @@ class NfseDocumentService
 
             if (! $data || $action->hasError()) {
                 $this->setError($action->getMessage());
+                $this->persistActionError($doc, 'preview', $action->getMessage(), [
+                    'erros' => $action->getErrors(),
+                ]);
                 return null;
             }
 
@@ -167,6 +200,11 @@ class NfseDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao gerar preview da NFS-e: ' . $e->getMessage());
+            $this->persistActionError($doc, 'preview', $this->getMessage(), [
+                'contexto' => [
+                    'exception' => $e->getMessage(),
+                ],
+            ]);
 
             Log::error('NfseDocumentService::preview', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -191,6 +229,12 @@ class NfseDocumentService
 
             if (! $result || $action->hasError()) {
                 $this->setError($action->getMessage());
+                $this->persistActionError($doc, 'cancelar', $action->getMessage(), [
+                    'erros' => $action->getErrors(),
+                    'contexto' => [
+                        'motivo' => $motivo,
+                    ],
+                ]);
                 return false;
             }
 
@@ -199,6 +243,12 @@ class NfseDocumentService
 
         } catch (\Exception $e) {
             $this->setError('Erro ao cancelar NFS-e: ' . $e->getMessage());
+            $this->persistActionError($doc, 'cancelar', $this->getMessage(), [
+                'contexto' => [
+                    'motivo'    => $motivo,
+                    'exception' => $e->getMessage(),
+                ],
+            ]);
 
             Log::error('NfseDocumentService::cancelar', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -224,5 +274,13 @@ class NfseDocumentService
     {
         $cnaeCode = FiscalProfile::query()->where('company_id', $companyId)->value('service_cnae_code');
         return str_replace(['.', '-'], '', $cnaeCode ?? '');
+    }
+
+    private function persistActionError(FiscalDocument $doc, string $action, ?string $message, array $data = []): void
+    {
+        $persistAction = new SaveFiscalDocumentErrorAction();
+        $persistAction->execute($doc, $message, array_merge($data, [
+            'acao' => $action,
+        ]));
     }
 }

@@ -21,11 +21,11 @@ class QuoteValidatorTest extends TestCase
         $customer = Partner::factory()->create();
 
         $data = [
-            'company_id' => $company->id,
-            'customer_id' => $customer->id,
-            'payment_method' => Method::PIX->value,
+            'company_id'        => $company->id,
+            'customer_id'       => $customer->id,
+            'payment_method'    => Method::PIX->value,
             'payment_condition' => Condition::CASH->value,
-            'description' => 'Teste de Orçamento',
+            'description'       => 'Teste de Orçamento',
         ];
 
         $validated = QuoteValidator::validateCreate($data);
