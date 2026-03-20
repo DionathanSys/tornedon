@@ -17,6 +17,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -45,14 +46,18 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
                 DownloadInvoicePdfAction::make()
                     ->hiddenLabel()
+                    ->color('gray')
                     ->tooltip('Baixar PDF')
                     ->size(Size::Small),
                 ImportRecordsAction::make()
                     ->size(Size::Small),
                 GenerateFiscalDocumentAction::make()
+                    ->color('gray')
                     ->size(Size::Small),
                 DeleteAction::make()
                     ->size(Size::Small)
+                    ->icon(Heroicon::Trash)
+                    ->hiddenLabel()
                     ->using(function (Model $record): bool {
                         Log::debug('EditInvoice: Iniciando exclusão de fatura', [
                             'metodo'     => __METHOD__ . '@' . __LINE__,
