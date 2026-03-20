@@ -102,7 +102,8 @@ class ServiceOrderForm
                                                 DatePicker::make('warranty_expires_at')
                                                     ->label('Garantia Válida Até')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->displayFormat('d/m/Y'),
+                                                    ->displayFormat('d/m/Y')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                                 DatePicker::make('completion_date')
                                                     ->label('Data de Conclusão')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
@@ -120,6 +121,7 @@ class ServiceOrderForm
                                             ->label('Equipamento')
                                             ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                                             ->searchable()
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                                             ->getSearchResultsUsing(
                                                 fn(string $search): array => (new EquipmentService())
                                                     ->searchForSelect($search, Filament::getTenant()->id)
