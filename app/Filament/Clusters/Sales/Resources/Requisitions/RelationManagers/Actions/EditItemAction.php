@@ -3,7 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
-use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\ItemsForm;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Schemas\ItemsForm;
 use App\Models\RequisitionItem;
 use App\Services\Product\ProductSalePriceService;
 use Filament\Actions\EditAction;

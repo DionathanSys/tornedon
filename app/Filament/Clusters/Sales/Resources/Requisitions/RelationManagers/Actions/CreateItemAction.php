@@ -3,7 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\ItemsForm;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Schemas\ItemsForm;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Traits\AuthorizesRequisitionItemActions;
