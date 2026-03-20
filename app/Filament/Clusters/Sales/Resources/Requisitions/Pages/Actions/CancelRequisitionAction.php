@@ -58,6 +58,7 @@ final class CancelRequisitionAction
 
                 notify::success('Requisição cancelada com sucesso.');
             })
+            ->successNotification(null)
             ->successRedirectUrl(RequisitionResource::getUrl());
     }
 }
