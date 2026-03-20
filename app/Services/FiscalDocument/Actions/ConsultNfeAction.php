@@ -87,6 +87,8 @@ class ConsultNfeAction
                     'codigo'             => $resp->codigo ?? null,
                     'mensagem'           => $resp->mensagem ?? null,
                 ]);
+
+                $this->setError($resp->mensagem ?? 'NF-e rejeitada pela API.', (array) ($resp->erros ?? []));
             }
 
             $fiscalDocument->update($updates);
@@ -105,6 +107,10 @@ class ConsultNfeAction
                     ]);
                 }
 
+            }
+
+            if ($this->hasError()) {
+                return false;
             }
 
             $this->setSuccess();

@@ -58,13 +58,65 @@ trait HandlesServiceResponse
     public function getMessageUser(): string
     {
         $baseMessage = $this->message ?? '';
-        
-        if(!empty($this->errors)){
-            $errors = implode('<br> ',  Arr::flatten($this->getErrors()));
+
+        if (! empty($this->errors)) {
+            $errors = implode('<br> ', $this->formatErrorsForMessage($this->getErrors()));
             return $baseMessage . ';<br> ' . $errors;
         }
 
         return $baseMessage;
+    }
+
+    private function formatErrorsForMessage(mixed $value): array
+    {
+        if ($value instanceof \stdClass) {
+            $value = (array) $value;
+        }
+
+        if (is_string($value) || is_numeric($value) || is_bool($value)) {
+            return [(string) $value];
+        }
+
+        if ($value === null) {
+            return [];
+        }
+
+        if (! is_array($value)) {
+            return [json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
+        }
+
+        if ($this->isStructuredApiError($value)) {
+            return [$this->stringifyStructuredApiError($value)];
+        }
+
+        $messages = [];
+
+        foreach ($value as $item) {
+            $messages = [...$messages, ...$this->formatErrorsForMessage($item)];
+        }
+
+        return array_values(array_filter($messages, static fn ($message): bool => $message !== ''));
+    }
+
+    private function isStructuredApiError(array $value): bool
+    {
+        return Arr::isAssoc($value)
+            && (array_key_exists('campo', $value)
+                || array_key_exists('erro', $value)
+                || array_key_exists('descricao', $value)
+                || array_key_exists('detalhes', $value));
+    }
+
+    private function stringifyStructuredApiError(array $value): string
+    {
+        $parts = array_filter([
+            $value['campo'] ?? null,
+            $value['erro'] ?? null,
+            $value['descricao'] ?? null,
+            $value['detalhes'] ?? null,
+        ], static fn ($part): bool => filled($part));
+
+        return implode(' | ', $parts);
     }
 
     public function getData(): array

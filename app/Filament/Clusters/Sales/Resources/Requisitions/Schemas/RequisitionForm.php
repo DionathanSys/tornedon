@@ -132,7 +132,11 @@ class RequisitionForm
                             ->rows(3)
                             ->maxLength(1000),
                         DiscountAmountField::make('requisition')
+<<<<<<< HEAD
                             ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3]),
+=======
+                            ->visibleOn('edit'),
+>>>>>>> b34f25ba022bbbe8956591d894c9b3a46a6498c0
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(Requisition $record) => [
                     'ownerRecord' => $record,

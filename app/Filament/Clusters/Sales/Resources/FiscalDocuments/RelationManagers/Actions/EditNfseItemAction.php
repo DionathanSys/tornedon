@@ -44,6 +44,7 @@ final class EditNfseItemAction
 
                 notify::success(message: $service->getMessage());
                 return $item;
-            });
+            })
+            ->successNotification(null);
     }
 }

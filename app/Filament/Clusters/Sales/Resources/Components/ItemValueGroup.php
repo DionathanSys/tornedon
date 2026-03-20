@@ -55,6 +55,10 @@ class ItemValueGroup
                 ->live(onBlur: true)
                 ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                 ->afterStateUpdated(function ($state, Set $set, Get $get) use ($discountAmount, $discountPercentage, $subtotal, $qty, $unitPrice, $totalAmount) {
+                    if(is_numeric($state) && $state < 0) {
+                        $set($qty, number_format(0, 2, ',', '.'));
+                    }
+                
                     $set($discountAmount, number_format(0, 2, ',', '.'));
                     $set($discountPercentage, number_format(0, 2, ',', '.'));
                     self::recalculate($get, $set, $qty, $unitPrice, $discountAmount, $subtotal, $totalAmount);

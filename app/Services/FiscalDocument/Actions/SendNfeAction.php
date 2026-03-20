@@ -155,7 +155,7 @@ class SendNfeAction
                 $fiscalDocument->update(['errors_messages' => $errors]);
 
                 $msgErro = 'Erro de validação nos dados da NF-e: ' . ($resp->mensagem ?? 'verifique os campos');
-                $this->setError($msgErro);
+                $this->setError($msgErro, (array) ($resp->erros ?? []));
                 Log::warning('SendNfeAction: erro de validação na API', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'codigo'             => $resp->codigo ?? null,
@@ -175,7 +175,7 @@ class SendNfeAction
             $fiscalDocument->update(['errors_messages' => $errors]);
 
             $msgErro = $resp->mensagem ?? 'Erro ao enviar NF-e';
-            $this->setError($msgErro);
+            $this->setError($msgErro, (array) ($resp->erros ?? []));
             Log::error('SendNfeAction: erro na resposta da API', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'codigo'             => $resp->codigo ?? null,

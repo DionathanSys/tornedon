@@ -78,11 +78,12 @@ class PrintNfePreviewAction
 
             if (! ($resp->sucesso ?? false)) {
                 $msgErro = $resp->mensagem ?? 'Erro ao gerar preview da NF-e';
-                $this->setError($msgErro);
+                $this->setError($msgErro, (array) ($resp->erros ?? []));
                 Log::warning('PrintNfePreviewAction: falha na geração do preview', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'codigo'             => $resp->codigo ?? null,
                     'mensagem'           => $msgErro,
+                    'resp'               => $resp,
                 ]);
                 return null;
             }

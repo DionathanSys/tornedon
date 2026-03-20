@@ -30,20 +30,34 @@ class EditRequisition extends EditRecord
     {
         return [
             ActionGroup::make([
-                CloseRequisitionAction::make()
-                    ->size(Size::Small),
                 PreviewRequisitionPdfAction::make()
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Visualizar PDF da requisição'),
+                CloseRequisitionAction::make()
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Fechar requisição'),
                 DownloadRequisitionPdfAction::make()
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Baixar PDF da requisição'),
                 InvoiceRequisitionAction::make()
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Gerar Fatura'),
                 ViewInvoiceRequisitionAction::make()
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Visualizar Fatura'),
                 CancelRequisitionAction::make()
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Cancelar requisição'),
                 ReopenRequisitionAction::make()
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Reabrir requisição'),
                 DeleteAction::make()
                     ->size(Size::Small)
                     ->using(function (Model $record): bool {

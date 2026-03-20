@@ -31,6 +31,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Operation;
+use Filament\Forms\Components\Repeater\TableColumn;
 
 class FiscalDocumentForm
 {
@@ -107,7 +108,6 @@ class FiscalDocumentForm
                                             ->label('Data de Emissão')
                                             ->visibleOn('edit')
                                             ->readOnly()
-                                            ->required()
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
@@ -116,7 +116,6 @@ class FiscalDocumentForm
                                             ->label('Data Entrada/Saída')
                                             ->visible(false)
                                             ->readOnly()
-                                            ->required()
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
@@ -231,27 +230,44 @@ class FiscalDocumentForm
                             ->schema([
                                 Section::make('Histórico de Erros de Emissão')
                                     ->description('Mensagens registradas no campo errors_messages do documento fiscal.')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
                                         Repeater::make('errors_messages')
                                             ->label('Erros')
+                                            ->columnSpanFull()
+                                            ->compact()
+                                            ->columns(['md' => 6, 'lg' => 12])
+                                            ->table([
+                                                TableColumn::make('At')
+                                                    ->width('80px'),
+                                                TableColumn::make('Código')
+                                                    ->width('80px'),
+                                                TableColumn::make('Origem')
+                                                    ->width('80px'),
+                                                TableColumn::make('Mensagem')
+                                                    ->width('350px'),
+                                            ])
                                             ->schema([
                                                 TextInput::make('at')
                                                     ->label('Data/Hora')
+                                                    ->columnSpan(['md' => 2, 'lg' => 4])
                                                     ->disabled(),
                                                 TextInput::make('codigo')
                                                     ->label('Código')
+                                                    ->columnSpan(['md' => 2, 'lg' => 4])
                                                     ->disabled(),
                                                 TextInput::make('job')
                                                     ->label('Origem')
+                                                    ->columnSpan(['md' => 2, 'lg' => 4])
                                                     ->formatStateUsing(fn($state, Get $get): ?string => $state ?? $get('origem'))
                                                     ->disabled(),
                                                 Textarea::make('mensagem')
                                                     ->label('Mensagem')
-                                                    ->rows(3)
+                                                    // ->rows(3)
                                                     ->columnSpanFull()
                                                     ->disabled(),
                                             ])
-                                            ->columns(2)
                                             ->addable(false)
                                             ->deletable(false)
                                             ->reorderable(false)

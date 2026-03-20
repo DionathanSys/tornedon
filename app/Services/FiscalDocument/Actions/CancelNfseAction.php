@@ -61,7 +61,7 @@ class CancelNfseAction
             ];
             $fiscalDocument->update(['errors_messages' => $errors]);
 
-            $this->setError($resp->mensagem ?? 'Erro ao cancelar NFS-e');
+            $this->setError($resp->mensagem ?? 'Erro ao cancelar NFS-e', (array) ($resp->erros ?? []));
             return false;
 
         } catch (\Exception $e) {

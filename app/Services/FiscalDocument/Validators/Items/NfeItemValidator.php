@@ -103,7 +103,7 @@ class NfeItemValidator
             'product_id'                                    => 'required|integer|exists:products,id',
             'product_code'                                  => 'required|string|max:60',
             'description'                                   => 'required|string|max:255',
-            'item_number'                                   => 'required|integer|min:1',
+            'item_number'                                   => 'sometimes|required|integer|min:1',
             'ncm_code'                                      => 'nullable|string|size:8',
             'cest_code'                                     => 'nullable|string|max:9',
             'barcode'                                       => 'nullable|string|max:60',
@@ -155,7 +155,7 @@ class NfeItemValidator
     {
         return [
             'product_id'                                    => 'sometimes|nullable|integer|exists:products,id',
-            'product_code'                                  => 'sometimes|nullable|string|max:60',
+            'product_code'                                  => 'sometimes|required|string|max:60',
             'description'                                   => 'sometimes|nullable|string|max:255',
             'service_id'                                    => 'sometimes|nullable|integer|exists:services,id',
             'item_number'                                   => 'sometimes|nullable|integer|min:1',

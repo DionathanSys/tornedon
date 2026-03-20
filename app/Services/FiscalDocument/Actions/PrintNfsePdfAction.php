@@ -28,7 +28,7 @@ class PrintNfsePdfAction
             $resp = $sdk->pdf(['chave' => $fiscalDocument->document_key]);
 
             if (! ($resp->sucesso ?? false)) {
-                $this->setError($resp->mensagem ?? 'Erro ao gerar PDF da NFS-e');
+                $this->setError($resp->mensagem ?? 'Erro ao gerar PDF da NFS-e', (array) ($resp->erros ?? []));
                 return null;
             }
 

@@ -35,11 +35,6 @@ class CommandTest extends Command
 
    public function handle()
    {
-         $companyPartner = CompanyPartner::where('company_id', 3)
-            ->where('partner_id', 2)
-            ->first();
-            
-            return $companyPartner->addresses()->first();
-        return $companyPartner ? $companyPartner->addresses()->first() : null;
+
    }
 }
