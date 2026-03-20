@@ -16,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use App\Notification\NotifyService as notify;
+use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -111,6 +112,12 @@ class RequisitionsTable
                     ->label('Requisição')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
+                    ->mutateDataUsing(function (array $data): array {
+                        $tenant = Filament::getTenant();
+                        $data['company_id'] = $tenant->id;
+
+                        return $data;
+                    })
                     ->using(function (array $data, string $model, CreateAction $action): Model {
                         $service = app(RequisitionService::class);
                         $requisition = $service->create($data, Auth::id());
