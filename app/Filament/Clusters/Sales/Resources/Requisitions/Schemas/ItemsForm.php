@@ -86,7 +86,7 @@ class ItemsForm
             productId: $product->id,
             code: $product->product_code,
             name: $product->name,
-            unit: $productStock->unit,
+            unit: $product->unit,
             price: $price,
             minSalePrice: $productStock->min_sale_price ?? 0,
         );
