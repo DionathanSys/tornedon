@@ -6,6 +6,7 @@ use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Services\Requisition\RequisitionService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -144,7 +145,8 @@ class RequisitionsTable
                         ]);
 
                         return $requisition;
-                    }),
+                    })
+                    ->successRedirectUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
             ]);
     }
 }
