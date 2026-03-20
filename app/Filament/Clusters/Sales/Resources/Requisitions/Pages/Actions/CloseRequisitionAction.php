@@ -56,6 +56,7 @@ final class CloseRequisitionAction
                 ]);
 
                 notify::success('Requisição encerrada com sucesso.');
-            });
+            })
+            ->after(fn (Requisition $record) => $record->refreshFormData(['record' => $record]));
     }
 }
