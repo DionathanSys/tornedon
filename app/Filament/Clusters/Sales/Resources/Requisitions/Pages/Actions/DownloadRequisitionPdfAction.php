@@ -17,7 +17,7 @@ final class DownloadRequisitionPdfAction
         return Action::make('downloadRequisitionPdf')
             ->label('Download PDF')
             ->icon(Heroicon::ArrowDownTray)
-            ->color('success')
+            ->color('gray')
             ->action(function (Requisition $record): StreamedResponse {
                 $service = app(RequisitionService::class);
                 $pdf     = $service->pdf($record, Auth::id());

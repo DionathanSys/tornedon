@@ -19,7 +19,7 @@ final class CloseRequisitionAction
         return Action::make('closeRequisition')
             ->label('Encerrar')
             ->icon(Heroicon::CheckCircle)
-            ->color('success')
+            ->color('gray')
             ->requiresConfirmation()
             ->modalHeading('Encerrar Requisição')
             ->modalDescription('Tem certeza que deseja encerrar esta requisição? Esta ação mudará o status para "Encerrada".')
