@@ -242,11 +242,11 @@ class FiscalDocumentForm
                                             ->columns(['md' => 6, 'lg' => 12])
                                             ->table([
                                                 TableColumn::make('At')
-                                                    ->width('50px'),
+                                                    ->width('80px'),
                                                 TableColumn::make('Código')
-                                                    ->width('50px'),
+                                                    ->width('80px'),
                                                 TableColumn::make('Origem')
-                                                    ->width('50px'),
+                                                    ->width('80px'),
                                                 TableColumn::make('Mensagem')
                                                     ->width('350px'),
                                             ])
