@@ -51,12 +51,7 @@ class RequisitionForm
                     ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 
                         new HtmlString('<span style="color: rgb(26, 4, 146); font-weight: 700;">Requisição Nº ' . e($get('number')) . ' | ' . e(Status::from($get('status'))->description()) . '</span>') : 
                         'Dados da Requisição')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 6,
-                        'lg' => 8,
-                        'xl' => 12,
-                    ])
+                    ->columns(['sm' => 1,'md' => 6,'lg' => 8,'xl' => 12,])
                     ->columnSpanFull()
                     ->schema([
                         Hidden::make('number'),
@@ -92,6 +87,7 @@ class RequisitionForm
                         SelectPartner::make('salesperson_id', 'salesperson')
                             ->label('Vendedor')
                             ->columnSpan(['md' => 4, 'lg' => 5, 'xl' => 3])
+                            ->columnStart(fn($operation) => $operation === 'create' ? 1 : null)
                             ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                             ->required(false),
                     ]),
