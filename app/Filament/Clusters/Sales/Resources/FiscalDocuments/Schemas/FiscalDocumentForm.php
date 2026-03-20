@@ -108,7 +108,6 @@ class FiscalDocumentForm
                                             ->label('Data de Emissão')
                                             ->visibleOn('edit')
                                             ->readOnly()
-                                            ->required()
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
@@ -117,7 +116,6 @@ class FiscalDocumentForm
                                             ->label('Data Entrada/Saída')
                                             ->visible(false)
                                             ->readOnly()
-                                            ->required()
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
