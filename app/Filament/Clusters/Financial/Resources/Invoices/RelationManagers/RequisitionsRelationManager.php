@@ -90,9 +90,11 @@ class RequisitionsRelationManager extends RelationManager
                 TextColumn::make('serviceOrder.id')
                     ->label('ID OS')
                     ->searchable()
+                    ->placeholder('Sem OS')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('quote.id')
                     ->label('ID Orç.')
+                    ->placeholder('Sem Orçamento')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sale_date')
@@ -104,16 +106,15 @@ class RequisitionsRelationManager extends RelationManager
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn(Status $state) => $state->description())
+                    ->color(fn(Status $state) => $state->color())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('payment_method')
                     ->label('Forma de Pagto')
-                    ->badge()
                     ->formatStateUsing(fn(Method $state) => $state->description())
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('payment_condition')
                     ->label('Condição de Pagamento')
-                    ->badge()
                     ->formatStateUsing(fn(Condition $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -128,6 +129,7 @@ class RequisitionsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('salesperson.name')
                     ->label('Vendedor')
+                    ->placeholder('Sem Vendedor')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('invoiced_at')
                     ->label('Faturado em')
@@ -136,6 +138,7 @@ class RequisitionsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('equipment.name')
                     ->label('Equipamento')
+                    ->placeholder('Sem Equipamento')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('stock_consumed')
@@ -161,10 +164,6 @@ class RequisitionsRelationManager extends RelationManager
                     ->label('Atualizado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('productionOrder.id')
-                    ->label('ID OP')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
