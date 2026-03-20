@@ -31,6 +31,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Operation;
+use Filament\Forms\Components\Repeater\TableColumn;
 
 class FiscalDocumentForm
 {
@@ -239,6 +240,12 @@ class FiscalDocumentForm
                                             ->columnSpanFull()
                                             ->compact()
                                             ->columns(['md' => 6, 'lg' => 12])
+                                            ->table([
+                                                TableColumn::make('At'),
+                                                TableColumn::make('Código'),
+                                                TableColumn::make('Origem'),
+                                                TableColumn::make('Mensagem'),
+                                            ])
                                             ->schema([
                                                 TextInput::make('at')
                                                     ->label('Data/Hora')
@@ -255,7 +262,7 @@ class FiscalDocumentForm
                                                     ->disabled(),
                                                 Textarea::make('mensagem')
                                                     ->label('Mensagem')
-                                                    ->rows(3)
+                                                    // ->rows(3)
                                                     ->columnSpanFull()
                                                     ->disabled(),
                                             ])
