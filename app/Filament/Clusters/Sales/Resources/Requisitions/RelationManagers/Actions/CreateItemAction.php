@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\ItemsForm;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Traits\AuthorizesRequisitionItemActions;
@@ -23,7 +24,10 @@ use App\Services\RequisitionItem\RequisitionItemService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -41,28 +45,7 @@ final class CreateItemAction
             ->size(Size::Small)
             ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->modalHeading('Adicionar Item à Requisição')
-            ->schema([
-                ModalSelectProductStock::make()
-                    ->label('Produto')
-                    ->required(),
-                ItemValueGroup::make(),
-                Group::make()
-                    ->columns(2)
-                    ->schema([
-                        Money::make('commission_percentage')
-                            ->label('Comissão (%)')
-                            ->disabled(),
-                        Money::make('commission_amount')
-                            ->label('Vlr. Comissão')
-                            ->disabled(),
-                    ]),
-                Textarea::make('observations')
-                    ->label('Observações')
-                    ->columnSpanFull(),
-                TextInput::make('additional_info')
-                    ->label('Informações Adicionais')
-                    ->columnSpanFull(),
-            ])
+            ->schema(fn(Schema $schema) => ItemsForm::configure($schema))
             ->using(function (array $data, RelationManager $livewire): ?Model {
                 $requisition = $livewire->getOwnerRecord();
 

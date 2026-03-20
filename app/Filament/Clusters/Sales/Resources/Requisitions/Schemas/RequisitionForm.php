@@ -117,6 +117,7 @@ class RequisitionForm
                             ->label('Data de Entrega')
                             ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 2])
                             ->displayFormat('d/m/Y')
+                            ->default(now())
                             ->nullable(),
                         TextInput::make('delivery_address')
                             ->label('Endereço de Entrega')

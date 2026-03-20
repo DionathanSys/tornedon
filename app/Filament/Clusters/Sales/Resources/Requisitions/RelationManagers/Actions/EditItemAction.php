@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\ItemsForm;
 use App\Models\RequisitionItem;
 use App\Services\Product\ProductSalePriceService;
 use Filament\Actions\EditAction;
@@ -21,6 +22,7 @@ use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\ParsesMoneyValues;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -40,91 +42,7 @@ final class EditItemAction
                     : 0;
                 return $data;
             })
-            ->schema([
-                Hidden::make('_min_sale_price')
-                    ->default(0)
-                    ->dehydrated(false),
-                SelectProduct::make()
-                    ->after(fn(Get $get, Set $set) => self::calculateValues($get, $set)),
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        TextInput::make('quantity')
-                            ->label('Quantidade')
-                            ->required()
-                            ->numeric()
-                            ->default(1)
-                            ->minValue(0)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function($state, Set $set, Get $get) {
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('unit_price')
-                            ->label('Preço Unitário')
-                            ->required()
-                            ->live(onBlur: true)
-                            ->helperText(function (Get $get): ?string {
-                                $minPrice = (float) ($get('_min_sale_price') ?? 0);
-                                return $minPrice > 0
-                                    ? 'Preço mínimo de venda: R$ ' . number_format($minPrice, 2, ',', '.')
-                                    : null;
-                            })
-                            ->afterStateUpdated(function($state, Set $set, Get $get) {
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('subtotal')
-                            ->label('Subtotal')
-                            ->readOnly(),
-                    ]),
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        Money::make('discount_percentage')
-                            ->label('Desconto (%)')
-                            ->suffix('%')
-                            ->prefix(null)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                $subtotal = self::parseMoneyValue($get('subtotal'));
-                                $percentage = self::parseMoneyValue($state);
-                                $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            })
-                            ->afterLabel(Action::make('reset_discount_percentage')
-                                ->label('')
-                                ->icon(Heroicon::ArrowPath)
-                                ->action(function (Set $set, Get $get) {
-                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                    $set('discount_amount', number_format(0, 2, ',', '.'));
-                                    self::calculateValues($get, $set);
-                                })),
-                        Money::make('discount_amount')
-                            ->label('Desconto (R$)')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                $subtotal = self::parseMoneyValue($get('subtotal'));
-                                $discountAmount = self::parseMoneyValue($state);
-                                if ($subtotal > 0) {
-                                    $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
-                                }
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('total_amount')
-                            ->label('Valor Total')
-                            ->readOnly(),
-                    ]),
-                Textarea::make('observations')
-                    ->label('Observações')
-                    ->columnSpanFull(),
-            ])
+            ->schema(fn(Schema $schema) => ItemsForm::configure($schema))
             ->using(function (RequisitionItem $record, array $data): ?Model {
                 Log::debug('Iniciando atualização de item via RelationManager', [
                     'metodo' => __METHOD__ . '@' . __LINE__,
