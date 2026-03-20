@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas;
+namespace App\Filament\Clusters\Sales\Resources\Requisitions\Schemas;
 
 use App\Domain\DTO\Requisition\RequisitionItemDTO;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
