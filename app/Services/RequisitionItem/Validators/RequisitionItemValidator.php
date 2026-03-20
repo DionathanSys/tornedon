@@ -62,12 +62,10 @@ class RequisitionItemValidator
      */
     public static function validateCreate(array $data): array
     {
-        $unitValues = array_map(fn($unit) => $unit->value, Unit::cases());
-
         $rules = array_merge(self::commonRules(), [
             'requisition_id'    => 'required|integer|exists:requisitions,id',
             'product_id'        => 'required|integer|exists:products,id',
-            'unit_of_measure'   => ['string', 'max:20', Rule::in($unitValues)],
+            'unit_of_measure'   => ['string', 'max:20', Rule::enum(Unit::class)],
             'quantity'          => 'required|numeric|min:0.001',
             'unit_price'        => 'required|numeric|min:0',
         ]);
