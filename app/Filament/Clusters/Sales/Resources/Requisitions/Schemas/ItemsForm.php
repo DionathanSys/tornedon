@@ -36,8 +36,9 @@ class ItemsForm
                     ->schema([
                         Hidden::make('product_code')
                             ->saved(),
-                        Hidden::make('product_stock_id')
-                            ->live(),
+                        Hidden::make('product_stock_id'),
+                        Hidden::make('product_id')
+                            ->saved(),
                         TextInput::make('unit_of_measure')
                             ->label('UN')
                             ->saved(true)
@@ -102,6 +103,7 @@ class ItemsForm
     private static function applyDto(Set $set, RequisitionItemDTO $dto): void
     {
         $set('product_stock_id', $dto->productStockId);
+        $set('product_id',       $dto->productId);
         $set('product_code',     $dto->code);
         $set('description',      $dto->name);
         $set('quantity',         1);
