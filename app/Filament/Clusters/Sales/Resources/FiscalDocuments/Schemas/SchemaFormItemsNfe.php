@@ -52,13 +52,13 @@ class SchemaFormItemsNfe
                         ->columnSpan(5),
                     Callout::make('alert')
                         ->description('Produto não possui vínculo com estoque')
-                        ->visible(fn($get) => $get('product_stock_id'))
+                        ->visible(fn($get) => !$get('product_stock_id') && $get('product_id'))
                         ->columnSpanFull(),
                 ]),
 
             ItemValueGroup::make([
                 'totalAmountField' => 'total_price',
-            ]),
+            ]), 
 
             // Códigos fiscais
             Group::make()
