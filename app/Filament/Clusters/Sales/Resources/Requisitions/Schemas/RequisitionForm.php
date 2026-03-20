@@ -70,6 +70,7 @@ class RequisitionForm
                             ->label('Equipamento')
                             ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                             ->searchable()
+                            ->visibleOn('edit')
                             ->getSearchResultsUsing(
                                 fn(string $search): array => (new EquipmentService())
                                     ->searchForSelect($search, Filament::getTenant()->id)
@@ -98,6 +99,7 @@ class RequisitionForm
                     ->columns(['md' => 6, 'lg' => 8, 'xl' => 12])
                     ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                     ->columnSpanFull()
+                    ->visibleOn('edit')
                     ->collapsible()
                     ->persistCollapsed()
                     ->schema([
@@ -129,7 +131,8 @@ class RequisitionForm
                             ->columnSpanFull()
                             ->rows(3)
                             ->maxLength(1000),
-                        DiscountAmountField::make('requisition'),
+                        DiscountAmountField::make('requisition')
+                            ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3]),
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(Requisition $record) => [
                     'ownerRecord' => $record,

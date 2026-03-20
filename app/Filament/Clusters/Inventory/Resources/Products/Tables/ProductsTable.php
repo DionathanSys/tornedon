@@ -62,6 +62,16 @@ class ProductsTable
                     ->label('Unidade')
                     ->badge()
                     ->sortable(),
+                TextColumn::make('has_control_stock')
+                    ->label('Controla Estoque?')
+                    ->badge()
+                    ->sortable(),
+                TextColumn::make('is_invoiceable')
+                    ->label('Faturável?')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
+                    ->color(fn($state) => $state ? 'success' : 'danger')
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
