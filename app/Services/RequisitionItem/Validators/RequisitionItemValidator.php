@@ -65,7 +65,7 @@ class RequisitionItemValidator
         $rules = array_merge(self::commonRules(), [
             'requisition_id'    => 'required|integer|exists:requisitions,id',
             'product_id'        => 'required|integer|exists:products,id',
-            'unit_of_measure'   => ['string', 'max:20', Rule::enum(Unit::class)],
+            'unit_of_measure'   => ['required', Rule::enum(Unit::class)],
             'quantity'          => 'required|numeric|min:0.001',
             'unit_price'        => 'required|numeric|min:0',
         ]);
