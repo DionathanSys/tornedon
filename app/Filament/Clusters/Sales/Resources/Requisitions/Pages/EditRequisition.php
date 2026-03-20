@@ -43,6 +43,10 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->hiddenLabel()
                     ->tooltip('Baixar PDF da requisição'),
+                ReopenRequisitionAction::make()
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Reabrir requisição'),
                 InvoiceRequisitionAction::make()
                     ->size(Size::Small)
                     ->hiddenLabel()
@@ -55,10 +59,6 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->hiddenLabel()
                     ->tooltip('Cancelar requisição'),
-                ReopenRequisitionAction::make()
-                    ->size(Size::Small)
-                    ->hiddenLabel()
-                    ->tooltip('Reabrir requisição'),
                 DeleteAction::make()
                     ->size(Size::Small)
                     ->icon(Heroicon::Trash)

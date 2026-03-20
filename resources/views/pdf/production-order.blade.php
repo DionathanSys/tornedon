@@ -15,11 +15,19 @@
     </div>
 
     <div class="box">
-        <div class="line">Operador: {{ $record->assignedOperator?->name ?? '-' }}</div>
-        <div class="line">Requisição vinculada: {{ $record->requisition?->number ?? '-' }}</div>
-        <div class="line">Inicio: {{ $record->started_at?->format('d/m/Y H:i') ?? '-' }}</div>
-        <div class="line">Conclusao: {{ $record->completed_at?->format('d/m/Y H:i') ?? '-' }}</div>
-        <div class="line">Observacoes: {{ $record->observations ?? '-' }}</div>
+        @if($record->assignedOperator)
+            <div class="line">Operador: {{ $record->assignedOperator?->name ?? '-' }}</div>
+        @endif
+        @if($record->requisition)
+            <div class="line">Requisição vinculada: {{ $record->requisition?->number ?? '-' }}</div>
+        @endif
+        @if($record->started_at)
+            <div class="line">Inicio: {{ $record->started_at?->format('d/m/Y H:i') ?? '-' }}</div>
+        @endif
+        @if($record->completed_at)
+            <div class="line">Conclusao: {{ $record->completed_at?->format('d/m/Y H:i') ?? '-' }}</div>
+        @endif
+        <div class="line">Observacoes: {{ $record->observations ?? 'Sem observações' }}</div>
     </div>
 
     <h2>Itens da Ordem de Produção</h2>
@@ -64,6 +72,6 @@
     </table>
 
     <h2>Resumo</h2>
-    <div class="line">Total estimado da OP: R$ {{ number_format($total, 2, ',', '.') }}</div>
+    <div class="line">Total estimado: R$ {{ number_format($total, 2, ',', '.') }}</div>
 </body>
 </html>

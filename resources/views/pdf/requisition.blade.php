@@ -33,10 +33,20 @@
     </div>
 
     <div class="box">
-        <div class="line">OS vinculada: {{ $record->serviceOrder?->number ?? '-' }}</div>
+        @if($record->serviceOrder)
+            <div class="line">OS vinculada: {{ $record->serviceOrder?->number ?? '-' }}</div>
+        @endif
+
+        @if($record->equipment)
         <div class="line">Equipamento: {{ $record->equipment?->name ?? '-' }}</div>
+        @endif
+
+        @if($record->salesperson)
         <div class="line">Vendedor: {{ $record->salesperson?->name ?? '-' }}</div>
-        <div class="line">Observações: {{ $record->observations ?? '-' }}</div>
+        @endif
+
+        <div class="line">Observações: {{ $record->observations ?? 'Sem observações' }}</div>
+
     </div>
 
     <h2>Itens da Requisição</h2>
@@ -72,7 +82,10 @@
     </table>
 
     <h2>Resumo</h2>
-    <div class="line">Desconto total: R$ {{ number_format((float) $record->discount_amount, 2, ',', '.') }}</div>
+    @if($record->discount_amount > 0)
+        <div class="line">Desconto total: R$ {{ number_format((float) $record->discount_amount, 2, ',', '.') }}</div>
+    @endif
+
     <div class="line">Valor total: R$ {{ number_format((float) $record->total_amount, 2, ',', '.') }}</div>
 
     <div class="signature-block">
