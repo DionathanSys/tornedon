@@ -41,7 +41,8 @@ class BuildNfseNacionalPayloadAction
             $address  = $customer?->address?->first();
             $profile  = $fiscalDocument->fiscalProfile ?? $company->fiscalProfile;
 
-            $issuedAt = $fiscalDocument->issued_at->format('Y-m-d') . 'T00:00:00-03:00';
+            // $issuedAt = $fiscalDocument->issued_at->format('Y-m-d') . 'T00:00:00-03:00';
+            $issuedAt = now()->format('Y-m-d') . 'T00:00:00-03:00';
 
             // ------------------------------------------------------------------
             // Tomador
@@ -249,6 +250,11 @@ class BuildNfseNacionalPayloadAction
 
             // Data de competência
             if ($fiscalDocument->movement_at && ! $fiscalDocument->movement_at->isSameDay($fiscalDocument->issued_at)) {
+                Log::debug('BuildNfseNacionalPayloadAction: data de competência diferente da data de emissão, incluindo no payload', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'issued_at'          => $fiscalDocument->issued_at->toDateTimeString(),
+                    'movement_at'        => $fiscalDocument->movement_at->toDateTimeString(),
+                ]);
                 $payload['data_competencia'] = $fiscalDocument->movement_at->format('Y-m-d') . 'T00:00:00-03:00';
             }
 
