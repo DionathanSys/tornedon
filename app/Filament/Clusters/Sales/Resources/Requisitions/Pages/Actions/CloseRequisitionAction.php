@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\Requisition;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
@@ -18,7 +19,7 @@ final class CloseRequisitionAction
         return Action::make('closeRequisition')
             ->label('Encerrar')
             ->icon(Heroicon::CheckCircle)
-            ->color('success')
+            ->color('gray')
             ->requiresConfirmation()
             ->modalHeading('Encerrar Requisição')
             ->modalDescription('Tem certeza que deseja encerrar esta requisição? Esta ação mudará o status para "Encerrada".')
@@ -56,6 +57,8 @@ final class CloseRequisitionAction
                 ]);
 
                 notify::success('Requisição encerrada com sucesso.');
-            });
+            })
+            ->successNotification(null)
+            ->successRedirectUrl(fn (Requisition $record): string => RequisitionResource::getUrl('edit', ['record' => $record->id]));
     }
 }

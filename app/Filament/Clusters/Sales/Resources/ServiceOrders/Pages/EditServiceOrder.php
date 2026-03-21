@@ -35,6 +35,7 @@ class EditServiceOrder extends EditRecord
                 Action::make('new-service-order')
                     ->hiddenLabel()
                     ->tooltip('Criar nova ordem de serviço')
+                    ->color('gray')
                     ->icon(Heroicon::Plus)
                     ->url($this->getResource()::getUrl('create')),
                 DuplicateServiceOrderAction::make()
@@ -43,13 +44,22 @@ class EditServiceOrder extends EditRecord
                 PreviewServiceOrderPdfAction::make()
                     ->hiddenLabel()
                     ->tooltip('Preview PDF'),
-                DownloadServiceOrderPdfAction::make(),
-                CloseServiceOrderAction::make(),
+                DownloadServiceOrderPdfAction::make()
+                    ->color('gray')
+                    ->hiddenLabel(),
+                CloseServiceOrderAction::make()
+                    ->color('gray')
+                    ->hiddenLabel(),
                 InvoiceServiceOrderAction::make(),
                 ViewInvoiceServiceOrderAction::make(),
-                CancelServiceOrderAction::make(),
-                ReopenServiceOrderAction::make(),
+                CancelServiceOrderAction::make()
+                    ->hiddenLabel(),
+                ReopenServiceOrderAction::make()
+                    ->color('gray')
+                    ->hiddenLabel(),
                 DeleteAction::make()
+                    ->hiddenLabel()
+                    ->icon(Heroicon::Trash)
                     ->using(function (Model $record): bool {
                         Log::debug('EditServiceOrder: Iniciando soft delete de ordem de serviço', [
                             'metodo' => __METHOD__ . '@' . __LINE__,

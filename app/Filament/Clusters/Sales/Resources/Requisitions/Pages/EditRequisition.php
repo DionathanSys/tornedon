@@ -18,6 +18,7 @@ use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -42,6 +43,10 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->hiddenLabel()
                     ->tooltip('Baixar PDF da requisição'),
+                ReopenRequisitionAction::make()
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Reabrir requisição'),
                 InvoiceRequisitionAction::make()
                     ->size(Size::Small)
                     ->hiddenLabel()
@@ -54,12 +59,10 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->hiddenLabel()
                     ->tooltip('Cancelar requisição'),
-                ReopenRequisitionAction::make()
-                    ->size(Size::Small)
-                    ->hiddenLabel()
-                    ->tooltip('Reabrir requisição'),
                 DeleteAction::make()
                     ->size(Size::Small)
+                    ->icon(Heroicon::Trash)
+                    ->hiddenLabel()
                     ->using(function (Model $record): bool {
                         Log::debug('EditRequisition: Iniciando soft delete de requisição', [
                             'metodo'         => __METHOD__ . '@' . __LINE__,

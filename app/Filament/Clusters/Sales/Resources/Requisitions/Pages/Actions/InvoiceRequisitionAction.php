@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\Requisition;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
@@ -64,6 +65,8 @@ final class InvoiceRequisitionAction
                 ]);
 
                 notify::success('Requisição faturada com sucesso.');
-            });
+            })
+            ->successNotification(null)
+            ->successRedirectUrl(fn (Requisition $record): string => RequisitionResource::getUrl('edit', ['record' => $record->id]));
     }
 }

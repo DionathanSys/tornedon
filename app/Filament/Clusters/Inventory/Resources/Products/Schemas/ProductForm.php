@@ -114,6 +114,7 @@ class ProductForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->options(Unit::toSelectArray())
                                             ->required()
+                                            ->disabledOn('edit')
                                             ->native(false)
                                             ->default('UN'),
                                         Select::make('item_type')

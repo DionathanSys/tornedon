@@ -6,6 +6,8 @@ use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
+use App\Services\Requisition\RequisitionService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -14,9 +16,14 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
+use App\Notification\NotifyService as notify;
+use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class RequisitionsTable
 {
@@ -105,7 +112,41 @@ class RequisitionsTable
                 CreateAction::make()
                     ->label('Requisição')
                     ->icon(Heroicon::Plus)
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->mutateDataUsing(function (array $data): array {
+                        $tenant = Filament::getTenant();
+                        $data['company_id'] = $tenant->id;
+
+                        return $data;
+                    })
+                    ->using(function (array $data, string $model, CreateAction $action): Model {
+                        $service = app(RequisitionService::class);
+                        $requisition = $service->create($data, Auth::id());
+
+                        if ($service->hasError() || $requisition === null) {
+                            Log::error($service->getMessage(), [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'message' => $service->getMessage(),
+                                'error_code' => $service->getErrorCode(),
+                                'errors' => $service->getErrors(),
+                            ]);
+
+                            notify::error(
+                                message: $service->getMessageUser(),
+                                errorCode: $service->getErrorCode()
+                            );
+
+                            $action->halt();
+                        }
+
+                        Log::info('CreateRequisition: Requisição criada com sucesso', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'requisition_id' => $requisition->id,
+                        ]);
+
+                        return $requisition;
+                    })
+                    ->successRedirectUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
             ]);
     }
 }

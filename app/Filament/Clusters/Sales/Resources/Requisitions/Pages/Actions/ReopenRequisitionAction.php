@@ -19,7 +19,7 @@ final class ReopenRequisitionAction
         return Action::make('reopenRequisition')
             ->label('Reabrir')
             ->icon(Heroicon::ArrowPath)
-            ->color('info')
+            ->color('gray')
             ->requiresConfirmation()
             ->modalHeading('Reabrir Requisição')
             ->modalDescription('Tem certeza que deseja reabrir esta requisição? O status voltará para "Aberta".')
@@ -58,6 +58,7 @@ final class ReopenRequisitionAction
 
                 notify::success('Requisição reaberta com sucesso.');
             })
+            ->successNotification(null)
             ->successRedirectUrl(fn (Requisition $record): string => RequisitionResource::getUrl('edit', ['record' => $record->id]));
     }
 }

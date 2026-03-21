@@ -46,10 +46,7 @@ class RequisitionForm
             ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
             ->components([
                 Section::make('Dados da Requisição')
-                    // ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 
-                    //     new HtmlString('<span style="color: rgb(26, 4, 146); font-weight: 700;">Requisição Nº ' . e($get('number')) . ' | ' . e(Status::from($get('status'))->description()) . '</span>') : 
-                    //     'Dados da Requisição')
-                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12,])
+                    ->columns(['sm' => 1,'md' => 6,'lg' => 8,'xl' => 12,])
                     ->columnSpanFull()
                     ->schema([
                         Hidden::make('number'),
@@ -63,6 +60,7 @@ class RequisitionForm
                             ->label('Equipamento')
                             ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                             ->searchable()
+                            ->visibleOn('edit')
                             ->getSearchResultsUsing(
                                 fn(string $search): array => (new EquipmentService())
                                     ->searchForSelect($search, Filament::getTenant()->id)
@@ -84,6 +82,7 @@ class RequisitionForm
                         SelectPartner::make('salesperson_id', 'salesperson')
                             ->label('Vendedor')
                             ->columnSpan(['md' => 4, 'lg' => 5, 'xl' => 3])
+                            ->columnStart(fn($operation) => $operation === 'create' ? 1 : null)
                             ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                             ->required(false),
                         Grid::make()
@@ -116,6 +115,7 @@ class RequisitionForm
                     ->columns(['md' => 6, 'lg' => 8, 'xl' => 12])
                     ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                     ->columnSpanFull()
+                    ->visibleOn('edit')
                     ->collapsible()
                     ->persistCollapsed()
                     ->schema([
@@ -137,6 +137,7 @@ class RequisitionForm
                             ->label('Data de Entrega')
                             ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 2])
                             ->displayFormat('d/m/Y')
+                            ->default(now())
                             ->nullable(),
                         TextInput::make('delivery_address')
                             ->label('Endereço de Entrega')
@@ -148,6 +149,7 @@ class RequisitionForm
                             ->rows(3)
                             ->maxLength(1000),
                         DiscountAmountField::make('requisition')
+                            ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
                             ->visibleOn('edit'),
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(Requisition $record) => [
