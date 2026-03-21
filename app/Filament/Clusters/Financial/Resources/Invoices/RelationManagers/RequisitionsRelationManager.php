@@ -81,11 +81,11 @@ class RequisitionsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('number')
+            ->recordUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record]))
             ->columns([
                 TextColumn::make('number')
                     ->label('Nº')
-                    ->searchable()
-                    ->recordUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
+                    ->searchable(),
                 TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->toggleable(isToggledHiddenByDefault: true),
