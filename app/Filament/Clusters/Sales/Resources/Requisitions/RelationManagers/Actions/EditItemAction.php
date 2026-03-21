@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Schemas\ItemsForm;
 use App\Models\RequisitionItem;
 use App\Services\Product\ProductSalePriceService;
@@ -60,7 +61,11 @@ final class EditItemAction
 
                 notify::success(message: $service->getMessageUser());
                 return $item;
-            });
+            })
+            ->after(function (ItemsRelationManager $livewire) {
+                $livewire->dispatch('refresh-page');
+            })
+            ->successNotification(null);
     }
 
     protected static function calculateValues(Get $get, Set $set): void

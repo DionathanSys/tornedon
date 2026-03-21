@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
+use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Models\RequisitionItem;
 use Filament\Actions\DeleteAction;
 use App\Notification\NotifyService as notify;
@@ -37,6 +38,10 @@ final class DeleteItemAction
 
                 notify::success(message: $service->getMessageUser());
                 return $result;
-            });
+            })
+            ->after(function (ItemsRelationManager $livewire) {
+                $livewire->dispatch('refresh-page');
+            })
+            ->successNotification(null);
     }
 }
