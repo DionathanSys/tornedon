@@ -13,7 +13,7 @@
         x-init="init()"
         class="space-y-3"
     >
-        <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div class="rounded-2xl border-2 border-sky-300 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/40 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20">
             <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-950 dark:text-white">Assinatura do cliente</p>
@@ -28,16 +28,34 @@
                 ></span>
             </div>
 
-            <div class="overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-950/40">
+            <div class="mb-2 inline-flex items-center rounded-full border border-sky-300 bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-800 shadow-sm dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-200">
+                Assine dentro da caixa abaixo
+            </div>
+
+            <div
+                class="overflow-hidden rounded-xl border-4 border-sky-500 bg-white shadow-[0_0_0_6px_rgba(14,165,233,0.18)] transition duration-200 dark:border-sky-400 dark:bg-slate-950"
+                :class="isDrawing ? 'scale-[1.01] shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : ''"
+            >
                 <canvas
                     x-ref="canvas"
-                    class="block w-full touch-none"
+                    class="block w-full cursor-crosshair touch-none bg-[linear-gradient(to_bottom,rgba(255,255,255,1),rgba(224,242,254,0.95))] dark:bg-[linear-gradient(to_bottom,rgba(2,6,23,0.98),rgba(8,47,73,0.78))]"
                     :style="`height: ${height}`"
                     x-on:pointerdown="start($event)"
                     x-on:pointermove="move($event)"
                     x-on:pointerup.window="end($event)"
                     x-on:pointercancel.window="end($event)"
+                    x-on:mousedown="start($event)"
+                    x-on:mousemove="move($event)"
+                    x-on:mouseup.window="end($event)"
+                    x-on:mouseleave="end($event)"
+                    x-on:touchstart.prevent="start($event)"
+                    x-on:touchmove.prevent="move($event)"
+                    x-on:touchend.window="end($event)"
                 ></canvas>
+            </div>
+
+            <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
+                Toque, clique e arraste dentro da area azul para assinar.
             </div>
 
             <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -77,6 +95,7 @@
                 lastSerializedState: null,
                 canvasWidth: null,
                 canvasHeight: null,
+                pointerSequence: 0,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
 
@@ -152,11 +171,38 @@
                 },
                 coordinates(event) {
                     const rect = this.$refs.canvas.getBoundingClientRect();
+                    const point = this.resolvePoint(event);
 
                     return {
-                        x: event.clientX - rect.left,
-                        y: event.clientY - rect.top,
+                        x: point.clientX - rect.left,
+                        y: point.clientY - rect.top,
                     };
+                },
+                resolvePoint(event) {
+                    if (event.touches?.length) {
+                        return event.touches[0];
+                    }
+
+                    if (event.changedTouches?.length) {
+                        return event.changedTouches[0];
+                    }
+
+                    return event;
+                },
+                resolvePointerId(event) {
+                    if (event.pointerId !== undefined) {
+                        return `pointer-${event.pointerId}`;
+                    }
+
+                    if (event.changedTouches?.length) {
+                        return `touch-${event.changedTouches[0].identifier}`;
+                    }
+
+                    if (event.touches?.length) {
+                        return `touch-${event.touches[0].identifier}`;
+                    }
+
+                    return `mouse-${this.pointerSequence}`;
                 },
                 drawDot(point) {
                     this.ctx.beginPath();
@@ -173,8 +219,13 @@
                     event.preventDefault();
                     this.ensureCanvasReady();
 
-                    this.activePointerId = event.pointerId;
-                    this.$refs.canvas.setPointerCapture?.(event.pointerId);
+                    this.pointerSequence += 1;
+                    this.activePointerId = this.resolvePointerId(event);
+
+                    if (event.pointerId !== undefined) {
+                        this.$refs.canvas.setPointerCapture?.(event.pointerId);
+                    }
+
                     this.isDrawing = true;
 
                     const point = this.coordinates(event);
@@ -184,7 +235,7 @@
                     this.hasSignature = true;
                 },
                 move(event) {
-                    if (this.disabled || !this.isDrawing || event.pointerId !== this.activePointerId) {
+                    if (this.disabled || !this.isDrawing || this.resolvePointerId(event) !== this.activePointerId) {
                         return;
                     }
 
@@ -200,11 +251,14 @@
                         return;
                     }
 
-                    if (event && this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+                    if (event && this.activePointerId !== null && this.resolvePointerId(event) !== this.activePointerId) {
                         return;
                     }
 
-                    this.$refs.canvas.releasePointerCapture?.(this.activePointerId);
+                    if (event?.pointerId !== undefined) {
+                        this.$refs.canvas.releasePointerCapture?.(event.pointerId);
+                    }
+
                     this.isDrawing = false;
                     this.activePointerId = null;
                     this.ctx.closePath();

@@ -8,8 +8,8 @@ use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Placeholder;
+use Filament\Schemas\Components\Callout;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +24,7 @@ final class SignServiceOrderAction
             ->color('gray')
             ->modal()
             ->modalHeading('Assinatura do Cliente')
-            ->modalDescription('Colete a assinatura no modal e salve para registrar imediatamente a nova assinatura e o horário.')
+            ->modalDescription('Colete a assinatura no modal e salve para registrar imediatamente a nova assinatura e o horario.')
             ->modalSubmitActionLabel('Salvar')
             ->modalCancelActionLabel('Cancelar')
             ->modalWidth('4xl')
@@ -34,31 +34,22 @@ final class SignServiceOrderAction
                     'customer_signed_at' => $record->customer_signed_at,
                 ];
             })
-            ->schema(function (Schema $schema): Schema {
-                return $schema
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 4,
-                        'lg' => 12,
-                    ])
-                    ->components([
-                        SignaturePad::make('customer_signature')
-                            ->label('Assinatura')
-                            ->columnSpanFull(),
-                        DateTimePicker::make('customer_signed_at')
-                            ->label('Última assinatura')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->seconds(false)
-                            ->displayFormat('d/m/Y H:i')
-                            ->readOnly()
-                            ->dehydrated(false),
-                        TextInput::make('signature_help')
-                            ->label('')
-                            ->columnSpanFull()
-                            // ->content('Use "Salvar" para gravar a assinatura agora. "Limpar" remove o desenho do canvas, mas só persiste ao salvar o modal.'),
-                    ]);
-            })
-            // ->visible(fn (ServiceOrder $record): bool => (bool) $record->state()?->canEdit())
+            ->schema([
+                SignaturePad::make('customer_signature')
+                    ->label('Assinatura')
+                    ->canvasHeight('300px')
+                    ->columnSpanFull(),
+                DateTimePicker::make('customer_signed_at')
+                    ->label('Ultima assinatura')
+                    ->seconds(false)
+                    ->displayFormat('d/m/Y H:i')
+                    ->readOnly()
+                    ->dehydrated(false),
+                Callout::make('signature_help')
+                    ->info()
+                    ->description('Assine dentro da caixa azul. Use "Salvar" para gravar agora, "Limpar" para apagar o desenho atual e "Cancelar" para fechar sem alterar.'),
+            ])
+            ->visible(fn (ServiceOrder $record): bool => (bool) $record->state()?->canEdit())
             ->action(function (Action $action, ServiceOrder $record, array $data): void {
                 Log::debug('SignServiceOrderAction (Filament): Salvando assinatura da OS', [
                     'metodo' => __METHOD__ . '@' . __LINE__,
@@ -94,7 +85,11 @@ final class SignServiceOrderAction
                     return;
                 }
 
-                notify::success(message: filled($payload['customer_signature']) ? 'Assinatura salva com sucesso.' : 'Assinatura removida com sucesso.');
+                notify::success(
+                    message: filled($payload['customer_signature'])
+                        ? 'Assinatura salva com sucesso.'
+                        : 'Assinatura removida com sucesso.'
+                );
             })
             ->after(function (Action $action): void {
                 $record = $action->getRecord();

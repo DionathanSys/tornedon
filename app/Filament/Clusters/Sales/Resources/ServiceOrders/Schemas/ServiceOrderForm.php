@@ -310,10 +310,6 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
-                                        Placeholder::make('customer_signature_help')
-                                            ->label('Captura da assinatura')
-                                            ->columnSpanFull()
-                                            ->content('A assinatura agora é coletada pela ação "Assinar" no cabeçalho da página e salva imediatamente no registro.'),
                                         DateTimePicker::make('customer_signed_at')
                                             ->label('Assinado em')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
