@@ -11,9 +11,12 @@ use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\EditRequisition;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Models\CompanyPreference;
+use Filament\Schemas\Components\Grid;
 use App\Models\Requisition;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Partner\PartnerService;
+use Filament\Support\Enums\TextSize;
+use Filament\Support\Enums\FontWeight;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -31,7 +34,6 @@ use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
-use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Operation;
 use Illuminate\Support\HtmlString;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -41,22 +43,13 @@ class RequisitionForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns([
-                'sm' => 1,
-                'md' => 4,
-                'lg' => 12,
-            ])
+            ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
             ->components([
                 Section::make('Dados da Requisição')
-                    ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 
-                        new HtmlString('<span style="color: rgb(26, 4, 146); font-weight: 700;">Requisição Nº ' . e($get('number')) . ' | ' . e(Status::from($get('status'))->description()) . '</span>') : 
-                        'Dados da Requisição')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 6,
-                        'lg' => 8,
-                        'xl' => 12,
-                    ])
+                    // ->heading(fn(Get $get, $operation) => $operation === 'edit' ? 
+                    //     new HtmlString('<span style="color: rgb(26, 4, 146); font-weight: 700;">Requisição Nº ' . e($get('number')) . ' | ' . e(Status::from($get('status'))->description()) . '</span>') : 
+                    //     'Dados da Requisição')
+                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12,])
                     ->columnSpanFull()
                     ->schema([
                         Hidden::make('number'),
@@ -93,6 +86,31 @@ class RequisitionForm
                             ->columnSpan(['md' => 4, 'lg' => 5, 'xl' => 3])
                             ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
                             ->required(false),
+                        Grid::make()
+                            ->columns(['md' => 2, 'lg' => 6, 'xl' => 9])
+                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
+                            ->schema([
+                                TextEntry::make('status')
+                                    ->label('Status')
+                                    ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
+                                    ->formatStateUsing(fn(Status $state) => strtoupper($state->description()))
+                                    ->color(fn(Status $state) => $state->color())
+                                    ->size(TextSize::Medium)
+                                    ->weight(FontWeight::Bold),
+                                TextEntry::make('total_amount')
+                                    ->label('Valor Total')
+                                    ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
+                                    ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                                    ->size(TextSize::Medium)
+                                    ->weight(FontWeight::Bold),
+                                TextEntry::make('discount_amount')
+                                    ->label('Desconto (R$)')
+                                    ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
+                                    ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                                    ->size(TextSize::Medium)
+                                    ->weight(FontWeight::Bold),
+                            ]),
+
                     ]),
                 Section::make('Pagamento e Entrega')
                     ->columns(['md' => 6, 'lg' => 8, 'xl' => 12])

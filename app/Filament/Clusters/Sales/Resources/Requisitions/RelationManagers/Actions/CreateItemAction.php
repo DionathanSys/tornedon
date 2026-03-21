@@ -93,6 +93,9 @@ final class CreateItemAction
                 notify::success(message: $service->getMessageUser());
                 return $item;
             })
+            ->after(function (ItemsRelationManager $livewire) {
+                $livewire->dispatch('refresh-page');
+            })
             ->successNotification(null);
     }
 

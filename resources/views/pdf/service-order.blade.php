@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Ordem de Serviço {{ $record->number }}</title>
+    <title>Ordem de Servico {{ $record->number }}</title>
     @include('pdf.partials.document-styles')
     <style>
         body { padding-bottom: 28px; }
@@ -26,33 +26,52 @@
 </head>
 
 <body>
+    @php
+        $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
+        $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
+        $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
+
+        $headerLines = [
+            ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
+            ['label' => 'Cliente', 'value' => $record->customer?->name ?? '-'],
+            ['label' => 'Data da Ordem', 'value' => $formatDate($record->order_date)],
+            ['label' => 'Data Finalizacao', 'value' => $formatDate($record->completion_date)],
+            ['label' => 'Status', 'value' => $record->status?->description() ?? '-'],
+        ];
+
+        $responsibles = collect([
+            ['label' => 'Equipamento', 'value' => $record->equipment?->name],
+            ['label' => 'Tecnico', 'value' => $record->technician?->name],
+            ['label' => 'Supervisor', 'value' => $record->supervisor?->name],
+            ['label' => 'Vendedor', 'value' => $record->salesperson?->name],
+        ])->filter(fn ($field) => filled($field['value']));
+
+        $summaryLines = collect([
+            $record->discount_amount > 0
+                ? ['label' => 'Desconto total', 'value' => $formatMoney($record->discount_amount)]
+                : null,
+            ['label' => 'Valor total', 'value' => $formatMoney($record->total_amount)],
+        ])->filter();
+    @endphp
+
     <div class="head">
-        <h1>Ordem de Serviço #{{ $record->number }}</h1>
-        <div class="line muted">Empresa: {{ $record->company?->name ?? '-' }}</div>
-        <div class="line">Cliente: {{ $record->customer?->name ?? '-' }}</div>
-        <div class="line">Data da Ordem: {{ $record->order_date?->format('d/m/Y') ?? '-' }}</div>
-        <div class="line">Data Finalização: {{ $record->completion_date?->format('d/m/Y') ?? '-' }}</div>
-        <div class="line">Status: {{ $record->status?->description() ?? '-' }}</div>
+        <h1>Ordem de Servico #{{ $record->number }}</h1>
+        @foreach ($headerLines as $line)
+            <div class="line {{ $line['class'] ?? '' }}">{{ $line['label'] }}: {{ $line['value'] }}</div>
+        @endforeach
     </div>
 
-    @if($record->equipment)
-        <div class="line">Equipamento: {{ $record->equipment?->name ?? '-' }}</div>
-    @endif
-    @if($record->technician)
-        <div class="line">Tecnico: {{ $record->technician?->name ?? '-' }}</div>
-    @endif
-    @if($record->supervisor)
-        <div class="line">Supervisor: {{ $record->supervisor?->name ?? '-' }}</div>
-    @endif
-    @if($record->salesperson)
-        <div class="line">Vendedor: {{ $record->salesperson?->name ?? '-' }}</div>
+    @if ($responsibles->isNotEmpty())
+        @foreach ($responsibles as $field)
+            <div class="line">{{ $field['label'] }}: {{ $field['value'] }}</div>
+        @endforeach
     @endif
 
-    <h2>Itens da Ordem de Serviço</h2>
+    <h2>Itens da Ordem de Servico</h2>
     <table class="grid">
         <thead>
             <tr>
-                <th>Serviço</th>
+                <th>Servico</th>
                 <th>Qtd</th>
                 <th>Valor Unit.</th>
                 <th>Desconto</th>
@@ -62,30 +81,29 @@
         </thead>
         <tbody>
             @forelse ($record->items as $item)
-            <tr>
-                <td>{{ $item->service?->name ?? '-' }}</td>
-                <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                <td>R$ {{ number_format((float) $item->unit_price, 2, ',', '.') }}</td>
-                <td>R$ {{ number_format((float) $item->discount_amount, 2, ',', '.') }}</td>
-                <td>R$ {{ number_format((float) $item->total_amount, 2, ',', '.') }}</td>
-                <td>{{ $item->observations ?? '-' }}</td>
-            </tr>
+                <tr>
+                    <td>{{ $item->service?->name ?? '-' }}</td>
+                    <td>{{ $formatQuantity($item->quantity) }}</td>
+                    <td>{{ $formatMoney($item->unit_price) }}</td>
+                    <td>{{ $formatMoney($item->discount_amount) }}</td>
+                    <td>{{ $formatMoney($item->total_amount) }}</td>
+                    <td>{{ $item->observations ?? '-' }}</td>
+                </tr>
             @empty
-            <tr>
-                <td colspan="6" class="text-right">Sem itens.</td>
-            </tr>
+                <tr>
+                    <td colspan="6" class="text-right">Sem itens.</td>
+                </tr>
             @endforelse
         </tbody>
     </table>
 
-    <h2>Observações</h2>
-        <div class="line">{{$record->customer_observations ?? 'Sem observações'}}</div>
+    <h2>Observacoes</h2>
+    <div class="line">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
 
     <h2>Resumo</h2>
-    @if($record->discount_amount > 0)
-        <div class="line">Desconto total: R$ {{ number_format((float) $record->discount_amount, 2, ',', '.') }}</div>
-    @endif
-    <div class="line">Valor total: R$ {{ number_format((float) $record->total_amount, 2, ',', '.') }}</div>
+    @foreach ($summaryLines as $line)
+        <div class="line">{{ $line['label'] }}: {{ $line['value'] }}</div>
+    @endforeach
 
     <div class="signature-block">
         <div class="signature-line">Assinatura do Cliente</div>
