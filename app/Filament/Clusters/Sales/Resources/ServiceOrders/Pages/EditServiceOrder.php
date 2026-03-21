@@ -169,6 +169,18 @@ class EditServiceOrder extends EditRecord
 
         unset($data['discount_amount']);
 
+        $currentSignature = $this->record->customer_signature;
+        $newSignature = $data['customer_signature'] ?? null;
+
+        if (blank($newSignature)) {
+            $data['customer_signature'] = null;
+            $data['customer_signed_at'] = null;
+        } elseif ($newSignature !== $currentSignature) {
+            $data['customer_signed_at'] = now();
+        } else {
+            $data['customer_signed_at'] = $this->record->customer_signed_at;
+        }
+
         return $data;
     }
 

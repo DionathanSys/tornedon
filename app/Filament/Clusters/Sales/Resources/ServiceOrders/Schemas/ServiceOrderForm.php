@@ -11,6 +11,7 @@ use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
+use App\Forms\Components\SignaturePad;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
@@ -294,6 +295,32 @@ class ServiceOrderForm
                                             ->columnStart(1)
                                             ->disabled()
                                             ->displayFormat('d/m/Y H:i'),
+                                    ]),
+                            ]),
+                        Tab::make('Assinatura')
+                            ->icon(Heroicon::PencilSquare)
+                            ->schema([
+                                Section::make('Assinatura do Cliente')
+                                    ->description('Use esta área para coletar a assinatura diretamente na tela em celulares, tablets ou notebooks com toque.')
+                                    ->columns([
+                                        'sm' => 1,
+                                        'md' => 4,
+                                        'lg' => 12,
+                                    ])
+                                    ->columnSpanFull()
+                                    ->contained(false)
+                                    ->schema([
+                                        SignaturePad::make('customer_signature')
+                                            ->label('Assinatura')
+                                            ->columnSpanFull()
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                        DateTimePicker::make('customer_signed_at')
+                                            ->label('Assinado em')
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->seconds(false)
+                                            ->displayFormat('d/m/Y H:i')
+                                            ->readOnly()
+                                            ->dehydrated(false),
                                     ]),
                             ]),
                         Tab::make('Outros')

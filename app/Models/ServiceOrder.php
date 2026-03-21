@@ -52,6 +52,8 @@ class ServiceOrder extends Model
         'requires_approval',
         'approved_by_customer',
         'approved_at',
+        'customer_signature',
+        'customer_signed_at',
         'customer_rating',
         'customer_feedback',
         'invoice_id',
@@ -77,6 +79,7 @@ class ServiceOrder extends Model
         'requires_approval'     => 'boolean',
         'approved_by_customer'  => 'boolean',
         'approved_at'           => 'datetime',
+        'customer_signed_at'     => 'datetime',
         'customer_rating'       => 'decimal:1',
         'additional_info'       => 'array',
     ];

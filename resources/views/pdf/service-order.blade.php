@@ -86,6 +86,17 @@
             padding-top: 6px;
             margin: 0 auto;
         }
+        .signature-image {
+            display: block;
+            max-width: 260px;
+            max-height: 110px;
+            margin: 0 auto 8px auto;
+        }
+        .signature-date {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #6b7280;
+        }
         .pdf-footer {
             position: fixed;
             bottom: 0;
@@ -197,7 +208,15 @@
     </table>
 
     <div class="signature-block">
-        <div class="signature-line">Assinatura do Cliente</div>
+        @if (filled($record->customer_signature))
+            <img src="{{ $record->customer_signature }}" alt="Assinatura do cliente" class="signature-image">
+            <div class="signature-line">Assinatura do Cliente</div>
+            @if ($record->customer_signed_at)
+                <div class="signature-date">Assinado em {{ $record->customer_signed_at->format('d/m/Y H:i') }}</div>
+            @endif
+        @else
+            <div class="signature-line">Assinatura do Cliente</div>
+        @endif
     </div>
 
     <div class="pdf-footer">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>

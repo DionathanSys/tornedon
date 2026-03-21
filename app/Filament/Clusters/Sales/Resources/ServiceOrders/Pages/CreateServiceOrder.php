@@ -24,6 +24,12 @@ class CreateServiceOrder extends CreateRecord
 
         unset($data['discount_amount']);
 
+        if (filled($data['customer_signature'] ?? null)) {
+            $data['customer_signed_at'] = now();
+        } else {
+            $data['customer_signed_at'] = null;
+        }
+
         return $data;
     }
 
