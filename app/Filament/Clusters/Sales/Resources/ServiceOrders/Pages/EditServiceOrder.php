@@ -317,6 +317,58 @@ class EditServiceOrder extends EditRecord
         redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
 
+    public function clearCustomerSignature(): void
+    {
+        $record = $this->record;
+
+        if (! $record->state()?->canEdit()) {
+            notify::warning(
+                message: 'A assinatura nao pode ser removida porque esta ordem de servico nao pode mais ser editada.'
+            );
+
+            return;
+        }
+
+        Log::debug('EditServiceOrder: Iniciando remocao de assinatura do cliente', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'service_order_id' => $record->id,
+        ]);
+
+        $updated = $record->update([
+            'customer_signature' => null,
+            'customer_signed_at' => null,
+            'updated_by' => Auth::id(),
+        ]);
+
+        if (! $updated) {
+            Log::error('EditServiceOrder: Erro ao remover assinatura do cliente', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'service_order_id' => $record->id,
+            ]);
+
+            notify::error(
+                message: 'Nao foi possivel remover a assinatura do cliente.'
+            );
+
+            return;
+        }
+
+        $record->refresh();
+        $this->record = $record;
+        $this->refreshFormData(['customer_signature', 'customer_signed_at']);
+
+        Log::info('EditServiceOrder: Assinatura do cliente removida com sucesso', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'service_order_id' => $record->id,
+        ]);
+
+        notify::success(
+            message: 'Assinatura removida com sucesso.'
+        );
+
+        redirect($this->getResource()::getUrl('edit', ['record' => $record]));
+    }
+
     protected function getUpdatedNotificationTitle(): ?string
     {
         return 'Ordem de serviço atualizada com sucesso';
