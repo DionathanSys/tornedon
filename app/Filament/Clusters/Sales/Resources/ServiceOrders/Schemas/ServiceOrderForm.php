@@ -346,7 +346,7 @@ class ServiceOrderForm
                                             ->reorderable()
                                             ->collapsible()
                                             ->itemLabel(function (array $state): ?string {
-                                                $label = static::additionalInfoOptions()[$state['type'] ?? ''] ?? null;
+                                                $label = filled($state['type'] ?? null) ? (string) $state['type'] : null;
                                                 $observation = $state['observation'] ?? null;
 
                                                 return $label
@@ -380,23 +380,7 @@ class ServiceOrderForm
             ]);
     }
 
-    protected static function additionalInfoOptions(): array
-    {
-        return [
-            'accessories'   => 'Acessórios entregues',
-            'avaria'        => 'Avaria identificada',
-            'budget'        => 'Orçamento alinhado',
-            'cleaning'      => 'Limpeza executada',
-            'guidance'      => 'Orientações ao cliente',
-            'parts'         => 'Peças substituídas',
-            'pending'       => 'Pendência encontrada',
-            'test'          => 'Teste realizado',
-            'warranty'      => 'Garantia informada',
-            'other'         => 'Outro',
-        ];
-    }
-
-    protected static function normalizeAdditionalInfoState(mixed $state): array
+    public static function normalizeAdditionalInfoState(mixed $state): array
     {
         if (! is_array($state)) {
             return [];
@@ -411,9 +395,10 @@ class ServiceOrderForm
         if ($isAssoc) {
             return collect($state)
                 ->map(fn($value, $key) => [
-                    'type' => array_key_exists((string) $key, static::additionalInfoOptions()) ? (string) $key : 'other',
+                    'type' => filled($key) ? (string) $key : null,
                     'observation' => is_scalar($value) ? (string) $value : null,
                 ])
+                ->filter(fn(array $item) => filled($item['type']) || filled($item['observation']))
                 ->values()
                 ->all();
         }
@@ -425,15 +410,15 @@ class ServiceOrderForm
                 }
 
                 return [
-                    'type' => array_key_exists((string) ($item['type'] ?? ''), static::additionalInfoOptions())
+                    'type' => filled($item['type'] ?? null)
                         ? (string) $item['type']
-                        : 'other',
+                        : null,
                     'observation' => filled($item['observation'] ?? null)
                         ? (string) $item['observation']
                         : null,
                 ];
             })
-            ->filter()
+            ->filter(fn(array $item) => filled($item['type']) || filled($item['observation']))
             ->values()
             ->all();
     }

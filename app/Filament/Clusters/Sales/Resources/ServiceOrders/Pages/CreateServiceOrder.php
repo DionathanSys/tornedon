@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Facades\Filament;
@@ -23,6 +24,7 @@ class CreateServiceOrder extends CreateRecord
         $data['status']     = State::OPEN;
 
         unset($data['discount_amount']);
+        $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
 
         if (filled($data['customer_signature'] ?? null)) {
             $data['customer_signed_at'] = now();

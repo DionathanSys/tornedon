@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
@@ -169,6 +170,7 @@ class EditServiceOrder extends EditRecord
         ]);
 
         unset($data['discount_amount']);
+        $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
 
         $currentSignature = $this->record->customer_signature;
         $newSignature = $data['customer_signature'] ?? null;
@@ -181,6 +183,13 @@ class EditServiceOrder extends EditRecord
         } else {
             $data['customer_signed_at'] = $this->record->customer_signed_at;
         }
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
 
         return $data;
     }

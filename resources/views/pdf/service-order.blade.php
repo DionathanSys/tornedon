@@ -150,6 +150,7 @@
         ])->filter();
 
         $additionalInfo = collect($record->additional_info ?? []);
+        $additionalInfoText = null;
 
         if ($additionalInfo->isNotEmpty()) {
             $first = $additionalInfo->first();
@@ -161,7 +162,10 @@
                             return null;
                         }
 
-                        $label = $additionalInfoLabels[$item['type'] ?? 'other'] ?? 'Outro';
+                        $type = $item['type'] ?? null;
+                        $label = filled($type)
+                            ? ($additionalInfoLabels[$type] ?? (string) $type)
+                            : 'Outro';
                         $observation = $item['observation'] ?? null;
 
                         return [
@@ -183,6 +187,24 @@
                     ->filter();
             }
         }
+
+        $additionalInfoText = $additionalInfo
+            ->map(function ($info) {
+                if (! is_array($info)) {
+                    return null;
+                }
+
+                $label = $info['label'] ?? null;
+                $value = $info['value'] ?? null;
+
+                if (filled($label) && filled($value)) {
+                    return "{$label}: {$value}";
+                }
+
+                return $label ?: $value;
+            })
+            ->filter()
+            ->implode(' | ');
     @endphp
 
     <div class="page-header">
@@ -239,21 +261,12 @@
         </tbody>
     </table>
 
-    <div class="section-title">Observacoes</div>
+    <div class="section-title">Observações</div>
     <div class="notes-box">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
 
-    @if ($additionalInfo->isNotEmpty())
+    @if (filled($additionalInfoText))
         <div class="section-title">Informacoes Adicionais</div>
-        <table class="meta-grid">
-            <tbody>
-                @foreach ($additionalInfo as $info)
-                    <tr>
-                        <td class="meta-label">{{ $info['label'] }}</td>
-                        <td>{{ filled($info['value']) ? $info['value'] : '-' }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <div class="notes-box">{{ $additionalInfoText }}</div>
     @endif
 
     <div class="section-title">Resumo</div>
