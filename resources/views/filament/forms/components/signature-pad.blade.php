@@ -75,6 +75,8 @@
                 ctx: null,
                 resizeObserver: null,
                 lastSerializedState: null,
+                canvasWidth: null,
+                canvasHeight: null,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
 
@@ -118,9 +120,21 @@
                     const canvas = this.$refs.canvas;
                     const ratio = Math.max(window.devicePixelRatio || 1, 1);
                     const height = parseInt(this.height, 10) || 220;
+                    const pixelWidth = Math.max(Math.floor(width * ratio), 1);
+                    const pixelHeight = Math.max(Math.floor(height * ratio), 1);
 
-                    canvas.width = Math.max(Math.floor(width * ratio), 1);
-                    canvas.height = Math.max(Math.floor(height * ratio), 1);
+                    if (
+                        this.ctx &&
+                        this.canvasWidth === pixelWidth &&
+                        this.canvasHeight === pixelHeight
+                    ) {
+                        return;
+                    }
+
+                    const snapshot = this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null;
+
+                    canvas.width = pixelWidth;
+                    canvas.height = pixelHeight;
 
                     this.ctx = canvas.getContext('2d');
                     this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -129,6 +143,12 @@
                     this.ctx.lineWidth = 2.2;
                     this.ctx.strokeStyle = '#111827';
                     this.ctx.clearRect(0, 0, width, height);
+                    this.canvasWidth = pixelWidth;
+                    this.canvasHeight = pixelHeight;
+
+                    if (snapshot) {
+                        this.restoreImage(snapshot);
+                    }
                 },
                 coordinates(event) {
                     const rect = this.$refs.canvas.getBoundingClientRect();
@@ -210,6 +230,24 @@
                     this.lastSerializedState = this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null;
                     this.state = this.lastSerializedState;
                 },
+                restoreImage(source) {
+                    if (!source) {
+                        return;
+                    }
+
+                    const image = new Image();
+
+                    image.onload = () => {
+                        const rect = this.$refs.canvas.getBoundingClientRect();
+                        const height = parseInt(this.height, 10) || 220;
+
+                        this.ctx.clearRect(0, 0, rect.width, height);
+                        this.ctx.drawImage(image, 0, 0, rect.width, height);
+                        this.hasSignature = true;
+                    };
+
+                    image.src = source;
+                },
                 restoreFromState() {
                     this.ensureCanvasReady();
 
@@ -224,19 +262,8 @@
                         return;
                     }
 
-                    const image = new Image();
-
-                    image.onload = () => {
-                        const rect = this.$refs.canvas.getBoundingClientRect();
-                        const height = parseInt(this.height, 10) || 220;
-
-                        this.ctx.clearRect(0, 0, rect.width, height);
-                        this.ctx.drawImage(image, 0, 0, rect.width, height);
-                        this.hasSignature = true;
-                        this.lastSerializedState = this.state;
-                    };
-
-                    image.src = this.state;
+                    this.restoreImage(this.state);
+                    this.lastSerializedState = this.state;
                 },
             }));
         });

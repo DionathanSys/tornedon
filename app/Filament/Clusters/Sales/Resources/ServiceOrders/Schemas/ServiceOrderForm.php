@@ -11,7 +11,6 @@ use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
-use App\Forms\Components\SignaturePad;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
@@ -20,6 +19,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -310,10 +310,10 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
-                                        SignaturePad::make('customer_signature')
-                                            ->label('Assinatura')
+                                        Placeholder::make('customer_signature_help')
+                                            ->label('Captura da assinatura')
                                             ->columnSpanFull()
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                            ->content('A assinatura agora é coletada pela ação "Assinar" no cabeçalho da página e salva imediatamente no registro.'),
                                         DateTimePicker::make('customer_signed_at')
                                             ->label('Assinado em')
                                             ->columnSpan(['md' => 2, 'lg' => 4])

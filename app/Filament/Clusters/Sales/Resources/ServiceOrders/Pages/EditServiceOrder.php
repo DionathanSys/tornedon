@@ -10,6 +10,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateS
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\SignServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -44,6 +45,9 @@ class EditServiceOrder extends EditRecord
                 PreviewServiceOrderPdfAction::make()
                     ->hiddenLabel()
                     ->tooltip('Preview PDF'),
+                SignServiceOrderAction::make()
+                    ->hiddenLabel()
+                    ->tooltip('Coletar assinatura'),
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
                     ->hiddenLabel(),
