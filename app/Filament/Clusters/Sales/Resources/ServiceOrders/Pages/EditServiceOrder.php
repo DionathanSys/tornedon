@@ -45,9 +45,6 @@ class EditServiceOrder extends EditRecord
                 PreviewServiceOrderPdfAction::make()
                     ->hiddenLabel()
                     ->tooltip('Preview PDF'),
-                SignServiceOrderAction::make()
-                    ->hiddenLabel()
-                    ->tooltip('Coletar assinatura'),
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
                     ->hiddenLabel(),

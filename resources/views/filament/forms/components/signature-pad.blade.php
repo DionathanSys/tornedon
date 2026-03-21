@@ -13,7 +13,7 @@
         x-init="init()"
         class="space-y-3"
     >
-        <div class="rounded-2xl border-2 border-sky-300 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/40 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20">
+        <div class="rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20">
             <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <!-- <div>
                     <p class="text-sm font-medium text-gray-950 dark:text-white">Assinatura do cliente</p>
@@ -28,30 +28,32 @@
                 ></span>
             </div>
 
-            <div class="mb-2 inline-flex items-center rounded-full border border-sky-300 bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-800 shadow-sm dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-200">
+            <div class="mb-2 inline-flex items-center rounded-full border border-sky-400 bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-900 shadow-sm dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-200">
                 Assine dentro da caixa abaixo
             </div>
 
             <div
-                class="overflow-hidden rounded-xl border-4 border-sky-500 bg-white shadow-[0_0_0_6px_rgba(14,165,233,0.18)] transition duration-200 dark:border-sky-400 dark:bg-slate-950"
+                class="rounded-2xl border-2 border-sky-300 bg-sky-100 p-2 shadow-[0_0_0_4px_rgba(14,165,233,0.10)] transition duration-200 dark:border-sky-500/40 dark:bg-sky-950/20"
                 :class="isDrawing ? 'scale-[1.01] shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : ''"
             >
-                <canvas
-                    x-ref="canvas"
-                    class="block w-full cursor-crosshair touch-none bg-[linear-gradient(to_bottom,rgba(255,255,255,1),rgba(224,242,254,0.95))] dark:bg-[linear-gradient(to_bottom,rgba(2,6,23,0.98),rgba(8,47,73,0.78))]"
-                    :style="`height: ${height}`"
-                    x-on:pointerdown="start($event)"
-                    x-on:pointermove="move($event)"
-                    x-on:pointerup.window="end($event)"
-                    x-on:pointercancel.window="end($event)"
-                    x-on:mousedown="start($event)"
-                    x-on:mousemove="move($event)"
-                    x-on:mouseup.window="end($event)"
-                    x-on:mouseleave="end($event)"
-                    x-on:touchstart.prevent="start($event)"
-                    x-on:touchmove.prevent="move($event)"
-                    x-on:touchend.window="end($event)"
-                ></canvas>
+                <div class="overflow-hidden rounded-xl border-4 border-sky-600 bg-white shadow-inner dark:border-sky-400 dark:bg-slate-950">
+                    <canvas
+                        x-ref="canvas"
+                        class="block w-full cursor-crosshair touch-none bg-white dark:bg-slate-950"
+                        :style="`height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`"
+                        x-on:pointerdown="start($event)"
+                        x-on:pointermove="move($event)"
+                        x-on:pointerup.window="end($event)"
+                        x-on:pointercancel.window="end($event)"
+                        x-on:mousedown="start($event)"
+                        x-on:mousemove="move($event)"
+                        x-on:mouseup.window="end($event)"
+                        x-on:mouseleave="end($event)"
+                        x-on:touchstart.prevent="start($event)"
+                        x-on:touchmove.prevent="move($event)"
+                        x-on:touchend.window="end($event)"
+                    ></canvas>
+                </div>
             </div>
 
             <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
@@ -135,7 +137,18 @@
 
                     this.setupCanvas(rect.width);
                 },
-                setupCanvas(width) {
+                resetCanvas(snapshot = null) {
+                    const rect = this.$refs.canvas.getBoundingClientRect();
+
+                    if (rect.width <= 0) {
+                        return;
+                    }
+
+                    this.canvasWidth = null;
+                    this.canvasHeight = null;
+                    this.setupCanvas(rect.width, snapshot);
+                },
+                setupCanvas(width, snapshotOverride = undefined) {
                     const canvas = this.$refs.canvas;
                     const ratio = Math.max(window.devicePixelRatio || 1, 1);
                     const height = parseInt(this.height, 10) || 220;
@@ -150,7 +163,9 @@
                         return;
                     }
 
-                    const snapshot = this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null;
+                    const snapshot = snapshotOverride !== undefined
+                        ? snapshotOverride
+                        : (this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null);
 
                     canvas.width = pixelWidth;
                     canvas.height = pixelHeight;
@@ -269,16 +284,13 @@
                         return;
                     }
 
-                    this.ensureCanvasReady();
-
-                    const canvas = this.$refs.canvas;
-                    const rect = canvas.getBoundingClientRect();
-                    const height = parseInt(this.height, 10) || 220;
-
-                    this.ctx.clearRect(0, 0, rect.width, height);
+                    this.isDrawing = false;
+                    this.activePointerId = null;
+                    this.ctx?.closePath();
                     this.lastSerializedState = null;
                     this.state = null;
                     this.hasSignature = false;
+                    this.resetCanvas(null);
                 },
                 syncState() {
                     this.lastSerializedState = this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null;
