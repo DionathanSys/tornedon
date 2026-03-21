@@ -8,7 +8,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -52,13 +52,13 @@ final class SignServiceOrderAction
                             ->displayFormat('d/m/Y H:i')
                             ->readOnly()
                             ->dehydrated(false),
-                        Placeholder::make('signature_help')
+                        TextInput::make('signature_help')
                             ->label('')
                             ->columnSpanFull()
-                            ->content('Use "Salvar" para gravar a assinatura agora. "Limpar" remove o desenho do canvas, mas só persiste ao salvar o modal.'),
+                            // ->content('Use "Salvar" para gravar a assinatura agora. "Limpar" remove o desenho do canvas, mas só persiste ao salvar o modal.'),
                     ]);
             })
-            ->visible(fn (ServiceOrder $record): bool => (bool) $record->state()?->canEdit())
+            // ->visible(fn (ServiceOrder $record): bool => (bool) $record->state()?->canEdit())
             ->action(function (Action $action, ServiceOrder $record, array $data): void {
                 Log::debug('SignServiceOrderAction (Filament): Salvando assinatura da OS', [
                     'metodo' => __METHOD__ . '@' . __LINE__,
