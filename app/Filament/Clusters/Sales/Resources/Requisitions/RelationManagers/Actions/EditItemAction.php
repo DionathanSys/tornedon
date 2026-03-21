@@ -42,6 +42,7 @@ final class EditItemAction
                     ? (new ProductSalePriceService())->getMinSalePriceById($record->product_id)
                     : 0;
                 $data['item.product_stock_id'] = $record->productStock()->first()?->id;
+                $data['description'] = $record->product->name;
                 return $data;
             })
             ->schema(fn(Schema $schema) => ItemsForm::configure($schema))
@@ -51,7 +52,7 @@ final class EditItemAction
                     'item_id' => $record->id,
                     'data' => $data,
                 ]);
-
+    
                 $service = new RequisitionItemService();
                 $item = $service->update($record, $data, Auth::id());
 
