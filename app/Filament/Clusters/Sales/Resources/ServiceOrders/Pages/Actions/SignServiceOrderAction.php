@@ -45,7 +45,7 @@ final class SignServiceOrderAction
                     ->displayFormat('d/m/Y H:i')
                     ->readOnly()
                     ->dehydrated(false),
-                Callout::make('signature_help')
+                Callout::make('Ajuda')
                     ->info()
                     ->description('Assine dentro da caixa azul. Use "Salvar" para gravar agora, "Limpar" para apagar o desenho atual e "Cancelar" para fechar sem alterar.'),
             ])
