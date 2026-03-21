@@ -312,17 +312,21 @@ class ServiceOrderForm
                                     ->contained(false)
                                     ->schema([
                                         SignaturePad::make('customer_signature')
-                                            ->label('Assinatura')
+                                            ->hiddenLabel()
                                             ->canvasHeight('300px')
-                                            ->columnSpanFull(),
+                                            ->columnSpan(['md' => 2, 'lg' => 6]),
                                         DateTimePicker::make('customer_signed_at')
                                             ->label('Ultima assinatura')
                                             ->seconds(false)
+                                            ->columnStart(1)
                                             ->displayFormat('d/m/Y H:i')
+                                            ->columnSpan(['md' => 1, 'lg' => 3])
                                             ->readOnly()
                                             ->dehydrated(false),
                                         Callout::make('Ajuda')
                                             ->info()
+                                            ->columnStart(1)
+                                            ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->description('Assine dentro da caixa azul. Use "Salvar" para gravar agora, "Limpar" para apagar o desenho atual e "Cancelar" para fechar sem alterar.'),
                                     ]),
                             ]),

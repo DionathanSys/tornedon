@@ -15,12 +15,12 @@
     >
         <div class="rounded-2xl border-2 border-sky-300 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/40 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20">
             <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <!-- <div>
                     <p class="text-sm font-medium text-gray-950 dark:text-white">Assinatura do cliente</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         Em telas com toque, o cliente pode assinar com o dedo. Em desktop, a assinatura também pode ser feita com o mouse ou caneta.
                     </p>
-                </div>
+                </div> -->
 
                 <span
                     class="inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[11px] font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
@@ -69,7 +69,7 @@
                 </button>
 
                 <span class="text-xs text-gray-500 dark:text-gray-400" x-show="!disabled">
-                    Desenhe na área acima. A assinatura é salva quando o traço termina.
+                    Desenhe na área acima.
                 </span>
                 <span class="text-xs text-gray-500 dark:text-gray-400" x-show="disabled">
                     A assinatura está bloqueada porque esta ordem de serviço não pode mais ser editada.
