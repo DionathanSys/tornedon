@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -83,7 +84,8 @@ class RequisitionsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('number')
                     ->label('Nº')
-                    ->searchable(),
+                    ->searchable()
+                    ->recordUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
                 TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->toggleable(isToggledHiddenByDefault: true),

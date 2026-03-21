@@ -7,6 +7,7 @@ use App\Enum\Payment\Method;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -115,13 +116,15 @@ class ServiceOrdersRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('number')
                     ->label('Nº')
-                    ->searchable(),
+                    ->searchable()
+                    ->recordUrl(fn($record) => ServiceOrderResource::getUrl('edit', ['record' => $record])),
                 TextColumn::make('customer.name')   
                     ->label('Cliente')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('quote.id')
                     ->label('ID Orçamento')
                     ->searchable()
+                    ->placeholder('Sem Orçamento')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('order_date')
                     ->label('Dt. Ordem')
@@ -131,16 +134,19 @@ class ServiceOrdersRelationManager extends RelationManager
                 TextColumn::make('scheduled_date')
                     ->label('Dt. Agendada')
                     ->date('d/m/Y')
+                    ->placeholder('Sem data')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('limit_date')
                     ->label('Dt. Limite')
                     ->date('d/m/Y')
+                    ->placeholder('Sem data')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('completion_date')
                     ->label('Dt. Finalização')
                     ->date('d/m/Y')
+                    ->placeholder('Sem data')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
@@ -162,21 +168,26 @@ class ServiceOrdersRelationManager extends RelationManager
                 TextColumn::make('equipment.name')
                     ->label('Equipamento')
                     ->searchable()
+                    ->placeholder('Sem equipamento')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('location')
                     ->label('Localização')
+                    ->placeholder('Sem localização')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('estimated_hours')
                     ->numeric()
                     ->sortable()
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('actual_hours')
                     ->numeric()
                     ->sortable()
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('travel_value')
                     ->numeric()
                     ->sortable()
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_method')
                     ->label('Forma de Pagto')
@@ -190,18 +201,22 @@ class ServiceOrdersRelationManager extends RelationManager
                 TextColumn::make('technician.name')
                     ->label('Técnico')
                     ->searchable()
+                    ->placeholder('Sem técnico')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('supervisor.name')
                     ->label('Supervisor')
                     ->searchable()
+                    ->placeholder('Sem supervisor')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('salesperson.name')
                     ->label('Vendedor')
                     ->searchable()
+                    ->placeholder('Sem vendedor')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('warranty_expires_at')
                     ->date('d/m/Y')
                     ->label('Garantia Válida Até')
+                    ->placeholder('Sem garantia')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('requires_approval')
