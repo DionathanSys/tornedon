@@ -52,7 +52,7 @@ class RequisitionItem extends Model
 
     public function productStock(): BelongsTo
     {
-        return $this->belongsTo(ProductStock::class, 'product_id');
+        return $this->belongsTo(ProductStock::class, 'product_id', 'product_id');
     }
 
     public function createdBy(): BelongsTo

@@ -41,6 +41,7 @@ final class EditItemAction
                 $data['_min_sale_price'] = $record->product_id
                     ? (new ProductSalePriceService())->getMinSalePriceById($record->product_id)
                     : 0;
+                $data['item.product_stock_id'] = $record->productStock()->first()?->id;
                 return $data;
             })
             ->schema(fn(Schema $schema) => ItemsForm::configure($schema))
