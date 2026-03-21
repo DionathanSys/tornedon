@@ -138,12 +138,6 @@ class ItemsRelationManager extends RelationManager
                     ->iconButton(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DissociateBulkAction::make(),
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
-                ]),
                 CreateItemAction::make()
             ])
             ->emptyStateDescription('Adicione itens à requisição para que eles sejam exibidos aqui.');

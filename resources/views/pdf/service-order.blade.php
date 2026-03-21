@@ -6,12 +6,85 @@
     <title>Ordem de Servico {{ $record->number }}</title>
     @include('pdf.partials.document-styles')
     <style>
-        body { padding-bottom: 28px; }
-        .signature-block { margin-top: 36px; }
+        @page { margin: 24px 24px 34px 24px; }
+        body {
+            padding-bottom: 28px;
+            color: #111827;
+        }
+        .page-header {
+            border: 1px solid #cfd7df;
+            margin-bottom: 14px;
+        }
+        .page-header-bar {
+            background: #17385b;
+            color: #ffffff;
+            padding: 10px 12px;
+        }
+        .page-header-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .page-header-body {
+            padding: 10px 12px;
+        }
+        .meta-grid,
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .meta-grid td,
+        .summary-table td {
+            border: 1px solid #d1d5db;
+            padding: 7px 8px;
+            vertical-align: top;
+        }
+        .meta-label {
+            width: 22%;
+            background: #f8fafc;
+            color: #17385b;
+            font-weight: bold;
+        }
+        .section-title {
+            margin: 18px 0 8px 0;
+            padding: 6px 10px;
+            background: #17385b;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .notes-box {
+            border: 1px solid #d1d5db;
+            padding: 10px;
+            min-height: 56px;
+        }
+        .grid th {
+            background: #e8eef4;
+            text-align: center;
+        }
+        .grid td:nth-child(2),
+        .grid td:nth-child(3),
+        .grid td:nth-child(4),
+        .grid td:nth-child(5) {
+            text-align: center;
+            white-space: nowrap;
+        }
+        .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        .summary-total td {
+            background: #e8eef4;
+            font-size: 13px;
+        }
+        .signature-block {
+            margin-top: 32px;
+            text-align: center;
+        }
         .signature-line {
             width: 260px;
             border-top: 1px solid #1f2937;
-            padding-top: 4px;
+            padding-top: 6px;
+            margin: 0 auto;
         }
         .pdf-footer {
             position: fixed;
@@ -54,20 +127,31 @@
         ])->filter();
     @endphp
 
-    <div class="head">
-        <h1>Ordem de Servico #{{ $record->number }}</h1>
-        @foreach ($headerLines as $line)
-            <div class="line {{ $line['class'] ?? '' }}">{{ $line['label'] }}: {{ $line['value'] }}</div>
-        @endforeach
+    <div class="page-header">
+        <div class="page-header-bar">
+            <div class="page-header-title">Ordem de Servico #{{ $record->number }}</div>
+        </div>
+        <div class="page-header-body">
+            <table class="meta-grid">
+                <tbody>
+                    @foreach ($headerLines as $line)
+                        <tr>
+                            <td class="meta-label">{{ $line['label'] }}</td>
+                            <td class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                        </tr>
+                    @endforeach
+                    @foreach ($responsibles as $field)
+                        <tr>
+                            <td class="meta-label">{{ $field['label'] }}</td>
+                            <td>{{ $field['value'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    @if ($responsibles->isNotEmpty())
-        @foreach ($responsibles as $field)
-            <div class="line">{{ $field['label'] }}: {{ $field['value'] }}</div>
-        @endforeach
-    @endif
-
-    <h2>Itens da Ordem de Servico</h2>
+    <div class="section-title">Itens da Ordem de Servico</div>
     <table class="grid">
         <thead>
             <tr>
@@ -97,13 +181,20 @@
         </tbody>
     </table>
 
-    <h2>Observacoes</h2>
-    <div class="line">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
+    <div class="section-title">Observacoes</div>
+    <div class="notes-box">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
 
-    <h2>Resumo</h2>
-    @foreach ($summaryLines as $line)
-        <div class="line">{{ $line['label'] }}: {{ $line['value'] }}</div>
-    @endforeach
+    <div class="section-title">Resumo</div>
+    <table class="summary-table">
+        <tbody>
+            @foreach ($summaryLines as $line)
+                <tr class="{{ $loop->last ? 'summary-total' : '' }}">
+                    <td>{{ $line['label'] }}</td>
+                    <td>{{ $line['value'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 
     <div class="signature-block">
         <div class="signature-line">Assinatura do Cliente</div>

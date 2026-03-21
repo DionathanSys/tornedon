@@ -4,21 +4,11 @@
     <meta charset="UTF-8">
     <title>Ordem de Servico</title>
     <style>
-        :root {
-            --color-primary: #17385b;
-            --color-border: #cfd7df;
-            --color-text: #111827;
-            --color-muted: #5b6777;
-            --color-surface: #e8eef4;
-            --color-surface-soft: #fbfcfd;
-            --color-white: #ffffff;
-        }
-
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 12px;
-            color: var(--color-text);
+            color: #111827;
             margin: 28px 34px 34px 34px;
         }
 
@@ -37,7 +27,7 @@
         .text-center { text-align: center; }
         .text-bold { font-weight: bold; }
         .small { font-size: 10px; }
-        .muted { color: var(--color-muted); }
+        .muted { color: #5b6777; }
 
         .header-table,
         .info-table,
@@ -56,7 +46,7 @@
         .totals-table td,
         .footer-table td,
         .two-col-table td {
-            border: 1px solid var(--color-border);
+            border: 1px solid #cfd7df;
             padding: 7px 8px;
             vertical-align: top;
         }
@@ -68,8 +58,8 @@
         .brand-box {
             width: 110px;
             height: 76px;
-            background: var(--color-primary);
-            color: var(--color-white);
+            background: #17385b;
+            color: #ffffff;
             text-align: center;
             padding-top: 14px;
         }
@@ -114,8 +104,8 @@
         }
 
         .section-title {
-            background: var(--color-primary);
-            color: var(--color-white);
+            background: #17385b;
+            color: #ffffff;
             font-size: 14px;
             font-weight: bold;
             padding: 6px 10px;
@@ -125,13 +115,13 @@
         .label {
             width: 92px;
             font-weight: bold;
-            color: var(--color-primary);
-            background: var(--color-surface-soft);
+            color: #17385b;
+            background: #fbfcfd;
         }
 
         .items-table th {
-            background: var(--color-surface);
-            color: var(--color-text);
+            background: #e8eef4;
+            color: #111827;
             font-weight: bold;
             text-align: center;
         }
@@ -177,12 +167,12 @@
         .totals-table td:last-child {
             text-align: right;
             font-weight: bold;
-            color: var(--color-primary);
+            color: #17385b;
             font-size: 14px;
         }
 
         .total-final td {
-            background: var(--color-surface);
+            background: #e8eef4;
             font-weight: bold;
         }
 
@@ -214,11 +204,11 @@
             right: 0;
             bottom: -6px;
             font-size: 10px;
-            color: var(--color-muted);
+            color: #5b6777;
         }
 
         .page-footer .line {
-            border-top: 1px solid var(--color-border);
+            border-top: 1px solid #cfd7df;
             margin-bottom: 3px;
         }
 
