@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
+use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Schemas\ItemsForm;
 use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\ParsesMoneyValues;
