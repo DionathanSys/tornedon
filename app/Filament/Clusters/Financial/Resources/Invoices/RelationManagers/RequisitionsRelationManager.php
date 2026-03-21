@@ -81,7 +81,7 @@ class RequisitionsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('number')
-            ->recordUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record]))
+            ->recordUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record]), true)
             ->columns([
                 TextColumn::make('number')
                     ->label('Nº')

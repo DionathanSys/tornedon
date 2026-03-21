@@ -113,7 +113,7 @@ class ServiceOrdersRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('number')
-            ->recordUrl(fn($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]))
+            ->recordUrl(fn($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]), true)
             ->columns([
                 TextColumn::make('number')
                     ->label('Nº')
@@ -125,6 +125,15 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->label('ID Orçamento')
                     ->searchable()
                     ->placeholder('Sem Orçamento')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('total_amount')
+                    ->label('Valor Total')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('discount_amount')
+                    ->label('Valor do Desc. (R$)')
+                    ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('order_date')
                     ->label('Dt. Ordem')

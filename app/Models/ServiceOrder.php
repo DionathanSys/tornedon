@@ -18,6 +18,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ServiceOrder extends Model
 {
 
+    protected $appends = [
+        'total_amount',
+        'discount_amount',
+    ];
+
     protected $fillable = [
         'number',
         'customer_id',
@@ -150,8 +155,8 @@ class ServiceOrder extends Model
     protected function discountAmount(): Attribute
     {
         return Attribute::make(
-            get: fn (): float => round(
-                $this->items->sum(fn ($item) => (float) $item->discount_amount),
+            get: fn(): float => round(
+                $this->items->sum(fn($item) => (float) $item->discount_amount),
                 2
             )
         );
@@ -163,8 +168,8 @@ class ServiceOrder extends Model
     protected function totalAmount(): Attribute
     {
         return Attribute::make(
-            get: fn (): float => round(
-                $this->items->sum(fn ($item) => (float) $item->total_amount)
+            get: fn(): float => round(
+                $this->items->sum(fn($item) => (float) $item->total_amount)
                     + (float) $this->travel_value,
                 2
             )

@@ -137,7 +137,6 @@ class ServiceOrderForm
                                     ->columns(['md' => 6,'lg' => 12,])
                                     ->collapsible()
                                     ->collapsed()
-                                    ->persistCollapsed()
                                     ->columnSpanFull()
                                     ->schema([
                                         SelectPartner::make('technician_id', 'technician')
@@ -266,7 +265,7 @@ class ServiceOrderForm
                                             ->default(fn() => CompanyPreference::getDefaultPaymentCondition()),
                                         DiscountAmountField::make('service_order')
                                             ->saved(false)
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
+                                            ->visible(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false),
                                     ]),
                             ]),
                         Tab::make('Aprovação')
