@@ -1,7 +1,6 @@
 @php
     $statePath = $getStatePath();
     $isDisabled = $isDisabled();
-    $operation = $getOperation();
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
@@ -10,7 +9,6 @@
             state: $wire.entangle('{{ $statePath }}').live,
             disabled: @js($isDisabled),
             height: @js($getCanvasHeight()),
-            persistClear: @js($operation === 'edit'),
         })"
         x-init="init()"
         class="space-y-3"
@@ -67,10 +65,9 @@
                     type="button"
                     class="fi-btn fi-btn-size-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                     x-on:click="clear()"
-                    x-bind:disabled="disabled || !hasSignature || isClearing"
+                    x-bind:disabled="disabled || !hasSignature"
                 >
-                    <span x-show="!isClearing">Limpar assinatura</span>
-                    <span x-show="isClearing">Limpando...</span>
+                    Limpar assinatura
                 </button>
 
                 <span class="text-xs text-gray-500 dark:text-gray-400" x-show="!disabled">
@@ -94,7 +91,6 @@
                 isDrawing: false,
                 hasSignature: false,
                 isTouchDevice: false,
-                isClearing: false,
                 activePointerId: null,
                 ctx: null,
                 resizeObserver: null,
@@ -102,7 +98,6 @@
                 canvasWidth: null,
                 canvasHeight: null,
                 pointerSequence: 0,
-                persistClear: config.persistClear ?? false,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
 
@@ -286,18 +281,6 @@
                 },
                 async clear() {
                     if (this.disabled) {
-                        return;
-                    }
-
-                    if (this.persistClear) {
-                        this.isClearing = true;
-
-                        try {
-                            await this.$wire.call('clearCustomerSignature');
-                        } finally {
-                            this.isClearing = false;
-                        }
-
                         return;
                     }
 

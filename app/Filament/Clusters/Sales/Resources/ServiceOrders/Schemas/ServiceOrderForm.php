@@ -327,7 +327,7 @@ class ServiceOrderForm
                                             ->info()
                                             ->columnStart(1)
                                             ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->description('Assine dentro da caixa azul. Use "Salvar" para gravar agora, "Limpar" para apagar o desenho atual e "Cancelar" para fechar sem alterar.'),
+                                            ->description('Assine dentro da caixa azul. Use "Limpar" para remover o desenho atual apenas do formulario e clique em "Salvar" para gravar a nova assinatura ou confirmar a remocao. Use "Cancelar" para sair sem salvar.'),
                                     ]),
                             ]),
                         Tab::make('Outros')
