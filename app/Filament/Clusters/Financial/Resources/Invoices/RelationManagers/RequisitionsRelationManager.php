@@ -86,7 +86,7 @@ class RequisitionsRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('customer.name')
                     ->label('Cliente')
-                    ->searchable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('serviceOrder.id')
                     ->label('ID OS')
                     ->searchable()

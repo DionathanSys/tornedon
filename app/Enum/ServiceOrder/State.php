@@ -19,6 +19,16 @@ enum State: string
         };
     }
 
+    public function color(): string
+    {
+        return match ($this) {
+            self::OPEN => 'info',
+            self::CLOSED => 'success',
+            self::INVOICED => 'warning',
+            self::CANCELLED => 'danger',
+        };
+    }
+
     public static function toSelectArray(): array
     {
         return collect(self::cases())->mapWithKeys(fn($case) => [

@@ -118,7 +118,7 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('customer.name')   
                     ->label('Cliente')
-                    ->searchable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('quote.id')
                     ->label('ID Orçamento')
                     ->searchable()
@@ -132,118 +132,115 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->label('Dt. Agendada')
                     ->date('d/m/Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('limit_date')
                     ->label('Dt. Limite')
                     ->date('d/m/Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('completion_date')
                     ->label('Dt. Finalização')
                     ->date('d/m/Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->badge()
+                    ->formatStateUsing(fn(State $state) => $state->description())
+                    ->color(fn(State $state) => $state->color())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('priority')
                     ->label('Prioridade')
-                    ->badge()
+                    ->formatStateUsing(fn(Priority $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
-                    ->badge()
+                    ->formatStateUsing(fn(Type $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('equipment.name')
+                    ->label('Equipamento')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('location')
-                    ->searchable()
+                    ->label('Localização')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('estimated_hours')
                     ->numeric()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('actual_hours')
                     ->numeric()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('travel_value')
                     ->numeric()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_method')
-                    ->badge()
-                    ->searchable()
+                    ->label('Forma de Pagto')
+                    ->formatStateUsing(fn(Method $state) => $state->description())
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('payment_condition')
-                    ->badge()
+                    ->label('Condição de Pagamento')
+                    ->formatStateUsing(fn(Condition $state) => $state->description())
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('technician.name')
+                    ->label('Técnico')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('supervisor.name')
+                    ->label('Supervisor')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('salesperson.name')
+                    ->label('Vendedor')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('warranty_expires_at')
-                    ->date()
+                    ->date('d/m/Y')
+                    ->label('Garantia Válida Até')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('requires_approval')
+                    ->label('Requer Aprovação')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('approved_by_customer')
+                    ->label('Aprovado pelo Cliente')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('approved_at')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('createdBy.name')
+                    ->label('Criado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('customer_rating')
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_by')
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_by')
-                    ->numeric()
+                TextColumn::make('updatedBy.name')
+                    ->label('Atualizado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Criado em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Atualizado em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
             ])
             ->headerActions([
-                // CreateAction::make(),
-                // AssociateAction::make(),
             ])
             ->recordActions([
-                // EditAction::make(),
-                // DissociateAction::make(),
-                // DeleteAction::make(),
             ])
             ->toolbarActions([
-                // BulkActionGroup::make([
-                //     DissociateBulkAction::make(),
-                //     DeleteBulkAction::make(),
-                // ]),
             ]);
     }
 }
