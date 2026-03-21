@@ -367,18 +367,12 @@ class ServiceOrderForm
                                                         'Mola dianteira substituída',
                                                         'Pneus com desgaste irregular'
                                                     ])
-                                                    ->required()
-                                                    ->afterStateHydrated(function (TextInput $component, string $state) {
-                                                        $component->state(ucwords($state));
-                                                    }),
+                                                    ->required(),
                                                 TextInput::make('observation')
                                                     ->label('Observação')
                                                     ->columnSpan(['md' => 2, 'lg' => 8])
                                                     ->maxLength(255)
-                                                    ->placeholder('Detalhes ou observação personalizável')
-                                                    ->afterStateHydrated(function (TextInput $component, string $state) {
-                                                        $component->state(ucwords($state));
-                                                    }),
+                                                    ->placeholder('Detalhes ou observação personalizável'),
                                             ]),
                                     ]),
                             ]),

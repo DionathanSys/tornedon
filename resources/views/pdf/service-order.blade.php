@@ -114,6 +114,18 @@
         $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
         $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
         $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
+        $additionalInfoLabels = [
+            'accessories' => 'Acessorios entregues',
+            'avaria' => 'Avaria identificada',
+            'budget' => 'Orcamento alinhado',
+            'cleaning' => 'Limpeza executada',
+            'guidance' => 'Orientacoes ao cliente',
+            'parts' => 'Pecas substituidas',
+            'pending' => 'Pendencia encontrada',
+            'test' => 'Teste realizado',
+            'warranty' => 'Garantia informada',
+            'other' => 'Outro',
+        ];
 
         $headerLines = [
             ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
@@ -136,6 +148,41 @@
                 : null,
             ['label' => 'Valor total', 'value' => $formatMoney($record->total_amount)],
         ])->filter();
+
+        $additionalInfo = collect($record->additional_info ?? []);
+
+        if ($additionalInfo->isNotEmpty()) {
+            $first = $additionalInfo->first();
+
+            if (is_array($first) && array_key_exists('type', $first)) {
+                $additionalInfo = $additionalInfo
+                    ->map(function ($item) use ($additionalInfoLabels) {
+                        if (! is_array($item)) {
+                            return null;
+                        }
+
+                        $label = $additionalInfoLabels[$item['type'] ?? 'other'] ?? 'Outro';
+                        $observation = $item['observation'] ?? null;
+
+                        return [
+                            'label' => $label,
+                            'value' => filled($observation) ? $observation : null,
+                        ];
+                    })
+                    ->filter();
+            } else {
+                $additionalInfo = $additionalInfo
+                    ->map(function ($value, $key) use ($additionalInfoLabels) {
+                        $label = $additionalInfoLabels[(string) $key] ?? (string) $key;
+
+                        return [
+                            'label' => $label,
+                            'value' => is_scalar($value) ? (string) $value : null,
+                        ];
+                    })
+                    ->filter();
+            }
+        }
     @endphp
 
     <div class="page-header">
@@ -194,6 +241,20 @@
 
     <div class="section-title">Observacoes</div>
     <div class="notes-box">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
+
+    @if ($additionalInfo->isNotEmpty())
+        <div class="section-title">Informacoes Adicionais</div>
+        <table class="meta-grid">
+            <tbody>
+                @foreach ($additionalInfo as $info)
+                    <tr>
+                        <td class="meta-label">{{ $info['label'] }}</td>
+                        <td>{{ filled($info['value']) ? $info['value'] : '-' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 
     <div class="section-title">Resumo</div>
     <table class="summary-table">
