@@ -2,15 +2,88 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Requisição {{ $record->number }}</title>
+    <title>Requisicao {{ $record->number }}</title>
     @include('pdf.partials.document-styles')
     <style>
-        body { padding-bottom: 28px; }
-        .signature-block { margin-top: 36px; }
+        @page { margin: 24px 24px 34px 24px; }
+        body {
+            padding-bottom: 28px;
+            color: #111827;
+        }
+        .page-header {
+            border: 1px solid #cfd7df;
+            margin-bottom: 14px;
+        }
+        .page-header-bar {
+            background: #17385b;
+            color: #ffffff;
+            padding: 10px 12px;
+        }
+        .page-header-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .page-header-body {
+            padding: 10px 12px;
+        }
+        .meta-grid,
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .meta-grid td,
+        .summary-table td {
+            border: 1px solid #d1d5db;
+            padding: 7px 8px;
+            vertical-align: top;
+        }
+        .meta-label {
+            width: 22%;
+            background: #f8fafc;
+            color: #17385b;
+            font-weight: bold;
+        }
+        .section-title {
+            margin: 18px 0 8px 0;
+            padding: 6px 10px;
+            background: #17385b;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .notes-box {
+            border: 1px solid #d1d5db;
+            padding: 10px;
+            min-height: 56px;
+        }
+        .grid th {
+            background: #e8eef4;
+            text-align: center;
+        }
+        .grid td:nth-child(3),
+        .grid td:nth-child(4),
+        .grid td:nth-child(5),
+        .grid td:nth-child(6) {
+            text-align: center;
+            white-space: nowrap;
+        }
+        .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        .summary-total td {
+            background: #e8eef4;
+            font-size: 13px;
+        }
+        .signature-block {
+            margin-top: 32px;
+            text-align: center;
+        }
         .signature-line {
             width: 260px;
             border-top: 1px solid #1f2937;
-            padding-top: 4px;
+            padding-top: 6px;
+            margin: 0 auto;
         }
         .pdf-footer {
             position: fixed;
@@ -24,32 +97,55 @@
     </style>
 </head>
 <body>
-    <div class="head">
-        <h1>Requisição #{{ $record->number }}</h1>
-        <div class="line muted">Empresa: {{ $record->company?->name ?? '-' }}</div>
-        <div class="line">Cliente: {{ $record->customer?->name ?? '-' }}</div>
-        <div class="line">Data da Venda: {{ $record->sale_date?->format('d/m/Y') ?? '-' }}</div>
-        <div class="line">Status: {{ $record->status?->description() ?? '-' }}</div>
+    @php
+        $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
+        $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
+        $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
+
+        $headerLines = [
+            ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
+            ['label' => 'Cliente', 'value' => $record->customer?->name ?? '-'],
+            ['label' => 'Data da Venda', 'value' => $formatDate($record->sale_date)],
+            ['label' => 'Status', 'value' => $record->status?->description() ?? '-'],
+        ];
+
+        $detailsLines = [
+            ['label' => 'OS vinculada', 'value' => $record->serviceOrder?->number ?? '-'],
+            ['label' => 'Equipamento', 'value' => $record->equipment?->name ?? '-'],
+            ['label' => 'Vendedor', 'value' => $record->salesperson?->name ?? '-'],
+        ];
+
+        $summaryLines = [
+            ['label' => 'Desconto total', 'value' => $formatMoney($record->discount_amount)],
+            ['label' => 'Valor total', 'value' => $formatMoney($record->total_amount)],
+        ];
+    @endphp
+
+    <div class="page-header">
+        <div class="page-header-bar">
+            <div class="page-header-title">Requisicao #{{ $record->number }}</div>
+        </div>
+        <div class="page-header-body">
+            <table class="meta-grid">
+                <tbody>
+                    @foreach ($headerLines as $line)
+                        <tr>
+                            <td class="meta-label">{{ $line['label'] }}</td>
+                            <td class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                        </tr>
+                    @endforeach
+                    @foreach ($detailsLines as $line)
+                        <tr>
+                            <td class="meta-label">{{ $line['label'] }}</td>
+                            <td>{{ $line['value'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <div class="box">
-        @if($record->serviceOrder)
-            <div class="line">OS vinculada: {{ $record->serviceOrder?->number ?? '-' }}</div>
-        @endif
-
-        @if($record->equipment)
-        <div class="line">Equipamento: {{ $record->equipment?->name ?? '-' }}</div>
-        @endif
-
-        @if($record->salesperson)
-        <div class="line">Vendedor: {{ $record->salesperson?->name ?? '-' }}</div>
-        @endif
-
-        <div class="line">Observações: {{ $record->observations ?? 'Sem observações' }}</div>
-
-    </div>
-
-    <h2>Itens da Requisição</h2>
+    <div class="section-title">Itens da Requisicao</div>
     <table class="grid">
         <thead>
             <tr>
@@ -67,10 +163,10 @@
                 <tr>
                     <td>{{ $item->product?->name ?? '-' }}</td>
                     <td>{{ $item->unit_of_measure ?? '-' }}</td>
-                    <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                    <td>R$ {{ number_format((float) $item->unit_price, 2, ',', '.') }}</td>
-                    <td>R$ {{ number_format((float) $item->discount_amount, 2, ',', '.') }}</td>
-                    <td>R$ {{ number_format((float) $item->total_amount, 2, ',', '.') }}</td>
+                    <td>{{ $formatQuantity($item->quantity) }}</td>
+                    <td>{{ $formatMoney($item->unit_price) }}</td>
+                    <td>{{ $formatMoney($item->discount_amount) }}</td>
+                    <td>{{ $formatMoney($item->total_amount) }}</td>
                     <td>{{ $item->observations ?? '-' }}</td>
                 </tr>
             @empty
@@ -81,12 +177,20 @@
         </tbody>
     </table>
 
-    <h2>Resumo</h2>
-    @if($record->discount_amount > 0)
-        <div class="line">Desconto total: R$ {{ number_format((float) $record->discount_amount, 2, ',', '.') }}</div>
-    @endif
+    <div class="section-title">Observacoes</div>
+    <div class="notes-box">{{ $record->observations ?? 'Sem observacoes' }}</div>
 
-    <div class="line">Valor total: R$ {{ number_format((float) $record->total_amount, 2, ',', '.') }}</div>
+    <div class="section-title">Resumo</div>
+    <table class="summary-table">
+        <tbody>
+            @foreach ($summaryLines as $line)
+                <tr class="{{ $loop->last ? 'summary-total' : '' }}">
+                    <td>{{ $line['label'] }}</td>
+                    <td>{{ $line['value'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 
     <div class="signature-block">
         <div class="signature-line">Assinatura do Cliente</div>
