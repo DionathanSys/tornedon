@@ -96,6 +96,7 @@ class ServiceOrderForm
                                                     ->label('Tipo')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->required()
+                                                    ->visibleOn('edit')
                                                     ->options(Type::toSelectArray())
                                                     ->default(Type::MAINTENANCE->value)
                                                     ->native(false)
@@ -105,11 +106,13 @@ class ServiceOrderForm
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->required()
                                                     ->default(now())
+                                                    ->columnStart(fn($operation) => $operation === 'create' ? 1 : null)
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('scheduled_date')
                                                     ->label('Data Agendada')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->visibleOn('edit')
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('limit_date')
@@ -121,6 +124,7 @@ class ServiceOrderForm
                                                 DatePicker::make('warranty_expires_at')
                                                     ->label('Garantia Válida Até')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->visibleOn('edit')
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('completion_date')
