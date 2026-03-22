@@ -48,11 +48,11 @@ final class EditItemAction
             ->schema(fn(Schema $schema) => ItemsForm::configure($schema))
             ->using(function (RequisitionItem $record, array $data): ?Model {
                 Log::debug('Iniciando atualização de item via RelationManager', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__ . '@ ' . __LINE__,
                     'item_id' => $record->id,
                     'data' => $data,
                 ]);
-    
+
                 $service = new RequisitionItemService();
                 $item = $service->update($record, $data, Auth::id());
 
