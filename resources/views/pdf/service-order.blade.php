@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Ordem de Servico {{ $record->number }}</title>
+    <title>Ordem de Serviço {{ $record->number }}</title>
     @include('pdf.partials.document-styles')
     <style>
         @page { margin: 24px 24px 34px 24px; }
@@ -209,7 +209,7 @@
 
     <div class="page-header">
         <div class="page-header-bar">
-            <div class="page-header-title">Ordem de Servico #{{ $record->number }}</div>
+            <div class="page-header-title">Ordem de Serviço #{{ $record->number }}</div>
         </div>
         <div class="page-header-body">
             <table class="meta-grid">
@@ -231,11 +231,11 @@
         </div>
     </div>
 
-    <div class="section-title">Itens da Ordem de Servico</div>
+    <div class="section-title">Itens da Ordem de Serviço</div>
     <table class="grid">
         <thead>
             <tr>
-                <th>Servico</th>
+                <th>Serviço</th>
                 <th>Qtd</th>
                 <th>Valor Unit.</th>
                 <th>Desconto</th>
