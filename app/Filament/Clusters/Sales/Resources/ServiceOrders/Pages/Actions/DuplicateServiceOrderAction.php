@@ -26,7 +26,7 @@ final class DuplicateServiceOrderAction
             ->modalHeading('Duplicar Ordem de Serviço')
             ->modalDescription('Será criada uma nova OS com os mesmos dados e itens desta ordem.')
             ->modalSubmitActionLabel('Duplicar')
-            ->action(function (ServiceOrder $record): void {
+            ->action(function (ServiceOrder $record, $livewire): void {
                 Log::debug('DuplicateServiceOrderAction (Filament): Iniciando duplicação de OS', [
                     'metodo'           => __METHOD__ . '@' . __LINE__,
                     'service_order_id' => $record->id,
@@ -133,7 +133,16 @@ final class DuplicateServiceOrderAction
 
                 notify::success('Ordem de serviço duplicada com sucesso.');
 
-                redirect(ServiceOrderResource::getUrl('edit', ['record' => $newServiceOrder]));
+                redirect(static::resolveResource($livewire)::getUrl('edit', ['record' => $newServiceOrder]));
             });
+    }
+
+    private static function resolveResource(mixed $livewire): string
+    {
+        if (is_object($livewire) && method_exists($livewire, 'getResource')) {
+            return $livewire->getResource();
+        }
+
+        return ServiceOrderResource::class;
     }
 }

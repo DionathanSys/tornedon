@@ -59,6 +59,15 @@ final class CancelServiceOrderAction
 
                 notify::success('Ordem de serviço cancelada com sucesso.');
             })
-            ->successRedirectUrl(ServiceOrderResource::getUrl());
+            ->successRedirectUrl(fn ($livewire): string => static::resolveResource($livewire)::getUrl());
+    }
+
+    private static function resolveResource(mixed $livewire): string
+    {
+        if (is_object($livewire) && method_exists($livewire, 'getResource')) {
+            return $livewire->getResource();
+        }
+
+        return ServiceOrderResource::class;
     }
 }

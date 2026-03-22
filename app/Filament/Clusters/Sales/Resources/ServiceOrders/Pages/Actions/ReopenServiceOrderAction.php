@@ -59,6 +59,15 @@ final class ReopenServiceOrderAction
 
                 notify::success('Ordem de serviço reaberta com sucesso.');
             })
-            ->successRedirectUrl(fn(ServiceOrder $record): string => ServiceOrderResource::getUrl('edit', ['record' => $record->id]));
+            ->successRedirectUrl(fn (ServiceOrder $record, $livewire): string => static::resolveResource($livewire)::getUrl('edit', ['record' => $record->id]));
+    }
+
+    private static function resolveResource(mixed $livewire): string
+    {
+        if (is_object($livewire) && method_exists($livewire, 'getResource')) {
+            return $livewire->getResource();
+        }
+
+        return ServiceOrderResource::class;
     }
 }
