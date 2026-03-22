@@ -103,10 +103,9 @@ class ServiceOrderForm
                                                     ->selectablePlaceholder(false),
                                                 DatePicker::make('order_date')
                                                     ->label('Data da Ordem')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
                                                     ->required()
                                                     ->default(now())
-                                                    ->columnStart(fn($operation) => $operation === 'create' ? 1 : null)
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('scheduled_date')
