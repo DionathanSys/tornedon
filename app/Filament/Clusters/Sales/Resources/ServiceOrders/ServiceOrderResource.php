@@ -43,7 +43,6 @@ class ServiceOrderResource extends Resource
     {
         return [
             'index' => ListServiceOrders::route('/'),
-            'create' => CreateServiceOrder::route('/create'),
             'edit' => EditServiceOrder::route('/{record}/edit'),
         ];
     }

@@ -53,9 +53,6 @@ class ServiceOrderForm
                             ->icon(Heroicon::InformationCircle)
                             ->schema([
                                 Section::make('Informações Principais')
-                                    ->heading(fn(Get $get, $operation) => $operation === 'edit'
-                                        ? 'Ordem de Serviço Nº ' . $get('number') . ' | ' . State::from($get('status'))->description()
-                                        : 'Informações Principais')
                                     ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
                                     ->columnSpanFull()
                                     ->schema([
@@ -65,6 +62,28 @@ class ServiceOrderForm
                                             ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12])
                                             ->columnSpanFull()
                                             ->schema([
+                                                SelectPartner::make('customer_id', 'customer')
+                                                    ->label('Cliente')
+                                                    ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
+                                                    ->columnStart(1)
+                                                    ->live(onBlur: true)
+                                                    ->disabledOn('edit'),
+                                                Select::make('equipment_id')
+                                                    ->label('Equipamento')
+                                                    ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
+                                                    ->searchable()
+                                                    ->visibleOn('edit')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
+                                                    ->getSearchResultsUsing(
+                                                        fn(string $search): array => (new EquipmentService())
+                                                            ->searchForSelect($search, Filament::getTenant()->id)
+                                                    )
+                                                    ->getOptionLabelUsing(
+                                                        fn($value): ?string => (new EquipmentService())
+                                                            ->getLabelForSelect((int) $value)
+                                                    )
+                                                    ->disabled(fn($get) => ! $get('customer_id'))
+                                                    ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
                                                 Select::make('priority')
                                                     ->label('Prioridade')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
@@ -111,27 +130,7 @@ class ServiceOrderForm
                                                     ->visibleOn('edit')
                                                     ->disabled(fn($record) => ! $record?->state()?->canEdit()),
                                             ]),
-                                        SelectPartner::make('customer_id', 'customer')
-                                            ->label('Cliente')
-                                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
-                                            ->columnStart(1)
-                                            ->live(onBlur: true)
-                                            ->disabledOn('edit'),
-                                        Select::make('equipment_id')
-                                            ->label('Equipamento')
-                                            ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
-                                            ->searchable()
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
-                                            ->getSearchResultsUsing(
-                                                fn(string $search): array => (new EquipmentService())
-                                                    ->searchForSelect($search, Filament::getTenant()->id)
-                                            )
-                                            ->getOptionLabelUsing(
-                                                fn($value): ?string => (new EquipmentService())
-                                                    ->getLabelForSelect((int) $value)
-                                            )
-                                            ->disabled(fn($get) => ! $get('customer_id'))
-                                            ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
+
                                     ]),
                                 Section::make('Atendimento')
                                     ->columns(['md' => 6, 'lg' => 12])

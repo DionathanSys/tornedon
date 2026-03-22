@@ -131,12 +131,12 @@
             ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
             ['label' => 'Cliente', 'value' => $record->customer?->name ?? '-'],
             ['label' => 'Data da Ordem', 'value' => $formatDate($record->order_date)],
-            ['label' => 'Data Finalizacao', 'value' => $formatDate($record->completion_date)],
+            ['label' => 'Data Finalização', 'value' => $formatDate($record->completion_date)],
             ['label' => 'Status', 'value' => $record->status?->description() ?? '-'],
         ];
 
         $responsibles = collect([
-            ['label' => 'Equipamento', 'value' => $record->equipment?->name],
+            ['label' => 'Equipamento', 'value' => $record->equipment?->identifier],
             ['label' => 'Tecnico', 'value' => $record->technician?->name],
             ['label' => 'Supervisor', 'value' => $record->supervisor?->name],
             ['label' => 'Vendedor', 'value' => $record->salesperson?->name],

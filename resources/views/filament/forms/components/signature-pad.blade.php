@@ -34,24 +34,25 @@
 
             <div
                 class="rounded-2xl border-2 border-sky-300 bg-sky-100 p-2 shadow-[0_0_0_4px_rgba(14,165,233,0.10)] transition duration-200 dark:border-sky-500/40 dark:bg-sky-950/20"
-                :class="isDrawing ? 'scale-[1.01] shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : ''"
+                :class="isDrawing ? 'shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : ''"
             >
                 <div class="overflow-hidden rounded-xl border-4 border-sky-600 bg-white shadow-inner dark:border-sky-400 dark:bg-slate-950">
                     <canvas
                         x-ref="canvas"
                         class="block w-full cursor-crosshair touch-none bg-white dark:bg-slate-950"
                         :style="`height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`"
-                        x-on:pointerdown="start($event)"
-                        x-on:pointermove="move($event)"
-                        x-on:pointerup.window="end($event)"
-                        x-on:pointercancel.window="end($event)"
-                        x-on:mousedown="start($event)"
-                        x-on:mousemove="move($event)"
-                        x-on:mouseup.window="end($event)"
-                        x-on:mouseleave="end($event)"
-                        x-on:touchstart.prevent="start($event)"
-                        x-on:touchmove.prevent="move($event)"
-                        x-on:touchend.window="end($event)"
+                        x-on:pointerdown="supportsPointerEvents && start($event)"
+                        x-on:pointermove="supportsPointerEvents && move($event)"
+                        x-on:pointerup.window="supportsPointerEvents && end($event)"
+                        x-on:pointercancel.window="supportsPointerEvents && end($event)"
+                        x-on:mousedown="!supportsPointerEvents && start($event)"
+                        x-on:mousemove="!supportsPointerEvents && move($event)"
+                        x-on:mouseup.window="!supportsPointerEvents && end($event)"
+                        x-on:mouseleave="!supportsPointerEvents && end($event)"
+                        x-on:touchstart.prevent="!supportsPointerEvents && start($event)"
+                        x-on:touchmove.prevent="!supportsPointerEvents && move($event)"
+                        x-on:touchend.window="!supportsPointerEvents && end($event)"
+                        x-on:touchcancel.window="!supportsPointerEvents && end($event)"
                     ></canvas>
                 </div>
             </div>
@@ -91,6 +92,7 @@
                 isDrawing: false,
                 hasSignature: false,
                 isTouchDevice: false,
+                supportsPointerEvents: false,
                 activePointerId: null,
                 ctx: null,
                 resizeObserver: null,
@@ -100,6 +102,7 @@
                 pointerSequence: 0,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
+                    this.supportsPointerEvents = 'PointerEvent' in window;
 
                     this.$nextTick(() => {
                         this.ensureCanvasReady();
@@ -125,9 +128,10 @@
                 },
                 ensureCanvasReady() {
                     const canvas = this.$refs.canvas;
-                    const rect = canvas.getBoundingClientRect();
+                    const width = canvas.clientWidth;
+                    const height = canvas.clientHeight;
 
-                    if (rect.width <= 0) {
+                    if (width <= 0 || height <= 0) {
                         window.requestAnimationFrame(() => {
                             this.ensureCanvasReady();
                         });
@@ -135,23 +139,24 @@
                         return;
                     }
 
-                    this.setupCanvas(rect.width);
+                    this.setupCanvas(width, height);
                 },
                 resetCanvas(snapshot = null) {
-                    const rect = this.$refs.canvas.getBoundingClientRect();
+                    const canvas = this.$refs.canvas;
+                    const width = canvas.clientWidth;
+                    const height = canvas.clientHeight;
 
-                    if (rect.width <= 0) {
+                    if (width <= 0 || height <= 0) {
                         return;
                     }
 
                     this.canvasWidth = null;
                     this.canvasHeight = null;
-                    this.setupCanvas(rect.width, snapshot);
+                    this.setupCanvas(width, height, snapshot);
                 },
-                setupCanvas(width, snapshotOverride = undefined) {
+                setupCanvas(width, height, snapshotOverride = undefined) {
                     const canvas = this.$refs.canvas;
                     const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                    const height = parseInt(this.height, 10) || 220;
                     const pixelWidth = Math.max(Math.floor(width * ratio), 1);
                     const pixelHeight = Math.max(Math.floor(height * ratio), 1);
 
@@ -185,13 +190,21 @@
                     }
                 },
                 coordinates(event) {
-                    const rect = this.$refs.canvas.getBoundingClientRect();
+                    const canvas = this.$refs.canvas;
+                    const rect = canvas.getBoundingClientRect();
                     const point = this.resolvePoint(event);
+                    const width = canvas.clientWidth || rect.width;
+                    const height = canvas.clientHeight || rect.height;
+                    const scaleX = rect.width > 0 ? width / rect.width : 1;
+                    const scaleY = rect.height > 0 ? height / rect.height : 1;
 
                     return {
-                        x: point.clientX - rect.left,
-                        y: point.clientY - rect.top,
+                        x: this.clamp((point.clientX - rect.left) * scaleX, 0, width),
+                        y: this.clamp((point.clientY - rect.top) * scaleY, 0, height),
                     };
+                },
+                clamp(value, min, max) {
+                    return Math.min(Math.max(value, min), max);
                 },
                 resolvePoint(event) {
                     if (event.touches?.length) {
@@ -236,17 +249,16 @@
 
                     this.pointerSequence += 1;
                     this.activePointerId = this.resolvePointerId(event);
+                    const point = this.coordinates(event);
 
                     if (event.pointerId !== undefined) {
                         this.$refs.canvas.setPointerCapture?.(event.pointerId);
                     }
 
-                    this.isDrawing = true;
-
-                    const point = this.coordinates(event);
                     this.ctx.beginPath();
                     this.ctx.moveTo(point.x, point.y);
                     this.drawDot(point);
+                    this.isDrawing = true;
                     this.hasSignature = true;
                 },
                 move(event) {
@@ -304,11 +316,12 @@
                     const image = new Image();
 
                     image.onload = () => {
-                        const rect = this.$refs.canvas.getBoundingClientRect();
-                        const height = parseInt(this.height, 10) || 220;
+                        const canvas = this.$refs.canvas;
+                        const width = canvas.clientWidth || canvas.getBoundingClientRect().width;
+                        const height = canvas.clientHeight || canvas.getBoundingClientRect().height;
 
-                        this.ctx.clearRect(0, 0, rect.width, height);
-                        this.ctx.drawImage(image, 0, 0, rect.width, height);
+                        this.ctx.clearRect(0, 0, width, height);
+                        this.ctx.drawImage(image, 0, 0, width, height);
                         this.hasSignature = true;
                     };
 
@@ -318,10 +331,11 @@
                     this.ensureCanvasReady();
 
                     if (!this.state) {
-                        const rect = this.$refs.canvas.getBoundingClientRect();
-                        const height = parseInt(this.height, 10) || 220;
+                        const canvas = this.$refs.canvas;
+                        const width = canvas.clientWidth || canvas.getBoundingClientRect().width;
+                        const height = canvas.clientHeight || canvas.getBoundingClientRect().height;
 
-                        this.ctx?.clearRect(0, 0, rect.width, height);
+                        this.ctx?.clearRect(0, 0, width, height);
                         this.hasSignature = false;
                         this.lastSerializedState = null;
 
