@@ -46,8 +46,6 @@ class ServiceOrderForm
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
-                    ->persistTab(true)
-                    ->id('order-tabs')
                     ->tabs([
                         Tab::make('Dados Gerais')
                             ->icon(Heroicon::InformationCircle)
@@ -229,8 +227,10 @@ class ServiceOrderForm
                                                 $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
                                                 $set('travel_value', number_format($valueKm * $distanceKm));
                                             })
-                                            ->default(350)
-                                            ->formatStateUsing(fn($state) => $state ? number_format($state, 2, ',', '.') : '350,00'),
+                                            ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
+                                            ->formatStateUsing(fn($state) => is_numeric($state)
+                                                ? number_format((float) $state, 2, ',', '.')
+                                                : number_format((float) CompanyPreference::get('default_value_km', default: 3.5), 2, ',', '.')),
                                         Money::make('distance_km')
                                             ->label('Distância em KM')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
@@ -297,6 +297,7 @@ class ServiceOrderForm
                                     ]),
                             ]),
                         Tab::make('Assinatura')
+                            ->visibleOn('edit')
                             ->icon(Heroicon::PencilSquare)
                             ->schema([
                                 Section::make('Assinatura do Cliente')

@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Schema;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 {
@@ -50,6 +51,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'default_payment_condition' => CompanyPreference::getDefaultPaymentCondition($companyId),
             'default_quote_validity_days' => CompanyPreference::getDefaultQuoteValidityDays($companyId) ?? 30,
             'default_profit_margin' => CompanyPreference::getDefaultProfitMargin($companyId),
+            'default_value_km' => CompanyPreference::get('default_value_km', $companyId, 3.5),
             'notify_new_order' => CompanyPreference::get('notify_new_order', $companyId, true),
             'notify_status_change' => CompanyPreference::get('notify_status_change', $companyId, true),
             'notify_low_stock' => CompanyPreference::get('notify_low_stock', $companyId, true),
@@ -137,6 +139,9 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->maxValue(100)
                             ->step(0.1)
                             ->suffix('%'),
+                        Money::make('default_value_km')
+                            ->label('Valor Padrao por KM')
+                            ->default(3.5),
                         Forms\Components\TextInput::make('default_warranty_days')
                             ->label('Garantia Padrao (dias)')
                             ->numeric()
@@ -289,6 +294,10 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
             if (isset($data['default_profit_margin'])) {
                 CompanyPreference::setDefaultProfitMargin((float) $data['default_profit_margin'], $companyId);
+            }
+
+            if (isset($data['default_value_km'])) {
+                CompanyPreference::set('default_value_km', $data['default_value_km'], $companyId);
             }
 
             if (isset($data['default_warranty_days'])) {

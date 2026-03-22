@@ -157,18 +157,6 @@ class ServiceOrdersTable
                     ->searchable()
                     ->preload()
                     ->native(false),
-                TernaryFilter::make('requires_approval')
-                    ->label('Requer Aprovação')
-                    ->placeholder('Todos')
-                    ->trueLabel('Sim')
-                    ->falseLabel('Não')
-                    ->native(false),
-                TernaryFilter::make('approved_by_customer')
-                    ->label('Aprovado pelo Cliente')
-                    ->placeholder('Todos')
-                    ->trueLabel('Aprovado')
-                    ->falseLabel('Não Aprovado')
-                    ->native(false),
             ])
             ->defaultSort('order_date', 'desc')
             ->recordActions([
