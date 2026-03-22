@@ -123,6 +123,7 @@ class ServiceOrderForm
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->visibleOn('edit')
                                                     ->displayFormat('d/m/Y')
+                                                    ->default(fn() => CompanyPreference::get('default_warranty_days'))
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('completion_date')
                                                     ->label('Data de Conclusão')
@@ -210,11 +211,7 @@ class ServiceOrderForm
                             ->icon(Heroicon::CurrencyDollar)
                             ->schema([
                                 Section::make('Valores')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 6,
-                                        'lg' => 12,
-                                    ])
+                                    ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
