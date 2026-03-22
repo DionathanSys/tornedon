@@ -214,8 +214,7 @@ class CompanyPartnerForm
                                     ->where('id', '!=', $currentCompanyId)
                                     ->pluck('name', 'id');
                             })
-                            ->columns(2)
-                            ->minItems(1),
+                            ->columns(2),
                     ]),
                 Section::make()
                     ->columns([
