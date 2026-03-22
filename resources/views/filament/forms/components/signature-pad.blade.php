@@ -99,6 +99,7 @@
                 lastSerializedState: null,
                 canvasWidth: null,
                 canvasHeight: null,
+                drawingScale: 1,
                 pointerSequence: 0,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
@@ -128,8 +129,9 @@
                 },
                 ensureCanvasReady() {
                     const canvas = this.$refs.canvas;
-                    const width = canvas.clientWidth;
-                    const height = canvas.clientHeight;
+                    const rect = canvas.getBoundingClientRect();
+                    const width = rect.width;
+                    const height = rect.height;
 
                     if (width <= 0 || height <= 0) {
                         window.requestAnimationFrame(() => {
@@ -143,8 +145,9 @@
                 },
                 resetCanvas(snapshot = null) {
                     const canvas = this.$refs.canvas;
-                    const width = canvas.clientWidth;
-                    const height = canvas.clientHeight;
+                    const rect = canvas.getBoundingClientRect();
+                    const width = rect.width;
+                    const height = rect.height;
 
                     if (width <= 0 || height <= 0) {
                         return;
@@ -176,12 +179,13 @@
                     canvas.height = pixelHeight;
 
                     this.ctx = canvas.getContext('2d');
-                    this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
                     this.ctx.lineCap = 'round';
                     this.ctx.lineJoin = 'round';
-                    this.ctx.lineWidth = 2.2;
+                    this.drawingScale = pixelWidth / width;
+                    this.ctx.lineWidth = 2.2 * this.drawingScale;
                     this.ctx.strokeStyle = '#111827';
-                    this.ctx.clearRect(0, 0, width, height);
+                    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
                     this.canvasWidth = pixelWidth;
                     this.canvasHeight = pixelHeight;
 
@@ -193,14 +197,12 @@
                     const canvas = this.$refs.canvas;
                     const rect = canvas.getBoundingClientRect();
                     const point = this.resolvePoint(event);
-                    const width = canvas.clientWidth || rect.width;
-                    const height = canvas.clientHeight || rect.height;
-                    const scaleX = rect.width > 0 ? width / rect.width : 1;
-                    const scaleY = rect.height > 0 ? height / rect.height : 1;
+                    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+                    const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
 
                     return {
-                        x: this.clamp((point.clientX - rect.left) * scaleX, 0, width),
-                        y: this.clamp((point.clientY - rect.top) * scaleY, 0, height),
+                        x: this.clamp((point.clientX - rect.left) * scaleX, 0, canvas.width),
+                        y: this.clamp((point.clientY - rect.top) * scaleY, 0, canvas.height),
                     };
                 },
                 clamp(value, min, max) {
@@ -234,7 +236,7 @@
                 },
                 drawDot(point) {
                     this.ctx.beginPath();
-                    this.ctx.arc(point.x, point.y, 1.2, 0, Math.PI * 2);
+                    this.ctx.arc(point.x, point.y, 1.2 * this.drawingScale, 0, Math.PI * 2);
                     this.ctx.fillStyle = '#111827';
                     this.ctx.fill();
                     this.ctx.closePath();
@@ -317,11 +319,9 @@
 
                     image.onload = () => {
                         const canvas = this.$refs.canvas;
-                        const width = canvas.clientWidth || canvas.getBoundingClientRect().width;
-                        const height = canvas.clientHeight || canvas.getBoundingClientRect().height;
 
-                        this.ctx.clearRect(0, 0, width, height);
-                        this.ctx.drawImage(image, 0, 0, width, height);
+                        this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        this.ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
                         this.hasSignature = true;
                     };
 
@@ -332,10 +332,8 @@
 
                     if (!this.state) {
                         const canvas = this.$refs.canvas;
-                        const width = canvas.clientWidth || canvas.getBoundingClientRect().width;
-                        const height = canvas.clientHeight || canvas.getBoundingClientRect().height;
 
-                        this.ctx?.clearRect(0, 0, width, height);
+                        this.ctx?.clearRect(0, 0, canvas.width, canvas.height);
                         this.hasSignature = false;
                         this.lastSerializedState = null;
 
