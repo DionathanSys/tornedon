@@ -104,8 +104,8 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('invoice.invoice_number')
                     ->label('Fatura')
-                    ->searchable()
                     ->sortable()
+                    ->placeholder('Sem Fatura')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -119,12 +119,6 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options(State::toSelectArray())
-                    ->default(State::OPEN->value)
-                    ->native(false)
-                    ->multiple(),
                 SelectFilter::make('priority')
                     ->label('Prioridade')
                     ->options(Priority::toSelectArray())
@@ -159,7 +153,7 @@ class ServiceOrdersTable
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
-                ])
+                ])->button()->size(Size::Small)->icon(Heroicon::EllipsisVertical),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
