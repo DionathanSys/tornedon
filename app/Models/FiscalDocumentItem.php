@@ -102,6 +102,8 @@ class FiscalDocumentItem extends Model
     {
         $value = $this->attributes['service_code']
             ?? $this->fiscal_snapshot['service_code']
+            ?? $this->fiscal_snapshot['municipal_tax_code']
+            ?? $this->service?->municipal_tax_code
             ?? $this->service?->service_code
             ?? null;
 

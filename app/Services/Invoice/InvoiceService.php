@@ -614,11 +614,11 @@ class InvoiceService
             ]);
         }
 
-        $serviceCode = $this->resolveSingleNfseValue(
+        $municipalTaxCode = $this->resolveSingleNfseValue(
             $sourceItems,
-            fn (array $row): ?string => $row['service']?->service_code,
-            $profile?->default_service_code,
-            'código do serviço'
+            fn (array $row): ?string => $row['service']?->municipal_tax_code,
+            $profile?->default_municipal_tax_code ?? $profile?->default_service_code,
+            'código de tributação municipal'
         );
 
         $nbsCode = $this->resolveSingleNfseValue(
@@ -628,25 +628,22 @@ class InvoiceService
             'código NBS'
         );
 
-        $cnaeCode = $this->resolveSingleNfseValue(
+        $cnaeCode = $this->resolvePreferredNfseValue(
             $sourceItems,
             fn (array $row): ?string => $row['service']?->cnae_code,
-            $profile?->service_cnae_code,
-            'CNAE'
+            $profile?->service_cnae_code
         );
 
-        $issRate = $this->resolveSingleNfseValue(
+        $issRate = $this->resolvePreferredNfseValue(
             $sourceItems,
             fn (array $row): float|string|null => $row['service']?->tax_rate,
-            $profile?->iss_rate_default,
-            'alíquota de ISS'
+            $profile?->iss_rate_default
         );
 
-        $issExigibility = $this->resolveSingleNfseValue(
+        $issExigibility = $this->resolvePreferredNfseValue(
             $sourceItems,
             fn (array $row): ?string => $row['service']?->iss_exigibility?->value,
-            null,
-            'exigibilidade de ISS'
+            null
         );
 
         $serviceIds = $sourceItems
@@ -708,7 +705,7 @@ class InvoiceService
             'quantity' => 1,
             'unit_price' => $totalValue,
             'total_price' => $totalValue,
-            'service_code' => $serviceCode,
+            'service_code' => $municipalTaxCode,
             'nbs_code' => $nbsCode,
             'cnae_code' => $cnaeCode,
             'iss_exigibility' => $issExigibility,
@@ -742,6 +739,7 @@ class InvoiceService
                                     'unit_price' => (float) $item->unit_price,
                                     'total_price' => round((float) $item->quantity * (float) $item->unit_price, 2),
                                     'service_code' => $service?->service_code,
+                                    'municipal_tax_code' => $service?->municipal_tax_code,
                                     'nbs_code' => $service?->nbs_code,
                                     'cnae_code' => $service?->cnae_code,
                                 ];
@@ -774,10 +772,6 @@ class InvoiceService
             ->unique()
             ->values();
 
-            Log::debug(__METHOD__.'@'.__LINE__, [
-                'values' => $values,
-            ]);
-
         if ($values->count() > 1) {
             throw ValidationException::withMessages([
                 'items' => "A fatura agrupa serviços com {$fieldLabel} diferentes. Gere NFS-e separadas ou padronize a classificação fiscal.",
@@ -787,6 +781,26 @@ class InvoiceService
         return $values->first() ?? $defaultValue;
     }
 
+    private function resolvePreferredNfseValue(
+        Collection $sourceItems,
+        callable $resolver,
+        mixed $defaultValue
+    ): mixed {
+        $value = $sourceItems
+            ->map(function (array $row) use ($resolver) {
+                $resolved = $resolver($row);
+
+                if (is_string($resolved)) {
+                    $resolved = trim($resolved);
+                }
+
+                return $resolved;
+            })
+            ->first(fn ($resolved): bool => $resolved !== null && $resolved !== '');
+
+        return $value ?? $defaultValue;
+    }
+
     private function formatDecimal(float $value, int $precision = 2): string
     {
         $formatted = number_format($value, $precision, ',', '.');
@@ -794,4 +808,3 @@ class InvoiceService
         return rtrim(rtrim($formatted, '0'), ',');
     }
 }
-
