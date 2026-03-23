@@ -92,7 +92,7 @@ class ServiceOrderValidator
             'scheduled_date'            => 'nullable|date',
             'limit_date'                => 'nullable|date',
             'priority'                  => 'sometimes|required|string|max:20',
-            'type'                      => 'sometimes|required|string|max:50',
+            'type'                      => ['sometimes', 'required', Rule::enum(Type::class)],
             'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
         ]);
 
@@ -137,7 +137,7 @@ class ServiceOrderValidator
             'priority.required'             => 'É obrigatório informar a prioridade',
             'priority.max'                  => 'A prioridade não pode ter mais de 20 caracteres',
             'type.required'                 => 'É obrigatório informar o tipo de serviço',
-            'type.max'                      => 'O tipo de serviço não pode ter mais de 50 caracteres',
+            'type.in'                       => 'O tipo de serviço informado é inválido',
             'equipment_id.exists'           => 'O equipamento informado não existe',
             'location.max'                  => 'O local não pode ter mais de 255 caracteres',
             'estimated_hours.numeric'       => 'As horas estimadas devem ser um número',
