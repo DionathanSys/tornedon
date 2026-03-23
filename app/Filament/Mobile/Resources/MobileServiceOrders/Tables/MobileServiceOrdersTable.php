@@ -49,48 +49,42 @@ class MobileServiceOrdersTable
             ->columns([
                 Split::make([
                     Stack::make([
-                        TextColumn::make('number')
-                            ->searchable()
-                            ->sortable()
-                            ->weight('bold'),
-                        TextColumn::make('customer.name')
-                            ->label('Cliente')
-                            ->searchable()
-                            ->sortable()
-                            ->placeholder('-')
-                        // ->lineClamp(2)
-                        ,
-                        TextColumn::make('equipment.name')
-                            ->label('Equipamento')
-                            ->searchable()
-                            ->sortable()
-                            ->placeholder('-')
-                            ->color('gray')
-                        // ->lineClamp(2)
-                        ,
-                    ]),
-                    Stack::make([
                         Grid::make([
-                            'default' => 2,
-                            'xl' => 3,
+                            'default' => 3,
                         ])->schema([
+                            TextColumn::make('number')
+                                ->searchable()
+                                ->weight('bold'),
                             TextColumn::make('order_date')
                                 ->label('Ordem')
-                                ->date('d/m/Y')
-                                ->sortable(),
+                                ->date('d/M'),
                             TextColumn::make('status')
                                 ->label('Status')
                                 ->badge()
                                 ->formatStateUsing(fn(?State $state): string => $state?->description() ?? '-')
-                                ->color(fn(?State $state): string => $state?->color() ?? 'gray')
-                                ->sortable(),
+                                ->color(fn(?State $state): string => $state?->color() ?? 'gray'),
                         ]),
-
-                    ])
-                        ->alignment(Alignment::End)
-                        ->space(1),
+                        TextColumn::make('customer.name')
+                            ->label('Cliente')
+                            ->searchable()
+                            ->placeholder('-'),
+                        TextColumn::make('equipment.identifier')
+                            ->label('Equipamento')
+                            ->searchable()
+                            ->placeholder('-')
+                            ->color('gray'),
+                    ]),
                 ])->from('md'),
-
+                Panel::make([
+                    Stack::make([
+                        TextColumn::make('technician.name')
+                            ->placeholder('Técnico não atribuído')
+                            ->color('gray'),
+                        TextColumn::make('total_amount')
+                            ->weight('bold')
+                            ->prefix('Total: R$ '),
+                    ]),
+                ])->collapsible(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -125,21 +119,21 @@ class MobileServiceOrdersTable
             ->defaultSort('order_date', 'desc')
             ->recordActions([
                 // ActionGroup::make([
-                    DuplicateServiceOrderAction::make()
-                        ->iconButton(),
-                    PreviewServiceOrderPdfAction::make()
-                        ->iconButton(),
-                    DownloadServiceOrderPdfAction::make()
-                        ->iconButton(),
-                    CloseServiceOrderAction::make()
-                        ->iconButton(),
-                    // InvoiceServiceOrderAction::make(),
-                    // CancelServiceOrderAction::make(),
-                    // ReopenServiceOrderAction::make(),
-                    // EditAction::make(),
+                DuplicateServiceOrderAction::make()
+                    ->iconButton(),
+                PreviewServiceOrderPdfAction::make()
+                    ->iconButton(),
+                DownloadServiceOrderPdfAction::make()
+                    ->iconButton(),
+                CloseServiceOrderAction::make()
+                    ->iconButton(),
+                // InvoiceServiceOrderAction::make(),
+                // CancelServiceOrderAction::make(),
+                // ReopenServiceOrderAction::make(),
+                // EditAction::make(),
                 // ])
-                    // ->label("A\u{00E7}\u{00F5}es")
-                    // ->button(),
+                // ->label("A\u{00E7}\u{00F5}es")
+                // ->button(),
             ])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
             ->toolbarActions([
