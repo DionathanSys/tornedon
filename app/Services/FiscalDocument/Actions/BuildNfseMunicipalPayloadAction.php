@@ -96,9 +96,11 @@ class BuildNfseMunicipalPayloadAction
                 $taxData = $item->tax_data ?? [];
 
                 $codigoServico = $this->normalizeServiceCode(
-                    $item->service_code
+                    $item->municipal_tax_code
+                    ?? $item->service?->municipal_tax_code
+                    ?? $item->service_code
                     ?? $item->service?->service_code
-                    ?? $item->municipal_tax_code
+                    ?? $profile?->default_municipal_tax_code
                     ?? $profile?->default_service_code
                 );
 
@@ -145,7 +147,9 @@ class BuildNfseMunicipalPayloadAction
                 }
 
                 $ctm = $item->service?->municipal_tax_code
+                    ?? $item->municipal_tax_code
                     ?? $item->service_code
+                    ?? $profile?->default_municipal_tax_code
                     ?? $profile?->default_service_code
                     ?? null;
                 if ($ctm) {
@@ -205,7 +209,9 @@ class BuildNfseMunicipalPayloadAction
                     'fiscal_document_id' => $fiscalDocument->id,
                     'erro'               => $msgErro,
                     'service_code_attempts' => array_merge(
+                        $fiscalDocument->items->pluck('municipal_tax_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service_code')->filter()->values()->toArray(),
+                        $fiscalDocument->items->pluck('service.municipal_tax_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service.service_code')->filter()->values()->toArray()
                     ),
                 ]);

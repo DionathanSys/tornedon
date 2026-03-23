@@ -663,33 +663,10 @@ class InvoiceService
             ->unique()
             ->values();
 
-        $serviceSummaries = $sourceItems
-            ->map(function (array $row): string {
-                $serviceOrder = $row['service_order'];
-                $item = $row['item'];
-                $service = $row['service'];
+        $description = $sourceItems->count() > 1
+            ? $this->buildCompactNfseDescription($invoice)
+            : $this->buildDetailedNfseDescription($sourceItems, $orderNumbers);
 
-                $serviceName = trim((string) ($service?->name ?? $item->observations ?? 'Serviço'));
-                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
-                $quantity = $this->formatDecimal((float) $item->quantity, 3);
-                $lineTotal = number_format(
-                    round((float) $item->quantity * (float) $item->unit_price, 2),
-                    2,
-                    ',',
-                    '.'
-                );
-
-                return "OS {$orderNumber}: {$serviceName} (qtd {$quantity}, total R$ {$lineTotal})";
-            })
-            ->values();
-
-        $descriptionParts = [];
-        $descriptionParts[] = 'Referente às ordens de serviço ' . $orderNumbers->map(
-            fn (string $number): string => '#' . $number
-        )->implode(', ') . '.';
-        $descriptionParts[] = 'Serviços faturados: ' . $serviceSummaries->implode(' | ');
-
-        $description = mb_substr(trim(implode(' ', $descriptionParts)), 0, 2000);
         $additionalInformation = mb_substr(
             'OS vinculadas: ' . $orderNumbers->map(fn (string $number): string => '#' . $number)->implode(', '),
             0,
@@ -705,7 +682,7 @@ class InvoiceService
             'quantity' => 1,
             'unit_price' => $totalValue,
             'total_price' => $totalValue,
-            'service_code' => $municipalTaxCode,
+            'municipal_tax_code' => $municipalTaxCode,
             'nbs_code' => $nbsCode,
             'cnae_code' => $cnaeCode,
             'iss_exigibility' => $issExigibility,
@@ -799,6 +776,51 @@ class InvoiceService
             ->first(fn ($resolved): bool => $resolved !== null && $resolved !== '');
 
         return $value ?? $defaultValue;
+    }
+
+    private function buildCompactNfseDescription(Invoice $invoice): string
+    {
+        $parts = $invoice->serviceOrders
+            ->map(function ($serviceOrder): string {
+                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
+                $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
+
+                return "OS {$orderNumber} - Total R$ {$totalAmount}";
+            })
+            ->values();
+
+        return mb_substr($parts->implode(' | '), 0, 2000);
+    }
+
+    private function buildDetailedNfseDescription(Collection $sourceItems, Collection $orderNumbers): string
+    {
+        $serviceSummaries = $sourceItems
+            ->map(function (array $row): string {
+                $serviceOrder = $row['service_order'];
+                $item = $row['item'];
+                $service = $row['service'];
+
+                $serviceName = trim((string) ($service?->name ?? $item->observations ?? 'Serviço'));
+                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
+                $quantity = $this->formatDecimal((float) $item->quantity, 3);
+                $lineTotal = number_format(
+                    round((float) $item->quantity * (float) $item->unit_price, 2),
+                    2,
+                    ',',
+                    '.'
+                );
+
+                return "OS {$orderNumber}: {$serviceName} (qtd {$quantity}, total R$ {$lineTotal})";
+            })
+            ->values();
+
+        $descriptionParts = [];
+        $descriptionParts[] = 'Referente às ordens de serviço ' . $orderNumbers->map(
+            fn (string $number): string => '#' . $number
+        )->implode(', ') . '.';
+        $descriptionParts[] = 'Serviços faturados: ' . $serviceSummaries->implode(' | ');
+
+        return mb_substr(trim(implode(' ', $descriptionParts)), 0, 2000);
     }
 
     private function formatDecimal(float $value, int $precision = 2): string

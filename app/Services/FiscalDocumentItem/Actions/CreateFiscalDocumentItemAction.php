@@ -112,6 +112,10 @@ class CreateFiscalDocumentItemAction
 
     private function normalizeForPersistence(array $data): array
     {
+        if (blank($data['municipal_tax_code'] ?? null) && filled($data['service_code'] ?? null)) {
+            $data['municipal_tax_code'] = $data['service_code'];
+        }
+
         // Garante que iss_exigibility seja sempre string
         if (isset($data['iss_exigibility']) && ! is_null($data['iss_exigibility'])) {
             $data['iss_exigibility'] = (string) $data['iss_exigibility'];

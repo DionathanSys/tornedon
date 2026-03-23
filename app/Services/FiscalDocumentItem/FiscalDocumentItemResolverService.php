@@ -76,7 +76,7 @@ class FiscalDocumentItemResolverService
 
             // NFS-e
             serviceId:      $service->id,
-            serviceCode:    $service->municipal_tax_code ?? NfseDocumentService::getDefaultServiceCode($companyId),
+            serviceCode:    $service->municipal_tax_code ?? NfseDocumentService::getDefaultMunicipalTaxCode($companyId),
             nbsCode:        $service->nbs_code           ?? NfseDocumentService::getDefaultNbsCode($companyId),
             cnaeCode:       $service->cnae_code          ?? NfseDocumentService::getDefaultCnaeCode($companyId),
             issRate:        $service->tax_rate           ? (float) $service->tax_rate : null,
