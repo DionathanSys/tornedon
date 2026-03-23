@@ -101,7 +101,7 @@ class QuoteForm
                             ->label('Válido até')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->minDate(now())
-                            ->default(now()->addDays(CompanyPreference::get(key: 'default_quote_validity_days', default: 30)))
+                            ->default(now()->addDays(30))
                             ->disabled(fn($record, $operation) => $operation === 'edit' ? !$record?->state()?->canEdit() : false)
                             ->required(),
                         SelectPartner::make('customer_id', 'customer')

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Projeto/Análise de Feature.md",
+                "file": "Sem título.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Análise de Feature"
+              "title": "Sem título"
             }
           }
         ]
@@ -186,10 +186,11 @@
   },
   "active": "77b91bcf8f985b54",
   "lastOpenFiles": [
+    "Projeto/📥 Caixa de Entrada.md",
     "Projeto/Análise de Feature.md",
+    "Sem título.md",
     "regras-negocio/quote-production-workflow.md",
     "regras-negocio/partner-creation.md",
-    "Projeto/📥 Caixa de Entrada.md",
     "plano-geracao-contas-a-receber.md",
     "WEBHOOK-FUNCIONAMENTO.md",
     "redis-filas-supervisor.md",

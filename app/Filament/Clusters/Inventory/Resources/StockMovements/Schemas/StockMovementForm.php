@@ -33,6 +33,7 @@ class StockMovementForm
                         ->toArray()
                 )
                 ->required()
+                ->native(false) 
                 ->live()
                 ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
                     if ($state) {

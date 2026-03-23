@@ -19,6 +19,7 @@
             background: #17385b;
             color: #ffffff;
             padding: 10px 12px;
+            position: relative;
         }
         .page-header-title {
             font-size: 18px;
@@ -26,6 +27,20 @@
         }
         .page-header-body {
             padding: 10px 12px;
+        }
+        .company-logo-wrap {
+            position: absolute;
+            top: 6px;
+            right: 12px;
+            background: #ffffff;
+            border-radius: 4px;
+            padding: 2px 6px;
+            line-height: 0;
+        }
+        .company-logo {
+            max-height: 44px;
+            max-width: 130px;
+            display: block;
         }
         .meta-grid,
         .summary-table {
@@ -210,6 +225,11 @@
     <div class="page-header">
         <div class="page-header-bar">
             <div class="page-header-title">Ordem de Serviço #{{ $record->number }}</div>
+            @if (filled($record->company?->logoUrl))
+                <div class="company-logo-wrap">
+                    <img src="{{ $record->company->logoUrl }}" alt="Logo {{ $record->company->name }}" class="company-logo">
+                </div>
+            @endif
         </div>
         <div class="page-header-body">
             <table class="meta-grid">
