@@ -37,32 +37,25 @@
             font-weight: bold;
         }
         .page-header-body {
+            position: relative;
             padding: 8px 10px;
         }
-        .header-layout {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .header-layout td {
-            vertical-align: top;
-        }
-        .header-logo-cell {
-            width: 232px;
-            padding-right: 8px;
-        }
-        .header-meta-cell {
-            width: auto;
-        }
         .company-logo-wrap {
+            position: absolute;
+            top: 8px;
+            left: 10px;
             padding: 0;
-            min-height: 0;
             text-align: left;
             line-height: 0;
         }
         .company-logo {
             max-height: 84px;
-            max-width: 224px;
+            max-width: 180px;
             display: block;
+        }
+        .header-meta-wrap.has-logo {
+            padding-left: 188px;
+            min-height: 84px;
         }
         .meta-grid,
         .summary-table {
@@ -263,43 +256,35 @@
             <div class="page-header-status">{{ $record->status?->description() ?? '-' }}</div>
         </div>
         <div class="page-header-body">
-            <table class="header-layout">
-                <tbody>
-                    <tr>
-                        @if (filled($companyLogo))
-                            <td class="header-logo-cell">
-                                <div class="company-logo-wrap">
-                                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
-                                </div>
-                            </td>
-                        @endif
-                        <td class="header-meta-cell">
-                            <table class="meta-grid">
-                                <tbody>
-                                    @foreach ($headerLines as $line)
-                                        <tr>
-                                            <td class="meta-label">{{ $line['label'] }}</td>
-                                            <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
-                                        </tr>
-                                    @endforeach
-                                    <tr>
-                                        <td class="meta-inline-label">Data da Ordem</td>
-                                        <td class="meta-inline-value">{{ $formatDate($record->order_date) }}</td>
-                                        <td class="meta-inline-label">Data Conclusão</td>
-                                        <td class="meta-inline-value">{{ $formatDate($record->completion_date) }}</td>
-                                    </tr>
-                                    @foreach ($responsibles as $field)
-                                        <tr>
-                                            <td class="meta-label">{{ $field['label'] }}</td>
-                                            <td colspan="3">{{ $field['value'] }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            @if (filled($companyLogo))
+                <div class="company-logo-wrap">
+                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
+                </div>
+            @endif
+            <div class="header-meta-wrap{{ filled($companyLogo) ? ' has-logo' : '' }}">
+                <table class="meta-grid">
+                    <tbody>
+                        @foreach ($headerLines as $line)
+                            <tr>
+                                <td class="meta-label">{{ $line['label'] }}</td>
+                                <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                            </tr>
+                        @endforeach
+                        <tr>
+                            <td class="meta-inline-label">Data da Ordem</td>
+                            <td class="meta-inline-value">{{ $formatDate($record->order_date) }}</td>
+                            <td class="meta-inline-label">Data Conclusão</td>
+                            <td class="meta-inline-value">{{ $formatDate($record->completion_date) }}</td>
+                        </tr>
+                        @foreach ($responsibles as $field)
+                            <tr>
+                                <td class="meta-label">{{ $field['label'] }}</td>
+                                <td colspan="3">{{ $field['value'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
