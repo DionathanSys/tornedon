@@ -39,17 +39,17 @@ class FiscalDocumentsTable
                     ->label('Número')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder('-'),
 
-                Tables\Columns\TextColumn::make('series')
+                Tables\Columns\TextColumn::make('document_series')
                     ->label('Série')
                     ->sortable()
-                    ->formatStateUsing((
-                        fn(FiscalDocument $record): ?NfeStatus => $record->isNfse()
-                            ? $record->rps_series
-                            : $record->document_series
-                    ))
-                    ->placeholder('—'),
+                    ->placeholder('-'),
+
+                Tables\Columns\TextColumn::make('rps_series')
+                    ->label('RPS Série')
+                    ->sortable()
+                    ->placeholder('-'),
 
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Cliente')
@@ -81,7 +81,7 @@ class FiscalDocumentsTable
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn(?Status $state) => $state?->description() ?? '—')
+                    ->formatStateUsing(fn(?Status $state) => $state?->description() ?? '-')
                     ->color(fn(?Status $state) => $state?->color() ?? 'gray')
                     ->toggleable(isToggledHiddenByDefault: true),
 

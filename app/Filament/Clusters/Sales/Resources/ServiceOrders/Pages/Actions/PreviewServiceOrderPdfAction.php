@@ -17,7 +17,7 @@ final class PreviewServiceOrderPdfAction
             ->label('Preview PDF')
             ->icon(Heroicon::Eye)
             ->color('gray')
-            ->modalHeading('Preview da Ordem de Servico')
+            ->modalHeading('Preview da Ordem de Serviço')
             ->modalContent(function (ServiceOrder $record): \Illuminate\Contracts\Support\Htmlable {
                 $service = app(ServiceOrderService::class);
                 $data    = $service->preview($record, Auth::id());

@@ -98,7 +98,7 @@
         .signature-line {
             width: 260px;
             border-top: 1px solid #1f2937;
-            padding-top: 6px;
+            padding-top: 16px;
             margin: 0 auto;
         }
         .signature-image {
@@ -129,6 +129,7 @@
         $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
         $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
         $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
+        $companyLogo = null;
         $additionalInfoLabels = [
             'accessories' => 'Acessorios entregues',
             'avaria' => 'Avaria identificada',
@@ -220,14 +221,20 @@
             })
             ->filter()
             ->implode(' | ');
+
+        if (filled($record->company?->logo_path) && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->company->logo_path)) {
+            $logoDisk = \Illuminate\Support\Facades\Storage::disk('public');
+            $logoMime = $logoDisk->mimeType($record->company->logo_path) ?: 'image/png';
+            $companyLogo = 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($record->company->logo_path));
+        }
     @endphp
 
     <div class="page-header">
         <div class="page-header-bar">
             <div class="page-header-title">Ordem de Serviço #{{ $record->number }}</div>
-            @if (filled($record->company?->logoUrl))
+            @if (filled($companyLogo))
                 <div class="company-logo-wrap">
-                    <img src="{{ $record->company->logoUrl }}" alt="Logo {{ $record->company->name }}" class="company-logo">
+                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
                 </div>
             @endif
         </div>
@@ -282,7 +289,7 @@
     </table>
 
     <div class="section-title">Observações</div>
-    <div class="notes-box">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
+    <div class="notes-box">{{ $record->customer_observations ?? 'Sem observações' }}</div>
 
     @if (filled($additionalInfoText))
         <div class="section-title">Informacoes Adicionais</div>

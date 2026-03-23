@@ -108,7 +108,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
         if (! $company) {
             Notification::make()
                 ->title('Erro')
-                ->body('Empresa nao identificada.')
+                ->body('Empresa não identificada.')
                 ->danger()
                 ->send();
             return;
