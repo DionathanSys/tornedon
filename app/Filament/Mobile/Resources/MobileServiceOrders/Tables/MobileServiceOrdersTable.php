@@ -211,6 +211,7 @@ class MobileServiceOrdersTable
                         $data['company_id'] = $tenant->id;
                         $data['status'] = State::OPEN;
                         $data['type'] = Type::MAINTENANCE;
+                        $data['priority'] = Priority::NORMAL;
 
                         unset($data['discount_amount']);
                         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
