@@ -65,25 +65,29 @@ class ServiceOrdersTable
                     ->badge()
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color(fn($state) => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color('gray')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('equipment.name')
                     ->label('Equipamento')
                     ->searchable()
                     ->sortable()
                     ->limit(25)
-                    ->toggleable(),
+                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('technician.name')
                     ->label('Técnico')
                     ->searchable()
                     ->sortable()
                     ->limit(25)
-                    ->toggleable(),
+                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('order_date')
                     ->label('Data da Ordem')
                     ->date('d/m/Y')
@@ -98,32 +102,11 @@ class ServiceOrdersTable
                     ->date('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('location')
-                    ->label('Local')
+                TextColumn::make('invoice.invoice_number')
+                    ->label('Fatura')
                     ->searchable()
-                    ->limit(30)
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('requires_approval')
-                    ->label('Requer Aprovação')
-                    ->boolean()
-                    ->trueIcon(Heroicon::CheckCircle)
-                    ->falseIcon(Heroicon::XCircle)
-                    ->trueColor('success')
-                    ->falseColor('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('approved_by_customer')
-                    ->label('Aprovado')
-                    ->boolean()
-                    ->trueIcon(Heroicon::CheckBadge)
-                    ->falseIcon(Heroicon::XMark)
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('customer_rating')
-                    ->label('Avaliação')
-                    ->formatStateUsing(fn($state) => $state ? number_format($state, 1) . ' ⭐' : '-')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
