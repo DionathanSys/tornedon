@@ -190,6 +190,8 @@ class ServiceOrdersTable
                         $tenant             = Filament::getTenant();
                         $data['company_id'] = $tenant->id;
                         $data['status']     = State::OPEN;
+                        $data['priority']   = Priority::NORMAL;
+                        $data['type']       = Type::MAINTENANCE;
 
                         unset($data['discount_amount']);
                         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
