@@ -18,6 +18,7 @@ use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\Partner;
 use Filament\Forms;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -77,7 +78,8 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                                     ->visible(fn($state): bool => $state !== null)
-                                                    ->formatStateUsing(fn($state): ?string => $state ? $state : 'Sem fatura vinculada'),
+                                                    ->formatStateUsing(fn($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
+                                                    ->url(fn($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', $record->invoice) : null, true),
                                                 TextEntry::make('status')
                                                     ->label('Status')
                                                     ->visibleOn('edit')
