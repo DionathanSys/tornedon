@@ -17,6 +17,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -93,22 +94,6 @@ class MobileServiceOrdersTable
                     ->default(State::OPEN->value)
                     ->native(false)
                     ->multiple(),
-                SelectFilter::make('priority')
-                    ->label('Prioridade')
-                    ->options(Priority::toSelectArray())
-                    ->native(false)
-                    ->multiple(),
-                SelectFilter::make('type')
-                    ->label('Tipo')
-                    ->options(Type::toSelectArray())
-                    ->native(false)
-                    ->multiple(),
-                SelectFilter::make('technician_id')
-                    ->label("T\u{00E9}cnico")
-                    ->relationship('technician', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
                 SelectFilter::make('customer_id')
                     ->label('Cliente')
                     ->relationship('customer', 'name')
@@ -116,9 +101,15 @@ class MobileServiceOrdersTable
                     ->preload()
                     ->native(false),
             ])
-            ->defaultSort('order_date', 'desc')
+            ->filtersTriggerAction(
+                fn(Action $action) => $action
+                    ->button()
+                    ->label('Filtrar'),
+            )
+            ->persistFiltersInSession()
+            ->deferFilters(false)
+            ->defaultSort('created_at', 'desc')
             ->recordActions([
-                // ActionGroup::make([
                 DuplicateServiceOrderAction::make()
                     ->iconButton(),
                 PreviewServiceOrderPdfAction::make()
@@ -127,13 +118,10 @@ class MobileServiceOrdersTable
                     ->iconButton(),
                 CloseServiceOrderAction::make()
                     ->iconButton(),
-                // InvoiceServiceOrderAction::make(),
-                // CancelServiceOrderAction::make(),
-                // ReopenServiceOrderAction::make(),
-                // EditAction::make(),
-                // ])
-                // ->label("A\u{00E7}\u{00F5}es")
-                // ->button(),
+                CancelServiceOrderAction::make()
+                    ->iconButton(),
+                ReopenServiceOrderAction::make()
+                    ->iconButton(),
             ])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
             ->toolbarActions([
