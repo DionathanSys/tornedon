@@ -82,19 +82,25 @@ class FiscalDocumentForm
                                                     ->label('Status')
                                                     ->visibleOn('edit')
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(Status $state): ?string => $state->description()),
+                                                    ->formatStateUsing(fn(Status $state): ?string => $state->description())
+                                                    ->badge()
+                                                    ->color(fn(Status $state) => $state->color()),
                                                 TextEntry::make('nfse_status')
                                                     ->label('Status NFS-e')
                                                     ->visibleOn('edit')
                                                     ->hidden(fn(Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description()),
+                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description())
+                                                    ->badge()
+                                                    ->color(fn(NfeStatus $state) => $state->color()),
                                                 TextEntry::make('nfe_status')
                                                     ->label('Status NF-e')
                                                     ->visibleOn('edit')
                                                     ->hidden(fn(Get $get): bool => $get('document_type') !== DocumentModel::NFE->value)
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description()),
+                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description())
+                                                    ->badge()
+                                                    ->color(fn(NfeStatus $state) => $state->color()),
                                             ])
                                     ])
                                     ->columns(['md' => 2])
