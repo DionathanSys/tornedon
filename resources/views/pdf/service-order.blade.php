@@ -49,7 +49,7 @@
             line-height: 0;
         }
         .company-logo {
-            max-height: 90px;
+            max-height: 100px;
             max-width: 130px;
             display: block;
         }
