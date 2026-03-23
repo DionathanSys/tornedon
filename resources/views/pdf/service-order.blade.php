@@ -49,8 +49,8 @@
             line-height: 0;
         }
         .company-logo {
-            max-height: 63px;
-            max-width: 90px;
+            max-height: 90px;
+            max-width: 130px;
             display: block;
         }
         .header-meta-wrap.has-logo {
