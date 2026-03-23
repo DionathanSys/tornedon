@@ -43,9 +43,9 @@
         .company-logo-wrap {
             position: absolute;
             top: 8px;
-            left: 10px;
+            right: 10px;
             padding: 0;
-            text-align: left;
+            text-align: right;
             line-height: 0;
         }
         .company-logo {
@@ -54,7 +54,7 @@
             display: block;
         }
         .header-meta-wrap.has-logo {
-            padding-left: 98px;
+            padding-right: 98px;
             min-height: 63px;
         }
         .meta-grid,
