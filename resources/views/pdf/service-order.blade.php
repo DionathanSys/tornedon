@@ -75,13 +75,13 @@
             font-weight: bold;
         }
         .meta-inline-label {
-            width: 18%;
+            width: 23%;
             background: #f8fafc;
             color: #17385b;
             font-weight: bold;
         }
         .meta-inline-value {
-            width: 32%;
+            width: 29%;
         }
         .section-title {
             margin: 18px 0 8px 0;
