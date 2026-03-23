@@ -108,7 +108,7 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => ! $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                    ->formatStateUsing(fn(OperationNature $state): ?string => $state->description() ?? 'N/A'),
                                                 TextEntry::make('document_number')
                                                     ->label('Nº do Documento')
                                                     ->visibleOn('edit')
