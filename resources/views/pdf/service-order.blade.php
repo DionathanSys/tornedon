@@ -18,30 +18,54 @@
         .page-header-bar {
             background: #17385b;
             color: #ffffff;
-            padding: 10px 280px 10px 12px;
-            position: relative;
-            min-height: 88px;
+            padding: 10px 12px;
         }
         .page-header-title {
             font-size: 18px;
+            font-weight: bold;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .page-header-status {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+            padding: 4px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 999px;
+            font-size: 11px;
             font-weight: bold;
         }
         .page-header-body {
             padding: 10px 12px;
         }
+        .header-layout {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .header-layout td {
+            vertical-align: top;
+        }
+        .header-logo-cell {
+            width: 280px;
+            padding-right: 12px;
+        }
+        .header-meta-cell {
+            width: auto;
+        }
         .company-logo-wrap {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: #ffffff;
-            border-radius: 0 0 0 4px;
-            padding: 6px 8px 6px 10px;
-            line-height: 0;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            padding: 8px;
+            min-height: 106px;
+            text-align: center;
+            line-height: 90px;
         }
         .company-logo {
             max-height: 88px;
             max-width: 260px;
-            display: block;
+            display: inline-block;
+            vertical-align: middle;
         }
         .meta-grid,
         .summary-table {
@@ -59,6 +83,15 @@
             background: #f8fafc;
             color: #17385b;
             font-weight: bold;
+        }
+        .meta-inline-label {
+            width: 18%;
+            background: #f8fafc;
+            color: #17385b;
+            font-weight: bold;
+        }
+        .meta-inline-value {
+            width: 32%;
         }
         .section-title {
             margin: 18px 0 8px 0;
@@ -147,9 +180,6 @@
         $headerLines = [
             ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
             ['label' => 'Cliente', 'value' => $record->customer?->name ?? '-'],
-            ['label' => 'Data da Ordem', 'value' => $formatDate($record->order_date)],
-            ['label' => 'Data Finalização', 'value' => $formatDate($record->completion_date)],
-            ['label' => 'Status', 'value' => $record->status?->description() ?? '-'],
         ];
 
         $responsibles = collect([
@@ -233,27 +263,44 @@
     <div class="page-header">
         <div class="page-header-bar">
             <div class="page-header-title">Ordem de Serviço #{{ $record->number }}</div>
-            @if (filled($companyLogo))
-                <div class="company-logo-wrap">
-                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
-                </div>
-            @endif
+            <div class="page-header-status">{{ $record->status?->description() ?? '-' }}</div>
         </div>
         <div class="page-header-body">
-            <table class="meta-grid">
+            <table class="header-layout">
                 <tbody>
-                    @foreach ($headerLines as $line)
-                        <tr>
-                            <td class="meta-label">{{ $line['label'] }}</td>
-                            <td class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
-                        </tr>
-                    @endforeach
-                    @foreach ($responsibles as $field)
-                        <tr>
-                            <td class="meta-label">{{ $field['label'] }}</td>
-                            <td>{{ $field['value'] }}</td>
-                        </tr>
-                    @endforeach
+                    <tr>
+                        @if (filled($companyLogo))
+                            <td class="header-logo-cell">
+                                <div class="company-logo-wrap">
+                                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
+                                </div>
+                            </td>
+                        @endif
+                        <td class="header-meta-cell">
+                            <table class="meta-grid">
+                                <tbody>
+                                    @foreach ($headerLines as $line)
+                                        <tr>
+                                            <td class="meta-label">{{ $line['label'] }}</td>
+                                            <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                    <tr>
+                                        <td class="meta-inline-label">Data da Ordem</td>
+                                        <td class="meta-inline-value">{{ $formatDate($record->order_date) }}</td>
+                                        <td class="meta-inline-label">Data Conclusão</td>
+                                        <td class="meta-inline-value">{{ $formatDate($record->completion_date) }}</td>
+                                    </tr>
+                                    @foreach ($responsibles as $field)
+                                        <tr>
+                                            <td class="meta-label">{{ $field['label'] }}</td>
+                                            <td colspan="3">{{ $field['value'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
