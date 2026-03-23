@@ -104,16 +104,31 @@ class FiscalDocumentForm
                                                 TextEntry::make('operation_nature')
                                                     ->label('Natureza da Op.')
                                                     ->visibleOn('edit')
+                                                    ->visible(fn($record): bool => ! $record->isNfe())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                                     ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
                                                 TextEntry::make('document_number')
                                                     ->label('Nº do Documento')
                                                     ->visibleOn('edit')
+                                                    ->visible(fn($record): bool => $record->isNfe())
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                TextEntry::make('rps_number')
+                                                    ->label('Nº do Documento')
+                                                    ->visibleOn('edit')
+                                                    ->visible(fn($record): bool => $record->isNfe())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                                     ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
                                                 TextEntry::make('document_series')
                                                     ->label('Série')
                                                     ->visibleOn('edit')
+                                                    ->visible(fn($record): bool => ! $record->isNfe())
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                TextEntry::make('rps_series')
+                                                    ->label('Série')
+                                                    ->visibleOn('edit')
+                                                    ->visible(fn($record): bool => $record->isNfe())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                                     ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
                                             ])

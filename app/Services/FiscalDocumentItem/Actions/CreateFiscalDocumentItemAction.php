@@ -32,6 +32,17 @@ class CreateFiscalDocumentItemAction
                 ->value('document_type');
 
             if (
+                $documentType === DocumentModel::NFSE->value
+                && FiscalDocumentItem::query()
+                    ->where('fiscal_document_id', (int) $validated['fiscal_document_id'])
+                    ->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'fiscal_document_id' => 'A NFS-e permite apenas um item de serviço por documento.',
+                ]);
+            }
+
+            if (
                 $documentType !== DocumentModel::NFSE->value
                 && (! isset($validated['product_origin']) || $validated['product_origin'] === null || $validated['product_origin'] === '')
             ) {

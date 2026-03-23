@@ -166,6 +166,9 @@ class BuildNfseNacionalPayloadAction
             ];
 
             $ctm = $firstItem->service?->municipal_tax_code ?? $profile?->default_service_code ?? null;
+            if (! $ctm) {
+                $ctm = $firstItem->service_code ?? $profile?->default_service_code ?? null;
+            }
             if ($ctm) {
                 $servico['codigo_tributacao_municipio'] = $ctm;
             }
