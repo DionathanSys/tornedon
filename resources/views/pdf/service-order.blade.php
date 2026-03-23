@@ -49,13 +49,13 @@
             line-height: 0;
         }
         .company-logo {
-            max-height: 84px;
-            max-width: 180px;
+            max-height: 63px;
+            max-width: 90px;
             display: block;
         }
         .header-meta-wrap.has-logo {
-            padding-left: 188px;
-            min-height: 84px;
+            padding-left: 98px;
+            min-height: 63px;
         }
         .meta-grid,
         .summary-table {
