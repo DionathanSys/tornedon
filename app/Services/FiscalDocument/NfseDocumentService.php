@@ -4,10 +4,12 @@ namespace App\Services\FiscalDocument;
 
 use App\Models\FiscalDocument;
 use App\Models\FiscalProfile;
+use App\Services\Fiscal\NfseConfigService;
 use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePreviewAction;
+use App\Services\FiscalDocument\Actions\ReserveRpsNumberAction;
 use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +64,28 @@ class NfseDocumentService
                     ],
                 ]);
                 return false;
+            }
+
+            $currentNumber = (int) preg_replace('/\D/', '', (string) ($doc->rps_number ?? ''));
+
+            if ($currentNumber < 1) {
+                $configService = app(NfseConfigService::class);
+                $serie = $serie ?? $configService->resolveSerie($doc->company_id);
+
+                $reserveAction = new ReserveRpsNumberAction();
+
+                if (! $reserveAction->execute($doc, $serie)) {
+                    $this->setError($reserveAction->getMessage());
+                    $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
+                        'contexto' => [
+                            'serie'   => $serie,
+                            'user_id' => $userId,
+                        ],
+                    ]);
+                    return false;
+                }
+
+                $doc->refresh();
             }
 
             dispatch(new \App\Jobs\SendNfseJob($doc->id, $userId, $serie));

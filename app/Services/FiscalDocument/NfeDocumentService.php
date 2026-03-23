@@ -3,9 +3,11 @@
 namespace App\Services\FiscalDocument;
 
 use App\Models\FiscalDocument;
+use App\Services\Fiscal\NfeConfigService;
 use App\Services\FiscalDocument\Actions\ConsultNfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfeDanfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfePreviewAction;
+use App\Services\FiscalDocument\Actions\ReserveNfeNumberAction;
 use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
@@ -65,6 +67,48 @@ class NfeDocumentService
                     ],
                 ]);
                 return false;
+            }
+
+            $currentNumber = (int) preg_replace('/\D/', '', (string) ($doc->document_number ?? ''));
+
+            if ($currentNumber < 1) {
+                $configService = app(NfeConfigService::class);
+
+                $serie = $serie ?? $configService->resolveSerie($doc->company_id);
+
+                $rawNature = $doc->operation_nature;
+                $natureValue = $rawNature instanceof \App\Enum\FiscalDocument\OperationNature
+                    ? $rawNature->value
+                    : $rawNature;
+                $operationNature = $operationNature ?? $natureValue;
+
+                if (empty($operationNature)) {
+                    $this->setError('Natureza da operação não definida. Preencha o campo antes de emitir a NF-e.');
+                    $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
+                        'contexto' => [
+                            'serie'           => $serie,
+                            'operationNature' => $operationNature,
+                            'user_id'         => $userId,
+                        ],
+                    ]);
+                    return false;
+                }
+
+                $reserveAction = new ReserveNfeNumberAction();
+
+                if (! $reserveAction->execute($doc, $serie, $operationNature)) {
+                    $this->setError($reserveAction->getMessage());
+                    $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
+                        'contexto' => [
+                            'serie'           => $serie,
+                            'operationNature' => $operationNature,
+                            'user_id'         => $userId,
+                        ],
+                    ]);
+                    return false;
+                }
+
+                $doc->refresh();
             }
 
             dispatch(new \App\Jobs\SendNfeJob($doc->id, $userId, $serie, $operationNature));
