@@ -79,7 +79,7 @@ class FiscalDocumentForm
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                                     ->visible(fn($state): bool => $state !== null)
                                                     ->formatStateUsing(fn($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
-                                                    ->url(fn($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', $record->invoice) : null, true),
+                                                    ->url(fn ($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
                                                 TextEntry::make('status')
                                                     ->label('Status')
                                                     ->visibleOn('edit')
