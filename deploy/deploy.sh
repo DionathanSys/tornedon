@@ -28,6 +28,7 @@ DEPLOY_UMASK="${DEPLOY_UMASK:-0002}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTISAN="${ROOT_DIR}/artisan"
+MAINTENANCE_STARTED=0
 
 umask "${DEPLOY_UMASK}"
 
@@ -43,6 +44,18 @@ run_supervisorctl() {
     # Split the configured command so values like "sudo supervisorctl" work as expected.
     read -r -a supervisor_cmd <<< "$SUPERVISORCTL_BIN"
     (cd "$ROOT_DIR" && "${supervisor_cmd[@]}" "$@")
+}
+
+ensure_no_unmerged_files() {
+    local unmerged_files
+
+    unmerged_files="$(run_in_root "$GIT_BIN" diff --name-only --diff-filter=U || true)"
+
+    if [[ -n "${unmerged_files}" ]]; then
+        log "Foram encontrados arquivos com merge pendente. Resolva os conflitos antes de rodar o deploy."
+        printf '%s\n' "${unmerged_files}" >&2
+        exit 1
+    fi
 }
 
 normalize_permissions() {
@@ -70,7 +83,7 @@ normalize_permissions() {
 }
 
 finish() {
-    if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
+    if [[ "${MAINTENANCE_MODE}" == "1" && "${MAINTENANCE_STARTED}" == "1" ]]; then
         log "Tirando a aplicacao do modo de manutencao"
         run_in_root "$PHP_BIN" "$ARTISAN" up || true
     fi
@@ -78,14 +91,17 @@ finish() {
 
 trap finish EXIT
 
+ensure_no_unmerged_files
+
 log "Atualizando o codigo da branch ${APP_BRANCH}"
-run_in_root "$GIT_BIN" pull origin main
+run_in_root "$GIT_BIN" pull origin "$APP_BRANCH"
 
 normalize_permissions
 
 if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
     log "Colocando a aplicacao em modo de manutencao"
     run_in_root "$PHP_BIN" "$ARTISAN" down
+    MAINTENANCE_STARTED=1
 fi
 
 # log "Instalando dependencias do Composer"

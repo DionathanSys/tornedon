@@ -39,7 +39,8 @@ class EditServiceOrder extends EditRecord
                     ->tooltip('Criar nova ordem de serviço')
                     ->color('gray')
                     ->icon(Heroicon::Plus)
-                    ->url($this->getResource()::getUrl('create')),
+                    // ->url($this->getResource()::getUrl('create'))
+                    ,
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()
                     ->tooltip('Duplicar ordem de serviço'),
