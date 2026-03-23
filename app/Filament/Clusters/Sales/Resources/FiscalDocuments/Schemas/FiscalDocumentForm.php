@@ -77,7 +77,7 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                                     ->visible(fn($state): bool => $state !== null)
-                                                    ->formatStateUsing(fn($record): ?string => $record && $record->invoice_number ? $record->invoice_number : 'Sem fatura vinculada'),
+                                                    ->formatStateUsing(fn($state): ?string => $state ? $state : 'Sem fatura vinculada'),
                                                 TextEntry::make('status')
                                                     ->label('Status')
                                                     ->visibleOn('edit')
@@ -101,6 +101,21 @@ class FiscalDocumentForm
                                                     ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description())
                                                     ->badge()
                                                     ->color(fn(NfeStatus $state) => $state->color()),
+                                                TextEntry::make('operation_nature')
+                                                    ->label('Natureza da Op.')
+                                                    ->visibleOn('edit')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                TextEntry::make('document_number')
+                                                    ->label('Nº do Documento')
+                                                    ->visibleOn('edit')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                TextEntry::make('document_series')
+                                                    ->label('Série')
+                                                    ->visibleOn('edit')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
                                             ])
                                     ])
                                     ->columns(['md' => 2])

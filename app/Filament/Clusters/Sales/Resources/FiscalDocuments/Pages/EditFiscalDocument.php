@@ -77,7 +77,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar SEFAZ')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => ! $record->isNfse()) // && $record->isInProcessing())
+                    ->visible(fn(FiscalDocument $record) => ! $record->isNfse() && $record->isInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -157,7 +157,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar NFS-e')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && $record->isNfseInProcessing())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfse())// && $record->isNfseInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->consultar($record, Auth::id());

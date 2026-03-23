@@ -65,6 +65,7 @@ normalize_permissions() {
 
     log "Normalizando permissoes em ${WRITABLE_PATHS}"
 
+    local permission_warnings=0
     local path
     for path in ${WRITABLE_PATHS}; do
         if [[ ! -e "${ROOT_DIR}/${path}" ]]; then
@@ -72,14 +73,23 @@ normalize_permissions() {
         fi
 
         "${CHGRP_BIN}" -R "${WEB_GROUP}" "${ROOT_DIR}/${path}" 2>/dev/null || true
-        "${CHMOD_BIN}" -R ug+rwX "${ROOT_DIR}/${path}"
-        "${FIND_BIN}" "${ROOT_DIR}/${path}" -type d -exec "${CHMOD_BIN}" g+s {} +
+        if ! "${CHMOD_BIN}" -R ug+rwX "${ROOT_DIR}/${path}" 2>/dev/null; then
+            permission_warnings=1
+        fi
+
+        if ! "${FIND_BIN}" "${ROOT_DIR}/${path}" -type d -exec "${CHMOD_BIN}" g+s {} + 2>/dev/null; then
+            permission_warnings=1
+        fi
 
         if command -v "${SETFACL_BIN}" >/dev/null 2>&1; then
             "${SETFACL_BIN}" -R -m "u:${DEPLOY_USER}:rwx" -m "u:${WEB_USER}:rwx" -m "g:${WEB_GROUP}:rwx" "${ROOT_DIR}/${path}" 2>/dev/null || true
             "${SETFACL_BIN}" -R -d -m "u:${DEPLOY_USER}:rwx" -m "u:${WEB_USER}:rwx" -m "g:${WEB_GROUP}:rwx" "${ROOT_DIR}/${path}" 2>/dev/null || true
         fi
     done
+
+    if [[ "${permission_warnings}" == "1" ]]; then
+        log "Aviso: alguns arquivos de ${WRITABLE_PATHS} nao pertencem ao usuario ${DEPLOY_USER} e nao puderam ter as permissoes ajustadas."
+    fi
 }
 
 finish() {
