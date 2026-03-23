@@ -37,7 +37,7 @@
             font-weight: bold;
         }
         .page-header-body {
-            padding: 10px 12px;
+            padding: 8px 10px;
         }
         .header-layout {
             width: 100%;
@@ -47,25 +47,22 @@
             vertical-align: top;
         }
         .header-logo-cell {
-            width: 280px;
-            padding-right: 12px;
+            width: 232px;
+            padding-right: 8px;
         }
         .header-meta-cell {
             width: auto;
         }
         .company-logo-wrap {
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            padding: 8px;
-            min-height: 106px;
-            text-align: center;
-            line-height: 90px;
+            padding: 0;
+            min-height: 0;
+            text-align: left;
+            line-height: 0;
         }
         .company-logo {
-            max-height: 88px;
-            max-width: 260px;
-            display: inline-block;
-            vertical-align: middle;
+            max-height: 84px;
+            max-width: 224px;
+            display: block;
         }
         .meta-grid,
         .summary-table {
