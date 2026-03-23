@@ -8,14 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\Storage;
 
 class Company extends Model
 {
     protected $fillable = [
         'name',
         'document_number',
-        'logo_path',
         'address',
         'phone',
         'email',
@@ -34,12 +32,12 @@ class Company extends Model
 
     protected $appends = [
         'service_provision_location',
-    ];    
+    ];
 
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class);
-    }   
+    }
 
     public function partners(): BelongsToMany
     {
@@ -59,15 +57,6 @@ class Company extends Model
     public function equipments(): HasMany
     {
         return $this->hasMany(Equipment::class);
-    }
-
-    public function logoUrl(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => filled($this->logo_path)
-                ? Storage::disk('public')->url($this->logo_path)
-                : null,
-        );
     }
 
     public function serviceProvisionLocation(): Attribute

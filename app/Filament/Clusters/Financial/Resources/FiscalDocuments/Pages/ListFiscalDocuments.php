@@ -15,7 +15,7 @@ class ListFiscalDocuments extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('Documento Fiscal')
+                ->label('Nota de Entrada')
                 ->icon(Heroicon::Plus),
         ];
     }

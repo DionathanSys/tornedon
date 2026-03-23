@@ -14,7 +14,7 @@ class FiscalDocumentsTable
         return $table
             ->columns([
                 TextColumn::make('document_number')
-                    ->label('Número')
+                    ->label('Número NF')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('document_series')
@@ -23,11 +23,7 @@ class FiscalDocumentsTable
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('customer.name')
-                    ->label('Cliente/Fornecedor')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('document_type')
-                    ->label('Tipo')
+                    ->label('Fornecedor')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('status')
@@ -40,14 +36,15 @@ class FiscalDocumentsTable
                     ->label('Data Emissão')
                     ->date('d/m/Y')
                     ->sortable(),
+                TextColumn::make('movement_at')
+                    ->label('Data Entrada')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('document_key')
                     ->label('Chave')
                     ->searchable()
                     ->limit(20)
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('operation_nature')
-                    ->label('Natureza Operação')
-                    ->limit(30)
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('confirmed')
                     ->label('Confirmada')

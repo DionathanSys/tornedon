@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments;
 
+use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\CreateFiscalDocument;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
@@ -14,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class FiscalDocumentResource extends Resource
 {
@@ -23,11 +25,22 @@ class FiscalDocumentResource extends Resource
 
     protected static ?string $cluster = FinancialCluster::class;
 
-    protected static ?string $modelLabel = 'Documento Fiscal';
+    protected static ?string $modelLabel = 'Nota de Entrada';
 
-    protected static ?string $pluralModelLabel = 'Documentos Fiscais';
+    protected static ?string $pluralModelLabel = 'Notas de Entrada';
+
+    protected static ?string $navigationLabel = 'Notas de Entrada';
 
     protected static ?int $navigationSort = 4;
+
+    /**
+     * Restringe o resource apenas a notas de entrada (operation_type = ENTRADA).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->where('operation_type', OperationType::ENTRADA->value);
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -42,9 +55,9 @@ class FiscalDocumentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListFiscalDocuments::route('/'),
+            'index'  => ListFiscalDocuments::route('/'),
             'create' => CreateFiscalDocument::route('/create'),
-            'edit' => EditFiscalDocument::route('/{record}/edit'),
+            'edit'   => EditFiscalDocument::route('/{record}/edit'),
         ];
     }
 }

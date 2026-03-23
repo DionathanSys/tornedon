@@ -26,6 +26,7 @@ class CompanyPartnersTable
             ->columns([
                 TextColumn::make('partner.name')
                     ->label('Parceiro')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('partner.document_number')
                     ->label('CPF/CNPJ')
@@ -66,18 +67,12 @@ class CompanyPartnersTable
                         );
                     }),
                 Filter::make('is_active')
+                    ->label('Ativo')    
                     ->toggle(),
             ])
             ->recordActions([
-                ViewAction::make()
-                    ->iconButton(),
-                EditAction::make()
-                    ->iconButton(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ])->size(Size::Small),
                 CreateAction::make()
                     ->label('Parceiro')
                     ->icon(Heroicon::Plus)

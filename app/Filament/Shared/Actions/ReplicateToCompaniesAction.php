@@ -20,15 +20,16 @@ class ReplicateToCompaniesAction
             ->label('Replicar para outras empresas')
             ->icon(Heroicon::ArrowUturnRight)
             ->color('warning')
+            ->tooltip('Replicar para outras empresas')
             ->schema([
                 CheckboxList::make('target_company_ids')
                     ->label('Empresas de destino')
                     ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
                     ->columnSpanFull()
                     ->options(function (Model $record) {
-                        $currentUser = Auth::user();
-                        $userCompanies = $currentUser->companies->pluck('id');
-                        $currentCompanyId = $record->company_id ?? $currentUser->current_company_id;
+                        $currentUser        = Auth::user();
+                        $userCompanies      = $currentUser->companies->pluck('id');
+                        $currentCompanyId   = $record->company_id ?? $currentUser->current_company_id;
 
                         return Company::query()
                             ->whereIn('id', $userCompanies)
@@ -43,19 +44,19 @@ class ReplicateToCompaniesAction
                 $userId = Auth::id();
 
                 if (! $userId) {
-                    notify::error(message: 'Nao foi possivel identificar o usuario que solicitou a replicacao.');
+                    notify::error(message: 'Não foi possível identificar o usuário que solicitou a replicação.');
                     return;
                 }
 
                 ReplicateCompanyPartnerJob::dispatch(
                     $record->id,
-                    array_map('intval', $data['target_company_ids']),
+                    array_map(fn ($item) => intval($item), $data['target_company_ids']),
                     $userId
                 );
 
                 notify::info(
                     title: 'Replicação agendada',
-                    message: 'O parceiro sera replicado em segundo plano. O resultado sera enviado por notificacao no sistema.'
+                    message: 'O parceiro será replicado em segundo plano. O resultado será enviado por notificação no sistema.'
                 );
             })
             ->modalHeading('Replicar Registro')

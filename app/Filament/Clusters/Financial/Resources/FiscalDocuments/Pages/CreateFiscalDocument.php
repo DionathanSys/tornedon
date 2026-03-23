@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 
+use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
@@ -20,19 +21,20 @@ class CreateFiscalDocument extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $tenant = Filament::getTenant();
-        $data['company_id'] = $tenant->id;
+        $data['company_id']     = $tenant->id;
+        $data['operation_type'] = OperationType::ENTRADA->value;
 
         return $data;
     }
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'Documento fiscal criado com sucesso';
+        return null;    
     }
 
     protected function handleRecordCreation(array $data): Model
     {
-        Log::debug('CreateFiscalDocument: Iniciando criação de documento fiscal', [
+        Log::debug('CreateFiscalDocument: Iniciando criação de nota de entrada', [
             'metodo' => __METHOD__ . '@' . __LINE__,
             'data'   => $data,
         ]);
@@ -56,7 +58,7 @@ class CreateFiscalDocument extends CreateRecord
             $this->halt();
         }
 
-        Log::info('CreateFiscalDocument: Documento fiscal criado com sucesso', [
+        Log::info('CreateFiscalDocument: Nota de entrada criada com sucesso', [
             'metodo'             => __METHOD__ . '@' . __LINE__,
             'fiscal_document_id' => $fiscalDocument->id,
         ]);
@@ -72,7 +74,7 @@ class CreateFiscalDocument extends CreateRecord
         Log::debug('CreateFiscalDocument: Iniciando resolução fiscal pós-criação', [
             'metodo' => __METHOD__ . '@' . __LINE__,
         ]);
-        
+
         $document = $this->getRecord();
         $document->loadMissing('items');
 
@@ -94,7 +96,7 @@ class CreateFiscalDocument extends CreateRecord
                 'error'              => $e->getMessage(),
             ]);
 
-            notify::error(message: 'Documento criado, mas houve um erro ao calcular os impostos: ' . $e->getMessage());
+            notify::error(message: 'Nota criada, mas houve um erro ao calcular os impostos: ' . $e->getMessage());
         }
     }
 }
