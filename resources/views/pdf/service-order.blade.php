@@ -18,8 +18,9 @@
         .page-header-bar {
             background: #17385b;
             color: #ffffff;
-            padding: 10px 12px;
+            padding: 10px 280px 10px 12px;
             position: relative;
+            min-height: 88px;
         }
         .page-header-title {
             font-size: 18px;
@@ -30,16 +31,16 @@
         }
         .company-logo-wrap {
             position: absolute;
-            top: 6px;
-            right: 12px;
+            top: 0;
+            right: 0;
             background: #ffffff;
-            border-radius: 4px;
-            padding: 2px 6px;
+            border-radius: 0 0 0 4px;
+            padding: 6px 8px 6px 10px;
             line-height: 0;
         }
         .company-logo {
-            max-height: 44px;
-            max-width: 130px;
+            max-height: 88px;
+            max-width: 260px;
             display: block;
         }
         .meta-grid,
