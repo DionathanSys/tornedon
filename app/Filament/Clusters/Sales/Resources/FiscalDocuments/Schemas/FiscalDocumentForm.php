@@ -27,6 +27,7 @@ use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Set;
@@ -65,13 +66,34 @@ class FiscalDocumentForm
                                             ->live()
                                             ->disabledOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 4]),
-
-                                        TextEntry::make('invoice_id')
-                                            ->label('Fatura Vinculada')
-                                            ->visibleOn('edit')
-                                            ->columnSpan(['md' => 1, 'lg' => 1])
-                                            ->visible(fn($state): bool => $state !== null)
-                                            ->formatStateUsing(fn($record): ?string => $record ? $record->invoice_number : 'Sem fatura vinculada'),
+                                        Grid::make()
+                                            ->columnSpanFull()
+                                            ->columns(['md' => 6, 'lg' => 12])
+                                            ->schema([
+                                                TextEntry::make('invoice_id')
+                                                    ->label('Fatura Vinculada')
+                                                    ->visibleOn('edit')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->visible(fn($state): bool => $state !== null)
+                                                    ->formatStateUsing(fn($record): ?string => $record && $record->invoice_number ? $record->invoice_number : 'Sem fatura vinculada'),
+                                                TextEntry::make('status')
+                                                    ->label('Status')
+                                                    ->visibleOn('edit')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($record): ?string => $record->company ? $record->company->name : null),
+                                                TextEntry::make('nfse_status')
+                                                    ->label('Status NFS-e')
+                                                    ->visibleOn('edit')
+                                                    ->hidden(fn(Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($record): ?string => $record->company ? $record->company->name : null),
+                                                TextEntry::make('nfe_status')
+                                                    ->label('Status NF-e')
+                                                    ->visibleOn('edit')
+                                                    ->hidden(fn(Get $get): bool => $get('document_type') !== DocumentModel::NFE->value)
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn($record): ?string => $record->company ? $record->company->name : null),
+                                            ])
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible(),
