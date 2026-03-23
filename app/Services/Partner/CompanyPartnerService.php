@@ -13,9 +13,11 @@ use App\Services\Address\AddressService;
 use App\Services\Contact\ContactService;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Partner\Validators\CompanyPartnerValidator;
+use App\Support\Audit\AuditLog;
 use App\Traits\HandlesServiceResponse;
 use Filament\Facades\Filament;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +25,21 @@ use Illuminate\Validation\ValidationException;
 class CompanyPartnerService
 {
     use HandlesServiceResponse;
+
+    private const AUDIT_FIELDS = [
+        'partner_id',
+        'company_id',
+        'type',
+        'invoice_threshold',
+        'customer_discount_percentage',
+        'is_active',
+        'notify_service_order_closed',
+        'notify_requisition_closed',
+        'notify_fiscal_document_confirmed',
+        'email_to_override',
+        'email_cc_override',
+        'email_bcc_override',
+    ];
 
     public function update(CompanyPartner $companyPartner, array $data)
     {
@@ -57,6 +74,7 @@ class CompanyPartnerService
         $this->resetResponse();
 
         try {
+            $actorId = Auth::id();
             $validatedData = CompanyPartnerValidator::validate($data);
 
             // Se type for string, converter para array
@@ -80,9 +98,9 @@ class CompanyPartnerService
             ]));
 
             Log::debug(__METHOD__ . '@' . __LINE__, [
-                'message'    => 'Dados preparados para associacao de parceiro com empresa',
-                'payload'    => $payload,
-                'normalized' => $normalized,
+                'message' => 'Dados preparados para associacao de parceiro com empresa',
+                'actor_id' => $actorId,
+                'company_partner_payload' => AuditLog::payload($payload, self::AUDIT_FIELDS),
                 'update_columns' => $updateColumns,
             ]);
 
@@ -90,10 +108,11 @@ class CompanyPartnerService
             $createData = Arr::except($normalized, ['company_id', 'partner_id']);
 
             Log::info(__METHOD__ . '@' . __LINE__, [
-                'message' => 'DEBUG: Valores exatos ANTES de firstOrCreate',
-                'company_id_param' => $companyId,
-                'partner_id_param' => $partnerId,
-                'createData_keys' => array_keys($createData),
+                'message' => 'Preparando persistencia do vinculo entre empresa e parceiro',
+                'actor_id' => $actorId,
+                'company_id' => $companyId,
+                'partner_id' => $partnerId,
+                'create_data_keys' => array_keys($createData),
             ]);
 
             // Usar DB::table para contornar GlobalScopes completamente
@@ -110,9 +129,12 @@ class CompanyPartnerService
                     ->first();
                 
                 Log::info(__METHOD__ . '@' . __LINE__, [
-                    'message' => 'Registro ja existente encontrado',
+                    'message' => 'Vinculo empresa-parceiro ja existente reutilizado',
+                    'actor_id' => $actorId,
                     'company_id' => $companyId,
                     'partner_id' => $partnerId,
+                    'company_partner_id' => $companyPartner?->id,
+                    'company_partner_snapshot' => $companyPartner ? AuditLog::snapshot($companyPartner, self::AUDIT_FIELDS) : null,
                 ]);
             } else {
                 // Criar novo registro com DB::table para evitar GlobalScope
@@ -130,14 +152,19 @@ class CompanyPartnerService
                     ->first();
 
                 Log::info(__METHOD__ . '@' . __LINE__, [
-                    'message' => 'Novo registro criado via DB::table',
+                    'message' => 'Vinculo empresa-parceiro criado',
+                    'actor_id' => $actorId,
                     'company_id' => $companyId,
                     'partner_id' => $partnerId,
+                    'company_partner_id' => $companyPartner?->id,
+                    'validated_payload' => AuditLog::payload($payload, self::AUDIT_FIELDS),
+                    'company_partner_snapshot' => $companyPartner ? AuditLog::snapshot($companyPartner, self::AUDIT_FIELDS) : null,
                 ]);
             }
 
             Log::info(__METHOD__ . '@' . __LINE__, [
-                'message' => 'DEBUG: Valores DEPOIS da operacao',
+                'message' => 'Resultado da persistencia do vinculo entre empresa e parceiro',
+                'actor_id' => $actorId,
                 'company_id_result' => $companyPartner->company_id,
                 'partner_id_result' => $companyPartner->partner_id,
                 'company_partner_id' => $companyPartner->id,
@@ -156,7 +183,7 @@ class CompanyPartnerService
                 'partner_id' => $partnerId,
                 'company_id' => $companyId,
                 'errors' => $e->errors(),
-                'data' => $data,
+                'company_partner_payload' => AuditLog::payload($data, self::AUDIT_FIELDS),
             ]);
             return null;
         } catch (\Throwable $e) {
@@ -167,7 +194,7 @@ class CompanyPartnerService
                 'company_id' => $companyId,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'data' => $data,
+                'company_partner_payload' => AuditLog::payload($data, self::AUDIT_FIELDS),
             ]);
             return null;
         }

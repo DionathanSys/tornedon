@@ -11,6 +11,8 @@ use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
+use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
+use App\Filament\RelationManagers\OrderAttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
@@ -310,6 +312,22 @@ class ServiceOrderForm
                                             ->columnStart(1)
                                             ->columnSpan(['md' => 2, 'lg' => 6])
                                             ->description('Assine dentro da caixa azul. Use "Limpar" para remover o desenho atual apenas do formulário e clique em "Salvar" para gravar a nova assinatura ou confirmar a remoção. Use "Cancelar" para sair sem salvar.'),
+                                    ]),
+                            ]),
+                        Tab::make('Anexos')
+                            ->visibleOn([Operation::Edit])
+                            ->icon(Heroicon::PaperClip)
+                            ->schema([
+                                Section::make('Arquivos anexados')
+                                    ->columnSpanFull()
+                                    ->contained(false)
+                                    ->schema([
+                                        ComponentsLivewire::make(OrderAttachmentsRelationManager::class, fn(ServiceOrder $record) => [
+                                            'ownerRecord' => $record,
+                                            'pageClass' => EditMobileServiceOrder::class,
+                                        ])
+                                            ->key('attachments-relation-manager')
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
                         Tab::make('Outros')

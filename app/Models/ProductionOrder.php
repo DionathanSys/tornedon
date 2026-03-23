@@ -15,6 +15,13 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ProductionOrder extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $productionOrder): void {
+            $productionOrder->attachments()->get()->each->delete();
+        });
+    }
+
     protected $fillable = [
         'production_order_number',
         'company_id',
@@ -84,6 +91,11 @@ class ProductionOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ProductionOrderItem::class);
+    }
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(OrderAttachment::class, 'attachable');
     }
 
     public function stockMovements(): MorphMany

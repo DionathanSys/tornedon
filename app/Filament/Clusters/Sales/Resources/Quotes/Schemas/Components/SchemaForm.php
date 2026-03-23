@@ -3,17 +3,10 @@
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components;
 
 use App\Enum\Quote\Destination;
-use App\Enum\Quote\Status;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductForProduction;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
-use App\Filament\Tables\ProductsStockTable;
-use App\Filament\Tables\ProductTable;
-use App\Filament\Tables\ServiceTable;
-use App\Services\QuoteItem\QuoteItemResolverService;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Services\QuoteItem\QuoteItemResolverService;
+use App\Services\ServiceDiscount\ServiceDiscountService;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -23,24 +16,26 @@ use Filament\Schemas\Components\Utilities\Set;
 
 class SchemaForm
 {
-
     /**
-     * O ponto de entrada do formulário.
+     * O ponto de entrada do formulario.
      */
     public static function make(string $context = 'create'): array
     {
         return [
             self::getSelectionGroup(),
             self::getInformationGroup(),
-            ItemValueGroup::make(),
+            ItemValueGroup::make([
+                'preserveDiscountOnValueChange' => true,
+                'enforceEffectiveMinSalePrice' => true,
+            ]),
             Textarea::make('description')
-                ->label('Descrição')
+                ->label('Descricao')
                 ->columnSpanFull(),
         ];
     }
 
     /**
-     * Grupo de Seleção: Contém os campos de busca via ModalTableSelect.
+     * Grupo de selecao: contem os campos de busca via ModalTableSelect.
      */
     private static function getSelectionGroup(): Group
     {
@@ -55,7 +50,7 @@ class SchemaForm
     }
 
     /**
-     * Grupo de Informação: Exibe os dados de identificação do item selecionado.
+     * Grupo de informacao: exibe os dados de identificacao do item selecionado.
      */
     private static function getInformationGroup(): Group
     {
@@ -63,7 +58,6 @@ class SchemaForm
             ->columns(3)
             ->columnSpanFull()
             ->schema([
-                // Campos ocultos para metadados de seleção (dentro de item para não serem salvos direto)
                 Hidden::make('item.real_product_id'),
                 Hidden::make('item.real_service_id'),
                 Hidden::make('item.min_sale_price')
@@ -97,44 +91,76 @@ class SchemaForm
     }
 
     /**
-     * Resolve os dados do item através do serviço especialista.
+     * Resolve os dados do item atraves do servico especialista.
      */
-    public static function resolveItem(Set $set, Get $get, Destination $type, $id): void
+    public static function resolveItem(Set $set, Get $get, Destination $type, $id, mixed $livewire = null): void
     {
-        if (! $id) return;
+        if (! $id) {
+            return;
+        }
 
-        // Limpa as outras seleções para manter integridade dentro do container 'item'
-        $set('item.product_stock_id',    $type === Destination::REQUISITION      ? $id : null);
-        $set('item.product_id',          $type === Destination::ORDER_PRODUCTION ? $id : null);
-        $set('item.service_id',          $type === Destination::ORDER_SERVICE    ? $id : null);
+        $set('item.product_stock_id', $type === Destination::REQUISITION ? $id : null);
+        $set('item.product_id', $type === Destination::ORDER_PRODUCTION ? $id : null);
+        $set('item.service_id', $type === Destination::ORDER_SERVICE ? $id : null);
 
         $service = app(QuoteItemResolverService::class);
 
         $dto = match ($type) {
-            Destination::REQUISITION        => $service->resolveForStock($id),
-            Destination::ORDER_PRODUCTION   => $service->resolveForProduct($id),
-            Destination::ORDER_SERVICE      => $service->resolveForService($id),
+            Destination::REQUISITION => $service->resolveForStock($id),
+            Destination::ORDER_PRODUCTION => $service->resolveForProduct($id),
+            Destination::ORDER_SERVICE => $service->resolveForService($id),
         };
 
-        if ($dto) {
-            // Guardamos os IDs reais e metadados dentro de 'item.'
-            $set('item.real_product_id', $dto->productId);
-            $set('item.real_service_id', $dto->serviceId);
-            $set('item.code', $dto->code);
-            $set('item.name', $dto->name);
-            $set('item.identification', $dto->code ? "[{$dto->code}] {$dto->name}" : $dto->name);
-
-            // Campos de persistência (Root)
-            $set('unit_of_measure', $dto->unit);
-            $set('destination', $dto->destination->value);
-            $set('unit_price', number_format($dto->price, 2, ',', '.'));
-            $set('item.min_sale_price', $dto->minSalePrice);
-
-            // Reseta descontos ao trocar de item
-            $set('discount_amount', '0,00');
-            $set('discount_percentage', '0,00');
-
-            ItemValueGroup::recalculate($get, $set);
+        if (! $dto) {
+            return;
         }
+
+        $set('item.real_product_id', $dto->productId);
+        $set('item.real_service_id', $dto->serviceId);
+        $set('item.code', $dto->code);
+        $set('item.name', $dto->name);
+        $set('item.identification', $dto->code ? "[{$dto->code}] {$dto->name}" : $dto->name);
+
+        $set('unit_of_measure', $dto->unit);
+        $set('destination', $dto->destination->value);
+        $set('unit_price', number_format((float) $dto->price, 2, ',', '.'));
+        $set('item.min_sale_price', $dto->minSalePrice);
+
+        $set('discount_amount', '0,00');
+        $set('discount_percentage', '0,00');
+
+        if ($type === Destination::ORDER_SERVICE && method_exists($livewire, 'getOwnerRecord')) {
+            $ownerRecord = $livewire->getOwnerRecord();
+
+            if ($ownerRecord) {
+                $quantity = self::parseStateNumber($get('quantity'));
+
+                $discount = app(ServiceDiscountService::class)->resolveAutomaticDiscount(
+                    companyId: (int) $ownerRecord->company_id,
+                    customerId: (int) $ownerRecord->customer_id,
+                    service: (int) $dto->serviceId,
+                    quantity: $quantity > 0 ? $quantity : 1,
+                    unitPrice: (float) $dto->price,
+                );
+
+                $set('discount_percentage', number_format((float) $discount['discount_percentage'], 2, ',', '.'));
+                $set('discount_amount', number_format((float) $discount['discount_amount'], 2, ',', '.'));
+            }
+        }
+
+        ItemValueGroup::recalculate($get, $set);
+    }
+
+    private static function parseStateNumber(mixed $value): float
+    {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        return (float) str_replace(',', '.', str_replace('.', '', (string) $value));
     }
 }

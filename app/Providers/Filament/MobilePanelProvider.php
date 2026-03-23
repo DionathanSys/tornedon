@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Mobile\Resources\MobileServiceOrders\MobileServiceOrderResource;
 use App\Filament\Mobile\Resources\MobileServices\MobileServiceResource;
+use App\Filament\Mobile\Resources\Services\ServiceResource;
 use App\Filament\Pages\Tenancy\RegisterCompany;
 use App\Models\Company;
 use Filament\Http\Middleware\Authenticate;
@@ -37,10 +38,11 @@ class MobilePanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Zinc,
             ])
-            ->resources([
-                MobileServiceOrderResource::class,
-                MobileServiceResource::class,
-            ])
+            // ->resources([
+            //     MobileServiceOrderResource::class,
+            //     ServiceResource::class,
+            // ])
+            ->discoverResources(in: app_path('Filament/Mobile/Resources'), for: 'App\Filament\Mobile\Resources')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

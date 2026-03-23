@@ -21,6 +21,7 @@ class CompanyPartner extends Model
         'company_id',
         'type',
         'invoice_threshold',
+        'customer_discount_percentage',
         'is_active',
         'notify_service_order_closed',
         'notify_requisition_closed',
@@ -32,6 +33,7 @@ class CompanyPartner extends Model
 
     protected $casts = [
         'invoice_threshold' => MoneyCast::class,
+        'customer_discount_percentage' => 'decimal:2',
         'type'              => 'array',
         'is_active'         => 'boolean',
         'notify_service_order_closed' => 'boolean',

@@ -25,7 +25,7 @@ class ModalSelectService
                     ->modalSubmitActionLabel('Confirmar seleção'),
             )
             ->afterStateUpdated(
-                fn($state, Set $set, Get $get) => SchemaForm::resolveItem($set, $get, Destination::ORDER_SERVICE, $state)
+                fn($state, Set $set, Get $get, $livewire) => SchemaForm::resolveItem($set, $get, Destination::ORDER_SERVICE, $state, $livewire)
             );
     }
 }

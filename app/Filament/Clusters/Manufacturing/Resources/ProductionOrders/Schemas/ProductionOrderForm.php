@@ -8,6 +8,7 @@ use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\EditProductionOrder;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\RelationManagers\ItemsRelationManager;
+use App\Filament\RelationManagers\OrderAttachmentsRelationManager;
 use App\Models\ProductionOrder;
 use App\Models\ProductionOrderItem;
 use Filament\Facades\Filament;
@@ -115,6 +116,17 @@ class ProductionOrderForm
                             'pageClass' => EditProductionOrder::class,
                         ])
                             ->key('items-relation-manager')
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Anexos')
+                    ->columnSpanFull()
+                    ->visibleOn('edit')
+                    ->schema([
+                        Livewire::make(OrderAttachmentsRelationManager::class, fn(ProductionOrder $record) => [
+                            'ownerRecord' => $record,
+                            'pageClass' => EditProductionOrder::class,
+                        ])
+                            ->key('attachments-relation-manager')
                             ->columnSpanFull(),
                     ]),
             ]);

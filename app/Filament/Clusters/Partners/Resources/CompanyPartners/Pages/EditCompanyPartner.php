@@ -6,19 +6,17 @@ use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResou
 use App\Filament\Clusters\Partners\Resources\Equipments\EquipmentResource;
 use App\Filament\Shared\Actions\ReplicateToCompaniesAction;
 use App\Models\CompanyPartner;
-use App\Models\Partner;
-use App\Services\Partner\CompanyPartnerService;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
-use Filament\Resources\Pages\EditRecord;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Partner\CompanyPartnerService;
 use App\Services\Partner\PartnerService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class EditCompanyPartner extends EditRecord
@@ -30,10 +28,8 @@ class EditCompanyPartner extends EditRecord
         return [
             ActionGroup::make([
                 ReplicateToCompaniesAction::make('replicate'),
-            ])
-            ->size(Size::Small)->button(),
+            ])->size(Size::Small)->button(),
             ActionGroup::make([
-
                 Action::make('new-partner')
                     ->label('Parceiro')
                     ->url(CompanyPartnerResource::getUrl('create'))
@@ -42,14 +38,14 @@ class EditCompanyPartner extends EditRecord
                     ->size(Size::Small),
                 Action::make('manager_equipments')
                     ->label('Equipamentos')
-                    ->url(fn(CompanyPartner $record) => EquipmentResource::getUrl(
+                    ->url(fn (CompanyPartner $record) => EquipmentResource::getUrl(
                         'index',
                         [
                             'filters' => [
                                 'owner_id' => [
                                     'value' => $record->partner_id,
-                                ]
-                            ]
+                                ],
+                            ],
                         ]
                     ))
                     ->openUrlInNewTab()
@@ -64,18 +60,19 @@ class EditCompanyPartner extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $partner                                        = (new PartnerService())->getPartnerById($this->record->partner_id);
-        $data['partner_exists']                         = true;
-        $data['partner_id']                             = $partner->id;
-        $data['name']                                   = $partner->name;
-        $data['document_type']                          = $partner->document_type;
-        $data['document_number']                        = $partner->document_number;
-        $data['state_tax_id']                           = $partner->state_tax_id;
-        $data['municipal_tax_id']                       = $partner->municipal_tax_id;
-        $data['state_tax_indicator']                    = $partner->state_tax_indicator;
-        $data['company_partner']['type']                = $data['type'];
-        $data['company_partner']['invoice_threshold']   = $data['invoice_threshold'];
-        $data['company_partner']['is_active']           = $data['is_active'];
+        $partner = (new PartnerService())->getPartnerById($this->record->partner_id);
+        $data['partner_exists'] = true;
+        $data['partner_id'] = $partner->id;
+        $data['name'] = $partner->name;
+        $data['document_type'] = $partner->document_type;
+        $data['document_number'] = $partner->document_number;
+        $data['state_tax_id'] = $partner->state_tax_id;
+        $data['municipal_tax_id'] = $partner->municipal_tax_id;
+        $data['state_tax_indicator'] = $partner->state_tax_indicator;
+        $data['company_partner']['type'] = $data['type'];
+        $data['company_partner']['invoice_threshold'] = $data['invoice_threshold'];
+        $data['company_partner']['customer_discount_percentage'] = $data['customer_discount_percentage'] ?? 0;
+        $data['company_partner']['is_active'] = $data['is_active'];
         $data['company_partner']['notify_service_order_closed'] = $data['notify_service_order_closed'] ?? false;
         $data['company_partner']['notify_requisition_closed'] = $data['notify_requisition_closed'] ?? false;
         $data['company_partner']['notify_fiscal_document_confirmed'] = $data['notify_fiscal_document_confirmed'] ?? false;
@@ -90,7 +87,6 @@ class EditCompanyPartner extends EditRecord
     {
         Log::debug('Mutate Form Data Before Save - Received Data:', $data);
 
-        // Separa os dados do partner dos dados do company_partner
         $partnerData = [
             'name' => $data['name'] ?? null,
             'document_type' => $data['document_type'] ?? null,
@@ -101,8 +97,7 @@ class EditCompanyPartner extends EditRecord
             'updated_by' => Auth::id(),
         ];
 
-        // Atualiza os dados do Partner
-        if (!empty($partnerData['name'])) {
+        if (! empty($partnerData['name'])) {
             $partnerService = new PartnerService();
             $partner = $partnerService->getPartnerById($this->record->partner_id);
 
@@ -119,7 +114,6 @@ class EditCompanyPartner extends EditRecord
             }
         }
 
-        // Retorna apenas os dados do company_partner para serem salvos
         $companyPartnerData = $data['company_partner'] ?? [];
         Log::debug('Returning CompanyPartner data:', $companyPartnerData);
 

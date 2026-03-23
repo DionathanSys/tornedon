@@ -2,40 +2,40 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions;
 
+use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Models\ServiceOrder;
 use App\Models\ServiceOrderItem;
-use App\Services\ServiceOrderItem\ServiceOrderItemService;
-use Filament\Actions\EditAction;
-use Filament\Facades\Filament;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Group;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
+use App\Services\ServiceDiscount\ServiceDiscountService;
+use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Traits\AuthorizesServiceOrderItemActions;
-use App\Traits\ParsesMoneyValues;
-use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class EditItemAction
 {
     use AuthorizesServiceOrderItemActions;
-    use ParsesMoneyValues;
 
     public static function make(): EditAction
     {
         return EditAction::make()
-            ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->schema([
+                Hidden::make('item.min_sale_price')
+                    ->saved(false)
+                    ->default(0),
                 Select::make('service_id')
-                    ->label('Serviço')
+                    ->label('Servico')
                     ->searchable()
                     ->relationship('service', 'name', function ($query) {
                         $query->where('services.company_id', Filament::getTenant()->id);
@@ -43,90 +43,33 @@ final class EditItemAction
                     ->required()
                     ->columnSpanFull()
                     ->live(onBlur: true)
-                    ->afterStateUpdated(function (Set $set, callable $get, $state) {
-                        $service = (new ServiceService())->find($state);
-                        if ($service) {
-                            $set('unit_price', number_format($service->price, 2, ',', '.'));
-                        } else {
-                            $set('unit_price', null);
-                        }
-                        self::calculateValues($get, $set);
+                    ->afterStateUpdated(function (Set $set, Get $get, $state, RelationManager $livewire) {
+                        self::applySelectedService($set, $get, $state, $livewire->getOwnerRecord());
                     }),
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        TextInput::make('quantity')
-                            ->label('Quantidade')
-                            ->required()
-                            ->numeric()
-                            ->default(1)
-                            ->minValue(0)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function($state, Set $set, Get $get) {
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('unit_price')
-                            ->label('Preço Unitário')
-                            ->required()
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function($state, Set $set, Get $get) {
-                                $set('discount_amount', number_format(0, 2, ',', '.'));
-                                $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('subtotal')
-                            ->label('Subtotal')
-                            ->readOnly(),
-                    ]),
-                Group::make()
-                    ->columns(3)
-                    ->columnSpanFull()
-                    ->schema([
-                        Money::make('discount_percentage')
-                            ->label('Desconto (%)')
-                            ->suffix('%')
-                            ->prefix(null)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                $subtotal = self::parseMoneyValue($get('subtotal'));
-                                $percentage = self::parseMoneyValue($state);
-                                $discountAmount = $subtotal * ($percentage / 100);
-                                $set('discount_amount', number_format($discountAmount, 2, ',', '.'));
-                                self::calculateValues($get, $set);
-                            })
-                            ->afterLabel(Action::make('reset_discount_percentage')
-                                ->label('')
-                                ->icon(Heroicon::ArrowPath)
-                                ->action(function (Set $set, Get $get) {
-                                    $set('discount_percentage', number_format(0, 2, ',', '.'));
-                                    $set('discount_amount', number_format(0, 2, ',', '.'));
-                                    self::calculateValues($get, $set);
-                                })),
-                        Money::make('discount_amount')
-                            ->label('Desconto (R$)')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                $subtotal = self::parseMoneyValue($get('subtotal'));
-                                $discountAmount = self::parseMoneyValue($state);
-                                if ($subtotal > 0) {
-                                    $percentage = ($discountAmount / $subtotal) * 100;
-                                    $set('discount_percentage', number_format($percentage, 2, ',', '.'));
-                                }
-                                self::calculateValues($get, $set);
-                            }),
-                        Money::make('total_amount')
-                            ->label('Valor Total')
-                            ->readOnly(),
-                    ]),
+                ItemValueGroup::make([
+                    'minSalePriceField' => 'item.min_sale_price',
+                    'serviceIdField' => 'service_id',
+                    'preserveDiscountOnValueChange' => true,
+                    'enforceEffectiveMinSalePrice' => true,
+                ]),
                 Textarea::make('observations')
-                    ->label('Observações')
+                    ->label('Observacoes')
                     ->columnSpanFull(),
             ])
+            ->fillForm(function (array $data, ServiceOrderItem $record) {
+                $data['service_id'] = $record->service_id;
+                $data['item']['min_sale_price'] = (float) ($record->service?->min_sale_price ?? 0);
+                $data['quantity'] = $record->quantity;
+                $data['unit_price'] = $record->unit_price;
+                $data['discount_amount'] = $record->discount_amount;
+                $data['discount_percentage'] = $record->discount_percentage;
+                $data['total_amount'] = $record->total_amount;
+                $data['observations'] = $record->observations;
+
+                return $data;
+            })
             ->using(function (ServiceOrderItem $record, array $data): ?Model {
-                Log::debug('Iniciando atualização de item via RelationManager', [
+                Log::debug('Iniciando atualizacao de item via RelationManager', [
                     'metodo' => __METHOD__ . '@' . __LINE__,
                     'item_id' => $record->id,
                     'data' => $data,
@@ -145,18 +88,33 @@ final class EditItemAction
             });
     }
 
-    protected static function calculateValues(Get $get, Set $set): void
+    private static function applySelectedService(Set $set, Get $get, mixed $serviceId, ?ServiceOrder $serviceOrder): void
     {
-        $quantity = self::parseMoneyValue($get('quantity'));
-        $unitPrice = self::parseMoneyValue($get('unit_price'));
-        $discountAmount = self::parseMoneyValue($get('discount_amount'));
+        $service = (new ServiceService())->find((int) $serviceId);
 
-        // Calcula o subtotal
-        $subtotal = $quantity * $unitPrice;
-        $set('subtotal', number_format($subtotal, 2, ',', '.'));
+        if (! $service) {
+            $set('unit_price', null);
+            $set('item.min_sale_price', 0);
+            $set('discount_percentage', '0,00');
+            $set('discount_amount', '0,00');
+            ItemValueGroup::recalculate($get, $set);
+            return;
+        }
 
-        // Calcula o total
-        $totalAmount = $subtotal - $discountAmount;
-        $set('total_amount', number_format($totalAmount, 2, ',', '.'));
+        $set('unit_price', number_format((float) $service->price, 2, ',', '.'));
+        $set('item.min_sale_price', (float) ($service->min_sale_price ?? 0));
+
+        $discount = app(ServiceDiscountService::class)->resolveAutomaticDiscount(
+            companyId: $serviceOrder?->company_id,
+            customerId: $serviceOrder?->customer_id,
+            service: $service,
+            quantity: (float) ($get('quantity') ?: 1),
+            unitPrice: (float) $service->price,
+        );
+
+        $set('discount_percentage', number_format((float) $discount['discount_percentage'], 2, ',', '.'));
+        $set('discount_amount', number_format((float) $discount['discount_amount'], 2, ',', '.'));
+
+        ItemValueGroup::recalculate($get, $set);
     }
 }

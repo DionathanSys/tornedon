@@ -2,40 +2,32 @@
 
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas;
 
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Section;
-use Filament\Support\Icons\Heroicon;
 use App\Enum;
-use App\Models\Company;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\EditAddressAction;
-use App\Filament\Clusters\Partners\Resources\Addresses\AddressResource;
-use App\Filament\Clusters\Partners\Resources\Addresses\Components\AddressComponent;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
+use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
 use App\Filament\Clusters\Partners\Resources\Contacts\Actions\CreateContactAction;
 use App\Filament\Clusters\Partners\Resources\Contacts\Actions\DeleteContactAction;
 use App\Filament\Clusters\Partners\Resources\Contacts\Actions\EditContactAction;
-use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
-use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
-use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\FetchStateTaxIdAction;
-use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
-use App\Models\CompanyPartner;
+use App\Models\Company;
 use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use Leandrocfe\FilamentPtbrFormFields\Document;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -92,20 +84,17 @@ class CompanyPartnerForm
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->disabledOn('edit'),
                         TextInput::make('state_tax_id')
-                            ->label('Inscrição Estadual')
-                            ->placeholder('Não definido')
+                            ->label('Inscricao Estadual')
+                            ->placeholder('Nao definido')
                             ->live()
                             ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
                             ->numeric()
-                            ->disabledOn('edit')
-                            ->suffixActions([
-                                // FetchStateTaxIdAction::make(),
-                            ]),
+                            ->disabledOn('edit'),
                         TextInput::make('municipal_tax_id')
-                            ->label('Inscrição Municipal')
-                            ->placeholder('Não definido')
+                            ->label('Inscricao Municipal')
+                            ->placeholder('Nao definido')
                             ->autocomplete(false)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->numeric()
@@ -118,14 +107,14 @@ class CompanyPartnerForm
                             ->disabledOn('edit'),
                     ]),
 
-                Section::make('Configurações da Empresa')
+                Section::make('Configuracoes da Empresa')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
-                    ->description('Dados de vínculo entre Empresa e Parceiro')
+                    ->description('Dados de vinculo entre Empresa e Parceiro')
                     ->compact()
                     ->schema([
                         Select::make('company_partner.type')
@@ -137,11 +126,23 @@ class CompanyPartnerForm
                             ->multiple()
                             ->default(Enum\Partner\Type::CUSTOMER->value)
                             ->required(),
-                        Money::make('company_partner.invoice_threshold')
-                            ->label('Vlr. Mín p/ Fatura')
+                        Grid::make()
+                            ->columns(['sm' => 1, 'md' => 2, 'lg' => 4])
                             ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                            ->default(0),
+                            ->schema([
+                                Money::make('company_partner.invoice_threshold')
+                                    ->label('Vlr. Min p/ Fatura')
+                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                                    ->default(0),
+                                Money::make('company_partner.customer_discount_percentage')
+                                    ->label('Desconto Cliente (%)')
+                                    ->suffix('%')
+                                    ->prefix(null)
+                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                                    ->default(0),
+                            ]),
                         Toggle::make('company_partner.is_active')
                             ->label('Ativo')
                             ->columnSpan(2)
@@ -154,7 +155,7 @@ class CompanyPartnerForm
                             ->default(false)
                             ->columnSpan(['md' => 2, 'lg' => 2]),
                         Toggle::make('company_partner.notify_requisition_closed')
-                            ->label('Notificar Requisição Encerrada')
+                            ->label('Notificar Requisicao Encerrada')
                             ->inline(false)
                             ->default(false)
                             ->columnSpan(['md' => 2, 'lg' => 2]),
@@ -164,7 +165,7 @@ class CompanyPartnerForm
                             ->default(false)
                             ->columnSpan(['md' => 2, 'lg' => 2]),
                         Grid::make()
-                            ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
+                            ->columns(['sm' => 1, 'md' => 6, 'lg' => 12])
                             ->columnSpanFull()
                             ->schema([
                                 Textarea::make('company_partner.email_to_override')
@@ -203,11 +204,8 @@ class CompanyPartnerForm
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->helperText('Selecione as empresas para as quais deseja copiar este parceiro')
                             ->options(function () {
-                                // Obter empresas às quais o usuário pode ter acesso
                                 $currentUser = Auth::user();
                                 $userCompanies = $currentUser->companies->pluck('companies.id');
-
-                                // Excluir a empresa atual se aplicável
                                 $currentCompanyId = Filament::getTenant()->id;
 
                                 return Company::whereIn('id', $userCompanies)
@@ -223,9 +221,8 @@ class CompanyPartnerForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
-                    ->description('Endereço(s) do Parceiro')
+                    ->description('Endereco(s) do Parceiro')
                     ->afterHeader([
-
                         CreateAddressAction::make(),
                     ])
                     ->collapsible()
@@ -246,12 +243,11 @@ class CompanyPartnerForm
                                     ->placeholder('-')
                                     ->hidden(),
                                 TextEntry::make('full_address')
-                                    ->label('Endereço Completo')
+                                    ->label('Endereco Completo')
                                     ->placeholder('-')
                                     ->columnSpanFull()
                                     ->belowContent(
-                                        fn($record) =>
-                                        Schema::start([
+                                        fn($record) => Schema::start([
                                             EditAddressAction::make()
                                                 ->arguments(['address_id' => $record?->id]),
                                             DeleteAddressAction::make()
@@ -295,8 +291,7 @@ class CompanyPartnerForm
                                     ->icon(Heroicon::Envelope)
                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                     ->belowContent(
-                                        fn($record) =>
-                                        Schema::start([
+                                        fn($record) => Schema::start([
                                             EditContactAction::make()
                                                 ->arguments(['contact_id' => $record?->id]),
                                             DeleteContactAction::make()
@@ -314,9 +309,9 @@ class CompanyPartnerForm
                                     ->icon(Heroicon::DevicePhoneMobile)
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                                 TextEntry::make('notify')
-                                    ->label('Recebe Notificações')
+                                    ->label('Recebe Notificacoes')
                                     ->badge()
-                                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
+                                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Nao')
                                     ->color(fn($state) => $state ? 'success' : 'gray')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                     ->visible(fn(Get $get, $record) => $record->is_active),

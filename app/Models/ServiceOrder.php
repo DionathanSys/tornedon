@@ -14,9 +14,16 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ServiceOrder extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $serviceOrder): void {
+            $serviceOrder->attachments()->get()->each->delete();
+        });
+    }
 
     protected $appends = [
         'total_amount',
@@ -136,6 +143,11 @@ class ServiceOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ServiceOrderItem::class);
+    }
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(OrderAttachment::class, 'attachable');
     }
 
     public function createdBy(): BelongsTo

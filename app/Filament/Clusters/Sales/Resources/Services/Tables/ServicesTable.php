@@ -21,6 +21,11 @@ class ServicesTable
     {
         return $table
             ->columns([
+                TextColumn::make('service_code')
+                    ->label('Código')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->color('gray'),
                 TextColumn::make('name')
                     ->label('Nome')
                     ->searchable(query: function (Builder $query, string $search): Builder {
@@ -43,15 +48,18 @@ class ServicesTable
                     ->placeholder('-')
                     ->badge()
                     ->color('info')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('price')
                     ->label('Preço')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('is_active')
                     ->label('Ativo')
                     ->boolean()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('requires_approval')
                     ->label('Requer Aprovação')
                     ->boolean()
@@ -67,6 +75,14 @@ class ServicesTable
                     ->label('CNAE')
                     ->searchable()
                     ->sortable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('createdBy.name')
+                    ->label('Criado por')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updatedBy.name')
+                    ->label('Atualizado por')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')

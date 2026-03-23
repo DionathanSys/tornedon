@@ -3,6 +3,7 @@
 use App\Http\Controllers\ErrorTicketController;
 use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\NfeWebhookController;
+use App\Http\Controllers\OrderAttachmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -29,3 +30,7 @@ Route::post('/error-tickets/create', [ErrorTicketController::class, 'create'])
 Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispatchAttachmentController::class, 'show'])
     ->name('email-dispatch.attachment')
     ->middleware('signed');
+
+Route::get('/order-attachments/{orderAttachment}', [OrderAttachmentController::class, 'download'])
+    ->name('order-attachments.download')
+    ->middleware(['web', 'auth']);
