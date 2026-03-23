@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Tables;
 
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
@@ -106,7 +107,9 @@ class ServiceOrdersTable
                     ->label('Fatura')
                     ->sortable()
                     ->placeholder('Sem Fatura')
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->url(fn ($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null)
+                    ,
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -153,7 +156,7 @@ class ServiceOrdersTable
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
-                ])->button()->size(Size::Small)->icon(Heroicon::EllipsisVertical),
+                ])->button()->size(Size::ExtraSmall)->icon(Heroicon::EllipsisVertical),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
