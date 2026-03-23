@@ -4,6 +4,7 @@ namespace App\Services\ServiceOrder\Validators;
 
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use Illuminate\Support\Facades\Validator;
@@ -67,7 +68,7 @@ class ServiceOrderValidator
             'order_date'                => 'required|date',
             'scheduled_date'            => 'nullable|date|after_or_equal:order_date',
             'limit_date'                => 'nullable|date|after_or_equal:order_date',
-            'priority'                  => 'required|string|max:20',
+            'priority'                  => ['required', Rule::enum(Priority::class)],
             'type'                      => ['required', Rule::enum(Type::class)],
             'payment_condition'         => 'nullable|string|max:100',
         ]);
@@ -91,7 +92,7 @@ class ServiceOrderValidator
             'order_date'                => 'sometimes|required|date',
             'scheduled_date'            => 'nullable|date',
             'limit_date'                => 'nullable|date',
-            'priority'                  => 'sometimes|required|string|max:20',
+            'priority'                  => ['sometimes', 'required', Rule::enum(Priority::class)],
             'type'                      => ['sometimes', 'required', Rule::enum(Type::class)],
             'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
         ]);
