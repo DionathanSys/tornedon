@@ -2,7 +2,7 @@
 
 namespace App\Filament\Mobile\Resources\MobileServiceOrders;
 
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
+use App\Filament\Mobile\Resources\MobileServiceOrders\Schemas\ServiceOrderForm;
 use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\CreateMobileServiceOrder;
 use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
 use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\ListMobileServiceOrders;
