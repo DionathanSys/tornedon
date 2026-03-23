@@ -14,20 +14,21 @@ class ListServiceOrders extends ListRecords
 
     public function getTabs(): array
     {
-        $tabs = [
+        return [
             'all' => Tab::make('Todas')
-                ->badge(static::getResource()::getEloquentQuery()->count())
                 ->badgeColor('gray'),
+            State::OPEN->value => Tab::make('Abertas')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', State::OPEN->value))
+                ->badge(static::getResource()::getEloquentQuery()->where('status', State::OPEN->value)->count())
+                ->badgeColor(State::OPEN->color()),
+            State::CLOSED->value => Tab::make('Encerrada')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', State::CLOSED->value))
+                ->badge(static::getResource()::getEloquentQuery()->where('status', State::CLOSED->value)->count())
+                ->badgeColor(State::CLOSED->color()),
+            State::INVOICED->value => Tab::make('Faturada')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', State::INVOICED->value))
+                ->badge(null),
         ];
-
-        foreach (State::cases() as $state) {
-            $tabs[$state->value] = Tab::make($state->description())
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', $state->value))
-                ->badge(static::getResource()::getEloquentQuery()->where('status', $state->value)->count())
-                ->badgeColor($state->color());
-        }
-
-        return $tabs;
     }
 
     protected function getHeaderActions(): array
