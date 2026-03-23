@@ -41,9 +41,14 @@ class FiscalDocumentsTable
                     ->sortable()
                     ->placeholder('—'),
 
-                Tables\Columns\TextColumn::make('document_series')
+                Tables\Columns\TextColumn::make('series')
                     ->label('Série')
                     ->sortable()
+                    ->formatStateUsing((
+                        fn(FiscalDocument $record): ?NfeStatus => $record->isNfse()
+                            ? $record->rps_series
+                            : $record->document_series
+                    ))
                     ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('customer.name')

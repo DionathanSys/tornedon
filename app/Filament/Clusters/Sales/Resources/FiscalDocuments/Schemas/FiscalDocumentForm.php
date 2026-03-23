@@ -100,7 +100,7 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => ! $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description())
+                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description() ?? 'N/A')
                                                     ->badge()
                                                     ->color(fn(NfeStatus $state) => $state->color()),
                                                 TextEntry::make('operation_nature')
