@@ -14,6 +14,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceSer
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
+use App\Filament\Mobile\Resources\MobileServiceOrders\MobileServiceOrderResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -173,7 +174,8 @@ class MobileServiceOrdersTable
                         ]);
 
                         return $serviceOrder;
-                    }),
+                    })
+                    ->successRedirectUrl(fn($record) => MobileServiceOrderResource::getUrl('edit', ['record' => $record])),
             ])
             ->searchPlaceholder("Buscar por n\u{00FA}mero, cliente, equipamento, local...");
     }

@@ -77,24 +77,6 @@ class ServiceOrderForm
                                             )
                                             ->disabled(fn($get) => ! $get('customer_id'))
                                             ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
-                                        Select::make('priority')
-                                            ->label('Prioridade')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->required()
-                                            ->options(Priority::toSelectArray())
-                                            ->visibleOn('edit')
-                                            ->default(Priority::NORMAL->value)
-                                            ->native(false)
-                                            ->selectablePlaceholder(false),
-                                        Select::make('type')
-                                            ->label('Tipo')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->required()
-                                            ->visibleOn('edit')
-                                            ->options(Type::toSelectArray())
-                                            ->default(Type::MAINTENANCE->value)
-                                            ->native(false)
-                                            ->selectablePlaceholder(false),
                                         DatePicker::make('order_date')
                                             ->label('Data da Ordem')
                                             ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
@@ -102,37 +84,63 @@ class ServiceOrderForm
                                             ->default(now())
                                             ->displayFormat('d/m/Y')
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                        DatePicker::make('scheduled_date')
-                                            ->label('Data Agendada')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->visibleOn('edit')
-                                            ->displayFormat('d/m/Y')
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                        DatePicker::make('limit_date')
-                                            ->label('Data Limite')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->displayFormat('d/m/Y')
-                                            ->visible(false)
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                        DatePicker::make('warranty_expires_at')
-                                            ->label('Garantia Válida Até')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->visibleOn('edit')
-                                            ->displayFormat('d/m/Y')
-                                            ->default(fn() => CompanyPreference::get('default_warranty_days'))
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                        DatePicker::make('completion_date')
-                                            ->label('Data de Conclusão')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->displayFormat('d/m/Y')
-                                            ->visibleOn('edit')
-                                            ->disabled(fn($record) => ! $record?->state()?->canEdit()),
+                                        Section::make('Outras Informações')
+                                            ->columnSpanFull()
+                                            ->contained(fn($operation) => $operation !== 'edit')
+                                            ->collapsible()
+                                            ->collapsed()
+                                            ->schema([
+                                                Select::make('priority')
+                                                    ->label('Prioridade')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->required()
+                                                    ->options(Priority::toSelectArray())
+                                                    ->visibleOn('edit')
+                                                    ->default(Priority::NORMAL->value)
+                                                    ->native(false)
+                                                    ->selectablePlaceholder(false),
+                                                Select::make('type')
+                                                    ->label('Tipo')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->required()
+                                                    ->visibleOn('edit')
+                                                    ->options(Type::toSelectArray())
+                                                    ->default(Type::MAINTENANCE->value)
+                                                    ->native(false)
+                                                    ->selectablePlaceholder(false),
+                                                DatePicker::make('scheduled_date')
+                                                    ->label('Data Agendada')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->visibleOn('edit')
+                                                    ->displayFormat('d/m/Y')
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                                DatePicker::make('limit_date')
+                                                    ->label('Data Limite')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->displayFormat('d/m/Y')
+                                                    ->visible(false)
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                                DatePicker::make('warranty_expires_at')
+                                                    ->label('Garantia Válida Até')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->visibleOn('edit')
+                                                    ->displayFormat('d/m/Y')
+                                                    ->default(fn() => CompanyPreference::get('default_warranty_days'))
+                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                                DatePicker::make('completion_date')
+                                                    ->label('Data de Conclusão')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->displayFormat('d/m/Y')
+                                                    ->visibleOn('edit')
+                                                    ->disabled(fn($record) => ! $record?->state()?->canEdit()),
+                                            ]),
                                     ]),
 
 
                                 Section::make('Atendimento')
                                     ->collapsible()
                                     ->collapsed()
+                                    ->contained(false)
                                     ->columnSpanFull()
                                     ->schema([
                                         SelectPartner::make('technician_id', 'technician')
