@@ -170,7 +170,7 @@ class EquipmentService
      * @param int    $companyId  Restringe à empresa atual
      * @param int    $limit   Máximo de resultados (padrão 20)
      */
-    public function searchForSelect(string $search, int $companyId, int $owner_id, int $limit = 20): array
+    public function searchForSelect(string $search, int $companyId, ?int $owner_id = null, int $limit = 20): array
     {
         Log::debug('Buscando equipamentos para select', [
             'metodo'     => __METHOD__ . '@' . __LINE__,
