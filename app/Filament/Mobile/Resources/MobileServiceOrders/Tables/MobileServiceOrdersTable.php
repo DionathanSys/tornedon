@@ -50,7 +50,6 @@ class MobileServiceOrdersTable
                 Split::make([
                     Stack::make([
                         TextColumn::make('number')
-                            ->label("N\u{00FA}mero")
                             ->searchable()
                             ->sortable()
                             ->weight('bold'),
@@ -59,98 +58,39 @@ class MobileServiceOrdersTable
                             ->searchable()
                             ->sortable()
                             ->placeholder('-')
-                            ->lineClamp(2),
+                        // ->lineClamp(2)
+                        ,
                         TextColumn::make('equipment.name')
                             ->label('Equipamento')
                             ->searchable()
                             ->sortable()
                             ->placeholder('-')
                             ->color('gray')
-                            ->lineClamp(2),
+                        // ->lineClamp(2)
+                        ,
                     ]),
                     Stack::make([
-                        TextColumn::make('status')
-                            ->label('Status')
-                            ->badge()
-                            ->formatStateUsing(fn (?State $state): string => $state?->description() ?? '-')
-                            ->color(fn (?State $state): string => $state?->color() ?? 'gray')
-                            ->sortable(),
-                        TextColumn::make('priority')
-                            ->label('Prioridade')
-                            ->badge()
-                            ->formatStateUsing(fn (?Priority $state): string => $state?->description() ?? '-')
-                            ->color(fn (?Priority $state): string => $state?->color() ?? 'gray')
-                            ->sortable(),
-                        TextColumn::make('type')
-                            ->label('Tipo')
-                            ->badge()
-                            ->formatStateUsing(fn (?Type $state): string => $state?->description() ?? '-')
-                            ->color('gray')
-                            ->sortable(),
+                        Grid::make([
+                            'default' => 2,
+                            'xl' => 3,
+                        ])->schema([
+                            TextColumn::make('order_date')
+                                ->label('Ordem')
+                                ->date('d/m/Y')
+                                ->sortable(),
+                            TextColumn::make('status')
+                                ->label('Status')
+                                ->badge()
+                                ->formatStateUsing(fn(?State $state): string => $state?->description() ?? '-')
+                                ->color(fn(?State $state): string => $state?->color() ?? 'gray')
+                                ->sortable(),
+                        ]),
+
                     ])
                         ->alignment(Alignment::End)
                         ->space(1),
                 ])->from('md'),
-                Grid::make([
-                    'default' => 2,
-                    'xl' => 3,
-                ])->schema([
-                    TextColumn::make('order_date')
-                        ->label('Ordem')
-                        ->date('d/m/Y')
-                        ->sortable(),
-                    TextColumn::make('scheduled_date')
-                        ->label('Agenda')
-                        ->date('d/m/Y')
-                        ->placeholder('-')
-                        ->sortable(),
-                    TextColumn::make('technician.name')
-                        ->label("T\u{00E9}cnico")
-                        ->placeholder('-')
-                        ->searchable()
-                        ->sortable()
-                        ->lineClamp(1),
-                ]),
-                Panel::make([
-                    Grid::make([
-                        'default' => 1,
-                        'xl' => 2,
-                    ])->schema([
-                        TextColumn::make('location')
-                            ->label('Local')
-                            ->placeholder('-')
-                            ->lineClamp(2),
-                        TextColumn::make('approval_summary')
-                            ->label("Aprova\u{00E7}\u{00E3}o")
-                            ->state(function (ServiceOrder $record): string {
-                                return match (true) {
-                                    ! $record->requires_approval => "N\u{00E3}o requer",
-                                    $record->approved_by_customer => 'Aprovada',
-                                    default => 'Pendente',
-                                };
-                            })
-                            ->badge()
-                            ->color(function (ServiceOrder $record): string {
-                                return match (true) {
-                                    ! $record->requires_approval => 'gray',
-                                    $record->approved_by_customer => 'success',
-                                    default => 'warning',
-                                };
-                            }),
-                        TextColumn::make('completion_date')
-                            ->label("Conclu\u{00ED}da em")
-                            ->date('d/m/Y')
-                            ->placeholder('-')
-                            ->sortable(),
-                        TextColumn::make('customer_rating')
-                            ->label("Avalia\u{00E7}\u{00E3}o")
-                            ->state(fn (ServiceOrder $record): string => filled($record->customer_rating) ? number_format((float) $record->customer_rating, 1, ',', '.') . ' / 5' : '-'),
-                        TextColumn::make('updated_at')
-                            ->label('Atualizada em')
-                            ->dateTime('d/m/Y H:i')
-                            ->sortable(),
-                    ]),
-                ])->collapsible(),
+
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -184,24 +124,25 @@ class MobileServiceOrdersTable
             ])
             ->defaultSort('order_date', 'desc')
             ->recordActions([
-                ActionGroup::make([
-                    DuplicateServiceOrderAction::make(),
-                    PreviewServiceOrderPdfAction::make(),
-                    DownloadServiceOrderPdfAction::make(),
-                    CloseServiceOrderAction::make(),
-                    InvoiceServiceOrderAction::make(),
-                    CancelServiceOrderAction::make(),
-                    ReopenServiceOrderAction::make(),
-                    EditAction::make(),
-                ])
-                    ->label("A\u{00E7}\u{00F5}es")
-                    ->button(),
+                // ActionGroup::make([
+                    DuplicateServiceOrderAction::make()
+                        ->iconButton(),
+                    PreviewServiceOrderPdfAction::make()
+                        ->iconButton(),
+                    DownloadServiceOrderPdfAction::make()
+                        ->iconButton(),
+                    CloseServiceOrderAction::make()
+                        ->iconButton(),
+                    // InvoiceServiceOrderAction::make(),
+                    // CancelServiceOrderAction::make(),
+                    // ReopenServiceOrderAction::make(),
+                    // EditAction::make(),
+                // ])
+                    // ->label("A\u{00E7}\u{00F5}es")
+                    // ->button(),
             ])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
             ->toolbarActions([
-                BulkActionGroup::make([
-                    BulkInvoiceServiceOrderAction::make(),
-                ]),
                 CreateAction::make()
                     ->label("Ordem de Servi\u{00E7}o")
                     ->icon(Heroicon::Plus)
