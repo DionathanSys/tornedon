@@ -774,6 +774,10 @@ class InvoiceService
             ->unique()
             ->values();
 
+            Log::debug(__METHOD__.'@'.__LINE__, [
+                'values' => $values,
+            ]);
+
         if ($values->count() > 1) {
             throw ValidationException::withMessages([
                 'items' => "A fatura agrupa serviços com {$fieldLabel} diferentes. Gere NFS-e separadas ou padronize a classificação fiscal.",
