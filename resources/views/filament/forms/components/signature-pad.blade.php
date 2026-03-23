@@ -71,9 +71,6 @@
                     Limpar assinatura
                 </button>
 
-                <span class="text-xs text-gray-500 dark:text-gray-400" x-show="!disabled">
-                    Desenhe na área acima.
-                </span>
                 <span class="text-xs text-gray-500 dark:text-gray-400" x-show="disabled">
                     A assinatura está bloqueada porque esta ordem de serviço não pode mais ser editada.
                 </span>

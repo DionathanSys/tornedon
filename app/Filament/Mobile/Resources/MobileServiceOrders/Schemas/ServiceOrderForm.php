@@ -50,107 +50,99 @@ class ServiceOrderForm
                         Tab::make('Dados Gerais')
                             ->icon(Heroicon::InformationCircle)
                             ->schema([
-                                Section::make('Informações Principais')
-                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
+
+                                Hidden::make('number'),
+                                Hidden::make('status'),
+                                Group::make()
+                                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12])
                                     ->columnSpanFull()
                                     ->schema([
-                                        Hidden::make('number'),
-                                        Hidden::make('status'),
-                                        Group::make()
-                                            ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12])
+                                        SelectPartner::make('customer_id', 'customer')
+                                            ->label('Cliente')
                                             ->columnSpanFull()
-                                            ->schema([
-                                                SelectPartner::make('customer_id', 'customer')
-                                                    ->label('Cliente')
-                                                    ->columnSpanFull()
-                                                    ->disabledOn('edit'),
-                                                Select::make('equipment_id')
-                                                    ->label('Equipamento')
-                                                    ->columnSpanFull()
-                                                    ->searchable()
-                                                    ->visibleOn('edit')
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
-                                                    ->getSearchResultsUsing(
-                                                        fn(string $search, Get $get): array => (new EquipmentService())
-                                                            ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
-                                                    )
-                                                    ->getOptionLabelUsing(
-                                                        fn($value): ?string => (new EquipmentService())
-                                                            ->getLabelForSelect((int) $value)
-                                                    )
-                                                    ->disabled(fn($get) => ! $get('customer_id'))
-                                                    ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
-                                                Select::make('priority')
-                                                    ->label('Prioridade')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->required()
-                                                    ->options(Priority::toSelectArray())
-                                                    ->default(Priority::NORMAL->value)
-                                                    ->native(false)
-                                                    ->selectablePlaceholder(false),
-                                                Select::make('type')
-                                                    ->label('Tipo')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->required()
-                                                    ->visibleOn('edit')
-                                                    ->options(Type::toSelectArray())
-                                                    ->default(Type::MAINTENANCE->value)
-                                                    ->native(false)
-                                                    ->selectablePlaceholder(false),
-                                                DatePicker::make('order_date')
-                                                    ->label('Data da Ordem')
-                                                    ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
-                                                    ->required()
-                                                    ->default(now())
-                                                    ->displayFormat('d/m/Y')
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                                DatePicker::make('scheduled_date')
-                                                    ->label('Data Agendada')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->visibleOn('edit')
-                                                    ->displayFormat('d/m/Y')
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                                DatePicker::make('limit_date')
-                                                    ->label('Data Limite')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->displayFormat('d/m/Y')
-                                                    ->visible(false)
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                                DatePicker::make('warranty_expires_at')
-                                                    ->label('Garantia Válida Até')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->visibleOn('edit')
-                                                    ->displayFormat('d/m/Y')
-                                                    ->default(fn() => CompanyPreference::get('default_warranty_days'))
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                                DatePicker::make('completion_date')
-                                                    ->label('Data de Conclusão')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->displayFormat('d/m/Y')
-                                                    ->visibleOn('edit')
-                                                    ->disabled(fn($record) => ! $record?->state()?->canEdit()),
-                                            ]),
-
+                                            ->disabledOn('edit'),
+                                        Select::make('equipment_id')
+                                            ->label('Equipamento')
+                                            ->columnSpanFull()
+                                            ->searchable()
+                                            ->visibleOn('edit')
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
+                                            ->getSearchResultsUsing(
+                                                fn(string $search, Get $get): array => (new EquipmentService())
+                                                    ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
+                                            )
+                                            ->getOptionLabelUsing(
+                                                fn($value): ?string => (new EquipmentService())
+                                                    ->getLabelForSelect((int) $value)
+                                            )
+                                            ->disabled(fn($get) => ! $get('customer_id'))
+                                            ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
+                                        Select::make('priority')
+                                            ->label('Prioridade')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->required()
+                                            ->options(Priority::toSelectArray())
+                                            ->visibleOn('edit')
+                                            ->default(Priority::NORMAL->value)
+                                            ->native(false)
+                                            ->selectablePlaceholder(false),
+                                        Select::make('type')
+                                            ->label('Tipo')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->required()
+                                            ->visibleOn('edit')
+                                            ->options(Type::toSelectArray())
+                                            ->default(Type::MAINTENANCE->value)
+                                            ->native(false)
+                                            ->selectablePlaceholder(false),
+                                        DatePicker::make('order_date')
+                                            ->label('Data da Ordem')
+                                            ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
+                                            ->required()
+                                            ->default(now())
+                                            ->displayFormat('d/m/Y')
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        DatePicker::make('scheduled_date')
+                                            ->label('Data Agendada')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->visibleOn('edit')
+                                            ->displayFormat('d/m/Y')
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        DatePicker::make('limit_date')
+                                            ->label('Data Limite')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->displayFormat('d/m/Y')
+                                            ->visible(false)
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        DatePicker::make('warranty_expires_at')
+                                            ->label('Garantia Válida Até')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->visibleOn('edit')
+                                            ->displayFormat('d/m/Y')
+                                            ->default(fn() => CompanyPreference::get('default_warranty_days'))
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        DatePicker::make('completion_date')
+                                            ->label('Data de Conclusão')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->displayFormat('d/m/Y')
+                                            ->visibleOn('edit')
+                                            ->disabled(fn($record) => ! $record?->state()?->canEdit()),
                                     ]),
+
+
                                 Section::make('Atendimento')
-                                    ->columns(['md' => 6, 'lg' => 12])
                                     ->collapsible()
                                     ->collapsed()
                                     ->columnSpanFull()
                                     ->schema([
                                         SelectPartner::make('technician_id', 'technician')
                                             ->label('Técnico')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->required(false)
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                        SelectPartner::make('salesperson_id', 'salesperson')
-                                            ->label('Vendedor')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpanFull()
                                             ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpanFull()
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn() => Filament::getTenant()->service_provision_location)
@@ -170,22 +162,17 @@ class ServiceOrderForm
                             ->icon(Heroicon::ChatBubbleBottomCenterText)
                             ->schema([
                                 Section::make('Anotações')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
                                         Textarea::make('customer_observations')
                                             ->label('Observações do Cliente')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->columnSpanFull()
                                             ->rows(3)
                                             ->autocomplete(false),
                                         TextInput::make('technician_observations')
                                             ->label('Observações do Técnico')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->columnSpanFull()
                                             ->datalist(fn() => [
                                                 'Checar disponibilidade de peças',
                                                 'Entrar em contato com o cliente para alinhamento',
@@ -199,7 +186,7 @@ class ServiceOrderForm
                                             ->autocomplete(false),
                                         Textarea::make('solution')
                                             ->label('Solução Aplicada')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->columnSpanFull()
                                             ->rows(4)
                                             ->autocomplete(false)
                                             ->helperText('Descreva os procedimentos realizados e a solução aplicada'),
@@ -208,61 +195,55 @@ class ServiceOrderForm
                         Tab::make('Valores')
                             ->icon(Heroicon::CurrencyDollar)
                             ->schema([
-                                Section::make('Valores')
-                                    ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
-                                    ->columnSpanFull()
-                                    ->contained(false)
-                                    ->schema([
-                                        Money::make('value_km')
-                                            ->label('Valor do KM')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, Set $set, $get) {
-                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
-                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
-                                                $set('travel_value', number_format($valueKm * $distanceKm));
-                                            })
-                                            ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
-                                            ->formatStateUsing(fn($state) => is_numeric($state)
-                                                ? number_format((float) $state, 2, ',', '.')
-                                                : number_format((float) CompanyPreference::get('default_value_km', default: 3.5), 2, ',', '.')),
-                                        Money::make('distance_km')
-                                            ->label('Distância em KM')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, Set $set, $get) {
-                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
-                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
-                                                $set('travel_value', number_format($valueKm * $distanceKm));
-                                            })
-                                            ->suffix('km')
-                                            ->prefix(null)
-                                            ->default(0),
-                                        Money::make('travel_value')
-                                            ->label('Valor de Deslocamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->default(0),
-                                        Select::make('payment_method')
-                                            ->label('Forma de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->columnStart(1)
-                                            ->options(PaymentMethod::toSelectArray())
-                                            ->native(false)
-                                            ->searchable()
-                                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod()),
-                                        Select::make('payment_condition')
-                                            ->label('Condição de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->options(PaymentCondition::toGroupedSelectArray())
-                                            ->native(false)
-                                            ->searchable()
-                                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition()),
-                                        DiscountAmountField::make('service_order')
-                                            ->saved(false)
-                                            ->visible(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                    ]),
+                                Money::make('value_km')
+                                    ->label('Valor do KM')
+                                    ->columnSpan(['md' => 2, 'lg' => 4])
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function ($state, Set $set, $get) {
+                                        $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
+                                        $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
+                                        $set('travel_value', number_format($valueKm * $distanceKm));
+                                    })
+                                    ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
+                                    ->formatStateUsing(fn($state) => is_numeric($state)
+                                        ? number_format((float) $state, 2, ',', '.')
+                                        : number_format((float) CompanyPreference::get('default_value_km', default: 3.5), 2, ',', '.')),
+                                Money::make('distance_km')
+                                    ->label('Distância em KM')
+                                    ->columnSpan(['md' => 2, 'lg' => 4])
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function ($state, Set $set, $get) {
+                                        $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
+                                        $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
+                                        $set('travel_value', number_format($valueKm * $distanceKm));
+                                    })
+                                    ->suffix('km')
+                                    ->prefix(null)
+                                    ->default(0),
+                                Money::make('travel_value')
+                                    ->label('Valor de Deslocamento')
+                                    ->columnSpan(['md' => 2, 'lg' => 4])
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->default(0),
+                                Select::make('payment_method')
+                                    ->label('Forma de Pagamento')
+                                    ->columnSpan(['md' => 2, 'lg' => 4])
+                                    ->columnStart(1)
+                                    ->options(PaymentMethod::toSelectArray())
+                                    ->native(false)
+                                    ->searchable()
+                                    ->default(fn() => CompanyPreference::getDefaultPaymentMethod()),
+                                Select::make('payment_condition')
+                                    ->label('Condição de Pagamento')
+                                    ->columnSpan(['md' => 2, 'lg' => 4])
+                                    ->options(PaymentCondition::toGroupedSelectArray())
+                                    ->native(false)
+                                    ->searchable()
+                                    ->default(fn() => CompanyPreference::getDefaultPaymentCondition()),
+                                DiscountAmountField::make('service_order')
+                                    ->saved(false)
+                                    ->visible(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                             ]),
                         Tab::make('Aprovação')
                             ->icon(Heroicon::CheckCircle)
@@ -296,7 +277,6 @@ class ServiceOrderForm
                             ->icon(Heroicon::PencilSquare)
                             ->schema([
                                 Section::make('Assinatura do Cliente')
-                                    ->description('Use esta área para coletar a assinatura diretamente na tela em celulares, tablets ou notebooks com toque.')
                                     ->columns([
                                         'sm' => 1,
                                         'md' => 4,

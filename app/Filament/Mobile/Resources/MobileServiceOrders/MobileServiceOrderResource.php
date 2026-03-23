@@ -42,7 +42,7 @@ class MobileServiceOrderResource extends Resource
     {
         return [
             'index' => ListMobileServiceOrders::route('/'),
-            'create' => CreateMobileServiceOrder::route('/create'),
+            // 'create' => CreateMobileServiceOrder::route('/create'),
             'edit' => EditMobileServiceOrder::route('/{record}/edit'),
         ];
     }
