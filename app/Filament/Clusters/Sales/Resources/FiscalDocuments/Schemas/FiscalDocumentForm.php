@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas;
 
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\Status;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\IssuePurpose;
@@ -81,7 +82,7 @@ class FiscalDocumentForm
                                                     ->label('Status')
                                                     ->visibleOn('edit')
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn($record): ?string => $record->company ? $record->company->name : null),
+                                                    ->formatStateUsing(fn(Status $state): ?string => $state->description()),
                                                 TextEntry::make('nfse_status')
                                                     ->label('Status NFS-e')
                                                     ->visibleOn('edit')
