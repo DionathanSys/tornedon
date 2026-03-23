@@ -24,7 +24,7 @@ class EquipmentService
         try {
             $equipment = $bypassTenantAssociation
                 ? Equipment::withoutEvents(
-                    fn () => Equipment::query()->withoutGlobalScopes()->create($data)
+                    fn() => Equipment::query()->withoutGlobalScopes()->create($data)
                 )
                 : Equipment::create($data);
 
@@ -170,20 +170,22 @@ class EquipmentService
      * @param int    $companyId  Restringe à empresa atual
      * @param int    $limit   Máximo de resultados (padrão 20)
      */
-    public function searchForSelect(string $search, int $companyId, int $limit = 20): array
+    public function searchForSelect(string $search, int $companyId, int $owner_id, int $limit = 20): array
     {
         Log::debug('Buscando equipamentos para select', [
             'metodo'     => __METHOD__ . '@' . __LINE__,
             'search'     => $search,
             'company_id' => $companyId,
+            'owner_id'   => $owner_id,
         ]);
 
         return Equipment::where('company_id', $companyId)
+            ->where('owner_id', $owner_id)
             ->searchByIdentifier($search)
             ->with('owner')
             ->limit($limit)
             ->get()
-            ->mapWithKeys(fn (Equipment $equipment) => [
+            ->mapWithKeys(fn(Equipment $equipment) => [
                 $equipment->id => self::formatSelectLabel($equipment),
             ])
             ->toArray();
