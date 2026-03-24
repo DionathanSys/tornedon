@@ -58,32 +58,32 @@ Evoluir a implementação atual de anexos (hoje orientada a `ServiceOrder`/`Prod
 
 ---
 
-## 3) Plano de remoção/refatoração do que for necessário
+## 3) Plano de remoção/refatoração do que for necessário (sem legado/depreciação)
 
-## Fase R1 — Desacoplar naming e contratos (sem quebrar fluxo)
+## Fase R1 — Remoção direta do acoplamento atual
 1. Criar nova camada genérica:
    - `Attachment` (novo model) e `AttachmentService` (novo service).
-2. Marcar `OrderAttachment`/`OrderAttachmentStorageService` como legados (compatibilidade temporária).
-3. Criar interfaces/traits:
+2. Criar interfaces/traits:
    - `HasAttachments` (trait) para adicionar `attachments(): MorphMany` de forma padronizada.
+3. Remover imediatamente classes/rotas antigas de `OrderAttachment` e manager específico de ordem.
 
-> Meta: parar de introduzir novo código com naming de “order”.
+> Meta: eliminar o naming de “order” já no primeiro ciclo.
 
 ## Fase R2 — Substituir pontos de uso específicos
 1. Criar `AttachmentsRelationManager` genérico (substitui `OrderAttachmentsRelationManager`).
 2. Atualizar formulários Filament para usar o manager genérico.
 3. Criar rota/controller genéricos de download (ex.: `/attachments/{attachment:public_id}/download`).
-4. Manter rota antiga com redirect/depreciação por uma janela curta.
+4. Remover rota antiga sem janela de depreciação (não há uso atual).
 
 > Meta: remover dependência direta de ServiceOrder/ProductionOrder no fluxo de anexos.
 
-## Fase R3 — Migração de dados e limpeza
-1. Migrar tabela `order_attachments` → `attachments` (rename ou nova + backfill).
-2. Migrar código para `Attachment` como fonte única.
-3. Remover classes/rotas legadas após validação.
-4. Adicionar testes de regressão para garantir equivalência funcional.
+## Fase R3 — Limpeza final e validação
+1. Remover tabela `order_attachments` e qualquer artefato legado.
+2. Consolidar código em `Attachment` como fonte única.
+3. Validar permissões/download/upload no novo fluxo.
+4. Adicionar testes de regressão para garantir estabilidade.
 
-> Meta: eliminar definitivamente o legado “order_*”.
+> Meta: manter apenas arquitetura nova, sem compatibilidade retroativa.
 
 ---
 
@@ -113,7 +113,11 @@ Campos base:
 - `unique(attachable_type, attachable_id, type, idempotency_key)` (quando `idempotency_key` preenchida)
 - `index(company_id, created_at)`
 
-> Observação: dependendo do banco, regra “somente um current por tipo” pode exigir garantia transacional no service (além de índice).
+> Observação (MySQL): para garantir **exatamente 1 anexo atual** (`is_current = true`) por `(attachable_type, attachable_id, type)`, implementar no `AttachmentService` via transação:
+> 1) `SELECT ... FOR UPDATE` no conjunto da entidade+tipo,
+> 2) marcar anteriores como `is_current = false`,
+> 3) inserir nova versão com `is_current = true`.
+> Além disso, manter `unique(attachable_type, attachable_id, type, version)` para evitar colisão de versão.
 
 ## 4.2 Configuração por tipo (cardinalidade/idempotência)
 Criar catálogo em config (`config/attachments.php`):
@@ -195,22 +199,18 @@ Entidades iniciais sugeridas:
 
 ---
 
-## Fase I6 — Estratégia de migração incremental (sem downtime)
+## Fase I6 — Estratégia de implantação direta (MySQL)
 
-1. **Release A**
-   - criar nova tabela `attachments` + novos serviços/classes;
-   - manter escrita antiga ativa.
-2. **Release B**
-   - dual-write (opcional) ou backfill de `order_attachments` para `attachments`;
-   - trocar leitura para nova tabela.
-3. **Release C**
-   - remover legado (`order_attachments`, classes e rotas antigas).
+1. **Release único**
+   - criar tabela `attachments` + novos serviços/classes;
+   - apontar UI/rotas/models diretamente para o novo fluxo;
+   - remover tabela/código/rotas antigas no mesmo ciclo.
 
-Checklist de backfill:
-- mapear `order_attachments.id` -> `attachments.legacy_id` (temporário);
-- gerar `public_id` para registros antigos;
-- definir `type` default inicial (ex.: `generic`), depois refinar;
-- recalcular `is_current/version` por agrupamento.
+Checklist de implantação:
+- remover `order_attachments` e classes relacionadas;
+- garantir índices e transações MySQL para `single_latest`;
+- validar permissões por `company_id`;
+- validar upload/download/delete ponta a ponta no Filament e fora dele.
 
 ---
 
@@ -255,9 +255,9 @@ Checklist de backfill:
 3. Criar trait `HasAttachments`.
 4. Criar relation manager genérico Filament.
 5. Expor endpoint de download por `public_id`.
-6. Migrar `ServiceOrder` primeiro (piloto).
-7. Migrar `ProductionOrder` e demais entidades.
-8. Remover legado quando estabilizar.
+6. Aplicar `HasAttachments` e novo manager nas entidades alvo (`ServiceOrder`, `ProductionOrder` e demais necessárias).
+7. Remover classes/rotas/tabela antigas no mesmo ciclo.
+8. Executar validação final ponta a ponta (upload, download, delete, autorização por empresa).
 
 ---
 
@@ -266,4 +266,3 @@ Checklist de backfill:
 - Padronizar nome da tabela para **`attachments`** (evitar `attachements`, typo).
 - Se desejar trilha completa de auditoria, considerar eventos de domínio (`AttachmentUploaded`, `AttachmentDeleted`, `AttachmentReplaced`).
 - Se houver necessidade legal (documento fiscal), definir política de retenção e versionamento imutável por tipo.
-
