@@ -29,12 +29,45 @@
         .page-header-title {
             font-size: 18px;
             font-weight: bold;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .page-header-status {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+            padding: 4px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: bold;
         }
 
         .page-header-body {
-            padding: 10px 12px;
+            position: relative;
+            padding: 8px 10px;
         }
+<<<<<<< HEAD
 
+=======
+        .company-logo-wrap {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            padding: 0;
+            text-align: right;
+            line-height: 0;
+        }
+        .company-logo {
+            max-height: 100px;
+            max-width: 130px;
+            display: block;
+        }
+        .header-meta-wrap.has-logo {
+            padding-right: 98px;
+            min-height: 63px;
+        }
+>>>>>>> 8dcb8831d1963433659d131c46abbec970f5f0e4
         .meta-grid,
         .summary-table {
             width: 100%;
@@ -54,7 +87,19 @@
             color: #17385b;
             font-weight: bold;
         }
+<<<<<<< HEAD
 
+=======
+        .meta-inline-label {
+            width: 23%;
+            background: #f8fafc;
+            color: #17385b;
+            font-weight: bold;
+        }
+        .meta-inline-value {
+            width: 29%;
+        }
+>>>>>>> 8dcb8831d1963433659d131c46abbec970f5f0e4
         .section-title {
             margin: 18px 0 8px 0;
             padding: 6px 10px;
@@ -101,7 +146,7 @@
         .signature-line {
             width: 260px;
             border-top: 1px solid #1f2937;
-            padding-top: 6px;
+            padding-top: 16px;
             margin: 0 auto;
         }
 
@@ -132,6 +177,7 @@
 
 <body>
     @php
+<<<<<<< HEAD
     $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
     $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
     $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
@@ -155,6 +201,29 @@
     ['label' => 'Data Finalização', 'value' => $formatDate($record->completion_date)],
     ['label' => 'Status', 'value' => $record->status?->description() ?? '-'],
     ];
+=======
+        $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
+        $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
+        $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
+        $companyLogo = null;
+        $additionalInfoLabels = [
+            'accessories' => 'Acessorios entregues',
+            'avaria' => 'Avaria identificada',
+            'budget' => 'Orcamento alinhado',
+            'cleaning' => 'Limpeza executada',
+            'guidance' => 'Orientacoes ao cliente',
+            'parts' => 'Pecas substituidas',
+            'pending' => 'Pendencia encontrada',
+            'test' => 'Teste realizado',
+            'warranty' => 'Garantia informada',
+            'other' => 'Outro',
+        ];
+
+        $headerLines = [
+            ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
+            ['label' => 'Cliente', 'value' => $record->customer?->name ?? '-'],
+        ];
+>>>>>>> 8dcb8831d1963433659d131c46abbec970f5f0e4
 
     $responsibles = collect([
     ['label' => 'Equipamento', 'value' => $record->equipment?->identifier],
@@ -222,15 +291,29 @@
     return "{$label}: {$value}";
     }
 
+<<<<<<< HEAD
     return $label ?: $value;
     })
     ->filter()
     ->implode(' | ');
+=======
+                return $label ?: $value;
+            })
+            ->filter()
+            ->implode(' | ');
+
+        if (filled($record->company?->logo_path) && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->company->logo_path)) {
+            $logoDisk = \Illuminate\Support\Facades\Storage::disk('public');
+            $logoMime = $logoDisk->mimeType($record->company->logo_path) ?: 'image/png';
+            $companyLogo = 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($record->company->logo_path));
+        }
+>>>>>>> 8dcb8831d1963433659d131c46abbec970f5f0e4
     @endphp
 
     <div class="page-header">
         <div class="page-header-bar">
             <div class="page-header-title">Ordem de Serviço #{{ $record->number }}</div>
+<<<<<<< HEAD
         </div>
         <div class="page-header-body">
             <table class="meta-grid">
@@ -249,6 +332,40 @@
                     @endforeach
                 </tbody>
             </table>
+=======
+            <div class="page-header-status">{{ $record->status?->description() ?? '-' }}</div>
+        </div>
+        <div class="page-header-body">
+            @if (filled($companyLogo))
+                <div class="company-logo-wrap">
+                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
+                </div>
+            @endif
+            <div class="header-meta-wrap{{ filled($companyLogo) ? ' has-logo' : '' }}">
+                <table class="meta-grid">
+                    <tbody>
+                        @foreach ($headerLines as $line)
+                            <tr>
+                                <td class="meta-label">{{ $line['label'] }}</td>
+                                <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                            </tr>
+                        @endforeach
+                        <tr>
+                            <td class="meta-inline-label">Data da Ordem</td>
+                            <td class="meta-inline-value">{{ $formatDate($record->order_date) }}</td>
+                            <td class="meta-inline-label">Data Conclusão</td>
+                            <td class="meta-inline-value">{{ $formatDate($record->completion_date) }}</td>
+                        </tr>
+                        @foreach ($responsibles as $field)
+                            <tr>
+                                <td class="meta-label">{{ $field['label'] }}</td>
+                                <td colspan="3">{{ $field['value'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+>>>>>>> 8dcb8831d1963433659d131c46abbec970f5f0e4
         </div>
     </div>
 
@@ -283,7 +400,7 @@
     </table>
 
     <div class="section-title">Observações</div>
-    <div class="notes-box">{{ $record->customer_observations ?? 'Sem observacoes' }}</div>
+    <div class="notes-box">{{ $record->customer_observations ?? 'Sem observações' }}</div>
 
     @if (filled($additionalInfoText))
     <div class="section-title">Informacoes Adicionais</div>

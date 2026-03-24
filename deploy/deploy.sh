@@ -16,6 +16,7 @@ RELOAD_SUPERVISOR="${RELOAD_SUPERVISOR:-0}"
 SUPERVISORCTL_BIN="${SUPERVISORCTL_BIN:-sudo supervisorctl}"
 SUPERVISOR_PROGRAMS="${SUPERVISOR_PROGRAMS:-tornedon-horizon tornedon-schedule}"
 FIX_PERMISSIONS="${FIX_PERMISSIONS:-1}"
+RESTORE_TRACKED_WRITABLE_FILES="${RESTORE_TRACKED_WRITABLE_FILES:-1}"
 WEB_USER="${WEB_USER:-www-data}"
 WEB_GROUP="${WEB_GROUP:-www-data}"
 DEPLOY_USER="${DEPLOY_USER:-$(id -un)}"
@@ -58,6 +59,35 @@ ensure_no_unmerged_files() {
     fi
 }
 
+restore_tracked_writable_files() {
+    if [[ "${RESTORE_TRACKED_WRITABLE_FILES}" != "1" ]]; then
+        return
+    fi
+
+    local tracked_files=()
+    local tracked_file
+    local path
+
+    for path in ${WRITABLE_PATHS}; do
+        if [[ ! -e "${ROOT_DIR}/${path}" ]]; then
+            continue
+        fi
+
+        while IFS= read -r tracked_file; do
+            if [[ -n "${tracked_file}" ]]; then
+                tracked_files+=("${tracked_file}")
+            fi
+        done < <(run_in_root "$GIT_BIN" ls-files -- "${path}" || true)
+    done
+
+    if [[ "${#tracked_files[@]}" -eq 0 ]]; then
+        return
+    fi
+
+    log "Restaurando arquivos versionados dentro de ${WRITABLE_PATHS}"
+    run_in_root "$GIT_BIN" restore --worktree --source=HEAD -- "${tracked_files[@]}"
+}
+
 normalize_permissions() {
     if [[ "${FIX_PERMISSIONS}" != "1" ]]; then
         return
@@ -65,6 +95,7 @@ normalize_permissions() {
 
     log "Normalizando permissoes em ${WRITABLE_PATHS}"
 
+    local permission_warnings=0
     local path
     for path in ${WRITABLE_PATHS}; do
         if [[ ! -e "${ROOT_DIR}/${path}" ]]; then
@@ -72,14 +103,23 @@ normalize_permissions() {
         fi
 
         "${CHGRP_BIN}" -R "${WEB_GROUP}" "${ROOT_DIR}/${path}" 2>/dev/null || true
-        "${CHMOD_BIN}" -R ug+rwX "${ROOT_DIR}/${path}"
-        "${FIND_BIN}" "${ROOT_DIR}/${path}" -type d -exec "${CHMOD_BIN}" g+s {} +
+        if ! "${CHMOD_BIN}" -R ug+rwX "${ROOT_DIR}/${path}" 2>/dev/null; then
+            permission_warnings=1
+        fi
+
+        if ! "${FIND_BIN}" "${ROOT_DIR}/${path}" -type d -exec "${CHMOD_BIN}" g+s {} + 2>/dev/null; then
+            permission_warnings=1
+        fi
 
         if command -v "${SETFACL_BIN}" >/dev/null 2>&1; then
             "${SETFACL_BIN}" -R -m "u:${DEPLOY_USER}:rwx" -m "u:${WEB_USER}:rwx" -m "g:${WEB_GROUP}:rwx" "${ROOT_DIR}/${path}" 2>/dev/null || true
             "${SETFACL_BIN}" -R -d -m "u:${DEPLOY_USER}:rwx" -m "u:${WEB_USER}:rwx" -m "g:${WEB_GROUP}:rwx" "${ROOT_DIR}/${path}" 2>/dev/null || true
         fi
     done
+
+    if [[ "${permission_warnings}" == "1" ]]; then
+        log "Aviso: alguns arquivos de ${WRITABLE_PATHS} nao pertencem ao usuario ${DEPLOY_USER} e nao puderam ter as permissoes ajustadas."
+    fi
 }
 
 finish() {
@@ -92,6 +132,7 @@ finish() {
 trap finish EXIT
 
 ensure_no_unmerged_files
+restore_tracked_writable_files
 
 log "Atualizando o codigo da branch ${APP_BRANCH}"
 run_in_root "$GIT_BIN" pull origin "$APP_BRANCH"

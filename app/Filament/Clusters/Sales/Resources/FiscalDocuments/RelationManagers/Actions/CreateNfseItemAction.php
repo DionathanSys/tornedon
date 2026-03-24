@@ -22,6 +22,7 @@ final class CreateNfseItemAction
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
             ->visible(fn (RelationManager $livewire): bool => $livewire->getOwnerRecord()->isNfse()
+                && ! $livewire->getOwnerRecord()->items()->exists()
                 && ! $livewire->getOwnerRecord()->nfseSent()
             )
             ->modalHeading('Adicionar Serviço à NFS-e')

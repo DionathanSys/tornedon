@@ -14,6 +14,9 @@ class FiscalDocumentItem extends Model
         'product_code',
         'description',
         'service_id',
+        'municipal_tax_code',
+        'nbs_code',
+        'cnae_code',
         'item_number',
         'product_origin',
         'ncm_code',
@@ -100,8 +103,11 @@ class FiscalDocumentItem extends Model
 
     public function getServiceCodeAttribute(): ?string
     {
-        $value = $this->attributes['service_code']
+        $value = $this->attributes['municipal_tax_code']
+            ?? $this->attributes['service_code']
             ?? $this->fiscal_snapshot['service_code']
+            ?? $this->fiscal_snapshot['municipal_tax_code']
+            ?? $this->service?->municipal_tax_code
             ?? $this->service?->service_code
             ?? null;
 
@@ -123,6 +129,17 @@ class FiscalDocumentItem extends Model
         $value = $this->attributes['cnae_code']
             ?? $this->fiscal_snapshot['cnae_code']
             ?? $this->service?->cnae_code
+            ?? null;
+
+        return $value !== null ? (string) $value : null;
+    }
+
+    public function getMunicipalTaxCodeAttribute(): ?string
+    {
+        $value = $this->attributes['municipal_tax_code']
+            ?? $this->fiscal_snapshot['municipal_tax_code']
+            ?? $this->attributes['service_code']
+            ?? $this->service?->municipal_tax_code
             ?? null;
 
         return $value !== null ? (string) $value : null;

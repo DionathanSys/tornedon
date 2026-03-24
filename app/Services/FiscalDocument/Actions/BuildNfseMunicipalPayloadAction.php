@@ -97,6 +97,10 @@ class BuildNfseMunicipalPayloadAction
 
                 $codigoServico = $this->normalizeServiceCode(
                     $item->municipal_tax_code
+                    ?? $item->service?->municipal_tax_code
+                    ?? $item->service_code
+                    ?? $item->service?->service_code
+                    ?? $profile?->default_municipal_tax_code
                     ?? $profile?->default_service_code
                 );
 
@@ -134,7 +138,7 @@ class BuildNfseMunicipalPayloadAction
                     'valor_servicos'=> $valorServicosItem,
                 ];
 
-                if ($item->ncm_code || $profile?->service_cnae_code) {
+                if ($item->cnae_code || $profile?->service_cnae_code) {
                     $itemPayload['codigo_cnae'] = $item->cnae_code ?? $profile?->service_cnae_code;
                 }
 
@@ -142,7 +146,12 @@ class BuildNfseMunicipalPayloadAction
                     $itemPayload['codigo_nbs'] = $codigoNbs;
                 }
 
-                $ctm = $item->service?->municipal_tax_code ?? $profile?->default_service_code ?? null;
+                $ctm = $item->service?->municipal_tax_code
+                    ?? $item->municipal_tax_code
+                    ?? $item->service_code
+                    ?? $profile?->default_municipal_tax_code
+                    ?? $profile?->default_service_code
+                    ?? null;
                 if ($ctm) {
                     $itemPayload['codigo_tributacao_municipio'] = $ctm;
                 }
@@ -200,7 +209,9 @@ class BuildNfseMunicipalPayloadAction
                     'fiscal_document_id' => $fiscalDocument->id,
                     'erro'               => $msgErro,
                     'service_code_attempts' => array_merge(
+                        $fiscalDocument->items->pluck('municipal_tax_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service_code')->filter()->values()->toArray(),
+                        $fiscalDocument->items->pluck('service.municipal_tax_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service.service_code')->filter()->values()->toArray()
                     ),
                 ]);

@@ -7,7 +7,10 @@ use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 final class PreviewServiceOrderPdfAction
 {
@@ -17,7 +20,7 @@ final class PreviewServiceOrderPdfAction
             ->label('Preview PDF')
             ->icon(Heroicon::Eye)
             ->color('gray')
-            ->modalHeading('Preview da Ordem de Servico')
+            ->modalHeading('Preview da Ordem de Serviço')
             ->modalContent(function (ServiceOrder $record): \Illuminate\Contracts\Support\Htmlable {
                 $service = app(ServiceOrderService::class);
                 $data    = $service->preview($record, Auth::id());
@@ -28,8 +31,19 @@ final class PreviewServiceOrderPdfAction
                     );
                 }
 
+                $token = (string) Str::uuid();
+
+                Cache::put('pdf_preview:' . $token, [
+                    'pdf' => $data['pdf'],
+                    'filename' => 'ordem-servico-' . ($record->number ?? $record->id) . '.pdf',
+                ], now()->addMinutes(5));
+
+                $previewUrl = URL::temporarySignedRoute('pdf-preview.show', now()->addMinutes(5), [
+                    'token' => $token,
+                ]);
+
                 return new HtmlString(
-                    '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
+                    '<iframe src="' . e($previewUrl) . '" width="100%" height="600px" style="border:none;"></iframe>'
                 );
             })
             ->modalWidth('6xl');

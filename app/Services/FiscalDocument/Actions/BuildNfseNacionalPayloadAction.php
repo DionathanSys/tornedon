@@ -110,8 +110,11 @@ class BuildNfseNacionalPayloadAction
             ]))->implode('; '))->filter()->implode("\n");
 
             $serviceCode = $this->normalizeServiceCode(
-                $firstItem->service_code
+                $firstItem->municipal_tax_code
+                ?? $firstItem->service?->municipal_tax_code
+                ?? $firstItem->service_code
                 ?? $firstItem->service?->service_code
+                ?? $profile?->default_municipal_tax_code
                 ?? $profile?->default_service_code
             );
 
@@ -165,7 +168,17 @@ class BuildNfseNacionalPayloadAction
                 'valor_servicos'=> round($valorServicosTotal, 2),
             ];
 
-            $ctm = $firstItem->service?->municipal_tax_code ?? $profile?->default_service_code ?? null;
+            $ctm = $firstItem->service?->municipal_tax_code
+                ?? $firstItem->municipal_tax_code
+                ?? $profile?->default_municipal_tax_code
+                ?? $profile?->default_service_code
+                ?? null;
+            if (! $ctm) {
+                $ctm = $firstItem->service_code
+                    ?? $firstItem->service?->service_code
+                    ?? $profile?->default_service_code
+                    ?? null;
+            }
             if ($ctm) {
                 $servico['codigo_tributacao_municipio'] = $ctm;
             }

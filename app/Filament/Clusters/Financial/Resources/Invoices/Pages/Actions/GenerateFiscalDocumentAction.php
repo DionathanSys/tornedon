@@ -48,7 +48,7 @@ final class GenerateFiscalDocumentAction
                             Select::make('document_type')
                                 ->label('Tipo de Documento')
                                 ->options(DocumentModel::toSelectArray())
-                                ->default(DocumentModel::NFE->value)
+                                ->default(DocumentModel::NFSE->value)
                                 ->native(false)
                                 ->required()
                                 ->live()
@@ -57,6 +57,7 @@ final class GenerateFiscalDocumentAction
                             Select::make('nfse_model')
                                 ->label('Modelo NFS-e')
                                 ->options(NfseModel::toSelectArray())
+                                ->default(NfseModel::MUNICIPAL->value)
                                 ->native(false)
                                 ->required(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value)
                                 ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),

@@ -64,6 +64,7 @@ class ProductsTable
                     ->sortable(),
                 TextColumn::make('has_control_stock')
                     ->label('Controla Estoque?')
+                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
                     ->badge()
                     ->sortable(),
                 TextColumn::make('is_invoiceable')

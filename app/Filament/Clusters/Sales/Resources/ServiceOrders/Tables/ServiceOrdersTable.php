@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Tables;
 
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
@@ -65,25 +66,29 @@ class ServiceOrdersTable
                     ->badge()
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color(fn($state) => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color('gray')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('equipment.name')
                     ->label('Equipamento')
                     ->searchable()
                     ->sortable()
                     ->limit(25)
-                    ->toggleable(),
+                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('technician.name')
                     ->label('Técnico')
                     ->searchable()
                     ->sortable()
                     ->limit(25)
-                    ->toggleable(),
+                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('order_date')
                     ->label('Data da Ordem')
                     ->date('d/m/Y')
@@ -98,32 +103,13 @@ class ServiceOrdersTable
                     ->date('d/m/Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('location')
-                    ->label('Local')
-                    ->searchable()
-                    ->limit(30)
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('requires_approval')
-                    ->label('Requer Aprovação')
-                    ->boolean()
-                    ->trueIcon(Heroicon::CheckCircle)
-                    ->falseIcon(Heroicon::XCircle)
-                    ->trueColor('success')
-                    ->falseColor('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('approved_by_customer')
-                    ->label('Aprovado')
-                    ->boolean()
-                    ->trueIcon(Heroicon::CheckBadge)
-                    ->falseIcon(Heroicon::XMark)
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('customer_rating')
-                    ->label('Avaliação')
-                    ->formatStateUsing(fn($state) => $state ? number_format($state, 1) . ' ⭐' : '-')
+                TextColumn::make('invoice.invoice_number')
+                    ->label('Fatura')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('Sem Fatura')
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->url(fn ($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null)
+                    ,
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -136,12 +122,6 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options(State::toSelectArray())
-                    ->default(State::OPEN->value)
-                    ->native(false)
-                    ->multiple(),
                 SelectFilter::make('priority')
                     ->label('Prioridade')
                     ->options(Priority::toSelectArray())
@@ -176,7 +156,7 @@ class ServiceOrdersTable
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
-                ])
+                ])->button()->size(Size::ExtraSmall)->icon(Heroicon::EllipsisVertical),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

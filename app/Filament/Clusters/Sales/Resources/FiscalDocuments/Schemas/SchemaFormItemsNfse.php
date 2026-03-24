@@ -44,7 +44,7 @@ class SchemaFormItemsNfse
                 ->columns(3)
                 ->columnSpanFull()
                 ->schema([
-                    TextInput::make('service_code')
+                    TextInput::make('municipal_tax_code')
                         ->label('Código Serviço (LC 116)')
                         ->maxLength(10),
                     TextInput::make('nbs_code')
@@ -111,7 +111,7 @@ class SchemaFormItemsNfse
         $set('description',     $dto->name);
         $set('unit_price',      $dto->price ? number_format($dto->price, 2, ',', '.') : null);
         $set('total_price',     $dto->price ? number_format($dto->price, 2, ',', '.') : null);
-        $set('service_code',    $dto->serviceCode);
+        $set('municipal_tax_code', $dto->serviceCode);
         $set('nbs_code',        $dto->nbsCode);
         $set('cnae_code',       $dto->cnaeCode);
         $set('iss_rate',        $dto->issRate);

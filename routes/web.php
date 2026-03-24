@@ -4,6 +4,7 @@ use App\Http\Controllers\ErrorTicketController;
 use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\OrderAttachmentController;
+use App\Http\Controllers\PdfPreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -34,3 +35,7 @@ Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispat
 Route::get('/order-attachments/{orderAttachment}', [OrderAttachmentController::class, 'download'])
     ->name('order-attachments.download')
     ->middleware(['web', 'auth']);
+
+Route::get('/pdf-preview/{token}', [PdfPreviewController::class, 'show'])
+    ->name('pdf-preview.show')
+    ->middleware(['web', 'auth', 'signed']);

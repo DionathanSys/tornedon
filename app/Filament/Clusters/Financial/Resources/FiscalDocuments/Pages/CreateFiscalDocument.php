@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 
+use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Notification\NotifyService as notify;
@@ -23,6 +24,11 @@ class CreateFiscalDocument extends CreateRecord
         $tenant = Filament::getTenant();
         $data['company_id']     = $tenant->id;
         $data['operation_type'] = OperationType::ENTRADA->value;
+
+        // Frete padrão para nota de entrada — exigido pelo NfeDocumentValidator
+        $data['freight_data'] ??= [
+            'modalidade_frete' => FreightModality::SEM_FRETE->value,
+        ];
 
         return $data;
     }

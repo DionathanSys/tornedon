@@ -8,6 +8,7 @@ use App\Enum\Invoice\Status;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
+use App\Models\ServiceOrderItem;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
@@ -17,8 +18,10 @@ use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
@@ -217,7 +220,7 @@ class InvoiceService
                 $invoice->loadMissing([
                     'requisitions.items.product.tax',
                     'serviceOrders.items.service',
-                    'company',
+                    'company.fiscalProfile',
                     'customer',
                 ]);
 
@@ -283,26 +286,7 @@ class InvoiceService
                 $items = [];
 
                 if ($documentType === DocumentModel::NFSE->value) {
-                    foreach ($invoice->serviceOrders as $serviceOrder) {
-                        foreach ($serviceOrder->items as $serviceOrderItem) {
-                            $service = $serviceOrderItem->service;
-
-                            $items[] = [
-                                'fiscal_document_id' => $fiscalDocument->id,
-                                'service_id'         => $serviceOrderItem->service_id,
-                                'description'        => $service?->name ?? $serviceOrderItem->observations,
-                                'unit_of_measure'    => $service?->unit_of_measure ?? 'UN',
-                                'quantity'           => (float) $serviceOrderItem->quantity,
-                                'unit_price'         => (float) $serviceOrderItem->unit_price,
-                                'total_price'        => round((float) $serviceOrderItem->quantity * (float) $serviceOrderItem->unit_price, 2),
-                                'service_code'       => $service?->service_code,
-                                'nbs_code'           => $service?->nbs_code,
-                                'iss_exigibility'    => $service?->iss_exigibility?->value,
-                                'iss_rate'           => $service?->tax_rate !== null ? (float) $service->tax_rate : null,
-                                'included_in_total'  => true,
-                            ];
-                        }
-                    }
+                    $items[] = $this->buildSingleNfseItem($invoice, $fiscalDocument);
                 } else {
                     foreach ($invoice->requisitions as $requisition) {
                         foreach ($requisition->items as $reqItem) {
@@ -475,6 +459,19 @@ class InvoiceService
                 return $fiscalDocument;
             });
 
+        } catch (ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?: 'Erro de validação ao gerar documento fiscal a partir da fatura.';
+
+            $this->setError($message, $e->errors(), 422);
+
+            Log::warning($message, [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'errors'     => $e->errors(),
+                'user_id'    => $userId,
+            ]);
+
+            return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao gerar documento fiscal a partir da fatura');
 
@@ -596,5 +593,240 @@ class InvoiceService
 
         return str_pad($sequence->last_number, 6, '0', STR_PAD_LEFT);
     }
-}
 
+    private function buildSingleNfseItem(Invoice $invoice, FiscalDocument $fiscalDocument): array
+    {
+        $profile = $invoice->company?->fiscalProfile;
+
+        $sourceItems = $invoice->serviceOrders
+            ->flatMap(function ($serviceOrder) {
+                return $serviceOrder->items->map(fn (ServiceOrderItem $item): array => [
+                    'service_order' => $serviceOrder,
+                    'item' => $item,
+                    'service' => $item->service,
+                ]);
+            })
+            ->values();
+
+        if ($sourceItems->isEmpty()) {
+            throw ValidationException::withMessages([
+                'items' => 'A fatura não possui itens de serviço para gerar a NFS-e.',
+            ]);
+        }
+
+        $municipalTaxCode = $this->resolveSingleNfseValue(
+            $sourceItems,
+            fn (array $row): ?string => $row['service']?->municipal_tax_code,
+            $profile?->default_municipal_tax_code ?? $profile?->default_service_code,
+            'código de tributação municipal'
+        );
+
+        $nbsCode = $this->resolveSingleNfseValue(
+            $sourceItems,
+            fn (array $row): ?string => $row['service']?->nbs_code,
+            $profile?->default_nbs_code,
+            'código NBS'
+        );
+
+        $cnaeCode = $this->resolvePreferredNfseValue(
+            $sourceItems,
+            fn (array $row): ?string => $row['service']?->cnae_code,
+            $profile?->service_cnae_code
+        );
+
+        $issRate = $this->resolvePreferredNfseValue(
+            $sourceItems,
+            fn (array $row): float|string|null => $row['service']?->tax_rate,
+            $profile?->iss_rate_default
+        );
+
+        $issExigibility = $this->resolvePreferredNfseValue(
+            $sourceItems,
+            fn (array $row): ?string => $row['service']?->iss_exigibility?->value,
+            null
+        );
+
+        $serviceIds = $sourceItems
+            ->map(fn (array $row): ?int => $row['item']->service_id ? (int) $row['item']->service_id : null)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $serviceId = $serviceIds->count() === 1 ? $serviceIds->first() : null;
+
+        $totalValue = round($sourceItems->sum(
+            fn (array $row): float => round((float) $row['item']->quantity * (float) $row['item']->unit_price, 2)
+        ), 2);
+
+        $orderNumbers = $sourceItems
+            ->map(fn (array $row): string => (string) ($row['service_order']->number ?? $row['service_order']->id))
+            ->unique()
+            ->values();
+
+        $description = $sourceItems->count() > 1
+            ? $this->buildCompactNfseDescription($invoice)
+            : $this->buildDetailedNfseDescription($sourceItems, $orderNumbers);
+
+        $additionalInformation = mb_substr(
+            'OS vinculadas: ' . $orderNumbers->map(fn (string $number): string => '#' . $number)->implode(', '),
+            0,
+            500
+        );
+
+        return [
+            'fiscal_document_id' => $fiscalDocument->id,
+            'service_id' => $serviceId,
+            'description' => $description,
+            'additional_information' => $additionalInformation,
+            'unit_of_measure' => 'UN',
+            'quantity' => 1,
+            'unit_price' => $totalValue,
+            'total_price' => $totalValue,
+            'municipal_tax_code' => $municipalTaxCode,
+            'nbs_code' => $nbsCode,
+            'cnae_code' => $cnaeCode,
+            'iss_exigibility' => $issExigibility,
+            'iss_rate' => $issRate !== null ? (float) $issRate : null,
+            'included_in_total' => true,
+            'fiscal_snapshot' => [
+                'aggregation_mode' => 'single_nfse_item_from_invoice',
+                'invoice_id' => $invoice->id,
+                'service_order_ids' => $sourceItems
+                    ->map(fn (array $row): int => (int) $row['service_order']->id)
+                    ->unique()
+                    ->values()
+                    ->all(),
+                'service_orders' => $sourceItems
+                    ->groupBy(fn (array $row): int => (int) $row['service_order']->id)
+                    ->map(function (Collection $rows): array {
+                        $serviceOrder = $rows->first()['service_order'];
+
+                        return [
+                            'id' => (int) $serviceOrder->id,
+                            'number' => (string) ($serviceOrder->number ?? $serviceOrder->id),
+                            'items' => $rows->map(function (array $row): array {
+                                $item = $row['item'];
+                                $service = $row['service'];
+
+                                return [
+                                    'service_order_item_id' => (int) $item->id,
+                                    'service_id' => $item->service_id ? (int) $item->service_id : null,
+                                    'service_name' => $service?->name ?? $item->observations,
+                                    'quantity' => (float) $item->quantity,
+                                    'unit_price' => (float) $item->unit_price,
+                                    'total_price' => round((float) $item->quantity * (float) $item->unit_price, 2),
+                                    'service_code' => $service?->service_code,
+                                    'municipal_tax_code' => $service?->municipal_tax_code,
+                                    'nbs_code' => $service?->nbs_code,
+                                    'cnae_code' => $service?->cnae_code,
+                                ];
+                            })->values()->all(),
+                        ];
+                    })
+                    ->values()
+                    ->all(),
+            ],
+        ];
+    }
+
+    private function resolveSingleNfseValue(
+        Collection $sourceItems,
+        callable $resolver,
+        mixed $defaultValue,
+        string $fieldLabel
+    ): mixed {
+        $values = $sourceItems
+            ->map(function (array $row) use ($resolver) {
+                $value = $resolver($row);
+
+                if (is_string($value)) {
+                    $value = trim($value);
+                }
+
+                return $value;
+            })
+            ->filter(fn ($value): bool => $value !== null && $value !== '')
+            ->unique()
+            ->values();
+
+        if ($values->count() > 1) {
+            throw ValidationException::withMessages([
+                'items' => "A fatura agrupa serviços com {$fieldLabel} diferentes. Gere NFS-e separadas ou padronize a classificação fiscal.",
+            ]);
+        }
+
+        return $values->first() ?? $defaultValue;
+    }
+
+    private function resolvePreferredNfseValue(
+        Collection $sourceItems,
+        callable $resolver,
+        mixed $defaultValue
+    ): mixed {
+        $value = $sourceItems
+            ->map(function (array $row) use ($resolver) {
+                $resolved = $resolver($row);
+
+                if (is_string($resolved)) {
+                    $resolved = trim($resolved);
+                }
+
+                return $resolved;
+            })
+            ->first(fn ($resolved): bool => $resolved !== null && $resolved !== '');
+
+        return $value ?? $defaultValue;
+    }
+
+    private function buildCompactNfseDescription(Invoice $invoice): string
+    {
+        $parts = $invoice->serviceOrders
+            ->map(function ($serviceOrder): string {
+                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
+                $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
+
+                return "OS {$orderNumber} - Total R$ {$totalAmount}";
+            })
+            ->values();
+
+        return mb_substr($parts->implode(' | '), 0, 2000);
+    }
+
+    private function buildDetailedNfseDescription(Collection $sourceItems, Collection $orderNumbers): string
+    {
+        $serviceSummaries = $sourceItems
+            ->map(function (array $row): string {
+                $serviceOrder = $row['service_order'];
+                $item = $row['item'];
+                $service = $row['service'];
+
+                $serviceName = trim((string) ($service?->name ?? $item->observations ?? 'Serviço'));
+                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
+                $quantity = $this->formatDecimal((float) $item->quantity, 3);
+                $lineTotal = number_format(
+                    round((float) $item->quantity * (float) $item->unit_price, 2),
+                    2,
+                    ',',
+                    '.'
+                );
+
+                return "OS {$orderNumber}: {$serviceName} (qtd {$quantity}, total R$ {$lineTotal})";
+            })
+            ->values();
+
+        $descriptionParts = [];
+        $descriptionParts[] = 'Referente às ordens de serviço ' . $orderNumbers->map(
+            fn (string $number): string => '#' . $number
+        )->implode(', ') . '.';
+        $descriptionParts[] = 'Serviços faturados: ' . $serviceSummaries->implode(' | ');
+
+        return mb_substr(trim(implode(' ', $descriptionParts)), 0, 2000);
+    }
+
+    private function formatDecimal(float $value, int $precision = 2): string
+    {
+        $formatted = number_format($value, $precision, ',', '.');
+
+        return rtrim(rtrim($formatted, '0'), ',');
+    }
+}
