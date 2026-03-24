@@ -7,13 +7,17 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Models\FiscalDocument;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -22,19 +26,13 @@ class FiscalDocumentForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns([
-                'sm' => 1,
-                'md' => 6,
-                'lg' => 12,
-            ])
+            ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
             ->components([
                 Section::make('Dados da Nota de Entrada')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 6,
-                        'lg' => 12,
-                    ])
+                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                     ->columnSpanFull()
+                    ->collapsible()
+                    ->compact()
                     ->schema([
                         SelectPartner::make('customer_id')
                             ->label('Fornecedor')
@@ -50,11 +48,13 @@ class FiscalDocumentForm
                             ->label('Status')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->visibleOn('edit')
+                            ->formatStateUsing(fn(Status $state) => $state->description())
                             ->badge(),
                     ]),
                 Section::make('Identificação')
-                    ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
+                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                     ->columnSpanFull()
+                    ->compact()
                     ->schema([
                         TextInput::make('document_number')
                             ->label('Número da NF')
@@ -73,12 +73,9 @@ class FiscalDocumentForm
                             ->autocomplete(false),
                     ]),
                 Section::make('Operação')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 4,
-                        'lg' => 12,
-                    ])
+                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
                     ->columnSpanFull()
+                    ->compact()
                     ->schema([
                         Select::make('operation_nature')
                             ->label('Natureza da Operação')
@@ -95,21 +92,12 @@ class FiscalDocumentForm
                             ->native(false)
                             ->required(),
                     ]),
-                Section::make('Datas')
-                    ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
-                    ->columnSpanFull()
-                    ->schema([
-                        DatePicker::make('issued_at')
-                            ->label('Data de Emissão')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->displayFormat('d/m/Y')
-                            ->default(now()),
-                        DatePicker::make('movement_at')
-                            ->label('Data de Entrada')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->displayFormat('d/m/Y')
-                            ->default(now()),
-                    ]),
+                Livewire::make(ItemsRelationManager::class, fn(FiscalDocument $record) => [
+                    'ownerRecord' => $record,
+                    'pageClass' => EditFiscalDocument::class,
+                ])
+                    ->key('items-relation-manager')
+                    ->columnSpanFull(),
                 Hidden::make('company_id'),
                 Hidden::make('operation_type')->default(OperationType::ENTRADA->value),
             ]);
