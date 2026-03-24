@@ -74,8 +74,8 @@ class ServiceOrderForm
                                                     ->visibleOn('edit')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
                                                     ->getSearchResultsUsing(
-                                                        fn(string $search): array => (new EquipmentService())
-                                                            ->searchForSelect($search, Filament::getTenant()->id)
+                                                        fn(string $search, Get $get): array => (new EquipmentService())
+                                                            ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
                                                     )
                                                     ->getOptionLabelUsing(
                                                         fn($value): ?string => (new EquipmentService())
@@ -212,7 +212,7 @@ class ServiceOrderForm
                             ->icon(Heroicon::CurrencyDollar)
                             ->schema([
                                 Section::make('Valores')
-                                    ->columns(['sm' => 1,'md' => 6,'lg' => 12,])
+                                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([

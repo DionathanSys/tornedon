@@ -36,6 +36,7 @@ class NfeWebhookController extends Controller
             Log::info('NfeWebhookController: payload recebido', [
                 'chave'  => $payload['chave'] ?? null,
                 'origem' => $payload['origem'] ?? null,
+                'payload' => $payload,
             ]);
 
             // ------------------------------------------------------------------

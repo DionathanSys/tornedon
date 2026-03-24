@@ -62,8 +62,8 @@ class RequisitionForm
                             ->searchable()
                             ->visibleOn('edit')
                             ->getSearchResultsUsing(
-                                fn(string $search): array => (new EquipmentService())
-                                    ->searchForSelect($search, Filament::getTenant()->id)
+                                fn(string $search, Get $get): array => (new EquipmentService())
+                                    ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
                             )
                             ->getOptionLabelUsing(
                                 fn($value): ?string => (new EquipmentService())
