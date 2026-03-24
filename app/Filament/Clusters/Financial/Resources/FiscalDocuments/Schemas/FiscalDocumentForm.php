@@ -59,15 +59,18 @@ class FiscalDocumentForm
                         TextInput::make('document_number')
                             ->label('Número da NF')
                             ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->maxLength(20),
+                            ->maxLength(20)
+                            ->autocomplete(false),
                         TextInput::make('document_series')
                             ->label('Série')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->maxLength(5),
+                            ->maxLength(5)
+                            ->autocomplete(false),
                         TextInput::make('document_key')
                             ->label('Chave de Acesso')
                             ->columnSpan(['md' => 2, 'lg' => 7])
-                            ->maxLength(50),
+                            ->maxLength(50)
+                            ->autocomplete(false),
                     ]),
                 Section::make('Operação')
                     ->columns([

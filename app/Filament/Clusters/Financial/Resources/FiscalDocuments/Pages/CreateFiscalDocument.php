@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
@@ -25,10 +26,12 @@ class CreateFiscalDocument extends CreateRecord
         $data['company_id']     = $tenant->id;
         $data['operation_type'] = OperationType::ENTRADA->value;
 
-        // Frete padrão para nota de entrada — exigido pelo NfeDocumentValidator
+        // Defaults exigidos pelo NfeDocumentValidator mas sem campo no formulário de entrada
         $data['freight_data'] ??= [
             'modalidade_frete' => FreightModality::SEM_FRETE->value,
         ];
+        $data['is_final_consumer']        ??= false;
+        $data['buyer_presence_indicator'] ??= BuyerPresenceIndicator::OUTROS->value;
 
         return $data;
     }
