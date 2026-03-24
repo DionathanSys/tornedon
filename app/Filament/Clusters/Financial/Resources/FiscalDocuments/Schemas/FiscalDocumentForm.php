@@ -37,17 +37,18 @@ class FiscalDocumentForm
                     ->columnSpanFull()
                     ->schema([
                         SelectPartner::make('customer_id')
-                            ->label('Fornecedor'),
+                            ->label('Fornecedor')
+                            ->columnSpan(['md' => 3, 'lg' => 6]),
                         Select::make('document_type')
                             ->label('Tipo Documento')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 4])
                             ->options(DocumentModel::toSelectArray())
                             ->default(DocumentModel::NFE->value)
                             ->native(false)
                             ->required(),
                         TextEntry::make('status')
                             ->label('Status')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 1, 'lg' => 2])
                             ->visibleOn('edit')
                             ->badge(),
                     ]),
