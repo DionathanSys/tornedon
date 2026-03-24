@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\FiscalDocument;
+use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\Actions\SendNfeAction;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,6 +41,13 @@ class SendNfeJob implements ShouldQueue
             Log::error('SendNfeJob: FiscalDocument não encontrado', [
                 'fiscal_document_id' => $this->fiscalDocumentId,
             ]);
+
+            notify::error(
+                title: 'Falha ao processar emissão da NF-e',
+                message: 'Não foi possível localizar o documento fiscal para concluir a emissão.',
+                toDatabase: true,
+                users: $this->userId
+            );
             return;
         }
 
@@ -64,6 +72,13 @@ class SendNfeJob implements ShouldQueue
         Log::info('SendNfeJob: concluído com sucesso', [
             'fiscal_document_id' => $this->fiscalDocumentId,
         ]);
+
+        notify::success(
+            title: 'NF-e processada com sucesso',
+            message: 'A emissão assíncrona foi concluída.',
+            toDatabase: true,
+            users: $this->userId
+        );
     }
 
     public function failed(\Throwable $exception): void
@@ -84,5 +99,12 @@ class SendNfeJob implements ShouldQueue
             ];
             $doc->update(['errors_messages' => $errors]);
         }
+
+        notify::error(
+            title: 'Falha ao emitir NF-e',
+            message: 'A emissão assíncrona falhou. Verifique a aba de erros do documento para mais detalhes.',
+            toDatabase: true,
+            users: $this->userId
+        );
     }
 }
