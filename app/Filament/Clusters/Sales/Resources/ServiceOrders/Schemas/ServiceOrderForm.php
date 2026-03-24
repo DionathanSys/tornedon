@@ -11,7 +11,7 @@ use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
-use App\Filament\RelationManagers\OrderAttachmentsRelationManager;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
@@ -335,7 +335,7 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
-                                        ComponentsLivewire::make(OrderAttachmentsRelationManager::class, fn(ServiceOrder $record) => [
+                                        ComponentsLivewire::make(AttachmentsRelationManager::class, fn(ServiceOrder $record) => [
                                             'ownerRecord' => $record,
                                             'pageClass' => EditServiceOrder::class,
                                         ])

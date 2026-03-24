@@ -110,7 +110,8 @@ class EditFiscalDocument extends EditRecord
                             '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
                         );
                     })
-                    ->modalWidth('6xl'),
+                    ->modalWidth('6xl')
+                    ->after(fn() => $this->refreshFormData(['errors_messages'])),
 
                 Action::make('danfe')
                     ->label('Download DANFE')

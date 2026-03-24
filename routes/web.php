@@ -4,6 +4,7 @@ use App\Http\Controllers\ErrorTicketController;
 use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\OrderAttachmentController;
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\PdfPreviewController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,8 +33,9 @@ Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispat
     ->name('email-dispatch.attachment')
     ->middleware('signed');
 
-Route::get('/order-attachments/{orderAttachment}', [OrderAttachmentController::class, 'download'])
-    ->name('order-attachments.download')
+
+Route::get('/attachments/{attachment:public_id}/download', [AttachmentController::class, 'download'])
+    ->name('attachments.download')
     ->middleware(['web', 'auth']);
 
 Route::get('/pdf-preview/{token}', [PdfPreviewController::class, 'show'])

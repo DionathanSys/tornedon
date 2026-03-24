@@ -14,10 +14,12 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ServiceOrder extends Model
 {
+    use HasAttachments;
     protected static function booted(): void
     {
         static::deleting(function (self $serviceOrder): void {
@@ -145,10 +147,7 @@ class ServiceOrder extends Model
         return $this->hasMany(ServiceOrderItem::class);
     }
 
-    public function attachments(): MorphMany
-    {
-        return $this->morphMany(OrderAttachment::class, 'attachable');
-    }
+
 
     public function createdBy(): BelongsTo
     {

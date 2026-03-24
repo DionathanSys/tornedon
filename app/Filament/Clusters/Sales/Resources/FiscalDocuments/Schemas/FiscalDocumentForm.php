@@ -69,7 +69,23 @@ class FiscalDocumentForm
                                             ->live()
                                             ->disabledOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 4]),
-                                        Grid::make()
+                                        
+                                    ])
+                                    ->columns(['md' => 2])
+                                    ->collapsible(),
+
+                                Section::make('Dados da NFS-e')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        Select::make('nfse_model')
+                                            ->label('Modelo NFS-e')
+                                            ->options(NfseModel::toSelectArray())
+                                            ->disabledOn('edit')
+                                            ->required()
+                                            ->native(false)
+                                            ->columnSpan(['md' => 3]),
+                                            Grid::make()
                                             ->columnSpanFull()
                                             ->columns(['md' => 6, 'lg' => 12])
                                             ->schema([
@@ -92,7 +108,7 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description())
+                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => 'N/D')
                                                     ->badge()
                                                     ->color(fn(NfeStatus $state) => $state->color()),
                                                 TextEntry::make('nfe_status')
@@ -100,7 +116,7 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => ! $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description() ?? 'N/A')
+                                                    ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description() ?? 'N/D')
                                                     ->badge()
                                                     ->color(fn(NfeStatus $state) => $state->color()),
                                                 TextEntry::make('operation_nature')
@@ -108,47 +124,32 @@ class FiscalDocumentForm
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => ! $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn(OperationNature $state): ?string => $state->description() ?? 'N/A'),
+                                                    ->formatStateUsing(fn(OperationNature $state): ?string => $state->description() ?? 'N/D'),
                                                 TextEntry::make('document_number')
                                                     ->label('Nº do Documento')
                                                     ->visibleOn('edit')
-                                                    ->visible(fn($record): bool => $record->isNfse())
+                                                    ->visible(fn($record): bool => ! $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
                                                 TextEntry::make('rps_number')
                                                     ->label('Nº do Documento')
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
                                                 TextEntry::make('document_series')
                                                     ->label('Série')
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => ! $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
                                                 TextEntry::make('rps_series')
                                                     ->label('Série')
                                                     ->visibleOn('edit')
                                                     ->visible(fn($record): bool => $record->isNfse())
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/A'),
+                                                    ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
                                             ])
-                                    ])
-                                    ->columns(['md' => 2])
-                                    ->collapsible(),
-
-                                Section::make('Dados da NFS-e')
-                                    ->columnSpanFull()
-                                    ->columns(['md' => 6, 'lg' => 12])
-                                    ->schema([
-                                        Select::make('nfse_model')
-                                            ->label('Modelo NFS-e')
-                                            ->options(NfseModel::toSelectArray())
-                                            ->disabledOn('edit')
-                                            ->required()
-                                            ->native(false)
-                                            ->columnSpan(['md' => 3]),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
@@ -291,7 +292,6 @@ class FiscalDocumentForm
                             ->columns(['md' => 6, 'lg' => 12])
                             ->schema([
                                 Section::make('Histórico de Erros de Emissão')
-                                    ->description('Mensagens registradas no campo errors_messages do documento fiscal.')
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([

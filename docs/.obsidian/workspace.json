@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sem título.md",
-                "mode": "source",
+                "file": "plano-refatoracao-anexos-polimorficos.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Sem título"
+              "title": "plano-refatoracao-anexos-polimorficos"
             }
           }
         ]
@@ -186,9 +186,10 @@
   },
   "active": "77b91bcf8f985b54",
   "lastOpenFiles": [
+    "Sem título.md",
+    "plano-refatoracao-anexos-polimorficos.md",
     "Projeto/📥 Caixa de Entrada.md",
     "Projeto/Análise de Feature.md",
-    "Sem título.md",
     "regras-negocio/quote-production-workflow.md",
     "regras-negocio/partner-creation.md",
     "plano-geracao-contas-a-receber.md",
