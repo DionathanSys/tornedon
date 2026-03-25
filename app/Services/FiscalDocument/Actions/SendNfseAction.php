@@ -136,6 +136,14 @@ class SendNfseAction
                     'erros'    => (array) ($resp->erros ?? []),
                 ];
 
+                Log::debug('SendNfseAction: erro de validação na API', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'codigo'             => $resp->codigo ?? null,
+                    'mensagem'           => $resp->mensagem ?? null,
+                    'erros_detalhes'     => (array) ($resp->erros ?? []),
+                    'resp'               => $resp,
+                ]);
+
                 $fiscalDocument->update(['errors_messages' => $errors]);
 
                 $msgErro = 'Erro de validação nos dados da NFS-e: ' . ($resp->mensagem ?? 'verifique os campos');
