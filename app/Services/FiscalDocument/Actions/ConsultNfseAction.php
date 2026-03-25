@@ -91,11 +91,33 @@ class ConsultNfseAction
                 $updates['status']      = Status::CANCELLED->value;
 
                 $errors   = $fiscalDocument->errors_messages ?? [];
-                $errors[] = [
-                    'at'       => now()->toDateTimeString(),
-                    'codigo'   => $resp->codigo ?? null,
-                    'mensagem' => $resp->mensagem ?? 'Desconhecido',
-                ];
+                $baseMessage = $resp->mensagem ?? 'Desconhecido';
+
+                if (!empty($resp->erros) && is_array($resp->erros)) {
+                    foreach ($resp->erros as $erroItem) {
+                        $erroData = is_object($erroItem) ? (array) $erroItem : $erroItem;
+                        
+                        $campo     = $erroData['campo'] ?? 'N/A';
+                        $erroMsg   = $erroData['erro'] ?? 'N/A';
+                        $descricao = $erroData['descricao'] ?? 'N/A';
+                        $detalhe   = $erroData['detalhes'] ?? 'N/A';
+
+                        $formattedMessage = "{$baseMessage}\nCampo: {$campo}\nErro: {$erroMsg}\nDescrição: {$descricao}\nDetalhe: {$detalhe}";
+
+                        $errors[] = [
+                            'at'       => now()->toDateTimeString(),
+                            'codigo'   => $resp->codigo ?? null,
+                            'mensagem' => $formattedMessage,
+                            'erros'    => $erroData,
+                        ];
+                    }
+                } else {
+                    $errors[] = [
+                        'at'       => now()->toDateTimeString(),
+                        'codigo'   => $resp->codigo ?? null,
+                        'mensagem' => $baseMessage,
+                    ];
+                }
                 $updates['errors_messages'] = $errors;
 
                 Log::warning('ConsultNfseAction: NFS-e rejeitada pela API', [

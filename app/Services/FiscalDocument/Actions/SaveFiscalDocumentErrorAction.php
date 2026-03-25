@@ -15,16 +15,42 @@ class SaveFiscalDocumentErrorAction
         try {
             $errors = $fiscalDocument->errors_messages ?? [];
 
-            $entry = array_filter([
-                'at'       => now()->toDateTimeString(),
-                'mensagem' => $message ?? 'Erro desconhecido',
-                'acao'     => $data['acao'] ?? null,
-                'codigo'   => $data['codigo'] ?? null,
-                'erros'    => $data['erros'] ?? null,
-                'contexto' => $data['contexto'] ?? null,
-            ], static fn ($value): bool => $value !== null && $value !== []);
+            $baseMessage = $message ?? 'Erro desconhecido';
 
-            $errors[] = $entry;
+            if (!empty($data['erros']) && is_array($data['erros'])) {
+                foreach ($data['erros'] as $erroItem) {
+                    $erroData = is_object($erroItem) ? (array) $erroItem : $erroItem;
+                    
+                    $campo     = $erroData['campo'] ?? 'N/A';
+                    $erroMsg   = $erroData['erro'] ?? 'N/A';
+                    $descricao = $erroData['descricao'] ?? 'N/A';
+                    $detalhe   = $erroData['detalhes'] ?? 'N/A';
+
+                    $formattedMessage = "{$baseMessage}\nCampo: {$campo}\nErro: {$erroMsg}\nDescrição: {$descricao}\nDetalhe: {$detalhe}";
+
+                    $entry = array_filter([
+                        'at'       => now()->toDateTimeString(),
+                        'mensagem' => $formattedMessage,
+                        'acao'     => $data['acao'] ?? null,
+                        'codigo'   => $data['codigo'] ?? null,
+                        'erros'    => $erroData,
+                        'contexto' => $data['contexto'] ?? null,
+                    ], static fn ($value): bool => $value !== null && $value !== []);
+
+                    $errors[] = $entry;
+                }
+            } else {
+                $entry = array_filter([
+                    'at'       => now()->toDateTimeString(),
+                    'mensagem' => $baseMessage,
+                    'acao'     => $data['acao'] ?? null,
+                    'codigo'   => $data['codigo'] ?? null,
+                    'erros'    => $data['erros'] ?? null,
+                    'contexto' => $data['contexto'] ?? null,
+                ], static fn ($value): bool => $value !== null && $value !== []);
+
+                $errors[] = $entry;
+            }
 
             $fiscalDocument->update([
                 'errors_messages' => $errors,

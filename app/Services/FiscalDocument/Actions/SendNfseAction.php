@@ -129,12 +129,34 @@ class SendNfseAction
             // Erros de validação dos dados
             if (in_array($resp->codigo ?? null, [5001, 5002])) {
                 $errors   = $fiscalDocument->errors_messages ?? [];
-                $errors[] = [
-                    'at'       => now()->toDateTimeString(),
-                    'codigo'   => $resp->codigo ?? null,
-                    'mensagem' => $resp->mensagem ?? 'Erro de validação',
-                    'erros'    => (array) ($resp->erros ?? []),
-                ];
+                $baseMessage = $resp->mensagem ?? 'Erro de validação';
+
+                if (!empty($resp->erros) && is_array($resp->erros)) {
+                    foreach ($resp->erros as $erroItem) {
+                        $erroData = is_object($erroItem) ? (array) $erroItem : $erroItem;
+                        
+                        $campo     = $erroData['campo'] ?? 'N/A';
+                        $erroMsg   = $erroData['erro'] ?? 'N/A';
+                        $descricao = $erroData['descricao'] ?? 'N/A';
+                        $detalhe   = $erroData['detalhes'] ?? 'N/A';
+
+                        $formattedMessage = "{$baseMessage}\nCampo: {$campo}\nErro: {$erroMsg}\nDescrição: {$descricao}\nDetalhe: {$detalhe}";
+
+                        $errors[] = [
+                            'at'       => now()->toDateTimeString(),
+                            'codigo'   => $resp->codigo ?? null,
+                            'mensagem' => $formattedMessage,
+                            'erros'    => $erroData,
+                        ];
+                    }
+                } else {
+                    $errors[] = [
+                        'at'       => now()->toDateTimeString(),
+                        'codigo'   => $resp->codigo ?? null,
+                        'mensagem' => $baseMessage,
+                        'erros'    => [],
+                    ];
+                }
 
                 Log::debug('SendNfseAction: erro de validação na API', [
                     'fiscal_document_id' => $fiscalDocument->id,
@@ -159,11 +181,34 @@ class SendNfseAction
 
             // Qualquer outro erro
             $errors   = $fiscalDocument->errors_messages ?? [];
-            $errors[] = [
-                'at'       => now()->toDateTimeString(),
-                'codigo'   => $resp->codigo ?? null,
-                'mensagem' => $resp->mensagem ?? 'Erro desconhecido',
-            ];
+            $baseMessage = $resp->mensagem ?? 'Erro desconhecido';
+
+            if (!empty($resp->erros) && is_array($resp->erros)) {
+                foreach ($resp->erros as $erroItem) {
+                    $erroData = is_object($erroItem) ? (array) $erroItem : $erroItem;
+                    
+                    $campo     = $erroData['campo'] ?? 'N/A';
+                    $erroMsg   = $erroData['erro'] ?? 'N/A';
+                    $descricao = $erroData['descricao'] ?? 'N/A';
+                    $detalhe   = $erroData['detalhes'] ?? 'N/A';
+
+                    $formattedMessage = "{$baseMessage}\nCampo: {$campo}\nErro: {$erroMsg}\nDescrição: {$descricao}\nDetalhe: {$detalhe}";
+
+                    $errors[] = [
+                        'at'       => now()->toDateTimeString(),
+                        'codigo'   => $resp->codigo ?? null,
+                        'mensagem' => $formattedMessage,
+                        'erros'    => $erroData,
+                    ];
+                }
+            } else {
+                $errors[] = [
+                    'at'       => now()->toDateTimeString(),
+                    'codigo'   => $resp->codigo ?? null,
+                    'mensagem' => $baseMessage,
+                    'erros'    => (array) ($resp->erros ?? []),
+                ];
+            }
             $fiscalDocument->update(['errors_messages' => $errors]);
 
             $msgErro = $resp->mensagem ?? 'Erro ao enviar NFS-e';
