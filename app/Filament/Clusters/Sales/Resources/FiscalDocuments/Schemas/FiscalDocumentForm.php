@@ -90,7 +90,7 @@ class FiscalDocumentForm
                                             ->formatStateUsing(fn(Status $state): ?string => $state->description())
                                             ->badge()
                                             ->color(fn(Status $state) => $state->color()),
-                                        TextInput::make('nfse_status')
+                                        TextEntry::make('nfse_status')
                                             ->label('Status NFS-e')
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => $record->isNfse())
