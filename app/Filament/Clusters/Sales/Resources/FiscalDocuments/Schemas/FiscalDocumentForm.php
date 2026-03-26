@@ -90,38 +90,39 @@ class FiscalDocumentForm
                                             ->formatStateUsing(fn(Status $state): ?string => $state->description())
                                             ->badge()
                                             ->color(fn(Status $state) => $state->color()),
-                                        // TextInput::make('nfse_status')
-                                        //     ->label('Status NFS-e')
-                                        //     ->visibleOn('edit')
-                                        //     ->visible(fn($record): bool => $record->isNfse())
-                                        //     ->columnSpan(['md' => 1, 'lg' => 2])
-                                        //     ->formatStateUsing(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
-                                        TextEntry::make('nfse_status')
-                                            ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D')
-                                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                                        TextInput::make('nfse_status')
+                                            ->label('Status NFS-e')
+                                            ->visibleOn('edit')
+                                            ->visible(fn($record): bool => $record->isNfse())
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
                                         TextEntry::make('rps_number')
                                             ->label('Nº RPS')
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
+                                            ->state(fn($record): string => $record->rps_number ? $record->rps_number->description() : 'N/D')
+                                            ->placeholder('N/D'),
                                         TextEntry::make('document_series')
                                             ->label('Série')
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => ! $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
+                                            ->state(fn($record): string => $record->document_series ? $record->document_series->description() : 'N/D')
+                                            ->placeholder('N/D'),
                                         TextEntry::make('rps_series')
                                             ->label('Série')
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
-                                        TextEntry::make('document_key')
+                                            ->state(fn($record): string => $record->rps_series ? $record->rps_series->description() : 'N/D')
+                                            ->placeholder('N/D'),
+                                        TextEntry::make('document_key') 
                                             ->label('Nº do Doc.')
                                             ->visibleOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->formatStateUsing(fn($state): ?string => $state ?? 'N/D'),
+                                            ->state(fn($record): string => $record->document_key ? $record->document_key->description() : 'N/D')
+                                            ->placeholder('N/D'),
                                         TextEntry::make('invoice_id')
                                             ->label('Fatura Vinculada')
                                             ->visibleOn('edit')
