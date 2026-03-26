@@ -95,9 +95,9 @@ class FiscalDocumentForm
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn(NfeStatus $state): string => dd($state, $state->description())) //$state ? $state->description() : 'N/D')
+                                            ->formatStateUsing(fn($state): string => dd($state, $state->description())) //$state ? $state->description() : 'N/D')
                                             ->badge()
-                                            ->color(fn(NfeStatus $state) => $state->color()),
+                                            ->color(fn($state) => $state->color()),
                                         TextEntry::make('rps_number')
                                             ->label('Nº RPS')
                                             ->visibleOn('edit')
