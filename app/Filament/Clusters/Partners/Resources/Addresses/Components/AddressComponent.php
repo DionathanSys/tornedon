@@ -16,17 +16,12 @@ final class AddressComponent
             Grid::make(3)
                 ->columnSpanFull()
                 ->schema([
-                    // TextInput::make('postal_code')
-                    //     ->label('CEP')
-                    //     ->mask('99999-999')
-                    //     ->required()
-                    //     ->maxLength(9)
-                    //     ->columnSpan(1),
-
-                    CepInput::make('cep')
+                    TextInput::make('postal_code')
+                        ->label('CEP')
+                        ->mask('99999-999')
                         ->required()
-                        ->setMode('suffix') // 'prefix' or 'suffix' (default: 'suffix')
-                        ->setActionLabel('Buscar CEP'), // Custom search button label
+                        ->maxLength(9)
+                        ->columnSpan(1),
 
                     TextInput::make('street')
                         ->label('Logradouro/Rua')
