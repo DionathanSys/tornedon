@@ -20,3 +20,6 @@
 	- [ ] Inserir campo em configurações para inserir a logo.
 	- [ ] Inserir logo nos arquivos de pdf.
 - [ ] Corrigir rate-limit para consulta de CNPJ
+
+
+re_A4wAKywf_22ceowAoWJeNgPbTz3XXUSAY

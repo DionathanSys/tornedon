@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ec4db6e2e0a15e4c4437d9c71b8fecdc",
+    "content-hash": "1626fba747e93932ad3055139abe9500",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -6194,16 +6194,16 @@
         },
         {
             "name": "resend/resend-php",
-            "version": "v1.1.0",
+            "version": "v1.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/resend/resend-php.git",
-                "reference": "c1ce4ee5dc8ca90a5e6a2dc6d772a06abbe7c9d3"
+                "reference": "3711ecd7b205b964a2a7d6f3faff9555ba3b1cc6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/resend/resend-php/zipball/c1ce4ee5dc8ca90a5e6a2dc6d772a06abbe7c9d3",
-                "reference": "c1ce4ee5dc8ca90a5e6a2dc6d772a06abbe7c9d3",
+                "url": "https://api.github.com/repos/resend/resend-php/zipball/3711ecd7b205b964a2a7d6f3faff9555ba3b1cc6",
+                "reference": "3711ecd7b205b964a2a7d6f3faff9555ba3b1cc6",
                 "shasum": ""
             },
             "require": {
@@ -6213,7 +6213,7 @@
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.13",
                 "mockery/mockery": "^1.6",
-                "pestphp/pest": "^2.0|^3.0|^4.0"
+                "pestphp/pest": "^1.0|^2.0|^3.0|^4.0"
             },
             "type": "library",
             "autoload": {
@@ -6245,9 +6245,9 @@
             ],
             "support": {
                 "issues": "https://github.com/resend/resend-php/issues",
-                "source": "https://github.com/resend/resend-php/tree/v1.1.0"
+                "source": "https://github.com/resend/resend-php/tree/v1.1.1"
             },
-            "time": "2025-11-26T08:41:40+00:00"
+            "time": "2026-03-16T19:24:23+00:00"
         },
         {
             "name": "ryangjchandler/blade-capture-directive",
@@ -12714,12 +12714,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }

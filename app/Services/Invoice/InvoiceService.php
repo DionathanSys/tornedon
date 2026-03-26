@@ -786,28 +786,45 @@ class InvoiceService
 
     public function buildNfseItemDescription(Invoice $invoice, string $mode = NfseDescriptionMode::AUTO->value): string
     {
-        $invoice->loadMissing('serviceOrders');
+        $invoice->loadMissing('serviceOrders.items.service');
 
         $serviceOrders = $invoice->serviceOrders->values();
 
         $resolvedMode = NfseDescriptionMode::tryFrom($mode) ?? NfseDescriptionMode::AUTO;
 
-        if ($resolvedMode === NfseDescriptionMode::AUTO) {
-            $resolvedMode = match (true) {
-                $serviceOrders->count() <= 1 => NfseDescriptionMode::ORDER_ONLY,
-                $serviceOrders->count() <= 5 => NfseDescriptionMode::ORDER_WITH_TOTAL,
-                default => NfseDescriptionMode::ORDER_ONLY,
-            };
-        }
-
         $parts = $serviceOrders
-            ->map(function ($serviceOrder) use ($resolvedMode): string {
+            ->map(function ($serviceOrder) use ($resolvedMode, $serviceOrders): string {
                 $orderNumber = $serviceOrder->number ?? '##';
 
                 if ($resolvedMode === NfseDescriptionMode::ORDER_WITH_TOTAL) {
                     $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
 
                     return "OS {$orderNumber} - R$ {$totalAmount}";
+                }
+
+                if ($resolvedMode === NfseDescriptionMode::AUTO) {
+                    $count = $serviceOrders->count();
+
+                    if ($count <= 1) {
+                        $sourceItems = collect([$serviceOrder])->flatMap(function ($order) {
+                            return $order->items->map(fn ($item) => [
+                                'service_order' => $order,
+                                'item' => $item,
+                                'service' => $item->service,
+                            ]);
+                        });
+                        $orderNumbers = collect([(string) ($serviceOrder->number ?? $serviceOrder->id)]);
+
+                        return $this->buildDetailedNfseDescription($sourceItems, $orderNumbers);
+                    }
+
+                    if ($count <= 5) {
+                        $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
+
+                        return "OS {$orderNumber} - R$ {$totalAmount}";
+                    }
+
+                    return "{$orderNumber}";
                 }
 
                 return "OS {$orderNumber}";
