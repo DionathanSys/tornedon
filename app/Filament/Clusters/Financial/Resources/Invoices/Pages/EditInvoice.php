@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 
+use App\Enum\FiscalDocument\DocumentModel;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
@@ -51,7 +52,10 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
                 ImportRecordsAction::make()
                     ->size(Size::Small),
-                GenerateFiscalDocumentAction::make()
+                GenerateFiscalDocumentAction::make(DocumentModel::NFE)
+                    ->color('gray')
+                    ->size(Size::Small),
+                GenerateFiscalDocumentAction::make(DocumentModel::NFSE)
                     ->color('gray')
                     ->size(Size::Small),
                 DeleteAction::make()

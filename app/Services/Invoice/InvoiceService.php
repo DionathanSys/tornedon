@@ -4,6 +4,7 @@ namespace App\Services\Invoice;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
+use App\Enum\FiscalDocument\NfseDescriptionMode;
 use App\Enum\Invoice\Status;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
@@ -286,7 +287,7 @@ class InvoiceService
                 $items = [];
 
                 if ($documentType === DocumentModel::NFSE->value) {
-                    $items[] = $this->buildSingleNfseItem($invoice, $fiscalDocument);
+                    $items[] = $this->buildSingleNfseItem($invoice, $fiscalDocument, $fiscalData);
                 } else {
                     foreach ($invoice->requisitions as $requisition) {
                         foreach ($requisition->items as $reqItem) {
@@ -594,7 +595,7 @@ class InvoiceService
         return str_pad($sequence->last_number, 6, '0', STR_PAD_LEFT);
     }
 
-    private function buildSingleNfseItem(Invoice $invoice, FiscalDocument $fiscalDocument): array
+    private function buildSingleNfseItem(Invoice $invoice, FiscalDocument $fiscalDocument, array $fiscalData = []): array
     {
         $profile = $invoice->company?->fiscalProfile;
 
@@ -663,9 +664,14 @@ class InvoiceService
             ->unique()
             ->values();
 
-        $description = $sourceItems->count() > 1
-            ? $this->buildCompactNfseDescription($invoice)
-            : $this->buildDetailedNfseDescription($sourceItems, $orderNumbers);
+        $descriptionMode = $fiscalData['nfse_description_mode'] ?? NfseDescriptionMode::AUTO->value;
+        $defaultDescription = $this->buildNfseItemDescription($invoice, (string) $descriptionMode);
+
+        $description = trim((string) ($fiscalData['nfse_item_description'] ?? ''));
+
+        if ($description === '') {
+            $description = $defaultDescription;
+        }
 
         $additionalInformation = mb_substr(
             'OS vinculadas: ' . $orderNumbers->map(fn (string $number): string => '#' . $number)->implode(', '),
@@ -778,14 +784,33 @@ class InvoiceService
         return $value ?? $defaultValue;
     }
 
-    private function buildCompactNfseDescription(Invoice $invoice): string
+    public function buildNfseItemDescription(Invoice $invoice, string $mode = NfseDescriptionMode::AUTO->value): string
     {
-        $parts = $invoice->serviceOrders
-            ->map(function ($serviceOrder): string {
-                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
-                $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
+        $invoice->loadMissing('serviceOrders');
 
-                return "OS {$orderNumber} - Total R$ {$totalAmount}";
+        $serviceOrders = $invoice->serviceOrders->values();
+
+        $resolvedMode = NfseDescriptionMode::tryFrom($mode) ?? NfseDescriptionMode::AUTO;
+
+        if ($resolvedMode === NfseDescriptionMode::AUTO) {
+            $resolvedMode = match (true) {
+                $serviceOrders->count() <= 1 => NfseDescriptionMode::ORDER_ONLY,
+                $serviceOrders->count() <= 5 => NfseDescriptionMode::ORDER_WITH_TOTAL,
+                default => NfseDescriptionMode::ORDER_ONLY,
+            };
+        }
+
+        $parts = $serviceOrders
+            ->map(function ($serviceOrder) use ($resolvedMode): string {
+                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
+
+                if ($resolvedMode === NfseDescriptionMode::ORDER_WITH_TOTAL) {
+                    $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
+
+                    return "OS {$orderNumber} - Total R$ {$totalAmount}";
+                }
+
+                return "OS {$orderNumber}";
             })
             ->values();
 
