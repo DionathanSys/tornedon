@@ -50,7 +50,7 @@ class FiscalProfileService
     {
         $profile = $this->getFiscalProfile($companyId);
 
-        return $profile?->default_municipal_tax_code;
+        return $profile?->default_service_code;
     }
 
     /**
