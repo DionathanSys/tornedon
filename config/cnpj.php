@@ -30,7 +30,7 @@ return [
     */
     'provider_settings' => [
         'open_cnpja' => [
-            'base_url' => env('CNPJ_OPEN_CNPJA_BASE_URL', 'https://open.cnpja.com/office'),
+            'base_url' => env('CNPJ_OPEN_CNPJA_BASE_URL', 'https://brasilapi.com.br/api/cnpj/v1'),
             'timeout' => (int) env('CNPJ_OPEN_CNPJA_TIMEOUT', 15),
             'headers' => [],
             'rate_limit' => [
