@@ -94,8 +94,8 @@ class EditService extends EditRecord
                     ]);
 
                     return $result;
-                }),
-                ->size(Size::Small)
+                })
+                ->size(Size::Small),
             RestoreAction::make()
                 ->using(function (Model $record): bool {
                     Log::debug('EditService: Iniciando restore de serviço', [
