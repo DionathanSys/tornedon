@@ -38,7 +38,7 @@ class ServiceForm
                             ->columns(['sm' => 1, 'md' => 4, 'lg' => 8])
                             ->columnSpanFull()
                             ->schema([
-                                TextInput::make('code')
+                                TextInput::make('service_code')
                                     ->label('Código')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                     ->readOnly()
