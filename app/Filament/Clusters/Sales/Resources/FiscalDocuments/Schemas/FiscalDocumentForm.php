@@ -118,7 +118,7 @@ class FiscalDocumentForm
                                             ->state(fn($record): string => $record->rps_series ? $record->rps_series->description() : 'N/D')
                                             ->placeholder('N/D'),
                                         TextEntry::make('document_key') 
-                                            ->label('Nº do Doc.')
+                                            ->label('Chave Doc.')
                                             ->visibleOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->state(fn($record): string => $record->document_key ? $record->document_key->description() : 'N/D')

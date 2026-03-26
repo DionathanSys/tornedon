@@ -673,17 +673,17 @@ class InvoiceService
             $description = $defaultDescription;
         }
 
-        $additionalInformation = mb_substr(
-            'OS vinculadas: ' . $orderNumbers->map(fn (string $number): string => '#' . $number)->implode(', '),
-            0,
-            500
-        );
+        // $additionalInformation = mb_substr(
+        //     'OS vinculadas: ' . $orderNumbers->map(fn (string $number): string => '#' . $number)->implode(', '),
+        //     0,
+        //     500
+        // );
 
         return [
             'fiscal_document_id' => $fiscalDocument->id,
             'service_id' => $serviceId,
             'description' => $description,
-            'additional_information' => $additionalInformation,
+            'additional_information' => null,
             'unit_of_measure' => 'UN',
             'quantity' => 1,
             'unit_price' => $totalValue,
@@ -802,12 +802,12 @@ class InvoiceService
 
         $parts = $serviceOrders
             ->map(function ($serviceOrder) use ($resolvedMode): string {
-                $orderNumber = $serviceOrder->number ?? $serviceOrder->id;
+                $orderNumber = $serviceOrder->number ?? '##';
 
                 if ($resolvedMode === NfseDescriptionMode::ORDER_WITH_TOTAL) {
                     $totalAmount = number_format((float) $serviceOrder->total_amount, 2, ',', '.');
 
-                    return "OS {$orderNumber} - Total R$ {$totalAmount}";
+                    return "OS {$orderNumber} - R$ {$totalAmount}";
                 }
 
                 return "OS {$orderNumber}";
