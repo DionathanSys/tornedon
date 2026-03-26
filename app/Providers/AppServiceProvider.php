@@ -20,9 +20,11 @@ use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
+use App\Models\ProductionOrder;
 use App\Models\Requisition;
 use App\Observers\FiscalDocumentObserver;
 use App\Observers\InvoiceObserver;
+use App\Observers\ProductionOrderObserver;
 use App\Observers\RequisitionObserver;
 use App\Observers\ServiceOrderObserver;
 use App\Models\ServiceOrder;
@@ -90,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
 
         ServiceOrder::observe(ServiceOrderObserver::class);
         Requisition::observe(RequisitionObserver::class);
+        ProductionOrder::observe(ProductionOrderObserver::class);
         Invoice::observe(InvoiceObserver::class);
         FiscalDocument::observe(FiscalDocumentObserver::class);
 

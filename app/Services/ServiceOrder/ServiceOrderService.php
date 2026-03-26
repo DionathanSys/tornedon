@@ -15,6 +15,7 @@ use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use App\Services\ServiceOrder\Actions\ReopenServiceOrderAction;
 use App\Services\ServiceOrder\Actions\RestoreServiceOrderAction;
 use App\Services\ServiceOrder\Actions\UpdateServiceOrderAction;
+use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -507,9 +508,13 @@ class ServiceOrderService
     /**
      * Encerra uma ordem de serviço (aberta → encerrada).
      */
-    public function close(ServiceOrder $serviceOrder, int $userId): ?ServiceOrder
+    public function close(ServiceOrder $serviceOrder, int $userId, ?bool $sendEmail = null): ?ServiceOrder
     {
         $this->resetResponse();
+
+        if ($sendEmail !== null) {
+            DocumentNotificationDecisionContext::put('service_order', (int) $serviceOrder->id, $sendEmail);
+        }
 
         try {
             return DB::transaction(function () use ($serviceOrder, $userId) {

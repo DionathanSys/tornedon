@@ -6,8 +6,10 @@ use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\Requisition;
 use App\Notification\NotifyService as notify;
+use App\Services\Email\DocumentNotificationService;
 use App\Services\Requisition\RequisitionService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Toggle;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -24,8 +26,14 @@ final class CloseRequisitionAction
             ->modalHeading('Encerrar Requisição')
             ->modalDescription('Tem certeza que deseja encerrar esta requisição? Esta ação mudará o status para "Encerrada".')
             ->modalSubmitActionLabel('Sim, encerrar')
+            ->form([
+                Toggle::make('send_email')
+                    ->label('Enviar e-mail ao encerrar?')
+                    ->default(fn (Requisition $record): bool => app(DocumentNotificationService::class)->shouldSendForRequisition($record))
+                    ->inline(false),
+            ])
             ->visible(fn (Requisition $record): bool => $record->status === Status::OPEN)
-            ->action(function (Requisition $record): void {
+            ->action(function (Requisition $record, array $data): void {
                 Log::debug('CloseRequisitionAction (Filament): Encerrando requisição', [
                     'metodo'         => __METHOD__ . '@' . __LINE__,
                     'requisition_id' => $record->id,
@@ -33,7 +41,7 @@ final class CloseRequisitionAction
                 ]);
 
                 $service = app(RequisitionService::class);
-                $service->close($record, Auth::id());
+                $service->close($record, Auth::id(), (bool) ($data['send_email'] ?? false));
 
                 if ($service->hasError()) {
                     Log::error('CloseRequisitionAction (Filament): Erro ao encerrar requisição', [
