@@ -47,8 +47,7 @@ class CompanyPartnerForm
                     ->visibleOn('create'),
                 Callout::make('Endereço inválido')
                     ->columnSpanFull()
-                    ->warning()
-                    ->color(Color::Amber)
+                    ->danger()
                     ->description('Este parceiro não possui um endereço válido. Cadastre ou atualize um endereço para evitar problemas em documentos fiscais.')
                     ->visible(fn(Get $get): bool => ! ($get('has_valid_address') ?? false))
                     ->visibleOn('edit'),
