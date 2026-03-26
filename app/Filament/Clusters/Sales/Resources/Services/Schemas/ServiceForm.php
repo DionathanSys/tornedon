@@ -26,7 +26,7 @@ class ServiceForm
                 'lg' => 8,
             ])
             ->components([
-                Section::make('Informacoes do Servico')
+                Section::make('Informações do Serviço')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -39,21 +39,21 @@ class ServiceForm
                             ->columnSpanFull()
                             ->schema([
                                 TextInput::make('code')
-                                    ->label('Codigo')
+                                    ->label('Código')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                     ->required()
                                     ->readOnly()
                                     ->saved(false)
                                     ->autocomplete(false),
                                 TextInput::make('name')
-                                    ->label('Nome do Servico')
+                                    ->label('Nome do Serviço')
                                     ->columnSpan(['md' => 3, 'lg' => 6])
                                     ->required()
                                     ->maxLength(255)
                                     ->autocomplete(false),
                             ]),
                         Textarea::make('description')
-                            ->label('Descricao')
+                            ->label('Descrição')
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->rows(3)
                             ->maxLength(2000)
@@ -69,7 +69,7 @@ class ServiceForm
                             ->inline(false)
                             ->default(true),
                         Toggle::make('requires_approval')
-                            ->label('Requer Aprovacao')
+                            ->label('Requer Aprovação')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->inline(false)
                             ->default(false),
@@ -90,14 +90,14 @@ class ServiceForm
                     ->columnSpanFull()
                     ->schema([
                         Money::make('price')
-                            ->label('Preco')
+                            ->label('Preço')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->required()
                             ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->default(0),
                         Money::make('min_sale_price')
-                            ->label('Preco Minimo')
-                            ->helperText('O preco efetivo deste serviço, após desconto, não pode ficar abaixo deste valor.')
+                            ->label('Preço Mínimo')
+                            ->helperText('O preço efetivo deste serviço, após desconto, não pode ficar abaixo deste valor.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->default(0),
@@ -108,7 +108,7 @@ class ServiceForm
                             ->default(0),
                     ]),
 
-                Section::make('Informacões Fiscais')
+                Section::make('Informações Fiscais')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,

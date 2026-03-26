@@ -5,10 +5,13 @@ namespace App\Filament\Clusters\Sales\Resources\Services\Pages;
 use App\Filament\Clusters\Sales\Resources\Services\ServiceResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +23,14 @@ class EditService extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('new-service')
+                ->label('Serviço')
+                ->url(ServiceResource::getUrl('create'))
+                ->icon(Heroicon::Plus)
+                ->color('primary')
+                ->size(Size::Small),
             DeleteAction::make()
+                ->size(Size::Small)
                 ->using(function (Model $record): bool {
                     Log::debug('EditService: Iniciando soft delete de serviço', [
                         'metodo' => __METHOD__ . '@' . __LINE__,
@@ -53,6 +63,7 @@ class EditService extends EditRecord
                     return $result;
                 }),
             ForceDeleteAction::make()
+                ->size(Size::Small)
                 ->using(function (Model $record): bool {
                     Log::debug('EditService: Iniciando force delete de serviço', [
                         'metodo' => __METHOD__ . '@' . __LINE__,
@@ -84,6 +95,7 @@ class EditService extends EditRecord
 
                     return $result;
                 }),
+                ->size(Size::Small)
             RestoreAction::make()
                 ->using(function (Model $record): bool {
                     Log::debug('EditService: Iniciando restore de serviço', [
@@ -159,7 +171,7 @@ class EditService extends EditRecord
                 message: $service->getMessageUser(),
                 errorCode: $service->getErrorCode()
             );
-            
+
             $this->halt();
         }
 
