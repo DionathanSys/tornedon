@@ -173,11 +173,7 @@ class ServiceOrderForm
                             ->icon(Heroicon::ChatBubbleBottomCenterText)
                             ->schema([
                                 Section::make('Anotações')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
+                                    ->columns(['sm' => 1,'md' => 4,'lg' => 12,])
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([

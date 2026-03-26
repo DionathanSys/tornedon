@@ -41,7 +41,6 @@ class ServiceForm
                                 TextInput::make('code')
                                     ->label('Código')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                    ->required()
                                     ->readOnly()
                                     ->saved(false)
                                     ->autocomplete(false),

@@ -35,6 +35,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->registration()
+            ->passwordReset()
+            ->emailVerification()
+            ->emailChangeVerification()
+            ->profile()
             ->tenant(Company::class)
             ->tenantRegistration(RegisterCompany::class)
             ->colors([
@@ -67,7 +72,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 'panels::body.end',
-                fn () => \Livewire\Livewire::mount('create-error-ticket-action')
+                fn() => \Livewire\Livewire::mount('create-error-ticket-action')
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications();

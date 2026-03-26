@@ -26,9 +26,9 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
     protected static ?string $cluster = SettingsCluster::class;
 
-    protected static ?string $navigationLabel = 'Preferencias';
+    protected static ?string $navigationLabel = 'Preferências';
 
-    protected static ?string $title = 'Preferencias da Empresa';
+    protected static ?string $title = 'Preferências da Empresa';
 
     protected static ?int $navigationSort = 1;
 
@@ -110,55 +110,55 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         return $schema
             ->schema([
                 \Filament\Schemas\Components\Section::make('Pagamento')
-                    ->description('Configuracoes padrao para pagamentos')
+                    ->description('Configurações padrão para pagamentos')
                     ->icon('heroicon-o-credit-card')
                     ->schema([
                         Forms\Components\Select::make('default_payment_method')
-                            ->label('Metodo de Pagamento Padrao')
+                            ->label('Método de Pagamento Padrão')
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->placeholder('Selecione um metodo padrao')
+                            ->placeholder('Selecione um método padrão')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         Forms\Components\Select::make('default_payment_condition')
-                            ->label('Condicao de Pagamento Padrao')
+                            ->label('Condição de Pagamento Padrão')
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->placeholder('Selecione uma condicao padrao')
+                            ->placeholder('Selecione uma condição padrão')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Vendas e Orcamentos')
-                    ->description('Configuracoes relacionadas a vendas e orcamentos')
+                \Filament\Schemas\Components\Section::make('Vendas e Orçamentos')
+                    ->description('Configurações relacionadas a vendas e orçamentos')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
                         Forms\Components\TextInput::make('default_quote_validity_days')
-                            ->label('Validade Padrao de Orcamentos (dias)')
+                            ->label('Validade Padrão de Orçamentos (dias)')
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(365)
                             ->default(30),
                         Forms\Components\TextInput::make('default_profit_margin')
-                            ->label('Margem de Lucro Padrao (%)')
+                            ->label('Margem de Lucro Padrão (%)')
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(100)
                             ->step(0.1)
                             ->suffix('%'),
                         Money::make('default_value_km')
-                            ->label('Valor Padrao por KM')
+                            ->label('Valor Padrão por KM')
                             ->default(3.5),
                         Forms\Components\TextInput::make('default_warranty_days')
-                            ->label('Garantia Padrao (dias)')
+                            ->label('Garantia Padrão (dias)')
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(3650)
                             ->default(90),
                         Forms\Components\TextInput::make('require_approval_threshold')
-                            ->label('Limite para Aprovacao (R$)')
+                            ->label('Limite para Aprovação (R$)')
                             ->numeric()
                             ->minValue(0)
                             ->prefix('R$'),
@@ -166,15 +166,15 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Notificacoes')
-                    ->description('Configure quais notificacoes internas deseja receber')
+                \Filament\Schemas\Components\Section::make('Notificações')
+                    ->description('Configure quais notificações internas deseja receber')
                     ->icon('heroicon-o-bell')
                     ->schema([
                         Forms\Components\Toggle::make('notify_new_order')
                             ->label('Notificar em Novos Pedidos')
                             ->inline(false),
                         Forms\Components\Toggle::make('notify_status_change')
-                            ->label('Notificar Mudanca de Status')
+                            ->label('Notificar Mudança de Status')
                             ->inline(false),
                         Forms\Components\Toggle::make('notify_low_stock')
                             ->label('Notificar Estoque Baixo')
@@ -186,15 +186,15 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Politicas de E-mail por Documento')
-                    ->description('Envio apenas no encerramento/confirmacao: OS, REQ, OP, FAT e NF')
+                \Filament\Schemas\Components\Section::make('Políticas de E-mail por Documento')
+                    ->description('Envio apenas no encerramento/confirmação: OS, REQ, OP, FAT e NF')
                     ->icon('heroicon-o-paper-airplane')
                     ->schema([
-                        Fieldset::make('Ordem de Servico (encerrada)')
+                        Fieldset::make('Ordem de Serviço (encerrada)')
                             ->schema($this->policyFields(prefix: 'policy_service_order', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
-                        Fieldset::make('Requisicao (encerrada)')
+                        Fieldset::make('Requisição (encerrada)')
                             ->schema($this->policyFields(prefix: 'policy_requisition', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
-                        Fieldset::make('Ordem de Producao (encerrada)')
+                        Fieldset::make('Ordem de Produção (encerrada)')
                             ->schema($this->policyFields(prefix: 'policy_production_order', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
                         Fieldset::make('Fatura (confirmada)')
                             ->schema($this->policyFields(prefix: 'policy_invoice', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
@@ -205,18 +205,18 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->collapsible(),
 
                 \Filament\Schemas\Components\Section::make('E-mail')
-                    ->description('Configuracoes corporativas gerais')
+                    ->description('Configurações corporativas gerais')
                     ->icon('heroicon-o-envelope')
                     ->schema([
                         Forms\Components\Textarea::make('email_signature')
                             ->label('Assinatura de E-mail')
                             ->rows(4)
-                            ->placeholder('Digite a assinatura padrao para e-mails')
+                            ->placeholder('Digite a assinatura padrão para e-mails')
                             ->columnSpanFull(),
                         Forms\Components\TextInput::make('email_cc')
                             ->label('CC Global')
                             ->placeholder('gerencia@empresa.com;financeiro@empresa.com')
-                            ->helperText('Separador por ; ou ,'),
+                            ->helperText('Separado por ; ou ,'),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
@@ -240,9 +240,9 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             Forms\Components\Textarea::make("{$prefix}_body")
                 ->label('Corpo HTML')
                 ->rows(3)
-                ->helperText('Variaveis: {{partner_name}}, {{document_number}}, {{document_type}}, {{event_name}}'),
+                ->helperText('Variáveis: {{partner_name}}, {{document_number}}, {{document_type}}, {{event_name}}'),
             Forms\Components\CheckboxList::make("{$prefix}_required_attachments")
-                ->label('Anexos obrigatorios')
+                ->label('Anexos obrigatórios')
                 ->options($requiredOptions)
                 ->columns(2),
             Forms\Components\CheckboxList::make("{$prefix}_optional_attachments")
@@ -275,7 +275,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         if (! $companyId) {
             Notification::make()
                 ->title('Erro ao salvar')
-                ->body('Empresa nao identificada.')
+                ->body('Empresa não identificada.')
                 ->danger()
                 ->send();
             return;
@@ -326,14 +326,14 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             CompanyPreference::clearCache($companyId);
 
             Notification::make()
-                ->title('Preferencias salvas')
-                ->body('As preferencias da empresa foram atualizadas com sucesso.')
+                ->title('Preferências salvas')
+                ->body('As preferências da empresa foram atualizadas com sucesso.')
                 ->success()
                 ->send();
         } catch (\Throwable $e) {
             Notification::make()
                 ->title('Erro ao salvar')
-                ->body('Ocorreu um erro ao salvar as preferencias: ' . $e->getMessage())
+                ->body('Ocorreu um erro ao salvar as preferências: ' . $e->getMessage())
                 ->danger()
                 ->send();
         }
