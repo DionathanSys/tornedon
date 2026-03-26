@@ -170,7 +170,7 @@ class EquipmentService
      * @param int    $companyId  Restringe à empresa atual
      * @param int    $limit   Máximo de resultados (padrão 20)
      */
-    public function searchForSelect(string $search, int $companyId, ?int $owner_id = null, int $limit = 20): array
+    public function searchForSelect(string $search, int $companyId, ?int $owner_id = null, int $limit = 20, array $options = []): array
     {
         Log::debug('Buscando equipamentos para select', [
             'metodo'     => __METHOD__ . '@' . __LINE__,
@@ -190,7 +190,7 @@ class EquipmentService
 
         return $query->get()
             ->mapWithKeys(fn(Equipment $equipment) => [
-                $equipment->id => self::formatSelectLabel($equipment),
+                $equipment->id => self::formatSelectLabel($equipment, $options),
             ])
             ->toArray();
     }
@@ -198,7 +198,7 @@ class EquipmentService
     /**
      * Retorna o label formatado de um equipamento para exibição em um select.
      */
-    public function getLabelForSelect(int $id): ?string
+    public function getLabelForSelect(int $id, array $options = []): ?string
     {
         $equipment = $this->find($id);
 
@@ -206,7 +206,7 @@ class EquipmentService
             return null;
         }
 
-        return self::formatSelectLabel($equipment);
+        return self::formatSelectLabel($equipment, $options);
     }
 
     /* ==============================
@@ -216,12 +216,27 @@ class EquipmentService
     /**
      * Formata o label do equipamento: "Nome — Identificador (Proprietário)"
      */
-    private static function formatSelectLabel(Equipment $equipment): string
+    private static function formatSelectLabel(Equipment $equipment, array $options = []): string
     {
-        $label = "{$equipment->name} — {$equipment->identifier}";
+        $showName = $options['name'] ?? true;
+        $showIdentifier = $options['identifier'] ?? true;
+        $showOwner = $options['owner'] ?? true;
 
-        if ($equipment->owner) {
-            $label .= " ({$equipment->owner->name})";
+        $parts = [];
+
+        if ($showName && !empty($equipment->name)) {
+            $parts[] = $equipment->name;
+        }
+
+        if ($showIdentifier && !empty($equipment->identifier)) {
+            $parts[] = $equipment->identifier;
+        }
+
+        $label = implode(' — ', $parts);
+
+        if ($showOwner && $equipment->owner) {
+            $ownerName = $equipment->owner->name;
+            $label .= $label ? " ({$ownerName})" : $ownerName;
         }
 
         return $label;

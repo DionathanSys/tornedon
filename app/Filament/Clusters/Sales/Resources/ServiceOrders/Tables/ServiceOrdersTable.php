@@ -150,7 +150,7 @@ class ServiceOrdersTable
                     ->preload()
                     ->getSearchResultsUsing(
                         fn(string $search): array => (new EquipmentService())
-                            ->searchForSelect($search, Filament::getTenant()->id)
+                            ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
                     )
                     ->getOptionLabelUsing(
                         fn($value): ?string => (new EquipmentService())
