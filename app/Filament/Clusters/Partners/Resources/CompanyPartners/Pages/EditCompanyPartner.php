@@ -94,8 +94,7 @@ class EditCompanyPartner extends EditRecord
                     && filled($address->city)
                     && filled($address->city_code)
                     && filled($address->state)
-                    && filled($address->country)
-                    && preg_match('/^\d{5}-?\d{3}$/', (string) $address->postal_code) === 1;
+                    && filled($address->country);
             });
 
         Log::debug('Address Valid:', [

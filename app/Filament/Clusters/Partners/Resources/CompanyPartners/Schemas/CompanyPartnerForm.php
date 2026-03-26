@@ -50,8 +50,8 @@ class CompanyPartnerForm
                     ->columnSpanFull()
                     ->danger()
                     ->description('Este parceiro não possui um endereço válido. Cadastre ou atualize um endereço para evitar problemas em documentos fiscais.')
-                    ->visible(fn(Get $get): bool => ! ($get('has_valid_address') ?? false))
-                    ->visibleOn('edit'),
+                    ->visibleOn('edit')
+                    ->visible(fn(Get $get): bool => ! ($get('has_valid_address') ?? false)),
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,
