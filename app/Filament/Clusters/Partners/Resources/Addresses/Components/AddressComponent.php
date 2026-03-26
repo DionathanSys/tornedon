@@ -6,6 +6,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use JeffersonGoncalves\Filament\CepField\Forms\Components\CepInput;
 
 final class AddressComponent
 {
@@ -15,12 +16,17 @@ final class AddressComponent
             Grid::make(3)
                 ->columnSpanFull()
                 ->schema([
-                    TextInput::make('postal_code')
-                        ->label('CEP')
-                        ->mask('99999-999')
+                    // TextInput::make('postal_code')
+                    //     ->label('CEP')
+                    //     ->mask('99999-999')
+                    //     ->required()
+                    //     ->maxLength(9)
+                    //     ->columnSpan(1),
+
+                    CepInput::make('cep')
                         ->required()
-                        ->maxLength(9)
-                        ->columnSpan(1),
+                        ->setMode('suffix') // 'prefix' or 'suffix' (default: 'suffix')
+                        ->setActionLabel('Buscar CEP'), // Custom search button label
 
                     TextInput::make('street')
                         ->label('Logradouro/Rua')

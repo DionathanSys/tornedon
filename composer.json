@@ -10,6 +10,7 @@
         "barryvdh/laravel-dompdf": "^3.1",
         "cloud-dfe/sdk-php": "^0.4.8",
         "filament/filament": "^4.0",
+        "jeffersongoncalves/filament-cep-field": "^2.1",
         "laravel/framework": "^12.0",
         "laravel/horizon": "^5.45",
         "laravel/tinker": "^2.10.1",
