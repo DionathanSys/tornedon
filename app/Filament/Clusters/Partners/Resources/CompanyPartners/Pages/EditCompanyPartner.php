@@ -86,7 +86,7 @@ class EditCompanyPartner extends EditRecord
 
     private function hasValidAddress(CompanyPartner $companyPartner): bool
     {
-        return $companyPartner->addresses()
+        $AddressValid = $companyPartner->addresses()
             ->get()
             ->contains(function ($address): bool {
                 return filled($address->street)
@@ -97,6 +97,13 @@ class EditCompanyPartner extends EditRecord
                     && filled($address->country)
                     && preg_match('/^\d{5}-?\d{3}$/', (string) $address->postal_code) === 1;
             });
+
+        Log::debug('Address Valid:', [
+            'valid?' => $AddressValid,
+            'companyPartner' => $companyPartner,
+            'addresses' => $companyPartner->addresses,
+        ]);
+        return $AddressValid;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
