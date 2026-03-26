@@ -12,7 +12,7 @@ class TestResendEmailCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'mail:test-resend {email : O endereço de e-mail de destino para o teste}';
+    protected $signature = 'mail:test-resend {email : O endereço de e-mail de destino para o teste} {--from= : O endereço de e-mail de remetente para o teste}';
 
     /**
      * The console command description.
@@ -27,15 +27,20 @@ class TestResendEmailCommand extends Command
     public function handle()
     {
         $email = $this->argument('email');
+        $from = $this->option('from');
 
         $this->info("Iniciando envio de e-mail de teste para: {$email} utilizando o Resend...");
 
         try {
             // Forçamos o uso do mailer 'resend' configurado no mail.php
             Mail::mailer('resend')
-                ->raw('Este é um e-mail de teste enviado pela aplicação para verificar a integração com o serviço da Resend.', function ($message) use ($email) {
+                ->raw('Este é um e-mail de teste enviado pela aplicação para verificar a integração com o serviço da Resend.', function ($message) use ($email, $from) {
                     $message->to($email)
                             ->subject('Teste de Integração - Resend');
+                    
+                    if ($from) {
+                        $message->from($from);
+                    }
                 });
 
             $this->info('E-mail enviado com sucesso! Verifique a caixa de entrada (ou pasta de spam) de ' . $email);
