@@ -171,6 +171,16 @@ class CompanyPartnerForm
                             ->inline(false)
                             ->default(false)
                             ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Toggle::make('company_partner.notify_production_order_closed')
+                            ->label('Notificar OP Encerrada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Toggle::make('company_partner.notify_invoice_confirmed')
+                            ->label('Notificar Fatura Confirmada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
                         Toggle::make('company_partner.notify_fiscal_document_confirmed')
                             ->label('Notificar NF Confirmada')
                             ->inline(false)

@@ -26,6 +26,8 @@ class CompanyPartnerValidator
             'is_active' => 'required|boolean',
             'notify_service_order_closed' => 'sometimes|boolean',
             'notify_requisition_closed' => 'sometimes|boolean',
+            'notify_production_order_closed' => 'sometimes|boolean',
+            'notify_invoice_confirmed' => 'sometimes|boolean',
             'notify_fiscal_document_confirmed' => 'sometimes|boolean',
             'email_to_override' => 'nullable|string',
             'email_cc_override' => 'nullable|string',

@@ -44,6 +44,8 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
         $serviceOrderPolicy = CompanyEmailPolicy::resolve($companyId, 'service_order', 'closed');
         $requisitionPolicy = CompanyEmailPolicy::resolve($companyId, 'requisition', 'closed');
+        $productionOrderPolicy = CompanyEmailPolicy::resolve($companyId, 'production_order', 'closed');
+        $invoicePolicy = CompanyEmailPolicy::resolve($companyId, 'invoice', 'confirmed');
         $fiscalPolicy = CompanyEmailPolicy::resolve($companyId, 'fiscal_document', 'confirmed');
 
         $this->form->fill([
@@ -64,9 +66,6 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'policy_service_order_enabled' => (bool) $serviceOrderPolicy->enabled,
             'policy_service_order_subject' => (string) ($serviceOrderPolicy->subject_template ?? ''),
             'policy_service_order_body' => (string) ($serviceOrderPolicy->body_template ?? ''),
-            'policy_service_order_default_to' => (string) ($serviceOrderPolicy->default_to ?? ''),
-            'policy_service_order_default_cc' => (string) ($serviceOrderPolicy->default_cc ?? ''),
-            'policy_service_order_default_bcc' => (string) ($serviceOrderPolicy->default_bcc ?? ''),
             'policy_service_order_required_attachments' => (array) ($serviceOrderPolicy->required_attachments ?? ['pdf']),
             'policy_service_order_optional_attachments' => (array) ($serviceOrderPolicy->optional_attachments ?? []),
             'policy_service_order_max_total_size_mb' => (int) ($serviceOrderPolicy->max_total_size_mb ?? 20),
@@ -75,20 +74,30 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'policy_requisition_enabled' => (bool) $requisitionPolicy->enabled,
             'policy_requisition_subject' => (string) ($requisitionPolicy->subject_template ?? ''),
             'policy_requisition_body' => (string) ($requisitionPolicy->body_template ?? ''),
-            'policy_requisition_default_to' => (string) ($requisitionPolicy->default_to ?? ''),
-            'policy_requisition_default_cc' => (string) ($requisitionPolicy->default_cc ?? ''),
-            'policy_requisition_default_bcc' => (string) ($requisitionPolicy->default_bcc ?? ''),
             'policy_requisition_required_attachments' => (array) ($requisitionPolicy->required_attachments ?? ['pdf']),
             'policy_requisition_optional_attachments' => (array) ($requisitionPolicy->optional_attachments ?? []),
             'policy_requisition_max_total_size_mb' => (int) ($requisitionPolicy->max_total_size_mb ?? 20),
             'policy_requisition_fallback_mode' => (string) ($requisitionPolicy->fallback_mode ?? 'signed_link'),
 
+            'policy_production_order_enabled' => (bool) $productionOrderPolicy->enabled,
+            'policy_production_order_subject' => (string) ($productionOrderPolicy->subject_template ?? ''),
+            'policy_production_order_body' => (string) ($productionOrderPolicy->body_template ?? ''),
+            'policy_production_order_required_attachments' => (array) ($productionOrderPolicy->required_attachments ?? ['pdf']),
+            'policy_production_order_optional_attachments' => (array) ($productionOrderPolicy->optional_attachments ?? []),
+            'policy_production_order_max_total_size_mb' => (int) ($productionOrderPolicy->max_total_size_mb ?? 20),
+            'policy_production_order_fallback_mode' => (string) ($productionOrderPolicy->fallback_mode ?? 'signed_link'),
+
+            'policy_invoice_enabled' => (bool) $invoicePolicy->enabled,
+            'policy_invoice_subject' => (string) ($invoicePolicy->subject_template ?? ''),
+            'policy_invoice_body' => (string) ($invoicePolicy->body_template ?? ''),
+            'policy_invoice_required_attachments' => (array) ($invoicePolicy->required_attachments ?? ['pdf']),
+            'policy_invoice_optional_attachments' => (array) ($invoicePolicy->optional_attachments ?? []),
+            'policy_invoice_max_total_size_mb' => (int) ($invoicePolicy->max_total_size_mb ?? 20),
+            'policy_invoice_fallback_mode' => (string) ($invoicePolicy->fallback_mode ?? 'signed_link'),
+
             'policy_fiscal_enabled' => (bool) $fiscalPolicy->enabled,
             'policy_fiscal_subject' => (string) ($fiscalPolicy->subject_template ?? ''),
             'policy_fiscal_body' => (string) ($fiscalPolicy->body_template ?? ''),
-            'policy_fiscal_default_to' => (string) ($fiscalPolicy->default_to ?? ''),
-            'policy_fiscal_default_cc' => (string) ($fiscalPolicy->default_cc ?? ''),
-            'policy_fiscal_default_bcc' => (string) ($fiscalPolicy->default_bcc ?? ''),
             'policy_fiscal_required_attachments' => (array) ($fiscalPolicy->required_attachments ?? ['danfe']),
             'policy_fiscal_optional_attachments' => (array) ($fiscalPolicy->optional_attachments ?? ['xml']),
             'policy_fiscal_max_total_size_mb' => (int) ($fiscalPolicy->max_total_size_mb ?? 20),
@@ -178,13 +187,17 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->collapsible(),
 
                 \Filament\Schemas\Components\Section::make('Politicas de E-mail por Documento')
-                    ->description('Modelo novo: OS e REQ enviam no encerramento, NF envia na confirmacao')
+                    ->description('Envio apenas no encerramento/confirmacao: OS, REQ, OP, FAT e NF')
                     ->icon('heroicon-o-paper-airplane')
                     ->schema([
                         Fieldset::make('Ordem de Servico (encerrada)')
                             ->schema($this->policyFields(prefix: 'policy_service_order', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
                         Fieldset::make('Requisicao (encerrada)')
                             ->schema($this->policyFields(prefix: 'policy_requisition', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
+                        Fieldset::make('Ordem de Producao (encerrada)')
+                            ->schema($this->policyFields(prefix: 'policy_production_order', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
+                        Fieldset::make('Fatura (confirmada)')
+                            ->schema($this->policyFields(prefix: 'policy_invoice', requiredOptions: ['pdf' => 'PDF'], optionalOptions: [])),
                         Fieldset::make('Documento Fiscal (confirmado)')
                             ->schema($this->policyFields(prefix: 'policy_fiscal', requiredOptions: ['danfe' => 'DANFE PDF'], optionalOptions: ['xml' => 'XML (opcional)'])),
                     ])
@@ -228,17 +241,6 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                 ->label('Corpo HTML')
                 ->rows(3)
                 ->helperText('Variaveis: {{partner_name}}, {{document_number}}, {{document_type}}, {{event_name}}'),
-            Forms\Components\Textarea::make("{$prefix}_default_to")
-                ->label('TO Padrao')
-                ->rows(2)
-                ->placeholder('email1@cliente.com;email2@cliente.com')
-                ->helperText('Opcional: e-mails adicionais por tipo'),
-            Forms\Components\Textarea::make("{$prefix}_default_cc")
-                ->label('CC Padrao')
-                ->rows(2),
-            Forms\Components\Textarea::make("{$prefix}_default_bcc")
-                ->label('BCC Padrao')
-                ->rows(2),
             Forms\Components\CheckboxList::make("{$prefix}_required_attachments")
                 ->label('Anexos obrigatorios')
                 ->options($requiredOptions)
@@ -317,6 +319,8 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
             $this->savePolicy($companyId, 'service_order', 'closed', $data, 'policy_service_order');
             $this->savePolicy($companyId, 'requisition', 'closed', $data, 'policy_requisition');
+            $this->savePolicy($companyId, 'production_order', 'closed', $data, 'policy_production_order');
+            $this->savePolicy($companyId, 'invoice', 'confirmed', $data, 'policy_invoice');
             $this->savePolicy($companyId, 'fiscal_document', 'confirmed', $data, 'policy_fiscal');
 
             CompanyPreference::clearCache($companyId);
@@ -343,9 +347,6 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'enabled' => (bool) ($data["{$prefix}_enabled"] ?? true),
             'subject_template' => (string) ($data["{$prefix}_subject"] ?? ''),
             'body_template' => (string) ($data["{$prefix}_body"] ?? ''),
-            'default_to' => (string) ($data["{$prefix}_default_to"] ?? ''),
-            'default_cc' => (string) ($data["{$prefix}_default_cc"] ?? ''),
-            'default_bcc' => (string) ($data["{$prefix}_default_bcc"] ?? ''),
             'required_attachments' => array_values($data["{$prefix}_required_attachments"] ?? []),
             'optional_attachments' => array_values($data["{$prefix}_optional_attachments"] ?? []),
             'max_total_size_mb' => (int) ($data["{$prefix}_max_total_size_mb"] ?? 20),
