@@ -9,6 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Http;
 
 final class AddressComponent
@@ -121,6 +122,8 @@ final class AddressComponent
     {
         return Action::make('search-cep')
             ->label('Buscar CEP')
+            ->iconButton()
+            ->icon(Heroicon::MagnifyingGlassCircle)
             ->action(function (Get $get, Set $set): void {
                 $postalCode = preg_replace('/\D/', '', (string) ($get('postal_code') ?? ''));
 
