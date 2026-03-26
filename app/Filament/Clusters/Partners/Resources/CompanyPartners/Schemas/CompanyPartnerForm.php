@@ -23,10 +23,12 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -37,10 +39,19 @@ class CompanyPartnerForm
     {
         return $schema
             ->components([
+                Hidden::make('has_valid_address')
+                    ->visibleOn('edit'),
                 Hidden::make('partner_exists')
                     ->visibleOn('create'),
                 Hidden::make('partner_id')
                     ->visibleOn('create'),
+                Callout::make('Endereço inválido')
+                    ->columnSpanFull()
+                    ->warning()
+                    ->color(Color::Amber)
+                    ->description('Este parceiro não possui um endereço válido. Cadastre ou atualize um endereço para evitar problemas em documentos fiscais.')
+                    ->visible(fn(Get $get): bool => ! ($get('has_valid_address') ?? false))
+                    ->visibleOn('edit'),
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,
