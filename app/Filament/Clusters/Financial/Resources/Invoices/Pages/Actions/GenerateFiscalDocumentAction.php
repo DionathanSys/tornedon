@@ -11,7 +11,7 @@ use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\VolumeSpecies;
-use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
@@ -19,11 +19,11 @@ use App\Services\Partner\PartnerService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -115,9 +115,6 @@ final class GenerateFiscalDocumentAction
                                 ->maxLength(2000)
                                 ->required(),
 
-                            Placeholder::make('nfse_description_counter')
-                                ->label('Contador')
-                                ->content(fn (Get $get): string => mb_strlen((string) ($get('nfse_item_description') ?? '')) . '/2000 caracteres'),
                         ])
                         ->columns(1)
                         ->visible($isNfse),
