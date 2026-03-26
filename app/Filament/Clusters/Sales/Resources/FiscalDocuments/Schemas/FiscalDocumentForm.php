@@ -95,8 +95,7 @@ class FiscalDocumentForm
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->state(fn($record): ?string => dd($record->nfse_status) ?? 'N/D')
-                                            ->formatStateUsing(fn(NfeStatus $state): ?string => dd($state->description()) ?? 'N/D')
+                                            ->formatStateUsing(fn(NfeStatus $state): ?string => $state ? $state->description() : 'N/D')
                                             ->badge()
                                             ->color(fn(NfeStatus $state) => $state->color()),
                                         TextEntry::make('nfe_status')
@@ -104,7 +103,7 @@ class FiscalDocumentForm
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => ! $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn(NfeStatus $state): ?string => $state->description() ?? 'N/D')
+                                            ->formatStateUsing(fn(NfeStatus $state): ?string => $state ? $state->description() : 'N/D')
                                             ->badge()
                                             ->color(fn(NfeStatus $state) => $state->color()),
                                         TextEntry::make('operation_nature')
@@ -112,7 +111,7 @@ class FiscalDocumentForm
                                             ->visibleOn('edit')
                                             ->visible(fn($record): bool => ! $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn(OperationNature $state): ?string => $state->description() ?? 'N/D'),
+                                            ->formatStateUsing(fn(OperationNature $state): ?string => $state ? $state->description() : 'N/D'),
                                         TextEntry::make('document_number')
                                             ->label('Nº do Doc.')
                                             ->visibleOn('edit')
