@@ -97,6 +97,9 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->formatStateUsing(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D')
                                             ,
+                                        TextEntry::make('title')
+                                            ->state('Hello, world!')
+                                            ->columnSpan(['md' => 1, 'lg' => 2]),
                                         TextEntry::make('rps_number')
                                             ->label('Nº RPS')
                                             ->visibleOn('edit')
