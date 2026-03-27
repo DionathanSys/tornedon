@@ -3,7 +3,7 @@
 namespace App\Filament\Clusters\Partners\Resources\Addresses\Components;
 
 use App\Notification\NotifyService as notify;
-use Filament\Forms\Components\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
