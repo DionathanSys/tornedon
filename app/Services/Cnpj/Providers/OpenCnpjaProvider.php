@@ -43,6 +43,7 @@ class OpenCnpjaProvider implements CnpjApiProviderInterface
                 ->get($url);
 
             if ($response->status() === 429) {
+                Log::error('Limite de requisicoes da API atingido.', ['response' => $response->body()]);
                 return CnpjProviderResult::failure(
                     'Limite de requisicoes da API atingido.',
                     [$response->body()],

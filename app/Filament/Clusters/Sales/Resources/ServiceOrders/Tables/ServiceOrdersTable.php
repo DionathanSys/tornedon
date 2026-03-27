@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Equipment\EquipmentService;
 
 class ServiceOrdersTable
 {
@@ -108,8 +109,7 @@ class ServiceOrdersTable
                     ->sortable()
                     ->placeholder('Sem Fatura')
                     ->toggleable(isToggledHiddenByDefault: false)
-                    ->url(fn ($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null)
-                    ,
+                    ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -143,6 +143,19 @@ class ServiceOrdersTable
                     ->relationship('customer', 'name')
                     ->searchable()
                     ->preload()
+                    ->native(false),
+                SelectFilter::make('equipment_id')
+                    ->label('Equipamento')
+                    ->searchable()
+                    ->preload()
+                    ->getSearchResultsUsing(
+                        fn(string $search): array => (new EquipmentService())
+                            ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
+                    )
+                    ->getOptionLabelUsing(
+                        fn($value): ?string => (new EquipmentService())
+                            ->getLabelForSelect((int) $value)
+                    )
                     ->native(false),
             ])
             ->defaultSort('order_date', 'desc')

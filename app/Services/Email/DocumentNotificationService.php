@@ -14,6 +14,8 @@ use App\Models\CompanyPartner;
 use App\Models\CompanyPreference;
 use App\Models\EmailDispatch;
 use App\Models\FiscalDocument;
+use App\Models\Invoice;
+use App\Models\ProductionOrder;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Services\Email\Contracts\EmailProviderInterface;
@@ -21,6 +23,8 @@ use App\Services\Email\DTO\EmailAttachment;
 use App\Services\Email\DTO\EmailMessage;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
+use App\Services\Invoice\Actions\PrintInvoicePdfAction;
+use App\Services\ProductionOrder\Actions\PrintProductionOrderPdfAction;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use Illuminate\Database\QueryException;
@@ -81,6 +85,36 @@ class DocumentNotificationService
         );
     }
 
+    public function scheduleForProductionOrderStatusChange(ProductionOrder $productionOrder, string $newStatus): ?EmailDispatch
+    {
+        if ($newStatus !== \App\Enum\ProductionOrder\Status::COMPLETED->value) {
+            return null;
+        }
+
+        return $this->schedule(
+            documentType: DocumentNotificationType::PRODUCTION_ORDER,
+            documentId: (int) $productionOrder->id,
+            companyId: (int) $productionOrder->company_id,
+            partnerId: (int) $productionOrder->customer_id,
+            event: DocumentNotificationEvent::CLOSED,
+        );
+    }
+
+    public function scheduleForInvoiceStatusChange(Invoice $invoice, string $newStatus): ?EmailDispatch
+    {
+        if ($newStatus !== \App\Enum\Invoice\Status::CONFIRMED->value) {
+            return null;
+        }
+
+        return $this->schedule(
+            documentType: DocumentNotificationType::INVOICE,
+            documentId: (int) $invoice->id,
+            companyId: (int) $invoice->company_id,
+            partnerId: (int) $invoice->customer_id,
+            event: DocumentNotificationEvent::CONFIRMED,
+        );
+    }
+
     public function requeue(EmailDispatch $dispatch): void
     {
         $dispatch->update([
@@ -89,6 +123,26 @@ class DocumentNotificationService
         ]);
 
         SendDocumentNotificationJob::dispatch($dispatch->id)->afterCommit();
+    }
+
+    public function shouldSendForServiceOrder(ServiceOrder $serviceOrder): bool
+    {
+        return $this->shouldSend(
+            documentType: DocumentNotificationType::SERVICE_ORDER,
+            companyId: (int) $serviceOrder->company_id,
+            partnerId: (int) $serviceOrder->customer_id,
+            event: DocumentNotificationEvent::CLOSED,
+        );
+    }
+
+    public function shouldSendForRequisition(Requisition $requisition): bool
+    {
+        return $this->shouldSend(
+            documentType: DocumentNotificationType::REQUISITION,
+            companyId: (int) $requisition->company_id,
+            partnerId: (int) $requisition->customer_id,
+            event: DocumentNotificationEvent::CLOSED,
+        );
     }
 
     public function processDispatch(EmailDispatch $dispatch, int $attempt): void
@@ -296,11 +350,51 @@ class DocumentNotificationService
         return $dispatch;
     }
 
+    private function shouldSend(
+        DocumentNotificationType $documentType,
+        int $companyId,
+        int $partnerId,
+        DocumentNotificationEvent $event,
+    ): bool {
+        if (! (bool) config('email_notifications.enabled', true)) {
+            return false;
+        }
+
+        $companyPartner = CompanyPartner::query()
+            ->where('company_id', $companyId)
+            ->where('partner_id', $partnerId)
+            ->with(['contacts' => function ($query) {
+                $query->where('notify', true)
+                    ->where('is_active', true)
+                    ->whereNotNull('email');
+            }])
+            ->first();
+
+        if (! $companyPartner || ! $companyPartner->is_active) {
+            return false;
+        }
+
+        if (! $this->isPartnerNotifiable($companyPartner, $documentType)) {
+            return false;
+        }
+
+        $policy = CompanyEmailPolicy::resolve($companyId, $documentType, $event);
+        if (! $policy->enabled) {
+            return false;
+        }
+
+        [$to] = $this->resolveRecipients($companyPartner, $policy);
+
+        return $to !== [];
+    }
+
     private function isPartnerNotifiable(CompanyPartner $companyPartner, DocumentNotificationType $documentType): bool
     {
         return match ($documentType) {
             DocumentNotificationType::SERVICE_ORDER => (bool) $companyPartner->notify_service_order_closed,
             DocumentNotificationType::REQUISITION => (bool) $companyPartner->notify_requisition_closed,
+            DocumentNotificationType::PRODUCTION_ORDER => (bool) $companyPartner->notify_production_order_closed,
+            DocumentNotificationType::INVOICE => (bool) $companyPartner->notify_invoice_confirmed,
             DocumentNotificationType::FISCAL_DOCUMENT => (bool) $companyPartner->notify_fiscal_document_confirmed,
         };
     }
@@ -321,17 +415,13 @@ class DocumentNotificationService
                 ->all();
         }
 
-        $to = $this->mergeEmails($to, $this->parseEmails((string) ($policy->default_to ?? '')));
-
         $cc = $this->mergeEmails(
             $this->parseEmails((string) ($companyPartner->email_cc_override ?? '')),
-            $this->parseEmails((string) ($policy->default_cc ?? '')),
             $this->parseEmails((string) CompanyPreference::get('email_cc', (int) $companyPartner->company_id, '')),
         );
 
         $bcc = $this->mergeEmails(
             $this->parseEmails((string) ($companyPartner->email_bcc_override ?? '')),
-            $this->parseEmails((string) ($policy->default_bcc ?? '')),
         );
 
         return [$to, $cc, $bcc];
@@ -345,6 +435,8 @@ class DocumentNotificationService
         return match ($documentType) {
             DocumentNotificationType::SERVICE_ORDER => $this->buildServiceOrderAttachmentRegistry($document),
             DocumentNotificationType::REQUISITION => $this->buildRequisitionAttachmentRegistry($document),
+            DocumentNotificationType::PRODUCTION_ORDER => $this->buildProductionOrderAttachmentRegistry($document),
+            DocumentNotificationType::INVOICE => $this->buildInvoiceAttachmentRegistry($document),
             DocumentNotificationType::FISCAL_DOCUMENT => $this->buildFiscalAttachmentRegistry($document),
         };
     }
@@ -544,6 +636,54 @@ class DocumentNotificationService
     /**
      * @return array<int,array{kind:string,attachment:EmailAttachment|null}>
      */
+    private function buildProductionOrderAttachmentRegistry(ProductionOrder $productionOrder): array
+    {
+        $pdfAction = new PrintProductionOrderPdfAction();
+        $pdf = $pdfAction->execute($productionOrder);
+        $number = $productionOrder->production_order_number ?: (string) $productionOrder->id;
+
+        return [
+            [
+                'kind' => 'pdf',
+                'attachment' => is_string($pdf) && ! $pdfAction->hasError()
+                    ? new EmailAttachment(
+                        filename: "ordem-producao-{$number}.pdf",
+                        contentBase64: $pdf,
+                        mimeType: 'application/pdf',
+                        kind: 'pdf',
+                    )
+                    : null,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<int,array{kind:string,attachment:EmailAttachment|null}>
+     */
+    private function buildInvoiceAttachmentRegistry(Invoice $invoice): array
+    {
+        $pdfAction = new PrintInvoicePdfAction();
+        $pdf = $pdfAction->execute($invoice);
+        $number = $invoice->invoice_number ?: (string) $invoice->id;
+
+        return [
+            [
+                'kind' => 'pdf',
+                'attachment' => is_string($pdf) && ! $pdfAction->hasError()
+                    ? new EmailAttachment(
+                        filename: "fatura-{$number}.pdf",
+                        contentBase64: $pdf,
+                        mimeType: 'application/pdf',
+                        kind: 'pdf',
+                    )
+                    : null,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<int,array{kind:string,attachment:EmailAttachment|null}>
+     */
     private function buildFiscalAttachmentRegistry(FiscalDocument $fiscalDocument): array
     {
         $number = $fiscalDocument->document_number ?: (string) $fiscalDocument->id;
@@ -656,15 +796,19 @@ class DocumentNotificationService
         return match ($documentType) {
             DocumentNotificationType::SERVICE_ORDER => (string) ($document->number ?: $document->id),
             DocumentNotificationType::REQUISITION => (string) ($document->number ?: $document->id),
+            DocumentNotificationType::PRODUCTION_ORDER => (string) ($document->production_order_number ?: $document->id),
+            DocumentNotificationType::INVOICE => (string) ($document->invoice_number ?: $document->id),
             DocumentNotificationType::FISCAL_DOCUMENT => (string) ($document->document_number ?: $document->id),
         };
     }
 
-    private function findDocument(DocumentNotificationType $documentType, int $documentId): ServiceOrder|Requisition|FiscalDocument|null
+    private function findDocument(DocumentNotificationType $documentType, int $documentId): ServiceOrder|Requisition|ProductionOrder|Invoice|FiscalDocument|null
     {
         return match ($documentType) {
             DocumentNotificationType::SERVICE_ORDER => ServiceOrder::query()->with(['customer', 'company'])->find($documentId),
             DocumentNotificationType::REQUISITION => Requisition::query()->with(['customer', 'company'])->find($documentId),
+            DocumentNotificationType::PRODUCTION_ORDER => ProductionOrder::query()->with(['customer', 'company'])->find($documentId),
+            DocumentNotificationType::INVOICE => Invoice::query()->with(['customer', 'company'])->find($documentId),
             DocumentNotificationType::FISCAL_DOCUMENT => FiscalDocument::query()->with(['customer', 'company'])->find($documentId),
         };
     }

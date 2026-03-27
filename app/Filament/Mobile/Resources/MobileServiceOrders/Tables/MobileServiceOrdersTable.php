@@ -17,6 +17,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm
 use App\Filament\Mobile\Resources\MobileServiceOrders\MobileServiceOrderResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
+use App\Services\Equipment\EquipmentService;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -100,6 +101,19 @@ class MobileServiceOrdersTable
                     ->relationship('customer', 'name')
                     ->searchable()
                     ->preload()
+                    ->native(false),
+                SelectFilter::make('equipment_id')
+                    ->label('Equipamento')
+                    ->searchable()
+                    ->preload()
+                    ->getSearchResultsUsing(
+                        fn(string $search): array => (new EquipmentService())
+                            ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
+                    )
+                    ->getOptionLabelUsing(
+                        fn($value): ?string => (new EquipmentService())
+                            ->getLabelForSelect((int) $value, ['owner' => false])
+                    )
                     ->native(false),
             ])
             ->filtersTriggerAction(

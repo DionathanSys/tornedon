@@ -33,6 +33,7 @@ class MobilePanelProvider extends PanelProvider
             ->id('mobile')
             ->path('mobile')
             ->login()
+            ->profile()
             ->tenant(Company::class)
             ->tenantRegistration(RegisterCompany::class)
             ->colors([

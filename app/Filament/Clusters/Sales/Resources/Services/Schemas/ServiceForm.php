@@ -4,11 +4,13 @@ namespace App\Filament\Clusters\Sales\Resources\Services\Schemas;
 
 use App\Enum\Tax\IssExigibility;
 use App\Filament\Components\HelpPopover;
+use App\Models\CompanyPreference;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -24,7 +26,7 @@ class ServiceForm
                 'lg' => 8,
             ])
             ->components([
-                Section::make('Informacoes do Servico')
+                Section::make('Informações do Serviço')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -32,14 +34,25 @@ class ServiceForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('name')
-                            ->label('Nome do Servico')
-                            ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->required()
-                            ->maxLength(255)
-                            ->autocomplete(false),
+                        Group::make()
+                            ->columns(['sm' => 1, 'md' => 4, 'lg' => 8])
+                            ->columnSpanFull()
+                            ->schema([
+                                TextInput::make('service_code')
+                                    ->label('Código')
+                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                    ->readOnly()
+                                    ->saved(false)
+                                    ->autocomplete(false),
+                                TextInput::make('name')
+                                    ->label('Nome do Serviço')
+                                    ->columnSpan(['md' => 3, 'lg' => 6])
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->autocomplete(false),
+                            ]),
                         Textarea::make('description')
-                            ->label('Descricao')
+                            ->label('Descrição')
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->rows(3)
                             ->maxLength(2000)
@@ -55,7 +68,7 @@ class ServiceForm
                             ->inline(false)
                             ->default(true),
                         Toggle::make('requires_approval')
-                            ->label('Requer Aprovacao')
+                            ->label('Requer Aprovação')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->inline(false)
                             ->default(false),
@@ -76,25 +89,25 @@ class ServiceForm
                     ->columnSpanFull()
                     ->schema([
                         Money::make('price')
-                            ->label('Preco')
+                            ->label('Preço')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->required()
-                            ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                            ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->default(0),
                         Money::make('min_sale_price')
-                            ->label('Preco Minimo')
-                            ->helperText('O preco efetivo deste servico, apos desconto, nao pode ficar abaixo deste valor.')
+                            ->label('Preço Mínimo')
+                            ->helperText('O preço efetivo deste serviço, após desconto, não pode ficar abaixo deste valor.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                            ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->default(0),
                         Money::make('cost')
                             ->label('Custo')
                             ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                            ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->default(0),
                     ]),
 
-                Section::make('Informacoes Fiscais')
+                Section::make('Informações Fiscais')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -103,44 +116,46 @@ class ServiceForm
                     ->columnSpanFull()
                     ->schema([
                         TextInput::make('nbs_code')
-                            ->label('Codigo NBS')
+                            ->label('Código NBS')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(50)
                             ->autocomplete(false)
-                            ->helperText('Nomenclatura Brasileira de Servicos'),
+                            ->default(fn (\App\Services\Fiscal\FiscalProfileService $service) => $service->getDefaultNbsCode())
+                            ->helperText('Nomenclatura Brasileira de Serviços'),
                         TextInput::make('cnae_code')
-                            ->label('Codigo CNAE')
+                            ->label('Código CNAE')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(50)
                             ->autocomplete(false)
-                            ->helperText('Classificacao Nacional de Atividades Economicas'),
+                            ->helperText('Classificação Nacional de Atividades Econômicas'),
                         TextInput::make('municipal_tax_code')
-                            ->label('Codigo Tributacao Municipal')
+                            ->label('Código Tributação Municipal')
                             ->belowContent(HelpPopover::make(
-                                'Codigo de Tributacao Municipal',
-                                'Informe o codigo do servico conforme tabela da prefeitura do municipio de incidencia do ISS. Este valor pode variar por cidade (ex.: 14.01, 7.02, 0101).'
+                                'Código de Tributação Municipal',
+                                'Informe o código do serviço conforme tabela da prefeitura do município de incidência do ISS. Este valor pode variar por cidade (ex.: 14.01, 7.02, 0101).'
                             ))
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(50)
-                            ->autocomplete(false),
+                            ->autocomplete(false)
+                            ->default(fn (\App\Services\Fiscal\FiscalProfileService $service) => $service->getDefaultMunicipalTaxCode()),
                         TextInput::make('tax_classification')
-                            ->label('Classificacao Fiscal')
+                            ->label('Classificação Fiscal')
                             ->beforeContent(HelpPopover::make(
-                                'Classificacao Fiscal do Servico',
-                                'Informe o item/subitem da LC 116/2003 correspondente ao servico prestado. Essa classificacao define o enquadramento fiscal do servico.'
+                                'Classificação Fiscal do Serviço',
+                                'Informe o item/subitem da LC 116/2003 correspondente ao serviço prestado. Essa classificação define o enquadramento fiscal do serviço.'
                             ))
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(255)
                             ->autocomplete(false)
                             ->visible(false)
-                            ->helperText('Codigo do servico prestado Item da LC 116/2003'),
+                            ->helperText('Código do serviço prestado Item da LC 116/2003'),
                         Money::make('tax_rate')
-                            ->label('Aliquota Imposto (%)')
+                            ->label('Alíquota Imposto (%)')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->suffix('%')
                             ->prefix(null)
-                            ->default(0)
-                            ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                            ->default(fn (\App\Services\Fiscal\FiscalProfileService $service) => $service->getDefaultIssRate() ?? null)
+                            ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->maxValue(100),
                         Select::make('iss_exigibility')
                             ->label('Exigibilidade do ISS')
@@ -150,7 +165,7 @@ class ServiceForm
                             ->searchable(),
                     ]),
 
-                Section::make('Informacoes Adicionais')
+                Section::make('Informacões Adicionais')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -162,11 +177,11 @@ class ServiceForm
                     ->persistCollapsed()
                     ->schema([
                         KeyValue::make('additional_info')
-                            ->label('Informacoes Adicionais')
+                            ->label('Informacões Adicionais')
                             ->keyLabel('Chave')
                             ->valueLabel('Valor')
                             ->columnSpan(['md' => 4, 'lg' => 8])
-                            ->addActionLabel('Adicionar informacao'),
+                            ->addActionLabel('Adicionar Informação'),
                     ]),
             ]);
     }

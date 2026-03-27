@@ -24,10 +24,12 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -38,10 +40,18 @@ class CompanyPartnerForm
     {
         return $schema
             ->components([
+                Hidden::make('has_valid_address')
+                    ->visibleOn('edit'),
                 Hidden::make('partner_exists')
                     ->visibleOn('create'),
                 Hidden::make('partner_id')
                     ->visibleOn('create'),
+                Callout::make('Endereço inválido')
+                    ->columnSpanFull()
+                    ->danger()
+                    ->description('Este parceiro não possui um endereço válido. Cadastre ou atualize um endereço para evitar problemas em documentos fiscais.')
+                    ->visibleOn('edit')
+                    ->visible(fn(Get $get): bool => ! ($get('has_valid_address') ?? false)),
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,
@@ -158,6 +168,16 @@ class CompanyPartnerForm
                             ->columnSpan(['md' => 2, 'lg' => 2]),
                         Toggle::make('company_partner.notify_requisition_closed')
                             ->label('Notificar Requisicao Encerrada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Toggle::make('company_partner.notify_production_order_closed')
+                            ->label('Notificar OP Encerrada')
+                            ->inline(false)
+                            ->default(false)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Toggle::make('company_partner.notify_invoice_confirmed')
+                            ->label('Notificar Fatura Confirmada')
                             ->inline(false)
                             ->default(false)
                             ->columnSpan(['md' => 2, 'lg' => 2]),

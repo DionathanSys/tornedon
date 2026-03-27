@@ -22,6 +22,8 @@ class EditCompanyPartner
         'is_active',
         'notify_service_order_closed',
         'notify_requisition_closed',
+        'notify_production_order_closed',
+        'notify_invoice_confirmed',
         'notify_fiscal_document_confirmed',
         'email_to_override',
         'email_cc_override',

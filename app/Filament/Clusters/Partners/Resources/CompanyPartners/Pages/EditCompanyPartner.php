@@ -61,6 +61,7 @@ class EditCompanyPartner extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $partner = (new PartnerService())->getPartnerById($this->record->partner_id);
+        $data['has_valid_address'] = $this->hasValidAddress($this->record);
         $data['partner_exists'] = true;
         $data['partner_id'] = $partner->id;
         $data['name'] = $partner->name;
@@ -81,6 +82,27 @@ class EditCompanyPartner extends EditRecord
         $data['company_partner']['email_bcc_override'] = $data['email_bcc_override'] ?? null;
 
         return $data;
+    }
+
+    private function hasValidAddress(CompanyPartner $companyPartner): bool
+    {
+        $AddressValid = $companyPartner->addresses()
+            ->get()
+            ->contains(function ($address): bool {
+                return filled($address->street)
+                    && filled($address->number)
+                    && filled($address->city)
+                    && filled($address->city_code)
+                    && filled($address->state)
+                    && filled($address->country);
+            });
+
+        Log::debug('Address Valid:', [
+            'valid?' => $AddressValid,
+            'companyPartner' => $companyPartner,
+            'addresses' => $companyPartner->addresses,
+        ]);
+        return $AddressValid;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

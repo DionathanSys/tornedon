@@ -18,6 +18,7 @@ use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\RestoreRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
 use App\Services\StockMovement\StockMovementService;
+use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
@@ -429,9 +430,13 @@ class RequisitionService
     /**
      * Encerra uma requisição (aberta → encerrada).
      */
-    public function close(Requisition $requisition, int $userId): ?Requisition
+    public function close(Requisition $requisition, int $userId, ?bool $sendEmail = null): ?Requisition
     {
         $this->resetResponse();
+
+        if ($sendEmail !== null) {
+            DocumentNotificationDecisionContext::put('requisition', (int) $requisition->id, $sendEmail);
+        }
 
         try {
             return DB::transaction(function () use ($requisition, $userId) {

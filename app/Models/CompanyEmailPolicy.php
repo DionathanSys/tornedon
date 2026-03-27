@@ -95,6 +95,26 @@ class CompanyEmailPolicy extends Model
                 'allowed_mime_types' => $allowedMimeTypes,
                 'fallback_mode' => 'signed_link',
             ],
+            [DocumentNotificationType::PRODUCTION_ORDER->value, DocumentNotificationEvent::CLOSED->value] => [
+                'enabled' => true,
+                'subject_template' => 'Ordem de Produção {{document_number}} encerrada',
+                'body_template' => 'Olá {{partner_name}},<br><br>A ordem de produção {{document_number}} foi encerrada e segue em anexo.',
+                'required_attachments' => ['pdf'],
+                'optional_attachments' => [],
+                'max_total_size_mb' => 20,
+                'allowed_mime_types' => $allowedMimeTypes,
+                'fallback_mode' => 'signed_link',
+            ],
+            [DocumentNotificationType::INVOICE->value, DocumentNotificationEvent::CONFIRMED->value] => [
+                'enabled' => true,
+                'subject_template' => 'Fatura {{document_number}} confirmada',
+                'body_template' => 'Olá {{partner_name}},<br><br>A fatura {{document_number}} foi confirmada e segue em anexo.',
+                'required_attachments' => ['pdf'],
+                'optional_attachments' => [],
+                'max_total_size_mb' => 20,
+                'allowed_mime_types' => $allowedMimeTypes,
+                'fallback_mode' => 'signed_link',
+            ],
             [DocumentNotificationType::FISCAL_DOCUMENT->value, DocumentNotificationEvent::CONFIRMED->value] => [
                 'enabled' => true,
                 'subject_template' => 'Nota Fiscal {{document_number}} confirmada',
@@ -118,4 +138,3 @@ class CompanyEmailPolicy extends Model
         };
     }
 }
-
