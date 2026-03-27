@@ -37,10 +37,15 @@ class OpenCnpjaProvider implements CnpjApiProviderInterface
         $url = "{$baseUrl}/{$cnpj}";
 
         try {
-            $response = Http::timeout($timeout)
+            $request = Http::timeout($timeout)
                 ->acceptJson()
-                ->withHeaders($headers)
-                ->get($url);
+                ->withHeaders($headers);
+                
+            if (app()->environment('local')) {
+                $request->withoutVerifying();
+            }
+
+            $response = $request->get($url);
 
             if ($response->status() === 429) {
                 Log::error('Limite de requisicoes da API atingido.', ['response' => $response->body()]);

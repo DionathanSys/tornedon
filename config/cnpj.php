@@ -31,7 +31,7 @@ return [
     */
     'provider_settings' => [
         'brasil_api' => [
-            'base_url' => env('CNPJ_BRASIL_API_BASE_URL', 'https://brasilapi.com.br/api/cnpj/v1'),
+            'base_url' => 'https://brasilapi.com.br/api/cnpj/v1',
             'timeout' => (int) env('CNPJ_BRASIL_API_TIMEOUT', 15),
             'headers' => [],
             'rate_limit' => [
