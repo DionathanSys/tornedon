@@ -102,7 +102,7 @@ class NfeWebhookController extends Controller
         $protocoloField = $isNfse ? 'nfse_protocol'  : 'nfe_protocolo';
         $logPrefix      = $isNfse ? 'NFS-e'           : 'NF-e';
 
-        $status = $payload['status'] ?? null; // 'autorizado' | 'cancelado' | null (rejeitado)
+        $status = $this->resolverStatusPayload($payload); // 'autorizado' | 'cancelado' | null (rejeitado)
 
         $updates = [];
 
@@ -170,5 +170,34 @@ class NfeWebhookController extends Controller
             }
 
         }
+    }
+
+    /**
+     * Alguns provedores enviam webhooks de NFS-e sem campo `status`,
+     * mas com indicadores de sucesso (ex.: codigo=100, sucesso=true,
+     * mensagem "Autorizado o uso da NFS-e.").
+     */
+    private function resolverStatusPayload(array $payload): ?string
+    {
+        $status = isset($payload['status']) ? strtolower((string) $payload['status']) : null;
+
+        if (in_array($status, ['autorizado', 'cancelado'], true)) {
+            return $status;
+        }
+
+        if (($payload['sucesso'] ?? false) === true) {
+            return 'autorizado';
+        }
+
+        if (($payload['codigo'] ?? null) === 100) {
+            return 'autorizado';
+        }
+
+        $mensagem = strtolower((string) ($payload['mensagem'] ?? ''));
+        if (str_contains($mensagem, 'autorizado o uso')) {
+            return 'autorizado';
+        }
+
+        return $status;
     }
 }
