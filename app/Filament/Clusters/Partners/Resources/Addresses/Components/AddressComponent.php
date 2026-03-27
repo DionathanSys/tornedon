@@ -9,6 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Http;
 
 final class AddressComponent
@@ -19,20 +20,17 @@ final class AddressComponent
             Grid::make(3)
                 ->columnSpanFull()
                 ->schema([
-                    // TextInput::make('postal_code')
-                    //     ->label('CEP')
-                    //     ->mask('99999-999')
-                    //     ->required()
-                    //     ->maxLength(9)
-                    //     ->columnSpan(1),
-
                     TextInput::make('postal_code')
                         ->label('CEP')
                         ->required()
                         ->mask('99999-999')
                         ->maxLength(9)
                         ->suffixAction(self::fetchCepAction())
-                        ->columnSpan(1),
+                        ->columnSpan(1)
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function ($state, Set $set) {
+                            self::fetchCepAction();
+                        }),
 
                     TextInput::make('street')
                         ->label('Logradouro/Rua')
@@ -127,7 +125,9 @@ final class AddressComponent
     private static function fetchCepAction(): Action
     {
         return Action::make('search-cep')
-            ->label('Buscar CEP')
+            ->icon(Heroicon::MagnifyingGlassCircle)
+            ->hiddenLabel()
+            ->tooltip('Buscar CEP')
             ->action(function (Get $get, Set $set): void {
                 $postalCode = preg_replace('/\D/', '', (string) ($get('postal_code') ?? ''));
 
