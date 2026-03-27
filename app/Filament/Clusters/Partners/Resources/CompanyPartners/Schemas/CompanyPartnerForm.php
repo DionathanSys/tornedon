@@ -6,6 +6,7 @@ use App\Enum;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\EditAddressAction;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\FetchStateTaxIdAction;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;
@@ -91,6 +92,7 @@ class CompanyPartnerForm
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
                             ->numeric()
+                            ->suffixAction(FetchStateTaxIdAction::make())
                             ->disabledOn('edit'),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscricao Municipal')
