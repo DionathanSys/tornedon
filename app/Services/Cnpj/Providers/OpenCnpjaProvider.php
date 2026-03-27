@@ -18,12 +18,20 @@ class OpenCnpjaProvider implements CnpjApiProviderInterface
 
     public function name(): string
     {
-        return 'open_cnpja';
+        return 'brasil_api';
     }
 
     public function consult(string $cnpj): CnpjProviderResult
     {
-        $baseUrl = rtrim((string) ($this->config['base_url'] ?? self::DEFAULT_BASE_URL), '/');
+        $configuredBaseUrl = (string) ($this->config['base_url'] ?? self::DEFAULT_BASE_URL);
+
+        // Compatibilidade com configurações legadas: se ainda apontar para open.cnpja,
+        // força BrasilAPI para evitar rate-limit externo.
+        if (str_contains($configuredBaseUrl, 'open.cnpja.com')) {
+            $configuredBaseUrl = self::DEFAULT_BASE_URL;
+        }
+
+        $baseUrl = rtrim($configuredBaseUrl, '/');
         $timeout = (int) ($this->config['timeout'] ?? self::DEFAULT_TIMEOUT);
         $headers = (array) ($this->config['headers'] ?? []);
         $url = "{$baseUrl}/{$cnpj}";

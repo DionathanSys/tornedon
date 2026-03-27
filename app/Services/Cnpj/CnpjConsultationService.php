@@ -189,7 +189,7 @@ class CnpjConsultationService
      */
     private function resolveProviders(): array
     {
-        $providerNames = config('cnpj.providers', ['open_cnpja']);
+        $providerNames = config('cnpj.providers', ['brasil_api']);
 
         if (is_string($providerNames)) {
             $providerNames = array_values(array_filter(array_map(

@@ -3,13 +3,12 @@
 namespace App\Filament\Clusters\Partners\Resources\Addresses\Components;
 
 use App\Notification\NotifyService as notify;
-use Filament\Actions\Action;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Http;
 
 final class AddressComponent
@@ -20,6 +19,13 @@ final class AddressComponent
             Grid::make(3)
                 ->columnSpanFull()
                 ->schema([
+                    // TextInput::make('postal_code')
+                    //     ->label('CEP')
+                    //     ->mask('99999-999')
+                    //     ->required()
+                    //     ->maxLength(9)
+                    //     ->columnSpan(1),
+
                     TextInput::make('postal_code')
                         ->label('CEP')
                         ->required()
@@ -122,8 +128,6 @@ final class AddressComponent
     {
         return Action::make('search-cep')
             ->label('Buscar CEP')
-            ->iconButton()
-            ->icon(Heroicon::MagnifyingGlassCircle)
             ->action(function (Get $get, Set $set): void {
                 $postalCode = preg_replace('/\D/', '', (string) ($get('postal_code') ?? ''));
 
