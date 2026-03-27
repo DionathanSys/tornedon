@@ -28,7 +28,7 @@ final class AddressComponent
                         ->suffixAction(self::fetchCepAction())
                         ->columnSpan(1)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, Set $set) {
+                        ->afterStateUpdated(function () {
                             self::fetchCepAction();
                         }),
 
