@@ -102,7 +102,7 @@ class NfeWebhookController extends Controller
         $protocoloField = $isNfse ? 'nfse_protocol'  : 'nfe_protocolo';
         $logPrefix      = $isNfse ? 'NFS-e'           : 'NF-e';
 
-        $status = $payload['status'] ?? null; // 'autorizado' | 'cancelado' | null (rejeitado)
+        $status = $this->normalizeStatus($payload['status'] ?? null); // 'autorizado' | 'cancelado' | null (rejeitado)
 
         $updates = [];
 
@@ -170,5 +170,20 @@ class NfeWebhookController extends Controller
             }
 
         }
+    }
+
+    private function normalizeStatus(mixed $status): ?string
+    {
+        if (! is_string($status) || trim($status) === '') {
+            return null;
+        }
+
+        $normalized = mb_strtolower(trim($status));
+
+        return match ($normalized) {
+            'autorizado', 'autorizada' => 'autorizado',
+            'cancelado', 'cancelada' => 'cancelado',
+            default => null,
+        };
     }
 }
