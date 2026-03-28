@@ -17,6 +17,7 @@ use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
+use App\Services\Partner\PartnerService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -52,7 +53,6 @@ class ServiceOrderForm
                         Tab::make('Dados Gerais')
                             ->icon(Heroicon::InformationCircle)
                             ->schema([
-
                                 Hidden::make('number'),
                                 Hidden::make('status'),
                                 Group::make()
@@ -62,7 +62,15 @@ class ServiceOrderForm
                                         SelectPartner::make('customer_id', 'customer')
                                             ->label('Cliente')
                                             ->columnSpanFull()
-                                            ->disabledOn('edit'),
+                                            ->disabledOn('edit')
+                                            ->getSearchResultsUsing(
+                                                fn(string $search): array => (new PartnerService())
+                                                    ->searchForSelect($search, Filament::getTenant()->id, 'customer')
+                                            )
+                                            ->getOptionLabelUsing(
+                                                fn($value): ?string => (new PartnerService())
+                                                    ->getLabelForSelect((int) $value, ['document_number' => false])
+                                            ),
                                         Select::make('equipment_id')
                                             ->label('Equipamento')
                                             ->columnSpanFull()
@@ -77,19 +85,19 @@ class ServiceOrderForm
                                                 fn($value): ?string => (new EquipmentService())
                                                     ->getLabelForSelect((int) $value)
                                             )
-                                            ->disabled(fn($get) => ! $get('customer_id'))
-                                            ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
+                                            ->disabled(fn($get) => ! $get('customer_id')),
                                         DatePicker::make('order_date')
                                             ->label('Data da Ordem')
-                                            ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
+                                            ->columnSpan(fn($operation) => $operation === 'create' ? 1 : ['md' => 2, 'lg' => 2])
                                             ->required()
                                             ->default(now())
                                             ->displayFormat('d/m/Y')
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         Section::make('Outras Informações')
                                             ->columnSpanFull()
-                                            ->contained(fn($operation) => $operation !== 'edit')
+                                            ->contained(false) //fn($operation) => $operation !== 'edit')
                                             ->collapsible()
+                                            ->visibleOn('edit')
                                             ->collapsed()
                                             ->schema([
                                                 Select::make('priority')
@@ -137,8 +145,6 @@ class ServiceOrderForm
                                                     ->disabled(fn($record) => ! $record?->state()?->canEdit()),
                                             ]),
                                     ]),
-
-
                                 Section::make('Atendimento')
                                     ->collapsible()
                                     ->collapsed()
@@ -205,37 +211,43 @@ class ServiceOrderForm
                         Tab::make('Valores')
                             ->icon(Heroicon::CurrencyDollar)
                             ->schema([
-                                Money::make('value_km')
-                                    ->label('Valor do KM')
-                                    ->columnSpan(['md' => 2, 'lg' => 4])
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(function ($state, Set $set, $get) {
-                                        $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
-                                        $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
-                                        $set('travel_value', number_format($valueKm * $distanceKm));
-                                    })
-                                    ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
-                                    ->formatStateUsing(fn($state) => is_numeric($state)
-                                        ? number_format((float) $state, 2, ',', '.')
-                                        : number_format((float) CompanyPreference::get('default_value_km', default: 3.5), 2, ',', '.')),
-                                Money::make('distance_km')
-                                    ->label('Distância em KM')
-                                    ->columnSpan(['md' => 2, 'lg' => 4])
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(function ($state, Set $set, $get) {
-                                        $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
-                                        $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
-                                        $set('travel_value', number_format($valueKm * $distanceKm));
-                                    })
-                                    ->suffix('km')
-                                    ->prefix(null)
-                                    ->default(0),
-                                Money::make('travel_value')
-                                    ->label('Valor de Deslocamento')
-                                    ->columnSpan(['md' => 2, 'lg' => 4])
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->default(0),
+                                Group::make()
+                                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12])
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        Money::make('value_km')
+                                            ->label('Valor do KM')
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, Set $set, $get) {
+                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
+                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
+                                                $set('travel_value', number_format($valueKm * $distanceKm), 2, ',', '.');
+                                            })
+                                            ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
+                                            ->formatStateUsing(fn($state) => is_numeric($state)
+                                                ? number_format((float) $state, 2, ',', '.')
+                                                : number_format((float) CompanyPreference::get('default_value_km', default: 3.5), 2, ',', '.')),
+                                        Money::make('distance_km')
+                                            ->label('Distância em KM')
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, Set $set, $get) {
+                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
+                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
+                                                $set('travel_value', number_format($valueKm * $distanceKm, 2, ',', '.'));
+                                            })
+                                            ->suffix('km')
+                                            ->prefix(null)
+                                            ->default(0),
+                                        Money::make('travel_value')
+                                            ->label('Valor de Deslocamento')
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->disabled()
+                                            ->dehydrated()
+                                            ->default(0),
+                                    ]),
+
                                 Select::make('payment_method')
                                     ->label('Forma de Pagamento')
                                     ->columnSpan(['md' => 2, 'lg' => 4])

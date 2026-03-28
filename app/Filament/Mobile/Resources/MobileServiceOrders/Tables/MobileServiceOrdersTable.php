@@ -144,6 +144,7 @@ class MobileServiceOrdersTable
                     ->label("Ordem de Servi\u{00E7}o")
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
+                    ->createAnother(false)
                     ->mutateDataUsing(function (array $data): array {
                         $tenant = Filament::getTenant();
                         $data['company_id'] = $tenant->id;

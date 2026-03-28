@@ -228,7 +228,7 @@ class PartnerService
     /**
      * Retorna o label formatado de um parceiro para exibição em um select.
      */
-    public function getLabelForSelect(int $id): ?string
+    public function getLabelForSelect(int $id, array $options = []): ?string
     {
         $partner = Partner::find($id);
 
@@ -236,7 +236,7 @@ class PartnerService
             return null;
         }
 
-        return self::formatSelectLabel($partner);
+        return self::formatSelectLabel($partner, $options);
     }
 
     /* ==============================
@@ -246,9 +246,23 @@ class PartnerService
     /**
      * Formata o label do parceiro: "Nome (Documento)"
      */
-    private static function formatSelectLabel(Partner $partner): string
+    private static function formatSelectLabel(Partner $partner, array $options = []): string
     {
-        $label = "{$partner->name} ({$partner->document_number})";
+        $showName = $options['name'] ?? true;
+        $showDocumentNumber = $options['document_number'] ?? true;
+
+        $parts = [];
+
+        if ($showName && !empty($partner->name)) {
+            $parts[] = $partner->name;
+        }
+
+        if ($showDocumentNumber && !empty($partner->document_number)) {
+            $parts[] = $partner->document_number;
+        }
+
+        $label = implode(' — ', $parts);
+
         return $label;
     }
 }
