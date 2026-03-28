@@ -61,7 +61,8 @@ class ServiceOrdersTable
                         State::INVOICED => 'warning',
                         State::CANCELLED => 'danger',
                     })
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('priority')
                     ->label('Prioridade')
                     ->badge()
@@ -90,6 +91,12 @@ class ServiceOrdersTable
                     ->limit(25)
                     ->toggleable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('total_amount')
+                    ->label('Total')
+                    ->money('BRL'),
+                TextColumn::make('discount_amount')
+                    ->label('Desc. (R$)')
+                    ->money('BRL'),
                 TextColumn::make('order_date')
                     ->label('Data da Ordem')
                     ->date('d/m/Y')
