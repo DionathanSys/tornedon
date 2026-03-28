@@ -107,6 +107,16 @@
             min-height: 56px;
         }
 
+        .meta-notes-value {
+            padding: 0;
+        }
+
+        .meta-notes-content {
+            min-height: 56px;
+            padding: 10px;
+            white-space: pre-line;
+        }
+
         .grid th {
             background: #e8eef4;
             text-align: center;
@@ -206,7 +216,7 @@
         </div>
     </div>
 
-    <div class="section-title">Itens da Ordem de Serviço</div>
+    <div class="section-title">Itens</div>
     <table class="grid">
         <thead>
             <tr>
@@ -237,13 +247,32 @@
     </table>
 
     <div class="section-title">Observações</div>
-    <div class="notes-box">{{ $pdfData['customer_observations'] }}</div>
-
-    <div class="section-title">Solução aplicada</div>
-    <div class="notes-box">{{ $pdfData['solution'] }}</div>
-
-    <div class="section-title">Obs Técnico</div>
-    <div class="notes-box">{{ $pdfData['technician_observations'] }}</div>
+    <table class="meta-grid">
+        <tbody>
+            <tr>
+                <td class="meta-label">Observações</td>
+                <td colspan="3" class="meta-notes-value">
+                    <div class="meta-notes-content">{{ $pdfData['customer_observations'] }}</div>
+                </td>
+            </tr>
+            <tr>
+                @if (filled($pdfData['solution']))
+                <td class="meta-label">Solução aplicada</td>
+                <td colspan="3" class="meta-notes-value">
+                    <div class="meta-notes-content">{{ $pdfData['solution'] }}</div>
+                </td>
+                @endif
+            </tr>
+            <tr>
+                @if (filled($pdfData['technician_observations']))
+                <td class="meta-label">Observações Técnico</td>
+                <td colspan="3" class="meta-notes-value">
+                    <div class="meta-notes-content">{{ $pdfData['technician_observations'] }}</div>
+                </td>
+                @endif
+            </tr>
+        </tbody>
+    </table>
 
     @if (filled($pdfData['additional_info_text']))
     <div class="section-title">Informacoes Adicionais</div>
