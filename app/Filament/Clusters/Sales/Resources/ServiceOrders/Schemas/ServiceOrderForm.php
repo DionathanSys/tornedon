@@ -137,7 +137,7 @@ class ServiceOrderForm
                                                     ->visibleOn('edit')
                                                     ->disabled(fn($record) => ! $record?->state()?->canEdit()),
                                                 TextInput::make('status')
-                                                    ->formatStateUsing(fn(State $state) => $state->description())
+                                                    // ->formatStateUsing(fn(State $state) => $state->description())
                                                     ->disabled()
                                                     ->saved(false),
                                                 TextInput::make('invoice.number')
