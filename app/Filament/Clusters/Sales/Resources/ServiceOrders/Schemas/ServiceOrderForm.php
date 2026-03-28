@@ -144,7 +144,6 @@ class ServiceOrderForm
                                                     ->disabled()
                                                     ->saved(false),
                                                 TextInput::make('invoiced_at')
-                                                    ->formatStateUsing(fn(State $state) => $state->description())
                                                     ->disabled()
                                                     ->saved(false),
                                             ]),
