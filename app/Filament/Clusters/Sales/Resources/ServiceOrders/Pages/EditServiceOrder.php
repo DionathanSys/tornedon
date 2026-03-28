@@ -55,7 +55,6 @@ class EditServiceOrder extends EditRecord
                 CancelServiceOrderAction::make()
                     ->hiddenLabel(),
                 ReopenServiceOrderAction::make()
-                    ->color('gray')
                     ->hiddenLabel(),
                 DeleteAction::make()
                     ->hiddenLabel()

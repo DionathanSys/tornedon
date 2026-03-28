@@ -57,7 +57,6 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->schema([
                                         Hidden::make('number'),
-                                        Hidden::make('status'),
                                         Group::make()
                                             ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12])
                                             ->columnSpanFull()
@@ -137,6 +136,17 @@ class ServiceOrderForm
                                                     ->displayFormat('d/m/Y')
                                                     ->visibleOn('edit')
                                                     ->disabled(fn($record) => ! $record?->state()?->canEdit()),
+                                                TextInput::make('status')
+                                                    ->formatStateUsing(fn(State $state) => $state->description())
+                                                    ->disabled()
+                                                    ->saved(false),
+                                                TextInput::make('invoice.number')
+                                                    ->disabled()
+                                                    ->saved(false),
+                                                TextInput::make('invoiced_at')
+                                                    ->formatStateUsing(fn(State $state) => $state->description())
+                                                    ->disabled()
+                                                    ->saved(false),
                                             ]),
 
                                     ]),
