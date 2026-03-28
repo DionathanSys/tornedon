@@ -139,12 +139,19 @@ class ServiceOrderForm
                                                 TextInput::make('status')
                                                     // ->formatStateUsing(fn(State $state) => $state->description())
                                                     ->disabled()
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->saved(false),
                                                 TextInput::make('invoice.number')
+                                                    ->label('Nº da Fatura')
+                                                    ->visible(fn($state) => $state ?? false)
                                                     ->disabled()
-                                                    ->saved(false),
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->saved(false), 
                                                 TextInput::make('invoiced_at')
+                                                    ->label('Faturado em')
+                                                    ->visible(fn($state) => $state ?? false)
                                                     ->disabled()
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->saved(false),
                                             ]),
 
