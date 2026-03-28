@@ -932,7 +932,7 @@ class ServiceOrderService
         $this->resetResponse();
 
         try {
-            $action = new PrintServiceOrderPdfAction();
+            $action = app(PrintServiceOrderPdfAction::class);
             $pdf    = $action->execute($serviceOrder);
 
             if ($pdf === null || $action->hasError()) {
