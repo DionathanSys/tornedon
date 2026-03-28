@@ -93,10 +93,10 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money('BRL'),
+                    ->money('BRL', 100),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
-                    ->money('BRL'),
+                    ->money('BRL', 100),
                 TextColumn::make('order_date')
                     ->label('Data da Ordem')
                     ->date('d/m/Y')
