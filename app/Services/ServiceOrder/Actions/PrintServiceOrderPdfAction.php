@@ -29,7 +29,7 @@ class PrintServiceOrderPdfAction
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {
-                $this->setError('Nao foi possivel gerar o PDF da ordem de servico.');
+                $this->setError('Não foi possível gerar o PDF da ordem de serviço.');
                 return null;
             }
 
@@ -37,8 +37,8 @@ class PrintServiceOrderPdfAction
 
             return base64_encode($pdfBinary);
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar PDF da ordem de servico: ' . $e->getMessage());
-
+            $this->setError('Erro ao montar PDF da ordem de serviço: ' . $e->getMessage());
+@
             Log::error('PrintServiceOrderPdfAction: excecao', [
                 'metodo'           => __METHOD__ . '@' . __LINE__,
                 'service_order_id' => $serviceOrder->id,

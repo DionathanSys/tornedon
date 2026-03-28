@@ -29,7 +29,7 @@ final class CreateItemAction
     public static function make(): CreateAction
     {
         return CreateAction::make()
-            ->label('Servico')
+            ->label('Serviço')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
             ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
@@ -38,7 +38,7 @@ final class CreateItemAction
                     ->saved(false)
                     ->default(0),
                 ModalSelectService::make('service_id')
-                    ->label('Servico')
+                    ->label('Serviço')
                     ->saved(true)
                     ->afterStateUpdated(function (Set $set, Get $get, $state, RelationManager $livewire) {
                         self::applySelectedService($set, $get, $state, $livewire->getOwnerRecord());
@@ -50,7 +50,7 @@ final class CreateItemAction
                     'enforceEffectiveMinSalePrice'  => true,
                 ]),
                 Textarea::make('observations')
-                    ->label('Observacoes')
+                    ->label('Observações')
                     ->columnSpanFull(),
             ])
             ->using(function (array $data, RelationManager $livewire): ?Model {
@@ -75,6 +75,7 @@ final class CreateItemAction
                 notify::success(message: $service->getMessageUser());
                 return $item;
             })
+            ->cancelAction(false)
             ->successNotification(null);
     }
 
