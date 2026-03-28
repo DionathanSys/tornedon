@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
 use App\Services\Equipment\EquipmentService;
+use Filament\Actions\Action;
 
 class ServiceOrdersTable
 {
@@ -178,6 +179,11 @@ class ServiceOrdersTable
                     DownloadServiceOrderPdfAction::make(),
                     CloseServiceOrderAction::make(),
                     InvoiceServiceOrderAction::make(),
+                    Action::make('open-invoice')
+                        ->url(fn($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
+                        ->visible(fn($record) => $record->invoice_id)
+                        ->icon(Heroicon::Eye)
+                        ->label('Ver Fatura'),
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),

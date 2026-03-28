@@ -11,7 +11,7 @@ class SalesCluster extends Cluster
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
-    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Start;
 
     protected static ?string $navigationLabel = 'Vendas';
 
