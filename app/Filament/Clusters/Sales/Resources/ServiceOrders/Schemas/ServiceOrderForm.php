@@ -252,6 +252,7 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->disabled()
                                             ->dehydrated()
+                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
                                         Select::make('payment_method')
                                             ->label('Forma de Pagamento')
