@@ -940,7 +940,7 @@ class ServiceOrderService
                 return null;
             }
 
-            $this->setSuccess('PDF da ordem de servico gerado.');
+            $this->setSuccess('PDF da ordem de serviço gerado.');
 
             Log::info('ServiceOrderService: PDF gerado com sucesso', [
                 'metodo'           => __METHOD__ . '@' . __LINE__,
@@ -950,7 +950,7 @@ class ServiceOrderService
 
             return $pdf;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da ordem de servico: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da ordem de serviço: ' . $e->getMessage());
 
             Log::error('ServiceOrderService::pdf', [
                 'metodo'           => __METHOD__ . '@' . __LINE__,
@@ -964,7 +964,7 @@ class ServiceOrderService
     }
 
     /**
-     * Gera o preview do PDF da ordem de servico.
+     * Gera o preview do PDF da ordem de serviço.
      *
      * @return array{pdf:string}|null
      */
@@ -981,7 +981,7 @@ class ServiceOrderService
 
             return ['pdf' => $pdf];
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da ordem de servico: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da ordem de serviço: ' . $e->getMessage());
 
             Log::error('ServiceOrderService::preview', [
                 'metodo'           => __METHOD__ . '@' . __LINE__,
