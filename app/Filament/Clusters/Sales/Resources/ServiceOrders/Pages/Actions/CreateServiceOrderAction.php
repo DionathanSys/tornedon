@@ -22,7 +22,9 @@ final class CreateServiceOrderAction
     public static function make(): CreateAction
     {
         return CreateAction::make()
-            ->label('Ordem de Serviço')
+            ->label('OS')
+            ->color('gray')
+            ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
             ->mutateDataUsing(function (array $data): array {
