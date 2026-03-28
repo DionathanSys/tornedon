@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -69,6 +70,7 @@ final class CreateServiceOrderAction
                 ]);
 
                 return $serviceOrder;
-            });
+            })
+            ->successRedirectUrl(fn($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]));
     }
 }
