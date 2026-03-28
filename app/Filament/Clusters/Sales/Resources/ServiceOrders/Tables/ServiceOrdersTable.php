@@ -176,7 +176,7 @@ class ServiceOrdersTable
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
-                ])->button()->size(Size::ExtraSmall)->icon(Heroicon::EllipsisVertical),
+                ])->size(Size::ExtraSmall)->icon(Heroicon::EllipsisVertical),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

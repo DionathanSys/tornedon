@@ -88,6 +88,7 @@ class ServiceOrderForm
                                                     ->label('Prioridade')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->required()
+                                                    ->visibleOn('edit')
                                                     ->options(Priority::toSelectArray())
                                                     ->default(Priority::NORMAL->value)
                                                     ->native(false)

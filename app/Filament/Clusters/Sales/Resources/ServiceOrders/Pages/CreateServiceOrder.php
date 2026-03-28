@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Enum\ServiceOrder\State;
+use App\Enum\ServiceOrder\Priority;
 
 class CreateServiceOrder extends CreateRecord
 {
@@ -22,6 +23,7 @@ class CreateServiceOrder extends CreateRecord
         $tenant             = Filament::getTenant();
         $data['company_id'] = $tenant->id;
         $data['status']     = State::OPEN;
+        $data['priority']   = Priority::NORMAL;
 
         unset($data['discount_amount']);
         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
@@ -38,6 +40,11 @@ class CreateServiceOrder extends CreateRecord
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Ordem de serviço criada com sucesso';
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('edit');
     }
 
     protected function handleRecordCreation(array $data): Model
@@ -57,7 +64,7 @@ class CreateServiceOrder extends CreateRecord
                 message: $service->getMessageUser(),
                 errorCode: $service->getErrorCode()
             );
-            
+
             $this->halt();
         }
 
