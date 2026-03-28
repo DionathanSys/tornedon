@@ -112,7 +112,7 @@
         }
 
         .meta-notes-content {
-            min-height: 56px;
+            min-height: 12px;
             padding: 10px;
             white-space: pre-line;
         }
