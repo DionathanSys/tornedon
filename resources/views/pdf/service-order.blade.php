@@ -250,24 +250,24 @@
     <table class="meta-grid">
         <tbody>
             <tr>
-                <td class="meta-label">Observações</td>
-                <td colspan="3" class="meta-notes-value">
-                    <div class="meta-notes-content">{{ $pdfData['customer_observations'] }}</div>
+                <td class="meta-inline-label">Observações</td>
+                <td colspan="3" class="meta-inline-value">
+                    {{ $pdfData['customer_observations'] }}
                 </td>
             </tr>
             <tr>
                 @if (filled($pdfData['solution']))
-                <td class="meta-label">Solução aplicada</td>
-                <td colspan="3" class="meta-notes-value">
-                    <div class="meta-notes-content">{{ $pdfData['solution'] }}</div>
+                <td class="meta-inline-label">Solução aplicada</td>
+                <td colspan="3" class="meta-inline-value">
+                    {{ $pdfData['solution'] }}
                 </td>
                 @endif
             </tr>
             <tr>
                 @if (filled($pdfData['technician_observations']))
-                <td class="meta-label">Observações Técnico</td>
-                <td colspan="3" class="meta-notes-value">
-                    <div class="meta-notes-content">{{ $pdfData['technician_observations'] }}</div>
+                <td class="meta-inline-label">Observações Técnico</td>
+                <td colspan="3" class="meta-inline-value">
+                    {{ $pdfData['technician_observations'] }}
                 </td>
                 @endif
             </tr>
