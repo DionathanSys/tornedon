@@ -3,6 +3,7 @@
 namespace App\Services\ServiceOrder\Actions;
 
 use App\Models\ServiceOrder;
+use App\Services\ServiceOrder\Support\ServiceOrderPdfDataFormatter;
 use App\Traits\HandlesActionResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\Log;
 class PrintServiceOrderPdfAction
 {
     use HandlesActionResponse;
+
+    public function __construct(
+        private readonly ServiceOrderPdfDataFormatter $dataFormatter,
+    ) {}
 
     public function execute(ServiceOrder $serviceOrder): ?string
     {
@@ -24,8 +29,11 @@ class PrintServiceOrderPdfAction
                 'items.service',
             ]);
 
+            $pdfData = $this->dataFormatter->format($serviceOrder);
+
             $pdfBinary = Pdf::loadView('pdf.service-order', [
                 'record' => $serviceOrder,
+                'pdfData' => $pdfData,
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {
