@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Ordem de Serviço {{ $record->number }}</title>
+    <title>{{ $pdfData['title'] }}</title>
     @include('pdf.partials.document-styles')
     <style>
         @page {
@@ -168,122 +168,21 @@
 </head>
 
 <body>
-    @php
-        $formatDate = fn ($date) => $date?->format('d/m/Y') ?? '-';
-        $formatMoney = fn ($value) => 'R$ ' . number_format((float) $value, 2, ',', '.');
-        $formatQuantity = fn ($value) => number_format((float) $value, 3, ',', '.');
-        $companyLogo = null;
-        $additionalInfoLabels = [
-            'accessories' => 'Acessorios entregues',
-            'avaria' => 'Avaria identificada',
-            'budget' => 'Orcamento alinhado',
-            'cleaning' => 'Limpeza executada',
-            'guidance' => 'Orientacoes ao cliente',
-            'parts' => 'Pecas substituidas',
-            'pending' => 'Pendencia encontrada',
-            'test' => 'Teste realizado',
-            'warranty' => 'Garantia informada',
-            'other' => 'Outro',
-        ];
-
-        $headerLines = [
-            ['label' => 'Empresa', 'value' => $record->company?->name ?? '-', 'class' => 'muted'],
-            ['label' => 'Cliente', 'value' => $record->customer?->name ?? '-'],
-        ];
-
-    $responsibles = collect([
-    ['label' => 'Equipamento', 'value' => $record->equipment?->identifier],
-    ['label' => 'Tecnico', 'value' => $record->technician?->name],
-    ['label' => 'Supervisor', 'value' => $record->supervisor?->name],
-    ['label' => 'Vendedor', 'value' => $record->salesperson?->name],
-    ])->filter(fn ($field) => filled($field['value']));
-
-    $summaryLines = collect([
-    $record->discount_amount > 0
-    ? ['label' => 'Desconto total', 'value' => $formatMoney($record->discount_amount)]
-    : null,
-    ['label' => 'Valor total', 'value' => $formatMoney($record->total_amount)],
-    ])->filter();
-
-    $additionalInfo = collect($record->additional_info ?? []);
-    $additionalInfoText = null;
-
-    if ($additionalInfo->isNotEmpty()) {
-    $first = $additionalInfo->first();
-
-    if (is_array($first) && array_key_exists('type', $first)) {
-    $additionalInfo = $additionalInfo
-    ->map(function ($item) use ($additionalInfoLabels) {
-    if (! is_array($item)) {
-    return null;
-    }
-
-    $type = $item['type'] ?? null;
-    $label = filled($type)
-    ? ($additionalInfoLabels[$type] ?? (string) $type)
-    : 'Outro';
-    $observation = $item['observation'] ?? null;
-
-    return [
-    'label' => $label,
-    'value' => filled($observation) ? $observation : null,
-    ];
-    })
-    ->filter();
-    } else {
-    $additionalInfo = $additionalInfo
-    ->map(function ($value, $key) use ($additionalInfoLabels) {
-    $label = $additionalInfoLabels[(string) $key] ?? (string) $key;
-
-    return [
-    'label' => $label,
-    'value' => is_scalar($value) ? (string) $value : null,
-    ];
-    })
-    ->filter();
-    }
-    }
-
-    $additionalInfoText = $additionalInfo
-    ->map(function ($info) {
-    if (! is_array($info)) {
-    return null;
-    }
-
-    $label = $info['label'] ?? null;
-    $value = $info['value'] ?? null;
-
-    if (filled($label) && filled($value)) {
-    return "{$label}: {$value}";
-    }
-
-                return $label ?: $value;
-            })
-            ->filter()
-            ->implode(' | ');
-
-        if (filled($record->company?->logo_path) && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->company->logo_path)) {
-            $logoDisk = \Illuminate\Support\Facades\Storage::disk('public');
-            $logoMime = $logoDisk->mimeType($record->company->logo_path) ?: 'image/png';
-            $companyLogo = 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($record->company->logo_path));
-        }
-    @endphp
-
     <div class="page-header">
         <div class="page-header-bar">
-            <div class="page-header-title">Ordem de Serviço #{{ $record->number }}</div>
-            <div class="page-header-status">{{ $record->status?->description() ?? '-' }}</div>
+            <div class="page-header-title">{{ $pdfData['title'] }}</div>
+            <div class="page-header-status">{{ $pdfData['status'] }}</div>
         </div>
         <div class="page-header-body">
-            @if (filled($companyLogo))
+            @if (filled($pdfData['company_logo']))
                 <div class="company-logo-wrap">
-                    <img src="{{ $companyLogo }}" alt="Logo {{ $record->company->name }}" class="company-logo">
+                    <img src="{{ $pdfData['company_logo'] }}" alt="Logo {{ $pdfData['company_name'] }}" class="company-logo">
                 </div>
             @endif
-            <div class="header-meta-wrap{{ filled($companyLogo) ? ' has-logo' : '' }}">
+            <div class="header-meta-wrap{{ filled($pdfData['company_logo']) ? ' has-logo' : '' }}">
                 <table class="meta-grid">
                     <tbody>
-                        @foreach ($headerLines as $line)
+                        @foreach ($pdfData['header_lines'] as $line)
                             <tr>
                                 <td class="meta-label">{{ $line['label'] }}</td>
                                 <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
@@ -291,11 +190,11 @@
                         @endforeach
                         <tr>
                             <td class="meta-inline-label">Data da Ordem</td>
-                            <td class="meta-inline-value">{{ $formatDate($record->order_date) }}</td>
+                            <td class="meta-inline-value">{{ $pdfData['order_date'] }}</td>
                             <td class="meta-inline-label">Data Conclusão</td>
-                            <td class="meta-inline-value">{{ $formatDate($record->completion_date) }}</td>
+                            <td class="meta-inline-value">{{ $pdfData['completion_date'] }}</td>
                         </tr>
-                        @foreach ($responsibles as $field)
+                        @foreach ($pdfData['responsibles'] as $field)
                             <tr>
                                 <td class="meta-label">{{ $field['label'] }}</td>
                                 <td colspan="3">{{ $field['value'] }}</td>
@@ -320,14 +219,14 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($record->items as $item)
+            @forelse ($pdfData['items'] as $item)
             <tr>
-                <td>{{ $item->service?->name ?? '-' }}</td>
-                <td>{{ $formatQuantity($item->quantity) }}</td>
-                <td>{{ $formatMoney($item->unit_price) }}</td>
-                <td>{{ $formatMoney($item->discount_amount) }}</td>
-                <td>{{ $formatMoney($item->total_amount) }}</td>
-                <td>{{ $item->observations ?? '-' }}</td>
+                <td>{{ $item['service'] }}</td>
+                <td>{{ $item['quantity'] }}</td>
+                <td>{{ $item['unit_price'] }}</td>
+                <td>{{ $item['discount_amount'] }}</td>
+                <td>{{ $item['total_amount'] }}</td>
+                <td>{{ $item['observations'] }}</td>
             </tr>
             @empty
             <tr>
@@ -338,17 +237,23 @@
     </table>
 
     <div class="section-title">Observações</div>
-    <div class="notes-box">{{ $record->customer_observations ?? 'Sem observações' }}</div>
+    <div class="notes-box">{{ $pdfData['customer_observations'] }}</div>
 
-    @if (filled($additionalInfoText))
+    <div class="section-title">Solução aplicada</div>
+    <div class="notes-box">{{ $pdfData['solution'] }}</div>
+
+    <div class="section-title">Obs Técnico</div>
+    <div class="notes-box">{{ $pdfData['technician_observations'] }}</div>
+
+    @if (filled($pdfData['additional_info_text']))
     <div class="section-title">Informacoes Adicionais</div>
-    <div class="notes-box">{{ $additionalInfoText }}</div>
+    <div class="notes-box">{{ $pdfData['additional_info_text'] }}</div>
     @endif
 
     <div class="section-title">Resumo</div>
     <table class="summary-table">
         <tbody>
-            @foreach ($summaryLines as $line)
+            @foreach ($pdfData['summary_lines'] as $line)
             <tr class="{{ $loop->last ? 'summary-total' : '' }}">
                 <td>{{ $line['label'] }}</td>
                 <td>{{ $line['value'] }}</td>
@@ -358,18 +263,18 @@
     </table>
 
     <div class="signature-block">
-        @if (filled($record->customer_signature))
-        <img src="{{ $record->customer_signature }}" alt="Assinatura do cliente" class="signature-image">
+        @if (filled($pdfData['customer_signature']))
+        <img src="{{ $pdfData['customer_signature'] }}" alt="Assinatura do cliente" class="signature-image">
         <div class="signature-line">Assinatura do Cliente</div>
-        @if ($record->customer_signed_at)
-        <div class="signature-date">Assinado em {{ $record->customer_signed_at->format('d/m/Y H:i') }}</div>
+        @if (filled($pdfData['customer_signed_at']))
+        <div class="signature-date">Assinado em {{ $pdfData['customer_signed_at'] }}</div>
         @endif
         @else
         <div class="signature-line">Assinatura do Cliente</div>
         @endif
     </div>
 
-    <div class="pdf-footer">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
+    <div class="pdf-footer">Gerado em: {{ $pdfData['generated_at'] }}</div>
 </body>
 
 </html>
