@@ -51,6 +51,8 @@ class ServiceOrder extends Model
         'technician_observations',
         'estimated_hours',
         'actual_hours',
+        'value_km',
+        'distance_km',
         'travel_value',
         'payment_method',
         'payment_condition',
@@ -83,6 +85,8 @@ class ServiceOrder extends Model
         'payment_condition'     => PaymentCondition::class,
         'estimated_hours'       => 'decimal:2',
         'actual_hours'          => 'decimal:2',
+        'value_km'              => MoneyCast::class,
+        'distance_km'           => 'decimal:2',
         'travel_value'          => MoneyCast::class,
         'warranty_expires_at'   => 'date',
         'requires_approval'     => 'boolean',
@@ -147,8 +151,6 @@ class ServiceOrder extends Model
         return $this->hasMany(ServiceOrderItem::class);
     }
 
-
-
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -169,10 +171,7 @@ class ServiceOrder extends Model
     protected function discountAmount(): Attribute
     {
         return Attribute::make(
-            get: fn(): float => round(
-                $this->items->sum(fn($item) => (float) $item->discount_amount),
-                2
-            )
+            get: fn(): float => round($this->sumItemsColumn('discount_amount'), 2)
         );
     }
 
@@ -183,10 +182,21 @@ class ServiceOrder extends Model
     {
         return Attribute::make(
             get: fn(): float => round(
-                $this->items->sum(fn($item) => (float) $item->total_amount)
+                $this->sumItemsColumn('total_amount')
                     + (float) $this->travel_value,
                 2
             )
         );
+    }
+
+    private function sumItemsColumn(string $column): float
+    {
+        if ($this->relationLoaded('items')) {
+            return (float) $this->items->sum(
+                fn(ServiceOrderItem $item): float => (float) $item->{$column}
+            );
+        }
+
+        return (float) $this->items()->sum($column);
     }
 }

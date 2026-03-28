@@ -12,6 +12,12 @@ class ServiceOrderPdfDataFormatter
      */
     public function format(ServiceOrder $serviceOrder): array
     {
+        $itemsTotal = round(
+            (float) $serviceOrder->items->sum(fn ($item) => (float) $item->total_amount),
+            2
+        );
+        $travelValue = (float) $serviceOrder->travel_value;
+
         $additionalInfoLabels = [
             'accessories' => 'Acessorios entregues',
             'avaria' => 'Avaria identificada',
@@ -38,6 +44,8 @@ class ServiceOrderPdfDataFormatter
         ])->filter(fn (array $field) => filled($field['value']))->values()->all();
 
         $summaryLines = collect([
+            ['label' => 'Serviços', 'value' => $this->formatMoney($itemsTotal)],
+            ['label' => 'Deslocamento', 'value' => $this->formatMoney($travelValue)],
             $serviceOrder->discount_amount > 0
                 ? ['label' => 'Desconto total', 'value' => $this->formatMoney($serviceOrder->discount_amount)]
                 : null,

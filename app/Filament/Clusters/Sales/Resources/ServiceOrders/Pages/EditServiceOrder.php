@@ -13,8 +13,10 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewSer
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\SignServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
+use App\Models\CompanyPreference;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
+use App\Support\ServiceOrderTravelData;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -191,6 +193,10 @@ class EditServiceOrder extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
+        $data = ServiceOrderTravelData::hydrate(
+            $data,
+            CompanyPreference::get('default_value_km', default: 3.5)
+        );
 
         return $data;
     }

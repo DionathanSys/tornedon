@@ -7,6 +7,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Support\ServiceOrderTravelData;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +29,8 @@ class ServiceOrderValidator
             'technician_observations'   => 'nullable|string',
             'estimated_hours'           => 'nullable|numeric|min:0',
             'actual_hours'              => 'nullable|numeric|min:0',
+            'value_km'                  => 'nullable|numeric|min:0',
+            'distance_km'               => 'nullable|numeric|min:0',
             'travel_value'              => 'nullable|numeric|min:0',
             'discount_amount'           => 'nullable|numeric|min:0',
             'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
@@ -57,6 +60,8 @@ class ServiceOrderValidator
      */
     public static function validateCreate(array $data): array
     {
+        $data = ServiceOrderTravelData::normalizePayload($data);
+
         $rules = array_merge(self::commonRules(), [
             'number'                    => [
                 'required',
@@ -87,6 +92,8 @@ class ServiceOrderValidator
      */
     public static function validateUpdate(array $data, ?int $serviceOrderId = null, ?int $companyId = null): array
     {
+        $data = ServiceOrderTravelData::normalizePayload($data);
+
         $rules = array_merge(self::commonRules(), [
             'customer_id'               => 'sometimes|required|integer|exists:partners,id',
             'order_date'                => 'sometimes|required|date',
@@ -145,6 +152,10 @@ class ServiceOrderValidator
             'estimated_hours.min'           => 'As horas estimadas não podem ser negativas',
             'actual_hours.numeric'          => 'As horas reais devem ser um número',
             'actual_hours.min'              => 'As horas reais não podem ser negativas',
+            'value_km.numeric'              => 'O valor do KM deve ser um número',
+            'value_km.min'                  => 'O valor do KM não pode ser negativo',
+            'distance_km.numeric'           => 'A distância em KM deve ser um número',
+            'distance_km.min'               => 'A distância em KM não pode ser negativa',
             'travel_value.numeric'          => 'O valor de deslocamento deve ser um número',
             'travel_value.min'              => 'O valor de deslocamento não pode ser negativo',
             'discount_amount.numeric'       => 'O desconto deve ser um número',

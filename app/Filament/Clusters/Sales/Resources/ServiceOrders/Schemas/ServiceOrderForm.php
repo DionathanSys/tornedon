@@ -15,6 +15,7 @@ use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
+use App\Support\ServiceOrderTravelData;
 use App\Services\Equipment\EquipmentService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -105,12 +106,14 @@ class ServiceOrderForm
                                                     ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
                                                     ->required()
                                                     ->default(now())
+                                                    ->maxDate(now())
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('scheduled_date')
                                                     ->label('Data Agendada')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->visibleOn('edit')
+                                                    ->minDate(now())
                                                     ->displayFormat('d/m/Y')
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('limit_date')
@@ -123,6 +126,7 @@ class ServiceOrderForm
                                                     ->label('Garantia Válida Até')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->visibleOn('edit')
+                                                    ->minDate(fn(Get $get) => $get('order_date'))
                                                     ->displayFormat('d/m/Y')
                                                     ->default(fn() => CompanyPreference::get('default_warranty_days'))
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
@@ -216,27 +220,32 @@ class ServiceOrderForm
                                             ->label('Valor do KM')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, Set $set, $get) {
-                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
-                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
-                                                $set('travel_value', number_format($valueKm * $distanceKm));
-                                            })
+                                            ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
+                                                'travel_value',
+                                                ServiceOrderTravelData::format(
+                                                    ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
+                                                )
+                                            ))
                                             ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
-                                            ->formatStateUsing(fn($state) => is_numeric($state)
-                                                ? number_format((float) $state, 2, ',', '.')
-                                                : number_format((float) CompanyPreference::get('default_value_km', default: 3.5), 2, ',', '.')),
+                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format(
+                                                filled($state) ? $state : CompanyPreference::get('default_value_km', default: 3.5)
+                                            ))
+                                            ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
                                         Money::make('distance_km')
                                             ->label('Distância em KM')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, Set $set, $get) {
-                                                $valueKm = (float) str_replace(['.', ','], ['', '.'], $get('value_km') ?? '0');
-                                                $distanceKm = (float) str_replace(['.', ','], ['', '.'], $get('distance_km') ?? '0');
-                                                $set('travel_value', number_format($valueKm * $distanceKm));
-                                            })
+                                            ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
+                                                'travel_value',
+                                                ServiceOrderTravelData::format(
+                                                    ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
+                                                )
+                                            ))
                                             ->suffix('km')
                                             ->prefix(null)
-                                            ->default(0),
+                                            ->default(0)
+                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format($state))
+                                            ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
                                         Money::make('travel_value')
                                             ->label('Valor de Deslocamento')
                                             ->columnSpan(['md' => 2, 'lg' => 4])

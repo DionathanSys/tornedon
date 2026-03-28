@@ -56,6 +56,8 @@ final class DuplicateServiceOrderAction
                             'technician_observations' => $record->technician_observations,
                             'estimated_hours'         => $record->estimated_hours,
                             'actual_hours'            => null,
+                            'value_km'                => $record->value_km,
+                            'distance_km'             => $record->distance_km,
                             'travel_value'            => $record->travel_value,
                             'payment_method'          => $record->payment_method?->value ?? $record->payment_method,
                             'payment_condition'       => $record->payment_condition?->value ?? $record->payment_condition,
