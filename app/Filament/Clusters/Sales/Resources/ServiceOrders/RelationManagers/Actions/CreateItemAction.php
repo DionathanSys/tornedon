@@ -75,7 +75,7 @@ final class CreateItemAction
                 notify::success(message: $service->getMessageUser());
                 return $item;
             })
-            ->cancelAction(false)
+            ->modalCancelAction(false)
             ->successNotification(null);
     }
 
