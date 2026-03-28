@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
@@ -36,13 +37,7 @@ class EditServiceOrder extends EditRecord
     {
         return [
             ActionGroup::make([
-                Action::make('new-service-order')
-                    ->hiddenLabel()
-                    ->tooltip('Criar nova ordem de serviço')
-                    ->color('gray')
-                    ->icon(Heroicon::Plus)
-                    // ->url($this->getResource()::getUrl('create'))
-                    ,
+                CreateServiceOrderAction::make(),
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()
                     ->tooltip('Duplicar ordem de serviço'),
