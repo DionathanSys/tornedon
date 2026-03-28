@@ -187,7 +187,8 @@ class ServiceOrdersTable
                 BulkActionGroup::make([
                     BulkInvoiceServiceOrderAction::make(),
                 ]),
-                CreateServiceOrderAction::make(),
+                CreateServiceOrderAction::make()
+                    ->label('OS'),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }
