@@ -98,24 +98,27 @@ class ServiceOrdersTable
                     ->label('Desc. (R$)')
                     ->money('BRL', 100),
                 TextColumn::make('order_date')
-                    ->label('Data da Ordem')
+                    ->label('Dt. Ordem')
                     ->date('d/m/Y')
+                    ->width('1%')
                     ->sortable(),
                 TextColumn::make('scheduled_date')
-                    ->label('Data Agendada')
+                    ->label('Dt. Agendada')
                     ->date('d/m/Y')
+                    ->width('1%')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('completion_date')
-                    ->label('Data Conclusão')
+                    ->label('Dt. Conclusão')
                     ->date('d/m/Y')
+                    ->width('1%')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('invoice.invoice_number')
                     ->label('Fatura')
                     ->sortable()
                     ->placeholder('Sem Fatura')
-                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -176,7 +179,7 @@ class ServiceOrdersTable
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
-                ])->size(Size::ExtraSmall)->icon(Heroicon::EllipsisVertical),
+                ])->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
