@@ -18,6 +18,7 @@ final class DownloadServiceOrderPdfAction
             ->label('PDF')
             ->icon(Heroicon::ArrowDownTray)
             ->color('primary')
+            ->visible(fn (ServiceOrder $record): bool => in_array($record->status, [State::CLOSED, State::INVOICED]))
             ->action(function (ServiceOrder $record): StreamedResponse {
                 $service = app(ServiceOrderService::class);
                 $pdf     = $service->pdf($record, Auth::id());

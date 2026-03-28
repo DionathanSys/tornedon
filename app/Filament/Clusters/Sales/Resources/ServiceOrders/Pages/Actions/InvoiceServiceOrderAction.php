@@ -64,6 +64,7 @@ final class InvoiceServiceOrderAction
                 ]);
 
                 notify::success('Ordem de serviço faturada com sucesso.');
-            });
+            })
+            ->successRedirectUrl(fn($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]));
     }
 }
