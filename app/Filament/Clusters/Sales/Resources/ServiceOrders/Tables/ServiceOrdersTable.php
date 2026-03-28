@@ -44,6 +44,7 @@ class ServiceOrdersTable
                 TextColumn::make('number')
                     ->label('Número')
                     ->searchable()
+                    ->width('1%')
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('customer.name')
@@ -53,6 +54,7 @@ class ServiceOrdersTable
                     ->limit(30),
                 TextColumn::make('status')
                     ->label('Status')
+                    ->width('1%')
                     ->badge()
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color(fn($state) => match ($state) {
