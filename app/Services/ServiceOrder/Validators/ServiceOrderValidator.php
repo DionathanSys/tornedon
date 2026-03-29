@@ -47,7 +47,7 @@ class ServiceOrderValidator
             'customer_feedback'         => 'nullable|string',
             'invoice_id'                => 'nullable|integer|exists:invoices,id',
             'additional_info'           => 'nullable|array',
-            'status'                    => ['required', Rule::enum(State::class)],
+            // 'status'                    => ['required', Rule::enum(State::class)],
         ];
     }
 
@@ -140,8 +140,8 @@ class ServiceOrderValidator
             'limit_date.date'               => 'A data limite deve ser uma data válida',
             'limit_date.after_or_equal'     => 'A data limite deve ser igual ou posterior à data da ordem',
             'completion_date.date'          => 'A data de conclusão deve ser uma data válida',
-            'status.required'               => 'É obrigatório informar o status',
-            'status.in'                     => 'O status informado é inválido',
+            // 'status.required'               => 'É obrigatório informar o status',
+            // 'status.in'                     => 'O status informado é inválido',
             'priority.required'             => 'É obrigatório informar a prioridade',
             'priority.max'                  => 'A prioridade não pode ter mais de 20 caracteres',
             'type.required'                 => 'É obrigatório informar o tipo de serviço',
