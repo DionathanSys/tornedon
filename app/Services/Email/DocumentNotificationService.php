@@ -224,8 +224,8 @@ class DocumentNotificationService
             'attachments_hash' => $attachmentsHash,
         ]);
 
-        $fromEmail = $companyPartner->company?->email ?: (string) config('mail.from.address');
-        $fromName = $companyPartner->company?->name ?: (string) config('mail.from.name');
+        $fromEmail = (string) config('mail.from.address');
+        $fromName = (string) config('mail.from.name');
 
         $message = new EmailMessage(
             to: $to,
