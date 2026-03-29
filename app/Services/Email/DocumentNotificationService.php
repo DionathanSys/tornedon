@@ -602,7 +602,7 @@ class DocumentNotificationService
      */
     private function buildServiceOrderAttachmentRegistry(ServiceOrder $serviceOrder): array
     {
-        $pdfAction = new PrintServiceOrderPdfAction();
+        $pdfAction = app(PrintServiceOrderPdfAction::class);
         $pdf = $pdfAction->execute($serviceOrder);
         $number = $serviceOrder->number ?: (string) $serviceOrder->id;
 
