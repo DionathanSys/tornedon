@@ -7,13 +7,12 @@ use App\Events\Quote\QuoteReopened;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Events\RequisitionItem\RequisitionItemUpdated;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Listeners\Quote\CreateProductionOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateServiceOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\UpdateQuoteItemsStatusListener;
 use App\Listeners\Quote\UpdateQuoteItemsStatusOnReopenListener;
-use App\Listeners\ReplicatePartnerOnCreate;
-use App\Listeners\ReplicateEquipmentOnCreate;
 use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
@@ -22,24 +21,25 @@ use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\ProductionOrder;
 use App\Models\Requisition;
+use App\Models\ServiceOrder;
 use App\Observers\FiscalDocumentObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\ProductionOrderObserver;
 use App\Observers\RequisitionObserver;
 use App\Observers\ServiceOrderObserver;
-use App\Models\ServiceOrder;
 use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\Providers\ResendEmailProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-use RuntimeException;
+use Laravel\Horizon\Horizon;
 use Livewire\Livewire;
-use App\Filament\RelationManagers\AttachmentsRelationManager;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(EmailProviderInterface::class, function ($app) {
             $provider = (string) config('email_notifications.provider', 'resend');
 
-        if ($provider === 'resend') {
+            if ($provider === 'resend') {
                 return $app->make(ResendEmailProvider::class);
             }
 
@@ -76,14 +76,21 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::unguard();
 
+        Horizon::auth(function ($request) {
+            return Auth::check()
+                && in_array(Auth::user()->email, [
+                    'dev@dev.com',
+                ], true);
+        });
+
         Livewire::component('app.filament.relation-managers.attachments-relation-manager', AttachmentsRelationManager::class);
 
         // Mapa de aliases para relacionamentos polimórficos de StockMovement
         Relation::morphMap([
-            'requisition'       => \App\Models\Requisition::class,
-            'quote'             => \App\Models\Quote::class,
-            'service_order'     => \App\Models\ServiceOrder::class,
-            'production_order'  => \App\Models\ProductionOrder::class,
+            'requisition' => \App\Models\Requisition::class,
+            'quote' => \App\Models\Quote::class,
+            'service_order' => \App\Models\ServiceOrder::class,
+            'production_order' => \App\Models\ProductionOrder::class,
         ]);
 
         // Registrar policies
