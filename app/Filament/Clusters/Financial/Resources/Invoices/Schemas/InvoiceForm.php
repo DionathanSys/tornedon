@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Schemas;
 
 use App\Enum\Invoice\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
@@ -55,10 +57,22 @@ class InvoiceForm
                                             ->default(now())
                                             ->required()
                                             ->displayFormat('d/m/Y'),
+                                        Select::make('payment_method')
+                                            ->label('Forma de Pagamento')
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->options(PaymentMethod::toSelectArray())
+                                            ->native(false)
+                                            ->searchable(),
+                                        Select::make('payment_condition')
+                                            ->label('Condição de Pagamento')
+                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->options(PaymentCondition::toGroupedSelectArray())
+                                            ->native(false)
+                                            ->searchable(),
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->disabled()
-                                            ->columnSpan(['md' => 2, 'lg' => 5])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->relationship('customer', 'name')
                                             ->searchable()
                                             ->preload()

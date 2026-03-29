@@ -3,6 +3,8 @@
 namespace App\Services\Invoice\Validators;
 
 use App\Enum\Invoice\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +15,8 @@ class InvoiceValidator
     {
         return [
             'invoice_date' => 'required|date',
+            'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
+            'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
             'pending' => 'boolean',
             'confirmed' => 'boolean',
             'canceled' => 'boolean',
@@ -30,6 +34,8 @@ class InvoiceValidator
             'invoice_number.unique' => 'Já existe uma fatura com este número.',
             'invoice_date.required' => 'A data da fatura é obrigatória.',
             'invoice_date.date' => 'A data da fatura deve ser uma data válida.',
+            'payment_method.enum' => 'A forma de pagamento deve ser um valor válido.',
+            'payment_condition.enum' => 'A condição de pagamento deve ser um valor válido.',
             'status.required' => 'O status é obrigatório.',
             'status.enum' => 'O status deve ser um valor válido.',
             'pending.boolean' => 'O campo "pending" deve ser verdadeiro ou falso.',

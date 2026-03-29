@@ -4,31 +4,28 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Tables;
 
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
-use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
-use Filament\Facades\Filament;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use App\Services\Equipment\EquipmentService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use App\Services\Equipment\EquipmentService;
-use Filament\Actions\Action;
 
 class ServiceOrdersTable
 {
@@ -46,13 +43,13 @@ class ServiceOrdersTable
                     ->label('Cliente')
                     ->searchable()
                     ->sortable()
-                    ->limit(30),
+                    ->limit(35),
                 TextColumn::make('status')
                     ->label('Status')
                     ->width('1%')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state->description())
-                    ->color(fn($state) => match ($state) {
+                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->color(fn ($state) => match ($state) {
                         State::OPEN => 'info',
                         State::CLOSED => 'success',
                         State::INVOICED => 'warning',
@@ -63,14 +60,14 @@ class ServiceOrdersTable
                 TextColumn::make('priority')
                     ->label('Prioridade')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state->description())
-                    ->color(fn($state) => $state->color())
+                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->color(fn ($state) => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state->description())
+                    ->formatStateUsing(fn ($state) => $state->description())
                     ->color('gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -116,7 +113,7 @@ class ServiceOrdersTable
                     ->sortable()
                     ->placeholder('Sem Fatura')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
+                    ->url(fn ($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -129,9 +126,33 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('customer_id')
+                    ->label('Cliente')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('equipment_id')
+                    ->label('Equipamento')
+                    ->searchable()
+                    ->preload()
+                    ->getSearchResultsUsing(
+                        fn (string $search): array => (new EquipmentService)
+                            ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
+                    )
+                    ->getOptionLabelUsing(
+                        fn ($value): ?string => (new EquipmentService)
+                            ->getLabelForSelect((int) $value)
+                    )
+                    ->native(false),
                 SelectFilter::make('priority')
                     ->label('Prioridade')
                     ->options(Priority::toSelectArray())
+                    ->native(false)
+                    ->multiple(),
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options(State::toSelectArray())
                     ->native(false)
                     ->multiple(),
                 SelectFilter::make('type')
@@ -145,25 +166,6 @@ class ServiceOrdersTable
                     ->searchable()
                     ->preload()
                     ->native(false),
-                SelectFilter::make('customer_id')
-                    ->label('Cliente')
-                    ->relationship('customer', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
-                SelectFilter::make('equipment_id')
-                    ->label('Equipamento')
-                    ->searchable()
-                    ->preload()
-                    ->getSearchResultsUsing(
-                        fn(string $search): array => (new EquipmentService())
-                            ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
-                    )
-                    ->getOptionLabelUsing(
-                        fn($value): ?string => (new EquipmentService())
-                            ->getLabelForSelect((int) $value)
-                    )
-                    ->native(false),
             ])
             ->defaultSort('order_date', 'desc')
             ->recordActions([
@@ -174,8 +176,8 @@ class ServiceOrdersTable
                     CloseServiceOrderAction::make(),
                     InvoiceServiceOrderAction::make(),
                     Action::make('open-invoice')
-                        ->url(fn($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
-                        ->visible(fn($record) => $record->invoice_id)
+                        ->url(fn ($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
+                        ->visible(fn ($record) => $record->invoice_id)
                         ->icon(Heroicon::Eye)
                         ->label('Ver Fatura'),
                     CancelServiceOrderAction::make(),
@@ -188,7 +190,7 @@ class ServiceOrdersTable
                     BulkInvoiceServiceOrderAction::make(),
                 ]),
                 CreateServiceOrderAction::make()
-                    ->label('OS'),
+                    ->label('Ordem Serviço'),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }

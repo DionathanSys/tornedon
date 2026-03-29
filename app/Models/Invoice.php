@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enum\Invoice\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +18,8 @@ class Invoice extends Model
         'company_id',
         'invoice_number',
         'invoice_date',
+        'payment_method',
+        'payment_condition',
         'status',
         'pending',
         'confirmed',
@@ -31,6 +35,8 @@ class Invoice extends Model
     protected $casts = [
         'status' => Status::class,
         'invoice_date' => 'date',
+        'payment_method' => PaymentMethod::class,
+        'payment_condition' => PaymentCondition::class,
         'pending' => 'boolean',
         'confirmed' => 'boolean',
         'canceled' => 'boolean',

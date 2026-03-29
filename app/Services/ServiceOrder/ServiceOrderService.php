@@ -599,9 +599,11 @@ class ServiceOrderService
                 // 1. Cria Invoice via InvoiceService
                 $invoiceService = app(InvoiceService::class);
                 $invoice = $invoiceService->create([
-                    'customer_id'  => $first->customer_id,
-                    'company_id'   => $first->company_id,
+                    'customer_id' => $first->customer_id,
+                    'company_id' => $first->company_id,
                     'invoice_date' => now()->toDateString(),
+                    'payment_method' => $first->payment_method?->value,
+                    'payment_condition' => $first->payment_condition?->value,
                 ], $userId);
 
                 if ($invoiceService->hasError() || ! $invoice) {

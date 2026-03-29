@@ -119,6 +119,18 @@ class AccountReceivableGenerationService
 
     private function resolvePaymentMethod(Invoice $invoice): ?PaymentMethod
     {
+        if ($invoice->payment_method instanceof PaymentMethod) {
+            return $invoice->payment_method;
+        }
+
+        if (is_string($invoice->payment_method)) {
+            $method = PaymentMethod::tryFrom($invoice->payment_method);
+
+            if ($method) {
+                return $method;
+            }
+        }
+
         $methods = collect()
             ->merge($invoice->requisitions->pluck('payment_method'))
             ->merge($invoice->serviceOrders->pluck('payment_method'))
@@ -152,6 +164,18 @@ class AccountReceivableGenerationService
 
     private function resolvePaymentCondition(Invoice $invoice): ?PaymentCondition
     {
+        if ($invoice->payment_condition instanceof PaymentCondition) {
+            return $invoice->payment_condition;
+        }
+
+        if (is_string($invoice->payment_condition)) {
+            $condition = PaymentCondition::tryFrom($invoice->payment_condition);
+
+            if ($condition) {
+                return $condition;
+            }
+        }
+
         $conditions = collect()
             ->merge($invoice->requisitions->pluck('payment_condition'))
             ->merge($invoice->serviceOrders->pluck('payment_condition'))
