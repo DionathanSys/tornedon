@@ -370,6 +370,10 @@ class DocumentNotificationService
             }])
             ->first();
 
+        Log::debug('CompanyPartner', [
+            'company_partner' => $companyPartner,
+        ]);
+
         if (! $companyPartner || ! $companyPartner->is_active) {
             return false;
         }
@@ -383,7 +387,15 @@ class DocumentNotificationService
             return false;
         }
 
+        Log::debug('Policy', [
+            'policy' => $policy,
+        ]);
+
         [$to] = $this->resolveRecipients($companyPartner, $policy);
+
+        Log::debug('Recipients', [
+            'to' => $to,
+        ]);
 
         return $to !== [];
     }

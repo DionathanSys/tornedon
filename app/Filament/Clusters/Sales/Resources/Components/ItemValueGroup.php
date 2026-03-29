@@ -57,6 +57,7 @@ class ItemValueGroup
                 ->default(1)
                 ->minValue(0)
                 ->live(onBlur: true)
+                ->autocomplete(false)
                 ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                 ->afterStateUpdated(function ($state, Set $set, Get $get) use (
                     $qty,

@@ -246,14 +246,17 @@
         </tbody>
     </table>
 
+    @if (filled($pdfData['customer_observations']) || filled($pdfData['solution']) || filled($pdfData['technician_observations']))
     <div class="section-title">Observações</div>
     <table class="meta-grid">
         <tbody>
             <tr>
+                @if (filled($pdfData['customer_observations']))
                 <td class="meta-inline-label">Observações</td>
                 <td colspan="3" class="meta-inline-value">
                     {{ $pdfData['customer_observations'] }}
                 </td>
+                @endif
             </tr>
             <tr>
                 @if (filled($pdfData['solution']))
@@ -273,6 +276,7 @@
             </tr>
         </tbody>
     </table>
+    @endif
 
     @if (filled($pdfData['additional_info_text']))
     <div class="section-title">Informacoes Adicionais</div>

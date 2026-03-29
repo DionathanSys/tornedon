@@ -22,11 +22,12 @@ final class CloseServiceOrderAction
             ->label('Encerrar')
             ->icon(Heroicon::CheckCircle)
             ->color('success')
+            ->tooltip('Encerrar Ordem de Serviço')
             ->requiresConfirmation()
             ->modalHeading('Encerrar Ordem de Serviço')
             ->modalDescription('Tem certeza que deseja encerrar esta ordem de serviço? Esta ação mudará o status para "Encerrada".')
             ->modalSubmitActionLabel('Sim, encerrar')
-            ->form([
+            ->schema([
                 Toggle::make('send_email')
                     ->label('Enviar e-mail ao encerrar?')
                     ->default(fn (ServiceOrder $record): bool => app(DocumentNotificationService::class)->shouldSendForServiceOrder($record))

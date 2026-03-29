@@ -8,6 +8,7 @@ use App\Services\Attachments\AttachmentService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
@@ -48,7 +49,7 @@ class AttachmentsRelationManager extends RelationManager
                     ->label('Tipo')
                     ->options($typeOptions)
                     ->required()
-                    ->default(AttachmentType::GENERIC->value),
+                    ->native(false),
                     
                 FileUpload::make('file')
                     ->label('Arquivo(s)')
@@ -109,11 +110,15 @@ class AttachmentsRelationManager extends RelationManager
                     ->successNotificationTitle('Anexo(s) enviado(s) com sucesso'),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->iconButton(),
                 Action::make('download')
                     ->label('Baixar')
+                    ->iconButton()
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (Attachment $record): string => $record->url, shouldOpenInNewTab: true),
                 DeleteAction::make()
+                    ->iconButton()
                     ->using(function (Attachment $record) {
                         $service = app(AttachmentService::class);
                         $service->delete($record);
