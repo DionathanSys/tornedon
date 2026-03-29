@@ -45,7 +45,7 @@ class ServiceOrderPdfDataFormatter
 
         $summaryLines = collect([
             ['label' => 'Serviços', 'value' => $this->formatMoney($itemsTotal)],
-            ['label' => 'Deslocamento', 'value' => $this->formatMoney($travelValue)],
+            $travelValue > 0 ? ['label' => 'Deslocamento', 'value' => $this->formatMoney($travelValue)] : null,
             $serviceOrder->discount_amount > 0
                 ? ['label' => 'Desconto total', 'value' => $this->formatMoney($serviceOrder->discount_amount)]
                 : null,
@@ -71,7 +71,7 @@ class ServiceOrderPdfDataFormatter
             'header_lines' => $headerLines,
             'responsibles' => $responsibles,
             'items' => $items,
-            'customer_observations' => $serviceOrder->customer_observations ?? 'Sem observações',
+            'customer_observations' => $serviceOrder->customer_observations ?? null,
             'solution' => $serviceOrder->solution ?? null,  
             'technician_observations' => $serviceOrder->technician_observations ?? null,
             'additional_info_text' => $additionalInfoText,

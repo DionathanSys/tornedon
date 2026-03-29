@@ -287,10 +287,10 @@
     <table class="summary-table">
         <tbody>
             @foreach ($pdfData['summary_lines'] as $line)
-            <tr class="{{ $loop->last ? 'summary-total' : '' }}">
-                <td>{{ $line['label'] }}</td>
-                <td>{{ $line['value'] }}</td>
-            </tr>
+                <tr class="{{ $loop->last ? 'summary-total' : '' }}">
+                    <td>{{ $line['label'] }}</td>
+                    <td>{{ $line['value'] }}</td>
+                </tr>
             @endforeach
         </tbody>
     </table>
