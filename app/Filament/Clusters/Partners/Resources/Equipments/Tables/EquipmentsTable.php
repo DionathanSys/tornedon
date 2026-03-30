@@ -25,12 +25,8 @@ class EquipmentsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->stackedOnMobile()
             ->columns([
-                TextColumn::make('name')
-                    ->label('Descrição')
-                    ->searchable()
-                    ->sortable(),
+                
                 TextColumn::make('owner.name')
                     ->label('Proprietário')
                     ->sortable()

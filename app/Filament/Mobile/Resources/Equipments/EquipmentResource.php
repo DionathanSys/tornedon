@@ -2,11 +2,11 @@
 
 namespace App\Filament\Mobile\Resources\Equipments;
 
-use App\Filament\Clusters\Partners\Resources\Equipments\Tables\EquipmentsTable;
 use App\Filament\Mobile\Resources\Equipments\Pages\CreateEquipment;
 use App\Filament\Mobile\Resources\Equipments\Pages\EditEquipment;
 use App\Filament\Mobile\Resources\Equipments\Pages\ListEquipment;
 use App\Filament\Mobile\Resources\Equipments\Schemas\EquipmentsForm;
+use App\Filament\Mobile\Resources\Equipments\Tables\EquipmentsTable;
 use App\Models\Equipment;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -20,9 +20,17 @@ class EquipmentResource extends Resource
 {
     protected static ?string $model = Equipment::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?string $slug = 'equipamentos';
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Wrench;
+
+    protected static ?string $modelLabel = 'Equipamento';
+
+    protected static ?string $pluralModelLabel = 'Equipamentos';
 
     protected static ?string $recordTitleAttribute = 'id';
+
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

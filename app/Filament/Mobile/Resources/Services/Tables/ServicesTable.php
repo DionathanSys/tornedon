@@ -3,12 +3,7 @@
 namespace App\Filament\Mobile\Resources\Services\Tables;
 
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreBulkAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Panel;
@@ -57,17 +52,18 @@ class ServicesTable
                 Panel::make([
                     Stack::make([
                         TextColumn::make('min_sale_price')
-                            ->prefix('Preço mínimo')
+                            ->prefix('Preço mín. ')
                             ->money('BRL')
                             ->placeholder('-'),
                         TextColumn::make('tax_classification')
+                            ->prefix('Class. Tributária ')
                             ->searchable(),
                         TextColumn::make('municipal_tax_code')
+                            ->prefix('Cód. Tributário Mun. ')
                             ->searchable(),
                         TextColumn::make('nbs_code')
+                            ->prefix('Cód. NBS ')
                             ->searchable(),
-                        TextColumn::make('CreatedBy.name'),
-                        TextColumn::make('updatedBy.name'),
 
                     ]),
                 ])->collapsible(),
