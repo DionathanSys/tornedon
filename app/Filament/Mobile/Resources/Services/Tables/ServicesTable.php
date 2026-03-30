@@ -4,10 +4,13 @@ namespace App\Filament\Mobile\Resources\Services\Tables;
 
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
@@ -99,7 +102,12 @@ class ServicesTable
             ->deferFilters(false)
             ->defaultSort('created_at', 'desc')
             ->recordActions([])
-            ->toolbarActions([])
+            ->toolbarActions([
+                CreateAction::make()
+                    ->icon(Heroicon::Plus)
+                    ->label('Serviço')
+                    ->size(Size::Small)
+            ])
             ->searchPlaceholder('Buscar por nome, código ou categoria...');
     }
 }

@@ -61,7 +61,8 @@ class ServiceForm
                             ->label('Categoria')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->maxLength(255)
-                            ->autocomplete(false),
+                            ->autocomplete(false)
+                            ->visible(false),
                         Toggle::make('is_active')
                             ->label('Ativo')
                             ->columnSpan(['md' => 1, 'lg' => 1])

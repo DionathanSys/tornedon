@@ -107,13 +107,15 @@ class Equipment extends Model
             // Se o tipo for informado, busca apenas no campo correto
             $field = in_array($type, [Type::CAR, Type::TRUCK]) ? 'placa' : 'serial_number';
 
-            return $query->where($field, 'like', "%{$term}%");
+            return $query->where($field, 'like', "%{$term}%")
+                ->orWhere('name', 'like', "%{$term}%");
         }
 
         // Sem tipo definido: busca nos dois campos
         return $query->where(function (Builder $q) use ($term) {
             $q->where('placa', 'like', "%{$term}%")
-              ->orWhere('serial_number', 'like', "%{$term}%");
+              ->orWhere('serial_number', 'like', "%{$term}%")
+              ->orWhere('name', 'like', "%{$term}%");
         });
     }
 

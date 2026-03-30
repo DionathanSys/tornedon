@@ -6,6 +6,7 @@ use App\Filament\Mobile\Resources\Services\ServiceResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -23,111 +24,115 @@ class EditService extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('new-service')
-                ->label('Serviço')
-                ->url(ServiceResource::getUrl('create'))
-                ->icon(Heroicon::Plus)
-                ->color('primary')
-                ->size(Size::Small),
-            DeleteAction::make()
-                ->size(Size::Small)
-                ->using(function (Model $record): bool {
-                    Log::debug('EditService: Iniciando soft delete de serviço', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'service_id' => $record->id,
-                    ]);
 
-                    $service = app(ServiceService::class);
-                    $result = $service->delete($record);
-
-                    if ($service->hasError()) {
-                        Log::error('EditService: Erro ao deletar serviço', [
+            ActionGroup::make([
+                Action::make('new-service')
+                    ->label('Serviço')
+                    ->url(ServiceResource::getUrl('create'))
+                    ->icon(Heroicon::Plus)
+                    ->color('primary')
+                    ->size(Size::Small),
+                DeleteAction::make()
+                    ->size(Size::Small)
+                    ->using(function (Model $record): bool {
+                        Log::debug('EditService: Iniciando soft delete de serviço', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
-                            'error_code' => $service->getErrorCode(),
-                            'message' => $service->getMessage(),
                             'service_id' => $record->id,
                         ]);
 
-                        notify::error(
-                            message: $service->getMessageUser(),
-                            errorCode: $service->getErrorCode()
-                        );
-                        return false;
-                    }
+                        $service = app(ServiceService::class);
+                        $result = $service->delete($record);
 
-                    Log::info('EditService: Serviço deletado com sucesso', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'service_id' => $record->id,
-                    ]);
+                        if ($service->hasError()) {
+                            Log::error('EditService: Erro ao deletar serviço', [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'error_code' => $service->getErrorCode(),
+                                'message' => $service->getMessage(),
+                                'service_id' => $record->id,
+                            ]);
 
-                    return $result;
-                }),
-            ForceDeleteAction::make()
-                ->size(Size::Small)
-                ->using(function (Model $record): bool {
-                    Log::debug('EditService: Iniciando force delete de serviço', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'service_id' => $record->id,
-                    ]);
+                            notify::error(
+                                message: $service->getMessageUser(),
+                                errorCode: $service->getErrorCode()
+                            );
+                            return false;
+                        }
 
-                    $service = app(ServiceService::class);
-                    $result = $service->forceDelete($record);
-
-                    if ($service->hasError()) {
-                        Log::error('EditService: Erro ao force delete serviço', [
+                        Log::info('EditService: Serviço deletado com sucesso', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
-                            'error_code' => $service->getErrorCode(),
-                            'message' => $service->getMessage(),
                             'service_id' => $record->id,
                         ]);
 
-                        notify::error(
-                            message: $service->getMessageUser(),
-                            errorCode: $service->getErrorCode()
-                        );
-                        return false;
-                    }
-
-                    Log::info('EditService: Serviço force deleted com sucesso', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'service_id' => $record->id,
-                    ]);
-
-                    return $result;
-                })
-                ->size(Size::Small),
-            RestoreAction::make()
-                ->using(function (Model $record): bool {
-                    Log::debug('EditService: Iniciando restore de serviço', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'service_id' => $record->id,
-                    ]);
-
-                    $service = app(ServiceService::class);
-                    $result = $service->restore($record);
-
-                    if ($service->hasError()) {
-                        Log::error('EditService: Erro ao restore serviço', [
+                        return $result;
+                    }),
+                ForceDeleteAction::make()
+                    ->size(Size::Small)
+                    ->using(function (Model $record): bool {
+                        Log::debug('EditService: Iniciando force delete de serviço', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
-                            'error_code' => $service->getErrorCode(),
-                            'message' => $service->getMessage(),
                             'service_id' => $record->id,
                         ]);
 
-                        notify::error(
-                            message: $service->getMessageUser(),
-                            errorCode: $service->getErrorCode()
-                        );
-                        return false;
-                    }
+                        $service = app(ServiceService::class);
+                        $result = $service->forceDelete($record);
 
-                    Log::info('EditService: Serviço restored com sucesso', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'service_id' => $record->id,
-                    ]);
+                        if ($service->hasError()) {
+                            Log::error('EditService: Erro ao force delete serviço', [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'error_code' => $service->getErrorCode(),
+                                'message' => $service->getMessage(),
+                                'service_id' => $record->id,
+                            ]);
 
-                    return $result;
-                }),
+                            notify::error(
+                                message: $service->getMessageUser(),
+                                errorCode: $service->getErrorCode()
+                            );
+                            return false;
+                        }
+
+                        Log::info('EditService: Serviço force deleted com sucesso', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'service_id' => $record->id,
+                        ]);
+
+                        return $result;
+                    })
+                    ->size(Size::Small),
+                RestoreAction::make()
+                    ->using(function (Model $record): bool {
+                        Log::debug('EditService: Iniciando restore de serviço', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'service_id' => $record->id,
+                        ]);
+
+                        $service = app(ServiceService::class);
+                        $result = $service->restore($record);
+
+                        if ($service->hasError()) {
+                            Log::error('EditService: Erro ao restore serviço', [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'error_code' => $service->getErrorCode(),
+                                'message' => $service->getMessage(),
+                                'service_id' => $record->id,
+                            ]);
+
+                            notify::error(
+                                message: $service->getMessageUser(),
+                                errorCode: $service->getErrorCode()
+                            );
+                            return false;
+                        }
+
+                        Log::info('EditService: Serviço restored com sucesso', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'service_id' => $record->id,
+                        ]);
+
+                        return $result;
+                    }),
+            ])->buttonGroup(),
+
         ];
     }
 

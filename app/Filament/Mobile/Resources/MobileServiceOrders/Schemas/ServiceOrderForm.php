@@ -84,7 +84,7 @@ class ServiceOrderForm
                                             )
                                             ->getOptionLabelUsing(
                                                 fn($value): ?string => (new EquipmentService())
-                                                    ->getLabelForSelect((int) $value)
+                                                    ->getLabelForSelect((int) $value, ['document_number' => false, 'owner' => false])
                                             )
                                             ->disabled(fn($get) => ! $get('customer_id')),
                                         DatePicker::make('order_date')

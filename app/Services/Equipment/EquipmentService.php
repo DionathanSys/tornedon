@@ -232,13 +232,10 @@ class EquipmentService
             $parts[] = $equipment->identifier;
         }
 
-        $label = implode(' — ', $parts);
-
-        if ($showOwner && $equipment->owner) {
-            $ownerName = $equipment->owner->name;
-            $label .= $label ? " ({$ownerName})" : $ownerName;
+        if($showOwner && !empty($equipment->owner)) {
+            $parts[] = $equipment->owner->name;
         }
 
-        return $label;
+        return implode(' — ', $parts);
     }
 }
