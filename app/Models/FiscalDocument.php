@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AttachmentType;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\IssuePurpose;
@@ -9,12 +10,15 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FiscalDocument extends Model
 {
+    use HasAttachments;
+
     protected $fillable = [
         'customer_id',
         'company_id',
@@ -238,5 +242,16 @@ class FiscalDocument extends Model
     {
         return $this->nfse_status !== null
             && $this->nfse_status !== NfeStatus::PENDING;
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    public function allowedAttachmentTypes(): array
+    {
+        return [
+            AttachmentType::FISCAL_DOCUMENT->value,
+            AttachmentType::GENERIC->value,
+        ];
     }
 }

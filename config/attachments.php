@@ -29,7 +29,7 @@ return [
     */
     'types' => [
         AttachmentType::FISCAL_DOCUMENT->value => [
-            'mode' => 'single_latest',
+            'mode' => 'multiple',
             'allowed_mimes' => ['application/xml', 'text/xml', 'application/pdf'],
             'max_size' => 10240, // 10MB
         ],

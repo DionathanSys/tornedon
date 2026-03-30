@@ -2,6 +2,7 @@
 
 namespace App\Services\Email;
 
+use App\Enums\AttachmentType;
 use App\Enum\Email\DocumentNotificationEvent;
 use App\Enum\Email\DocumentNotificationType;
 use App\Enum\Email\EmailDispatchStatus;
@@ -699,32 +700,48 @@ class DocumentNotificationService
     private function buildFiscalAttachmentRegistry(FiscalDocument $fiscalDocument): array
     {
         $number = $fiscalDocument->document_number ?: (string) $fiscalDocument->id;
+        $persisted = $this->buildPersistedFiscalAttachments($fiscalDocument, $number);
 
-        if ($fiscalDocument->isNfse()) {
-            $service = app(NfseDocumentService::class);
-            $pdf = $service->pdf($fiscalDocument, 0);
-            $danfeAttachment = is_string($pdf)
+        $danfeAttachment = $persisted['danfe'] ?? null;
+        $xmlAttachment = $persisted['xml'] ?? null;
+
+        if (! $danfeAttachment) {
+            if ($fiscalDocument->isNfse()) {
+                $service = app(NfseDocumentService::class);
+                $pdf = $service->pdf($fiscalDocument, 0);
+                $danfeAttachment = is_string($pdf)
+                    ? new EmailAttachment(
+                        filename: "nfse-{$number}.pdf",
+                        contentBase64: $pdf,
+                        mimeType: 'application/pdf',
+                        kind: 'danfe',
+                    )
+                    : null;
+            } else {
+                $service = app(NfeDocumentService::class);
+                $pdf = $service->danfe($fiscalDocument, 0);
+                $danfeAttachment = is_string($pdf)
+                    ? new EmailAttachment(
+                        filename: "danfe-{$number}.pdf",
+                        contentBase64: $pdf,
+                        mimeType: 'application/pdf',
+                        kind: 'danfe',
+                    )
+                    : null;
+            }
+        }
+
+        if (! $xmlAttachment) {
+            $xmlBase64 = $this->extractFiscalXmlBase64($fiscalDocument);
+            $xmlAttachment = $xmlBase64 !== null
                 ? new EmailAttachment(
-                    filename: "nfse-{$number}.pdf",
-                    contentBase64: $pdf,
-                    mimeType: 'application/pdf',
-                    kind: 'danfe',
-                )
-                : null;
-        } else {
-            $service = app(NfeDocumentService::class);
-            $pdf = $service->danfe($fiscalDocument, 0);
-            $danfeAttachment = is_string($pdf)
-                ? new EmailAttachment(
-                    filename: "danfe-{$number}.pdf",
-                    contentBase64: $pdf,
-                    mimeType: 'application/pdf',
-                    kind: 'danfe',
+                    filename: "nf-{$number}.xml",
+                    contentBase64: $xmlBase64,
+                    mimeType: 'application/xml',
+                    kind: 'xml',
                 )
                 : null;
         }
-
-        $xmlBase64 = $this->extractFiscalXmlBase64($fiscalDocument);
 
         return [
             [
@@ -733,15 +750,51 @@ class DocumentNotificationService
             ],
             [
                 'kind' => 'xml',
-                'attachment' => $xmlBase64 !== null
-                    ? new EmailAttachment(
-                        filename: "nf-{$number}.xml",
-                        contentBase64: $xmlBase64,
-                        mimeType: 'application/xml',
-                        kind: 'xml',
-                    )
-                    : null,
+                'attachment' => $xmlAttachment,
             ],
+        ];
+    }
+
+    /**
+     * @return array{danfe:EmailAttachment|null,xml:EmailAttachment|null}
+     */
+    private function buildPersistedFiscalAttachments(FiscalDocument $fiscalDocument, string $number): array
+    {
+        if (! method_exists($fiscalDocument, 'attachmentsOfType')) {
+            return ['danfe' => null, 'xml' => null];
+        }
+
+        $attachments = $fiscalDocument->attachmentsOfType(AttachmentType::FISCAL_DOCUMENT)
+            ->where('is_current', true)
+            ->orderByDesc('version')
+            ->get();
+
+        $resolveByKind = function (string $kind) use ($attachments, $number): ?EmailAttachment {
+            $record = $attachments->first(function ($attachment) use ($kind): bool {
+                return Str::lower((string) Arr::get($attachment->metadata, 'kind')) === $kind;
+            });
+
+            if (! $record) {
+                return null;
+            }
+
+            if (! Storage::disk((string) $record->disk)->exists((string) $record->path)) {
+                return null;
+            }
+
+            $binary = Storage::disk((string) $record->disk)->get((string) $record->path);
+
+            return new EmailAttachment(
+                filename: (string) ($record->original_name ?: "nf-{$number}"),
+                contentBase64: base64_encode($binary),
+                mimeType: (string) ($record->mime_type ?: 'application/octet-stream'),
+                kind: $kind,
+            );
+        };
+
+        return [
+            'danfe' => $resolveByKind('danfe'),
+            'xml' => $resolveByKind('xml'),
         ];
     }
 

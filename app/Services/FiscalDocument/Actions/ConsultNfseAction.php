@@ -132,6 +132,15 @@ class ConsultNfseAction
             $fiscalDocument->update($updates);
 
             if (($updates['nfse_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                $storeAttachmentsAction = app(StoreFiscalDocumentAttachmentsAction::class);
+                if (! $storeAttachmentsAction->execute($fiscalDocument->fresh())) {
+                    Log::warning('ConsultNfseAction: falha ao persistir anexos fiscais após autorização', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'message'            => $storeAttachmentsAction->getMessage(),
+                        'errors'             => $storeAttachmentsAction->getErrors(),
+                    ]);
+                }
+
                 Log::debug('ConsultNfseAction: iniciando geração de contas a receber', [
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);

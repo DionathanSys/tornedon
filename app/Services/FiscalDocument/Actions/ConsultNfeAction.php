@@ -94,6 +94,15 @@ class ConsultNfeAction
             $fiscalDocument->update($updates);
 
             if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                $storeAttachmentsAction = app(StoreFiscalDocumentAttachmentsAction::class);
+                if (! $storeAttachmentsAction->execute($fiscalDocument->fresh())) {
+                    Log::warning('ConsultNfeAction: falha ao persistir anexos fiscais após autorização', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'message'            => $storeAttachmentsAction->getMessage(),
+                        'errors'             => $storeAttachmentsAction->getErrors(),
+                    ]);
+                }
+
                 $generationService = app(AccountReceivableGenerationService::class);
                 $ok = $generationService->generateFromFiscalDocument($fiscalDocument->fresh(['invoice']));
 

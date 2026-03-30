@@ -55,15 +55,15 @@ class AttachmentServiceTest extends TestCase
 
     public function test_single_latest_mode_replaces_current_attachment()
     {
-        // Use FISCAL_DOCUMENT which is configured as single_latest
+        // Use CONTRACT which is configured as single_latest
         $file1 = UploadedFile::fake()->create('doc1.pdf', 100);
-        $attachment1 = $this->service->upload($this->owner, $file1, AttachmentType::FISCAL_DOCUMENT);
+        $attachment1 = $this->service->upload($this->owner, $file1, AttachmentType::CONTRACT);
         
         $this->assertTrue($attachment1->is_current);
         $this->assertEquals(1, $attachment1->version);
         
         $file2 = UploadedFile::fake()->create('doc2.pdf', 100);
-        $attachment2 = $this->service->upload($this->owner, $file2, AttachmentType::FISCAL_DOCUMENT);
+        $attachment2 = $this->service->upload($this->owner, $file2, AttachmentType::CONTRACT);
         
         $attachment1->refresh();
         
