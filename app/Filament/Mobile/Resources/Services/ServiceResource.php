@@ -9,10 +9,12 @@ use App\Filament\Mobile\Resources\Services\Schemas\ServiceForm;
 use App\Filament\Mobile\Resources\Services\Tables\ServicesTable;
 use App\Models\Service;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ServiceResource extends Resource
 {
@@ -36,6 +38,18 @@ class ServiceResource extends Resource
     public static function table(Table $table): Table
     {
         return ServicesTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $tenant = Filament::getTenant();
+
+        if ($tenant === null) {
+            return $query;
+        }
+
+        return $query->whereBelongsTo($tenant, 'company');
     }
 
     public static function getRelations(): array
