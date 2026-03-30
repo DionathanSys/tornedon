@@ -28,7 +28,7 @@ class EquipmentResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Equipamentos';
 
-    protected static ?string $recordTitleAttribute = 'id';
+    protected static ?string $recordTitleAttribute = 'identifier';
 
     protected static ?int $navigationSort = 3;
 
