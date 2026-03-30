@@ -24,9 +24,9 @@ class ServiceResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Wrench;
 
-    protected static ?string $modelLabel = "Servi\u{00E7}o";
+    protected static ?string $modelLabel = 'Serviço';
 
-    protected static ?string $pluralModelLabel = "Servi\u{00E7}os";
+    protected static ?string $pluralModelLabel = 'Serviços';
 
     protected static ?int $navigationSort = 6;
 
