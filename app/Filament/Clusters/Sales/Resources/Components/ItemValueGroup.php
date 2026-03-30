@@ -96,7 +96,7 @@ class ItemValueGroup
                     }
 
                     if ($enforceEffectiveMinSalePrice && filled($get($serviceId)) && $min > 0) {
-                        $messages[] = 'O preco efetivo apos desconto nao pode ficar abaixo deste minimo.';
+                        $messages[] = 'O preço efetivo após desconto não pode ficar abaixo deste mínimo.';
                     }
 
                     return $messages === [] ? null : implode(' ', $messages);

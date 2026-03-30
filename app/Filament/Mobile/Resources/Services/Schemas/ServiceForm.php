@@ -42,7 +42,7 @@ class ServiceForm
                     ->default(0),
                 Money::make('min_sale_price')
                     ->label('Preço Mínimo')
-                    ->helperText('O preco efetivo apos desconto nao pode ficar abaixo deste valor.')
+                    ->helperText('O preço efetivo após desconto não pode ficar abaixo deste valor.')
                     ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->default(0),
                 Money::make('cost')
@@ -61,7 +61,7 @@ class ServiceForm
                             ->required(),
                         Toggle::make('accept_customer_discount')
                             ->label('Aceita desconto do cliente')
-                            ->helperText('Aplica automaticamente o desconto do cadastro do cliente quando o servico for inserido em OS ou Orcamento.')
+                            ->helperText('Aplica automaticamente o desconto do cadastro do cliente quando o serviço for inserido em OS ou Orçamento.')
                             ->default(false),
                     ]),
                 Section::make('Informações Fiscais')
