@@ -106,6 +106,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'service_cnae_code' => $profile?->service_cnae_code,
             'default_nbs_code' => $profile?->default_nbs_code,
             'default_municipal_tax_code' => $profile?->default_municipal_tax_code,
+            'default_service_city_code' => $profile?->default_service_city_code,
             'default_nfse_additional_information' => $profile?->default_nfse_additional_information,
         ]);
     }
@@ -435,6 +436,12 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->helperText('Código do item da lista de serviços no município.')
                             ->columnSpan(['md' => 1]),
 
+                        Forms\Components\TextInput::make('default_service_city_code')
+                            ->label('Código Município Prestação (IBGE)')
+                            ->maxLength(7)
+                            ->helperText('Código IBGE padrão usado no campo codigo_municipio_prestacao da NFS-e.')
+                            ->columnSpan(['md' => 1]),
+
                         Forms\Components\Textarea::make('default_nfse_additional_information')
                             ->label('Informações Complementares NFS-e (padrão)')
                             ->rows(3)
@@ -531,6 +538,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'service_cnae_code' => $data['service_cnae_code'] ?? null,
             'default_nbs_code' => $data['default_nbs_code'] ?? null,
             'default_municipal_tax_code' => $data['default_municipal_tax_code'] ?? null,
+            'default_service_city_code' => $data['default_service_city_code'] ?? null,
             'default_nfse_additional_information' => $data['default_nfse_additional_information'] ?? null,
         ]);
 
