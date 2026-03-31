@@ -22,9 +22,9 @@ class MobileServiceOrderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
-    protected static ?string $modelLabel = "Ordem de Servi\u{00E7}o";
+    protected static ?string $modelLabel = "Ordem de Serviço";
 
-    protected static ?string $pluralModelLabel = "Ordens de Servi\u{00E7}o";
+    protected static ?string $pluralModelLabel = "Ordens de Serviço";
 
     protected static ?int $navigationSort = 0;
 

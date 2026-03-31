@@ -34,27 +34,37 @@ class EditMobileServiceOrder extends EditRecord
 {
     protected static string $resource = MobileServiceOrderResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return "Ordem de Serviço # {$this->record->number} - {$this->record->status->description()}";
+    }   
+
     protected function getHeaderActions(): array
     {
         return [
             ActionGroup::make([
                 CreateServiceOrderAction::make()
+                    ->color('info')
                     ->size(Size::ExtraSmall),
+                $this->getSaveFormAction()
+                    ->label('Salvar')
+                    ->size(Size::ExtraSmall)
+                    ->formId('form'),
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()
-                        ->size(Size::ExtraSmall)
+                    ->size(Size::ExtraSmall)
                     ->tooltip('Duplicar ordem de serviço'),
                 PreviewServiceOrderPdfAction::make()
                     ->hiddenLabel()
-                        ->size(Size::ExtraSmall)
+                    ->size(Size::ExtraSmall)
                     ->tooltip('Preview PDF'),
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
-                        ->size(Size::ExtraSmall)
+                    ->size(Size::ExtraSmall)
                     ->hiddenLabel(),
                 CloseServiceOrderAction::make()
                     ->color('gray')
-                        ->size(Size::ExtraSmall)
+                    ->size(Size::ExtraSmall)
                     ->hiddenLabel(),
                 InvoiceServiceOrderAction::make()
                     ->size(Size::ExtraSmall),

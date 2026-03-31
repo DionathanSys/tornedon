@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Mobile\Resources\MobileServiceOrders\MobileServiceOrderResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\Email\DocumentNotificationService;
@@ -30,10 +31,10 @@ final class CloseServiceOrderAction
             ->schema([
                 Toggle::make('send_email')
                     ->label('Enviar e-mail ao encerrar?')
-                    ->default(fn (ServiceOrder $record): bool => app(DocumentNotificationService::class)->shouldSendForServiceOrder($record))
+                    ->default(fn(ServiceOrder $record): bool => app(DocumentNotificationService::class)->shouldSendForServiceOrder($record))
                     ->inline(false),
             ])
-            ->visible(fn (ServiceOrder $record): bool => $record->status === State::OPEN)
+            ->visible(fn(ServiceOrder $record): bool => $record->status === State::OPEN)
             ->action(function (ServiceOrder $record, array $data): void {
                 Log::debug('CloseServiceOrderAction (Filament): Encerrando OS', [
                     'metodo'           => __METHOD__ . '@' . __LINE__,
@@ -66,6 +67,7 @@ final class CloseServiceOrderAction
                 ]);
 
                 notify::success('Ordem de serviço encerrada com sucesso.');
-            });
+            })
+            ->successRedirectUrl(fn(ServiceOrder $record): string => MobileServiceOrderResource::getUrl('edit', ['record' => $record->id]));
     }
 }
