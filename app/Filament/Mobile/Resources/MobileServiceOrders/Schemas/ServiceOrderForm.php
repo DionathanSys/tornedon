@@ -9,9 +9,8 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
+use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
-use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
@@ -84,7 +83,7 @@ class ServiceOrderForm
                                             )
                                             ->getOptionLabelUsing(
                                                 fn($value): ?string => (new EquipmentService())
-                                                    ->getLabelForSelect((int) $value, ['document_number' => false, 'owner' => false])
+                                                    ->getLabelForSelect((int) $value, ['document_number' => false, 'owner'])
                                             )
                                             ->disabled(fn($get) => ! $get('customer_id')),
                                         DatePicker::make('order_date')
@@ -347,7 +346,7 @@ class ServiceOrderForm
                                     ->schema([
                                         ComponentsLivewire::make(AttachmentsRelationManager::class, fn(ServiceOrder $record) => [
                                             'ownerRecord' => $record,
-                                            'pageClass' => EditMobileServiceOrder::class,
+                                            'pageClass' => EditServiceOrder::class,
                                         ])
                                             ->key('attachments-relation-manager')
                                             ->columnSpanFull(),
