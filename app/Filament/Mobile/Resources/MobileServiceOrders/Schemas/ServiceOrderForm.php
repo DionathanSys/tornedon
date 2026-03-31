@@ -9,7 +9,7 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
-use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditServiceOrder;
+use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
@@ -168,7 +168,7 @@ class ServiceOrderForm
                                     ]),
                                 ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
                                     'ownerRecord' => $record,
-                                    'pageClass' => EditServiceOrder::class,
+                                    'pageClass' => EditMobileServiceOrder::class,
                                 ])
                                     ->key('items-relation-manager')
                                     ->columnSpanFull()
@@ -346,7 +346,7 @@ class ServiceOrderForm
                                     ->schema([
                                         ComponentsLivewire::make(AttachmentsRelationManager::class, fn(ServiceOrder $record) => [
                                             'ownerRecord' => $record,
-                                            'pageClass' => EditServiceOrder::class,
+                                            'pageClass' => EditMobileServiceOrder::class,
                                         ])
                                             ->key('attachments-relation-manager')
                                             ->columnSpanFull(),

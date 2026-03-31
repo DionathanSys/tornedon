@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
-class EditServiceOrder extends EditRecord
+class EditMobileServiceOrder extends EditRecord
 {
     protected static string $resource = MobileServiceOrderResource::class;
 
