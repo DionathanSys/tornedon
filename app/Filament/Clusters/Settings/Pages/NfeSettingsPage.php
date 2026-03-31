@@ -13,6 +13,8 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * Página de configurações da integração NF-e (IntegraNotas).
@@ -39,6 +41,14 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public ?array $data = [];
 
+    public array $consulta = [];
+
+    public array $reportRows = [];
+
+    public array $reportMeta = [];
+
+    public ?string $reportError = null;
+
     /**
      * Apenas super_admin visualiza esta página.
      */
@@ -60,6 +70,123 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             'nfse_serie_padrao' => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
             'webhook_secret'    => CompanyPreference::get('integranotas.webhook_secret', $companyId),
         ]);
+
+        $this->consulta = [
+            'numero_inicial' => null,
+            'numero_final'   => null,
+            'serie'          => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
+            'pagina'         => 1,
+        ];
+    }
+
+    public function consultIssuedNfse(): void
+    {
+        $companyId = Filament::getTenant()?->id;
+
+        $validated = Validator::make($this->consulta, [
+            'numero_inicial' => ['required', 'integer', 'min:1'],
+            'numero_final'   => ['nullable', 'integer', 'gte:numero_inicial'],
+            'serie'          => ['nullable', 'string', 'max:5'],
+            'pagina'         => ['nullable', 'integer', 'min:1'],
+        ], [
+            'numero_inicial.required' => 'Informe o número inicial da NFS-e.',
+            'numero_final.gte'        => 'O número final deve ser maior ou igual ao número inicial.',
+        ])->validate();
+
+        $this->reportError = null;
+        $this->reportRows = [];
+        $this->reportMeta = [];
+
+        try {
+            $configService = app(\App\Services\Fiscal\NfseConfigService::class);
+            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($companyId));
+
+            $payload = array_filter([
+                'numero_inicial' => (int) $validated['numero_inicial'],
+                'numero_final'   => ! empty($validated['numero_final']) ? (int) $validated['numero_final'] : null,
+                'serie'          => ! empty($validated['serie']) ? (string) $validated['serie'] : null,
+                'pagina'         => ! empty($validated['pagina']) ? (int) $validated['pagina'] : null,
+            ], fn ($value) => $value !== null && $value !== '');
+
+            $response = $sdk->localiza($payload);
+            $responseArray = json_decode(json_encode($response), true) ?? [];
+
+            $rows = $this->extractRowsFromResponse($responseArray);
+
+            $this->reportRows = array_values($rows);
+            $this->reportMeta = [
+                'codigo'            => $responseArray['codigo'] ?? null,
+                'mensagem'          => $responseArray['mensagem'] ?? null,
+                'total_encontrado'  => count($this->reportRows),
+                'valor_total'       => collect($this->reportRows)
+                    ->map(fn (array $item): float => (float) ($item['valor'] ?? $item['valor_servicos'] ?? 0))
+                    ->sum(),
+                'payload_utilizado' => $payload,
+            ];
+
+            Notification::make()
+                ->title('Consulta finalizada')
+                ->body(count($this->reportRows) > 0
+                    ? 'NFS-e localizadas com sucesso.'
+                    : 'Consulta executada, mas nenhum registro foi encontrado com os filtros informados.')
+                ->success()
+                ->send();
+        } catch (\Throwable $e) {
+            $this->reportError = 'Não foi possível consultar as NFS-e na prefeitura: ' . $e->getMessage();
+
+            Log::error('NfeSettingsPage: erro ao consultar NFS-e via localiza', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'erro'   => $e->getMessage(),
+                'tenant' => $companyId,
+                'filtros' => $validated,
+            ]);
+
+            Notification::make()
+                ->title('Erro ao consultar NFS-e')
+                ->body($this->reportError)
+                ->danger()
+                ->send();
+        }
+    }
+
+    private function extractRowsFromResponse(array $response): array
+    {
+        $possibleKeys = ['notas', 'nfse', 'nfses', 'dados', 'lista', 'data'];
+
+        foreach ($possibleKeys as $key) {
+            if (! isset($response[$key])) {
+                continue;
+            }
+
+            $candidate = $response[$key];
+
+            if (is_array($candidate)) {
+                if ($this->isSequentialArray($candidate)) {
+                    return array_map(fn ($item) => is_array($item) ? $item : (array) $item, $candidate);
+                }
+
+                foreach ($possibleKeys as $nestedKey) {
+                    if (isset($candidate[$nestedKey]) && is_array($candidate[$nestedKey]) && $this->isSequentialArray($candidate[$nestedKey])) {
+                        return array_map(fn ($item) => is_array($item) ? $item : (array) $item, $candidate[$nestedKey]);
+                    }
+                }
+            }
+        }
+
+        if ($this->isSequentialArray($response)) {
+            return array_map(fn ($item) => is_array($item) ? $item : (array) $item, $response);
+        }
+
+        return [];
+    }
+
+    private function isSequentialArray(array $array): bool
+    {
+        if ($array === []) {
+            return true;
+        }
+
+        return array_keys($array) === range(0, count($array) - 1);
     }
 
     public function form(Schema $schema): Schema
