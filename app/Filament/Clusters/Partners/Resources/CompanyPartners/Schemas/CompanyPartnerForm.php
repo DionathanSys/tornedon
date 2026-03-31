@@ -331,9 +331,9 @@ class CompanyPartnerForm
                                     ->icon(Heroicon::DevicePhoneMobile)
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                                 TextEntry::make('notify')
-                                    ->label('Recebe Notificacoes')
+                                    ->label('Recebe Notificações')
                                     ->badge()
-                                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Nao')
+                                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
                                     ->color(fn($state) => $state ? 'success' : 'gray')
                                     ->columnSpan(['md' => 1, 'lg' => 2])
                                     ->visible(fn(Get $get, $record) => $record->is_active),

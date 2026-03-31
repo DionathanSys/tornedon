@@ -103,25 +103,25 @@ class BuildNfseNacionalPayloadAction
             $firstItem  = $items->first();
             $taxData    = $firstItem->tax_data ?? [];
 
-            $valorServicosTotal = $items->sum(fn ($i) => round((float) $i->total_price, 2));
-            $discriminacoes     = $items->map(fn ($i) => collect(array_filter([
+            $valorServicosTotal = $items->sum(fn($i) => round((float) $i->total_price, 2));
+            $discriminacoes     = $items->map(fn($i) => collect(array_filter([
                 $i->description,
                 $i->additional_information,
             ]))->implode('; '))->filter()->implode("\n");
 
             $serviceCode = $this->normalizeServiceCode(
                 $firstItem->municipal_tax_code
-                ?? $firstItem->service?->municipal_tax_code
-                ?? $firstItem->service_code
-                ?? $firstItem->service?->service_code
-                ?? $profile?->default_municipal_tax_code
-                ?? $profile?->default_service_code
+                    ?? $firstItem->service?->municipal_tax_code
+                    ?? $firstItem->service_code
+                    ?? $firstItem->service?->service_code
+                    ?? $profile?->default_municipal_tax_code
+                    ?? $profile?->default_service_code
             );
 
             $nbsCode = $this->normalizeNbsCode(
                 $firstItem->nbs_code
-                ?? $firstItem->service?->nbs_code
-                ?? $profile?->default_nbs_code
+                    ?? $firstItem->service?->nbs_code
+                    ?? $profile?->default_nbs_code
             );
 
             $discriminacao = trim((string) ($discriminacoes ?: ($firstItem->description ?? '')));
@@ -165,7 +165,7 @@ class BuildNfseNacionalPayloadAction
                 'codigo'        => $serviceCode,
                 'discriminacao' => substr($discriminacao, 0, 2000),
                 'codigo_nbs'    => $nbsCode,
-                'valor_servicos'=> round($valorServicosTotal, 2),
+                'valor_servicos' => round($valorServicosTotal, 2),
             ];
 
             $ctm = $firstItem->service?->municipal_tax_code
@@ -296,7 +296,6 @@ class BuildNfseNacionalPayloadAction
 
             $this->setSuccess();
             return $payload;
-
         } catch (\Exception $e) {
             $msgErro = 'Erro ao montar payload NFS-e nacional: ' . $e->getMessage();
             $this->setError($msgErro);

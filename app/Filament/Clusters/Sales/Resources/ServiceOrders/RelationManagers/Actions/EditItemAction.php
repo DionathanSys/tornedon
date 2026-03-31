@@ -53,7 +53,7 @@ final class EditItemAction
                     'enforceEffectiveMinSalePrice' => true,
                 ]),
                 Textarea::make('observations')
-                    ->label('Observacoes')
+                    ->label('Observações')
                     ->columnSpanFull(),
             ])
             ->fillForm(function (array $data, ServiceOrderItem $record) {
