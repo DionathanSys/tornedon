@@ -24,6 +24,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -37,26 +38,36 @@ class EditMobileServiceOrder extends EditRecord
     {
         return [
             ActionGroup::make([
-                CreateServiceOrderAction::make(),
+                CreateServiceOrderAction::make()
+                    ->size(Size::ExtraSmall),
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()
+                        ->size(Size::ExtraSmall)
                     ->tooltip('Duplicar ordem de serviço'),
                 PreviewServiceOrderPdfAction::make()
                     ->hiddenLabel()
+                        ->size(Size::ExtraSmall)
                     ->tooltip('Preview PDF'),
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
+                        ->size(Size::ExtraSmall)
                     ->hiddenLabel(),
                 CloseServiceOrderAction::make()
                     ->color('gray')
+                        ->size(Size::ExtraSmall)
                     ->hiddenLabel(),
-                InvoiceServiceOrderAction::make(),
-                ViewInvoiceServiceOrderAction::make(),
+                InvoiceServiceOrderAction::make()
+                    ->size(Size::ExtraSmall),
+                ViewInvoiceServiceOrderAction::make()
+                    ->size(Size::ExtraSmall),
                 CancelServiceOrderAction::make()
+                    ->size(Size::ExtraSmall)
                     ->hiddenLabel(),
                 ReopenServiceOrderAction::make()
+                    ->size(Size::ExtraSmall)
                     ->hiddenLabel(),
                 DeleteAction::make()
+                    ->size(Size::ExtraSmall)
                     ->hiddenLabel()
                     ->icon(Heroicon::Trash)
                     ->using(function (Model $record): bool {
@@ -91,6 +102,7 @@ class EditMobileServiceOrder extends EditRecord
                         return $result;
                     }),
                 ForceDeleteAction::make()
+                    ->size(Size::ExtraSmall)
                     ->using(function (Model $record): bool {
                         Log::debug('EditServiceOrder: Iniciando force delete de ordem de serviço', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
@@ -123,6 +135,7 @@ class EditMobileServiceOrder extends EditRecord
                         return $result;
                     }),
                 RestoreAction::make()
+                    ->size(Size::ExtraSmall)
                     ->using(function (Model $record): bool {
                         Log::debug('EditServiceOrder: Iniciando restore de ordem de serviço', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
