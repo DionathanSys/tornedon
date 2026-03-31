@@ -262,8 +262,12 @@ class BuildNfseMunicipalPayloadAction
                 $servico['codigo_municipio'] = $municipioPrestador;
             }
 
-            $municipioPrestacao = $address?->city_code ?? $municipioPrestador;
-            if ($municipioPrestacao && $municipioPrestacao !== $municipioPrestador) {
+            $municipioPrestacao = preg_replace('/\D/', '', (string) ($profile?->default_service_city_code ?? ''));
+            if ($municipioPrestacao === '') {
+                $municipioPrestacao = $municipioPrestador;
+            }
+
+            if ($municipioPrestacao) {
                 $servico['codigo_municipio_prestacao'] = $municipioPrestacao;
             }
 

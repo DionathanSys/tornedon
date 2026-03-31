@@ -36,6 +36,7 @@ class FiscalProfile extends Model
         'service_cnae_code',
         'default_nbs_code',
         'default_municipal_tax_code',
+        'default_service_city_code',
         'default_nfse_additional_information',
         'cfop_rules',
         'additional_tax_information_default',
