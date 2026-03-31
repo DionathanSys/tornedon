@@ -33,6 +33,11 @@ class EditServiceOrder extends EditRecord
 {
     protected static string $resource = ServiceOrderResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return "Ordem de Serviço # {$this->record->number} - {$this->record->status->description()}";
+    }
+
     protected function getHeaderActions(): array
     {
         return [

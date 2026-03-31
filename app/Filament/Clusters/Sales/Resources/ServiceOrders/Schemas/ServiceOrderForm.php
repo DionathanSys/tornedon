@@ -63,38 +63,6 @@ class ServiceOrderForm
                                             ->columns(['sm' => 1, 'md' => 6, 'lg' => 8, 'xl' => 12])
                                             ->columnSpanFull()
                                             ->schema([
-                                                TextEntry::make('number')
-                                                    ->formatStateUsing(fn( $state): string => "OS-" . $state)
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->badge()
-                                                    ->color('info')
-                                                    ->visibleOn('edit')
-                                                    ->saved(false),
-                                                TextEntry::make('status')
-                                                    ->formatStateUsing(fn($state): string => strtoupper($state->description()))
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->badge()
-                                                    ->color(fn($state): string => $state->color())
-                                                    ->visibleOn('edit')
-                                                    ->saved(false),
-                                                    Select::make('priority')
-                                                    ->label('Prioridade')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->required()
-                                                    ->visibleOn('edit')
-                                                    ->options(Priority::toSelectArray())
-                                                    ->default(Priority::NORMAL->value)
-                                                    ->native(false)
-                                                    ->selectablePlaceholder(false),
-                                                Select::make('type')
-                                                    ->label('Tipo')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2])
-                                                    ->required()
-                                                    ->visibleOn('edit')
-                                                    ->options(Type::toSelectArray())
-                                                    ->default(Type::MAINTENANCE->value)
-                                                    ->native(false)
-                                                    ->selectablePlaceholder(false),
                                                 SelectPartner::make('customer_id', 'customer')
                                                     ->label('Cliente')
                                                     ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
@@ -117,6 +85,24 @@ class ServiceOrderForm
                                                     )
                                                     ->disabled(fn($get) => ! $get('customer_id'))
                                                     ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
+                                                Select::make('priority')
+                                                    ->label('Prioridade')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->required()
+                                                    ->visibleOn('edit')
+                                                    ->options(Priority::toSelectArray())
+                                                    ->default(Priority::NORMAL->value)
+                                                    ->native(false)
+                                                    ->selectablePlaceholder(false),
+                                                Select::make('type')
+                                                    ->label('Tipo')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->required()
+                                                    ->visibleOn('edit')
+                                                    ->options(Type::toSelectArray())
+                                                    ->default(Type::MAINTENANCE->value)
+                                                    ->native(false)
+                                                    ->selectablePlaceholder(false),
                                                 DatePicker::make('order_date')
                                                     ->label('Data da Ordem')
                                                     ->columnSpan(fn($operation) => $operation === 'create' ? ['md' => 3, 'lg' => 4] : ['md' => 2, 'lg' => 2])
@@ -193,7 +179,7 @@ class ServiceOrderForm
                             ->icon(Heroicon::ChatBubbleBottomCenterText)
                             ->schema([
                                 Section::make('Anotações')
-                                    ->columns(['sm' => 1,'md' => 4,'lg' => 12,])
+                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
@@ -461,5 +447,4 @@ class ServiceOrderForm
             ->values()
             ->all();
     }
-
 }
