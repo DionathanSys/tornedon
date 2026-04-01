@@ -96,6 +96,12 @@ class FiscalDocumentForm
                                             ->visible(fn($record): bool => $record->isNfse())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
+                                        TextEntry::make('document_number')
+                                            ->label('Nº Documento')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->state(fn($record): string => $record->document_number ? $record->document_number : 'N/D')
+                                            ->placeholder('N/D'),
                                         TextEntry::make('rps_number')
                                             ->label('Nº RPS')
                                             ->visibleOn('edit')

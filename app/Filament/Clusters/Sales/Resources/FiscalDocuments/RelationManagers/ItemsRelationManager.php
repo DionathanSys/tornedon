@@ -33,7 +33,7 @@ class ItemsRelationManager extends RelationManager
         $isNfse = $this->getOwnerRecord()->isNfse();
 
         return $table
-            ->recordTitleAttribute('description')
+            ->recordTitleAttribute('item_number')
             ->heading($isNfse ? 'Serviços da NFS-e' : 'Itens da Nota Fiscal')
             ->columns([
                 TextColumn::make('item_number')
