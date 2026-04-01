@@ -96,6 +96,7 @@ class FiscalDocumentForm
                     'ownerRecord' => $record,
                     'pageClass' => EditFiscalDocument::class,
                 ])
+                    ->visibleOn('edit') 
                     ->key('items-relation-manager')
                     ->columnSpanFull(),
                 Hidden::make('company_id'),

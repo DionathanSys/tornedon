@@ -189,10 +189,9 @@ class ServiceOrderForm
                                             ->rows(3)
                                             ->autocomplete(false),
                                         Textarea::make('items_received')
-                                            ->label('Itens Recebidos (sem NF de remessa)')
+                                            ->label('Itens Recebidos ')
                                             ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3)
-                                            ->helperText('Descreva os itens recebidos quando não houver NF de remessa vinculada.'),
+                                            ->rows(3),
                                         TextInput::make('technician_observations')
                                             ->label('Observações do Técnico')
                                             ->columnSpan(['md' => 4, 'lg' => 12])
