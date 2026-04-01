@@ -172,6 +172,10 @@ class BuildNfseNacionalPayloadAction
                 'valor_servicos' => round($valorServicosTotal, 2),
             ];
 
+            if ($informacoesComplementaresItens !== '') {
+                $servico['informacoes_complementares'] = $informacoesComplementaresItens;
+            }
+
             $ctm = $firstItem->service?->municipal_tax_code
                 ?? $firstItem->municipal_tax_code
                 ?? $profile?->default_municipal_tax_code

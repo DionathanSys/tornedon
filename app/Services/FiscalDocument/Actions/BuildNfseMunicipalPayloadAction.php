@@ -133,6 +133,10 @@ class BuildNfseMunicipalPayloadAction
                     'valor_servicos'=> $valorServicosItem,
                 ];
 
+                if (! empty($item->additional_information)) {
+                    $itemPayload['informacoes_complementares'] = $item->additional_information;
+                }
+
                 if ($item->cnae_code || $profile?->service_cnae_code) {
                     $itemPayload['codigo_cnae'] = $item->cnae_code ?? $profile?->service_cnae_code;
                 }
