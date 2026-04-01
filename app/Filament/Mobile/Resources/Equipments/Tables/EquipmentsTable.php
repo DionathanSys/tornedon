@@ -3,11 +3,14 @@
 namespace App\Filament\Mobile\Resources\Equipments\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
@@ -66,6 +69,10 @@ class EquipmentsTable
                     DeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
+                CreateAction::make()
+                    ->label('Equipamento')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ]);
     }
 }

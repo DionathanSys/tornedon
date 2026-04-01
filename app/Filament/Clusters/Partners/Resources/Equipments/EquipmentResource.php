@@ -23,9 +23,9 @@ class EquipmentResource extends Resource
 
     protected static ?string $cluster = PartnersCluster::class;
 
-    protected static ?string $modelLabel = 'Equipamentoa';
+    protected static ?string $modelLabel = 'Equipamento';
 
-    protected static ?string $pluralModelLabel = 'Equipamentosaa';
+    protected static ?string $pluralModelLabel = 'Equipamentos';
 
     protected static ?int $navigationSort = 3;
 
