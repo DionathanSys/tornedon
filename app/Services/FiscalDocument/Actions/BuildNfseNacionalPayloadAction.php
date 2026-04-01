@@ -108,6 +108,11 @@ class BuildNfseNacionalPayloadAction
                 $i->description,
                 $i->additional_information,
             ]))->implode('; '))->filter()->implode("\n");
+            $informacoesComplementaresItens = $items->pluck('additional_information')
+                ->filter(fn ($info) => filled($info))
+                ->map(fn ($info) => trim((string) $info))
+                ->unique()
+                ->implode("\n");
 
             $serviceCode = $this->normalizeServiceCode(
                 $firstItem->municipal_tax_code
@@ -167,6 +172,10 @@ class BuildNfseNacionalPayloadAction
                 'codigo_nbs'    => $nbsCode,
                 'valor_servicos' => round($valorServicosTotal, 2),
             ];
+
+            if ($informacoesComplementaresItens !== '') {
+                $servico['informacoes_complementares'] = $informacoesComplementaresItens;
+            }
 
             $ctm = $firstItem->service?->municipal_tax_code
                 ?? $firstItem->municipal_tax_code
