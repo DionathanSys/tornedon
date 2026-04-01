@@ -104,10 +104,9 @@ class BuildNfseNacionalPayloadAction
             $taxData    = $firstItem->tax_data ?? [];
 
             $valorServicosTotal = $items->sum(fn($i) => round((float) $i->total_price, 2));
-            $discriminacoes     = $items->map(fn($i) => collect(array_filter([
-                $i->description,
-                $i->additional_information,
-            ]))->implode('; '))->filter()->implode("\n");
+            $discriminacoes     = $items->map(fn($i) => trim((string) $i->description))
+                ->filter()
+                ->implode("\n");
             $informacoesComplementaresItens = $items->pluck('additional_information')
                 ->filter(fn ($info) => filled($info))
                 ->map(fn ($info) => trim((string) $info))
@@ -288,6 +287,7 @@ class BuildNfseNacionalPayloadAction
 
             // Informações complementares
             $infoComplementar = $fiscalDocument->additional_taxpayer_information
+                ?? ($informacoesComplementaresItens !== '' ? $informacoesComplementaresItens : null)
                 ?? $profile?->default_nfse_additional_information
                 ?? null;
             if ($infoComplementar) {
