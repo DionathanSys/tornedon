@@ -26,6 +26,7 @@ class ServiceOrderValidator
             'equipment_id'              => 'nullable|integer|exists:equipments,id',
             'location'                  => 'nullable|string|max:255',
             'customer_observations'     => 'nullable|string',
+            'items_received'            => 'nullable|string',
             'technician_observations'   => 'nullable|string',
             'estimated_hours'           => 'nullable|numeric|min:0',
             'actual_hours'              => 'nullable|numeric|min:0',
