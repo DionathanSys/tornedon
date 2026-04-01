@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FiscalDocumentItem extends Model
 {
@@ -89,6 +91,55 @@ class FiscalDocumentItem extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function remittanceAssets(): HasMany
+    {
+        return $this->hasMany(RemittanceAsset::class);
+    }
+
+    public function originLinks(): HasMany
+    {
+        return $this->hasMany(FiscalDocumentItemOrigin::class, 'return_fiscal_document_item_id');
+    }
+
+    public function destinationLinks(): HasMany
+    {
+        return $this->hasMany(FiscalDocumentItemOrigin::class, 'origin_fiscal_document_item_id');
+    }
+
+    public function originItems(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'fiscal_document_item_origins',
+            'return_fiscal_document_item_id',
+            'origin_fiscal_document_item_id'
+        )->withPivot([
+            'origin_fiscal_document_id',
+            'return_fiscal_document_id',
+            'linked_quantity',
+            'linked_value',
+            'origin_document_key',
+            'metadata',
+        ])->withTimestamps();
+    }
+
+    public function returnItems(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'fiscal_document_item_origins',
+            'origin_fiscal_document_item_id',
+            'return_fiscal_document_item_id'
+        )->withPivot([
+            'origin_fiscal_document_id',
+            'return_fiscal_document_id',
+            'linked_quantity',
+            'linked_value',
+            'origin_document_key',
+            'metadata',
+        ])->withTimestamps();
     }
 
     public function createdBy(): BelongsTo

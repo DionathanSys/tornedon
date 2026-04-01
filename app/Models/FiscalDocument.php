@@ -144,6 +144,11 @@ class FiscalDocument extends Model
         return $this->hasMany(FiscalDocumentItem::class);
     }
 
+    public function remittanceAssets(): HasMany
+    {
+        return $this->hasMany(RemittanceAsset::class);
+    }
+
     public function accountPayables(): HasMany
     {
         return $this->hasMany(AccountPayable::class);
