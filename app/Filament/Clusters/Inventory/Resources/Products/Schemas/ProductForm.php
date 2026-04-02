@@ -151,7 +151,7 @@ class ProductForm
                                             ->inline(false)
                                             ->default(false),
                                         Toggle::make('has_stock_control')
-                                            ->label('Controla de Estoque?')
+                                            ->label('Controla Estoque?')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->inline(false)
                                             ->default(false),
