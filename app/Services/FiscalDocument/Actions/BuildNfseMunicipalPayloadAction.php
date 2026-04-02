@@ -110,12 +110,7 @@ class BuildNfseMunicipalPayloadAction
                     ?? $profile?->default_nbs_code
                 );
 
-                $parts = array_filter([
-                    $item->description,
-                    $item->additional_information,
-                ], fn ($v) => !empty($v));
-                
-                $discriminacao = trim(implode('; ', $parts));
+                $discriminacao = trim((string) $item->description);
                 if ($discriminacao === '') {
                     $discriminacao = 'Servicos prestados conforme documento fiscal.';
                 }
@@ -207,6 +202,12 @@ class BuildNfseMunicipalPayloadAction
             $codigoServico = $serviceCodeCandidates[0] ?? '';
             $codigoNbs = $nbsCodeCandidates[0] ?? '';
             $discriminacaoGeral = trim(implode("\n", array_filter($discriminacoes)));
+            $informacoesComplementaresItens = $fiscalDocument->items
+                ->pluck('additional_information')
+                ->filter(fn ($info) => filled($info))
+                ->map(fn ($info) => trim((string) $info))
+                ->unique()
+                ->implode("\n");
 
             if ($discriminacaoGeral === '') {
                 $discriminacaoGeral = 'Servicos prestados conforme documento fiscal.';
@@ -310,6 +311,15 @@ class BuildNfseMunicipalPayloadAction
             $regime = $profile?->nfse_special_tax_regime ?? null;
             if ($regime) {
                 $payload['regime_tributacao'] = $regime;
+            }
+
+            // Informações complementares (campo específico, sem mesclar em discriminação)
+            $infoComplementar = $fiscalDocument->additional_taxpayer_information
+                ?? ($informacoesComplementaresItens !== '' ? $informacoesComplementaresItens : null)
+                ?? $profile?->default_nfse_additional_information
+                ?? null;
+            if ($infoComplementar) {
+                $payload['informacoes_complementares'] = $infoComplementar;
             }
 
             Log::info('BuildNfseMunicipalPayloadAction: payload montado com sucesso', [
