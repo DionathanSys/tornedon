@@ -23,7 +23,7 @@ class ItemsForm
     {
         return $schema
             ->schema([
-                ModalSelectProductStock::make()
+                ModalSelectProductStock::make('product_id')
                     ->label('Produto')
                     ->required()
                     ->afterStateUpdated(
