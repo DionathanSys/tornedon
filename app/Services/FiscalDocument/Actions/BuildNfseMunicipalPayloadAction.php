@@ -138,6 +138,12 @@ class BuildNfseMunicipalPayloadAction
                     'valor_servicos'=> $valorServicosItem,
                 ];
 
+                Log::debug('Atualizando item NFS-e via RelationManager', [
+                    'metodo'  => __METHOD__ . '@' . __LINE__,
+                    'item_id' => $item->id,
+                    'data'    => $item->additional_information,
+                ]);
+                
                 if (! empty($item->additional_information)) {
                     $itemPayload['informacoes_complementares'] = $item->additional_information;
                 }

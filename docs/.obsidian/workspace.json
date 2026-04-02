@@ -4,63 +4,63 @@
     "type": "split",
     "children": [
       {
-        "id": "8773deb4c7b81e7d",
+        "id": "2bbf72c307ec6c07",
         "type": "tabs",
         "children": [
           {
-            "id": "77b91bcf8f985b54",
+            "id": "93d49109b4af1183",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "plano-refatoracao-anexos-polimorficos.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "plano-refatoracao-anexos-polimorficos"
-            }
-          },
-          {
-            "id": "fde1e5e103e1bf53",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Sem título.md",
+                "file": "docs/plano-notificacoes-documentos.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Sem título"
+              "title": "plano-notificacoes-documentos"
             }
           },
           {
-            "id": "4605901321478e62",
+            "id": "a6118045eb61c1b6",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sem título 2.md",
+                "file": "Instrução Cadastro Produto.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Sem título 2"
+              "title": "Instrução Cadastro Produto"
             }
           },
           {
-            "id": "0f83c6b89ceb5ceb",
+            "id": "a95b282127fa8f7c",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sem título 3.md",
-                "mode": "preview",
+                "file": "Instrução movimentação.md",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Sem título 3"
+              "title": "Instrução movimentação"
+            }
+          },
+          {
+            "id": "d8eba153e3a0992f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Venda.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Venda"
             }
           }
         ],
@@ -228,10 +228,25 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "0f83c6b89ceb5ceb",
+  "active": "d8eba153e3a0992f",
   "lastOpenFiles": [
-    "regras-negocio/remessa-retorno-os.md",
+    "Pasted image 20260402131724.png",
+    "Pasted image 20260402131645.png",
+    "Pasted image 20260402131538.png",
+    "Venda.md",
+    "Instrução movimentação.md",
+    "Pasted image 20260402131500.png",
+    "Pasted image 20260402130917.png",
+    "Instrução Cadastro Produto.md",
+    "Pasted image 20260402130405.png",
+    "Pasted image 20260402130026.png",
+    "Pasted image 20260402130009.png",
+    "Pasted image 20260402125838.png",
+    "Pasted image 20260402125036.png",
+    "Pasted image 20260402124855.png",
+    "docs/plano-notificacoes-documentos.md",
     "Sem título 3.md",
+    "regras-negocio/remessa-retorno-os.md",
     "Sem título 2.md",
     "Sem título.md",
     "Sem título 1.md",
@@ -250,9 +265,6 @@
     "Consulta CNPJ.md",
     "CODING-STANDARDS.md",
     "arquitetura-fiscal-criacao-validacao-emissao.md",
-    "Campos Payload NFS.md",
-    "Arquitetura e Padrões.md",
-    "Projeto/AÇÕES/⚡CRUD Equipaments.md",
-    "Projeto/AÇÕES/⚡CRUD Product Stock.md"
+    "Campos Payload NFS.md"
   ]
 }

@@ -50,8 +50,7 @@ class CompanyPartnerForm
                     ->columnSpanFull()
                     ->danger()
                     ->description('Este parceiro não possui um endereço válido. Cadastre ou atualize um endereço para evitar problemas em documentos fiscais.')
-                    ->visibleOn('edit')
-                    ->visible(fn(Get $get): bool => ! ($get('has_valid_address') ?? false)),
+                    ->visible(fn(Get $get, $operation): bool => ! ($get('has_valid_address') ?? false) && $operation === 'edit'),
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,
@@ -119,12 +118,8 @@ class CompanyPartnerForm
                             ->disabledOn('edit'),
                     ]),
 
-                Section::make('Configuracoes da Empresa')
-                    ->columns([
-                        'sm' => 1,
-                        'md' => 4,
-                        'lg' => 8,
-                    ])
+                Section::make('Configurações da Empresa')
+                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 8,])
                     ->columnSpanFull()
                     ->description('Dados de vinculo entre Empresa e Parceiro')
                     ->compact()
@@ -161,31 +156,47 @@ class CompanyPartnerForm
                             ->inline(false)
                             ->default(true)
                             ->required(),
-                        Toggle::make('company_partner.notify_service_order_closed')
-                            ->label('Notificar OS Encerrada')
-                            ->inline(false)
-                            ->default(false)
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Toggle::make('company_partner.notify_requisition_closed')
-                            ->label('Notificar Requisicao Encerrada')
-                            ->inline(false)
-                            ->default(false)
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Toggle::make('company_partner.notify_production_order_closed')
-                            ->label('Notificar OP Encerrada')
-                            ->inline(false)
-                            ->default(false)
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Toggle::make('company_partner.notify_invoice_confirmed')
-                            ->label('Notificar Fatura Confirmada')
-                            ->inline(false)
-                            ->default(false)
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Toggle::make('company_partner.notify_fiscal_document_confirmed')
-                            ->label('Notificar NF Confirmada')
-                            ->inline(false)
-                            ->default(false)
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                    ]),
+
+                Section::make('Configurações de Notificações')
+                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 8,])
+                    ->columnSpanFull()
+                    ->compact()
+                    ->schema([
+                        Grid::make()
+                            ->columns(['sm' => 1, 'md' => 6, 'lg' => 12])
+                            ->columnSpanFull()
+                            ->schema([
+                                Toggle::make('company_partner.notify_service_order_closed')
+                                    ->label('OS Encerrada')
+                                    ->inline(false)
+                                    ->default(false)
+                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                Toggle::make('company_partner.notify_requisition_closed')
+                                    ->label('Requisição Encerrada')
+                                    ->inline(false)
+                                    ->default(false)
+                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                Toggle::make('company_partner.notify_production_order_closed')
+                                    ->label('OP Encerrada')
+                                    ->inline(false)
+                                    ->default(false)
+                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                Toggle::make('company_partner.notify_invoice_confirmed')
+                                    ->label('Fatura Confirmada')
+                                    ->inline(false)
+                                    ->default(false)
+                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                Toggle::make('company_partner.notify_fiscal_document_confirmed')
+                                    ->label('NF Confirmada')
+                                    ->inline(false)
+                                    ->default(false)
+                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                            ]),
+                        Callout::make()
+                            ->description('Apenas preencha os campos abaixo se deseja enviar emails para endereços diferentes do contato principal cadastrado')
+                            ->warning()
+                            ->columnSpanFull(),
                         Grid::make()
                             ->columns(['sm' => 1, 'md' => 6, 'lg' => 12])
                             ->columnSpanFull()

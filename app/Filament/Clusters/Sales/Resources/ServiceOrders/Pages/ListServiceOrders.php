@@ -17,24 +17,27 @@ class ListServiceOrders extends ListRecords
         return [
             'all' => Tab::make('Todas')
                 ->badgeColor('gray'),
-            State::OPEN->value => Tab::make('Abertas')
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', State::OPEN->value))
+            State::OPEN->value => Tab::make('Pendente')
+                ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', State::OPEN->value))
                 ->badge(static::getResource()::getEloquentQuery()->where('status', State::OPEN->value)->count())
                 ->badgeColor(State::OPEN->color()),
             State::CLOSED->value => Tab::make('Encerrada')
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', State::CLOSED->value))
+                ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', State::CLOSED->value))
                 ->badge(static::getResource()::getEloquentQuery()->where('status', State::CLOSED->value)->count())
                 ->badgeColor(State::CLOSED->color()),
             State::INVOICED->value => Tab::make('Faturada')
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', State::INVOICED->value))
+                ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', State::INVOICED->value))
                 ->badge(null),
         ];
     }
 
+    public function getDefaultActiveTab(): string | int | null
+    {
+        return 'aberta';
+    }
+
     protected function getHeaderActions(): array
     {
-        return [
-
-        ];
+        return [];
     }
 }
