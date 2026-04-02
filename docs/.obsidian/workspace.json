@@ -20,51 +20,8 @@
               "icon": "lucide-file",
               "title": "plano-notificacoes-documentos"
             }
-          },
-          {
-            "id": "a6118045eb61c1b6",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Instrução Cadastro Produto.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Instrução Cadastro Produto"
-            }
-          },
-          {
-            "id": "a95b282127fa8f7c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Instrução movimentação.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Instrução movimentação"
-            }
-          },
-          {
-            "id": "d8eba153e3a0992f",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Venda.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Venda"
-            }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -228,22 +185,21 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "d8eba153e3a0992f",
+  "active": "93d49109b4af1183",
   "lastOpenFiles": [
+    "Instrução Cadastro Produto.md",
+    "Instrução movimentação.md",
+    "Venda.md",
     "Pasted image 20260402131724.png",
     "Pasted image 20260402131645.png",
     "Pasted image 20260402131538.png",
-    "Venda.md",
-    "Instrução movimentação.md",
     "Pasted image 20260402131500.png",
     "Pasted image 20260402130917.png",
-    "Instrução Cadastro Produto.md",
     "Pasted image 20260402130405.png",
     "Pasted image 20260402130026.png",
     "Pasted image 20260402130009.png",
     "Pasted image 20260402125838.png",
     "Pasted image 20260402125036.png",
-    "Pasted image 20260402124855.png",
     "docs/plano-notificacoes-documentos.md",
     "Sem título 3.md",
     "regras-negocio/remessa-retorno-os.md",
