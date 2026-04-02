@@ -97,6 +97,14 @@ class PrintNfePreviewAction
 
             $this->setSuccess('Preview gerado com sucesso.');
 
+            Log::debug('PrintNfePreviewAction: preview gerado com sucesso', [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'document_number'    => $fiscalDocument->document_number,
+                'resp'               => $resp,
+                'pdf_gerado'         => ! empty($resp->pdf ?? null),
+                'xml_gerado'         => ! empty($resp->xml ?? null),
+            ]);
+
             return [
                 'pdf' => $resp->pdf ?? null,
                 'xml' => $resp->xml ?? null,
