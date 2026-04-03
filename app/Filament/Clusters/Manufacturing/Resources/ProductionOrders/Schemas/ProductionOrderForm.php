@@ -20,6 +20,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class ProductionOrderForm
@@ -68,7 +69,8 @@ class ProductionOrderForm
                             })
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required(fn (Get $get): bool => $get('destination_type') === DestinationType::DIRECT_DELIVERY->value)
+                            ->helperText('Obrigatório apenas para destino "Entrega Direta".'),
                         Select::make('priority')
                             ->label('Prioridade')
                             ->columnSpan(['md' => 1, 'lg' => 2])
