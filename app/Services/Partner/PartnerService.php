@@ -210,8 +210,11 @@ class PartnerService
 
         return Partner::whereHas('companies', function ($query) use ($companyId, $type) {
             $query->where('company_id', $companyId)
-                ->whereJsonContains('company_partner.type', $type)
                 ->where('company_partner.is_active', true);
+
+            if ($type !== 'all') {
+                $query->whereJsonContains('company_partner.type', $type);
+            }
         })
             ->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
