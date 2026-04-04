@@ -54,7 +54,6 @@ class AccountPayableValidator
             'supplier_id' => 'required|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
-            'sequence_number' => 'required|string|max:2',
             'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
             'installment_count' => 'nullable|integer|min:1|max:24',
             'installment_due_mode' => ['nullable', Rule::in(['interval_30_days', 'fixed_day_of_month'])],
@@ -73,7 +72,6 @@ class AccountPayableValidator
             'supplier_id' => 'sometimes|required|integer|exists:partners,id',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
-            'sequence_number' => 'sometimes|required|string|max:2',
             'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
         ]);
 

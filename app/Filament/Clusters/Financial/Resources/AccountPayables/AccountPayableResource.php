@@ -6,6 +6,7 @@ use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\CreateAccountPayable;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\EditAccountPayable;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\ListAccountPayables;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas\AccountPayableForm;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Tables\AccountPayablesTable;
 use App\Models\AccountPayable;
@@ -37,6 +38,13 @@ class AccountPayableResource extends Resource
     public static function table(Table $table): Table
     {
         return AccountPayablesTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            InstallmentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

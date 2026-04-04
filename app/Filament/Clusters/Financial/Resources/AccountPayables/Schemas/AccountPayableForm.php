@@ -45,15 +45,9 @@ class AccountPayableForm
                             ->disabled()
                             ->visibleOn('edit') 
                             ->nullable(),
-                        TextInput::make('sequence_number')
-                            ->label('Parcela')
-                            ->columnSpan(['md' => 1, 'lg' => 1])
-                            ->required()
-                            ->maxLength(2)
-                            ->default('01'),
                         TextInput::make('installment_count')
                             ->label('Qtd. Parcelas')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 1, 'lg' => 3])
                             ->columnSpanFull(1)
                             ->numeric()
                             ->minValue(1)
@@ -142,28 +136,35 @@ class AccountPayableForm
                         TextInput::make('document_number')
                             ->label('Nº Documento')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->autocomplete(false)
                             ->maxLength(50),
                         TextInput::make('bank_slip_number')
                             ->label('Nº do Boleto')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->autocomplete(false)
                             ->maxLength(100),
                         TextInput::make('note_number')
                             ->label('Nº da Nota')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->autocomplete(false)
                             ->maxLength(100),
                         TextInput::make('description')
                             ->label('Descrição')
                             ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->autocomplete(false)
                             ->maxLength(255),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->options(PaymentMethod::toSelectArray())
+                            ->autocomplete(false)
                             ->native(false)
                             ->searchable(),
                         Toggle::make('paid')
                             ->label('Pago')
+                            ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1])
+                            ->autocomplete(false)
                             ->default(false)
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
