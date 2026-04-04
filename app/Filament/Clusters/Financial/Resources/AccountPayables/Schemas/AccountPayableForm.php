@@ -45,13 +45,23 @@ class AccountPayableForm
                             ->relationship('fiscalDocument', 'document_number')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->nullable(),
                         TextInput::make('sequence_number')
                             ->label('Parcela')
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->required()
                             ->maxLength(2)
                             ->default('01'),
+                        TextInput::make('installment_count')
+                            ->label('Qtd. Parcelas')
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(24)
+                            ->default(1)
+                            ->required()
+                            ->visibleOn('create')
+                            ->helperText('Se maior que 1, serão geradas contas automáticas com intervalo de 30 dias.'),
                         Select::make('status')
                             ->label('Status')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -83,12 +93,15 @@ class AccountPayableForm
                             ->label('Data de Pagamento')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->displayFormat('d/m/Y')
-                            ->nullable(),
+                            ->nullable()
+                            ->disabled()
+                            ->helperText('A baixa é controlada nas parcelas da conta a pagar.'),
                         Money::make('paid_amount')
                             ->label('Valor Pago')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->default(0)
-                            ->prefix('R$'),
+                            ->prefix('R$')
+                            ->disabled(),
                     ]),
                 Section::make('Informações Adicionais')
                     ->columns([
@@ -104,9 +117,17 @@ class AccountPayableForm
                             ->label('Nº Documento')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->maxLength(50),
+                        TextInput::make('bank_slip_number')
+                            ->label('Nº do Boleto')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->maxLength(100),
+                        TextInput::make('note_number')
+                            ->label('Nº da Nota')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->maxLength(100),
                         TextInput::make('description')
                             ->label('Descrição')
-                            ->columnSpan(['md' => 2, 'lg' => 5])
+                            ->columnSpan(['md' => 2, 'lg' => 3])
                             ->maxLength(255),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
@@ -117,7 +138,9 @@ class AccountPayableForm
                         Toggle::make('paid')
                             ->label('Pago')
                             ->columnSpan(['md' => 1, 'lg' => 1])
-                            ->default(false),
+                            ->default(false)
+                            ->disabled()
+                            ->helperText('Controle automático por parcelas.'),
                     ]),
                 Hidden::make('company_id'),
             ]);
