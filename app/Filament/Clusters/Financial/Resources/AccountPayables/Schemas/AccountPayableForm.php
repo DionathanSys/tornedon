@@ -108,6 +108,7 @@ class AccountPayableForm
                             ->displayFormat('d/m/Y'),
                         Money::make('due_amount')
                             ->label('Valor a Pagar')
+                            ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->required()
                             ->prefix('R$'),
