@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
 use App\Enum\AccountPayable\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,13 +34,13 @@ class AccountPayableInstallment extends Model
         'status' => Status::class,
         'due_date' => 'date',
         'paid_date' => 'date',
-        'original_amount' => 'float',
-        'interest_amount' => 'float',
-        'fine_amount' => 'float',
-        'discount_amount' => 'float',
-        'due_amount' => 'float',
-        'paid_amount' => 'float',
-        'balance_amount' => 'float',
+        'original_amount' => MoneyCast::class,
+        'interest_amount' => MoneyCast::class,
+        'fine_amount' => MoneyCast::class,
+        'discount_amount' => MoneyCast::class,
+        'due_amount' => MoneyCast::class,
+        'paid_amount' => MoneyCast::class,
+        'balance_amount' => MoneyCast::class,
     ];
 
     public function accountPayable(): BelongsTo
