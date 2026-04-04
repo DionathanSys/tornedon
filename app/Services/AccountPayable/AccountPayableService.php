@@ -46,18 +46,9 @@ class AccountPayableService
                 }
 
                 foreach ($installments as $installmentData) {
-                    AccountPayableInstallment::create([
-                        ...$installmentData,
-                        'account_payable_id' => $accountPayable->id,
-                        'company_id' => $accountPayable->company_id,
-                        'status' => Status::PENDING->value,
-                        'original_amount' => $installmentData['due_amount'],
-                        'interest_amount' => 0,
-                        'fine_amount' => 0,
-                        'discount_amount' => 0,
-                        'paid_amount' => 0,
-                        'balance_amount' => $installmentData['due_amount'],
-                    ]);
+                    AccountPayableInstallment::create(
+                        $this->buildInstallmentRecordData($installmentData, $accountPayable)
+                    );
                 }
 
                 $this->setSuccess('Conta a pagar criada com sucesso');
@@ -184,6 +175,31 @@ class AccountPayableService
     private function formatSequenceNumber(int $sequence): string
     {
         return str_pad((string) $sequence, 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * @param array<string, mixed> $installmentData
+     * @return array<string, mixed>
+     */
+    private function buildInstallmentRecordData(array $installmentData, AccountPayable $accountPayable): array
+    {
+        $amount = (float) ($installmentData['due_amount'] ?? 0);
+
+        return [
+            'account_payable_id' => $accountPayable->id,
+            'company_id' => $accountPayable->company_id,
+            'sequence_number' => $installmentData['sequence_number'],
+            'status' => Status::PENDING->value,
+            'due_date' => $installmentData['due_date'],
+            'paid_date' => null,
+            'original_amount' => $amount,
+            'interest_amount' => 0,
+            'fine_amount' => 0,
+            'discount_amount' => 0,
+            'due_amount' => $amount,
+            'paid_amount' => 0,
+            'balance_amount' => $amount,
+        ];
     }
 
     public function update(AccountPayable $accountPayable, array $data, int $updatedBy): ?AccountPayable
