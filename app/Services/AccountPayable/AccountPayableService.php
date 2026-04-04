@@ -102,11 +102,7 @@ class AccountPayableService
     /**
      * @return array<int, array<string, mixed>>
      */
-<<<<<<< HEAD
     private function buildInstallmentsData(array $data, int $installmentCount, array $scheduleConfig = []): array
-=======
-    private function buildInstallmentsData(array $data, int $installmentCount): array
->>>>>>> 7587eb8ace2fff4bbfba2fb003498fc630a78e0e
     {
         if ($installmentCount === 1) {
             $data['sequence_number'] = $this->formatSequenceNumber(1);
@@ -124,11 +120,7 @@ class AccountPayableService
             $installments[] = [
                 ...$data,
                 'sequence_number' => $this->formatSequenceNumber($index + 1),
-<<<<<<< HEAD
                 'due_date' => $this->installmentDueDate($baseDate, $index, $scheduleConfig)->toDateString(),
-=======
-                'due_date' => $this->installmentDueDate($baseDate, $index)->toDateString(),
->>>>>>> 7587eb8ace2fff4bbfba2fb003498fc630a78e0e
                 'due_amount' => $amountInCents / 100,
             ];
         }
@@ -156,7 +148,6 @@ class AccountPayableService
         ];
     }
 
-<<<<<<< HEAD
     /**
      * @return array{mode: string, fixed_day: int|null}
      */
@@ -187,10 +178,6 @@ class AccountPayableService
             return $dueDate->day(min($fixedDay, $dueDate->daysInMonth));
         }
 
-=======
-    private function installmentDueDate(Carbon $baseDate, int $index): CarbonInterface
-    {
->>>>>>> 7587eb8ace2fff4bbfba2fb003498fc630a78e0e
         return $baseDate->copy()->addDays(30 * $index);
     }
 
