@@ -36,19 +36,19 @@ class InstallmentsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('original_amount')
                     ->label('Valor Original')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('due_amount')
                     ->label('Valor Atual')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('paid_amount')
                     ->label('Valor Pago')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Status')
