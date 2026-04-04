@@ -11,8 +11,10 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class AccountPayableForm
@@ -167,7 +169,7 @@ class AccountPayableForm
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(false)
                             ->disabled()
-                            ->helperText('Controle automático por parcelas.'),
+                            ->afterContent([Icon::make(Heroicon::InformationCircle), 'Controle automático por parcelas']),
                     ]),
                 Hidden::make('company_id'),
             ]);
