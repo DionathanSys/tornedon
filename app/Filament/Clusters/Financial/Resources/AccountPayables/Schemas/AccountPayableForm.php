@@ -165,7 +165,6 @@ class AccountPayableForm
                             ->label('Pago')
                             ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1])
-                            ->autocomplete(false)
                             ->default(false)
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
