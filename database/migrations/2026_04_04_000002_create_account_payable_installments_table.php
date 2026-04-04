@@ -10,27 +10,41 @@ return new class extends Migration
     {
         Schema::create('account_payable_installments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('account_payable_id')->constrained('account_payables')->cascadeOnDelete();
-            $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('account_payable_id')
+                ->constrained('account_payables')
+                ->cascadeOnDelete();
+            $table->foreignId('company_id')
+                ->constrained('companies')
+                ->cascadeOnDelete();
             $table->string('sequence_number', 3);
-            $table->string('status')->index();
+            $table->string('status')
+                ->index();
             $table->date('due_date');
-            $table->date('paid_date')->nullable();
+            $table->date('paid_date')
+                ->nullable();
             $table->decimal('original_amount', 15, 4);
-            $table->decimal('interest_amount', 15, 4)->default(0);
-            $table->decimal('fine_amount', 15, 4)->default(0);
-            $table->decimal('discount_amount', 15, 4)->default(0);
+            $table->decimal('interest_amount', 15, 4)
+                ->default(0);
+            $table->decimal('fine_amount', 15, 4)
+                ->default(0);
+            $table->decimal('discount_amount', 15, 4)
+                ->default(0);
             $table->decimal('due_amount', 15, 4);
-            $table->decimal('paid_amount', 15, 4)->default(0);
+            $table->decimal('paid_amount', 15, 4)
+                ->default(0);
             $table->decimal('balance_amount', 15, 4);
-            $table->unsignedBigInteger('bank_account_id')->nullable();
-            $table->unsignedBigInteger('financial_category_id')->nullable();
-            $table->unsignedBigInteger('cost_center_id')->nullable();
-            $table->text('notes')->nullable();
+            $table->unsignedBigInteger('bank_account_id')
+                ->nullable();
+            $table->unsignedBigInteger('financial_category_id')
+                ->nullable();
+            $table->unsignedBigInteger('cost_center_id')
+                ->nullable();
+            $table->text('notes')
+                ->nullable();
             $table->timestamps();
 
-            $table->index(['account_payable_id', 'sequence_number']);
-            $table->index(['company_id', 'due_date']);
+            $table->index(['account_payable_id', 'sequence_number'], 'api_account_seq_idx');
+            $table->index(['company_id', 'due_date'], 'api_company_due_idx');
         });
     }
 

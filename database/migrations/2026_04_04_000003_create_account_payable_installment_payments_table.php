@@ -10,7 +10,9 @@ return new class extends Migration
     {
         Schema::create('account_payable_installment_payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('account_payable_installment_id')->constrained('account_payable_installments')->cascadeOnDelete();
+            $table->foreignId('account_payable_installment_id')
+                ->constrained('account_payable_installments', indexName: 'apip_installment_fk')
+                ->cascadeOnDelete();
             $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
             $table->date('payment_date');
             $table->decimal('amount', 15, 4);
@@ -21,7 +23,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index(['company_id', 'payment_date']);
+            $table->index(['company_id', 'payment_date'], 'apip_company_payment_idx');
         });
     }
 
