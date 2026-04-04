@@ -27,6 +27,16 @@ class AccountPayablesTable
                     ->searchable()
                     ->sortable()
                     ->placeholder('-'),
+                TextColumn::make('bank_slip_number')
+                    ->label('Nº Boleto')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->placeholder('-'),
+                TextColumn::make('note_number')
+                    ->label('Nº Nota')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->placeholder('-'),
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->searchable()

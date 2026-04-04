@@ -7,6 +7,7 @@ use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountPayable extends Model
 {
@@ -14,6 +15,8 @@ class AccountPayable extends Model
         'supplier_id',
         'company_id',
         'fiscal_document_id',
+        'bank_slip_number',
+        'note_number',
         'sequence_number',
         'status',
         'due_date',
@@ -56,5 +59,10 @@ class AccountPayable extends Model
     public function fiscalDocument(): BelongsTo
     {
         return $this->belongsTo(FiscalDocument::class);
+    }
+
+    public function installments(): HasMany
+    {
+        return $this->hasMany(AccountPayableInstallment::class);
     }
 }
