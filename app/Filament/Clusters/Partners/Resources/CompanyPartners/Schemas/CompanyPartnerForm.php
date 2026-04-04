@@ -260,7 +260,6 @@ class CompanyPartnerForm
                     ])
                     ->collapsible()
                     ->visibleOn(['edit', 'view'])
-                    ->persistCollapsed()
                     ->compact()
                     ->schema([
                         RepeatableEntry::make('addresses')
@@ -303,7 +302,6 @@ class CompanyPartnerForm
                     ])
                     ->collapsible()
                     ->visibleOn(['edit', 'view'])
-                    ->persistCollapsed()
                     ->compact()
                     ->schema([
                         RepeatableEntry::make('contacts')

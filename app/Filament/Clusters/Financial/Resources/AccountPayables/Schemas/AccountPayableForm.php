@@ -42,6 +42,8 @@ class AccountPayableForm
                             ->label('Documento Fiscal')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->relationship('fiscalDocument', 'document_number')
+                            ->searchable()
+                            ->native(false)
                             ->disabled()
                             ->visibleOn('edit') 
                             ->nullable(),
@@ -157,7 +159,6 @@ class AccountPayableForm
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->options(PaymentMethod::toSelectArray())
-                            ->autocomplete(false)
                             ->native(false)
                             ->searchable(),
                         Toggle::make('paid')
