@@ -166,7 +166,7 @@ class AccountPayableForm
                         Toggle::make('paid')
                             ->label('Pago')
                             ->inline(false)
-                            ->grow(false)
+                            ->grow()
                             ->default(false)
                             ->disabled()
                             ->afterContent([Icon::make(Heroicon::InformationCircle), 'Controle automático por parcelas']),
