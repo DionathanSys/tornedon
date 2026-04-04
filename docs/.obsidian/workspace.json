@@ -8,17 +8,37 @@
         "type": "tabs",
         "children": [
           {
-            "id": "93d49109b4af1183",
+            "id": "3e188acb611c894c",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/plano-notificacoes-documentos.md",
+                "file": "Sem título 4.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "plano-notificacoes-documentos"
+              "title": "Sem título 4"
+            }
+          }
+        ]
+      },
+      {
+        "id": "eb337e4762df9ec5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ae5ba05ece3689ae",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Sem título 4.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Sem título 4"
             }
           }
         ]
@@ -185,8 +205,10 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "93d49109b4af1183",
+  "active": "ae5ba05ece3689ae",
   "lastOpenFiles": [
+    "Sem título 4.md",
+    "docs/plano-notificacoes-documentos.md",
     "Instrução Cadastro Produto.md",
     "Instrução movimentação.md",
     "Venda.md",
@@ -200,7 +222,6 @@
     "Pasted image 20260402130009.png",
     "Pasted image 20260402125838.png",
     "Pasted image 20260402125036.png",
-    "docs/plano-notificacoes-documentos.md",
     "Sem título 3.md",
     "regras-negocio/remessa-retorno-os.md",
     "Sem título 2.md",

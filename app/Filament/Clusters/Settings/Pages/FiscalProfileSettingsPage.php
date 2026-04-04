@@ -589,9 +589,9 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
         $set('icms_cst_default', null);
         $set('icms_aliquota_interna', 0);
         $set('pis_cst_default', '49');
-        $set('pis_aliquota_default', 0.65);
+        $set('pis_aliquota_default', 0);
         $set('cofins_cst_default', '49');
-        $set('cofins_aliquota_default', 3.00);
+        $set('cofins_aliquota_default', 0);
     }
 
     private function setLucroPresumidoDefaults(Set $set): void

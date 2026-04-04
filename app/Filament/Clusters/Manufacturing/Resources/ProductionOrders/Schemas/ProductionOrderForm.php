@@ -41,19 +41,6 @@ class ProductionOrderForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('production_order_number')
-                            ->label('Número')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->visibleOn('edit')
-                            ->disabled(),
-                        Select::make('status')
-                            ->label('Status')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->options(Status::toSelectArray())
-                            ->native(false)
-                            ->default(Status::QUEUED->value)
-                            ->visibleOn('edit')
-                            ->disabled(),
                         Select::make('customer_id')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -69,6 +56,21 @@ class ProductionOrderForm
                             ->searchable()
                             ->preload()
                             ->required(),
+                        TextInput::make('production_order_number')
+                            ->label('Número')
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->visibleOn('edit')
+                            ->columnStart(1)
+                            ->disabled(),
+                        Select::make('status')
+                            ->label('Status')
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->options(Status::toSelectArray())
+                            ->native(false)
+                            ->default(Status::QUEUED->value)
+                            ->visibleOn('edit')
+                            ->disabled(),
+
                         Select::make('priority')
                             ->label('Prioridade')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -92,12 +94,14 @@ class ProductionOrderForm
                                 titleAttribute: 'name',
                             )
                             ->searchable()
+                            ->visible(false)
                             ->preload()
                             ->nullable(),
                         TextInput::make('assigned_machine')
                             ->label('Máquina/Equipamento')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(255)
+                            ->visible(false)
                             ->nullable(),
                         Textarea::make('observations')
                             ->label('Observações')
