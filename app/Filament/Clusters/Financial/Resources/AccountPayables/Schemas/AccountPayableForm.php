@@ -34,7 +34,7 @@ class AccountPayableForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        SelectPartner::make('supplier_id', Type::SUPPLIER->value)
+                        SelectPartner::make('supplier_id', 'all')
                             ->label('Fornecedor')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->required(),
@@ -163,7 +163,6 @@ class AccountPayableForm
                             ->searchable(),
                         Toggle::make('paid')
                             ->label('Pago')
-                            ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(false)
                             ->disabled()
