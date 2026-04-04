@@ -43,8 +43,8 @@ class AccountPayableForm
                             ->label('Documento Fiscal')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->relationship('fiscalDocument', 'document_number')
-                            ->searchable()
-                            ->preload()
+                            ->disabled()
+                            ->visibleOn('edit') 
                             ->nullable(),
                         TextInput::make('sequence_number')
                             ->label('Parcela')
