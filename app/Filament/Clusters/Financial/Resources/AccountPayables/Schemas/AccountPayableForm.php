@@ -3,7 +3,9 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas;
 
 use App\Enum\AccountPayable\Status;
+use App\Enum\Partner\Type;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -32,12 +34,9 @@ class AccountPayableForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        Select::make('supplier_id')
+                        SelectPartner::make('supplier_id', Type::SUPPLIER->value)
                             ->label('Fornecedor')
                             ->columnSpan(['md' => 2, 'lg' => 5])
-                            ->relationship('supplier', 'name')
-                            ->searchable()
-                            ->preload()
                             ->required(),
                         Select::make('fiscal_document_id')
                             ->label('Documento Fiscal')
@@ -55,6 +54,7 @@ class AccountPayableForm
                         TextInput::make('installment_count')
                             ->label('Qtd. Parcelas')
                             ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpanFull(1)
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(24)
