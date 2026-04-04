@@ -169,7 +169,7 @@ class AccountPayableForm
                             ->grow()
                             ->default(false)
                             ->disabled()
-                            ->afterContent([Icon::make(Heroicon::InformationCircle), 'Controle automático por parcelas']),
+                            ->belowContent([Icon::make(Heroicon::InformationCircle), 'Controle automático por parcelas']),
                     ]),
                 Hidden::make('company_id'),
             ]);
