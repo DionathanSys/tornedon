@@ -24,9 +24,9 @@ class AccountPayableResource extends Resource
 
     protected static ?string $cluster = FinancialCluster::class;
 
-    protected static ?string $modelLabel = 'Conta a Pagar';
+    protected static ?string $modelLabel = 'Conta à Pagar';
 
-    protected static ?string $pluralModelLabel = 'Contas a Pagar';
+    protected static ?string $pluralModelLabel = 'Contas à Pagar';
 
     protected static ?int $navigationSort = 2;
 

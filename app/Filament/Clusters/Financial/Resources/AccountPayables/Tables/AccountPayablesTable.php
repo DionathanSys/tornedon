@@ -54,11 +54,11 @@ class AccountPayablesTable
                     ->color(fn($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('due_amount')
                     ->label('Valor')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable(),
                 TextColumn::make('paid_amount')
                     ->label('Valor Pago')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('paid')

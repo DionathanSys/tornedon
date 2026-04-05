@@ -26,10 +26,12 @@ final class RegisterInstallmentPaymentAction
                     DatePicker::make('payment_date')
                         ->label('Data do pagamento')
                         ->columnSpan(1)
+                        ->default(now())
                         ->required(),
                     Money::make('amount')
                         ->label('Valor pago')
                         ->columnSpan(1)
+                        ->default(fn(AccountPayableInstallment $record) => $record->due_amount)
                         ->required(),
                     Money::make('interest_amount')
                         ->label('Juros')

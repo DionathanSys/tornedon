@@ -17,6 +17,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,11 @@ use Illuminate\Support\Facades\Log;
 class EditRequisition extends EditRecord
 {
     protected static string $resource = RequisitionResource::class;
+
+    public function getSubheading(): ?string
+    {
+        return "Requisição # {$this->record->number} - {$this->record->status->description()}";
+    }
 
     protected function getHeaderActions(): array
     {
@@ -37,6 +43,7 @@ class EditRequisition extends EditRecord
                     ->tooltip('Visualizar PDF da requisição'),
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
+                    ->modalIconColor(Color::Green)
                     ->tooltip('Fechar requisição'),
                 DownloadRequisitionPdfAction::make()
                     ->size(Size::Small)
