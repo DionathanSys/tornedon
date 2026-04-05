@@ -6,11 +6,6 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\A
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use BackedEnum;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -77,9 +72,12 @@ class InstallmentsRelationManager extends RelationManager
             ->defaultSort('sequence_number')
             ->headerActions([])
             ->recordActions([
-                RegisterInstallmentPaymentAction::make(),
-                EditInstallmentAction::make(),
-                DeleteInstallmentAction::make(),
+                RegisterInstallmentPaymentAction::make()
+                    ->iconButton(),
+                EditInstallmentAction::make()
+                    ->iconButton(),
+                DeleteInstallmentAction::make()
+                    ->iconButton(),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma parcela gerada')

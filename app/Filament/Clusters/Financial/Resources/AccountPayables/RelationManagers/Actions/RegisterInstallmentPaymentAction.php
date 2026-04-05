@@ -9,6 +9,8 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Schema;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class RegisterInstallmentPaymentAction
 {
@@ -18,37 +20,35 @@ final class RegisterInstallmentPaymentAction
             ->label('Registrar pagamento')
             ->icon('heroicon-o-currency-dollar')
             ->color('success')
-            ->schema([
-                DatePicker::make('payment_date')
-                    ->label('Data do pagamento')
-                    ->required(),
-                TextInput::make('amount')
-                    ->label('Valor pago')
-                    ->required()
-                    ->numeric()
-                    ->minValue(0.01),
-                TextInput::make('interest_amount')
-                    ->label('Juros')
-                    ->numeric()
-                    ->minValue(0)
-                    ->default(0),
-                TextInput::make('fine_amount')
-                    ->label('Multa')
-                    ->numeric()
-                    ->minValue(0)
-                    ->default(0),
-                TextInput::make('discount_amount')
-                    ->label('Desconto')
-                    ->numeric()
-                    ->minValue(0)
-                    ->default(0),
-                TextInput::make('bank_account_id')
-                    ->label('Conta bancária (ID)')
-                    ->numeric(),
-                Textarea::make('notes')
-                    ->label('Observações')
-                    ->rows(3),
-            ])
+            ->schema(fn(Schema $schema) => $schema
+                ->columns(2)
+                ->components([
+                    DatePicker::make('payment_date')
+                        ->label('Data do pagamento')
+                        ->columnSpan(2)
+                        ->required(),
+                    Money::make('amount')
+                        ->label('Valor pago')
+                        ->columnSpan(2)
+                        ->required(),
+                    Money::make('interest_amount')
+                        ->label('Juros')
+                        ->columnSpan(2),
+                    Money::make('fine_amount')
+                        ->label('Multa')
+                        ->columnSpan(2),
+                    Money::make('discount_amount')
+                        ->label('Desconto')
+                        ->columnSpan(2),
+                    TextInput::make('bank_account_id')
+                        ->label('Conta bancária (ID)')
+                        ->numeric()
+                        ->columnSpan(2),
+                    Textarea::make('notes')
+                        ->label('Observações')
+                        ->rows(3)
+                        ->columnSpanFull(),
+                ]))
             ->action(function (AccountPayableInstallment $record, array $data): void {
                 $service = app(AccountPayableService::class);
                 $payment = $service->registerInstallmentPayment(
