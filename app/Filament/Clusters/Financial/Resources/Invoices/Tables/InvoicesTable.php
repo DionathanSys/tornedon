@@ -14,6 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class InvoicesTable
@@ -84,7 +85,7 @@ class InvoicesTable
                     ->iconButton()
                     ->using(function (Model $record): bool {
                         $service = app(InvoiceService::class);
-                        $result = $service->delete($record);
+                        $result = $service->delete($record, Auth::id());
 
                         if ($service->hasError()) {
                             Log::error($service->getMessage(), [

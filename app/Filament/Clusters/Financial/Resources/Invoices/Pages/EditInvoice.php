@@ -69,7 +69,7 @@ class EditInvoice extends EditRecord
                         ]);
 
                         $service = app(InvoiceService::class);
-                        $result = $service->delete($record);
+                        $result = $service->delete($record, Auth::id());
 
                         if ($service->hasError()) {
                             Log::error('EditInvoice: Erro ao deletar fatura', [
