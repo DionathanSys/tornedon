@@ -41,7 +41,7 @@ class InvoicesTable
                     ->color(fn($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL', 100),
+                    ->money('BRL'),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
                     ->money('BRL')
