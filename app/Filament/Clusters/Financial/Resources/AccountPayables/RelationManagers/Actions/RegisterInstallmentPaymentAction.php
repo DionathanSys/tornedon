@@ -25,25 +25,25 @@ final class RegisterInstallmentPaymentAction
                 ->components([
                     DatePicker::make('payment_date')
                         ->label('Data do pagamento')
-                        ->columnSpan(2)
+                        ->columnSpan(1)
                         ->required(),
                     Money::make('amount')
                         ->label('Valor pago')
-                        ->columnSpan(2)
+                        ->columnSpan(1)
                         ->required(),
                     Money::make('interest_amount')
                         ->label('Juros')
-                        ->columnSpan(2),
+                        ->columnSpan(1),
                     Money::make('fine_amount')
                         ->label('Multa')
-                        ->columnSpan(2),
+                        ->columnSpan(1),
                     Money::make('discount_amount')
                         ->label('Desconto')
-                        ->columnSpan(2),
+                        ->columnSpan(1),
                     TextInput::make('bank_account_id')
                         ->label('Conta bancária (ID)')
                         ->numeric()
-                        ->columnSpan(2),
+                        ->columnSpan(1),
                     Textarea::make('notes')
                         ->label('Observações')
                         ->rows(3)
