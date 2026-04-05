@@ -2,7 +2,9 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers;
 
-use App\Models\AccountPayableInstallment;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
@@ -69,7 +71,11 @@ class InstallmentsRelationManager extends RelationManager
             ])
             ->defaultSort('sequence_number')
             ->headerActions([])
-            ->recordActions([])
+            ->recordActions([
+                RegisterInstallmentPaymentAction::make(),
+                EditInstallmentAction::make(),
+                DeleteInstallmentAction::make(),
+            ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma parcela gerada')
             ->emptyStateDescription('As parcelas desta conta a pagar aparecerão aqui.');
