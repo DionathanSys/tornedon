@@ -8,6 +8,11 @@ use App\Models\AccountPayableInstallment;
 use App\Models\AccountPayableInstallmentPayment;
 use App\Services\AccountPayable\Actions\CreateAccountPayableAction;
 use App\Services\AccountPayable\Actions\DeleteAccountPayableAction;
+use App\Services\AccountPayable\Actions\Installment\CreateAccountPayableInstallmentAction;
+use App\Services\AccountPayable\Actions\Installment\DeleteAccountPayableInstallmentAction;
+use App\Services\AccountPayable\Actions\Installment\RegisterAccountPayableInstallmentPaymentAction;
+use App\Services\AccountPayable\Actions\Installment\SyncAccountPayableStatusFromInstallmentsAction;
+use App\Services\AccountPayable\Actions\Installment\UpdateAccountPayableInstallmentAction;
 use App\Services\AccountPayable\Actions\UpdateAccountPayableAction;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
@@ -46,31 +51,47 @@ class AccountPayableService
                 }
 
                 foreach ($installments as $installmentData) {
-                    AccountPayableInstallment::create(
+                    $createInstallmentAction = new CreateAccountPayableInstallmentAction();
+                    $createdInstallment = $createInstallmentAction->execute(
                         $this->buildInstallmentRecordData($installmentData, $accountPayable)
                     );
+
+                    if ($createInstallmentAction->hasError() || $createdInstallment === null) {
+                        throw ValidationException::withMessages(
+                            $createInstallmentAction->getErrors() ?: ['parcela' => [$createInstallmentAction->getMessage()]]
+                        );
+                    }
+                }
+
+                $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($accountPayable);
+                $syncedAccountPayable = $syncAction->execute();
+
+                if ($syncAction->hasError() || $syncedAccountPayable === null) {
+                    throw ValidationException::withMessages([
+                        'conta_a_pagar' => [$syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar.'],
+                    ]);
                 }
 
                 $this->setSuccess('Conta a pagar criada com sucesso');
 
                 Log::info('Conta a pagar criada com sucesso via service', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'account_payable_id' => $accountPayable->id,
-                    'installments'       => $installmentCount,
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'account_payable_id' => $syncedAccountPayable->id,
+                    'installments' => $installmentCount,
                 ]);
 
-                return $accountPayable;
+                return $syncedAccountPayable;
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'errors'     => $e->errors(),
-                'data'       => $data,
-                'user_id'    => $createdBy,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $createdBy,
             ]);
 
             return null;
@@ -78,12 +99,12 @@ class AccountPayableService
             $this->setError('Erro ao criar conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $createdBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $createdBy,
             ]);
 
             return null;
@@ -199,6 +220,10 @@ class AccountPayableService
             'due_amount' => $amount,
             'paid_amount' => 0,
             'balance_amount' => $amount,
+            'bank_account_id' => $installmentData['bank_account_id'] ?? null,
+            'financial_category_id' => $installmentData['financial_category_id'] ?? null,
+            'cost_center_id' => $installmentData['cost_center_id'] ?? null,
+            'notes' => $installmentData['notes'] ?? null,
         ];
     }
 
@@ -222,39 +247,52 @@ class AccountPayableService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__ . '@' . __LINE__,
                         'account_payable_id' => $accountPayable->id,
-                        'message'            => $this->getMessage(),
-                        'error_code'         => $this->getErrorCode(),
-                        'errors'             => $action->getErrors(),
-                        'data'               => $data,
-                        'user_id'            => $updatedBy,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $updatedBy,
                     ]);
 
                     return null;
                 }
 
-                $this->syncStatusFromInstallments($updated);
+                $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($updated);
+                $synced = $syncAction->execute();
+
+                if ($syncAction->hasError() || $synced === null) {
+                    $this->setError(
+                        $syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar',
+                        $syncAction->getErrors(),
+                        422,
+                        $syncAction->getErrorCode()
+                    );
+
+                    return null;
+                }
+
                 $this->setSuccess('Conta a pagar atualizada com sucesso');
 
                 Log::info('Conta a pagar atualizada com sucesso via service', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__ . '@' . __LINE__,
                     'account_payable_id' => $accountPayable->id,
                 ]);
 
-                return $updated;
+                return $synced;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'account_payable_id' => $accountPayable->id,
-                'error_code'         => $this->getErrorCode(),
-                'message'            => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
-                'data'               => $data,
-                'user_id'            => $updatedBy,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $updatedBy,
             ]);
 
             return null;
@@ -271,13 +309,9 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($installment, $amount, $paymentDate, $extra) {
-                if ($amount <= 0) {
-                    throw ValidationException::withMessages([
-                        'amount' => ['O valor do pagamento deve ser maior que zero.'],
-                    ]);
-                }
-
-                $payment = AccountPayableInstallmentPayment::create([
+                $installment->loadMissing('accountPayable');
+                $paymentAction = new RegisterAccountPayableInstallmentPaymentAction($installment);
+                $payment = $paymentAction->execute([
                     'account_payable_installment_id' => $installment->id,
                     'company_id' => $installment->company_id,
                     'payment_date' => $paymentDate,
@@ -289,27 +323,37 @@ class AccountPayableService
                     'notes' => $extra['notes'] ?? null,
                 ]);
 
-                $totalPaid = round((float) $installment->payments()->sum('amount'), 2);
-                $interest = round((float) $installment->payments()->sum('interest_amount'), 2);
-                $fine = round((float) $installment->payments()->sum('fine_amount'), 2);
-                $discount = round((float) $installment->payments()->sum('discount_amount'), 2);
-                $dueAmount = round((float) $installment->original_amount + $interest + $fine - $discount, 2);
-                $balance = round($dueAmount - $totalPaid, 2);
+                if ($paymentAction->hasError() || $payment === null) {
+                    $this->setError(
+                        $paymentAction->getMessage(),
+                        $paymentAction->getErrors(),
+                        422,
+                        $paymentAction->getErrorCode()
+                    );
 
-                $installment->update([
-                    'interest_amount' => $interest,
-                    'fine_amount' => $fine,
-                    'discount_amount' => $discount,
-                    'due_amount' => $dueAmount,
-                    'paid_amount' => $totalPaid,
-                    'balance_amount' => max($balance, 0),
-                    'paid_date' => $balance <= 0 ? $paymentDate : null,
-                    'status' => $balance <= 0
-                        ? Status::PAID->value
-                        : ($totalPaid > 0 ? Status::PARTIALLY_PAID->value : Status::PENDING->value),
-                ]);
+                    return null;
+                }
 
-                $this->syncStatusFromInstallments($installment->accountPayable);
+                if ($installment->accountPayable->company_id !== $installment->company_id) {
+                    throw ValidationException::withMessages([
+                        'company_id' => ['Empresa da parcela divergente da conta a pagar.'],
+                    ]);
+                }
+
+                $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($installment->accountPayable);
+                $synced = $syncAction->execute();
+
+                if ($syncAction->hasError() || $synced === null) {
+                    $this->setError(
+                        $syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar',
+                        $syncAction->getErrors(),
+                        422,
+                        $syncAction->getErrorCode()
+                    );
+
+                    return null;
+                }
+
                 $this->setSuccess('Pagamento da parcela registrado com sucesso.');
 
                 return $payment;
@@ -320,42 +364,151 @@ class AccountPayableService
         } catch (\Exception $e) {
             $this->setError('Erro ao registrar pagamento da parcela.');
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'installment_id' => $installment->id,
+                'payload' => [
+                    'amount' => $amount,
+                    'payment_date' => $paymentDate,
+                    'extra' => $extra,
+                ],
             ]);
 
             return null;
         }
     }
 
-    private function syncStatusFromInstallments(AccountPayable $accountPayable): void
+    public function updateInstallment(AccountPayableInstallment $installment, array $data): ?AccountPayableInstallment
     {
-        $accountPayable->loadMissing('installments');
+        $this->resetResponse();
 
-        $totalDue = round((float) $accountPayable->installments->sum('due_amount'), 2);
-        $totalPaid = round((float) $accountPayable->installments->sum('paid_amount'), 2);
-        $hasOverdue = $accountPayable->installments
-            ->contains(fn (AccountPayableInstallment $installment) => $installment->balance_amount > 0 && $installment->due_date?->isPast());
+        try {
+            return DB::transaction(function () use ($installment, $data) {
+                $installment->loadMissing('accountPayable');
 
-        $status = match (true) {
-            $totalPaid >= $totalDue && $totalDue > 0 => Status::PAID->value,
-            $totalPaid > 0 => Status::PARTIALLY_PAID->value,
-            $hasOverdue => Status::OVERDUE->value,
-            default => Status::PENDING->value,
-        };
+                if ($installment->accountPayable->company_id !== $installment->company_id) {
+                    throw ValidationException::withMessages([
+                        'company_id' => ['Empresa da parcela divergente da conta a pagar.'],
+                    ]);
+                }
 
-        $accountPayable->update([
-            'status' => $status,
-            'paid' => $status === Status::PAID->value,
-            'paid_amount' => $totalPaid,
-            'paid_date' => $status === Status::PAID->value
-                ? $accountPayable->installments->max('paid_date')
-                : null,
-            'due_amount' => $totalDue,
-            'due_date' => $accountPayable->installments->min('due_date') ?? $accountPayable->due_date,
-        ]);
+                $data['account_payable_id'] = $installment->account_payable_id;
+                $data['company_id'] = $installment->company_id;
+
+                $action = new UpdateAccountPayableInstallmentAction($installment);
+                $updated = $action->execute($data);
+
+                if ($action->hasError() || $updated === null) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    return null;
+                }
+
+                $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($installment->accountPayable);
+                $synced = $syncAction->execute();
+
+                if ($syncAction->hasError() || $synced === null) {
+                    $this->setError(
+                        $syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar',
+                        $syncAction->getErrors(),
+                        422,
+                        $syncAction->getErrorCode()
+                    );
+
+                    return null;
+                }
+
+                $this->setSuccess('Parcela atualizada com sucesso.');
+
+                return $updated;
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
+            return null;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao atualizar parcela.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'installment_id' => $installment->id,
+                'payload' => $data,
+            ]);
+
+            return null;
+        }
+    }
+
+    public function deleteInstallment(AccountPayableInstallment $installment): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($installment) {
+                $installment->loadMissing('accountPayable');
+
+                if ($installment->accountPayable->company_id !== $installment->company_id) {
+                    throw ValidationException::withMessages([
+                        'company_id' => ['Empresa da parcela divergente da conta a pagar.'],
+                    ]);
+                }
+
+                $action = new DeleteAccountPayableInstallmentAction($installment);
+                $result = $action->execute();
+
+                if ($action->hasError()) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    return false;
+                }
+
+                $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($installment->accountPayable);
+                $synced = $syncAction->execute();
+
+                if ($syncAction->hasError() || $synced === null) {
+                    $this->setError(
+                        $syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar',
+                        $syncAction->getErrors(),
+                        422,
+                        $syncAction->getErrorCode()
+                    );
+
+                    return false;
+                }
+
+                $this->setSuccess('Parcela excluída com sucesso.');
+
+                return $result;
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
+            return false;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao excluir parcela.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'installment_id' => $installment->id,
+            ]);
+
+            return false;
+        }
     }
 
     public function delete(AccountPayable $accountPayable): bool
@@ -376,10 +529,10 @@ class AccountPayableService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__ . '@' . __LINE__,
                         'account_payable_id' => $accountPayable->id,
-                        'message'            => $action->getMessage(),
-                        'error_code'         => $action->getErrorCode(),
+                        'message' => $action->getMessage(),
+                        'error_code' => $action->getErrorCode(),
                     ]);
 
                     return false;
@@ -388,7 +541,7 @@ class AccountPayableService
                 $this->setSuccess('Conta a pagar excluída com sucesso');
 
                 Log::info('Conta a pagar excluída com sucesso via service', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__ . '@' . __LINE__,
                     'account_payable_id' => $accountPayable->id,
                 ]);
 
@@ -398,11 +551,11 @@ class AccountPayableService
             $this->setError('Erro ao excluir conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'account_payable_id' => $accountPayable->id,
-                'error_code'         => $this->getErrorCode(),
-                'message'            => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
