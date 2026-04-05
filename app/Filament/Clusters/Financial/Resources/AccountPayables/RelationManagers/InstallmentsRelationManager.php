@@ -5,13 +5,13 @@ namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationMana
 use App\Models\AccountPayableInstallment;
 use App\Services\AccountPayable\AccountPayableService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -80,7 +80,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Registrar pagamento')
                     ->icon('heroicon-o-currency-dollar')
                     ->color('success')
-                    ->form([
+                    ->schema([
                         DatePicker::make('payment_date')
                             ->label('Data do pagamento')
                             ->required(),
@@ -144,7 +144,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Editar parcela')
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->form([
+                    ->schema([
                         DatePicker::make('due_date')
                             ->label('Vencimento')
                             ->required(),
