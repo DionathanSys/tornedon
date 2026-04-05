@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 
 class DocumentNotificationService
 {
@@ -41,9 +42,32 @@ class DocumentNotificationService
         private readonly EmailProviderInterface $emailProvider,
     ) {}
 
-    public function scheduleForServiceOrderStatusChange(ServiceOrder $serviceOrder, string $newStatus): ?EmailDispatch
+    public function scheduleForServiceOrderStatusChange(ServiceOrder $serviceOrder, string $oldStatus, string $newStatus): ?EmailDispatch
     {
-        if ($newStatus !== ServiceOrderState::CLOSED->value) {
+        if ($newStatus === ServiceOrderState::CLOSED->value) {
+            return $this->schedule(
+                documentType: DocumentNotificationType::SERVICE_ORDER,
+                documentId: (int) $serviceOrder->id,
+                companyId: (int) $serviceOrder->company_id,
+                partnerId: (int) $serviceOrder->customer_id,
+                event: DocumentNotificationEvent::CLOSED,
+            );
+        }
+
+        if (
+            $oldStatus === ServiceOrderState::CLOSED->value
+            && $newStatus === ServiceOrderState::OPEN->value
+        ) {
+            return $this->schedule(
+                documentType: DocumentNotificationType::SERVICE_ORDER,
+                documentId: (int) $serviceOrder->id,
+                companyId: (int) $serviceOrder->company_id,
+                partnerId: (int) $serviceOrder->customer_id,
+                event: DocumentNotificationEvent::REOPENED,
+            );
+        }
+
+        if ($newStatus !== ServiceOrderState::CANCELLED->value) {
             return null;
         }
 
@@ -52,13 +76,36 @@ class DocumentNotificationService
             documentId: (int) $serviceOrder->id,
             companyId: (int) $serviceOrder->company_id,
             partnerId: (int) $serviceOrder->customer_id,
-            event: DocumentNotificationEvent::CLOSED,
+            event: DocumentNotificationEvent::CANCELLED,
         );
     }
 
-    public function scheduleForRequisitionStatusChange(Requisition $requisition, string $newStatus): ?EmailDispatch
+    public function scheduleForRequisitionStatusChange(Requisition $requisition, string $oldStatus, string $newStatus): ?EmailDispatch
     {
-        if ($newStatus !== RequisitionStatus::CLOSED->value) {
+        if ($newStatus === RequisitionStatus::CLOSED->value) {
+            return $this->schedule(
+                documentType: DocumentNotificationType::REQUISITION,
+                documentId: (int) $requisition->id,
+                companyId: (int) $requisition->company_id,
+                partnerId: (int) $requisition->customer_id,
+                event: DocumentNotificationEvent::CLOSED,
+            );
+        }
+
+        if (
+            in_array($oldStatus, [RequisitionStatus::CLOSED->value, RequisitionStatus::CANCELLED->value], true)
+            && $newStatus === RequisitionStatus::OPEN->value
+        ) {
+            return $this->schedule(
+                documentType: DocumentNotificationType::REQUISITION,
+                documentId: (int) $requisition->id,
+                companyId: (int) $requisition->company_id,
+                partnerId: (int) $requisition->customer_id,
+                event: DocumentNotificationEvent::REOPENED,
+            );
+        }
+
+        if ($newStatus !== RequisitionStatus::CANCELLED->value) {
             return null;
         }
 
@@ -67,7 +114,7 @@ class DocumentNotificationService
             documentId: (int) $requisition->id,
             companyId: (int) $requisition->company_id,
             partnerId: (int) $requisition->customer_id,
-            event: DocumentNotificationEvent::CLOSED,
+            event: DocumentNotificationEvent::CANCELLED,
         );
     }
 
@@ -86,9 +133,19 @@ class DocumentNotificationService
         );
     }
 
-    public function scheduleForProductionOrderStatusChange(ProductionOrder $productionOrder, string $newStatus): ?EmailDispatch
+    public function scheduleForProductionOrderStatusChange(ProductionOrder $productionOrder, string $oldStatus, string $newStatus): ?EmailDispatch
     {
-        if ($newStatus !== \App\Enum\ProductionOrder\Status::COMPLETED->value) {
+        if ($newStatus === \App\Enum\ProductionOrder\Status::COMPLETED->value) {
+            return $this->schedule(
+                documentType: DocumentNotificationType::PRODUCTION_ORDER,
+                documentId: (int) $productionOrder->id,
+                companyId: (int) $productionOrder->company_id,
+                partnerId: (int) $productionOrder->customer_id,
+                event: DocumentNotificationEvent::CLOSED,
+            );
+        }
+
+        if ($oldStatus === $newStatus || $newStatus !== \App\Enum\ProductionOrder\Status::CANCELLED->value) {
             return null;
         }
 
@@ -97,7 +154,7 @@ class DocumentNotificationService
             documentId: (int) $productionOrder->id,
             companyId: (int) $productionOrder->company_id,
             partnerId: (int) $productionOrder->customer_id,
-            event: DocumentNotificationEvent::CLOSED,
+            event: DocumentNotificationEvent::CANCELLED,
         );
     }
 
@@ -205,6 +262,8 @@ class DocumentNotificationService
             'cc' => $cc,
             'bcc' => $bcc,
             'subject' => $subject,
+            'rendered_subject' => $subject,
+            'rendered_body' => $body,
             'provider' => (string) config('email_notifications.provider', 'resend'),
         ]);
 
@@ -305,26 +364,22 @@ class DocumentNotificationService
         $idempotencyKey = $this->buildIdempotencyKey($companyId, $documentType, $documentId, $event);
 
         try {
-            $dispatch = EmailDispatch::query()->firstOrCreate(
-                [
-                    'company_id' => $companyId,
-                    'document_type' => $documentType->value,
-                    'document_id' => $documentId,
-                    'event' => $event->value,
-                ],
-                [
-                    'company_partner_id' => $companyPartner->id,
-                    'status' => EmailDispatchStatus::PENDING->value,
-                    'to' => $to,
-                    'cc' => $cc,
-                    'bcc' => $bcc,
-                    'idempotency_key' => $idempotencyKey,
-                    'max_attempts' => 5,
-                    'provider' => (string) config('email_notifications.provider', 'resend'),
-                ],
-            );
+            $dispatch = EmailDispatch::query()->create([
+                'company_id' => $companyId,
+                'document_type' => $documentType->value,
+                'document_id' => $documentId,
+                'event' => $event->value,
+                'company_partner_id' => $companyPartner->id,
+                'status' => EmailDispatchStatus::PENDING->value,
+                'to' => $to,
+                'cc' => $cc,
+                'bcc' => $bcc,
+                'idempotency_key' => $idempotencyKey,
+                'max_attempts' => 5,
+                'provider' => (string) config('email_notifications.provider', 'resend'),
+            ]);
         } catch (QueryException $e) {
-            Log::warning('DocumentNotificationService: corrida de idempotência na criação do dispatch', [
+            Log::warning('DocumentNotificationService: falha ao criar dispatch', [
                 'company_id' => $companyId,
                 'document_type' => $documentType->value,
                 'document_id' => $documentId,
@@ -332,21 +387,10 @@ class DocumentNotificationService
                 'exception' => $e->getMessage(),
             ]);
 
-            $dispatch = EmailDispatch::query()
-                ->where('company_id', $companyId)
-                ->where('document_type', $documentType->value)
-                ->where('document_id', $documentId)
-                ->where('event', $event->value)
-                ->first();
-        }
-
-        if (! $dispatch) {
             return null;
         }
 
-        if ($dispatch->wasRecentlyCreated || $dispatch->status === EmailDispatchStatus::PENDING) {
-            SendDocumentNotificationJob::dispatch($dispatch->id)->afterCommit();
-        }
+        SendDocumentNotificationJob::dispatch($dispatch->id)->afterCommit();
 
         return $dispatch;
     }
@@ -884,11 +928,15 @@ class DocumentNotificationService
         int $documentId,
         DocumentNotificationEvent $event,
     ): string {
+        $now = Carbon::now()->format('YmdHis.u');
+
         return hash('sha256', implode(':', [
             $companyId,
             $documentType->value,
             $documentId,
             $event->value,
+            Str::uuid()->toString(),
+            $now,
         ]));
     }
 
