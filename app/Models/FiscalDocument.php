@@ -19,6 +19,19 @@ class FiscalDocument extends Model
 {
     use HasAttachments;
 
+    protected static function booted(): void
+    {
+        static::deleting(function (self $fiscalDocument): void {
+            if ($fiscalDocument->isNfse() && $fiscalDocument->nfseSent()) {
+                throw new \RuntimeException('Não é possível excluir documento fiscal que já teve comunicação com a API da prefeitura.');
+            }
+
+            if (! $fiscalDocument->isNfse() && $fiscalDocument->nfeSent()) {
+                throw new \RuntimeException('Não é possível excluir documento fiscal que já teve comunicação com a API fiscal/SEFAZ.');
+            }
+        });
+    }
+
     protected $fillable = [
         'customer_id',
         'company_id',

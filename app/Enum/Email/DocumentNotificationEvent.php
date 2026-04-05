@@ -6,12 +6,16 @@ enum DocumentNotificationEvent: string
 {
     case CLOSED = 'closed';
     case CONFIRMED = 'confirmed';
+    case REOPENED = 'reopened';
+    case CANCELLED = 'cancelled';
 
     public function description(): string
     {
         return match ($this) {
             self::CLOSED => 'Encerramento',
             self::CONFIRMED => 'Confirmação',
+            self::REOPENED => 'Reabertura',
+            self::CANCELLED => 'Cancelamento',
         };
     }
 
@@ -22,4 +26,3 @@ enum DocumentNotificationEvent: string
             ->toArray();
     }
 }
-

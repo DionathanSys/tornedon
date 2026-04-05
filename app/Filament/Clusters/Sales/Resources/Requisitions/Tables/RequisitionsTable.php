@@ -101,7 +101,30 @@ class RequisitionsTable
                     PreviewRequisitionPdfAction::make(),
                     DownloadRequisitionPdfAction::make(),
                     EditAction::make(),
-                    DeleteAction::make(),
+                    DeleteAction::make()
+                        ->using(function (Model $record): bool {
+                            $service = app(RequisitionService::class);
+                            $result = $service->delete($record);
+
+                            if ($service->hasError()) {
+                                Log::error($service->getMessage(), [
+                                    'metodo' => __METHOD__ . '@' . __LINE__,
+                                    'message' => $service->getMessage(),
+                                    'error_code' => $service->getErrorCode(),
+                                    'errors' => $service->getErrors(),
+                                    'requisition_id' => $record->id,
+                                ]);
+
+                                notify::error(
+                                    message: $service->getMessageUser(),
+                                    errorCode: $service->getErrorCode()
+                                );
+
+                                return false;
+                            }
+
+                            return $result;
+                        }),
                 ])
                     ->iconButton(),
             ])

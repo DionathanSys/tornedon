@@ -21,9 +21,14 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class ServiceOrder extends Model
 {
     use HasAttachments;
+
     protected static function booted(): void
     {
         static::deleting(function (self $serviceOrder): void {
+            if ($serviceOrder->invoice_id || $serviceOrder->status === State::INVOICED) {
+                throw new \RuntimeException('Não é possível excluir ordem de serviço que já foi faturada.');
+            }
+
             $serviceOrder->attachments()->get()->each->delete();
         });
     }

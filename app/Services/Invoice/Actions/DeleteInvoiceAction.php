@@ -68,6 +68,19 @@ class DeleteInvoiceAction
 
     private function validateCanDelete(): bool
     {
+        if ($this->invoice->fiscalDocuments()->exists()) {
+            $this->setError('Não é possível excluir fatura que já gerou documento fiscal');
+
+            Log::warning($this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'message'    => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'invoice_id' => $this->invoice->id,
+            ]);
+
+            return false;
+        }
+
         if ($this->invoice->confirmed) {
             $this->setError('Não é possível excluir uma fatura confirmada');
 

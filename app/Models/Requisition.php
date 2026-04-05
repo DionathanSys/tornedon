@@ -15,6 +15,15 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Requisition extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $requisition): void {
+            if ($requisition->invoice_id || $requisition->status === Status::INVOICED) {
+                throw new \RuntimeException('Não é possível excluir requisição que já gerou fatura.');
+            }
+        });
+    }
+
     protected $fillable = [
         'number',
         'customer_id',

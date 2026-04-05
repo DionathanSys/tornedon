@@ -21,6 +21,7 @@ class ServiceOrderObserver
 
         app(DocumentNotificationService::class)->scheduleForServiceOrderStatusChange(
             $serviceOrder,
+            (string) $serviceOrder->getOriginal('status'),
             (string) $serviceOrder->status->value,
         );
     }

@@ -5,13 +5,16 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Tables;
 use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
+use App\Notification\NotifyService as notify;
+use App\Services\Invoice\InvoiceService;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class InvoicesTable
 {
@@ -78,10 +81,30 @@ class InvoicesTable
                 EditAction::make()
                     ->iconButton(),
                 DeleteAction::make()
-                    ->iconButton(),
-            ])
-            ->toolbarActions([
-                DeleteBulkAction::make(),
+                    ->iconButton()
+                    ->using(function (Model $record): bool {
+                        $service = app(InvoiceService::class);
+                        $result = $service->delete($record);
+
+                        if ($service->hasError()) {
+                            Log::error($service->getMessage(), [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'message' => $service->getMessage(),
+                                'error_code' => $service->getErrorCode(),
+                                'errors' => $service->getErrors(),
+                                'invoice_id' => $record->id,
+                            ]);
+
+                            notify::error(
+                                message: $service->getMessageUser(),
+                                errorCode: $service->getErrorCode()
+                            );
+
+                            return false;
+                        }
+
+                        return $result;
+                    }),
             ]);
     }
 }

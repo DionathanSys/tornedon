@@ -13,6 +13,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $invoice): void {
+            if ($invoice->fiscalDocuments()->exists()) {
+                throw new \RuntimeException('Não é possível excluir fatura que já gerou documento fiscal.');
+            }
+        });
+    }
+
     protected $fillable = [
         'customer_id',
         'company_id',

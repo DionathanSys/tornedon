@@ -10,7 +10,6 @@ use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Size;
@@ -125,7 +124,6 @@ class ProductionOrdersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkInvoiceProductionOrderAction::make(),
-                    DeleteBulkAction::make(),
                 ]),
                 CreateAction::make()
                     ->label('Ordem de Produção')

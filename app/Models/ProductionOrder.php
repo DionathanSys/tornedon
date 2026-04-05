@@ -17,9 +17,14 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class ProductionOrder extends Model
 {
     use HasAttachments;
+
     protected static function booted(): void
     {
         static::deleting(function (self $productionOrder): void {
+            if ($productionOrder->invoice_id || $productionOrder->status === Status::INVOICED) {
+                throw new \RuntimeException('Não é possível excluir ordem de produção que já foi faturada.');
+            }
+
             $productionOrder->attachments()->get()->each->delete();
         });
     }

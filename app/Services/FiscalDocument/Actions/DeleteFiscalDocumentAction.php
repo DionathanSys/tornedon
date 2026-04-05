@@ -80,21 +80,8 @@ class DeleteFiscalDocumentAction
         }
 
         if ($this->fiscalDocument->isNfse()) {
-            if ($this->fiscalDocument->isNfseInProcessing()) {
-                $this->setError('Não é possível excluir uma NFS-e em processamento. Aguarde o retorno da prefeitura.');
-
-                Log::warning($this->getMessage(), [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'message'            => $this->getMessage(),
-                    'error_code'         => $this->getErrorCode(),
-                    'fiscal_document_id' => $this->fiscalDocument->id,
-                ]);
-
-                return false;
-            }
-
-            if ($this->fiscalDocument->isNfseAuthorized()) {
-                $this->setError('Não é possível excluir uma NFS-e autorizada. Cancele a NFS-e antes da exclusão.');
+            if ($this->fiscalDocument->nfseSent()) {
+                $this->setError('Não é possível excluir uma NFS-e que já teve comunicação com a prefeitura/API fiscal.');
 
                 Log::warning($this->getMessage(), [
                     'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -106,21 +93,8 @@ class DeleteFiscalDocumentAction
                 return false;
             }
         } else {
-            if ($this->fiscalDocument->isInProcessing()) {
-                $this->setError('Não é possível excluir uma NF-e em processamento. Aguarde o retorno da SEFAZ.');
-
-                Log::warning($this->getMessage(), [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'message'            => $this->getMessage(),
-                    'error_code'         => $this->getErrorCode(),
-                    'fiscal_document_id' => $this->fiscalDocument->id,
-                ]);
-
-                return false;
-            }
-
-            if ($this->fiscalDocument->isAuthorized()) {
-                $this->setError('Não é possível excluir uma NF-e autorizada. Cancele a NF-e antes da exclusão.');
+            if ($this->fiscalDocument->nfeSent()) {
+                $this->setError('Não é possível excluir uma NF-e que já teve comunicação com a SEFAZ/API fiscal.');
 
                 Log::warning($this->getMessage(), [
                     'metodo'             => __METHOD__ . '@' . __LINE__,
