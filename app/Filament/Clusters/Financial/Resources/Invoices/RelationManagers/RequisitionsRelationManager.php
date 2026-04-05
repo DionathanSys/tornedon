@@ -99,6 +99,11 @@ class RequisitionsRelationManager extends RelationManager
                     ->placeholder('Sem Orçamento')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('total_amount')
+                    ->label('Valor Total')
+                    ->money('BRL', 100)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sale_date')
                     ->label('Dt. da Venda')
                     ->date('d/m/Y')
@@ -168,13 +173,9 @@ class RequisitionsRelationManager extends RelationManager
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-            ])
-            ->headerActions([
-            ])
-            ->recordActions([
-            ])
-            ->toolbarActions([
-            ]);
+            ->filters([])
+            ->headerActions([])
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 }
