@@ -31,38 +31,61 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('sequence_number')
                     ->label('Parcela')
                     ->badge()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
                     ->label('Vencimento')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('original_amount')
                     ->label('Valor Original')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('due_amount')
                     ->label('Valor Atual')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('paid_amount')
                     ->label('Valor Pago')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('interest_amount')
+                    ->label('Juros')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('fine_amount')
+                    ->label('Multa')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('discount_amount')
+                    ->label('Desconto')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->color(fn ($state) => $state?->color() ?? 'gray')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('paid_date')
                     ->label('Data Pgto.')
                     ->date('d/m/Y')
                     ->placeholder('-')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observações')
                     ->limit(40)
