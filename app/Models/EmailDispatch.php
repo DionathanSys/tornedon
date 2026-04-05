@@ -21,6 +21,8 @@ class EmailDispatch extends Model
         'cc',
         'bcc',
         'subject',
+        'rendered_subject',
+        'rendered_body',
         'attachments_manifest',
         'attachments_hash',
         'idempotency_key',
@@ -57,4 +59,3 @@ class EmailDispatch extends Model
         return $this->belongsTo(CompanyPartner::class);
     }
 }
-

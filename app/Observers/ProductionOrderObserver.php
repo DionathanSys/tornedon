@@ -21,6 +21,7 @@ class ProductionOrderObserver
 
         app(DocumentNotificationService::class)->scheduleForProductionOrderStatusChange(
             $productionOrder,
+            (string) $productionOrder->getOriginal('status'),
             (string) $productionOrder->status->value,
         );
     }

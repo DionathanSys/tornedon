@@ -21,6 +21,7 @@ class RequisitionObserver
 
         app(DocumentNotificationService::class)->scheduleForRequisitionStatusChange(
             $requisition,
+            (string) $requisition->getOriginal('status'),
             (string) $requisition->status->value,
         );
     }
