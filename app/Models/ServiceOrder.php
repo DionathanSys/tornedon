@@ -210,6 +210,6 @@ class ServiceOrder extends Model
             );
         }
 
-        return (float) $this->items()->sum($column);
+        return round(((float) $this->items()->sum($column)) / 100, 2);
     }
 }
