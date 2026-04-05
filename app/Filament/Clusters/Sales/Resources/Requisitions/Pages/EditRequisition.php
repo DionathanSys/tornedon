@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Pages;
 
+use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CancelRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CloseRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
@@ -37,17 +38,18 @@ class EditRequisition extends EditRecord
     {
         return [
             ActionGroup::make([
-                PreviewRequisitionPdfAction::make()
-                    ->size(Size::Small)
-                    ->hiddenLabel()
-                    ->tooltip('Visualizar PDF da requisição'),
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
                     ->color(Color::Green)
                     ->tooltip('Fechar requisição'),
+                PreviewRequisitionPdfAction::make()
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Visualizar PDF da requisição'),
                 DownloadRequisitionPdfAction::make()
                     ->size(Size::Small)
                     ->hiddenLabel()
+                    ->visible(fn($record) => $record->status === Status::CLOSED)
                     ->tooltip('Baixar PDF da requisição'),
                 ReopenRequisitionAction::make()
                     ->size(Size::Small)
