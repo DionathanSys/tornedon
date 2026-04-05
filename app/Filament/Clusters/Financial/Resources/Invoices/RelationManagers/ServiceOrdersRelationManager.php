@@ -128,12 +128,12 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_amount')
                     ->label('Valor do Desc. (R$)')
-                    ->money('BRL', 100)
+                    ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('order_date')
                     ->label('Dt. Ordem')

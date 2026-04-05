@@ -85,7 +85,7 @@ class MobileServiceOrdersTable
                             ->color('gray'),
                         TextColumn::make('total_amount')
                             ->weight('bold')
-                            ->formatStateUsing(fn(?float $state): string => 'R$ ' . number_format(($state / 100) ?? 0, 2, ',', '.')),
+                            ->formatStateUsing(fn(?float $state): string => 'R$ ' . number_format($state ?? 0, 2, ',', '.')),
                     ]),
                 ])->collapsible(),
             ])
