@@ -96,10 +96,7 @@ class InstallmentsRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([
                 RegisterInstallmentPaymentAction::make()
-                    ->iconButton()
-                    ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
-                    }),
+                    ->iconButton(),
                 EditInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
