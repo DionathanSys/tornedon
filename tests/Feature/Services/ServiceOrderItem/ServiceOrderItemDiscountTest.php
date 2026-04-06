@@ -38,6 +38,26 @@ class ServiceOrderItemDiscountTest extends TestCase
         $this->assertFalse($serviceLayer->hasError());
     }
 
+    public function test_applies_customer_discount_even_when_form_sends_zero_discount_fields(): void
+    {
+        [$user, $serviceOrder, $service] = $this->makeServiceOrderContext(true, 20, 100, 95);
+
+        $serviceLayer = new ServiceOrderItemService();
+        $item = $serviceLayer->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $service->id,
+            'quantity' => 2,
+            'unit_price' => 100,
+            'discount_percentage' => 0,
+            'discount_amount' => 0,
+        ], $user->id);
+
+        $this->assertNotNull($item);
+        $this->assertSame(10.0, (float) $item->discount_amount);
+        $this->assertSame(5.0, round((float) $item->discount_percentage, 2));
+        $this->assertFalse($serviceLayer->hasError());
+    }
+
     public function test_rejects_manual_discount_above_min_sale_price_limit_on_update(): void
     {
         [$user, $serviceOrder, $service] = $this->makeServiceOrderContext(true, 20, 100, 95);
