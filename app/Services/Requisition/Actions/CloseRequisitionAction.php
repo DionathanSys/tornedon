@@ -5,10 +5,12 @@ namespace App\Services\Requisition\Actions;
 use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
+use App\Models\StockMovement;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -53,7 +55,7 @@ class CloseRequisitionAction
                 //    foram liberadas — é necessário recriá-las agora.
                 //    Quando stock_reserved === null (primeiro fechamento) os listeners
                 //    já criaram as reservas ao adicionar cada item (sem duplicar).
-                if ($requisition->stock_reserved === false) {
+                if ($requisition->stock_reserved === false && ! $this->hasActiveReservations($requisition, $items)) {
                     $this->recreateReservations($requisition, $items);
                 }
 
@@ -156,5 +158,56 @@ class CloseRequisitionAction
                 'requisition_id' => $requisition->id,
             ]);
         }
+    }
+
+    /**
+     * Evita recriar reservas quando a requisição já possui saldo reservado ativo.
+     */
+    private function hasActiveReservations(Requisition $requisition, Collection $items): bool
+    {
+        $itemIds = $items->pluck('id')->filter()->values();
+
+        if ($itemIds->isEmpty()) {
+            return false;
+        }
+
+        $netReservedByProduct = StockMovement::query()
+            ->where(function ($query) use ($requisition, $itemIds) {
+                $query
+                    ->where(function ($q) use ($requisition) {
+                        $q->where('source_type', 'requisition')
+                            ->where('source_id', $requisition->id);
+                    })
+                    ->orWhere(function ($q) use ($itemIds) {
+                        $q->where('source_type', 'requisition_item')
+                            ->whereIn('source_id', $itemIds);
+                    });
+            })
+            ->whereIn('type', [
+                Type::RESERVATION->value,
+                Type::RESERVATION_RELEASE->value,
+            ])
+            ->get(['product_id', 'type', 'quantity'])
+            ->groupBy('product_id')
+            ->map(function (Collection $movements): float {
+                return (float) $movements->sum(function (StockMovement $movement): float {
+                    return $movement->type === Type::RESERVATION
+                        ? (float) $movement->quantity
+                        : -(float) $movement->quantity;
+                });
+            });
+
+        $hasActiveReservations = $netReservedByProduct->contains(
+            fn (float $quantity): bool => $quantity > 0.0001
+        );
+
+        if ($hasActiveReservations) {
+            Log::warning('CloseRequisitionAction: Reserva já estava ativa; recriação ignorada para evitar duplicidade', [
+                'requisition_id'          => $requisition->id,
+                'net_reserved_by_product' => $netReservedByProduct->all(),
+            ]);
+        }
+
+        return $hasActiveReservations;
     }
 }
