@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ConfirmInvoiceAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
@@ -44,6 +45,8 @@ class EditInvoice extends EditRecord
                 PreviewInvoicePdfAction::make()
                     ->hiddenLabel()
                     ->tooltip('Visualizar PDF')
+                    ->size(Size::Small),
+                ConfirmInvoiceAction::make()
                     ->size(Size::Small),
                 DownloadInvoicePdfAction::make()
                     ->hiddenLabel()

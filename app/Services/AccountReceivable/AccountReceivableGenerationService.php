@@ -47,6 +47,18 @@ class AccountReceivableGenerationService
                 return false;
             }
 
+            if ($invoice->accountReceivables()->exists()) {
+                $this->setSuccess('Contas a receber já existentes para a fatura.');
+
+                Log::info('AccountReceivableGenerationService: contas a receber já existem, geração ignorada', [
+                    'metodo'             => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'         => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                ]);
+
+                return true;
+            }
+
             $paymentMethod = $this->resolvePaymentMethod($invoice);
             $paymentCondition = $this->resolvePaymentCondition($invoice);
 
@@ -283,26 +295,26 @@ class AccountReceivableGenerationService
         $accountReceivable = $query->first() ?? new AccountReceivable();
 
         $accountReceivable->fill([
-            'customer_id'       => $invoice->customer_id,
-            'company_id'        => $invoice->company_id,
-            'invoice_id'        => $invoice->id,
-            'fiscal_document_id'=> $fiscalDocument->id,
-            'sequence_number'   => $installment['sequence_number'],
-            'status'            => AccountReceivableStatus::PENDING->value,
-            'due_date'          => $installment['due_date'],
-            'paid_date'         => $installment['due_date'],
-            'due_amount'        => $installment['due_amount'],
-            'paid_amount'       => 0,
-            'document_number'   => $documentNumber,
-            'description'       => sprintf(
+            'customer_id' => $invoice->customer_id,
+            'company_id' => $invoice->company_id,
+            'invoice_id' => $invoice->id,
+            'fiscal_document_id' => $fiscalDocument->id,
+            'sequence_number' => $installment['sequence_number'],
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => $installment['due_date'],
+            'paid_date' => $installment['due_date'],
+            'due_amount' => $installment['due_amount'],
+            'paid_amount' => 0,
+            'document_number' => $documentNumber,
+            'description' => sprintf(
                 'Parcela %d/%d gerada automaticamente da fatura %s e documento fiscal %s',
                 $installment['installment_number'],
                 $installment['installments_count'],
                 $invoice->invoice_number,
                 $documentNumber ?? '-'
             ),
-            'paid'              => false,
-            'payment_method'    => $paymentMethod->value,
+            'paid' => false,
+            'payment_method' => $paymentMethod->value,
         ]);
 
         $accountReceivable->save();

@@ -26,7 +26,8 @@ class DeleteInvoiceAction
                 'number'     => $this->invoice->invoice_number,
                 'user_id'    => $this->deletedBy,
             ]);
-            if (!$this->validateCanDelete()) {
+
+            if (! $this->validateCanDelete()) {
                 return false;
             }
 
@@ -40,6 +41,7 @@ class DeleteInvoiceAction
             ]);
 
             $this->setSuccess();
+
             return $result;
         } catch (QueryException $e) {
             $this->setError('Erro ao excluir fatura. Ela pode estar vinculada a outros registros.');

@@ -14,6 +14,7 @@ use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
 use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
+use App\Services\Invoice\Actions\ConfirmInvoiceAction;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
@@ -202,6 +203,65 @@ class InvoiceService
             ]);
 
             return false;
+        }
+    }
+
+    public function confirm(Invoice $invoice, array $data, int $confirmedBy): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($invoice, $data, $confirmedBy) {
+                $action = new ConfirmInvoiceAction($invoice, $confirmedBy);
+                $result = $action->execute($data);
+
+                if ($action->hasError() || $result === null) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    Log::error($this->getMessage(), [
+                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'invoice_id' => $invoice->id,
+                        'message'    => $action->getMessage(),
+                        'error_code' => $action->getErrorCode(),
+                        'errors'     => $action->getErrors(),
+                        'data'       => $data,
+                        'user_id'    => $confirmedBy,
+                    ]);
+
+                    return null;
+                }
+
+                $this->setSuccess('Fatura confirmada com sucesso', $result);
+
+                Log::info('Fatura confirmada com sucesso via service', [
+                    'metodo'                    => __METHOD__ . '@' . __LINE__,
+                    'invoice_id'                => $invoice->id,
+                    'documents_count'           => $result['documents_count'] ?? 0,
+                    'account_receivables_count' => $result['account_receivables_count'] ?? 0,
+                    'user_id'                   => $confirmedBy,
+                ]);
+
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao confirmar fatura');
+
+            Log::error($this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'error_code' => $this->getErrorCode(),
+                'message'    => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+                'data'       => $data,
+                'user_id'    => $confirmedBy,
+            ]);
+
+            return null;
         }
     }
 
@@ -499,6 +559,7 @@ class InvoiceService
             'pending'      => false,
             'confirmed'    => true,
             'confirmed_at' => now(),
+            'confirmed_by' => $userId,
             'updated_by'   => $userId,
         ]);
 
