@@ -100,6 +100,7 @@ final class RegisterInstallmentPaymentAction
                 $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
                 $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
                 $livewire->dispatch('refresh-page');
+                $livewire->refreshFormData(['installments', 'payments']);
             });
     }
 }
