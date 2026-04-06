@@ -24,6 +24,7 @@ class CreateProductionOrderFromApprovedQuoteListener
         // Busca apenas os itens com destinação de ordem de produção
         $quoteItems = $quote->items()
             ->where('destination', Destination::ORDER_PRODUCTION->value)
+            ->with(['product:id,name', 'service:id,name'])
             ->get();
 
         if ($quoteItems->isEmpty()) {
@@ -77,7 +78,7 @@ class CreateProductionOrderFromApprovedQuoteListener
                         'production_order_id'      => $productionOrder->id,
                         'quote_item_id'            => $quoteItem->id,
                         'product_id'               => $quoteItem->product_id,
-                        'description'              => $quoteItem->description,
+                        'description'              => $quoteItem->resolveDescription(),
                         'quantity'                 => $quoteItem->quantity,
                         'unit_of_measure'          => $quoteItem->unit_of_measure,
                         'technical_specifications' => $quoteItem->technical_specifications,

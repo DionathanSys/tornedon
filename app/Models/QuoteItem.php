@@ -144,4 +144,25 @@ class QuoteItem extends Model
 
         return implode(' | ', $specs);
     }
+
+    public function resolveDescription(): string
+    {
+        $description = trim((string) ($this->description ?? ''));
+
+        if ($description !== '') {
+            return $description;
+        }
+
+        $productName = trim((string) ($this->product?->name ?? ''));
+        if ($productName !== '') {
+            return $productName;
+        }
+
+        $serviceName = trim((string) ($this->service?->name ?? ''));
+        if ($serviceName !== '') {
+            return $serviceName;
+        }
+
+        return 'Item do orçamento';
+    }
 }

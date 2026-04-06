@@ -73,7 +73,7 @@ class ConvertToProductionOrder
                     'production_order_id'    => $productionOrder->id,
                     'quote_item_id'          => $quoteItem->id,
                     'product_id'             => $quoteItem->product_id,
-                    'description'            => $quoteItem->description,
+                    'description'            => $quoteItem->resolveDescription(),
                     'quantity'               => $quoteItem->quantity,
                     'unit_of_measure'        => $quoteItem->unit_of_measure,
                     'technical_specifications' => $quoteItem->technical_specifications,
