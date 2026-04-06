@@ -32,22 +32,22 @@ final class RegisterInstallmentPaymentAction
                         ->label('Valor pago')
                         ->columnSpan(1)
                         ->default(fn(AccountPayableInstallment $record) => $record->due_amount)
-                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('interest_amount')
                         ->label('Juros')
                         ->columnSpan(1)
-                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('fine_amount')
                         ->label('Multa')
                         ->columnSpan(1)
-                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('discount_amount')
                         ->label('Desconto')
                         ->columnSpan(1)
-                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     TextInput::make('bank_account_id')
                         ->label('Conta bancária (ID)')
@@ -63,12 +63,12 @@ final class RegisterInstallmentPaymentAction
                 $service = app(AccountPayableService::class);
                 $payment = $service->registerInstallmentPayment(
                     $record,
-                    (float) ($data['amount'] ?? 0),
+                    self::normalizeMoney($data['amount'] ?? 0),
                     (string) ($data['payment_date'] ?? ''),
                     [
-                        'interest_amount' => (float) ($data['interest_amount'] ?? 0),
-                        'fine_amount' => (float) ($data['fine_amount'] ?? 0),
-                        'discount_amount' => (float) ($data['discount_amount'] ?? 0),
+                        'interest_amount' => self::normalizeMoney($data['interest_amount'] ?? 0),
+                        'fine_amount' => self::normalizeMoney($data['fine_amount'] ?? 0),
+                        'discount_amount' => self::normalizeMoney($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
                         'notes' => $data['notes'] ?? null,
                     ]
@@ -88,5 +88,36 @@ final class RegisterInstallmentPaymentAction
                     ->success()
                     ->send();
             });
+    }
+
+    private static function normalizeMoney(mixed $value): float
+    {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+
+        if (is_string($value)) {
+            $normalized = preg_replace('/[^\d,.-]/', '', $value) ?? '0';
+
+            if (str_contains($normalized, ',')) {
+                return (float) str_replace(',', '.', str_replace('.', '', $normalized));
+            }
+
+            if (preg_match('/^-?\d+$/', $normalized) === 1) {
+                return ((float) $normalized) / 100;
+            }
+
+            return (float) $normalized;
+        }
+
+        if (is_int($value)) {
+            return $value / 100;
+        }
+
+        if (is_float($value) && floor($value) === $value) {
+            return $value / 100;
+        }
+
+        return (float) $value;
     }
 }
