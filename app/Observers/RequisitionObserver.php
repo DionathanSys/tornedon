@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Requisition;
 use App\Services\Email\DocumentNotificationService;
 use App\Support\Email\DocumentNotificationDecisionContext;
+use BackedEnum;
 
 class RequisitionObserver
 {
@@ -21,8 +22,17 @@ class RequisitionObserver
 
         app(DocumentNotificationService::class)->scheduleForRequisitionStatusChange(
             $requisition,
-            (string) $requisition->getOriginal('status'),
-            (string) $requisition->status->value,
+            $this->normalizeStatus($requisition->getOriginal('status')),
+            $this->normalizeStatus($requisition->status),
         );
+    }
+
+    private function normalizeStatus(mixed $status): string
+    {
+        if ($status instanceof BackedEnum) {
+            return (string) $status->value;
+        }
+
+        return (string) $status;
     }
 }

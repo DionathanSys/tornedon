@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\ProductionOrder;
 use App\Services\Email\DocumentNotificationService;
 use App\Support\Email\DocumentNotificationDecisionContext;
+use BackedEnum;
 
 class ProductionOrderObserver
 {
@@ -21,8 +22,17 @@ class ProductionOrderObserver
 
         app(DocumentNotificationService::class)->scheduleForProductionOrderStatusChange(
             $productionOrder,
-            (string) $productionOrder->getOriginal('status'),
-            (string) $productionOrder->status->value,
+            $this->normalizeStatus($productionOrder->getOriginal('status')),
+            $this->normalizeStatus($productionOrder->status),
         );
+    }
+
+    private function normalizeStatus(mixed $status): string
+    {
+        if ($status instanceof BackedEnum) {
+            return (string) $status->value;
+        }
+
+        return (string) $status;
     }
 }

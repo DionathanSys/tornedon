@@ -42,12 +42,14 @@ class EditRequisition extends EditRecord
         return [
             ActionGroup::make([
                 Action::make('back')
-                    ->label('Voltar')
-                    ->icon(Heroicon::ArrowLeft)
+                    ->hiddenLabel()
+                    ->tooltip('Voltar')
+                    ->icon(Heroicon::ArrowUturnLeft)
                     ->color(Color::Gray)
                     ->url(RequisitionResource::getUrl()),
                 CreateAction::make()
-                    ->label('Requisição')
+                    ->hiddenLabel()
+                    ->tooltip('Nova Requisição')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
                     ->mutateDataUsing(function (array $data): array {
