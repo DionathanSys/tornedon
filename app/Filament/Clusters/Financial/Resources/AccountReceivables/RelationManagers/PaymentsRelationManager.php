@@ -63,8 +63,16 @@ class PaymentsRelationManager extends RelationManager
             ->defaultSort('payment_date', 'desc')
             ->headerActions([])
             ->recordActions([
-                EditPaymentAction::make()->iconButton(),
-                DeletePaymentAction::make()->iconButton(),
+                EditPaymentAction::make()
+                    ->iconButton()
+                    ->after(function (PaymentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
+                DeletePaymentAction::make()
+                    ->iconButton()
+                    ->after(function (PaymentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhum recebimento registrado')

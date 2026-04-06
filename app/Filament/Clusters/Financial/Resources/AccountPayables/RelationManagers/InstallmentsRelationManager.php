@@ -76,8 +76,8 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
-                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
+                    ->color(fn($state) => $state?->color() ?? 'gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('paid_date')
@@ -96,11 +96,20 @@ class InstallmentsRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([
                 RegisterInstallmentPaymentAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
                 EditInstallmentAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
                 DeleteInstallmentAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma parcela gerada')

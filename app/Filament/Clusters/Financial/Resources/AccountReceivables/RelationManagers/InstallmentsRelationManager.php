@@ -96,11 +96,20 @@ class InstallmentsRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([
                 RegisterInstallmentPaymentAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
                 EditInstallmentAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
                 DeleteInstallmentAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-page');
+                    }),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma parcela gerada')
