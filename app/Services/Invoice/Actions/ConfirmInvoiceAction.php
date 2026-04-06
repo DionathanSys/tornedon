@@ -34,11 +34,11 @@ class ConfirmInvoiceAction
     public function execute(array $data): ?array
     {
         try {
-            Log::debug('Iniciando confirmação de fatura', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+            Log::debug('Iniciando confirmacao de fatura', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
-                'user_id'    => $this->confirmedBy,
-                'data'       => $data,
+                'user_id' => $this->confirmedBy,
+                'data' => $data,
             ]);
 
             $this->invoice->loadMissing([
@@ -58,9 +58,9 @@ class ConfirmInvoiceAction
             $paymentCondition = PaymentCondition::from((string) $data['payment_condition']);
 
             $this->invoice->update([
-                'payment_method'    => $paymentMethod->value,
+                'payment_method' => $paymentMethod->value,
                 'payment_condition' => $paymentCondition->value,
-                'updated_by'        => $this->confirmedBy,
+                'updated_by' => $this->confirmedBy,
             ]);
 
             $this->invoice->refresh();
@@ -84,13 +84,13 @@ class ConfirmInvoiceAction
                         $invoiceService->getErrorCode()
                     );
 
-                    Log::error('ConfirmInvoiceAction: falha ao gerar documento fiscal na confirmação da fatura', [
-                        'metodo'        => __METHOD__ . '@' . __LINE__,
-                        'invoice_id'    => $this->invoice->id,
+                    Log::error('ConfirmInvoiceAction: falha ao gerar documento fiscal na confirmacao da fatura', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'invoice_id' => $this->invoice->id,
                         'document_type' => $documentType->value,
-                        'message'       => $invoiceService->getMessage(),
-                        'error_code'    => $invoiceService->getErrorCode(),
-                        'errors'        => $invoiceService->getErrors(),
+                        'message' => $invoiceService->getMessage(),
+                        'error_code' => $invoiceService->getErrorCode(),
+                        'errors' => $invoiceService->getErrors(),
                     ]);
 
                     return null;
@@ -110,12 +110,12 @@ class ConfirmInvoiceAction
             }
 
             $this->invoice->update([
-                'status'       => InvoiceStatus::CONFIRMED->value,
-                'pending'      => false,
-                'confirmed'    => true,
+                'status' => InvoiceStatus::CONFIRMED->value,
+                'pending' => false,
+                'confirmed' => true,
                 'confirmed_at' => now(),
                 'confirmed_by' => $this->confirmedBy,
-                'updated_by'   => $this->confirmedBy,
+                'updated_by' => $this->confirmedBy,
             ]);
 
             $result = [
@@ -129,11 +129,11 @@ class ConfirmInvoiceAction
             ];
 
             Log::info('Fatura confirmada com sucesso', [
-                'metodo'                    => __METHOD__ . '@' . __LINE__,
-                'invoice_id'                => $this->invoice->id,
-                'documents_count'           => $result['documents_count'],
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $this->invoice->id,
+                'documents_count' => $result['documents_count'],
                 'account_receivables_count' => $result['account_receivables_count'],
-                'user_id'                   => $this->confirmedBy,
+                'user_id' => $this->confirmedBy,
             ]);
 
             $this->setSuccess();
@@ -143,12 +143,12 @@ class ConfirmInvoiceAction
             $this->setError('Erro inesperado ao confirmar fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'error_code' => $this->getErrorCode(),
-                'user_id'    => $this->confirmedBy,
+                'user_id' => $this->confirmedBy,
             ]);
 
             return null;
@@ -158,32 +158,32 @@ class ConfirmInvoiceAction
     private function validateCanConfirm(): bool
     {
         if ($this->invoice->canceled || $this->invoice->status === InvoiceStatus::CANCELLED) {
-            $this->setError('Não é possível confirmar uma fatura cancelada.');
+            $this->setError('Nao e possivel confirmar uma fatura cancelada.');
             return false;
         }
 
         if ($this->invoice->confirmed || $this->invoice->status === InvoiceStatus::CONFIRMED) {
-            $this->setError('Esta fatura já foi confirmada.');
+            $this->setError('Esta fatura ja foi confirmada.');
             return false;
         }
 
         if ($this->invoice->fiscalDocuments->isNotEmpty()) {
-            $this->setError('Esta fatura já possui documento fiscal gerado.');
+            $this->setError('Esta fatura ja possui documento fiscal gerado.');
             return false;
         }
 
         if ($this->invoice->accountReceivables->isNotEmpty()) {
-            $this->setError('Esta fatura já possui contas a receber vinculadas.');
+            $this->setError('Esta fatura ja possui contas a receber vinculadas.');
             return false;
         }
 
         if ($this->invoice->requisitions->isEmpty() && $this->invoice->serviceOrders->isEmpty()) {
-            $this->setError('A fatura não possui itens vinculados para confirmação.');
+            $this->setError('A fatura nao possui itens vinculados para confirmacao.');
             return false;
         }
 
         if (! $this->hasProductItems() && ! $this->hasServiceItems()) {
-            $this->setError('A fatura não possui itens válidos para gerar documento fiscal.');
+            $this->setError('A fatura nao possui itens validos para gerar documento fiscal.');
             return false;
         }
 
@@ -270,54 +270,48 @@ class ConfirmInvoiceAction
         }
 
         $service = app(AccountReceivableService::class);
-        $created = [];
         $singleFiscalDocumentId = count($generatedDocuments) === 1 ? $generatedDocuments[0]->id : null;
+        $accountReceivable = $service->create([
+            'customer_id' => $this->invoice->customer_id,
+            'company_id' => $this->invoice->company_id,
+            'invoice_id' => $this->invoice->id,
+            'fiscal_document_id' => $singleFiscalDocumentId,
+            'sequence_number' => '01',
+            'due_date' => $installments[0]['due_date'],
+            'paid_date' => null,
+            'due_amount' => round((float) $this->invoice->netValue, 2),
+            'paid_amount' => 0,
+            'document_number' => $this->invoice->invoice_number,
+            'description' => sprintf(
+                'Conta a receber gerada automaticamente na confirmacao da fatura %s',
+                $this->invoice->invoice_number
+            ),
+            'paid' => false,
+            'payment_method' => $paymentMethod->value,
+            'installment_count' => count($installments),
+            'installment_due_mode' => 'interval_30_days',
+        ], $this->confirmedBy);
 
-        foreach ($installments as $installment) {
-            $accountReceivable = $service->create([
-                'customer_id' => $this->invoice->customer_id,
-                'company_id' => $this->invoice->company_id,
+        if ($service->hasError() || $accountReceivable === null) {
+            $this->setError(
+                $service->getMessage(),
+                $service->getErrors(),
+                $service->getErrorCode()
+            );
+
+            Log::error('ConfirmInvoiceAction: falha ao gerar conta a receber na confirmacao da fatura', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
-                'fiscal_document_id' => $singleFiscalDocumentId,
-                'sequence_number' => $installment['sequence_number'],
-                'due_date' => $installment['due_date'],
-                'paid_date' => null,
-                'due_amount' => $installment['due_amount'],
-                'paid_amount' => 0,
-                'document_number' => $this->invoice->invoice_number,
-                'description' => sprintf(
-                    'Parcela %d/%d gerada automaticamente na confirmação da fatura %s',
-                    $installment['installment_number'],
-                    $installment['installments_count'],
-                    $this->invoice->invoice_number
-                ),
-                'paid' => false,
-                'payment_method' => $paymentMethod->value,
-            ], $this->confirmedBy);
+                'message' => $service->getMessage(),
+                'error_code' => $service->getErrorCode(),
+                'errors' => $service->getErrors(),
+                'payload' => $installments,
+            ]);
 
-            if ($service->hasError() || $accountReceivable === null) {
-                $this->setError(
-                    $service->getMessage(),
-                    $service->getErrors(),
-                    $service->getErrorCode()
-                );
-
-                Log::error('ConfirmInvoiceAction: falha ao gerar conta a receber na confirmação da fatura', [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
-                    'invoice_id' => $this->invoice->id,
-                    'message'    => $service->getMessage(),
-                    'error_code' => $service->getErrorCode(),
-                    'errors'     => $service->getErrors(),
-                    'payload'    => $installment,
-                ]);
-
-                return null;
-            }
-
-            $created[] = $accountReceivable;
+            return null;
         }
 
-        return $created;
+        return [$accountReceivable];
     }
 
     /**
@@ -328,7 +322,7 @@ class ConfirmInvoiceAction
         $netValue = round((float) $this->invoice->netValue, 2);
 
         if ($netValue <= 0) {
-            $this->setError('Valor líquido da fatura inválido para gerar contas a receber.');
+            $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
             return [];
         }
 

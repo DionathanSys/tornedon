@@ -11,6 +11,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority as ServiceOrderPriority;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type as ServiceOrderType;
+use App\Models\AccountReceivable;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
@@ -52,7 +53,7 @@ class AccountReceivableGenerationServiceTest extends TestCase
         ]);
     }
 
-    public function test_generates_installments_with_invoice_payment_method_and_condition(): void
+    public function test_generates_header_and_installments_with_invoice_payment_method_and_condition(): void
     {
         $invoice = $this->createInvoice('2026-03-10');
 
@@ -75,34 +76,35 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $ok = $this->service->generateFromFiscalDocument($fiscalDocument);
 
         $this->assertTrue($ok, $this->service->getMessage());
-        $this->assertDatabaseCount('account_receivables', 3);
-        $this->assertDatabaseHas('account_receivables', [
-            'invoice_id' => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => '01',
-            'payment_method' => PaymentMethod::PIX->value,
-            'due_amount' => 33.33,
-            'due_date' => '2026-04-09',
-        ]);
-        $this->assertDatabaseHas('account_receivables', [
-            'invoice_id' => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => '02',
-            'payment_method' => PaymentMethod::PIX->value,
-            'due_amount' => 33.33,
-            'due_date' => '2026-05-09',
-        ]);
-        $this->assertDatabaseHas('account_receivables', [
-            'invoice_id' => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => '03',
-            'payment_method' => PaymentMethod::PIX->value,
-            'due_amount' => 33.34,
-            'due_date' => '2026-06-08',
-        ]);
+        $this->assertDatabaseCount('account_receivables', 1);
+        $accountReceivable = AccountReceivable::query()->with('installments')->sole();
+
+        $this->assertSame($invoice->id, $accountReceivable->invoice_id);
+        $this->assertSame($fiscalDocument->id, $accountReceivable->fiscal_document_id);
+        $this->assertSame('01', $accountReceivable->sequence_number);
+        $this->assertSame(PaymentMethod::PIX, $accountReceivable->payment_method);
+        $this->assertSame(100.0, $accountReceivable->due_amount);
+        $this->assertSame('2026-04-09', $accountReceivable->due_date?->toDateString());
+        $this->assertDatabaseCount('account_receivable_installments', 3);
+        $this->assertSame(
+            [
+                ['sequence_number' => '01', 'due_amount' => 33.33, 'due_date' => '2026-04-09'],
+                ['sequence_number' => '02', 'due_amount' => 33.33, 'due_date' => '2026-05-09'],
+                ['sequence_number' => '03', 'due_amount' => 33.34, 'due_date' => '2026-06-08'],
+            ],
+            $accountReceivable->installments
+                ->sortBy('sequence_number')
+                ->values()
+                ->map(fn ($installment) => [
+                    'sequence_number' => $installment->sequence_number,
+                    'due_amount' => $installment->due_amount,
+                    'due_date' => $installment->due_date?->toDateString(),
+                ])
+                ->all()
+        );
     }
 
-    public function test_reprocessing_does_not_duplicate_installments(): void
+    public function test_reprocessing_does_not_duplicate_receivable_header_or_installments(): void
     {
         $invoice = $this->createInvoice('2026-03-10');
 
@@ -125,21 +127,24 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $this->assertTrue($this->service->generateFromFiscalDocument($fiscalDocument));
         $this->assertTrue($this->service->generateFromFiscalDocument($fiscalDocument));
 
-        $this->assertDatabaseCount('account_receivables', 2);
-        $this->assertDatabaseHas('account_receivables', [
-            'invoice_id' => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => '01',
-            'due_amount' => 60.00,
-            'payment_method' => PaymentMethod::BANK_SLIP->value,
-        ]);
-        $this->assertDatabaseHas('account_receivables', [
-            'invoice_id' => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => '02',
-            'due_amount' => 60.00,
-            'payment_method' => PaymentMethod::BANK_SLIP->value,
-        ]);
+        $this->assertDatabaseCount('account_receivables', 1);
+        $accountReceivable = AccountReceivable::query()->with('installments')->sole();
+
+        $this->assertDatabaseCount('account_receivable_installments', 2);
+        $this->assertSame(
+            [
+                ['sequence_number' => '01', 'due_amount' => 60.0],
+                ['sequence_number' => '02', 'due_amount' => 60.0],
+            ],
+            $accountReceivable->installments
+                ->sortBy('sequence_number')
+                ->values()
+                ->map(fn ($installment) => [
+                    'sequence_number' => $installment->sequence_number,
+                    'due_amount' => $installment->due_amount,
+                ])
+                ->all()
+        );
     }
 
     public function test_blocks_generation_when_payment_method_is_missing(): void
@@ -165,6 +170,7 @@ class AccountReceivableGenerationServiceTest extends TestCase
 
         $this->assertFalse($ok);
         $this->assertDatabaseCount('account_receivables', 0);
+        $this->assertDatabaseCount('account_receivable_installments', 0);
     }
 
     private function createInvoice(string $invoiceDate): Invoice

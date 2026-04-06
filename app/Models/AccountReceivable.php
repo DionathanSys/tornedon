@@ -7,6 +7,7 @@ use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountReceivable extends Model
 {
@@ -62,5 +63,10 @@ class AccountReceivable extends Model
     public function fiscalDocument(): BelongsTo
     {
         return $this->belongsTo(FiscalDocument::class);
+    }
+
+    public function installments(): HasMany
+    {
+        return $this->hasMany(AccountReceivableInstallment::class);
     }
 }

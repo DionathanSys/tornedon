@@ -13,6 +13,7 @@ class AccountReceivableValidator
     private static function commonRules(): array
     {
         return [
+            'sequence_number' => 'nullable|string|max:2',
             'due_date' => 'required|date',
             'paid_date' => 'nullable|date',
             'due_amount' => 'required|numeric|min:0',
@@ -22,6 +23,9 @@ class AccountReceivableValidator
             'paid' => 'nullable|boolean',
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
+            'installment_count' => 'nullable|integer|min:1|max:24',
+            'installment_due_mode' => ['nullable', Rule::in(['interval_30_days', 'fixed_day_of_month'])],
+            'installment_fixed_day' => 'nullable|required_if:installment_due_mode,fixed_day_of_month|integer|min:1|max:31',
         ];
     }
 
@@ -52,7 +56,7 @@ class AccountReceivableValidator
         $rules = array_merge(self::commonRules(), [
             'customer_id' => 'required|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
-            'invoice_id' => 'required|integer|exists:invoices,id',
+            'invoice_id' => 'nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'required|string|max:2',
             'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
@@ -69,7 +73,7 @@ class AccountReceivableValidator
         $rules = array_merge(self::commonRules(), [
             'customer_id' => 'sometimes|required|integer|exists:partners,id',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
-            'invoice_id' => 'sometimes|required|integer|exists:invoices,id',
+            'invoice_id' => 'sometimes|nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'sometimes|required|string|max:2',
             'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],

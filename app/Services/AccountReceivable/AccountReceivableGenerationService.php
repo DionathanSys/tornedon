@@ -2,18 +2,15 @@
 
 namespace App\Services\AccountReceivable;
 
-use App\Enum\AccountReceivable\Status as AccountReceivableStatus;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
-use App\Models\AccountReceivable;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AccountReceivableGenerationService
@@ -38,21 +35,21 @@ class AccountReceivableGenerationService
             }
 
             if (! $this->isFiscalDocumentAuthorized($fiscalDocument)) {
-                $this->setError('Documento fiscal ainda não autorizado para gerar contas a receber.');
+                $this->setError('Documento fiscal ainda nao autorizado para gerar contas a receber.');
                 return false;
             }
 
             if ($invoice->status === InvoiceStatus::CANCELLED || $invoice->canceled) {
-                $this->setError('Não é permitido gerar contas a receber para fatura cancelada.');
+                $this->setError('Nao e permitido gerar contas a receber para fatura cancelada.');
                 return false;
             }
 
             if ($invoice->accountReceivables()->exists()) {
-                $this->setSuccess('Contas a receber já existentes para a fatura.');
+                $this->setSuccess('Contas a receber ja existentes para a fatura.');
 
-                Log::info('AccountReceivableGenerationService: contas a receber já existem, geração ignorada', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'         => $invoice->id,
+                Log::info('AccountReceivableGenerationService: contas a receber ja existem, geracao ignorada', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);
 
@@ -66,43 +63,29 @@ class AccountReceivableGenerationService
                 return false;
             }
 
-            $installments = $this->buildInstallments($invoice, $paymentCondition);
+            $receivablePayload = $this->buildReceivablePayload($invoice, $fiscalDocument, $paymentMethod, $paymentCondition);
 
-            if (empty($installments)) {
-                $this->setError('Não foi possível montar parcelas de contas a receber para a fatura.');
+            if ($receivablePayload === null) {
                 return false;
             }
 
-            $documentNumber = $fiscalDocument->document_number
-                ?? $fiscalDocument->document_key
-                ?? $invoice->invoice_number;
+            $service = app(AccountReceivableService::class);
+            $accountReceivable = $service->create($receivablePayload, 0);
 
-            DB::transaction(function () use (
-                $invoice,
-                $fiscalDocument,
-                $paymentMethod,
-                $installments,
-                $documentNumber
-            ): void {
-                foreach ($installments as $installment) {
-                    $this->upsertInstallment(
-                        invoice: $invoice,
-                        fiscalDocument: $fiscalDocument,
-                        paymentMethod: $paymentMethod,
-                        installment: $installment,
-                        documentNumber: $documentNumber
-                    );
-                }
-            });
+            if ($service->hasError() || $accountReceivable === null) {
+                $this->setError($service->getMessage(), $service->getErrors(), $service->getErrorCode());
+                return false;
+            }
 
             $this->setSuccess('Contas a receber geradas com sucesso.');
 
             Log::info('AccountReceivableGenerationService: contas a receber geradas', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'invoice_id'         => $invoice->id,
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
                 'fiscal_document_id' => $fiscalDocument->id,
-                'installments'       => count($installments),
-                'payment_method'     => $paymentMethod->value,
+                'account_receivable_id' => $accountReceivable->id,
+                'installments' => $paymentCondition->installments(),
+                'payment_method' => $paymentMethod->value,
             ]);
 
             return true;
@@ -110,11 +93,11 @@ class AccountReceivableGenerationService
             $this->setError('Erro ao gerar contas a receber: ' . $e->getMessage());
 
             Log::error('AccountReceivableGenerationService: falha ao gerar contas a receber', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
-                'error_code'         => $this->getErrorCode(),
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -164,8 +147,8 @@ class AccountReceivableGenerationService
         if ($methods->count() !== 1) {
             $this->setError(
                 $methods->isEmpty()
-                    ? 'Forma de pagamento obrigatória não encontrada na fatura.'
-                    : 'Fatura possui múltiplas formas de pagamento. Padronize antes de gerar o contas a receber.'
+                    ? 'Forma de pagamento obrigatoria nao encontrada na fatura.'
+                    : 'Fatura possui multiplas formas de pagamento. Padronize antes de gerar o contas a receber.'
             );
 
             return null;
@@ -209,8 +192,8 @@ class AccountReceivableGenerationService
         if ($conditions->count() !== 1) {
             $this->setError(
                 $conditions->isEmpty()
-                    ? 'Condição de pagamento obrigatória não encontrada na fatura.'
-                    : 'Fatura possui múltiplas condições de pagamento. Padronize antes de gerar o contas a receber.'
+                    ? 'Condicao de pagamento obrigatoria nao encontrada na fatura.'
+                    : 'Fatura possui multiplas condicoes de pagamento. Padronize antes de gerar o contas a receber.'
             );
 
             return null;
@@ -219,43 +202,49 @@ class AccountReceivableGenerationService
         return $conditions->first();
     }
 
-    private function buildInstallments(Invoice $invoice, PaymentCondition $condition): array
-    {
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildReceivablePayload(
+        Invoice $invoice,
+        FiscalDocument $fiscalDocument,
+        PaymentMethod $paymentMethod,
+        PaymentCondition $condition
+    ): ?array {
         $netValue = round((float) $invoice->netValue, 2);
 
         if ($netValue <= 0) {
-            $this->setError('Valor líquido da fatura inválido para gerar contas a receber.');
-            return [];
+            $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
+            return null;
         }
 
-        $totalCents = (int) round($netValue * 100);
-        $installmentsCount = max(1, $condition->installments() ?: 1);
-        $baseCents = intdiv($totalCents, $installmentsCount);
-        $remainder = $totalCents - ($baseCents * $installmentsCount);
-        $baseDate = Carbon::parse($invoice->invoice_date ?? now()->toDateString());
+        $installmentCount = max(1, $condition->installments() ?: 1);
+        $firstDueDate = $this->resolveDueDate($condition, Carbon::parse($invoice->invoice_date ?? now()->toDateString()), 1);
+        $documentNumber = $fiscalDocument->document_number
+            ?? $fiscalDocument->document_key
+            ?? $invoice->invoice_number;
 
-        $installments = [];
-
-        for ($i = 1; $i <= $installmentsCount; $i++) {
-            $amountCents = $baseCents + ($i === $installmentsCount ? $remainder : 0);
-
-            $installments[] = [
-                'sequence_number' => str_pad((string) $i, 2, '0', STR_PAD_LEFT),
-                'due_date' => $this->resolveDueDate($condition, $baseDate, $i)->toDateString(),
-                'due_amount' => round($amountCents / 100, 2),
-                'installment_number' => $i,
-                'installments_count' => $installmentsCount,
-            ];
-        }
-
-        $sum = round(array_sum(array_column($installments, 'due_amount')), 2);
-
-        if ($sum !== $netValue) {
-            $this->setError('Falha de integridade financeira ao gerar parcelas de contas a receber.');
-            return [];
-        }
-
-        return $installments;
+        return [
+            'customer_id' => $invoice->customer_id,
+            'company_id' => $invoice->company_id,
+            'invoice_id' => $invoice->id,
+            'fiscal_document_id' => $fiscalDocument->id,
+            'sequence_number' => '01',
+            'due_date' => $firstDueDate->toDateString(),
+            'paid_date' => null,
+            'due_amount' => $netValue,
+            'paid_amount' => 0,
+            'document_number' => $documentNumber,
+            'description' => sprintf(
+                'Conta a receber gerada automaticamente da fatura %s e documento fiscal %s',
+                $invoice->invoice_number,
+                $documentNumber ?? '-'
+            ),
+            'paid' => false,
+            'payment_method' => $paymentMethod->value,
+            'installment_count' => $installmentCount,
+            'installment_due_mode' => 'interval_30_days',
+        ];
     }
 
     private function resolveDueDate(PaymentCondition $condition, Carbon $baseDate, int $installmentNumber): Carbon
@@ -274,49 +263,5 @@ class AccountReceivableGenerationService
         }
 
         return $baseDate->copy();
-    }
-
-    private function upsertInstallment(
-        Invoice $invoice,
-        FiscalDocument $fiscalDocument,
-        PaymentMethod $paymentMethod,
-        array $installment,
-        ?string $documentNumber
-    ): void {
-        $query = AccountReceivable::query()
-            ->where('invoice_id', $invoice->id)
-            ->where('sequence_number', $installment['sequence_number'])
-            ->where(function ($q) use ($fiscalDocument): void {
-                $q->where('fiscal_document_id', $fiscalDocument->id)
-                    ->orWhereNull('fiscal_document_id');
-            })
-            ->orderByRaw('CASE WHEN fiscal_document_id IS NULL THEN 1 ELSE 0 END');
-
-        $accountReceivable = $query->first() ?? new AccountReceivable();
-
-        $accountReceivable->fill([
-            'customer_id' => $invoice->customer_id,
-            'company_id' => $invoice->company_id,
-            'invoice_id' => $invoice->id,
-            'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => $installment['sequence_number'],
-            'status' => AccountReceivableStatus::PENDING->value,
-            'due_date' => $installment['due_date'],
-            'paid_date' => $installment['due_date'],
-            'due_amount' => $installment['due_amount'],
-            'paid_amount' => 0,
-            'document_number' => $documentNumber,
-            'description' => sprintf(
-                'Parcela %d/%d gerada automaticamente da fatura %s e documento fiscal %s',
-                $installment['installment_number'],
-                $installment['installments_count'],
-                $invoice->invoice_number,
-                $documentNumber ?? '-'
-            ),
-            'paid' => false,
-            'payment_method' => $paymentMethod->value,
-        ]);
-
-        $accountReceivable->save();
     }
 }

@@ -19,8 +19,8 @@ final class ConfirmInvoiceAction
     public static function make(): Action
     {
         return Action::make('confirmInvoice')
-            ->label('Confirmar Fatura')
-            ->icon(Heroicon::OutlinedCheckCircle)
+            ->label('Confirmar')
+            ->icon(Heroicon::Check)
             ->color('success')
             ->modalHeading('Confirmar Fatura')
             ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber.')
