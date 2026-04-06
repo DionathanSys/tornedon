@@ -176,20 +176,20 @@ class AccountPayableForm
                             ->helperText('Controle automático por parcelas.'),
 
                     ]),
-                Livewire::make(InstallmentsRelationManager::class, fn(AccountPayable $record) => [
-                    'ownerRecord' => $record,
-                    'pageClass' => EditAccountPayable::class,
-                ])
-                    ->key('installments-relation-manager')
-                    ->columnSpanFull()
-                    ->visibleOn([Operation::Edit]),
-                Livewire::make(PaymentsRelationManager::class, fn(AccountPayable $record) => [
-                    'ownerRecord' => $record,
-                    'pageClass' => EditAccountPayable::class,
-                ])
-                    ->key('payments-relation-manager')
-                    ->columnSpanFull()
-                    ->visibleOn([Operation::Edit]),
+                // Livewire::make(InstallmentsRelationManager::class, fn(AccountPayable $record) => [
+                //     'ownerRecord' => $record,
+                //     'pageClass' => EditAccountPayable::class,
+                // ])
+                //     ->key('installments-relation-manager')
+                //     ->columnSpanFull()
+                //     ->visibleOn([Operation::Edit]),
+                // Livewire::make(PaymentsRelationManager::class, fn(AccountPayable $record) => [
+                //     'ownerRecord' => $record,
+                //     'pageClass' => EditAccountPayable::class,
+                // ])
+                //     ->key('payments-relation-manager')
+                //     ->columnSpanFull()
+                //     ->visibleOn([Operation::Edit]),
                 Hidden::make('company_id'),
             ]);
     }

@@ -44,6 +44,8 @@ class AccountPayableResource extends Resource
     public static function getRelations(): array
     {
         return [
+            InstallmentsRelationManager::class,
+            PaymentsRelationManager::class,
         ];
     }
 

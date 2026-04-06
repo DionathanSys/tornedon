@@ -107,17 +107,11 @@ class InstallmentsRelationManager extends RelationManager
                 EditInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->resetTable();
-                        $livewire->dispatch('refresh-installments')->to(self::class);
-                        $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
                         $livewire->dispatch('refresh-page');
                     }),
                 DeleteInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->resetTable();
-                        $livewire->dispatch('refresh-installments')->to(self::class);
-                        $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
                         $livewire->dispatch('refresh-page');
                     }),
             ])
