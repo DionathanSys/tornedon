@@ -12,6 +12,7 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas\AccountPay
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Tables\AccountPayablesTable;
 use App\Models\AccountPayable;
 use BackedEnum;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -44,8 +45,10 @@ class AccountPayableResource extends Resource
     public static function getRelations(): array
     {
         return [
-            InstallmentsRelationManager::class,
-            PaymentsRelationManager::class,
+            RelationGroup::make('Parcelas e Pagamentos', [
+                InstallmentsRelationManager::class,
+                PaymentsRelationManager::class,
+            ])
         ];
     }
 
