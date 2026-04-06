@@ -13,6 +13,9 @@ class ProductionOrderItem extends Model
         'product_id',
         'description',
         'quantity',
+        'unit_price',
+        'discount_percentage',
+        'discount_amount',
         'quantity_produced',
         'quantity_approved',
         'quantity_rejected',
@@ -27,6 +30,9 @@ class ProductionOrderItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:3',
+        'unit_price' => 'decimal:4',
+        'discount_percentage' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'quantity_produced' => 'decimal:3',
         'quantity_approved' => 'decimal:3',
         'quantity_rejected' => 'decimal:3',

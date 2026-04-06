@@ -27,7 +27,6 @@ class CreateProductionOrderItemAction
     {
         try {
             $validated = ProductionOrderItemValidator::validateCreate($data);
-            $validated['created_by'] = $this->createdBy;
 
             $item = ProductionOrderItem::create($validated);
 
