@@ -54,6 +54,11 @@ class PaymentsRelationManager extends RelationManager
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('balance_amount')
+                    ->label('Saldo')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observacoes')
                     ->limit(40)
