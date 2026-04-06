@@ -5,14 +5,20 @@ namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas;
 use App\Enum\AccountPayable\Status;
 use App\Enum\Partner\Type;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\EditAccountPayable;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Models\AccountPayable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Operation;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class AccountPayableForm
@@ -45,7 +51,7 @@ class AccountPayableForm
                             ->searchable()
                             ->native(false)
                             ->disabled()
-                            ->visibleOn('edit') 
+                            ->visibleOn('edit')
                             ->nullable(),
                         TextInput::make('installment_count')
                             ->label('Qtd. Parcelas')
@@ -70,7 +76,7 @@ class AccountPayableForm
                             ->native(false)
                             ->live()
                             ->visibleOn('create')
-                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
+                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
                             ->helperText('Escolha se as próximas parcelas avançam em 30 dias ou em um dia fixo do mês.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mês')
@@ -78,10 +84,10 @@ class AccountPayableForm
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(31)
-                            ->required(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->required(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === 'fixed_day_of_month')
                             ->visibleOn('create')
-                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === 'fixed_day_of_month')
                             ->helperText('Usado da 2ª parcela em diante. Se o mês não tiver esse dia, será usado o último dia do mês.'),
                         Select::make('status')
@@ -168,7 +174,22 @@ class AccountPayableForm
                             ->default(false)
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
+
                     ]),
+                Livewire::make(InstallmentsRelationManager::class, fn(AccountPayable $record) => [
+                    'ownerRecord' => $record,
+                    'pageClass' => EditAccountPayable::class,
+                ])
+                    ->key('installments-relation-manager')
+                    ->columnSpanFull()
+                    ->visibleOn([Operation::Edit]),
+                Livewire::make(PaymentsRelationManager::class, fn(AccountPayable $record) => [
+                    'ownerRecord' => $record,
+                    'pageClass' => EditAccountPayable::class,
+                ])
+                    ->key('payments-relation-manager')
+                    ->columnSpanFull()
+                    ->visibleOn([Operation::Edit]),
                 Hidden::make('company_id'),
             ]);
     }

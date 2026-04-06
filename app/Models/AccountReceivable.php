@@ -8,6 +8,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class AccountReceivable extends Model
 {
@@ -68,5 +69,15 @@ class AccountReceivable extends Model
     public function installments(): HasMany
     {
         return $this->hasMany(AccountReceivableInstallment::class);
+    }
+
+    public function payments(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            AccountReceivableInstallmentPayment::class,
+            AccountReceivableInstallment::class,
+            'account_receivable_id',
+            'account_receivable_installment_id'
+        );
     }
 }

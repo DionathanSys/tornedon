@@ -396,6 +396,119 @@ class AccountReceivableService
         }
     }
 
+    public function updateInstallmentPayment(
+        AccountReceivableInstallmentPayment $payment,
+        array $data
+    ): ?AccountReceivableInstallmentPayment {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($payment, $data) {
+                $payment->loadMissing('installment.accountReceivable');
+
+                $validated = AccountReceivableInstallmentValidator::validatePayment([
+                    'account_receivable_installment_id' => $payment->account_receivable_installment_id,
+                    'company_id' => $payment->company_id,
+                    'payment_date' => $data['payment_date'] ?? $payment->payment_date?->toDateString(),
+                    'amount' => $data['amount'] ?? $payment->amount,
+                    'interest_amount' => $data['interest_amount'] ?? $payment->interest_amount,
+                    'fine_amount' => $data['fine_amount'] ?? $payment->fine_amount,
+                    'discount_amount' => $data['discount_amount'] ?? $payment->discount_amount,
+                    'bank_account_id' => $data['bank_account_id'] ?? $payment->bank_account_id,
+                    'notes' => $data['notes'] ?? $payment->notes,
+                ]);
+
+                $payment->update($validated);
+
+                $installment = $payment->installment->fresh();
+                $this->recalculateReceivableInstallment($installment);
+
+                $syncAction = new SyncAccountReceivableStatusFromInstallmentsAction($installment->accountReceivable);
+                $synced = $syncAction->execute();
+
+                if ($syncAction->hasError() || $synced === null) {
+                    $this->setError(
+                        $syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a receber',
+                        $syncAction->getErrors(),
+                        422,
+                        $syncAction->getErrorCode()
+                    );
+
+                    return null;
+                }
+
+                $this->setSuccess('Recebimento atualizado com sucesso.');
+
+                return $payment->fresh();
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            return null;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao atualizar recebimento.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payment_id' => $payment->id,
+                'payload' => $data,
+            ]);
+
+            return null;
+        }
+    }
+
+    public function deleteInstallmentPayment(AccountReceivableInstallmentPayment $payment): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($payment) {
+                $payment->loadMissing('installment.accountReceivable');
+
+                $installment = $payment->installment;
+                $deleted = $payment->delete();
+
+                if (! $deleted) {
+                    $this->setError('Erro ao excluir recebimento.');
+                    return false;
+                }
+
+                $this->recalculateReceivableInstallment($installment->fresh());
+
+                $syncAction = new SyncAccountReceivableStatusFromInstallmentsAction($installment->accountReceivable);
+                $synced = $syncAction->execute();
+
+                if ($syncAction->hasError() || $synced === null) {
+                    $this->setError(
+                        $syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a receber',
+                        $syncAction->getErrors(),
+                        422,
+                        $syncAction->getErrorCode()
+                    );
+
+                    return false;
+                }
+
+                $this->setSuccess('Recebimento excluido com sucesso.');
+
+                return true;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao excluir recebimento.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payment_id' => $payment->id,
+            ]);
+
+            return false;
+        }
+    }
+
     public function delete(AccountReceivable $accountReceivable): bool
     {
         $this->resetResponse();
@@ -532,6 +645,33 @@ class AccountReceivableService
     private function formatSequenceNumber(int $sequence): string
     {
         return str_pad((string) $sequence, 2, '0', STR_PAD_LEFT);
+    }
+
+    private function recalculateReceivableInstallment(AccountReceivableInstallment $installment): void
+    {
+        $installment->loadMissing('payments', 'accountReceivable');
+
+        $received = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount), 2);
+        $interest = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
+        $fine = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
+        $discount = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);
+        $dueAmount = round((float) $installment->original_amount + $interest + $fine - $discount, 2);
+        $balance = max(round($dueAmount - $received, 2), 0);
+        $status = $balance <= 0
+            ? Status::RECEIVED->value
+            : ($received > 0 ? Status::PARTIALLY_RECEIVED->value : Status::PENDING->value);
+
+        $installment->update([
+            'interest_amount' => $interest,
+            'fine_amount' => $fine,
+            'discount_amount' => $discount,
+            'due_amount' => $dueAmount,
+            'received_amount' => $received,
+            'received_date' => $status === Status::RECEIVED->value
+                ? $installment->payments->max('payment_date')
+                : null,
+            'status' => $status,
+        ]);
     }
 
     /**

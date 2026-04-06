@@ -4,14 +4,20 @@ namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas;
 
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Models\AccountReceivable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Operation;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class AccountReceivableForm
@@ -66,7 +72,7 @@ class AccountReceivableForm
                             ->native(false)
                             ->live()
                             ->visibleOn('create')
-                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
+                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
                             ->helperText('Escolha se as proximas parcelas avancam em 30 dias ou em um dia fixo do mes.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mes')
@@ -74,10 +80,10 @@ class AccountReceivableForm
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(31)
-                            ->required(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->required(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === 'fixed_day_of_month')
                             ->visibleOn('create')
-                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === 'fixed_day_of_month')
                             ->helperText('Usado da 2a parcela em diante. Se o mes nao tiver esse dia, sera usado o ultimo dia do mes.'),
                         Select::make('status')
@@ -152,6 +158,20 @@ class AccountReceivableForm
                             ->disabled()
                             ->helperText('Controle automatico por parcelas.'),
                     ]),
+                Livewire::make(InstallmentsRelationManager::class, fn(AccountReceivable $record) => [
+                    'ownerRecord' => $record,
+                    'pageClass' => EditAccountReceivable::class,
+                ])
+                    ->key('installments-relation-manager')
+                    ->columnSpanFull()
+                    ->visibleOn([Operation::Edit]),
+                Livewire::make(PaymentsRelationManager::class, fn(AccountReceivable $record) => [
+                    'ownerRecord' => $record,
+                    'pageClass' => EditAccountReceivable::class,
+                ])
+                    ->key('payments-relation-manager')
+                    ->columnSpanFull()
+                    ->visibleOn([Operation::Edit]),
                 Hidden::make('company_id'),
             ]);
     }

@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\CreateAcc
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\ListAccountReceivables;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables\AccountReceivablesTable;
 use App\Models\AccountReceivable;
@@ -44,6 +45,7 @@ class AccountReceivableResource extends Resource
     {
         return [
             InstallmentsRelationManager::class,
+            PaymentsRelationManager::class,
         ];
     }
 
