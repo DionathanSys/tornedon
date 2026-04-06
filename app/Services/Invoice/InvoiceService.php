@@ -150,13 +150,13 @@ class InvoiceService
         }
     }
 
-    public function delete(Invoice $invoice): bool
+    public function delete(Invoice $invoice, int $deletedBy): bool
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice) {
-                $action = new DeleteInvoiceAction($invoice);
+            return DB::transaction(function () use ($invoice, $deletedBy) {
+                $action = new DeleteInvoiceAction($invoice, $deletedBy);
                 $result = $action->execute();
 
                 if ($action->hasError()) {
@@ -173,6 +173,7 @@ class InvoiceService
                         'message'    => $action->getMessage(),
                         'error_code' => $action->getErrorCode(),
                         'errors'     => $action->getErrors(),
+                        'user_id'    => $deletedBy,
                     ]);
 
                     return false;
@@ -183,6 +184,7 @@ class InvoiceService
                 Log::info('Fatura excluída com sucesso via service', [
                     'metodo'     => __METHOD__ . '@' . __LINE__,
                     'invoice_id' => $invoice->id,
+                    'user_id'    => $deletedBy,
                 ]);
 
                 return $result;
@@ -196,6 +198,7 @@ class InvoiceService
                 'error_code' => $this->getErrorCode(),
                 'message'    => $e->getMessage(),
                 'trace'      => $e->getTraceAsString(),
+                'user_id'    => $deletedBy,
             ]);
 
             return false;

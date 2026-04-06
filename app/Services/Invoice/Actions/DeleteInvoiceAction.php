@@ -3,6 +3,7 @@
 namespace App\Services\Invoice\Actions;
 
 use App\Models\Invoice;
+use App\Models\User;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -13,11 +14,18 @@ class DeleteInvoiceAction
 
     public function __construct(
         private Invoice $invoice,
+        private int $deletedBy,
     ) {}
 
     public function execute(): bool
     {
         try {
+            Log::debug('Iniciando exclusão de fatura', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $this->invoice->id,
+                'number'     => $this->invoice->invoice_number,
+                'user_id'    => $this->deletedBy,
+            ]);
             if (!$this->validateCanDelete()) {
                 return false;
             }
@@ -28,6 +36,7 @@ class DeleteInvoiceAction
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
                 'number'     => $this->invoice->invoice_number,
+                'user_id'    => $this->deletedBy,
             ]);
 
             $this->setSuccess();
@@ -41,6 +50,7 @@ class DeleteInvoiceAction
                 'error_code'    => $this->getErrorCode(),
                 'invoice_id'    => $this->invoice->id,
                 'error_message' => $e->getMessage(),
+                'user_id'       => $this->deletedBy,
             ]);
 
             return false;
@@ -54,6 +64,7 @@ class DeleteInvoiceAction
                 'invoice_id'    => $this->invoice->id,
                 'error_message' => $e->getMessage(),
                 'trace'         => $e->getTraceAsString(),
+                'user_id'       => $this->deletedBy,
             ]);
 
             return false;
@@ -62,6 +73,23 @@ class DeleteInvoiceAction
 
     private function validateCanDelete(): bool
     {
+        $user = User::query()->find($this->deletedBy);
+
+        if (! $user || ! $user->belongsToCompany($this->invoice->company_id)) {
+            $this->setError('Não é possível excluir fatura de outra empresa');
+
+            Log::warning($this->getMessage(), [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'message'    => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'invoice_id' => $this->invoice->id,
+                'company_id' => $this->invoice->company_id,
+                'user_id'    => $this->deletedBy,
+            ]);
+
+            return false;
+        }
+
         if ($this->invoice->fiscalDocuments()->exists()) {
             $this->setError('Não é possível excluir fatura que já gerou documento fiscal');
 
@@ -70,6 +98,7 @@ class DeleteInvoiceAction
                 'message'    => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
+                'user_id'    => $this->deletedBy,
             ]);
 
             return false;
@@ -83,6 +112,7 @@ class DeleteInvoiceAction
                 'message'    => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
+                'user_id'    => $this->deletedBy,
             ]);
 
             return false;
@@ -96,6 +126,7 @@ class DeleteInvoiceAction
                 'message'    => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
+                'user_id'    => $this->deletedBy,
             ]);
 
             return false;

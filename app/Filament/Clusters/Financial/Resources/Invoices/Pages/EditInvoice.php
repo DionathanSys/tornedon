@@ -64,7 +64,7 @@ class EditInvoice extends EditRecord
                     ->hiddenLabel()
                     ->using(function (Model $record): bool {
                         $service = app(InvoiceService::class);
-                        $result = $service->delete($record);
+                        $result = $service->delete($record, Auth::id());
                         if ($service->hasError()) {
                             Log::error($service->getMessage(), [
                                 'metodo'     => __METHOD__ . '@' . __LINE__,
