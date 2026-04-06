@@ -24,7 +24,10 @@ class PaymentsRelationManager extends RelationManager
     protected static string|BackedEnum|null $icon = Heroicon::Banknotes;
 
     #[On('refresh-payments')]
-    public function refreshPayments(): void {}
+    public function refreshPayments(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -75,6 +78,7 @@ class PaymentsRelationManager extends RelationManager
                 EditPaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
+                        $livewire->resetTable();
                         $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
                         $livewire->dispatch('refresh-payments')->to(self::class);
                         $livewire->dispatch('refresh-page');
@@ -82,6 +86,7 @@ class PaymentsRelationManager extends RelationManager
                 DeletePaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
+                        $livewire->resetTable();
                         $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
                         $livewire->dispatch('refresh-payments')->to(self::class);
                         $livewire->dispatch('refresh-page');

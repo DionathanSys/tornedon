@@ -62,7 +62,7 @@ final class RegisterInstallmentPaymentAction
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))
-            ->action(function (AccountPayableInstallment $record, array $data): void {
+            ->action(function (Action $action, AccountPayableInstallment $record, array $data): void {
                 $service = app(AccountPayableService::class);
                 $payment = $service->registerInstallmentPayment(
                     $record,
@@ -90,17 +90,13 @@ final class RegisterInstallmentPaymentAction
                     ->title($service->getMessage() ?: 'Pagamento registrado com sucesso.')
                     ->success()
                     ->send();
-            })
-            ->after(function (InstallmentsRelationManager $livewire) {
-                Notification::make()
-                    ->title('Pagamento registrado com sucesso.')
-                    ->success()
-                    ->sendToDatabase(Auth::user());
 
-                $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
-                $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
-                $livewire->dispatch('refresh-page');
-                $livewire->refreshFormData(['installments', 'payments']);
+                $livewire = $action->getLivewire();
+                if ($livewire && method_exists($livewire, 'refreshFormData')) {
+                    $record->refresh();
+                    $record->load(['installments', 'payments']);
+                    $livewire->refreshFormData(['installments', 'payments']);
+                }
             });
     }
 }
