@@ -3,7 +3,6 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions;
 
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Models\AccountPayableInstallment;
 use App\Services\AccountPayable\AccountPayableService;
 use Filament\Actions\Action;
@@ -12,7 +11,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class RegisterInstallmentPaymentAction
@@ -90,6 +88,10 @@ final class RegisterInstallmentPaymentAction
                     ->title($service->getMessage() ?: 'Pagamento registrado com sucesso.')
                     ->success()
                     ->send();
-            })->after(fn (Action $action) => $action->dispatch('refresh-page'));
+            })
+            ->after(function (InstallmentsRelationManager $livewire): void {
+                $livewire->dispatch('refresh-installments');
+                $livewire->dispatch('refresh-payments');
+            });
     }
 }

@@ -78,12 +78,14 @@ class PaymentsRelationManager extends RelationManager
                 EditPaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-payments');
+                        $livewire->dispatch('refresh-installments');
                     }),
                 DeletePaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-payments');
+                        $livewire->dispatch('refresh-installments');
                     }),
             ])
             ->toolbarActions([])

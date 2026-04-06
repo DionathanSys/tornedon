@@ -24,6 +24,7 @@ class InstallmentsRelationManager extends RelationManager
 
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
 
+    #[On('refresh-installments')]
     public function refreshInstallments(): void
     {
         $this->resetTable();
@@ -106,12 +107,13 @@ class InstallmentsRelationManager extends RelationManager
                 EditInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-installments');
                     }),
                 DeleteInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-installments');
+                        $livewire->dispatch('refresh-payments');
                     }),
             ])
             ->toolbarActions([])
