@@ -5,6 +5,7 @@ namespace App\Listeners\RequisitionItem;
 use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Models\ProductStock;
+use App\Models\StockMovement;
 use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 use App\Notification\NotifyService as notify;
@@ -17,6 +18,12 @@ class HandleStockReservationCreated
 
     public function handle(RequisitionItemCreated $event): void
     {
+        Log::info('HandleStockReservationCreated: Item criado', [
+            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'item_id'    => $event->item->id,
+            'created_by' => $event->createdBy,
+        ]);
+        
         $item    = $event->item;
         $product = $item->product;
 
@@ -36,6 +43,21 @@ class HandleStockReservationCreated
             );
 
             Log::warning('HandleStockReservationCreated: Estoque não encontrado para o produto', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'product_id' => $product->id,
+                'item_id'    => $item->id,
+            ]);
+            return;
+        }
+
+        $existingReservation = StockMovement::query()
+            ->where('source_type', 'requisition_item')
+            ->where('source_id', $item->id)
+            ->where('type', Type::RESERVATION->value)
+            ->exists();
+
+        if ($existingReservation) {
+            Log::warning('HandleStockReservationCreated: Reserva ja existente para o item; duplicidade evitada', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'product_id' => $product->id,
                 'item_id'    => $item->id,

@@ -13,10 +13,13 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ViewInvoice
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Size;
@@ -38,6 +41,49 @@ class EditRequisition extends EditRecord
     {
         return [
             ActionGroup::make([
+                Action::make('back')
+                    ->label('Voltar')
+                    ->icon(Heroicon::ArrowLeft)
+                    ->color(Color::Gray)
+                    ->url(RequisitionResource::getUrl()),
+                CreateAction::make()
+                    ->label('Requisição')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small)
+                    ->mutateDataUsing(function (array $data): array {
+                        $tenant = Filament::getTenant();
+                        $data['company_id'] = $tenant->id;
+
+                        return $data;
+                    })
+                    ->using(function (array $data, string $model, CreateAction $action): Model {
+                        $service = app(RequisitionService::class);
+                        $requisition = $service->create($data, Auth::id());
+
+                        if ($service->hasError() || $requisition === null) {
+                            Log::error($service->getMessage(), [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'message' => $service->getMessage(),
+                                'error_code' => $service->getErrorCode(),
+                                'errors' => $service->getErrors(),
+                            ]);
+
+                            notify::error(
+                                message: $service->getMessageUser(),
+                                errorCode: $service->getErrorCode()
+                            );
+
+                            $action->halt();
+                        }
+
+                        Log::info('CreateRequisition: Requisição criada com sucesso', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'requisition_id' => $requisition->id,
+                        ]);
+
+                        return $requisition;
+                    })
+                    ->successRedirectUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
                     ->color(Color::Green)
