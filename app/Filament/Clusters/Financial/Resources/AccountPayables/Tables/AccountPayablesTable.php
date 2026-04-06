@@ -7,6 +7,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -100,7 +101,8 @@ class AccountPayablesTable
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Conta à Pagar')
-                    ->icon(Heroicon::Plus),
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ]);
     }
 }

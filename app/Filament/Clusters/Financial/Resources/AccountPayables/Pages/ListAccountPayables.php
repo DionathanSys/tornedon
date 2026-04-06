@@ -17,9 +17,6 @@ class ListAccountPayables extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Conta a Pagar')
-                ->icon(Heroicon::Plus),
         ];
     }
 
@@ -32,23 +29,15 @@ class ListAccountPayables extends ListRecords
                 ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', Status::PENDING->value))
                 ->badge(static::getResource()::getEloquentQuery()->where('status', Status::PENDING->value)->count())
                 ->badgeColor(Status::PENDING->color()),
-            Status::PAID->value => Tab::make('Paga')
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', Status::PAID->value))
-                ->badge(static::getResource()::getEloquentQuery()->where('status', Status::PAID->value)->count())
-                ->badgeColor(Status::PAID->color()),
             Status::OVERDUE->value => Tab::make('Vencida')
                 ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', Status::OVERDUE->value))
                 ->badge(static::getResource()::getEloquentQuery()->where('status', Status::OVERDUE->value)->count())
                 ->badgeColor(Status::OVERDUE->color()),
-            Status::CANCELLED->value => Tab::make('Cancelada')
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('status', Status::CANCELLED->value))
-                ->badge(static::getResource()::getEloquentQuery()->where('status', Status::CANCELLED->value)->count())
-                ->badgeColor(Status::CANCELLED->color()),
         ];
     }
 
     public function getDefaultActiveTab(): string | int | null
     {
-        return 'pendente';
+        return Status::PENDING->value;
     }
 }
