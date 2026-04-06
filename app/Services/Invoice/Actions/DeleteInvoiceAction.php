@@ -18,12 +18,6 @@ class DeleteInvoiceAction
     public function execute(): bool
     {
         try {
-            Log::debug('Iniciando exclusão de fatura', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'invoice_id' => $this->invoice->id,
-                'number'     => $this->invoice->invoice_number,
-            ]);
-
             if (!$this->validateCanDelete()) {
                 return false;
             }

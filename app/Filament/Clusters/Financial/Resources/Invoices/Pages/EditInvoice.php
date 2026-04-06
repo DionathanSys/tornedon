@@ -63,16 +63,10 @@ class EditInvoice extends EditRecord
                     ->icon(Heroicon::Trash)
                     ->hiddenLabel()
                     ->using(function (Model $record): bool {
-                        Log::debug('EditInvoice: Iniciando exclusão de fatura', [
-                            'metodo'     => __METHOD__ . '@' . __LINE__,
-                            'invoice_id' => $record->id,
-                        ]);
-
                         $service = app(InvoiceService::class);
                         $result = $service->delete($record);
-
                         if ($service->hasError()) {
-                            Log::error('EditInvoice: Erro ao deletar fatura', [
+                            Log::error($service->getMessage(), [
                                 'metodo'     => __METHOD__ . '@' . __LINE__,
                                 'error_code' => $service->getErrorCode(),
                                 'message'    => $service->getMessage(),
