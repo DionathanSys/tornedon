@@ -3,9 +3,11 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Tables;
 
 use App\Enum\AccountPayable\Status;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -96,7 +98,9 @@ class AccountPayablesTable
                     ->iconButton(),
             ])
             ->toolbarActions([
-                DeleteBulkAction::make(),
+                CreateAction::make()
+                    ->label('Conta à Pagar')
+                    ->icon(Heroicon::Plus),
             ]);
     }
 }

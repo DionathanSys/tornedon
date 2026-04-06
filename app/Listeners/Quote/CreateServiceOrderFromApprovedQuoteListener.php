@@ -7,8 +7,10 @@ use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type;
 use App\Events\Quote\QuoteApproved;
+use App\Models\Quote;
 use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
+use BackedEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,57 +22,56 @@ class CreateServiceOrderFromApprovedQuoteListener
     public function handle(QuoteApproved $event): void
     {
         try {
-            // Guarda de idempotência: evita criar OS duplicada caso o evento dispare mais de uma vez
-            if ($event->quote->serviceOrders()->exists()) {
-                Log::warning('CreateServiceOrderFromApprovedQuoteListener: Ordem de serviço já existe para este orçamento, ignorando', [
-                    'quote_id' => $event->quote->id,
-                ]);
-                return;
-            }
+            DB::transaction(function () use ($event) {
+                $quote = Quote::query()
+                    ->lockForUpdate()
+                    ->findOrFail($event->quote->id);
 
-            // Busca apenas os itens com destinação de ordem de serviço
-            $quoteItems = $event->quote->items()
-                ->where('destination', Destination::ORDER_SERVICE->value)
-                ->get();
+                if ($quote->serviceOrders()->exists()) {
+                    Log::warning('CreateServiceOrderFromApprovedQuoteListener: Ordem de servico ja existe para este orcamento, ignorando', [
+                        'quote_id' => $quote->id,
+                    ]);
+                    return;
+                }
 
-            if ($quoteItems->isEmpty()) {
-                Log::info('CreateServiceOrderFromApprovedQuoteListener: Nenhum item com destinação SERVIÇO', [
-                    'quote_id' => $event->quote->id,
-                ]);
-                return;
-            }
+                $quoteItems = $quote->items()
+                    ->where('destination', Destination::ORDER_SERVICE->value)
+                    ->get();
 
-            DB::transaction(function () use ($event, $quoteItems) {
-                Log::debug('CreateServiceOrderFromApprovedQuoteListener: Criando ordem de serviço', [
-                    'quote_id' => $event->quote->id,
+                if ($quoteItems->isEmpty()) {
+                    Log::info('CreateServiceOrderFromApprovedQuoteListener: Nenhum item com destinacao SERVICO', [
+                        'quote_id' => $quote->id,
+                    ]);
+                    return;
+                }
+
+                Log::debug('CreateServiceOrderFromApprovedQuoteListener: Criando ordem de servico', [
+                    'quote_id' => $quote->id,
                     'items_count' => $quoteItems->count(),
                 ]);
 
-                // Calcula total de horas estimadas
                 $totalEstimatedHours = $quoteItems->sum('estimated_production_hours');
 
-                // Cria a ordem de serviço via service
                 $serviceOrderService = app(ServiceOrderService::class);
                 $serviceOrder = $serviceOrderService->create([
-                    'customer_id' => $event->quote->customer_id,
-                    'company_id' => $event->quote->company_id,
-                    'quote_id' => $event->quote->id,
+                    'customer_id' => $quote->customer_id,
+                    'company_id' => $quote->company_id,
+                    'quote_id' => $quote->id,
                     'order_date' => now()->toDateString(),
-                    'scheduled_date' => now()->addDays(7)->toDateString(), // Padrão: 7 dias
+                    'scheduled_date' => now()->addDays(7)->toDateString(),
                     'status' => ServiceOrderState::OPEN->value,
                     'priority' => Priority::NORMAL->value,
-                    'type' => Type::MAINTENANCE->value, // Tipo padrão
+                    'type' => Type::MAINTENANCE->value,
                     'estimated_hours' => $totalEstimatedHours,
-                    'payment_method' => $event->quote->payment_method,
-                    'payment_condition' => $event->quote->payment_condition,
-                    'customer_observations' => "Gerada a partir do orçamento #{$event->quote->quote_number}\n{$event->quote->observations}",
+                    'payment_method' => $this->normalizeEnumValue($quote->payment_method),
+                    'payment_condition' => $this->normalizeEnumValue($quote->payment_condition),
+                    'customer_observations' => "Gerada a partir do orcamento #{$quote->quote_number}\n{$quote->observations}",
                 ], $event->approvedBy);
 
-                if (!$serviceOrder) {
-                    throw new \Exception('Erro ao criar ordem de serviço através do service: ' . $serviceOrderService->getMessage());
+                if (! $serviceOrder) {
+                    throw new \Exception('Erro ao criar ordem de servico atraves do service: ' . $serviceOrderService->getMessage());
                 }
 
-                // Cria os itens da ordem de serviço via ServiceOrderItemService
                 $itemService = app(ServiceOrderItemService::class);
                 foreach ($quoteItems as $quoteItem) {
                     $item = $itemService->create([
@@ -83,26 +84,24 @@ class CreateServiceOrderFromApprovedQuoteListener
                         'observations' => $quoteItem->description,
                     ], $event->approvedBy);
 
-                    if (!$item) {
-                        throw new \Exception('Erro ao criar item da ordem de serviço: ' . $itemService->getMessage());
+                    if (! $item) {
+                        throw new \Exception('Erro ao criar item da ordem de servico: ' . $itemService->getMessage());
                     }
                 }
 
-                // Marca os itens do orçamento como vinculados (sem erros)
                 foreach ($quoteItems as $quoteItem) {
                     $quoteItem->update(['status' => \App\Enum\Quote\Status::LINKED]);
                 }
 
-                Log::info('CreateServiceOrderFromApprovedQuoteListener: Ordem de serviço criada com sucesso', [
-                    'quote_id' => $event->quote->id,
+                Log::info('CreateServiceOrderFromApprovedQuoteListener: Ordem de servico criada com sucesso', [
+                    'quote_id' => $quote->id,
                     'service_order_id' => $serviceOrder->id,
                     'items_count' => $quoteItems->count(),
                     'total_estimated_hours' => $totalEstimatedHours,
                 ]);
             });
-
         } catch (\Exception $e) {
-            Log::error('CreateServiceOrderFromApprovedQuoteListener: Erro ao criar ordem de serviço', [
+            Log::error('CreateServiceOrderFromApprovedQuoteListener: Erro ao criar ordem de servico', [
                 'quote_id' => $event->quote->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -110,5 +109,10 @@ class CreateServiceOrderFromApprovedQuoteListener
 
             throw $e;
         }
+    }
+
+    private function normalizeEnumValue(mixed $value): mixed
+    {
+        return $value instanceof BackedEnum ? $value->value : $value;
     }
 }

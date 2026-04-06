@@ -69,6 +69,7 @@ class ServiceOrderValidator
                 'max:50',
                 Rule::unique('service_orders', 'number')->where('company_id', $data['company_id'] ?? null),
             ],
+            'company_id'                => 'required|integer|exists:companies,id',
             'customer_id'               => 'required|integer|exists:partners,id',
             'order_date'                => 'required|date',
             'scheduled_date'            => 'nullable|date|after_or_equal:order_date',

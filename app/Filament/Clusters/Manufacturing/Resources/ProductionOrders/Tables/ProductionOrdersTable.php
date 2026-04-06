@@ -116,8 +116,6 @@ class ProductionOrdersTable
                     ->iconButton(),
                 DownloadProductionOrderPdfAction::make()
                     ->iconButton(),
-                ViewAction::make()
-                    ->iconButton(),
                 EditAction::make()
                     ->iconButton(),
             ])
