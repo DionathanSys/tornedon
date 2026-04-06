@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions;
 
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Models\AccountPayableInstallment;
 use App\Services\AccountPayable\AccountPayableService;
 use Filament\Actions\Action;
@@ -95,6 +96,9 @@ final class RegisterInstallmentPaymentAction
                     ->title('Pagamento registrado com sucesso.')
                     ->success()
                     ->sendToDatabase(Auth::user());
+
+                $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
+                $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
                 $livewire->dispatch('refresh-page');
             });
     }

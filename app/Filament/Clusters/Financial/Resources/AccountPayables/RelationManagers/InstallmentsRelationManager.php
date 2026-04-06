@@ -10,6 +10,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class InstallmentsRelationManager extends RelationManager
 {
@@ -22,6 +23,9 @@ class InstallmentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Parcelas';
 
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
+
+    #[On('refresh-installments')]
+    public function refreshInstallments(): void {}
 
     public function table(Table $table): Table
     {
@@ -100,11 +104,15 @@ class InstallmentsRelationManager extends RelationManager
                 EditInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-installments')->to(self::class);
+                        $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
                         $livewire->dispatch('refresh-page');
                     }),
                 DeleteInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-installments')->to(self::class);
+                        $livewire->dispatch('refresh-payments')->to(PaymentsRelationManager::class);
                         $livewire->dispatch('refresh-page');
                     }),
             ])

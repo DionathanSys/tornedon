@@ -9,6 +9,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class PaymentsRelationManager extends RelationManager
 {
@@ -21,6 +22,9 @@ class PaymentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Pagamentos';
 
     protected static string|BackedEnum|null $icon = Heroicon::Banknotes;
+
+    #[On('refresh-payments')]
+    public function refreshPayments(): void {}
 
     public function table(Table $table): Table
     {
@@ -71,11 +75,15 @@ class PaymentsRelationManager extends RelationManager
                 EditPaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
+                        $livewire->dispatch('refresh-payments')->to(self::class);
                         $livewire->dispatch('refresh-page');
                     }),
                 DeletePaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
+                        $livewire->dispatch('refresh-installments')->to(InstallmentsRelationManager::class);
+                        $livewire->dispatch('refresh-payments')->to(self::class);
                         $livewire->dispatch('refresh-page');
                     }),
             ])
