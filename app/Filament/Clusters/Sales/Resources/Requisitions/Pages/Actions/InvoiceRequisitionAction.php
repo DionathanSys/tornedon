@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\Requisition;
 use App\Notification\NotifyService as notify;
@@ -29,7 +30,8 @@ final class InvoiceRequisitionAction
                 Checkbox::make('request_fiscal_document')
                     ->label('Solicitar documento fiscal agora')
                     ->helperText('Se desmarcado, a fatura será criada em aberto para posterior emissão do documento fiscal.')
-                    ->default(false),
+                    ->default(false)
+                    ->visible(false),
             ])
             ->visible(fn (Requisition $record): bool => $record->status === Status::CLOSED)
             ->action(function (Requisition $record, array $data): void {
@@ -67,6 +69,6 @@ final class InvoiceRequisitionAction
                 notify::success('Requisição faturada com sucesso.');
             })
             ->successNotification(null)
-            ->successRedirectUrl(fn (Requisition $record): string => RequisitionResource::getUrl('edit', ['record' => $record->id]));
+            ->successRedirectUrl(fn (Requisition $record): string => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]));
     }
 }
