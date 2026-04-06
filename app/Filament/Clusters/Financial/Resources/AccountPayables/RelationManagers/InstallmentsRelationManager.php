@@ -24,7 +24,6 @@ class InstallmentsRelationManager extends RelationManager
 
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
 
-    #[On('refresh-installments')]
     public function refreshInstallments(): void
     {
         $this->resetTable();

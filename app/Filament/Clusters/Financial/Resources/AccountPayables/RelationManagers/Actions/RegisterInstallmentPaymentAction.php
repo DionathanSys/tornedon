@@ -90,6 +90,6 @@ final class RegisterInstallmentPaymentAction
                     ->title($service->getMessage() ?: 'Pagamento registrado com sucesso.')
                     ->success()
                     ->send();
-            });
+            })->after(fn (Action $action) => $action->dispatch('refresh-page'));
     }
 }
