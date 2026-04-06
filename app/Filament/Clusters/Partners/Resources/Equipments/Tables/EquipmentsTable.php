@@ -40,6 +40,21 @@ class EquipmentsTable
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->disabledClick(),
+                TextColumn::make('mark')
+                    ->label('Marca')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('model')
+                    ->label('Modelo')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('name')
+                    ->label('Descrição')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('identifier')
                     ->label('Placa / Nº Série')
                     ->disabledClick()
