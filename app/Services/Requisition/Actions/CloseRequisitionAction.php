@@ -10,7 +10,6 @@ use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,7 +24,7 @@ class CloseRequisitionAction
     public function execute(Requisition $requisition): ?Requisition
     {
         try {
-            Log::debug('CloseRequisitionAction: Encerrando requisição', [
+            Log::debug('CloseRequisitionAction: Encerrando requisicao', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'user_id'        => $this->userId,
@@ -34,10 +33,21 @@ class CloseRequisitionAction
 
             return DB::transaction(function () use ($requisition) {
                 $productStockService = app(ProductStockService::class);
-                $items = $requisition->items()->where('stock_consumed', false)->with('product')->get();
+                $items = $requisition
+                    ->items()
+                    ->where('stock_consumed', false)
+                    ->with('product')
+                    ->get();
 
-                // 1. Valida saldo disponível para todos os itens antes de prosseguir
                 foreach ($items as $item) {
+                    Log::debug('CloseRequisitionAction: Item', [
+                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'requisition_id' => $requisition->id,
+                        'item_id'        => $item->id,
+                        'product_id'     => $item->product_id,
+                        'product_name'   => $item->product->name ?? 'N/A',
+                        'has_stock_control' => $item->product?->has_stock_control,
+                    ]);
                     if (! $item->product_id || ! $item->product?->has_stock_control) {
                         continue;
                     }
@@ -47,43 +57,46 @@ class CloseRequisitionAction
                             'Saldo insuficiente para "%s". Verifique o estoque antes de encerrar.',
                             $item->product->name ?? "Produto #{$item->product_id}"
                         ));
+
                         return null;
                     }
                 }
 
-                // 2. Se stock_reserved === false a requisição foi reaberta e as reservas
-                //    foram liberadas — é necessário recriá-las agora.
-                //    Quando stock_reserved === null (primeiro fechamento) os listeners
-                //    já criaram as reservas ao adicionar cada item (sem duplicar).
-                if ($requisition->stock_reserved === false && ! $this->hasActiveReservations($requisition, $items)) {
+                if ($this->shouldRecreateReservations($requisition)) {
+                    Log::debug('CloseRequisitionAction: Recreating reservations', [
+                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'requisition_id' => $requisition->id,
+                        'user_id'        => $this->userId,
+                    ]);
                     $this->recreateReservations($requisition, $items);
                 }
 
-                // 3. Transição de estado (open → closed)
                 $requisition->state()->close($requisition, $this->userId);
-
-                // 4. Marca que as reservas estão ativas no estoque
                 $requisition->update(['stock_reserved' => true]);
-
                 $requisition->refresh();
 
                 $this->setSuccess();
+
+                Log::debug('CloseRequisitionAction: Requisition closed', [
+                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'requisition_id' => $requisition->id,
+                    'user_id'        => $this->userId,
+                ]);
+
                 return $requisition;
             });
-
         } catch (DomainValidationException $e) {
-            $this->setError('Transição inválida', $e->errors);
+            $this->setError('Transicao invalida', $e->errors);
 
-            Log::warning('CloseRequisitionAction: Transição inválida', [
+            Log::warning('CloseRequisitionAction: Transicao invalida', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
                 'errors'         => $e->errors,
             ]);
 
             return null;
-
         } catch (QueryException $e) {
-            $this->setError('Erro ao encerrar requisição no banco de dados');
+            $this->setError('Erro ao encerrar requisicao no banco de dados');
 
             Log::error('CloseRequisitionAction: QueryException', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -92,9 +105,8 @@ class CloseRequisitionAction
             ]);
 
             return null;
-
         } catch (\Exception $e) {
-            $this->setError('Erro ao encerrar requisição: ' . $e->getMessage());
+            $this->setError('Erro ao encerrar requisicao: ' . $e->getMessage());
 
             Log::error('CloseRequisitionAction: Erro inesperado', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -108,13 +120,48 @@ class CloseRequisitionAction
     }
 
     /**
-     * Recria movimentos RESERVATION para todos os itens não consumidos.
-     * Chamado apenas quando stock_reserved === false (ciclo: fechado → reaberto → fechado).
+     * Recria movimentos RESERVATION apenas quando a requisicao foi reaberta
+     * e ainda existe liberacao pendente para recompor.
      */
+    private function shouldRecreateReservations(Requisition $requisition): bool
+    {
+        $netReleasedQuantity = (float) StockMovement::query()
+            ->where('source_type', 'requisition')
+            ->where('source_id', $requisition->id)
+            ->whereIn('type', [
+                Type::RESERVATION_RELEASE->value,
+                Type::RESERVATION->value,
+            ])
+            ->get(['type', 'quantity'])
+            ->sum(function (StockMovement $movement): float {
+                return $movement->type === Type::RESERVATION_RELEASE
+                    ? (float) $movement->quantity
+                    : -(float) $movement->quantity;
+            });
+
+        Log::debug('CloseRequisitionAction: Net released quantity', [
+            'metodo'         => __METHOD__ . '@' . __LINE__,
+            'requisition_id' => $requisition->id,
+            'net_released_quantity' => $netReleasedQuantity,
+        ]);
+
+        $shouldRecreate = $netReleasedQuantity > 0.0001;
+
+        if (! $shouldRecreate && $requisition->stock_reserved === false) {
+            Log::warning('CloseRequisitionAction: Flag indicava reabertura, mas nao ha liberacao pendente; recriacao ignorada', [
+                'requisition_id'        => $requisition->id,
+                'stock_reserved'        => $requisition->stock_reserved,
+                'net_released_quantity' => $netReleasedQuantity,
+            ]);
+        }
+
+        return $shouldRecreate;
+    }
+
     private function recreateReservations(Requisition $requisition, $items): void
     {
         $stockMovementService = app(StockMovementService::class);
-        $productStockService  = app(ProductStockService::class);
+        $productStockService = app(ProductStockService::class);
 
         foreach ($items as $item) {
             if (! $item->product_id || ! $item->product?->has_stock_control) {
@@ -124,11 +171,12 @@ class CloseRequisitionAction
             $stock = $productStockService->findByProductId($item->product_id, $requisition->company_id);
 
             if (! $stock) {
-                Log::warning('CloseRequisitionAction: ProductStock não encontrado ao recriar reserva', [
+                Log::warning('CloseRequisitionAction: ProductStock nao encontrado ao recriar reserva', [
                     'product_id'     => $item->product_id,
                     'item_id'        => $item->id,
                     'requisition_id' => $requisition->id,
                 ]);
+
                 continue;
             }
 
@@ -139,7 +187,7 @@ class CloseRequisitionAction
                 'type'             => Type::RESERVATION->value,
                 'quantity'         => (float) $item->quantity,
                 'unit_price'       => (float) ($item->unit_price ?? 0),
-                'reason'           => 'Reserva recriada por re-encerramento — requisição #' . $requisition->number,
+                'reason'           => 'Reserva recriada por re-encerramento - requisicao #' . $requisition->number,
                 'source_type'      => 'requisition',
                 'source_id'        => $requisition->id,
             ], $this->userId);
@@ -151,63 +199,12 @@ class CloseRequisitionAction
                 );
             }
 
-            Log::info('CloseRequisitionAction: Reserva recriada após reabertura', [
+            Log::info('CloseRequisitionAction: Reserva recriada apos reabertura', [
                 'product_id'     => $item->product_id,
                 'quantity'       => $item->quantity,
                 'movement_id'    => $movement->id,
                 'requisition_id' => $requisition->id,
             ]);
         }
-    }
-
-    /**
-     * Evita recriar reservas quando a requisição já possui saldo reservado ativo.
-     */
-    private function hasActiveReservations(Requisition $requisition, Collection $items): bool
-    {
-        $itemIds = $items->pluck('id')->filter()->values();
-
-        if ($itemIds->isEmpty()) {
-            return false;
-        }
-
-        $netReservedByProduct = StockMovement::query()
-            ->where(function ($query) use ($requisition, $itemIds) {
-                $query
-                    ->where(function ($q) use ($requisition) {
-                        $q->where('source_type', 'requisition')
-                            ->where('source_id', $requisition->id);
-                    })
-                    ->orWhere(function ($q) use ($itemIds) {
-                        $q->where('source_type', 'requisition_item')
-                            ->whereIn('source_id', $itemIds);
-                    });
-            })
-            ->whereIn('type', [
-                Type::RESERVATION->value,
-                Type::RESERVATION_RELEASE->value,
-            ])
-            ->get(['product_id', 'type', 'quantity'])
-            ->groupBy('product_id')
-            ->map(function (Collection $movements): float {
-                return (float) $movements->sum(function (StockMovement $movement): float {
-                    return $movement->type === Type::RESERVATION
-                        ? (float) $movement->quantity
-                        : -(float) $movement->quantity;
-                });
-            });
-
-        $hasActiveReservations = $netReservedByProduct->contains(
-            fn (float $quantity): bool => $quantity > 0.0001
-        );
-
-        if ($hasActiveReservations) {
-            Log::warning('CloseRequisitionAction: Reserva já estava ativa; recriação ignorada para evitar duplicidade', [
-                'requisition_id'          => $requisition->id,
-                'net_reserved_by_product' => $netReservedByProduct->all(),
-            ]);
-        }
-
-        return $hasActiveReservations;
     }
 }
