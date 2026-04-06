@@ -11,6 +11,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class RegisterInstallmentPaymentAction
@@ -90,6 +91,10 @@ final class RegisterInstallmentPaymentAction
                     ->send();
             })
             ->after(function (InstallmentsRelationManager $livewire) {
+                Notification::make()
+                    ->title('Pagamento registrado com sucesso.')
+                    ->success()
+                    ->sendToDatabase(Auth::user());
                 $livewire->dispatch('refresh-page');
             });
     }
