@@ -42,7 +42,6 @@ class AccountReceivableInstallmentValidator
             'sequence_number' => ['required', 'string', 'max:3'],
             'due_date' => ['required', 'date'],
             'due_amount' => ['required', 'numeric', 'min:0'],
-            'balance_amount' => ['required', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(array_column(Status::cases(), 'value'))],
             'received_date' => ['nullable', 'date'],
             'original_amount' => ['nullable', 'numeric', 'min:0'],
@@ -61,7 +60,7 @@ class AccountReceivableInstallmentValidator
     {
         $rules = self::installmentRules();
 
-        foreach (['account_receivable_id', 'company_id', 'sequence_number', 'due_date', 'due_amount', 'balance_amount', 'status'] as $field) {
+        foreach (['account_receivable_id', 'company_id', 'sequence_number', 'due_date', 'due_amount', 'status'] as $field) {
             array_unshift($rules[$field], 'sometimes');
         }
 
@@ -113,9 +112,6 @@ class AccountReceivableInstallmentValidator
             'due_amount.required' => 'O valor da parcela e obrigatorio.',
             'due_amount.numeric' => 'O valor da parcela deve ser numerico.',
             'due_amount.min' => 'O valor da parcela nao pode ser negativo.',
-            'balance_amount.required' => 'O saldo da parcela e obrigatorio.',
-            'balance_amount.numeric' => 'O saldo da parcela deve ser numerico.',
-            'balance_amount.min' => 'O saldo da parcela nao pode ser negativo.',
             'payment_date.required' => 'A data de recebimento e obrigatoria.',
             'payment_date.date' => 'A data de recebimento deve ser valida.',
             'amount.required' => 'O valor do recebimento e obrigatorio.',

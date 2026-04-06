@@ -23,7 +23,6 @@ class AccountPayableInstallment extends Model
         'discount_amount',
         'due_amount',
         'paid_amount',
-        'balance_amount',
         'bank_account_id',
         'financial_category_id',
         'cost_center_id',

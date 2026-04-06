@@ -75,7 +75,6 @@ class RegisterAccountPayableInstallmentPaymentAction
                 'discount_amount' => $totals['discount'],
                 'due_amount' => $totals['due_amount'],
                 'paid_amount' => $totals['paid'],
-                'balance_amount' => $totals['balance'],
                 'paid_date' => $totals['status'] === Status::PAID->value ? $validated['payment_date'] : null,
                 'status' => $totals['status'],
             ]);

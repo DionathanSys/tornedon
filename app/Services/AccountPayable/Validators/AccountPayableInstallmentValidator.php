@@ -42,7 +42,6 @@ class AccountPayableInstallmentValidator
             'sequence_number' => ['required', 'string', 'max:3'],
             'due_date' => ['required', 'date'],
             'due_amount' => ['required', 'numeric', 'min:0'],
-            'balance_amount' => ['required', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(array_column(Status::cases(), 'value'))],
             'paid_date' => ['nullable', 'date'],
             'original_amount' => ['nullable', 'numeric', 'min:0'],
@@ -61,7 +60,7 @@ class AccountPayableInstallmentValidator
     {
         $rules = self::installmentRules();
 
-        foreach (['account_payable_id', 'company_id', 'sequence_number', 'due_date', 'due_amount', 'balance_amount', 'status'] as $field) {
+        foreach (['account_payable_id', 'company_id', 'sequence_number', 'due_date', 'due_amount', 'status'] as $field) {
             array_unshift($rules[$field], 'sometimes');
         }
 
@@ -101,29 +100,26 @@ class AccountPayableInstallmentValidator
     private static function messages(): array
     {
         return [
-            'account_payable_id.required' => 'A conta a pagar é obrigatória.',
-            'account_payable_id.exists' => 'Conta a pagar não encontrada.',
-            'account_payable_installment_id.required' => 'A parcela é obrigatória.',
-            'account_payable_installment_id.exists' => 'Parcela não encontrada.',
-            'company_id.required' => 'A empresa é obrigatória.',
-            'company_id.exists' => 'Empresa não encontrada.',
-            'sequence_number.required' => 'A sequência da parcela é obrigatória.',
-            'due_date.required' => 'A data de vencimento é obrigatória.',
-            'due_date.date' => 'A data de vencimento deve ser válida.',
-            'due_amount.required' => 'O valor da parcela é obrigatório.',
-            'due_amount.numeric' => 'O valor da parcela deve ser numérico.',
-            'due_amount.min' => 'O valor da parcela não pode ser negativo.',
-            'balance_amount.required' => 'O saldo da parcela é obrigatório.',
-            'balance_amount.numeric' => 'O saldo da parcela deve ser numérico.',
-            'balance_amount.min' => 'O saldo da parcela não pode ser negativo.',
-            'payment_date.required' => 'A data de pagamento é obrigatória.',
-            'payment_date.date' => 'A data de pagamento deve ser válida.',
-            'amount.required' => 'O valor do pagamento é obrigatório.',
-            'amount.numeric' => 'O valor do pagamento deve ser numérico.',
+            'account_payable_id.required' => 'A conta a pagar e obrigatoria.',
+            'account_payable_id.exists' => 'Conta a pagar nao encontrada.',
+            'account_payable_installment_id.required' => 'A parcela e obrigatoria.',
+            'account_payable_installment_id.exists' => 'Parcela nao encontrada.',
+            'company_id.required' => 'A empresa e obrigatoria.',
+            'company_id.exists' => 'Empresa nao encontrada.',
+            'sequence_number.required' => 'A sequencia da parcela e obrigatoria.',
+            'due_date.required' => 'A data de vencimento e obrigatoria.',
+            'due_date.date' => 'A data de vencimento deve ser valida.',
+            'due_amount.required' => 'O valor da parcela e obrigatorio.',
+            'due_amount.numeric' => 'O valor da parcela deve ser numerico.',
+            'due_amount.min' => 'O valor da parcela nao pode ser negativo.',
+            'payment_date.required' => 'A data de pagamento e obrigatoria.',
+            'payment_date.date' => 'A data de pagamento deve ser valida.',
+            'amount.required' => 'O valor do pagamento e obrigatorio.',
+            'amount.numeric' => 'O valor do pagamento deve ser numerico.',
             'amount.gt' => 'O valor do pagamento deve ser maior que zero.',
-            'bank_account_id.exists' => 'Conta bancária não encontrada.',
-            'status.required' => 'O status é obrigatório.',
-            'status.in' => 'Status de parcela inválido.',
+            'bank_account_id.exists' => 'Conta bancaria nao encontrada.',
+            'status.required' => 'O status e obrigatorio.',
+            'status.in' => 'Status de parcela invalido.',
         ];
     }
 }

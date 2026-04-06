@@ -219,7 +219,6 @@ class AccountPayableService
             'discount_amount' => 0,
             'due_amount' => $amount,
             'paid_amount' => 0,
-            'balance_amount' => $amount,
             'bank_account_id' => $installmentData['bank_account_id'] ?? null,
             'financial_category_id' => $installmentData['financial_category_id'] ?? null,
             'cost_center_id' => $installmentData['cost_center_id'] ?? null,
