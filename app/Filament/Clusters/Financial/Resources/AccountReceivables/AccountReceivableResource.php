@@ -24,9 +24,9 @@ class AccountReceivableResource extends Resource
 
     protected static ?string $cluster = FinancialCluster::class;
 
-    protected static ?string $modelLabel = 'Conta a Receber';
+    protected static ?string $modelLabel = 'Conta à Receber';
 
-    protected static ?string $pluralModelLabel = 'Contas a Receber';
+    protected static ?string $pluralModelLabel = 'Contas à Receber';
 
     protected static ?int $navigationSort = 3;
 

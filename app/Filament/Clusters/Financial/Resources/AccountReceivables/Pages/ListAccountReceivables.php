@@ -14,9 +14,6 @@ class ListAccountReceivables extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Conta a Receber')
-                ->icon(Heroicon::Plus),
         ];
     }
 }

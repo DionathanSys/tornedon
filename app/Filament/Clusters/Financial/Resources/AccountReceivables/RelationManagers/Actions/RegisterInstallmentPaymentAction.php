@@ -31,23 +31,28 @@ final class RegisterInstallmentPaymentAction
                     Money::make('amount')
                         ->label('Valor recebido')
                         ->columnSpan(1)
-                        ->default(fn (AccountReceivableInstallment $record) => $record->due_amount)
+                        ->default(fn(AccountReceivableInstallment $record) => $record->due_amount)
+                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('interest_amount')
                         ->label('Juros')
+                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                     Money::make('fine_amount')
                         ->label('Multa')
+                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                     Money::make('discount_amount')
                         ->label('Desconto')
+                        ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                     TextInput::make('bank_account_id')
-                        ->label('Conta bancaria (ID)')
+                        ->label('Conta bancária (ID)')
+                        ->visible(false)
                         ->numeric()
                         ->columnSpan(1),
                     Textarea::make('notes')
-                        ->label('Observacoes')
+                        ->label('Observações')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))

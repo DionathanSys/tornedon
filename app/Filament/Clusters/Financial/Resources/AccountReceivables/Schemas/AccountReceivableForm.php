@@ -25,7 +25,7 @@ class AccountReceivableForm
                 'lg' => 12,
             ])
             ->components([
-                Section::make('Dados da Conta a Receber')
+                Section::make('Dados da Conta à Receber')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -103,7 +103,7 @@ class AccountReceivableForm
                             ->required()
                             ->displayFormat('d/m/Y'),
                         Money::make('due_amount')
-                            ->label('Valor a Receber')
+                            ->label('Valor à Receber')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->required()
                             ->prefix('R$'),
@@ -121,7 +121,7 @@ class AccountReceivableForm
                             ->prefix('R$')
                             ->disabled(),
                     ]),
-                Section::make('Informacoes Adicionais')
+                Section::make('Informações Adicionais')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -136,7 +136,7 @@ class AccountReceivableForm
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->maxLength(50),
                         TextInput::make('description')
-                            ->label('Descricao')
+                            ->label('Descrição')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->maxLength(255),
                         Select::make('payment_method')
