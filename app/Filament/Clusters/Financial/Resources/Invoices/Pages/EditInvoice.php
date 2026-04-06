@@ -28,6 +28,11 @@ class EditInvoice extends EditRecord
 {
     protected static string $resource = InvoiceResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return "Fatura # {$this->record->number} - {$this->record->status->description()}";
+    }
+
     protected function getHeaderActions(): array
     {
         return [
