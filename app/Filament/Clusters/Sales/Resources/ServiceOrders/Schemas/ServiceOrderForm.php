@@ -77,7 +77,7 @@ class ServiceOrderForm
                                                     ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
                                                     ->getSearchResultsUsing(
                                                         fn(string $search, Get $get): array => (new EquipmentService())
-                                                            ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
+                                                            ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'), 20, ['owner' => false])
                                                     )
                                                     ->getOptionLabelUsing(
                                                         fn($value): ?string => (new EquipmentService())
