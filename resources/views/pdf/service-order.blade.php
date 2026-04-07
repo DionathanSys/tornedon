@@ -32,6 +32,7 @@
             display: inline-block;
             vertical-align: middle;
         }
+
         .page-header-status {
             display: inline-block;
             vertical-align: middle;
@@ -44,26 +45,44 @@
         }
 
         .page-header-body {
-            position: relative;
             padding: 8px 10px;
         }
-        .company-logo-wrap {
-            position: absolute;
-            top: 8px;
-            right: 10px;
+
+        .header-layout {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .header-layout td {
+            vertical-align: top;
             padding: 0;
-            text-align: right;
-            line-height: 0;
         }
+
+        .header-meta-cell {
+            padding-right: 14px;
+        }
+
+        .header-logo-cell {
+            width: 100px;
+        }
+
+        .company-logo-wrap {
+            width: 100px;
+            height: 96px;
+            border: 1px solid #d1d5db;
+            background: #ffffff;
+            text-align: center;
+            padding: 2px;
+            overflow: hidden;
+        }
+
         .company-logo {
-            max-height: 100px;
-            max-width: 130px;
+            width: 96px;
+            height: 88px;
             display: block;
+            margin: 0 auto;
         }
-        .header-meta-wrap.has-logo {
-            padding-right: 98px;
-            min-height: 63px;
-        }
+
         .meta-grid,
         .summary-table {
             width: 100%;
@@ -83,15 +102,18 @@
             color: #17385b;
             font-weight: bold;
         }
+
         .meta-inline-label {
             width: 23%;
             background: #f8fafc;
             color: #17385b;
             font-weight: bold;
         }
+
         .meta-inline-value {
             width: 29%;
         }
+
         .section-title {
             margin: 18px 0 8px 0;
             padding: 6px 10px;
@@ -180,39 +202,46 @@
 <body>
     <div class="page-header">
         <div class="page-header-bar">
-            <div class="page-header-title">{{ $pdfData['title'] }}</div>
-            <div class="page-header-status">{{ $pdfData['status'] }}</div>
+            <div class="page-header-title">{{ $pdfData['title'] }} - {{ $pdfData['status'] }}</div>
         </div>
         <div class="page-header-body">
-            @if (filled($pdfData['company_logo']))
-                <div class="company-logo-wrap">
-                    <img src="{{ $pdfData['company_logo'] }}" alt="Logo {{ $pdfData['company_name'] }}" class="company-logo">
-                </div>
-            @endif
-            <div class="header-meta-wrap{{ filled($pdfData['company_logo']) ? ' has-logo' : '' }}">
-                <table class="meta-grid">
-                    <tbody>
-                        @foreach ($pdfData['header_lines'] as $line)
-                            <tr>
-                                <td class="meta-label">{{ $line['label'] }}</td>
-                                <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
-                            </tr>
-                        @endforeach
-                        <tr>
-                            <td class="meta-inline-label">Data da Ordem</td>
-                            <td class="meta-inline-value">{{ $pdfData['order_date'] }}</td>
-                            <td class="meta-inline-label">Data Conclusão</td>
-                            <td class="meta-inline-value">{{ $pdfData['completion_date'] }}</td>
-                        </tr>
-                        @foreach ($pdfData['responsibles'] as $field)
-                            <tr>
-                                <td class="meta-label">{{ $field['label'] }}</td>
-                                <td colspan="3">{{ $field['value'] }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+            <table class="header-layout">
+                <tr>
+                    <td class="header-meta-cell">
+                        <table class="meta-grid">
+                            <tbody>
+                                @foreach ($pdfData['header_lines'] as $line)
+                                    <tr>
+                                        <td class="meta-label">{{ $line['label'] }}</td>
+                                        <td class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                                    </tr>
+                                @endforeach
+                                <tr>
+                                    <td class="meta-label">Data da Ordem</td>
+                                    <td>{{ $pdfData['order_date'] }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Data Conclusao</td>
+                                    <td>{{ $pdfData['completion_date'] }}</td>
+                                </tr>
+                                @foreach ($pdfData['responsibles'] as $field)
+                                    <tr>
+                                        <td class="meta-label">{{ $field['label'] }}</td>
+                                        <td>{{ $field['value'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </td>
+                    <td class="header-logo-cell">
+                        <div class="company-logo-wrap">
+                            @if (filled($pdfData['company_logo']))
+                                <img src="{{ $pdfData['company_logo'] }}" alt="Logo {{ $pdfData['company_name'] }}" class="company-logo">
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 
