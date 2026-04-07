@@ -120,6 +120,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
             // Processa a logo
             $logoService = app(CompanyLogoStorageService::class);
             $newLogoPath = is_array($data['logo_path']) ? (reset($data['logo_path']) ?: null) : ($data['logo_path'] ?: null);
+            $documentNumber = $this->normalizeDocumentNumber($data['document_number'] ?? null);
 
             if ($newLogoPath !== $company->logo_path) {
                 $logoService->save($company, $newLogoPath);
@@ -130,7 +131,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                 'name'            => $data['name'],
                 'email'           => $data['email'] ?? null,
                 'phone'           => $data['phone'] ?? null,
-                'document_number' => $data['document_number'] ?? null,
+                'document_number' => $documentNumber,
                 'updated_by'      => Auth::id(),
             ]);
 
@@ -146,5 +147,16 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                 ->danger()
                 ->send();
         }
+    }
+
+    private function normalizeDocumentNumber(?string $documentNumber): ?string
+    {
+        if (! filled($documentNumber)) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\D+/', '', $documentNumber);
+
+        return filled($normalized) ? $normalized : null;
     }
 }
