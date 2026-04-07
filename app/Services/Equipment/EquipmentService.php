@@ -218,6 +218,12 @@ class EquipmentService
      */
     private static function formatSelectLabel(Equipment $equipment, array $options = []): string
     {
+        Log::debug('Formatando label do equipamento', [
+            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'equipment'  => $equipment,
+            'options'    => $options,
+        ]);
+
         $showName = $options['name'] ?? true;
         $showIdentifier = $options['identifier'] ?? true;
         $showOwner = $options['owner'] ?? true;
@@ -235,6 +241,11 @@ class EquipmentService
         if($showOwner && !empty($equipment->owner)) {
             $parts[] = $equipment->owner->name;
         }
+
+        Log::debug('Label formatado', [
+            'metodo'     => __METHOD__ . '@' . __LINE__,            
+            'parts'      => $parts,
+        ]);
 
         return implode(' — ', $parts);
     }
