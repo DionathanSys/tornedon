@@ -27,13 +27,15 @@ class InvoicePdfDataFormatter
         ])->filter()->values()->all();
 
         $fiscalDocuments = $invoice->fiscalDocuments->map(function ($fiscalDocument) {
-            $number = $fiscalDocument->document_number
-                ? '#' . $fiscalDocument->document_number
+            $number = $this->formatDocumentNumber($fiscalDocument->document_number);
+
+            $series = filled($fiscalDocument->isNfse() ? $fiscalDocument->rps_series : $fiscalDocument->document_series)
+                ? (string) ($fiscalDocument->isNfse() ? $fiscalDocument->rps_series : $fiscalDocument->document_series)
                 : '-';
 
-            $series = filled($fiscalDocument->document_series)
-                ? (string) $fiscalDocument->document_series
-                : '-';
+            $total = $fiscalDocument->items->sum(function ($item) {
+                return (float) $item->total_price;
+            });
 
             return [
                 'number' => $number,
@@ -41,6 +43,7 @@ class InvoicePdfDataFormatter
                 'series' => $series,
                 'status' => $fiscalDocument->status?->description() ?? '-',
                 'issued_at' => $this->formatDate($fiscalDocument->issued_at),
+                'total' => $this->formatMoney($total),
             ];
         })->all();
 
@@ -117,6 +120,15 @@ class InvoicePdfDataFormatter
     private function formatQuantity($value): string
     {
         return number_format((float) $value, 3, ',', '.');
+    }
+
+    private function formatDocumentNumber($value): string
+    {
+        if (! filled($value)) {
+            return '-';
+        }
+
+        return '#' . str_pad((string) $value, 5, '0', STR_PAD_LEFT);
     }
 
     private function resolveCompanyLogo(Invoice $invoice): ?string

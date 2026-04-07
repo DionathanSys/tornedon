@@ -113,24 +113,61 @@
             font-weight: bold;
         }
 
-        .grid th {
-            background: #e8eef4;
-            text-align: center;
+        .relation-section {
+            margin-top: 18px;
         }
 
-        .grid td:nth-child(1),
-        .grid td:nth-child(2) {
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .grid td:nth-child(4) {
-            text-align: right;
-            white-space: nowrap;
+        .relation-title {
+            margin: 0 0 6px 0;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #d1d5db;
+            color: #17385b;
+            font-size: 12px;
             font-weight: bold;
         }
 
-        .item-line+.item-line {
+        .relation-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .relation-table th,
+        .relation-table td {
+            padding: 6px 4px;
+            vertical-align: top;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .relation-table th {
+            color: #6b7280;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            text-align: left;
+        }
+
+        .relation-table td {
+            font-size: 11px;
+        }
+
+        .relation-table td:last-child,
+        .relation-table th:last-child {
+            text-align: right;
+        }
+
+        .relation-code,
+        .relation-status,
+        .relation-date,
+        .relation-series {
+            white-space: nowrap;
+        }
+
+        .relation-code {
+            padding-left: 10px !important;
+        }
+
+        .item-line + .item-line {
             margin-top: 2px;
         }
 
@@ -139,9 +176,16 @@
             font-weight: bold;
         }
 
+        .summary-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
         .summary-total td {
-            background: #e8eef4;
-            font-size: 13px;
+            border-top: 1px solid #d1d5db;
+            border-bottom: 0;
+            padding-top: 8px;
+            font-size: 12px;
         }
 
         .pdf-footer {
@@ -193,123 +237,134 @@
     </div>
 
     @if (! empty($pdfData['fiscal_documents']))
-    <div class="section-title">Documentos Fiscais Vinculados - {{ count($pdfData['fiscal_documents']) }}</div>
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>Documento</th>
-                <th>Modelo</th>
-                <th>Série</th>
-                <th>Status</th>
-                <th>Emissão</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($pdfData['fiscal_documents'] as $fiscalDocument)
-            <tr>
-                <td>{{ $fiscalDocument['number'] }}</td>
-                <td>{{ $fiscalDocument['model'] }}</td>
-                <td>{{ $fiscalDocument['series'] }}</td>
-                <td>{{ $fiscalDocument['status'] }}</td>
-                <td>{{ $fiscalDocument['issued_at'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div class="relation-section">
+        <div class="relation-title">Documentos fiscais vinculados ({{ count($pdfData['fiscal_documents']) }})</div>
+        <table class="relation-table">
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th>Modelo</th>
+                    <th>Série</th>
+                    <th>Status</th>
+                    <th>Emissão</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($pdfData['fiscal_documents'] as $fiscalDocument)
+                <tr>
+                    <td class="relation-code">{{ $fiscalDocument['number'] }}</td>
+                    <td>{{ $fiscalDocument['model'] }}</td>
+                    <td class="relation-series">{{ $fiscalDocument['series'] }}</td>
+                    <td class="relation-status">{{ $fiscalDocument['status'] }}</td>
+                    <td class="relation-date">{{ $fiscalDocument['issued_at'] }}</td>
+                    <td>{{ $fiscalDocument['total'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
     @endif
 
     @if (! empty($pdfData['service_orders']))
-    <div class="section-title">Ordens de Serviço Vinculadas - {{ $pdfData['service_order_count'] }}</div>
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>OS</th>
-                <th>Status</th>
-                <th>Itens</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($pdfData['service_orders'] as $serviceOrder)
-            <tr>
-                <td>{{ $serviceOrder['number'] }}</td>
-                <td>{{ $serviceOrder['status'] }}</td>
-                <td>
-                    @forelse ($serviceOrder['items'] as $item)
-                    <div class="item-line">{{ $item }}</div>
-                    @empty
-                    -
-                    @endforelse
-                </td>
-                <td>{{ $serviceOrder['total'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div class="relation-section">
+        <div class="relation-title">Ordens de serviço vinculadas ({{ $pdfData['service_order_count'] }})</div>
+        <table class="relation-table">
+            <thead>
+                <tr>
+                    <th>OS</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($pdfData['service_orders'] as $serviceOrder)
+                <tr>
+                    <td class="relation-code">{{ $serviceOrder['number'] }}</td>
+                    <td class="relation-status">{{ $serviceOrder['status'] }}</td>
+                    <td>
+                        @forelse ($serviceOrder['items'] as $item)
+                        <div class="item-line">{{ $item }}</div>
+                        @empty
+                        -
+                        @endforelse
+                    </td>
+                    <td>{{ $serviceOrder['total'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
     @endif
 
     @if (! empty($pdfData['requisitions']))
-    <div class="section-title">Requisições Vinculadas - {{ $pdfData['requisition_count'] }}</div>
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>Requisição</th>
-                <th>Status</th>
-                <th>Itens</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($pdfData['requisitions'] as $requisition)
-            <tr>
-                <td>{{ $requisition['number'] }}</td>
-                <td>{{ $requisition['status'] }}</td>
-                <td>
-                    @forelse ($requisition['items'] as $item)
-                    <div class="item-line">{{ $item }}</div>
-                    @empty
-                    -
-                    @endforelse
-                </td>
-                <td>{{ $requisition['total'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div class="relation-section">
+        <div class="relation-title">Requisições vinculadas ({{ $pdfData['requisition_count'] }})</div>
+        <table class="relation-table">
+            <thead>
+                <tr>
+                    <th>Requisição</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($pdfData['requisitions'] as $requisition)
+                <tr>
+                    <td class="relation-code">{{ $requisition['number'] }}</td>
+                    <td class="relation-status">{{ $requisition['status'] }}</td>
+                    <td>
+                        @forelse ($requisition['items'] as $item)
+                        <div class="item-line">{{ $item }}</div>
+                        @empty
+                        -
+                        @endforelse
+                    </td>
+                    <td>{{ $requisition['total'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
     @endif
 
     @if (! empty($pdfData['production_orders']))
-    <div class="section-title">Ordens de Produção Vinculadas - {{ $pdfData['production_order_count'] }}</div>
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>OP</th>
-                <th>Status</th>
-                <th>Itens</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($pdfData['production_orders'] as $productionOrder)
-            <tr>
-                <td>{{ $productionOrder['number'] }}</td>
-                <td>{{ $productionOrder['status'] }}</td>
-                <td>
-                    @forelse ($productionOrder['items'] as $item)
-                    <div class="item-line">{{ $item }}</div>
-                    @empty
-                    -
-                    @endforelse
-                </td>
-                <td>{{ $productionOrder['total'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div class="relation-section">
+        <div class="relation-title">Ordens de produção vinculadas ({{ $pdfData['production_order_count'] }})</div>
+        <table class="relation-table">
+            <thead>
+                <tr>
+                    <th>OP</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($pdfData['production_orders'] as $productionOrder)
+                <tr>
+                    <td class="relation-code">{{ $productionOrder['number'] }}</td>
+                    <td class="relation-status">{{ $productionOrder['status'] }}</td>
+                    <td>
+                        @forelse ($productionOrder['items'] as $item)
+                        <div class="item-line">{{ $item }}</div>
+                        @empty
+                        -
+                        @endforelse
+                    </td>
+                    <td>{{ $productionOrder['total'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
     @endif
 
-    <div class="section-title">Resumo</div>
-    <table class="meta-grid">
+    <div class="relation-section">
+    <div class="relation-title">Resumo</div>
+    <table class="summary-table">
         <tbody>
             @foreach ($pdfData['summary_lines'] as $line)
             <tr>
@@ -317,18 +372,15 @@
                 <td>{{ $line['value'] }}</td>
             </tr>
             @endforeach
-        </tbody>
-    </table>
-    @if (! empty($pdfData['payment_mode']))
-    <table class="meta-grid">
-        <tbody>
+            @if (! empty($pdfData['payment_mode']))
             <tr>
                 <td class="meta-label">Forma de pagamento</td>
                 <td>{{ $pdfData['payment_mode'] }}</td>
             </tr>
+            @endif
         </tbody>
     </table>
-    @endif
+    </div>
 
     <div class="pdf-footer">Gerado em: {{ $pdfData['generated_at'] }}</div>
 </body>

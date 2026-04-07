@@ -93,7 +93,7 @@ class FiscalDocumentForm
                                         TextEntry::make('nfse_status')
                                             ->label('Status NFS-e')
                                             ->visibleOn('edit')
-                                            ->visible(fn($record): bool => $record->isNfse())
+                                            ->visible(fn($record, $operation): bool => $record->isNfse() && $operation === Operation::Edit)
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
                                         TextEntry::make('document_number')

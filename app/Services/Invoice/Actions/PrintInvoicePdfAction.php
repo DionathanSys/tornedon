@@ -23,7 +23,7 @@ class PrintInvoicePdfAction
                 'customer',
                 'company',
                 'createdBy',
-                'fiscalDocuments',
+                'fiscalDocuments.items',
                 'requisitions.items.product',
                 'serviceOrders.items.service',
                 'productionOrders.items.product',

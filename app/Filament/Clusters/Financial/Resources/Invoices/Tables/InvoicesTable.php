@@ -7,8 +7,10 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInv
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -106,6 +108,12 @@ class InvoicesTable
 
                         return $result;
                     }),
+            ])
+            ->headerActions([
+                CreateAction::make()
+                    ->label('Fatura')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ]);
     }
 }

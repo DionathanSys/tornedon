@@ -11,8 +11,10 @@ use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -306,7 +308,12 @@ class FiscalDocumentsTable
                     EditAction::make(),
                 ])
             ])
-            ->headerActions([])
+            ->headerActions([
+                CreateAction::make()
+                    ->label('Documento Fiscal')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
+            ])
             ->defaultSort('created_at', 'desc');
     }
 }

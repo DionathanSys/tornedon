@@ -14,9 +14,7 @@ class ListFiscalDocuments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Novo Documento Fiscal')
-                ->icon(Heroicon::Plus),
+            
         ];
     }
 }
