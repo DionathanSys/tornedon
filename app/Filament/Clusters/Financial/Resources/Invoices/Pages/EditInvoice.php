@@ -30,7 +30,7 @@ class EditInvoice extends EditRecord
 
     public function getSubheading(): ?string
     {
-        return "Fatura # {$this->record->number} - {$this->record->status->description()}";
+        return "Fatura # {$this->record->invoice_number} - {$this->record->status->description()}";
     }
 
     protected function getHeaderActions(): array

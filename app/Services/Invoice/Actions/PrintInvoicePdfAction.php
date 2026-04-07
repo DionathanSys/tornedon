@@ -3,6 +3,7 @@
 namespace App\Services\Invoice\Actions;
 
 use App\Models\Invoice;
+use App\Services\Invoice\Support\InvoicePdfDataFormatter;
 use App\Traits\HandlesActionResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +12,10 @@ class PrintInvoicePdfAction
 {
     use HandlesActionResponse;
 
+    public function __construct(
+        private readonly InvoicePdfDataFormatter $dataFormatter,
+    ) {}
+
     public function execute(Invoice $invoice): ?string
     {
         try {
@@ -18,14 +23,18 @@ class PrintInvoicePdfAction
                 'customer',
                 'company',
                 'createdBy',
+                'fiscalDocuments',
                 'requisitions.items.product',
                 'serviceOrders.items.service',
                 'productionOrders.items.product',
                 'productionOrders.items.quoteItem',
             ]);
 
+            $pdfData = $this->dataFormatter->format($invoice);
+
             $pdfBinary = Pdf::loadView('pdf.invoice', [
                 'record' => $invoice,
+                'pdfData' => $pdfData,
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {

@@ -14,7 +14,6 @@ use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
 use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
-use App\Services\Invoice\Actions\ConfirmInvoiceAction;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
@@ -212,7 +211,7 @@ class InvoiceService
 
         try {
             return DB::transaction(function () use ($invoice, $data, $confirmedBy) {
-                $action = new ConfirmInvoiceAction($invoice, $confirmedBy);
+                $action = new Actions\ConfirmInvoiceAction($invoice, $confirmedBy);
                 $result = $action->execute($data);
 
                 if ($action->hasError() || $result === null) {
@@ -577,7 +576,7 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            $action = new PrintInvoicePdfAction();
+            $action = app(PrintInvoicePdfAction::class);
             $pdf    = $action->execute($invoice);
 
             if ($pdf === null || $action->hasError()) {

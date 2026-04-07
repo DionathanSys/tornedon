@@ -719,7 +719,7 @@ class DocumentNotificationService
      */
     private function buildInvoiceAttachmentRegistry(Invoice $invoice): array
     {
-        $pdfAction = new PrintInvoicePdfAction();
+        $pdfAction = app(PrintInvoicePdfAction::class);
         $pdf = $pdfAction->execute($invoice);
         $number = $invoice->invoice_number ?: (string) $invoice->id;
 

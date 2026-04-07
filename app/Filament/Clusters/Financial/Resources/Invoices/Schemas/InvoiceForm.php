@@ -33,7 +33,7 @@ class InvoiceForm
                         Tab::make('Geral')
                             ->schema([
                                 Section::make('Dados da Fatura')
-                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
+                                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->schema([
                                         TextInput::make('invoice_number')
@@ -42,18 +42,10 @@ class InvoiceForm
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->required()
                                             ->maxLength(50),
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->options(Status::toSelectArray())
-                                            ->native(false)
-                                            ->default(Status::PENDING->value)
-                                            ->visibleOn('edit')
-                                            ->disabled(),
                                         DatePicker::make('invoice_date')
                                             ->label('Data da Fatura')
                                             ->disabled()
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->default(now())
                                             ->required()
                                             ->displayFormat('d/m/Y'),
@@ -65,14 +57,14 @@ class InvoiceForm
                                             ->searchable(),
                                         Select::make('payment_condition')
                                             ->label('Condição de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->options(PaymentCondition::toGroupedSelectArray())
                                             ->native(false)
                                             ->searchable(),
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->disabled()
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->columnSpan(['md' => 3, 'lg' => 6])
                                             ->relationship('customer', 'name')
                                             ->searchable()
                                             ->preload()
