@@ -64,15 +64,17 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                             ->label('Logo')
                             ->image()
                             ->disk('public')
-                            ->directory(fn () => 'logos/' . (Filament::getTenant()?->id ?? 'tmp'))
+                            ->directory(fn() => 'logos/' . (Filament::getTenant()?->id ?? 'tmp'))
                             ->getUploadedFileNameForStorageUsing(
-                                fn (TemporaryUploadedFile $file): string => 'logo_' . now()->format('YmdHis') . '.' . $file->getClientOriginalExtension()
+                                fn(TemporaryUploadedFile $file): string => 'logo_' . now()->format('YmdHis') . '.' . $file->getClientOriginalExtension()
                             )
                             ->imagePreviewHeight('80')
                             ->maxSize(2048)
                             ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
                             ->helperText('PNG, JPG, WebP ou SVG. Tamanho máximo: 2 MB.')
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->automaticallyResizeImagesToWidth('100')
+                            ->automaticallyResizeImagesToHeight('100'),
                     ]),
 
                 Section::make('Dados da Empresa')
