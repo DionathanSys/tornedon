@@ -71,7 +71,8 @@ class EditFiscalDocument extends EditRecord
                         }
 
                         Notification::make()->title($service->getMessage())->danger()->send();
-                    }),
+                    })
+                    ->successRedirectUrl(fn(FiscalDocument $record) => FiscalDocumentResource::getUrl('edit', ['record' => $record])),
 
                 Action::make('consultar')
                     ->label('Consultar SEFAZ')
