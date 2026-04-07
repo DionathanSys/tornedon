@@ -51,7 +51,6 @@
         .header-layout {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
         }
 
         .header-layout td {
@@ -63,18 +62,13 @@
             padding-right: 14px;
         }
 
-        .header-meta-cell .meta-grid {
-            height: 100px;
-        }
-
         .header-logo-cell {
             width: 100px;
-            height: 100px;
         }
 
         .company-logo-wrap {
             width: 100px;
-            height: 100px;
+            height: 92px;
             border: 1px solid #d1d5db;
             background: #ffffff;
             text-align: center;
@@ -84,7 +78,7 @@
 
         .company-logo {
             max-width: 96px;
-            max-height: 96px;
+            max-height: 88px;
             width: auto;
             height: auto;
             display: block;
