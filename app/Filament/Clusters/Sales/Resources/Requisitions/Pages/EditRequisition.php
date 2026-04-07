@@ -92,7 +92,7 @@ class EditRequisition extends EditRecord
                     ->tooltip('Fechar requisição'),
                 PreviewRequisitionPdfAction::make()
                     ->size(Size::Small)
-                    ->color(Color::Blue)
+                    ->color('info')
                     ->hiddenLabel()
                     ->tooltip('Visualizar PDF da requisição'),
                 DownloadRequisitionPdfAction::make()

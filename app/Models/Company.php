@@ -18,6 +18,7 @@ class Company extends Model
         'phone',
         'email',
         'certificate',
+        'logo_path',
         'municipal_tax_id',
         'state_tax_id',
         'is_active',
