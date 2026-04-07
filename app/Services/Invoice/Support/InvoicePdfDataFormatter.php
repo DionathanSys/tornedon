@@ -17,10 +17,7 @@ class InvoicePdfDataFormatter
             ['label' => 'Cliente', 'value' => $invoice->customer?->name ?? '-'],
         ];
 
-        $paymentLines = collect([
-            ['label' => 'Condição de pagamento', 'value' => $invoice->payment_condition?->description() ?? '-'],
-            ['label' => 'Método de pagamento', 'value' => $invoice->payment_method?->description() ?? '-'],
-        ])->values()->all();
+        $paymentMode = ($invoice->payment_method?->description() ?? 'N/A') . ' - ' . ($invoice->payment_condition?->description() ?? 'N/A');
 
         $summaryLines = collect([
             $invoice->discount_amount > 0
@@ -92,7 +89,7 @@ class InvoicePdfDataFormatter
             'status' => $invoice->status?->description() ?? '-',
             'invoice_date' => $this->formatDate($invoice->invoice_date),
             'header_lines' => $headerLines,
-            'payment_lines' => $paymentLines,
+            'payment_mode' => $paymentMode,
             'fiscal_documents' => $fiscalDocuments,
             'service_order_count' => $invoice->serviceOrders->count(),
             'requisition_count' => $invoice->requisitions->count(),

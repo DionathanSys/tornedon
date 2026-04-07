@@ -68,7 +68,7 @@
 
         .company-logo-wrap {
             width: 100px;
-            height: 92px;
+            height: 96px;
             border: 1px solid #d1d5db;
             background: #ffffff;
             text-align: center;
@@ -100,20 +100,10 @@
 
         .meta-label {
             width: 22%;
+            height: 16px;
             background: #f8fafc;
             color: #17385b;
             font-weight: bold;
-        }
-
-        .meta-inline-label {
-            width: 23%;
-            background: #f8fafc;
-            color: #17385b;
-            font-weight: bold;
-        }
-
-        .meta-inline-value {
-            width: 29%;
         }
 
         .section-title {
@@ -182,12 +172,12 @@
                                 @foreach ($pdfData['header_lines'] as $line)
                                 <tr>
                                     <td class="meta-label">{{ $line['label'] }}</td>
-                                    <td colspan="3" class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
+                                    <td class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
                                 </tr>
                                 @endforeach
                                 <tr>
-                                    <td class="meta-inline-label">Data da Fatura</td>
-                                    <td class="meta-inline-value">{{ $pdfData['invoice_date'] }}</td>
+                                    <td class="meta-label">Data da Fatura</td>
+                                    <td>{{ $pdfData['invoice_date'] }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -203,20 +193,6 @@
             </table>
         </div>
     </div>
-
-    @if (! empty($pdfData['payment_lines']))
-    <div class="section-title">Pagamento</div>
-    <table class="meta-grid">
-        <tbody>
-            <tr>
-                @foreach ($pdfData['payment_lines'] as $line)
-                <td class="meta-label">{{ $line['label'] }}</td>
-                <td>{{ $line['value'] }}</td>
-                @endforeach
-            </tr>
-        </tbody>
-    </table>
-    @endif
 
     @if (! empty($pdfData['fiscal_documents']))
     <div class="section-title">Documentos Fiscais Vinculados - {{ count($pdfData['fiscal_documents']) }}</div>
@@ -335,16 +311,26 @@
     @endif
 
     <div class="section-title">Resumo</div>
-    <table class="summary-table">
+    <table class="meta-grid">
         <tbody>
             @foreach ($pdfData['summary_lines'] as $line)
-            <tr class="{{ $loop->last ? 'summary-total' : '' }}">
-                <td>{{ $line['label'] }}</td>
+            <tr>
+                <td class="meta-label">{{ $line['label'] }}</td>
                 <td>{{ $line['value'] }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
+    @if (! empty($pdfData['payment_mode']))
+    <table class="meta-grid">
+        <tbody>
+            <tr>
+                <td class="meta-label">Forma de pagamento</td>
+                <td>{{ $pdfData['payment_mode'] }}</td>
+            </tr>
+        </tbody>
+    </table>
+    @endif
 
     <div class="pdf-footer">Gerado em: {{ $pdfData['generated_at'] }}</div>
 </body>
