@@ -219,9 +219,7 @@
                                 <tr>
                                     <td class="meta-label">Data da Ordem</td>
                                     <td>{{ $pdfData['order_date'] }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="meta-label">Data Conclusao</td>
+                                    <td class="meta-label">Data Conclusão</td>
                                     <td>{{ $pdfData['completion_date'] }}</td>
                                 </tr>
                                 @foreach ($pdfData['responsibles'] as $field)
