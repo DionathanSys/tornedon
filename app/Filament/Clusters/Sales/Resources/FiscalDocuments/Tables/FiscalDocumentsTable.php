@@ -308,7 +308,7 @@ class FiscalDocumentsTable
                     EditAction::make(),
                 ])
             ])
-            ->headerActions([
+            ->toolbarActions([
                 CreateAction::make()
                     ->label('Documento Fiscal')
                     ->icon(Heroicon::Plus)

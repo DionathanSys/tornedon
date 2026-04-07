@@ -109,7 +109,7 @@ class InvoicesTable
                         return $result;
                     }),
             ])
-            ->headerActions([
+            ->toolbarActions([
                 CreateAction::make()
                     ->label('Fatura')
                     ->icon(Heroicon::Plus)
