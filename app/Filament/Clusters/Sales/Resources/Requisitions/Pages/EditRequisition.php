@@ -312,7 +312,7 @@ class EditRequisition extends EditRecord
             message: 'Desconto aplicado com sucesso aos itens.'
         );
 
-        redirect($this->getResource()::getUrl('edit', ['record' => $record]));
+        // redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
 
     /**

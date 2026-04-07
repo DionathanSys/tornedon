@@ -33,7 +33,9 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use Livewire\Attributes\On;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -45,6 +47,13 @@ class ItemsRelationManager extends RelationManager
             ->components([
                 
             ]);
+    }
+
+    #[On('refresh-items')]
+    public function refreshItems(): void
+    {
+        Log::debug('refresh-items');
+        $this->resetTable();
     }
 
     public function table(Table $table): Table
