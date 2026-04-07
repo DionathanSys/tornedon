@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\Components;
 
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\EditRequisition;
 use Filament\Actions\Action;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -40,7 +41,7 @@ class DiscountAmountField
                             $livewire->applyDiscount();
                         }
                     })
-                    ->after(function (EditRequisition $livewire): void {
+                    ->after(function (EditRecord $livewire): void {
                         $livewire->dispatch('refresh-items');
                     }),
                 Action::make('clear_discount')
