@@ -81,9 +81,7 @@ class ServiceOrderForm
                                                     )
                                                     ->getOptionLabelUsing(
                                                         fn($value): ?string => (new EquipmentService())
-                                                            ->getLabelForSelect((int) $value, [
-                                                                'owner' => false,
-                                                                ])
+                                                            ->getLabelForSelect((int) $value, ['owner' => false])
                                                     )
                                                     ->disabled(fn($get) => ! $get('customer_id'))
                                                     ->belowContent(fn($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),

@@ -63,11 +63,11 @@ class RequisitionForm
                             ->visibleOn('edit')
                             ->getSearchResultsUsing(
                                 fn(string $search, Get $get): array => (new EquipmentService())
-                                    ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
+                                    ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'), 20, ['owner' => false])
                             )
                             ->getOptionLabelUsing(
                                 fn($value): ?string => (new EquipmentService())
-                                    ->getLabelForSelect((int) $value)
+                                    ->getLabelForSelect((int) $value, ['owner' => false])
                             )
                             ->disabled(fn($get) => !$get('customer_id'))
                             ->belowContent(fn($get) => !$get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
