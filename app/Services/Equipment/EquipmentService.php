@@ -200,6 +200,12 @@ class EquipmentService
      */
     public function getLabelForSelect(int $id, array $options = []): ?string
     {
+        Log::debug('Buscando equipamento para select', [
+            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'id'         => $id,
+            'options'    => $options,
+        ]);
+
         $equipment = $this->find($id);
 
         if (! $equipment) {
@@ -220,7 +226,6 @@ class EquipmentService
     {
         Log::debug('Formatando label do equipamento', [
             'metodo'     => __METHOD__ . '@' . __LINE__,
-            'equipment'  => $equipment,
             'options'    => $options,
         ]);
 
