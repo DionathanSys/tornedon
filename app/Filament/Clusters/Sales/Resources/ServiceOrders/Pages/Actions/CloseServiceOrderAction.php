@@ -68,6 +68,7 @@ final class CloseServiceOrderAction
 
                 notify::success('Ordem de serviço encerrada com sucesso.');
             })
-            // ->successRedirectUrl(fn(ServiceOrder $record): string => MobileServiceOrderResource::getUrl('edit', ['record' => $record->id]));
+            // ->successRedirectUrl(fn(ServiceOrder $record): string => MobileServiceOrderResource::getUrl('edit', ['record' => $record->id]))
+            ;
     }
 }
