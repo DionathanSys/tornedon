@@ -116,10 +116,9 @@ class AccountPayableForm
                             ->displayFormat('d/m/Y'),
                         Money::make('due_amount')
                             ->label('Valor a Pagar')
-                            ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->required()
-                            ->prefix('R$'),
+                            ->required(),
                         DatePicker::make('paid_date')
                             ->label('Data de Pagamento')
                             ->columnSpan(['md' => 1, 'lg' => 3])
@@ -131,7 +130,6 @@ class AccountPayableForm
                             ->label('Valor Pago')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->default(0)
-                            ->prefix('R$')
                             ->disabled(),
                     ]),
                 Section::make('Informações Adicionais')

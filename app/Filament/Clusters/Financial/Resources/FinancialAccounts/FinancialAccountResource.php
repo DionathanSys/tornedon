@@ -51,8 +51,8 @@ class FinancialAccountResource extends Resource
     {
         return [
             'index' => ListFinancialAccounts::route('/'),
-            'create' => CreateFinancialAccount::route('/create'),
-            'edit' => EditFinancialAccount::route('/{record}/edit'),
+            // 'create' => CreateFinancialAccount::route('/create'),
+            // 'edit' => EditFinancialAccount::route('/{record}/edit'),
         ];
     }
 }

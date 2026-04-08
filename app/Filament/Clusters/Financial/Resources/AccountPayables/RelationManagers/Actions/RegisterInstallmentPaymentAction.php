@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions;
 
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
 use App\Models\AccountPayableInstallment;
 use App\Models\FinancialAccount;
 use App\Services\AccountPayable\AccountPayableService;
@@ -15,6 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use Livewire\Component;
 
 final class RegisterInstallmentPaymentAction
 {
@@ -101,7 +101,7 @@ final class RegisterInstallmentPaymentAction
                     ->success()
                     ->send();
             })
-            ->after(function (InstallmentsRelationManager $livewire): void {
+            ->after(function (Component $livewire): void {
                 $livewire->dispatch('refresh-installments');
                 $livewire->dispatch('refresh-payments');
             });

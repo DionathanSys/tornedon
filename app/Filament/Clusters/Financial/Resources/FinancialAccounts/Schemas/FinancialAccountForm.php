@@ -43,11 +43,11 @@ class FinancialAccountForm
                             ->required()
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('institution_name')
-                            ->label('Instituicao')
+                            ->label('Instituição')
                             ->maxLength(255)
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('branch')
-                            ->label('Agencia')
+                            ->label('Agência')
                             ->maxLength(20)
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         TextInput::make('account_number')
@@ -60,7 +60,7 @@ class FinancialAccountForm
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         Money::make('opening_balance')
                             ->label('Saldo Inicial')
-                            ->prefix('R$')
+                            ->formatStateUsing(fn ($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                             ->default(0)
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         DatePicker::make('opened_at')
