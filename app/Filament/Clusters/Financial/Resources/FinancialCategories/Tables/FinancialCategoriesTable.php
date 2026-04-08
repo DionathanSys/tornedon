@@ -2,9 +2,12 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FinancialCategories\Tables;
 
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -52,8 +55,11 @@ class FinancialCategoriesTable
                 EditAction::make()->iconButton(),
                 DeleteAction::make()->iconButton(),
             ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+            ->toolbarActions([
+                CreateAction::make()
+                    ->label('Categoria Financeira')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ])
             ->defaultSort('sort_order')
             ->emptyStateHeading('Nenhuma categoria financeira cadastrada');

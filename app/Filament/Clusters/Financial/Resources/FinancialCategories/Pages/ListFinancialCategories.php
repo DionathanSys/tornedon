@@ -13,8 +13,7 @@ class ListFinancialCategories extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Categoria Financeira'),
+            
         ];
     }
 }

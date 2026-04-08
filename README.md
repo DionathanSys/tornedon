@@ -28,7 +28,7 @@ Tornedon é uma aplicação Laravel desenvolvida para gerenciar processos empres
 - [Requisitos](docs/REQUIREMENTS.md)
 - [Contribuição](docs/CONTRIBUTING.md)
 - [Padrões de Banco de Dados](docs/DATABASE-STANDARDS.md)
-- [Backup do Banco](docs/DATABASE-BACKUP.md)
+- [Backup do Banco](DATABASE-BACKUP.md)
 - [Regras de Negócio](docs/regras-negocio/)
 
 ## Instalação
