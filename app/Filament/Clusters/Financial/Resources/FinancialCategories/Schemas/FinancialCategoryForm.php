@@ -39,12 +39,7 @@ class FinancialCategoryForm
                             ->columnSpan(['md' => 3, 'lg' => 5]),
                         Select::make('parent_id')
                             ->label('Categoria Pai')
-                            ->options(fn (): array => FinancialCategory::query()
-                                ->where('company_id', Filament::getTenant()->id)
-                                ->orderBy('name')
-                                ->get()
-                                ->mapWithKeys(fn (FinancialCategory $category) => [$category->id => $category->full_name])
-                                ->toArray())
+                            ->options(fn (): array => FinancialCategory::hierarchyOptionsForCompany(Filament::getTenant()->id))
                             ->searchable()
                             ->preload()
                             ->native(false)

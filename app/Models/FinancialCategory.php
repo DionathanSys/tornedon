@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -96,25 +97,122 @@ class FinancialCategory extends Model
 
     public function getFullNameAttribute(): string
     {
-        $parentName = $this->relationLoaded('parent')
-            ? $this->parent?->full_name
-            : $this->parent()->with('parent')->first()?->full_name;
+        $segments = [];
+        $visited = [];
+        $current = $this;
 
-        return $parentName ? "{$parentName} / {$this->name}" : $this->name;
+        while ($current) {
+            $currentId = (int) $current->id;
+
+            if (isset($visited[$currentId])) {
+                break;
+            }
+
+            $visited[$currentId] = true;
+            array_unshift($segments, $current->name);
+
+            if ($current->relationLoaded('parent')) {
+                $current = $current->parent;
+                continue;
+            }
+
+            $parentId = (int) ($current->parent_id ?? 0);
+
+            if ($parentId === 0) {
+                break;
+            }
+
+            $current = static::query()
+                ->select(['id', 'parent_id', 'name'])
+                ->find($parentId);
+        }
+
+        return implode(' / ', $segments);
     }
 
-    public static function optionsForCompany(int $companyId, string $scope): array
+    public static function optionsForCompany(int $companyId, string $scope, bool $leavesOnly = true): array
     {
-        return static::query()
+        $categories = static::query()
             ->where('company_id', $companyId)
             ->active()
             ->allowedFor($scope)
-            ->with('parent.parent')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get()
-            ->filter(fn (self $category) => $category->isLeaf())
-            ->mapWithKeys(fn (self $category) => [$category->id => $category->full_name])
+            ->get(['id', 'parent_id', 'name']);
+
+        return static::formatOptions($categories, $leavesOnly);
+    }
+
+    public static function hierarchyOptionsForCompany(int $companyId): array
+    {
+        $categories = static::query()
+            ->where('company_id', $companyId)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'parent_id', 'name']);
+
+        return static::formatOptions($categories, false);
+    }
+
+    /**
+     * @param  Collection<int, self>  $categories
+     * @return array<int, string>
+     */
+    public static function formatOptions(Collection $categories, bool $leavesOnly = true): array
+    {
+        $categoriesById = $categories->keyBy('id');
+        $parentIds = $categories
+            ->pluck('parent_id')
+            ->filter()
+            ->map(static fn (mixed $parentId): int => (int) $parentId);
+
+        return $categories
+            ->filter(function (self $category) use ($leavesOnly, $parentIds): bool {
+                if (! $leavesOnly) {
+                    return true;
+                }
+
+                return ! $parentIds->contains((int) $category->id);
+            })
+            ->mapWithKeys(fn (self $category) => [$category->id => static::buildFullNameFromMap($category, $categoriesById)])
             ->toArray();
+    }
+
+    /**
+     * @param  Collection<int|string, self>  $categoriesById
+     */
+    protected static function buildFullNameFromMap(self $category, Collection $categoriesById): string
+    {
+        $segments = [];
+        $visited = [];
+        $current = $category;
+
+        while ($current) {
+            $currentId = (int) $current->id;
+
+            if (isset($visited[$currentId])) {
+                break;
+            }
+
+            $visited[$currentId] = true;
+            array_unshift($segments, $current->name);
+
+            $parentId = (int) ($current->parent_id ?? 0);
+
+            if ($parentId === 0) {
+                break;
+            }
+
+            if ($categoriesById->has($parentId)) {
+                $current = $categoriesById->get($parentId);
+                continue;
+            }
+
+            $current = static::query()
+                ->select(['id', 'parent_id', 'name'])
+                ->find($parentId);
+        }
+
+        return implode(' / ', $segments);
     }
 }
