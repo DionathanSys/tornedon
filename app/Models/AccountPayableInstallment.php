@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enum\AccountPayable\Status;
+use App\Models\Concerns\SkipsGeneratedColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountPayableInstallment extends Model
 {
+    use SkipsGeneratedColumns;
+
     protected $fillable = [
         'account_payable_id',
         'company_id',

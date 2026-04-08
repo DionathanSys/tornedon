@@ -73,7 +73,12 @@ class AccountReceivableGenerationService
             $accountReceivable = $service->create($receivablePayload, 0);
 
             if ($service->hasError() || $accountReceivable === null) {
-                $this->setError($service->getMessage(), $service->getErrors(), $service->getErrorCode());
+                $this->setError(
+                    $service->getMessage(),
+                    $service->getErrors(),
+                    $service->getStatus(),
+                    $service->getErrorCode()
+                );
                 return false;
             }
 
