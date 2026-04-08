@@ -26,22 +26,27 @@ class FinancialAccountsTable
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
-                    ->badge(),
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('institution_name')
-                    ->label('Instituicao')
+                    ->label('Instituição')
                     ->placeholder('-')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('opening_balance')
                     ->label('Saldo Inicial')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('current_balance')
                     ->label('Saldo Atual')
-                    ->money('BRL'),
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('is_active')
                     ->label('Ativa')
                     ->boolean()
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 TernaryFilter::make('is_active')
