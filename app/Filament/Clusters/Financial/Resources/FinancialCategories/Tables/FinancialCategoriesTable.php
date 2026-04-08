@@ -19,14 +19,18 @@ class FinancialCategoriesTable
     {
         return $table
             ->columns([
-                TextColumn::make('full_name')
-                    ->label('Categoria')
-                    ->searchable(['name', 'description'])
-                    ->sortable(['name']),
                 TextColumn::make('sort_order')
                     ->label('Ordem')
                     ->sortable()
                     ->alignCenter(),
+                TextColumn::make('name')
+                    ->label('Categoria')
+                    ->searchable(['name', 'description'])
+                    ->sortable(['name']),
+                TextColumn::make('parent.name')
+                    ->label('Categoria Pai')
+                    ->searchable(['parent.name'])
+                    ->sortable(['parent.name']),
                 TextColumn::make('usage')
                     ->label('Uso')
                     ->state(fn ($record): string => collect([

@@ -59,22 +59,22 @@ class FinancialCategoryForm
                             ->label('Ativa')
                             ->inline(false)
                             ->default(true)
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         Toggle::make('allow_payable')
                             ->label('Usar em Despesas')
                             ->inline(false)
                             ->default(true)
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         Toggle::make('allow_receivable')
                             ->label('Usar em Receitas')
                             ->inline(false)
                             ->default(false)
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         Toggle::make('allow_cash_movement')
                             ->label('Usar em Transações')
                             ->inline(false)
                             ->default(true)
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         Textarea::make('description')
                             ->label('Descrição')
                             ->rows(3)
