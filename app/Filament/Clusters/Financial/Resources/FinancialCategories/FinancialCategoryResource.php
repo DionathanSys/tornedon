@@ -51,8 +51,8 @@ class FinancialCategoryResource extends Resource
     {
         return [
             'index' => ListFinancialCategories::route('/'),
-            'create' => CreateFinancialCategory::route('/create'),
-            'edit' => EditFinancialCategory::route('/{record}/edit'),
+            // 'create' => CreateFinancialCategory::route('/create'),
+            // 'edit' => EditFinancialCategory::route('/{record}/edit'),
         ];
     }
 }
