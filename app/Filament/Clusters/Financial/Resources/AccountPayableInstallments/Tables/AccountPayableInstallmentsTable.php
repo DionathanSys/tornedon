@@ -11,6 +11,7 @@ use App\Models\AccountPayableInstallment;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class AccountPayableInstallmentsTable
 {
@@ -100,6 +101,9 @@ class AccountPayableInstallmentsTable
                     ->label('Status')
                     ->options(Status::toSelectArray())
                     ->multiple()
+                    ->native(false),
+                DateRangeFilter::make('due_date')
+                    ->label('Vencimento')
                     ->native(false),
             ])
             ->recordActions([
