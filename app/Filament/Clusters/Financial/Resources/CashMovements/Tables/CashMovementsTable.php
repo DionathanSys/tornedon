@@ -10,6 +10,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class CashMovementsTable
 {
@@ -76,6 +77,11 @@ class CashMovementsTable
                         blank: fn ($query) => $query,
                     )
                     ->native(false),
+                DateRangeFilter::make('transaction_date')
+                    ->label('Data Movimento')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar(),
             ])
             ->recordActions([
                 EditAction::make()
