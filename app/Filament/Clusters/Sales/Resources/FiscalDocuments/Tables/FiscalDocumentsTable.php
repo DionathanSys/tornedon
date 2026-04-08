@@ -13,6 +13,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -288,15 +290,29 @@ class FiscalDocumentsTable
                         ->modalDescription('Esta ação não pode ser desfeita. A NFS-e será cancelada na prefeitura.')
                         ->visible(fn(FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
                         ->schema([
-                            \Filament\Forms\Components\Textarea::make('motivo')
+                            Select::make('codigo_cancelamento')
+                                ->label('Código do Cancelamento')
+                                ->options([
+                                    '1' => '1 - Erro de Emissão',
+                                    '2' => '2 - Serviço não concluído',
+                                    '9' => '9 - Outros',
+                                ])
+                                ->required()
+                                ->native(false),
+                            Textarea::make('motivo_cancelamento')
                                 ->label('Motivo do Cancelamento')
                                 ->required()
-                                ->minLength(15)
-                                ->maxLength(255),
+                                ->maxLength(80)
+                                ->rows(4),
                         ])
                         ->action(function (FiscalDocument $record, array $data): void {
                             $service = app(NfseDocumentService::class);
-                            $service->cancelar($record, $data['motivo'], Auth::id());
+                            $service->cancelar(
+                                $record,
+                                $data['codigo_cancelamento'],
+                                $data['motivo_cancelamento'],
+                                Auth::id()
+                            );
 
                             if ($service->isSuccess()) {
                                 Notification::make()->title($service->getMessage())->success()->send();

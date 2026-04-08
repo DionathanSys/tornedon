@@ -243,20 +243,27 @@ class NfseDocumentService
     /**
      * Cancela uma NFS-e autorizada (síncrono).
      */
-    public function cancelar(FiscalDocument $doc, string $motivo = 'Cancelamento solicitado', ?int $userId = null): bool
+    public function cancelar(
+        FiscalDocument $doc,
+        string $codigoCancelamento = '9',
+        string $motivoCancelamento = 'Cancelamento solicitado',
+        ?int $userId = null
+    ): bool
     {
         $this->resetResponse();
 
         try {
             $action = new CancelNfseAction();
-            $result = $action->execute($doc, $motivo);
+            $result = $action->execute($doc, $codigoCancelamento, $motivoCancelamento);
 
             if (! $result || $action->hasError()) {
                 $this->setError($action->getMessage(), $action->getErrors());
                 $this->persistActionError($doc, 'cancelar', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                     'contexto' => [
-                        'motivo' => $motivo,
+                        'codigo_cancelamento' => $codigoCancelamento,
+                        'motivo_cancelamento' => $motivoCancelamento,
+                        'user_id' => $userId,
                     ],
                 ]);
                 return false;
@@ -269,7 +276,9 @@ class NfseDocumentService
             $this->setError('Erro ao cancelar NFS-e: ' . $e->getMessage());
             $this->persistActionError($doc, 'cancelar', $this->getMessageUser(), [
                 'contexto' => [
-                    'motivo'    => $motivo,
+                    'codigo_cancelamento' => $codigoCancelamento,
+                    'motivo_cancelamento' => $motivoCancelamento,
+                    'user_id' => $userId,
                     'exception' => $e->getMessage(),
                 ],
             ]);
