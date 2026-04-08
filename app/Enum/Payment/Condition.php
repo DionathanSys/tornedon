@@ -221,4 +221,14 @@ enum Condition: string
             $case->value => $case->description(),
         ])->toArray();
     }
+
+    public static function installmentIntervalOptions(): array
+    {
+        return collect(self::cases())
+            ->filter(fn (self $case): bool => $case->isTerm())
+            ->mapWithKeys(fn (self $case): array => [
+                $case->value => $case->description(),
+            ])
+            ->toArray();
+    }
 }

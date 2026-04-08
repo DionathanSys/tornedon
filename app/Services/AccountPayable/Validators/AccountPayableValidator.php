@@ -3,6 +3,7 @@
 namespace App\Services\AccountPayable\Validators;
 
 use App\Enum\AccountPayable\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -58,7 +59,10 @@ class AccountPayableValidator
             'sequence_number' => 'required|string|max:2',
             'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
             'installment_count' => 'nullable|integer|min:1|max:24',
-            'installment_due_mode' => ['nullable', Rule::in(['interval_30_days', 'fixed_day_of_month'])],
+            'installment_due_mode' => ['nullable', Rule::in([
+                ...array_keys(PaymentCondition::installmentIntervalOptions()),
+                'fixed_day_of_month',
+            ])],
             'installment_fixed_day' => 'nullable|required_if:installment_due_mode,fixed_day_of_month|integer|min:1|max:31',
         ]);
 

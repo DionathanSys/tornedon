@@ -103,7 +103,10 @@ class AccountPayableInstallmentsTable
                     ->multiple()
                     ->native(false),
                 DateRangeFilter::make('due_date')
-                    ->label('Vencimento'),
+                    ->label('Vencimento')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar(),
             ])
             ->recordActions([
                 RegisterInstallmentPaymentAction::make()

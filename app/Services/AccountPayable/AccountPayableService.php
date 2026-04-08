@@ -3,6 +3,7 @@
 namespace App\Services\AccountPayable;
 
 use App\Enum\AccountPayable\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountPayableInstallmentPayment;
@@ -174,7 +175,7 @@ class AccountPayableService
     private function extractInstallmentScheduleConfig(array &$data): array
     {
         $config = [
-            'mode' => (string) ($data['installment_due_mode'] ?? 'interval_30_days'),
+            'mode' => (string) ($data['installment_due_mode'] ?? PaymentCondition::DAYS_30->value),
             'fixed_day' => isset($data['installment_fixed_day']) ? (int) $data['installment_fixed_day'] : null,
         ];
 
@@ -189,7 +190,7 @@ class AccountPayableService
             return $baseDate->copy();
         }
 
-        $mode = $scheduleConfig['mode'] ?? 'interval_30_days';
+        $mode = (string) ($scheduleConfig['mode'] ?? PaymentCondition::DAYS_30->value);
 
         if ($mode === 'fixed_day_of_month') {
             $fixedDay = (int) ($scheduleConfig['fixed_day'] ?? $baseDate->day);
@@ -198,7 +199,10 @@ class AccountPayableService
             return $dueDate->day(min($fixedDay, $dueDate->daysInMonth));
         }
 
-        return $baseDate->copy()->addDays(30 * $index);
+        $condition = PaymentCondition::tryFrom($mode);
+        $daysStep = $condition?->isTerm() ? $condition->days() : PaymentCondition::DAYS_30->days();
+
+        return $baseDate->copy()->addDays($daysStep * $index);
     }
 
     private function formatSequenceNumber(int $sequence): string

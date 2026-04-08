@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas;
 
 use App\Enum\AccountPayable\Status;
 use App\Enum\Partner\Type;
+use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\EditAccountPayable;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
@@ -68,18 +69,18 @@ class AccountPayableForm
                             ->visibleOn('create')
                             ->helperText('Se maior que 1, serão geradas parcelas automáticas a partir do primeiro vencimento.'),
                         Select::make('installment_due_mode')
-                            ->label('Intervalo das Parcelas')
+                            ->label('Prazo entre Parcelas')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->options([
-                                'interval_30_days' => 'A cada 30 dias',
+                                ...PaymentCondition::installmentIntervalOptions(),
                                 'fixed_day_of_month' => 'Dia fixo do mês',
                             ])
-                            ->default('interval_30_days')
+                            ->default(PaymentCondition::DAYS_30->value)
                             ->native(false)
                             ->live()
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
-                            ->helperText('Escolha se as próximas parcelas avançam em 30 dias ou em um dia fixo do mês.'),
+                            ->helperText('Defina o intervalo entre vencimentos usando as condições de prazo ou escolha um dia fixo do mês.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mês')
                             ->columnSpan(['md' => 1, 'lg' => 2])

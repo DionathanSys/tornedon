@@ -24,6 +24,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class RequisitionsTable
 {
@@ -95,6 +96,11 @@ class RequisitionsTable
                     ->multiple()
                     ->default([Status::OPEN->value])
                     ->native(false),
+                DateRangeFilter::make('sale_date')
+                    ->label('Data da Venda')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar(),
             ])
             ->recordActions([
                 ActionGroup::make([

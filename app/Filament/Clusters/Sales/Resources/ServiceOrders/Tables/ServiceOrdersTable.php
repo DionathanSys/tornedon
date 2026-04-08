@@ -26,6 +26,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class ServiceOrdersTable
 {
@@ -155,6 +156,11 @@ class ServiceOrdersTable
                     ->options(State::toSelectArray())
                     ->native(false)
                     ->multiple(),
+                DateRangeFilter::make('order_date')
+                    ->label('Data da Ordem')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar(),
                 SelectFilter::make('type')
                     ->label('Tipo')
                     ->options(Type::toSelectArray())
