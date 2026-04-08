@@ -10,6 +10,8 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\I
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayable;
+use App\Models\FinancialCategory;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -168,6 +170,15 @@ class AccountPayableForm
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable(),
+                        Select::make('financial_category_id')
+                            ->label('Categoria Financeira')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('A categoria sera aplicada as parcelas geradas para esta conta.'),
                         Toggle::make('paid')
                             ->label('Pago')
                             ->columnSpan(['md' => 1, 'lg' => 1])

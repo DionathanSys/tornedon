@@ -254,7 +254,7 @@ class CompanyPartnerForm
                         'lg' => 8,
                     ])
                     ->columnSpanFull()
-                    ->description('Endereco(s) do Parceiro')
+                    ->description('Endereço(s) do Parceiro')
                     ->afterHeader([
                         CreateAddressAction::make(),
                     ])
@@ -275,7 +275,7 @@ class CompanyPartnerForm
                                     ->placeholder('-')
                                     ->hidden(),
                                 TextEntry::make('full_address')
-                                    ->label('Endereco Completo')
+                                    ->label('Endereço Completo')
                                     ->placeholder('-')
                                     ->columnSpanFull()
                                     ->belowContent(

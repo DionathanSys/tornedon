@@ -1,7 +1,7 @@
 - [x] Registrar info. de tempo de garantia padrão 
-- [ ] Inserir campo no cadastro do parceiro para definir se requer aprovação.
-- [ ] Incluir valor total da OS.
-- [ ] Precisa atribuir valor de km para deslocamento padrão na edição
+- [x] Inserir campo no cadastro do parceiro para definir se requer aprovação.
+- [x] Incluir valor total da OS.
+- [x] Precisa atribuir valor de km para deslocamento padrão na edição
 
 # Inclusões
 - Estoque: insumos, produtos, ferramentas;

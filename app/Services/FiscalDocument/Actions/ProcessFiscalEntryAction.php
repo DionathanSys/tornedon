@@ -128,7 +128,7 @@ class ProcessFiscalEntryAction
 
             if ($this->accountPayableService->hasError() || ! $payable) {
                 $result['errors'][] = "Erro ao criar parcela {$sequence}: "
-                    . $this->accountPayableService->getMessage();
+                    . $this->accountPayableService->getMessageUser();
             } else {
                 $result['payables']++;
             }

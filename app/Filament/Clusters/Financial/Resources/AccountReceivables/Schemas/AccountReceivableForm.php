@@ -9,6 +9,8 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
+use App\Models\FinancialCategory;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -151,6 +153,15 @@ class AccountReceivableForm
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable(),
+                        Select::make('financial_category_id')
+                            ->label('Categoria Financeira')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('A categoria sera aplicada as parcelas geradas para esta conta.'),
                         Toggle::make('paid')
                             ->label('Recebido')
                             ->columnSpan(['md' => 1, 'lg' => 1])

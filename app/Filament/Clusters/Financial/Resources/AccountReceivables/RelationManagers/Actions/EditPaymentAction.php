@@ -3,9 +3,12 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions;
 
 use App\Models\AccountReceivableInstallmentPayment;
+use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\AccountReceivableService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -36,6 +39,13 @@ final class EditPaymentAction
                     ->label('Conta bancaria (ID)')
                     ->numeric()
                     ->visible(false),
+                Select::make('financial_account_id')
+                    ->label('Conta Financeira')
+                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->required(),
                 Textarea::make('notes')
                     ->label('Observacoes')
                     ->rows(3),
@@ -47,6 +57,7 @@ final class EditPaymentAction
                 'fine_amount' => $record->fine_amount,
                 'discount_amount' => $record->discount_amount,
                 'bank_account_id' => $record->bank_account_id,
+                'financial_account_id' => $record->financial_account_id,
                 'notes' => $record->notes,
             ])
             ->action(function (AccountReceivableInstallmentPayment $record, array $data): void {

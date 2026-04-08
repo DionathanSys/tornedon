@@ -83,8 +83,8 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
-                    ->color(fn($state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('paid_date')
@@ -93,8 +93,12 @@ class InstallmentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('financialCategory.full_name')
+                    ->label('Categoria')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('notes')
-                    ->label('Observações')
+                    ->label('Observacoes')
                     ->limit(40)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -118,6 +122,6 @@ class InstallmentsRelationManager extends RelationManager
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma parcela gerada')
-            ->emptyStateDescription('As parcelas desta conta a pagar aparecerão aqui.');
+            ->emptyStateDescription('As parcelas desta conta a pagar aparecerao aqui.');
     }
 }

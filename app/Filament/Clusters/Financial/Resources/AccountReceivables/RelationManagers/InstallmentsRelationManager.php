@@ -86,6 +86,10 @@ class InstallmentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('financialCategory.full_name')
+                    ->label('Categoria')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('notes')
                     ->label('Observacoes')
                     ->limit(40)

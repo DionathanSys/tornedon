@@ -23,6 +23,7 @@ class AccountReceivableInstallment extends Model
         'discount_amount',
         'due_amount',
         'received_amount',
+        'balance_amount',
         'bank_account_id',
         'financial_category_id',
         'cost_center_id',
@@ -45,6 +46,11 @@ class AccountReceivableInstallment extends Model
     public function accountReceivable(): BelongsTo
     {
         return $this->belongsTo(AccountReceivable::class);
+    }
+
+    public function financialCategory(): BelongsTo
+    {
+        return $this->belongsTo(FinancialCategory::class, 'financial_category_id');
     }
 
     public function payments(): HasMany

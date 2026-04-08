@@ -23,6 +23,7 @@ class AccountPayableInstallment extends Model
         'discount_amount',
         'due_amount',
         'paid_amount',
+        'balance_amount',
         'bank_account_id',
         'financial_category_id',
         'cost_center_id',
@@ -45,6 +46,11 @@ class AccountPayableInstallment extends Model
     public function accountPayable(): BelongsTo
     {
         return $this->belongsTo(AccountPayable::class);
+    }
+
+    public function financialCategory(): BelongsTo
+    {
+        return $this->belongsTo(FinancialCategory::class, 'financial_category_id');
     }
 
     public function payments(): HasMany

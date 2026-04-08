@@ -14,6 +14,9 @@ use App\Services\AccountPayable\Actions\Installment\RegisterAccountPayableInstal
 use App\Services\AccountPayable\Actions\Installment\SyncAccountPayableStatusFromInstallmentsAction;
 use App\Services\AccountPayable\Actions\Installment\UpdateAccountPayableInstallmentAction;
 use App\Services\AccountPayable\Actions\UpdateAccountPayableAction;
+use App\Services\AccountPayable\Validators\AccountPayableInstallmentValidator;
+use App\Services\Financial\CashMovementService;
+use App\Services\Financial\FinancialClassificationService;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -24,6 +27,11 @@ use Illuminate\Validation\ValidationException;
 class AccountPayableService
 {
     use HandlesServiceResponse;
+
+    public function __construct(
+        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService(),
+        private readonly CashMovementService $cashMovementService = new CashMovementService(),
+    ) {}
 
     public function create(array $data, int $createdBy): ?AccountPayable
     {
@@ -218,6 +226,7 @@ class AccountPayableService
             'discount_amount' => $discount,
             'due_amount' => $dueAmount,
             'paid_amount' => $paid,
+            'balance_amount' => $balance,
             'paid_date' => $status === Status::PAID->value
                 ? $installment->payments->max('payment_date')
                 : null,
@@ -246,8 +255,13 @@ class AccountPayableService
             'discount_amount' => 0,
             'due_amount' => $amount,
             'paid_amount' => 0,
+            'balance_amount' => $amount,
             'bank_account_id' => $installmentData['bank_account_id'] ?? null,
-            'financial_category_id' => $installmentData['financial_category_id'] ?? null,
+            'financial_category_id' => $this->classificationService->resolveInstallmentCategoryId(
+                $installmentData['financial_category_id'] ?? null,
+                $accountPayable->company_id,
+                'payable'
+            ),
             'cost_center_id' => $installmentData['cost_center_id'] ?? null,
             'notes' => $installmentData['notes'] ?? null,
         ];
@@ -346,6 +360,7 @@ class AccountPayableService
                     'fine_amount' => (float) ($extra['fine_amount'] ?? 0),
                     'discount_amount' => (float) ($extra['discount_amount'] ?? 0),
                     'bank_account_id' => $extra['bank_account_id'] ?? null,
+                    'financial_account_id' => $extra['financial_account_id'] ?? null,
                     'notes' => $extra['notes'] ?? null,
                 ]);
 
@@ -378,6 +393,21 @@ class AccountPayableService
                     );
 
                     return null;
+                }
+
+                if ($payment->financial_account_id) {
+                    $movement = $this->cashMovementService->syncForPayablePayment($payment);
+
+                    if ($this->cashMovementService->hasError() || $movement === null) {
+                        $this->setError(
+                            $this->cashMovementService->getMessage(),
+                            $this->cashMovementService->getErrors(),
+                            422,
+                            $this->cashMovementService->getErrorCode()
+                        );
+
+                        return null;
+                    }
                 }
 
                 $this->setSuccess('Pagamento da parcela registrado com sucesso.');
@@ -435,6 +465,8 @@ class AccountPayableService
 
                     return null;
                 }
+
+                $this->recalculatePayableInstallment($updated->fresh());
 
                 $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($installment->accountPayable);
                 $synced = $syncAction->execute();
@@ -556,6 +588,7 @@ class AccountPayableService
                     'fine_amount' => $data['fine_amount'] ?? $payment->fine_amount,
                     'discount_amount' => $data['discount_amount'] ?? $payment->discount_amount,
                     'bank_account_id' => $data['bank_account_id'] ?? $payment->bank_account_id,
+                    'financial_account_id' => $data['financial_account_id'] ?? $payment->financial_account_id,
                     'notes' => $data['notes'] ?? $payment->notes,
                 ]);
 
@@ -576,6 +609,21 @@ class AccountPayableService
                     );
 
                     return null;
+                }
+
+                if ($payment->financial_account_id) {
+                    $movement = $this->cashMovementService->syncForPayablePayment($payment->fresh());
+
+                    if ($this->cashMovementService->hasError() || $movement === null) {
+                        $this->setError(
+                            $this->cashMovementService->getMessage(),
+                            $this->cashMovementService->getErrors(),
+                            422,
+                            $this->cashMovementService->getErrorCode()
+                        );
+
+                        return null;
+                    }
                 }
 
                 $this->setSuccess('Pagamento atualizado com sucesso.');
@@ -607,6 +655,19 @@ class AccountPayableService
         try {
             return DB::transaction(function () use ($payment) {
                 $payment->loadMissing('installment.accountPayable');
+
+                $reversal = $this->cashMovementService->reverseForPayablePayment($payment);
+
+                if ($this->cashMovementService->hasError()) {
+                    $this->setError(
+                        $this->cashMovementService->getMessage(),
+                        $this->cashMovementService->getErrors(),
+                        422,
+                        $this->cashMovementService->getErrorCode()
+                    );
+
+                    return false;
+                }
 
                 $installment = $payment->installment;
                 $deleted = $payment->delete();

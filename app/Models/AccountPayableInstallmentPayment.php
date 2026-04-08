@@ -16,6 +16,7 @@ class AccountPayableInstallmentPayment extends Model
         'fine_amount',
         'discount_amount',
         'bank_account_id',
+        'financial_account_id',
         'notes',
     ];
 
@@ -30,5 +31,10 @@ class AccountPayableInstallmentPayment extends Model
     public function installment(): BelongsTo
     {
         return $this->belongsTo(AccountPayableInstallment::class, 'account_payable_installment_id');
+    }
+
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class, 'financial_account_id');
     }
 }

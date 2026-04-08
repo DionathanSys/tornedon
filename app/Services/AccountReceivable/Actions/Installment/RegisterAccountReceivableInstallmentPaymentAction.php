@@ -75,6 +75,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
                 'discount_amount' => $totals['discount'],
                 'due_amount' => $totals['due_amount'],
                 'received_amount' => $totals['received'],
+                'balance_amount' => $totals['balance'],
                 'received_date' => $totals['status'] === Status::RECEIVED->value ? $validated['payment_date'] : null,
                 'status' => $totals['status'],
             ]);

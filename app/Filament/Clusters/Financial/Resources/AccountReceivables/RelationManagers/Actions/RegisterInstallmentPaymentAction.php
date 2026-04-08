@@ -3,9 +3,12 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions;
 
 use App\Models\AccountReceivableInstallment;
+use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\AccountReceivableService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -31,28 +34,36 @@ final class RegisterInstallmentPaymentAction
                     Money::make('amount')
                         ->label('Valor recebido')
                         ->columnSpan(1)
-                        ->default(fn(AccountReceivableInstallment $record) => $record->due_amount)
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->default(fn (AccountReceivableInstallment $record) => $record->due_amount)
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('interest_amount')
                         ->label('Juros')
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                     Money::make('fine_amount')
                         ->label('Multa')
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                     Money::make('discount_amount')
                         ->label('Desconto')
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                     TextInput::make('bank_account_id')
-                        ->label('Conta bancária (ID)')
+                        ->label('Conta bancaria (ID)')
                         ->visible(false)
                         ->numeric()
                         ->columnSpan(1),
+                    Select::make('financial_account_id')
+                        ->label('Conta Financeira')
+                        ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->required()
+                        ->columnSpan(1),
                     Textarea::make('notes')
-                        ->label('Observações')
+                        ->label('Observacoes')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))
@@ -67,6 +78,7 @@ final class RegisterInstallmentPaymentAction
                         'fine_amount' => (float) ($data['fine_amount'] ?? 0),
                         'discount_amount' => (float) ($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
+                        'financial_account_id' => $data['financial_account_id'] ?? null,
                         'notes' => $data['notes'] ?? null,
                     ]
                 );

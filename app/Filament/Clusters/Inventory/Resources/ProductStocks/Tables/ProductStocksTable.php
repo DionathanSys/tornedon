@@ -86,14 +86,14 @@ class ProductStocksTable
                     ->formatStateUsing(fn(?Type $state) => $state?->label() ?? '-')
                     ->color(fn(?Type $state) => $state?->color() ?? 'secondary')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('is_active')
                     ->label('Ativo')
                     ->width('1%')
                     ->boolean()
                     ->sortable()
                     ->alignCenter()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('allow_negative')
                     ->label('Permite Negativo')
                     ->boolean()
@@ -113,6 +113,7 @@ class ProductStocksTable
                     ->boolean()
                     ->trueLabel('Apenas ativos')
                     ->falseLabel('Apenas inativos')
+                    ->default(true)
                     ->native(false),
                 TernaryFilter::make('low_stock')
                     ->label('Estoque Baixo')

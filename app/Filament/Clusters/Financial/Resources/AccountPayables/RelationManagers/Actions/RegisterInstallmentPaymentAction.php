@@ -4,9 +4,12 @@ namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationMana
 
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
 use App\Models\AccountPayableInstallment;
+use App\Models\FinancialAccount;
 use App\Services\AccountPayable\AccountPayableService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -21,7 +24,7 @@ final class RegisterInstallmentPaymentAction
             ->label('Registrar pagamento')
             ->icon('heroicon-o-currency-dollar')
             ->color('success')
-            ->schema(fn(Schema $schema) => $schema
+            ->schema(fn (Schema $schema) => $schema
                 ->columns(2)
                 ->components([
                     DatePicker::make('payment_date')
@@ -32,31 +35,39 @@ final class RegisterInstallmentPaymentAction
                     Money::make('amount')
                         ->label('Valor pago')
                         ->columnSpan(1)
-                        ->default(fn(AccountPayableInstallment $record) => $record->due_amount)
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->default(fn (AccountPayableInstallment $record) => $record->due_amount)
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('interest_amount')
                         ->label('Juros')
                         ->columnSpan(1)
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('fine_amount')
                         ->label('Multa')
                         ->columnSpan(1)
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('discount_amount')
                         ->label('Desconto')
                         ->columnSpan(1)
-                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                        ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     TextInput::make('bank_account_id')
-                        ->label('Conta bancária (ID)')
+                        ->label('Conta bancaria (ID)')
                         ->numeric()
                         ->visible(false)
                         ->columnSpan(1),
+                    Select::make('financial_account_id')
+                        ->label('Conta Financeira')
+                        ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->required()
+                        ->columnSpan(1),
                     Textarea::make('notes')
-                        ->label('Observações')
+                        ->label('Observacoes')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))
@@ -71,6 +82,7 @@ final class RegisterInstallmentPaymentAction
                         'fine_amount' => (float) ($data['fine_amount'] ?? 0),
                         'discount_amount' => (float) ($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
+                        'financial_account_id' => $data['financial_account_id'] ?? null,
                         'notes' => $data['notes'] ?? null,
                     ]
                 );
