@@ -26,23 +26,28 @@ class FinancialCategoriesTable
                 TextColumn::make('name')
                     ->label('Categoria')
                     ->searchable(['name', 'description'])
-                    ->sortable(['name']),
+                    ->sortable(['name'])
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('parent.name')
                     ->label('Categoria Pai')
                     ->searchable(['parent.name'])
-                    ->sortable(['parent.name']),
+                    ->sortable(['parent.name'])
+                    ->placeholder('N/A')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('usage')
                     ->label('Uso')
                     ->state(fn ($record): string => collect([
                         $record->allow_payable ? 'Despesa' : null,
                         $record->allow_receivable ? 'Receita' : null,
-                        $record->allow_cash_movement ? 'Transacao' : null,
+                        $record->allow_cash_movement ? 'Transação' : null,
                     ])->filter()->implode(', '))
-                    ->wrap(),
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('is_active')
                     ->label('Ativa')
                     ->boolean()
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('updated_at')
                     ->label('Atualizada em')
                     ->dateTime('d/m/Y H:i')
