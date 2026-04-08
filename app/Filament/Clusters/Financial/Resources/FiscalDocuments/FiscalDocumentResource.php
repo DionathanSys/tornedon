@@ -31,7 +31,7 @@ class FiscalDocumentResource extends Resource
 
     protected static ?string $navigationLabel = 'Notas de Entrada';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 8;
 
     /**
      * Restringe o resource apenas a notas de entrada (operation_type = ENTRADA).
