@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\CashMovements\Schemas;
 use App\Enum\Financial\CashMovementDirection;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
+use App\Services\Partner\PartnerService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -66,6 +67,26 @@ class CashMovementForm
                             ->prefix('R$')
                             ->required()
                             ->columnSpan(['md' => 1, 'lg' => 2]),
+                        Select::make('counterparty_partner_id')
+                            ->label('Parceiro Contraparte')
+                            ->searchable()
+                            ->preload()
+                            ->getSearchResultsUsing(fn (string $search): array => app(PartnerService::class)
+                                ->searchForSelect($search, Filament::getTenant()->id, 'all'))
+                            ->getOptionLabelUsing(fn ($value): ?string => $value
+                                ? app(PartnerService::class)->getLabelForSelect((int) $value)
+                                : null)
+                            ->options(fn (): array => app(PartnerService::class)
+                                ->searchForSelect('', Filament::getTenant()->id, 'all', 50))
+                            ->native(false)
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                        Select::make('counterparty_financial_account_id')
+                            ->label('Conta Contraparte')
+                            ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('description')
                             ->label('Descricao')
                             ->required()

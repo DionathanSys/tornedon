@@ -147,6 +147,10 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $this->assertSame(CashMovementDirection::INFLOW, $movement->direction);
         $this->assertSame(120.0, $movement->amount);
         $this->assertSame(80.0, $installment->fresh()->balance_amount);
+        $this->assertSame($this->customer->id, $movement->counterparty_partner_id);
+        $this->assertSame('Cliente Teste', data_get($movement->participants_snapshot, 'counterparty_partner_name'));
+        $this->assertSame('Cliente Teste', $movement->party_from_label);
+        $this->assertSame('Empresa Financeiro AR', $movement->party_to_label);
     }
 
     public function test_validator_rejects_category_with_invalid_scope_for_receivable_installment(): void

@@ -3,13 +3,13 @@
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Tables;
 
 use App\Enum\Financial\CashMovementDirection;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class CashMovementsTable
@@ -25,30 +25,34 @@ class CashMovementsTable
                 TextColumn::make('financialAccount.name')
                     ->label('Conta')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('financialCategory.full_name')
                     ->label('Categoria')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('direction')
-                    ->label('Direcao')
+                    ->label('Tipo')
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->badge()
-                    ->color(fn ($state) => $state?->color() ?? 'gray'),
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('amount')
                     ->label('Valor')
                     ->money('BRL')
                     ->sortable(),
                 TextColumn::make('description')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->searchable()
-                    ->limit(50),
-                TextColumn::make('origin_type')
+                    ->limit(50)
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('origin_label')
                     ->label('Origem')
-                    ->formatStateUsing(fn (?string $state) => $state === 'manual'
-                        ? 'Manual'
-                        : ($state ? Str::headline(class_basename($state)) : 'Manual'))
                     ->toggleable(),
+                TextColumn::make('tracking_label')
+                    ->label('De / Para')
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('statement_lines_exists')
                     ->label('Conciliado')
                     ->boolean()
@@ -57,6 +61,14 @@ class CashMovementsTable
                     ->label('Estornado em')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('created_at')
+                    ->label('Criado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')
+                    ->label('Atualizado em')
+                    ->dateTime('d/m/Y H:i')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -87,6 +99,10 @@ class CashMovementsTable
                 EditAction::make()
                     ->iconButton()
                     ->visible(fn ($record): bool => $record->origin_type === 'manual'),
+            ])
+            ->toolbarActions([
+                CreateAction::make()
+                    ->label('Movimento Manual'),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->emptyStateHeading('Nenhum movimento financeiro encontrado');

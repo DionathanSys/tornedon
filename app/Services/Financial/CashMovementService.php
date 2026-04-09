@@ -6,7 +6,9 @@ use App\Enum\Financial\CashMovementDirection;
 use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
+use App\Models\Company;
 use App\Models\FinancialAccount;
+use App\Models\Partner;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +26,7 @@ class CashMovementService
     public function syncForPayablePayment(AccountPayableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
     {
         return $this->syncFromPayment(
-            payment: $payment->loadMissing('installment.accountPayable'),
+            payment: $payment->loadMissing('installment.accountPayable.supplier'),
             direction: CashMovementDirection::OUTFLOW,
             categoryScope: 'payable',
             descriptionPrefix: 'Pagamento',
@@ -35,7 +37,7 @@ class CashMovementService
     public function syncForReceivablePayment(AccountReceivableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
     {
         return $this->syncFromPayment(
-            payment: $payment->loadMissing('installment.accountReceivable'),
+            payment: $payment->loadMissing('installment.accountReceivable.customer'),
             direction: CashMovementDirection::INFLOW,
             categoryScope: 'receivable',
             descriptionPrefix: 'Recebimento',
@@ -59,15 +61,22 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($data, $userId) {
-                $account = $this->resolveFinancialAccount((int) $data['financial_account_id'], (int) $data['company_id']);
+                $companyId = (int) $data['company_id'];
+                $account = $this->resolveFinancialAccount((int) $data['financial_account_id'], $companyId);
                 $category = $this->classificationService->assertCategoryIsUsable(
                     (int) $data['financial_category_id'],
-                    (int) $data['company_id'],
+                    $companyId,
                     'cash_movement'
+                );
+                $counterpartyPartner = $this->resolveCounterpartyPartner($data['counterparty_partner_id'] ?? null);
+                $counterpartyFinancialAccount = $this->resolveCounterpartyFinancialAccount(
+                    companyId: $companyId,
+                    financialAccountId: $account->id,
+                    counterpartyFinancialAccountId: $data['counterparty_financial_account_id'] ?? null,
                 );
 
                 $movement = CashMovement::create([
-                    'company_id' => $data['company_id'],
+                    'company_id' => $companyId,
                     'financial_account_id' => $account->id,
                     'financial_category_id' => $category->id,
                     'direction' => $data['direction'],
@@ -76,8 +85,16 @@ class CashMovementService
                     'description' => $data['description'],
                     'origin_type' => 'manual',
                     'origin_id' => null,
+                    'counterparty_partner_id' => $counterpartyPartner?->id,
+                    'counterparty_financial_account_id' => $counterpartyFinancialAccount?->id,
                     'transfer_group_id' => $data['transfer_group_id'] ?? null,
                     'notes' => $data['notes'] ?? null,
+                    'participants_snapshot' => $this->buildParticipantsSnapshot(
+                        companyId: $companyId,
+                        financialAccount: $account,
+                        counterpartyPartner: $counterpartyPartner,
+                        counterpartyFinancialAccount: $counterpartyFinancialAccount,
+                    ),
                     'created_by' => $userId,
                     'updated_by' => $userId,
                 ]);
@@ -115,6 +132,18 @@ class CashMovementService
 
                 $account = $this->resolveFinancialAccount($accountId, $companyId);
                 $category = $this->classificationService->assertCategoryIsUsable($categoryId, $companyId, 'cash_movement');
+                $counterpartyPartner = $this->resolveCounterpartyPartner(
+                    array_key_exists('counterparty_partner_id', $data)
+                        ? $data['counterparty_partner_id']
+                        : $movement->counterparty_partner_id
+                );
+                $counterpartyFinancialAccount = $this->resolveCounterpartyFinancialAccount(
+                    companyId: $companyId,
+                    financialAccountId: $account->id,
+                    counterpartyFinancialAccountId: array_key_exists('counterparty_financial_account_id', $data)
+                        ? $data['counterparty_financial_account_id']
+                        : $movement->counterparty_financial_account_id,
+                );
 
                 $movement->update([
                     'financial_account_id' => $account->id,
@@ -123,8 +152,16 @@ class CashMovementService
                     'transaction_date' => $data['transaction_date'] ?? $movement->transaction_date?->toDateString(),
                     'amount' => $data['amount'] ?? $movement->amount,
                     'description' => $data['description'] ?? $movement->description,
+                    'counterparty_partner_id' => $counterpartyPartner?->id,
+                    'counterparty_financial_account_id' => $counterpartyFinancialAccount?->id,
                     'transfer_group_id' => $data['transfer_group_id'] ?? $movement->transfer_group_id,
                     'notes' => $data['notes'] ?? $movement->notes,
+                    'participants_snapshot' => $this->buildParticipantsSnapshot(
+                        companyId: $companyId,
+                        financialAccount: $account,
+                        counterpartyPartner: $counterpartyPartner,
+                        counterpartyFinancialAccount: $counterpartyFinancialAccount,
+                    ),
                     'updated_by' => $userId,
                 ]);
 
@@ -162,6 +199,7 @@ class CashMovementService
         try {
             return DB::transaction(function () use ($payment, $direction, $categoryScope, $descriptionPrefix, $userId) {
                 $account = $this->resolveFinancialAccount((int) $payment->financial_account_id, (int) $payment->company_id);
+                $counterpartyPartner = $this->resolvePaymentCounterpartyPartner($payment);
 
                 $installment = $payment->installment;
                 $categoryId = $installment->financial_category_id
@@ -186,6 +224,14 @@ class CashMovementService
                     'amount' => $payment->amount,
                     'description' => $this->buildPaymentDescription($payment, $descriptionPrefix),
                     'notes' => $payment->notes,
+                    'counterparty_partner_id' => $counterpartyPartner?->id,
+                    'counterparty_financial_account_id' => null,
+                    'participants_snapshot' => $this->buildParticipantsSnapshot(
+                        companyId: (int) $payment->company_id,
+                        financialAccount: $account,
+                        counterpartyPartner: $counterpartyPartner,
+                        counterpartyFinancialAccount: null,
+                    ),
                     'reversed_at' => null,
                     'reversal_of_id' => null,
                     'updated_by' => $userId,
@@ -251,7 +297,10 @@ class CashMovementService
                     'transaction_date' => now()->toDateString(),
                     'amount' => $movement->amount,
                     'description' => 'Estorno: ' . $movement->description,
+                    'counterparty_partner_id' => $movement->counterparty_partner_id,
+                    'counterparty_financial_account_id' => $movement->counterparty_financial_account_id,
                     'notes' => $movement->notes,
+                    'participants_snapshot' => $movement->participants_snapshot,
                     'transfer_group_id' => $movement->transfer_group_id ?? (string) Str::uuid(),
                     'reversal_of_id' => $movement->id,
                     'created_by' => $userId,
@@ -301,6 +350,69 @@ class CashMovementService
         }
 
         return $account;
+    }
+
+    private function resolveCounterpartyPartner(int|string|null $counterpartyPartnerId): ?Partner
+    {
+        if ($counterpartyPartnerId === null || $counterpartyPartnerId === '') {
+            return null;
+        }
+
+        $partner = Partner::query()->find((int) $counterpartyPartnerId);
+
+        if (! $partner) {
+            throw ValidationException::withMessages([
+                'counterparty_partner_id' => ['Parceiro contraparte nao encontrado.'],
+            ]);
+        }
+
+        return $partner;
+    }
+
+    private function resolveCounterpartyFinancialAccount(
+        int $companyId,
+        int $financialAccountId,
+        int|string|null $counterpartyFinancialAccountId,
+    ): ?FinancialAccount {
+        if ($counterpartyFinancialAccountId === null || $counterpartyFinancialAccountId === '') {
+            return null;
+        }
+
+        $counterpartyFinancialAccountId = (int) $counterpartyFinancialAccountId;
+
+        if ($counterpartyFinancialAccountId === $financialAccountId) {
+            throw ValidationException::withMessages([
+                'counterparty_financial_account_id' => ['A conta contraparte deve ser diferente da conta principal.'],
+            ]);
+        }
+
+        return $this->resolveFinancialAccount($counterpartyFinancialAccountId, $companyId);
+    }
+
+    private function buildParticipantsSnapshot(
+        int $companyId,
+        FinancialAccount $financialAccount,
+        ?Partner $counterpartyPartner,
+        ?FinancialAccount $counterpartyFinancialAccount,
+    ): array {
+        $company = Company::query()->find($companyId);
+
+        return array_filter([
+            'company_name' => $company?->name,
+            'financial_account_name' => $financialAccount->display_name,
+            'counterparty_partner_name' => $counterpartyPartner?->name,
+            'counterparty_financial_account_name' => $counterpartyFinancialAccount?->display_name,
+        ], static fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function resolvePaymentCounterpartyPartner(
+        AccountPayableInstallmentPayment|AccountReceivableInstallmentPayment $payment,
+    ): ?Partner {
+        $installment = $payment->installment;
+
+        return $payment instanceof AccountPayableInstallmentPayment
+            ? $installment->accountPayable?->supplier
+            : $installment->accountReceivable?->customer;
     }
 
     private function buildPaymentDescription(

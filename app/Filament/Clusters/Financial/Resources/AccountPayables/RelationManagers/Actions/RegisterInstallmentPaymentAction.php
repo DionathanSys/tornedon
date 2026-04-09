@@ -67,7 +67,7 @@ final class RegisterInstallmentPaymentAction
                         ->required()
                         ->columnSpan(1),
                     Textarea::make('notes')
-                        ->label('Observacoes')
+                        ->label('Observações')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))

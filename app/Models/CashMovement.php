@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class CashMovement extends Model
 {
@@ -21,8 +22,11 @@ class CashMovement extends Model
         'description',
         'origin_type',
         'origin_id',
+        'counterparty_partner_id',
+        'counterparty_financial_account_id',
         'transfer_group_id',
         'notes',
+        'participants_snapshot',
         'reversed_at',
         'reversal_of_id',
         'created_by',
@@ -33,11 +37,18 @@ class CashMovement extends Model
         'direction' => CashMovementDirection::class,
         'transaction_date' => 'date',
         'amount' => MoneyCast::class,
+        'participants_snapshot' => 'array',
         'reversed_at' => 'datetime',
     ];
 
     protected $appends = [
         'signed_amount',
+        'origin_label',
+        'party_from_label',
+        'party_to_label',
+        'account_from_label',
+        'account_to_label',
+        'tracking_label',
     ];
 
     public function company(): BelongsTo
@@ -53,6 +64,16 @@ class CashMovement extends Model
     public function financialCategory(): BelongsTo
     {
         return $this->belongsTo(FinancialCategory::class);
+    }
+
+    public function counterpartyPartner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class, 'counterparty_partner_id');
+    }
+
+    public function counterpartyFinancialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class, 'counterparty_financial_account_id');
     }
 
     public function reversalOf(): BelongsTo
@@ -88,5 +109,108 @@ class CashMovement extends Model
     public function getSignedAmountAttribute(): float
     {
         return round(((float) $this->amount) * ($this->direction?->multiplier() ?? 1), 2);
+    }
+
+    public function getOriginLabelAttribute(): string
+    {
+        return match ($this->origin_type) {
+            null, 'manual' => 'Manual',
+            AccountPayableInstallmentPayment::class => 'Pagamento de conta a pagar',
+            AccountReceivableInstallmentPayment::class => 'Recebimento de conta a receber',
+            default => Str::headline(class_basename((string) $this->origin_type)),
+        };
+    }
+
+    public function getPartyFromLabelAttribute(): string
+    {
+        return match ($this->direction) {
+            CashMovementDirection::OUTFLOW => $this->resolveCompanyLabel(),
+            CashMovementDirection::INFLOW => $this->resolveCounterpartyPartnerLabel(),
+            default => 'Nao informado',
+        };
+    }
+
+    public function getPartyToLabelAttribute(): string
+    {
+        return match ($this->direction) {
+            CashMovementDirection::OUTFLOW => $this->resolveCounterpartyPartnerLabel(),
+            CashMovementDirection::INFLOW => $this->resolveCompanyLabel(),
+            default => 'Nao informado',
+        };
+    }
+
+    public function getAccountFromLabelAttribute(): string
+    {
+        return match ($this->direction) {
+            CashMovementDirection::OUTFLOW => $this->resolvePrimaryAccountLabel(),
+            CashMovementDirection::INFLOW => $this->resolveCounterpartyAccountLabel(),
+            default => 'Nao informado',
+        };
+    }
+
+    public function getAccountToLabelAttribute(): string
+    {
+        return match ($this->direction) {
+            CashMovementDirection::OUTFLOW => $this->resolveCounterpartyAccountLabel(),
+            CashMovementDirection::INFLOW => $this->resolvePrimaryAccountLabel(),
+            default => 'Nao informado',
+        };
+    }
+
+    public function getTrackingLabelAttribute(): string
+    {
+        $segments = [];
+
+        if ($this->counterparty_partner_id !== null || $this->snapshotValue('counterparty_partner_name') !== null) {
+            $segments[] = "{$this->party_from_label} -> {$this->party_to_label}";
+        }
+
+        if (
+            $this->counterparty_financial_account_id !== null
+            || $this->snapshotValue('counterparty_financial_account_name') !== null
+        ) {
+            $segments[] = "{$this->account_from_label} -> {$this->account_to_label}";
+        }
+
+        if ($segments !== []) {
+            return implode(' | ', $segments);
+        }
+
+        return "{$this->resolvePrimaryAccountLabel()} | {$this->origin_label}";
+    }
+
+    private function resolveCompanyLabel(): string
+    {
+        return $this->snapshotValue('company_name')
+            ?? $this->company?->name
+            ?? 'Empresa';
+    }
+
+    private function resolveCounterpartyPartnerLabel(): string
+    {
+        return $this->snapshotValue('counterparty_partner_name')
+            ?? $this->counterpartyPartner?->name
+            ?? 'Nao informado';
+    }
+
+    private function resolvePrimaryAccountLabel(): string
+    {
+        return $this->snapshotValue('financial_account_name')
+            ?? $this->financialAccount?->display_name
+            ?? $this->financialAccount?->name
+            ?? 'Nao informado';
+    }
+
+    private function resolveCounterpartyAccountLabel(): string
+    {
+        return $this->snapshotValue('counterparty_financial_account_name')
+            ?? $this->counterpartyFinancialAccount?->display_name
+            ?? $this->counterpartyFinancialAccount?->name
+            ?? 'Nao informado';
+    }
+
+    private function snapshotValue(string $key): mixed
+    {
+        return data_get($this->participants_snapshot, $key);
     }
 }

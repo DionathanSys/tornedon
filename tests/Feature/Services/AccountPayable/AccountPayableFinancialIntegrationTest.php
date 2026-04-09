@@ -129,6 +129,10 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $this->assertSame($payment->id, $movement->origin_id);
         $this->assertSame($this->financialAccount->id, $movement->financial_account_id);
         $this->assertSame($this->payableCategory->id, $movement->financial_category_id);
+        $this->assertSame($this->supplier->id, $movement->counterparty_partner_id);
+        $this->assertSame('Fornecedor Teste', data_get($movement->participants_snapshot, 'counterparty_partner_name'));
+        $this->assertSame('Empresa Financeiro AP', $movement->party_from_label);
+        $this->assertSame('Fornecedor Teste', $movement->party_to_label);
 
         $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
         $this->assertDatabaseCount('cash_movements', 2);

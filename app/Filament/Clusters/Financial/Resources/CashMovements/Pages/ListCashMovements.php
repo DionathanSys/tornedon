@@ -13,8 +13,7 @@ class ListCashMovements extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Movimento Manual'),
+            
         ];
     }
 }
