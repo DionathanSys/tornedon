@@ -37,39 +37,52 @@ class FiscalDocumentsTable
                         DocumentModel::NFSE => 'info',
                         default => 'gray',
                     })
-                    ->sortable(),
+                    ->sortable()
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('document_number')
                     ->label('Número')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('document_series')
                     ->label('Série')
                     ->sortable()
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('rps_series')
                     ->label('RPS Série')
                     ->sortable()
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->searchable()
                     ->sortable()
-                    ->limit(30),
+                    ->limit(30)
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('operation_nature')
                     ->label('Natureza')
                     ->limit(25)
+                    ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('issued_at')
                     ->label('Emissão')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('fiscal_status')
                     ->label('Status Fiscal')
@@ -80,18 +93,21 @@ class FiscalDocumentsTable
                             : $record->nfe_status
                     )
                     ->formatStateUsing(fn(?NfeStatus $state) => $state?->description() ?? 'Não enviado')
-                    ->color(fn(?NfeStatus $state) => $state?->color() ?? 'gray'),
+                    ->color(fn(?NfeStatus $state) => $state?->color() ?? 'gray')
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn(?Status $state) => $state?->description() ?? '-')
                     ->color(fn(?Status $state) => $state?->color() ?? 'gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('nfe_protocolo')
                     ->label('Protocolo')
                     ->searchable()
+                    ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->placeholder('—'),
 
@@ -99,6 +115,7 @@ class FiscalDocumentsTable
                     ->label('Chave de Acesso')
                     ->limit(20)
                     ->searchable()
+                    ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->placeholder('—'),
 
@@ -142,6 +159,7 @@ class FiscalDocumentsTable
                     ->label('Status')
                     ->options(Status::toSelectArray()),
             ])
+            ->reorderableColumns()
             ->recordActions([
                 // ===== NF-e Actions =====
                 ActionGroup::make([
