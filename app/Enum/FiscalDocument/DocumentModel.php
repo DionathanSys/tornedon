@@ -10,8 +10,8 @@ enum DocumentModel: string
     public function description(): string
     {
         return match ($this) {
-            self::NFE  => 'NF-e (Nota Fiscal Eletrônica)',
-            self::NFSE => 'NFS-e (Nota Fiscal de Serviço)',
+            self::NFE  => 'NF-e',
+            self::NFSE => 'NFS-e',
         };
     }
 
