@@ -2,8 +2,10 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Pages;
 
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\ImportOfxAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Filament\Clusters\Financial\Resources\CashMovements\CashMovementResource;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 
 class ListCashMovements extends ListRecords
@@ -13,7 +15,11 @@ class ListCashMovements extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            
+            ImportOfxAction::make(),
+            Action::make('view_ofx_imports')
+                ->label('Importacoes OFX')
+                ->icon('heroicon-o-document-duplicate')
+                ->url(BankStatementImportResource::getUrl('index')),
         ];
     }
 }

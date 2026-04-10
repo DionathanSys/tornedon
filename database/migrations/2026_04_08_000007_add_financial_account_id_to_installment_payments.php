@@ -58,6 +58,10 @@ return new class extends Migration
 
     private function foreignKeyExists(string $tableName, string $foreignKeyName): bool
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return false;
+        }
+
         $databaseName = DB::getDatabaseName();
 
         return DB::table('information_schema.TABLE_CONSTRAINTS')

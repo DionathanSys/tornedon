@@ -247,7 +247,7 @@ class CashMovementServiceTest extends TestCase
         $this->assertCount(2, $movements);
         $this->assertSame(
             [CashMovementDirection::INFLOW->value, CashMovementDirection::OUTFLOW->value],
-            $movements->pluck('direction')->sort()->values()->all()
+            $movements->pluck('direction')->map(fn ($direction) => $direction?->value ?? $direction)->sort()->values()->all()
         );
 
         $outflow = $movements->firstWhere('direction', CashMovementDirection::OUTFLOW);
@@ -364,7 +364,7 @@ class CashMovementServiceTest extends TestCase
         $this->assertTrue($originals->every(fn (CashMovement $movement) => $movement->reversed_at !== null));
         $this->assertSame(
             [CashMovementDirection::INFLOW->value, CashMovementDirection::OUTFLOW->value],
-            $reversals->pluck('direction')->sort()->values()->all()
+            $reversals->pluck('direction')->map(fn ($direction) => $direction?->value ?? $direction)->sort()->values()->all()
         );
         $this->assertTrue($reversals->every(fn (CashMovement $movement) => str_starts_with($movement->description, 'Estorno: ')));
 

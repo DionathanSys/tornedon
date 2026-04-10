@@ -51,6 +51,13 @@ class ListFiscalDocuments extends ListRecords
             $query
                 ->where('nfe_status', $status->value)
                 ->orWhere('nfse_status', $status->value);
+
+            if ($status === NfeStatus::PENDING) {
+                $query->orWhere(function (Builder $q): void {
+                    $q->whereNull('nfe_status')
+                        ->whereNull('nfse_status');
+                });
+            }
         });
     }
 

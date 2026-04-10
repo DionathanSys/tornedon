@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\BankStatementLineStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,5 +53,29 @@ class BankStatementLine extends Model
     public function cashMovement(): BelongsTo
     {
         return $this->belongsTo(CashMovement::class);
+    }
+
+    public function direction(): ?CashMovementDirection
+    {
+        $direction = data_get($this->metadata, 'direction');
+
+        return is_string($direction) ? CashMovementDirection::tryFrom($direction) : null;
+    }
+
+    public function isInflow(): bool
+    {
+        return $this->direction() === CashMovementDirection::INFLOW;
+    }
+
+    public function isOutflow(): bool
+    {
+        return $this->direction() === CashMovementDirection::OUTFLOW;
+    }
+
+    public function suggestions(): array
+    {
+        $suggestions = data_get($this->metadata, 'suggestions', []);
+
+        return is_array($suggestions) ? $suggestions : [];
     }
 }
