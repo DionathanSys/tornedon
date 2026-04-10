@@ -67,7 +67,8 @@ class FiscalDocumentsTable
                     ->label('Cliente')
                     ->searchable()
                     ->sortable()
-                    ->limit(30)
+                    ->wrap()
+                    ->lineClamp(2)
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
 

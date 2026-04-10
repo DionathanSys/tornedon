@@ -10,6 +10,7 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Tables\FiscalDocuments
 use App\Filament\Clusters\Sales\SalesCluster;
 use App\Models\FiscalDocument;
 use BackedEnum;
+use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;

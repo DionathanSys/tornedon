@@ -38,14 +38,16 @@ class ItemsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('item_number')
                     ->label('Nº')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 // NF-e columns
                 TextColumn::make('product.name')
                     ->label('Produto')
                     ->searchable()
                     ->limit(40)
-                    ->visible(! $isNfse),
+                    ->visible(! $isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('ncm_code')
                     ->label('NCM')
@@ -69,7 +71,8 @@ class ItemsRelationManager extends RelationManager
 
                 TextColumn::make('service_code')
                     ->label('Cód. Serviço')
-                    ->visible($isNfse),
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 // Common columns
                 TextColumn::make('description')
@@ -83,41 +86,48 @@ class ItemsRelationManager extends RelationManager
 
                 TextColumn::make('unit_of_measure')
                     ->label('Un.')
-                    ->visible(! $isNfse),
+                    ->visible(! $isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('quantity')
                     ->label('Qtde.')
                     ->numeric(4, ',', '.')
                     ->sortable()
-                    ->summarize(Sum::make('quantity')->label('TT Qtde.')),
+                    ->summarize(Sum::make('quantity')->label('TT Qtde.'))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('unit_price')
                     ->label('Vlr. Unitário')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('total_price')
                     ->label('Total')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('total_price')->label('TT Total')->money('BRL', 100)),
+                    ->summarize(Sum::make('total_price')->label('TT Total')->money('BRL', 100))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 // NFS-e ISS columns
                 TextColumn::make('iss_rate')
                     ->label('ISS %')
                     ->numeric(2, ',', '.')
                     ->suffix('%')
-                    ->visible($isNfse),
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('iss_amount')
                     ->label('ISS Valor')
                     ->money('BRL')
-                    ->visible($isNfse),
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 IconColumn::make('iss_withheld')
                     ->label('ISS Retido')
                     ->boolean()
-                    ->visible($isNfse),
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 // NF-e toggleable columns
                 TextColumn::make('discount_amount')
@@ -152,6 +162,7 @@ class ItemsRelationManager extends RelationManager
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->reorderableColumns()
             ->filters([])
             ->headerActions([])
             ->recordActions([
