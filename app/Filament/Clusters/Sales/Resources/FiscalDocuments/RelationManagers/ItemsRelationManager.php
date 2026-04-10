@@ -75,8 +75,10 @@ class ItemsRelationManager extends RelationManager
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->description(fn (FiscalDocumentItem $item) => Str::upper($item->additional_information))
+                    ->wrap()
+                    ->lineClamp(5)
                     ->searchable()
-                    ->limit(40)
+                    // ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: ! $isNfse),
 
                 TextColumn::make('unit_of_measure')
