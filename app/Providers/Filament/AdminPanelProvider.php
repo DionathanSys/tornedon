@@ -32,7 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             // ->sidebarFullyCollapsibleOnDesktop()
             ->sidebarCollapsibleOnDesktop()
-            ->sidebarWidth('12rem')
+            ->sidebarWidth('13rem')
             ->id('admin')
             ->path('admin')
             ->login()
