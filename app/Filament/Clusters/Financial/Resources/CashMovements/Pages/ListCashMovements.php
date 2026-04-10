@@ -17,7 +17,7 @@ class ListCashMovements extends ListRecords
         return [
             ImportOfxAction::make(),
             Action::make('view_ofx_imports')
-                ->label('Importacoes OFX')
+                ->label('Importações OFX')
                 ->icon('heroicon-o-document-duplicate')
                 ->url(route('filament.admin.financial.resources.bank-statement-imports.index', [
                     'tenant' => Filament::getTenant(),

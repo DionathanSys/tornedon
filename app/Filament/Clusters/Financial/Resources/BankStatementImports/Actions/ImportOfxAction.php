@@ -35,7 +35,10 @@ final class ImportOfxAction
                         ->storeFiles(false)
                         ->acceptedFileTypes([
                             'application/ofx',
+                            'application/x-ofx',
+                            'application/octet-stream',
                             'text/ofx',
+                            'text/plain',
                             '.ofx',
                         ])
                         ->required(),
