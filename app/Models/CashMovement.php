@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\Financial\CashMovementDirection;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -104,6 +105,58 @@ class CashMovement extends Model
     public function scopeUnreversed(Builder $query): Builder
     {
         return $query->whereNull('reversal_of_id');
+    }
+
+    public function isTransfer(): bool
+    {
+        if ($this->origin_type !== 'manual' || blank($this->transfer_group_id)) {
+            return false;
+        }
+
+        $group = $this->transferGroupMovements();
+
+        if ($group->count() !== 2 || ! $group->contains('id', $this->id)) {
+            return false;
+        }
+
+        $directions = $group
+            ->pluck('direction')
+            ->map(fn (CashMovementDirection|string|null $direction) => $direction instanceof CashMovementDirection ? $direction->value : $direction)
+            ->sort()
+            ->values()
+            ->all();
+
+        return $directions === [
+            CashMovementDirection::INFLOW->value,
+            CashMovementDirection::OUTFLOW->value,
+        ] && $group->pluck('financial_account_id')->unique()->count() === 2;
+    }
+
+    public function transferCounterpart(): ?self
+    {
+        if (! $this->isTransfer()) {
+            return null;
+        }
+
+        return $this->transferGroupMovements()
+            ->firstWhere('id', '!=', $this->id);
+    }
+
+    /**
+     * @return Collection<int, self>
+     */
+    public function transferGroupMovements(): Collection
+    {
+        if (blank($this->transfer_group_id)) {
+            return new Collection();
+        }
+
+        return self::query()
+            ->where('transfer_group_id', $this->transfer_group_id)
+            ->where('origin_type', 'manual')
+            ->whereNull('reversal_of_id')
+            ->orderBy('id')
+            ->get();
     }
 
     public function getSignedAmountAttribute(): float

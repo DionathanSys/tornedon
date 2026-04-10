@@ -3,6 +3,9 @@
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Tables;
 
 use App\Enum\Financial\CashMovementDirection;
+use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\CreateTransferAction;
+use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransferAction;
+use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
@@ -49,6 +52,12 @@ class CashMovementsTable
                 TextColumn::make('origin_label')
                     ->label('Origem')
                     ->toggleable(),
+                TextColumn::make('transfer_group_id')
+                    ->label('Vinculo')
+                    ->formatStateUsing(fn ($state, $record): string => $record->isTransfer() ? 'Transferencia' : '-')
+                    ->badge()
+                    ->color(fn ($state, $record): string => $record->isTransfer() ? 'info' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('tracking_label')
                     ->label('De / Para')
                     ->wrap()
@@ -98,11 +107,16 @@ class CashMovementsTable
             ->recordActions([
                 EditAction::make()
                     ->iconButton()
-                    ->visible(fn ($record): bool => $record->origin_type === 'manual'),
+                    ->visible(fn ($record): bool => $record->origin_type === 'manual' && ! $record->isTransfer()),
+                EditTransferAction::make()
+                    ->iconButton(),
+                ReverseTransferAction::make()
+                    ->iconButton(),
             ])
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Movimento Manual'),
+                CreateTransferAction::make(),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->emptyStateHeading('Nenhum movimento financeiro encontrado');

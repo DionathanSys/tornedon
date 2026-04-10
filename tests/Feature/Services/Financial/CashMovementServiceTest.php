@@ -222,4 +222,216 @@ class CashMovementServiceTest extends TestCase
         $this->assertArrayNotHasKey('counterparty_partner_name', $updated->participants_snapshot);
         $this->assertArrayNotHasKey('counterparty_financial_account_name', $updated->participants_snapshot);
     }
+
+    public function test_create_transfer_generates_two_mirrored_movements_and_updates_balances(): void
+    {
+        $transfer = $this->service->createTransfer([
+            'company_id' => $this->company->id,
+            'source_financial_account_id' => $this->mainAccount->id,
+            'destination_financial_account_id' => $this->secondaryAccount->id,
+            'financial_category_id' => $this->category->id,
+            'transaction_date' => '2026-04-10',
+            'amount' => 200,
+            'description' => 'Transferencia interna',
+            'notes' => 'Teste',
+        ], $this->user->id);
+
+        $this->assertNotNull($transfer, $this->service->getMessageUser());
+
+        $movements = CashMovement::query()
+            ->where('transfer_group_id', $transfer->transfer_group_id)
+            ->whereNull('reversal_of_id')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $movements);
+        $this->assertSame(
+            [CashMovementDirection::INFLOW->value, CashMovementDirection::OUTFLOW->value],
+            $movements->pluck('direction')->sort()->values()->all()
+        );
+
+        $outflow = $movements->firstWhere('direction', CashMovementDirection::OUTFLOW);
+        $inflow = $movements->firstWhere('direction', CashMovementDirection::INFLOW);
+
+        $this->assertSame($this->mainAccount->id, $outflow->financial_account_id);
+        $this->assertSame($this->secondaryAccount->id, $outflow->counterparty_financial_account_id);
+        $this->assertSame($this->secondaryAccount->id, $inflow->financial_account_id);
+        $this->assertSame($this->mainAccount->id, $inflow->counterparty_financial_account_id);
+
+        $this->assertSame(800.0, $this->mainAccount->fresh()->current_balance);
+        $this->assertSame(700.0, $this->secondaryAccount->fresh()->current_balance);
+    }
+
+    public function test_create_transfer_rejects_same_account_and_non_positive_amount(): void
+    {
+        $transfer = $this->service->createTransfer([
+            'company_id' => $this->company->id,
+            'source_financial_account_id' => $this->mainAccount->id,
+            'destination_financial_account_id' => $this->mainAccount->id,
+            'financial_category_id' => $this->category->id,
+            'transaction_date' => '2026-04-10',
+            'amount' => 0,
+            'description' => 'Transferencia invalida',
+        ], $this->user->id);
+
+        $this->assertNull($transfer);
+        $this->assertArrayHasKey('amount', $this->service->getErrors());
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    public function test_update_transfer_updates_both_sides_consistently(): void
+    {
+        $transfer = $this->service->createTransfer([
+            'company_id' => $this->company->id,
+            'source_financial_account_id' => $this->mainAccount->id,
+            'destination_financial_account_id' => $this->secondaryAccount->id,
+            'financial_category_id' => $this->category->id,
+            'transaction_date' => '2026-04-10',
+            'amount' => 120,
+            'description' => 'Transferencia inicial',
+        ], $this->user->id);
+
+        $thirdAccount = FinancialAccount::create([
+            'company_id' => $this->company->id,
+            'name' => 'Conta Aplicacao',
+            'type' => FinancialAccountType::BANK->value,
+            'opening_balance' => 50,
+            'is_active' => true,
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+        ]);
+
+        $updated = $this->service->updateTransfer($transfer, [
+            'company_id' => $this->company->id,
+            'source_financial_account_id' => $this->secondaryAccount->id,
+            'destination_financial_account_id' => $thirdAccount->id,
+            'financial_category_id' => $this->category->id,
+            'transaction_date' => '2026-04-11',
+            'amount' => 180,
+            'description' => 'Transferencia ajustada',
+            'notes' => 'Atualizada',
+        ], $this->user->id);
+
+        $this->assertNotNull($updated, $this->service->getMessageUser());
+
+        $movements = CashMovement::query()
+            ->where('transfer_group_id', $transfer->transfer_group_id)
+            ->whereNull('reversal_of_id')
+            ->orderBy('id')
+            ->get();
+
+        $outflow = $movements->firstWhere('direction', CashMovementDirection::OUTFLOW);
+        $inflow = $movements->firstWhere('direction', CashMovementDirection::INFLOW);
+
+        $this->assertSame($this->secondaryAccount->id, $outflow->financial_account_id);
+        $this->assertSame($thirdAccount->id, $outflow->counterparty_financial_account_id);
+        $this->assertSame($thirdAccount->id, $inflow->financial_account_id);
+        $this->assertSame($this->secondaryAccount->id, $inflow->counterparty_financial_account_id);
+        $this->assertSame('Transferencia ajustada', $outflow->description);
+        $this->assertSame('2026-04-11', $outflow->transaction_date?->format('Y-m-d'));
+        $this->assertSame('Atualizada', $inflow->notes);
+    }
+
+    public function test_reverse_transfer_creates_two_reversals_and_prevents_duplicate_reverse(): void
+    {
+        $transfer = $this->service->createTransfer([
+            'company_id' => $this->company->id,
+            'source_financial_account_id' => $this->mainAccount->id,
+            'destination_financial_account_id' => $this->secondaryAccount->id,
+            'financial_category_id' => $this->category->id,
+            'transaction_date' => '2026-04-10',
+            'amount' => 140,
+            'description' => 'Transferencia para estorno',
+        ], $this->user->id);
+
+        $reversal = $this->service->reverseTransfer($transfer, $this->user->id);
+
+        $this->assertNotNull($reversal, $this->service->getMessageUser());
+
+        $originals = CashMovement::query()
+            ->where('transfer_group_id', $transfer->transfer_group_id)
+            ->whereNull('reversal_of_id')
+            ->orderBy('id')
+            ->get();
+        $reversals = CashMovement::query()
+            ->where('transfer_group_id', $transfer->transfer_group_id)
+            ->whereNotNull('reversal_of_id')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $originals);
+        $this->assertCount(2, $reversals);
+        $this->assertTrue($originals->every(fn (CashMovement $movement) => $movement->reversed_at !== null));
+        $this->assertSame(
+            [CashMovementDirection::INFLOW->value, CashMovementDirection::OUTFLOW->value],
+            $reversals->pluck('direction')->sort()->values()->all()
+        );
+        $this->assertTrue($reversals->every(fn (CashMovement $movement) => str_starts_with($movement->description, 'Estorno: ')));
+
+        $duplicateReverse = $this->service->reverseTransfer($transfer->fresh(), $this->user->id);
+
+        $this->assertNull($duplicateReverse);
+        $this->assertArrayHasKey('transfer_group_id', $this->service->getErrors());
+        $this->assertDatabaseCount('cash_movements', 4);
+    }
+
+    public function test_update_manual_rejects_complete_transfer_pair_but_keeps_legacy_manual_records_editable(): void
+    {
+        $transfer = $this->service->createTransfer([
+            'company_id' => $this->company->id,
+            'source_financial_account_id' => $this->mainAccount->id,
+            'destination_financial_account_id' => $this->secondaryAccount->id,
+            'financial_category_id' => $this->category->id,
+            'transaction_date' => '2026-04-10',
+            'amount' => 90,
+            'description' => 'Transferencia protegida',
+        ], $this->user->id);
+
+        $manualUpdate = $this->service->updateManual($transfer, [
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->mainAccount->id,
+            'financial_category_id' => $this->category->id,
+            'direction' => CashMovementDirection::OUTFLOW->value,
+            'transaction_date' => '2026-04-10',
+            'amount' => 95,
+            'description' => 'Nao deve atualizar',
+        ], $this->user->id);
+
+        $this->assertNull($manualUpdate);
+        $this->assertArrayHasKey('transfer_group_id', $this->service->getErrors());
+
+        $legacyMovement = CashMovement::create([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->mainAccount->id,
+            'financial_category_id' => $this->category->id,
+            'direction' => CashMovementDirection::OUTFLOW->value,
+            'transaction_date' => '2026-04-09',
+            'amount' => 100,
+            'description' => 'Legado manual',
+            'origin_type' => 'manual',
+            'counterparty_financial_account_id' => $this->secondaryAccount->id,
+            'transfer_group_id' => 'legacy-group',
+            'participants_snapshot' => [
+                'company_name' => $this->company->name,
+                'financial_account_name' => $this->mainAccount->display_name,
+                'counterparty_financial_account_name' => $this->secondaryAccount->display_name,
+            ],
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+        ]);
+
+        $legacyUpdate = $this->service->updateManual($legacyMovement, [
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->mainAccount->id,
+            'financial_category_id' => $this->category->id,
+            'direction' => CashMovementDirection::OUTFLOW->value,
+            'transaction_date' => '2026-04-10',
+            'amount' => 110,
+            'description' => 'Legado atualizado',
+            'counterparty_financial_account_id' => $this->secondaryAccount->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($legacyUpdate, $this->service->getMessageUser());
+        $this->assertSame('Legado atualizado', $legacyUpdate->description);
+    }
 }

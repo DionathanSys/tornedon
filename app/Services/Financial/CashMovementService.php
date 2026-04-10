@@ -7,9 +7,11 @@ use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
 use App\Models\Company;
+use App\Models\FinancialCategory;
 use App\Models\FinancialAccount;
 use App\Models\Partner;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -61,6 +63,8 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($data, $userId) {
+                $this->assertAmountIsPositive((float) ($data['amount'] ?? 0));
+
                 $companyId = (int) $data['company_id'];
                 $account = $this->resolveFinancialAccount((int) $data['financial_account_id'], $companyId);
                 $category = $this->classificationService->assertCategoryIsUsable(
@@ -126,9 +130,16 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($movement, $data, $userId) {
+                if ($this->isTransferMovement($movement)) {
+                    throw ValidationException::withMessages([
+                        'transfer_group_id' => ['Transferencias devem ser editadas pelo fluxo especifico de transferencia.'],
+                    ]);
+                }
+
                 $accountId = (int) ($data['financial_account_id'] ?? $movement->financial_account_id);
                 $companyId = (int) ($data['company_id'] ?? $movement->company_id);
                 $categoryId = (int) ($data['financial_category_id'] ?? $movement->financial_category_id);
+                $this->assertAmountIsPositive((float) ($data['amount'] ?? $movement->amount));
 
                 $account = $this->resolveFinancialAccount($accountId, $companyId);
                 $category = $this->classificationService->assertCategoryIsUsable($categoryId, $companyId, 'cash_movement');
@@ -181,6 +192,267 @@ class CashMovementService
                 'trace' => $e->getTraceAsString(),
                 'movement_id' => $movement->id,
                 'payload' => $data,
+            ]);
+
+            return null;
+        }
+    }
+
+    public function createTransfer(array $data, ?int $userId = null): ?CashMovement
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($data, $userId) {
+                $companyId = (int) $data['company_id'];
+                $amount = (float) ($data['amount'] ?? 0);
+                $this->assertAmountIsPositive($amount);
+
+                $sourceAccount = $this->resolveFinancialAccount((int) $data['source_financial_account_id'], $companyId);
+                $destinationAccount = $this->resolveCounterpartyFinancialAccount(
+                    companyId: $companyId,
+                    financialAccountId: $sourceAccount->id,
+                    counterpartyFinancialAccountId: $data['destination_financial_account_id'] ?? null,
+                );
+                $category = $this->classificationService->assertCategoryIsUsable(
+                    (int) $data['financial_category_id'],
+                    $companyId,
+                    'cash_movement'
+                );
+                $transferGroupId = (string) Str::uuid();
+
+                $outflow = $this->createTransferMovement(
+                    companyId: $companyId,
+                    account: $sourceAccount,
+                    counterpartyAccount: $destinationAccount,
+                    category: $category,
+                    direction: CashMovementDirection::OUTFLOW,
+                    transactionDate: (string) $data['transaction_date'],
+                    amount: $amount,
+                    description: (string) $data['description'],
+                    notes: $data['notes'] ?? null,
+                    transferGroupId: $transferGroupId,
+                    userId: $userId,
+                );
+
+                $this->createTransferMovement(
+                    companyId: $companyId,
+                    account: $destinationAccount,
+                    counterpartyAccount: $sourceAccount,
+                    category: $category,
+                    direction: CashMovementDirection::INFLOW,
+                    transactionDate: (string) $data['transaction_date'],
+                    amount: $amount,
+                    description: (string) $data['description'],
+                    notes: $data['notes'] ?? null,
+                    transferGroupId: $transferGroupId,
+                    userId: $userId,
+                );
+
+                $this->setSuccess('Transferencia entre contas criada com sucesso.', [
+                    'transfer_group_id' => $transferGroupId,
+                ]);
+
+                return $outflow->fresh();
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validacao da transferencia.', $e->errors(), 422);
+
+            return null;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao criar transferencia entre contas.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payload' => $data,
+            ]);
+
+            return null;
+        }
+    }
+
+    public function updateTransfer(CashMovement $movement, array $data, ?int $userId = null): ?CashMovement
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($movement, $data, $userId) {
+                [$outflow, $inflow] = $this->resolveTransferPair($movement);
+
+                if ($outflow->reversed_at !== null || $inflow->reversed_at !== null) {
+                    throw ValidationException::withMessages([
+                        'transfer_group_id' => ['Transferencias estornadas nao podem ser editadas.'],
+                    ]);
+                }
+
+                $companyId = (int) ($data['company_id'] ?? $movement->company_id);
+                $amount = (float) ($data['amount'] ?? $movement->amount);
+                $this->assertAmountIsPositive($amount);
+
+                $sourceAccount = $this->resolveFinancialAccount((int) $data['source_financial_account_id'], $companyId);
+                $destinationAccount = $this->resolveCounterpartyFinancialAccount(
+                    companyId: $companyId,
+                    financialAccountId: $sourceAccount->id,
+                    counterpartyFinancialAccountId: $data['destination_financial_account_id'] ?? null,
+                );
+                $category = $this->classificationService->assertCategoryIsUsable(
+                    (int) $data['financial_category_id'],
+                    $companyId,
+                    'cash_movement'
+                );
+
+                $commonData = [
+                    'company_id' => $companyId,
+                    'financial_category_id' => $category->id,
+                    'transaction_date' => $data['transaction_date'],
+                    'amount' => $amount,
+                    'description' => $data['description'],
+                    'notes' => $data['notes'] ?? null,
+                    'updated_by' => $userId,
+                ];
+
+                $outflow->update([
+                    ...$commonData,
+                    'financial_account_id' => $sourceAccount->id,
+                    'direction' => CashMovementDirection::OUTFLOW->value,
+                    'counterparty_financial_account_id' => $destinationAccount->id,
+                    'participants_snapshot' => $this->buildParticipantsSnapshot(
+                        companyId: $companyId,
+                        financialAccount: $sourceAccount,
+                        counterpartyPartner: null,
+                        counterpartyFinancialAccount: $destinationAccount,
+                    ),
+                ]);
+
+                $inflow->update([
+                    ...$commonData,
+                    'financial_account_id' => $destinationAccount->id,
+                    'direction' => CashMovementDirection::INFLOW->value,
+                    'counterparty_financial_account_id' => $sourceAccount->id,
+                    'participants_snapshot' => $this->buildParticipantsSnapshot(
+                        companyId: $companyId,
+                        financialAccount: $destinationAccount,
+                        counterpartyPartner: null,
+                        counterpartyFinancialAccount: $sourceAccount,
+                    ),
+                ]);
+
+                $this->setSuccess('Transferencia entre contas atualizada com sucesso.');
+
+                return $movement->direction === CashMovementDirection::OUTFLOW
+                    ? $outflow->fresh()
+                    : $inflow->fresh();
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validacao da transferencia.', $e->errors(), 422);
+
+            return null;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao atualizar transferencia entre contas.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'movement_id' => $movement->id,
+                'payload' => $data,
+            ]);
+
+            return null;
+        }
+    }
+
+    public function reverseTransfer(CashMovement $movement, ?int $userId = null): ?CashMovement
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($movement, $userId) {
+                [$outflow, $inflow] = $this->resolveTransferPair($movement);
+
+                if (
+                    $outflow->reversed_at !== null
+                    || $inflow->reversed_at !== null
+                    || $outflow->reversals()->exists()
+                    || $inflow->reversals()->exists()
+                ) {
+                    throw ValidationException::withMessages([
+                        'transfer_group_id' => ['Esta transferencia ja foi estornada anteriormente.'],
+                    ]);
+                }
+
+                $outflowReversal = CashMovement::create([
+                    'company_id' => $outflow->company_id,
+                    'financial_account_id' => $outflow->financial_account_id,
+                    'financial_category_id' => $outflow->financial_category_id,
+                    'direction' => CashMovementDirection::INFLOW->value,
+                    'transaction_date' => now()->toDateString(),
+                    'amount' => $outflow->amount,
+                    'description' => 'Estorno: ' . $outflow->description,
+                    'origin_type' => 'manual',
+                    'origin_id' => null,
+                    'counterparty_partner_id' => null,
+                    'counterparty_financial_account_id' => $outflow->counterparty_financial_account_id,
+                    'transfer_group_id' => $outflow->transfer_group_id,
+                    'notes' => $outflow->notes,
+                    'participants_snapshot' => $outflow->participants_snapshot,
+                    'reversal_of_id' => $outflow->id,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+
+                CashMovement::create([
+                    'company_id' => $inflow->company_id,
+                    'financial_account_id' => $inflow->financial_account_id,
+                    'financial_category_id' => $inflow->financial_category_id,
+                    'direction' => CashMovementDirection::OUTFLOW->value,
+                    'transaction_date' => now()->toDateString(),
+                    'amount' => $inflow->amount,
+                    'description' => 'Estorno: ' . $inflow->description,
+                    'origin_type' => 'manual',
+                    'origin_id' => null,
+                    'counterparty_partner_id' => null,
+                    'counterparty_financial_account_id' => $inflow->counterparty_financial_account_id,
+                    'transfer_group_id' => $inflow->transfer_group_id,
+                    'notes' => $inflow->notes,
+                    'participants_snapshot' => $inflow->participants_snapshot,
+                    'reversal_of_id' => $inflow->id,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+
+                $timestamp = now();
+
+                $outflow->update([
+                    'reversed_at' => $timestamp,
+                    'updated_by' => $userId,
+                ]);
+
+                $inflow->update([
+                    'reversed_at' => $timestamp,
+                    'updated_by' => $userId,
+                ]);
+
+                $this->setSuccess('Transferencia entre contas estornada com sucesso.');
+
+                return $movement->id === $outflow->id
+                    ? $outflowReversal->fresh()
+                    : $movement->fresh()?->reversals()->latest('id')->first();
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha de validacao do estorno da transferencia.', $e->errors(), 422);
+
+            return null;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao estornar transferencia entre contas.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'movement_id' => $movement->id,
             ]);
 
             return null;
@@ -352,6 +624,15 @@ class CashMovementService
         return $account;
     }
 
+    private function assertAmountIsPositive(float $amount): void
+    {
+        if ($amount <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => ['O valor deve ser maior que zero.'],
+            ]);
+        }
+    }
+
     private function resolveCounterpartyPartner(int|string|null $counterpartyPartnerId): ?Partner
     {
         if ($counterpartyPartnerId === null || $counterpartyPartnerId === '') {
@@ -387,6 +668,86 @@ class CashMovementService
         }
 
         return $this->resolveFinancialAccount($counterpartyFinancialAccountId, $companyId);
+    }
+
+    /**
+     * @return array{0: CashMovement, 1: CashMovement}
+     */
+    private function resolveTransferPair(CashMovement $movement): array
+    {
+        if ($movement->reversal_of_id !== null) {
+            throw ValidationException::withMessages([
+                'transfer_group_id' => ['Lancamentos de estorno nao podem ser editados como transferencia.'],
+            ]);
+        }
+
+        if (! $this->isTransferMovement($movement)) {
+            throw ValidationException::withMessages([
+                'transfer_group_id' => ['O movimento informado nao pertence a uma transferencia valida.'],
+            ]);
+        }
+
+        /** @var Collection<int, CashMovement> $group */
+        $group = CashMovement::query()
+            ->where('transfer_group_id', $movement->transfer_group_id)
+            ->where('origin_type', 'manual')
+            ->whereNull('reversal_of_id')
+            ->orderBy('id')
+            ->get();
+
+        $outflow = $group->first(fn (CashMovement $item) => $item->direction === CashMovementDirection::OUTFLOW);
+        $inflow = $group->first(fn (CashMovement $item) => $item->direction === CashMovementDirection::INFLOW);
+
+        if (! $outflow || ! $inflow) {
+            throw ValidationException::withMessages([
+                'transfer_group_id' => ['Nao foi possivel localizar os dois lados da transferencia.'],
+            ]);
+        }
+
+        return [$outflow, $inflow];
+    }
+
+    private function isTransferMovement(CashMovement $movement): bool
+    {
+        return $movement->isTransfer();
+    }
+
+    private function createTransferMovement(
+        int $companyId,
+        FinancialAccount $account,
+        FinancialAccount $counterpartyAccount,
+        FinancialCategory $category,
+        CashMovementDirection $direction,
+        string $transactionDate,
+        float $amount,
+        string $description,
+        ?string $notes,
+        string $transferGroupId,
+        ?int $userId,
+    ): CashMovement {
+        return CashMovement::create([
+            'company_id' => $companyId,
+            'financial_account_id' => $account->id,
+            'financial_category_id' => $category->id,
+            'direction' => $direction->value,
+            'transaction_date' => $transactionDate,
+            'amount' => $amount,
+            'description' => $description,
+            'origin_type' => 'manual',
+            'origin_id' => null,
+            'counterparty_partner_id' => null,
+            'counterparty_financial_account_id' => $counterpartyAccount->id,
+            'transfer_group_id' => $transferGroupId,
+            'notes' => $notes,
+            'participants_snapshot' => $this->buildParticipantsSnapshot(
+                companyId: $companyId,
+                financialAccount: $account,
+                counterpartyPartner: null,
+                counterpartyFinancialAccount: $counterpartyAccount,
+            ),
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
     }
 
     private function buildParticipantsSnapshot(
