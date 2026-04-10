@@ -9,9 +9,9 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 final class ImportOfxAction
@@ -33,14 +33,7 @@ final class ImportOfxAction
                     FileUpload::make('file')
                         ->label('Arquivo OFX')
                         ->storeFiles(false)
-                        // ->acceptedFileTypes([
-                        //     'application/ofx',
-                        //     'application/x-ofx',
-                        //     'application/octet-stream',
-                        //     'text/ofx',
-                        //     'text/plain',
-                        //     '.ofx',
-                        // ])
+                        ->helperText('Selecione um arquivo com extensao .ofx.')
                         ->required(),
                 ]))
             ->action(function (array $data): void {
@@ -56,14 +49,36 @@ final class ImportOfxAction
                     return;
                 }
 
+                $originalName = (string) $file->getClientOriginalName();
+                $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+                if ($extension !== 'ofx') {
+                    Notification::make()
+                        ->title('Selecione um arquivo OFX com extensao .ofx.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
                 $contents = file_get_contents($file->getRealPath());
+
+                if (! is_string($contents) || ! str_contains(strtoupper($contents), '<OFX>')) {
+                    Notification::make()
+                        ->title('O arquivo enviado nao possui um conteudo OFX valido.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
                 $service = app(ImportBankStatementService::class);
                 $import = $service->importFromString(
                     Filament::getTenant()->id,
                     (int) $data['financial_account_id'],
-                    $contents ?: '',
-                    $file->getClientOriginalName(),
-                    auth()->id(),
+                    $contents,
+                    $originalName,
+                    Auth::id(),
                 );
 
                 if ($service->hasError() || $import === null) {
@@ -79,9 +94,9 @@ final class ImportOfxAction
                     ->title($service->getMessage() ?: 'Extrato OFX importado com sucesso.')
                     ->success()
                     ->actions([
-                        NotificationAction::make('open')
-                            ->label('Revisar importacao')
-                            ->url(BankStatementImportResource::getUrl('view', ['record' => $import])),
+                        // NotificationAction::make('open')
+                        //     ->label('Revisar importacao')
+                        //     ->url(BankStatementImportResource::getUrl('view', ['record' => $import])),
                     ])
                     ->send();
             });
