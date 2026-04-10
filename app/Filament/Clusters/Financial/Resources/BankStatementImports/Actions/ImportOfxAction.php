@@ -33,14 +33,14 @@ final class ImportOfxAction
                     FileUpload::make('file')
                         ->label('Arquivo OFX')
                         ->storeFiles(false)
-                        ->acceptedFileTypes([
-                            'application/ofx',
-                            'application/x-ofx',
-                            'application/octet-stream',
-                            'text/ofx',
-                            'text/plain',
-                            '.ofx',
-                        ])
+                        // ->acceptedFileTypes([
+                        //     'application/ofx',
+                        //     'application/x-ofx',
+                        //     'application/octet-stream',
+                        //     'text/ofx',
+                        //     'text/plain',
+                        //     '.ofx',
+                        // ])
                         ->required(),
                 ]))
             ->action(function (array $data): void {
