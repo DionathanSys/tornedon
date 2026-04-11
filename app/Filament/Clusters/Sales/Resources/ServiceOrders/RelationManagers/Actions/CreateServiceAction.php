@@ -13,6 +13,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Support\Enums\Size;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,7 @@ final class CreateServiceAction
             ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->modalHeading('Cadastrar serviço')
             ->modalSubmitActionLabel('Salvar serviço')
-            ->modalWidth(MaxWidth::SevenExtraLarge)
+            ->modalWidth(Width::SevenExtraLarge)
             ->schema(fn (Schema $schema): Schema => ServiceForm::configure($schema))
             ->action(function (array $data): void {
                 Log::debug('CreateServiceAction: Iniciando criação de serviço via modal do RelationManager', [
