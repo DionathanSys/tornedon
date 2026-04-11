@@ -3,9 +3,13 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages;
 
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListFiscalDocuments extends ListRecords
@@ -64,7 +68,11 @@ class ListFiscalDocuments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-
+            Action::make('new-partner')
+                ->label('Novo Parceiro')
+                ->icon(Heroicon::Plus)
+                ->size(Size::ExtraSmall)
+                ->url(CompanyPartnerResource::getUrl('create')),
         ];
     }
 }

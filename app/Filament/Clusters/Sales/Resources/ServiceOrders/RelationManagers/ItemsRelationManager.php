@@ -2,16 +2,11 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers;
 
-use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\CreateItemAction;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\CreateItemActionExample;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\CreateServiceAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\EditItemAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -89,6 +84,7 @@ class ItemsRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 CreateItemAction::make(),
+                CreateServiceAction::make(),
             ])
             ->emptyStateDescription('Adicione serviços à ordem de serviço para que eles sejam exibidos aqui.');
     }

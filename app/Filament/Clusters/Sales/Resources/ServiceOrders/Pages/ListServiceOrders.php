@@ -3,9 +3,13 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListServiceOrders extends ListRecords
@@ -38,6 +42,12 @@ class ListServiceOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Action::make('new-partner')
+                ->label('Novo Parceiro')
+                ->icon(Heroicon::Plus)
+                ->size(Size::ExtraSmall)
+                ->url(CompanyPartnerResource::getUrl('create')),
+        ];
     }
 }
