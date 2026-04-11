@@ -73,7 +73,8 @@ class CompanyPartnerForm
                         ])->buttonGroup(),
                     ])
                     ->schema([
-                        Hidden::make('alert_partner_exists'),
+                        //TODO: Implementar junto com Callout
+                        // Hidden::make('alert_partner_exists'),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -89,10 +90,11 @@ class CompanyPartnerForm
                             JS),
                         DocumentNumberInput::make()
                             ->disabledOn('edit'),
-                        Callout::make()
-                            ->description('Parceiro já cadastrado')
-                            ->info()
-                            ->visible(fn(Get $get): bool => ($get('alert_partner_exists') ?? false)),
+                        //TODO: Implementar Callout
+                        // Callout::make()
+                        //     ->description('Parceiro já cadastrado')
+                        //     ->info()
+                        //     ->visible(fn(Get $get): bool => ($get('alert_partner_exists') ?? false)),
                         TextInput::make('name')
                             ->label('Nome')
                             ->autocomplete(false)

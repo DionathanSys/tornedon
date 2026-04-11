@@ -57,7 +57,8 @@ class DocumentNumberInput
                         $set('state_tax_indicator', $partner->state_tax_indicator ?? '');
                         $set('partner_exists', true);
                         $set('partner_id', $partner->id);
-                        $set('alert_partner_exists', true);
+                        //TODO: Implementar junto com Callout
+                        // $set('alert_partner_exists', true);
                         return;
                     }
                 }
