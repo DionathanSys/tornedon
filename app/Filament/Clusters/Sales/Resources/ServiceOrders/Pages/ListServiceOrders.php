@@ -6,6 +6,7 @@ use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Size;
@@ -43,11 +44,13 @@ class ListServiceOrders extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('new-partner')
-                ->label('Novo Parceiro')
-                ->icon(Heroicon::Plus)
-                ->size(Size::ExtraSmall)
-                ->url(CompanyPartnerResource::getUrl('create')),
+            ActionGroup::make([
+                Action::make('new-partner')
+                    ->label('Novo Parceiro')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::ExtraSmall)
+                    ->url(CompanyPartnerResource::getUrl('create'), true)
+            ])
         ];
     }
 }

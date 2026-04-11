@@ -88,6 +88,10 @@ class CompanyPartnerForm
                             JS),
                         DocumentNumberInput::make()
                             ->disabledOn('edit'),
+                        Callout::make()
+                            ->description('Parceiro já cadastrado')
+                            ->warning()
+                            ->visible(fn(Get $get): bool => ($get('alert_partner_exists') ?? false)),
                         TextInput::make('name')
                             ->label('Nome')
                             ->autocomplete(false)
