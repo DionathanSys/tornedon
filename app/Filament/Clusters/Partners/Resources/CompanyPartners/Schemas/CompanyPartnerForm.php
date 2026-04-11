@@ -73,6 +73,7 @@ class CompanyPartnerForm
                         ])->buttonGroup(),
                     ])
                     ->schema([
+                        Hidden::make('alert_partner_exists'),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -90,7 +91,7 @@ class CompanyPartnerForm
                             ->disabledOn('edit'),
                         Callout::make()
                             ->description('Parceiro já cadastrado')
-                            ->warning()
+                            ->info()
                             ->visible(fn(Get $get): bool => ($get('alert_partner_exists') ?? false)),
                         TextInput::make('name')
                             ->label('Nome')
