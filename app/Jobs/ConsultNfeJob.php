@@ -54,7 +54,7 @@ class ConsultNfeJob implements ShouldQueue
         // Ainda em processamento — reagendar se não excedeu limite
         if ($doc->nfe_status === NfeStatus::IN_PROCESSING) {
             if ($this->tentativa < self::MAX_POLLING_ATTEMPTS) {
-                $delay = $this->tentativa * 15; // 15s, 30s, 45s, 60s
+                $delay = $this->tentativa * 30; // 30s, 60s, 90s, 120s
 
                 Log::info('ConsultNfeJob: ainda em processamento, reagendando', [
                     'fiscal_document_id' => $this->fiscalDocumentId,

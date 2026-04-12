@@ -9,14 +9,15 @@ use App\Services\FiscalDocument\Actions\PrintNfeDanfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfePreviewAction;
 use App\Services\FiscalDocument\Actions\ReserveNfeNumberAction;
 use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
+use App\Services\FiscalDocument\Actions\SendNfeAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Serviço de orquestração da integração NF-e com a API IntegraNotas.
  *
- * O envio é sempre assíncrono: este service despacha SendNfeJob.
- * A consulta, DANFE e preview são síncronos (chamados via Filament ou HTTP).
+ * O envio é síncrono.
+ * A consulta de retorno permanece assíncrona via polling/webhook.
  */
 class NfeDocumentService
 {
@@ -47,7 +48,7 @@ class NfeDocumentService
     }
 
     /**
-     * Enfileira o envio da NF-e (assíncrono via job).
+     * Executa o envio da NF-e de forma síncrona.
      *
      * @param FiscalDocument $doc
      * @param int            $userId
@@ -111,11 +112,25 @@ class NfeDocumentService
                 $doc->refresh();
             }
 
-            dispatch(new \App\Jobs\SendNfeJob($doc->id, $userId, $serie, $operationNature));
+            $action = new SendNfeAction($userId);
+            $result = $action->execute($doc, $serie, $operationNature);
 
-            $this->setSuccess('NF-e enfileirada para emissão.');
+            if (! $result || $action->hasError()) {
+                $this->setError($action->getMessage(), $action->getErrors());
+                $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
+                    'erros' => $action->getErrors(),
+                    'contexto' => [
+                        'serie'           => $serie,
+                        'operationNature' => $operationNature,
+                        'user_id'         => $userId,
+                    ],
+                ]);
+                return false;
+            }
 
-            Log::info('NfeDocumentService: job de emissão despachado', [
+            $this->setSuccess($action->getMessage() ?: 'NF-e enviada para processamento.');
+
+            Log::info('NfeDocumentService: emissão síncrona concluída', [
                 'fiscal_document_id' => $doc->id,
                 'user_id'            => $userId,
             ]);
