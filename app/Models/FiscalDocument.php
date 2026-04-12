@@ -232,6 +232,15 @@ class FiscalDocument extends Model
             && $this->nfe_status !== NfeStatus::PENDING;
     }
 
+    public function blocksNfeResubmission(): bool
+    {
+        return in_array($this->nfe_status, [
+            NfeStatus::IN_PROCESSING,
+            NfeStatus::AUTHORIZED,
+            NfeStatus::CANCELED,
+        ], true);
+    }
+
     public function isNfsePending(): bool
     {
         return $this->nfse_status === NfeStatus::PENDING;
@@ -261,6 +270,15 @@ class FiscalDocument extends Model
     {
         return $this->nfse_status !== null
             && $this->nfse_status !== NfeStatus::PENDING;
+    }
+
+    public function blocksNfseResubmission(): bool
+    {
+        return in_array($this->nfse_status, [
+            NfeStatus::IN_PROCESSING,
+            NfeStatus::AUTHORIZED,
+            NfeStatus::CANCELED,
+        ], true);
     }
 
     /**

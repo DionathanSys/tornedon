@@ -59,7 +59,7 @@ class NfeDocumentService
         $this->resetResponse();
 
         try {
-            if ($doc->isNfeSent() && ! $doc->isNfeRejected()) {
+            if ($doc->blocksNfeResubmission()) {
                 $this->setError('NF-e já enviada. Status atual: ' . $doc->nfe_status?->description());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                     'contexto' => [

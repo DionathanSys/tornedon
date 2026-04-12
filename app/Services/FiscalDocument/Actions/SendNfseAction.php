@@ -37,8 +37,8 @@ class SendNfseAction
                 'serie'              => $serie,
             ]);
 
-            // Impede reenvio de NFS-e já em processamento ou autorizada
-            if ($fiscalDocument->nfse_status !== null && ! $fiscalDocument->isNfseRejected()) {
+            // Bloqueia reenvio apenas quando já houve envio efetivo/processamento.
+            if ($fiscalDocument->blocksNfseResubmission()) {
                 $msgErro = 'Esta NFS-e já foi enviada (status: ' . $fiscalDocument->nfse_status?->description() . ')';
                 $this->setError($msgErro);
                 Log::warning('SendNfseAction: tentativa de reenvio bloqueada', [
