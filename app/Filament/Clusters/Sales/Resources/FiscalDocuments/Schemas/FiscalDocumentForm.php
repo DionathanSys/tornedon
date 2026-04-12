@@ -123,7 +123,7 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->rps_series ? $record->rps_series : 'N/D')
                                             ->placeholder('N/D'),
-                                        TextEntry::make('document_key') 
+                                        TextEntry::make('document_key')
                                             ->label('Chave Doc.')
                                             ->visibleOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 3])
@@ -145,6 +145,38 @@ class FiscalDocumentForm
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
+                                        TextEntry::make('status')
+                                            ->label('Status')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->formatStateUsing(fn(Status $state): ?string => $state->description())
+                                            ->badge()
+                                            ->color(fn(Status $state) => $state->color()),
+                                        TextEntry::make('nfe_status')
+                                            ->label('Status NF-e')
+                                            ->visibleOn('edit')
+                                            ->visible(fn($record, $operation): bool => ! $record->isNfse() && $operation === Operation::Edit)
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->state(fn($record): string => ! $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
+                                        TextEntry::make('document_number')
+                                            ->label('Nº Documento')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->state(fn($record): string => $record->document_number ? $record->document_number : 'N/D')
+                                            ->placeholder('N/D'),
+                                        TextEntry::make('document_key')
+                                            ->label('Chave Doc.')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->state(fn($record): string => $record->document_key ? $record->document_key : 'N/D')
+                                            ->placeholder('N/D'),
+                                        TextEntry::make('invoice_id')
+                                            ->label('Fatura Vinculada')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->visible(fn($state): bool => $state !== null)
+                                            ->formatStateUsing(fn($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
+                                            ->url(fn($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
                                         Select::make('operation_nature')
                                             ->label('Natureza da Operação')
                                             ->options(OperationNature::toSelectArray())
