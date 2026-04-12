@@ -95,7 +95,9 @@ class FiscalDocumentForm
                                             ->visibleOn('edit')
                                             ->visible(fn($record, $operation): bool => $record->isNfse() && $operation === 'edit')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
+                                            ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D')
+                                            ->badge()
+                                            ->color(fn(NfeStatus $state) => $state->color()),
                                         TextEntry::make('document_number')
                                             ->label('Nº Documento')
                                             ->visibleOn('edit')
@@ -157,9 +159,11 @@ class FiscalDocumentForm
                                             ->visibleOn('edit')
                                             ->visible(fn($record, $operation): bool => $record->isNfe() && $operation === 'edit')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->state(fn($record): string => $record->nfe_status ? $record->nfe_status->description() : 'N/D'),
+                                            ->state(fn($record): string => $record->nfe_status ? $record->nfe_status->description() : 'N/D')
+                                            ->badge()
+                                            ->color(fn(NfeStatus $state) => $state->color()),
                                         TextEntry::make('document_number')
-                                            ->label('Nº Documentoa')
+                                            ->label('Nº Documento')
                                             ->visibleOn('edit')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->document_number ? $record->document_number : 'N/D')
