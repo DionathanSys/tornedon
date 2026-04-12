@@ -37,9 +37,10 @@ class ConsultNfeAction
             $resp = $sdk->consulta(['chave' => $fiscalDocument->document_key]);
 
             Log::info('ConsultNfeAction: resposta da API', [
+                'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
                 'codigo'             => $resp->codigo ?? null,
-                'mensagem'           => $resp->mensagem ?? null,
+                'mensagem'           => $resp->mensagem ?? 'N/D',
                 'sucesso'            => $resp->sucesso ?? false,
                 'protocolo'          => $resp->protocolo ?? null,
             ]);

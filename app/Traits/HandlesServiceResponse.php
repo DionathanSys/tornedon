@@ -52,7 +52,7 @@ trait HandlesServiceResponse
 
     public function getMessage(): string
     {
-        return $this->message;
+        return $this->message ?? '';
     }
 
     public function getMessageUser(): string
