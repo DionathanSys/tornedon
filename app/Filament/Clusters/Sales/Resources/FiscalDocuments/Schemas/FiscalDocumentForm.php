@@ -97,7 +97,7 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->nfse_status ? $record->nfse_status->description() : 'N/D')
                                             ->badge()
-                                            ->color(fn(NfeStatus $state) => $state->color()),
+                                            ->color(fn($record): string => $record->nfse_status ? $record->nfse_status->color() : 'gray'),
                                         TextEntry::make('document_number')
                                             ->label('Nº Documento')
                                             ->visibleOn('edit')
@@ -161,7 +161,7 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->nfe_status ? $record->nfe_status->description() : 'N/D')
                                             ->badge()
-                                            ->color(fn(NfeStatus $state) => $state->color()),
+                                            ->color(fn($record): string => $record->nfe_status ? $record->nfe_status->color() : 'gray'),
                                         TextEntry::make('document_number')
                                             ->label('Nº Documento')
                                             ->visibleOn('edit')
