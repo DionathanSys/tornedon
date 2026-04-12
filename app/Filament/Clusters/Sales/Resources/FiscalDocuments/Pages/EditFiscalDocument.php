@@ -24,6 +24,23 @@ class EditFiscalDocument extends EditRecord
 {
     protected static string $resource = FiscalDocumentResource::class;
 
+    protected string $view = 'filament.clusters.sales.resources.fiscal-documents.pages.edit-fiscal-document';
+
+    /**
+     * @var array<int, string>
+     */
+    private const REALTIME_REFRESH_STATE_PATHS = [
+        'status',
+        'nfe_status',
+        'nfse_status',
+        'document_number',
+        'document_series',
+        'rps_number',
+        'rps_series',
+        'document_key',
+        'errors_messages',
+    ];
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $purchaseInfo = $this->parseAdditionalPurchaseInformation(
@@ -50,6 +67,25 @@ class EditFiscalDocument extends EditRecord
         return $data;
     }
 
+    public function getAutoRefreshInterval(): ?string
+    {
+        return $this->isAutoRefreshEnabled() ? '5s' : null;
+    }
+
+    public function isAutoRefreshEnabled(): bool
+    {
+        $record = $this->getRecord();
+
+        return $record->isNfse()
+            ? $record->isNfseInProcessing()
+            : $record->isInProcessing();
+    }
+
+    public function refreshFiscalDocumentState(): void
+    {
+        $this->syncFiscalDocumentState();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -65,9 +101,14 @@ class EditFiscalDocument extends EditRecord
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->emitir($record, Auth::id());
+                        $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()->title($service->getMessage())->success()->send();
+                            Notification::make()
+                                ->title('NF-e enfileirada para emissão.')
+                                ->body('O processamento inicial foi concluído pelo sistema. O retorno da SEFAZ ainda está pendente e a tela será atualizada automaticamente enquanto a nota estiver em processamento.')
+                                ->success()
+                                ->send();
                             return;
                         }
 
@@ -83,9 +124,14 @@ class EditFiscalDocument extends EditRecord
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
+                        $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()->title($service->getMessage())->success()->send();
+                            Notification::make()
+                                ->title('Consulta da NF-e realizada.')
+                                ->body('O retorno mais recente da SEFAZ já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.')
+                                ->success()
+                                ->send();
                             return;
                         }
 
@@ -147,9 +193,14 @@ class EditFiscalDocument extends EditRecord
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->emitir($record, Auth::id());
+                        $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()->title($service->getMessage())->success()->send();
+                            Notification::make()
+                                ->title('NFS-e enfileirada para emissão.')
+                                ->body('O processamento inicial foi concluído pelo sistema. O retorno da prefeitura ainda está pendente e a tela será atualizada automaticamente enquanto a nota estiver em processamento.')
+                                ->success()
+                                ->send();
                             return;
                         }
 
@@ -164,9 +215,14 @@ class EditFiscalDocument extends EditRecord
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->consultar($record, Auth::id());
+                        $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()->title($service->getMessage())->success()->send();
+                            Notification::make()
+                                ->title('Consulta da NFS-e realizada.')
+                                ->body('O retorno mais recente da prefeitura já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.')
+                                ->success()
+                                ->send();
                             return;
                         }
 
@@ -324,6 +380,12 @@ class EditFiscalDocument extends EditRecord
         }
 
         return true;
+    }
+
+    private function syncFiscalDocumentState(): void
+    {
+        $this->getRecord()->refresh();
+        $this->refreshFormData(self::REALTIME_REFRESH_STATE_PATHS);
     }
 
     private function buildAdditionalPurchaseInformation(array $data): ?string

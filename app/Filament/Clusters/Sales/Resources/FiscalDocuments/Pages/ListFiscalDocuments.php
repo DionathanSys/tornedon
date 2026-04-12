@@ -69,13 +69,7 @@ class ListFiscalDocuments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            ActionGroup::make([
-                Action::make('new-partner')
-                    ->label('Novo Parceiro')
-                    ->icon(Heroicon::Plus)
-                    ->size(Size::ExtraSmall)
-                    ->url(CompanyPartnerResource::getUrl('create'), true)
-            ])
+
         ];
     }
 }
