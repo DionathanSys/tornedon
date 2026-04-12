@@ -136,7 +136,7 @@ class NfeWebhookController extends Controller
         } else {
             // Rejeição
             $updates[$statusField] = NfeStatus::REJECTED->value;
-            $updates['status']     = Status::CANCELLED->value;
+            $updates['status']     = Status::PENDING->value;
 
             $errors   = $doc->errors_messages ?? [];
             $errors[] = [

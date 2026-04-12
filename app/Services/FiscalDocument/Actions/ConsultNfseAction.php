@@ -45,10 +45,11 @@ class ConsultNfseAction
 
             $resp = $sdk->consulta(['chave' => $fiscalDocument->document_key]);
 
-            Log::debug('ConsultNfseAction: resposta da API recebida', [
+            Log::info('ConsultNfseAction: resposta da API recebida', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'codigo'             => $resp->codigo ?? null,
                 'sucesso'            => $resp->sucesso ?? false,
+                'mensagem'           => $resp->mensagem ?? null,
                 'protocolo'          => $resp->protocolo ?? null,
             ]);
 
@@ -88,7 +89,7 @@ class ConsultNfseAction
             } else {
                 // Rejeitada
                 $updates['nfse_status'] = NfeStatus::REJECTED->value;
-                $updates['status']      = Status::CANCELLED->value;
+                $updates['status']      = Status::PENDING->value;
 
                 $errors   = $fiscalDocument->errors_messages ?? [];
                 $baseMessage = $resp->mensagem ?? 'Desconhecido';

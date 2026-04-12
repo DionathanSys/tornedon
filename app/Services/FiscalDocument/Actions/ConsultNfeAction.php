@@ -39,7 +39,9 @@ class ConsultNfeAction
             Log::info('ConsultNfeAction: resposta da API', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'codigo'             => $resp->codigo ?? null,
+                'mensagem'           => $resp->mensagem ?? null,
                 'sucesso'            => $resp->sucesso ?? false,
+                'protocolo'          => $resp->protocolo ?? null,
             ]);
 
             // Ainda em processamento — sem alteração
@@ -72,7 +74,7 @@ class ConsultNfeAction
             } else {
                 // Rejeitada
                 $updates['nfe_status'] = NfeStatus::REJECTED->value;
-                $updates['status']     = Status::CANCELLED->value;
+                $updates['status']     = Status::PENDING->value;
 
                 $errors   = $fiscalDocument->errors_messages ?? [];
                 $errors[] = [
