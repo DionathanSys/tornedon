@@ -266,12 +266,6 @@ class PartnerService
 
         $label = implode(' — ', $parts);
 
-        Log::debug('Label formatado', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'options' => $options,
-            'label' => $label,
-        ]);
-
         return $label;
     }
 }
