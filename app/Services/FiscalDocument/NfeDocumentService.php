@@ -31,12 +31,12 @@ class NfeDocumentService
             return false;
         }
 
-        if ($doc->isInProcessing()) {
+        if ($doc->isNfeInProcessing()) {
             $this->setError('Não é possível excluir uma NF-e em processamento. Aguarde a conclusão da SEFAZ.');
             return false;
         }
 
-        if ($doc->isAuthorized()) {
+        if ($doc->isNfeAuthorized()) {
             $this->setError('Não é possível excluir uma NF-e autorizada. Cancele a NF-e antes da exclusão.');
             return false;
         }
@@ -59,7 +59,7 @@ class NfeDocumentService
         $this->resetResponse();
 
         try {
-            if ($doc->nfeSent() && ! $doc->isRejected()) {
+            if ($doc->isNfeSent() && ! $doc->isNfeRejected()) {
                 $this->setError('NF-e já enviada. Status atual: ' . $doc->nfe_status?->description());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                     'contexto' => [

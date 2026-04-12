@@ -19,7 +19,7 @@ final class EditNfseItemAction
         return EditAction::make('editNfseItem')
             ->label('Editar')
             ->visible(fn (RelationManager $livewire): bool => $livewire->getOwnerRecord()->isNfse()
-                && ! $livewire->getOwnerRecord()->nfseSent()
+                && ! $livewire->getOwnerRecord()->isNfseSent()
             )
             ->schema(SchemaFormItemsNfse::make())
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {

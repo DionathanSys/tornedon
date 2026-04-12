@@ -4,53 +4,24 @@
     "type": "split",
     "children": [
       {
-        "id": "04a2f9eb7f1e52c3",
+        "id": "8849ebd263ea0739",
         "type": "tabs",
         "children": [
           {
-            "id": "e5dfe8742e89ca95",
+            "id": "076b1de0c9686f8a",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/Plano de Implementação do Financeiro Integrado.md",
-                "mode": "source",
+                "file": "fluxo-emissao-notas-fiscais.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Plano de Implementação do Financeiro Integrado"
-            }
-          },
-          {
-            "id": "0b9bb8213e1b9c84",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Sem título.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Sem título"
-            }
-          },
-          {
-            "id": "1ea8e98f8e153598",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Sem título 1.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Sem título 1"
+              "title": "fluxo-emissao-notas-fiscais"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -107,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -214,11 +184,12 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "1ea8e98f8e153598",
+  "active": "076b1de0c9686f8a",
   "lastOpenFiles": [
-    "Sem título 1.md",
-    "Sem título.md",
+    "Estudo para melhoria de Emissão NF.md",
     "docs/Plano de Implementação do Financeiro Integrado.md",
+    "Sem título.md",
+    "Sem título 1.md",
     "Projeto/📥 Caixa de Entrada.md",
     "Projeto/Análise de Feature.md",
     "2G Alinhamento.md",
@@ -250,7 +221,6 @@
     "regras-negocio/quote-production-workflow.md",
     "regras-negocio/partner-creation.md",
     "Invoice.md",
-    "integranotas-itens.md",
-    "deploy-script.md"
+    "integranotas-itens.md"
   ]
 }

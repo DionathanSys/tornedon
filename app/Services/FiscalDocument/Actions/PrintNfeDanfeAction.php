@@ -21,7 +21,7 @@ class PrintNfeDanfeAction
     public function execute(FiscalDocument $fiscalDocument): ?string
     {
         try {
-            if (! $fiscalDocument->isAuthorized()) {
+            if (! $fiscalDocument->isNfeAuthorized()) {
                 $this->setError('O DANFE só pode ser gerado para NF-e autorizada. Status atual: ' . $fiscalDocument->nfe_status?->description());
                 return null;
             }

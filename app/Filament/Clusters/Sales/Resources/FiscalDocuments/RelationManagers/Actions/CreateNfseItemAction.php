@@ -23,7 +23,7 @@ final class CreateNfseItemAction
             ->size(Size::Small)
             ->visible(fn (RelationManager $livewire): bool => $livewire->getOwnerRecord()->isNfse()
                 && ! $livewire->getOwnerRecord()->items()->exists()
-                && ! $livewire->getOwnerRecord()->nfseSent()
+                && ! $livewire->getOwnerRecord()->isNfseSent()
             )
             ->modalHeading('Adicionar Serviço à NFS-e')
             ->schema(SchemaFormItemsNfse::make())

@@ -18,7 +18,7 @@ final class EditItemAction
     {
         return EditAction::make()
             ->label('Editar')
-            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent())
+            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
             ->schema(SchemaFormItemsNfe::make('edit'))
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
                 Log::debug('Atualizando item de nota fiscal via RelationManager', [

@@ -80,7 +80,7 @@ class DeleteFiscalDocumentAction
         }
 
         if ($this->fiscalDocument->isNfse()) {
-            if ($this->fiscalDocument->nfseSent()) {
+            if ($this->fiscalDocument->isNfseSent()) {
                 $this->setError('Não é possível excluir uma NFS-e que já teve comunicação com a prefeitura/API fiscal.');
 
                 Log::warning($this->getMessage(), [
@@ -93,7 +93,7 @@ class DeleteFiscalDocumentAction
                 return false;
             }
         } else {
-            if ($this->fiscalDocument->nfeSent()) {
+            if ($this->fiscalDocument->isNfeSent()) {
                 $this->setError('Não é possível excluir uma NF-e que já teve comunicação com a SEFAZ/API fiscal.');
 
                 Log::warning($this->getMessage(), [

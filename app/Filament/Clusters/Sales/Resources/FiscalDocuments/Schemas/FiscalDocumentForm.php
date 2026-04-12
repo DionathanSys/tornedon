@@ -112,7 +112,7 @@ class FiscalDocumentForm
                                         TextEntry::make('document_series')
                                             ->label('Série')
                                             ->visibleOn('edit')
-                                            ->visible(fn($record): bool => ! $record->isNfse())
+                                            ->visible(fn($record): bool => $record->isNfe())
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->document_series ? $record->document_series : 'N/D')
                                             ->placeholder('N/D'),
@@ -155,7 +155,7 @@ class FiscalDocumentForm
                                         TextEntry::make('nfe_status')
                                             ->label('Status NF-e')
                                             ->visibleOn('edit')
-                                            ->visible(fn($record, $operation): bool => ! $record->isNfse() && $operation === Operation::Edit)
+                                            ->visible(fn($record, $operation): bool => $record->isNfe() && $operation === Operation::Edit)
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => ! $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
                                         TextEntry::make('document_number')

@@ -31,7 +31,7 @@ final class CreateItemAction
             ->label('Adicionar Item')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
-            ->visible(fn(RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent())
+            ->visible(fn(RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
             ->modalHeading('Adicionar Item à Nota Fiscal')
             ->schema(SchemaFormItemsNfe::make())
             ->using(function (array $data, RelationManager $livewire): ?Model {

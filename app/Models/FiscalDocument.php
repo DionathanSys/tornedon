@@ -22,11 +22,11 @@ class FiscalDocument extends Model
     protected static function booted(): void
     {
         static::deleting(function (self $fiscalDocument): void {
-            if ($fiscalDocument->isNfse() && $fiscalDocument->nfseSent()) {
+            if ($fiscalDocument->isNfse() && $fiscalDocument->isNfseSent()) {
                 throw new \RuntimeException('Não é possível excluir documento fiscal que já teve comunicação com a API da prefeitura.');
             }
 
-            if (! $fiscalDocument->isNfse() && $fiscalDocument->nfeSent()) {
+            if ($fiscalDocument->isNfe() && $fiscalDocument->isNfeSent()) {
                 throw new \RuntimeException('Não é possível excluir documento fiscal que já teve comunicação com a API fiscal/SEFAZ.');
             }
         });
@@ -191,44 +191,45 @@ class FiscalDocument extends Model
      |  Helpers
      |==============================*/
 
-    public function isPending(): bool
+    public function isNfe(): bool
     {
-        return $this->nfe_status === NfeStatus::PENDING;
+        return $this->document_type === DocumentModel::NFE;
     }
-
-    public function isInProcessing(): bool
-    {
-        return $this->nfe_status === NfeStatus::IN_PROCESSING;
-    }
-
-    public function isAuthorized(): bool
-    {
-        return $this->nfe_status === NfeStatus::AUTHORIZED;
-    }
-
-    public function isRejected(): bool
-    {
-        return $this->nfe_status === NfeStatus::REJECTED;
-    }
-
-    public function isCanceled(): bool
-    {
-        return $this->nfe_status === NfeStatus::CANCELED;
-    }
-
-    public function nfeSent(): bool
-    {
-        return $this->nfe_status !== null
-            && $this->nfe_status !== NfeStatus::PENDING;
-    }
-
-    /* ==============================
-     |  NFS-e Helpers
-     |==============================*/
 
     public function isNfse(): bool
     {
         return $this->document_type === DocumentModel::NFSE;
+    }
+
+    public function isNfePending(): bool
+    {
+        return $this->nfe_status === NfeStatus::PENDING;
+    }
+
+    public function isNfeInProcessing(): bool
+    {
+        return $this->nfe_status === NfeStatus::IN_PROCESSING;
+    }
+
+    public function isNfeAuthorized(): bool
+    {
+        return $this->nfe_status === NfeStatus::AUTHORIZED;
+    }
+
+    public function isNfeRejected(): bool
+    {
+        return $this->nfe_status === NfeStatus::REJECTED;
+    }
+
+    public function isNfeCanceled(): bool
+    {
+        return $this->nfe_status === NfeStatus::CANCELED;
+    }
+
+    public function isNfeSent(): bool
+    {
+        return $this->nfe_status !== null
+            && $this->nfe_status !== NfeStatus::PENDING;
     }
 
     public function isNfsePending(): bool
@@ -256,7 +257,7 @@ class FiscalDocument extends Model
         return $this->nfse_status === NfeStatus::CANCELED;
     }
 
-    public function nfseSent(): bool
+    public function isNfseSent(): bool
     {
         return $this->nfse_status !== null
             && $this->nfse_status !== NfeStatus::PENDING;

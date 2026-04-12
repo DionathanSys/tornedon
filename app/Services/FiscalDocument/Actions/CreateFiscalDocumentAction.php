@@ -2,6 +2,8 @@
 
 namespace App\Services\FiscalDocument\Actions;
 
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Validators\FiscalDocumentValidatorResolver;
 use App\Traits\HandlesActionResponse;
@@ -28,6 +30,7 @@ class CreateFiscalDocumentAction
 
             $validated = FiscalDocumentValidatorResolver::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
+            $validated = $this->applyInitialFiscalStatus($validated);
 
             $fiscalDocument = FiscalDocument::create($validated);
 
@@ -79,5 +82,24 @@ class CreateFiscalDocumentAction
 
             return null;
         }
+    }
+
+    private function applyInitialFiscalStatus(array $validated): array
+    {
+        $documentType = $validated['document_type'] ?? null;
+
+        if ($documentType === DocumentModel::NFSE->value) {
+            $validated['nfse_status'] = NfeStatus::PENDING->value;
+            $validated['nfe_status'] = null;
+
+            return $validated;
+        }
+
+        if ($documentType === DocumentModel::NFE->value) {
+            $validated['nfe_status'] = NfeStatus::PENDING->value;
+            $validated['nfse_status'] = null;
+        }
+
+        return $validated;
     }
 }

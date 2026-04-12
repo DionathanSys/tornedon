@@ -14,8 +14,8 @@ final class DeleteItemAction
     public static function make(string $name = 'delete'): DeleteAction
     {
         return DeleteAction::make($name)
-            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->nfeSent()
-                && ! $livewire->getOwnerRecord()->nfseSent()
+            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent()
+                && ! $livewire->getOwnerRecord()->isNfseSent()
             )
             ->requiresConfirmation()
             ->modalHeading('Excluir Item')

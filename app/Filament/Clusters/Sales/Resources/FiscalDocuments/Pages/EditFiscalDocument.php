@@ -78,7 +78,7 @@ class EditFiscalDocument extends EditRecord
 
         return $record->isNfse()
             ? $record->isNfseInProcessing()
-            : $record->isInProcessing();
+            : $record->isNfeInProcessing();
     }
 
     public function refreshFiscalDocumentState(): void
@@ -97,7 +97,7 @@ class EditFiscalDocument extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Emitir Nota Fiscal Eletrônica')
                     ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
-                    ->visible(fn(FiscalDocument $record) => ! $record->isNfse() && (! $record->nfeSent() || $record->isRejected()))
+                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && (! $record->isNfeSent() || $record->isNfeRejected()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->emitir($record, Auth::id());
@@ -120,7 +120,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar SEFAZ')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => ! $record->isNfse() && $record->isInProcessing())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && $record->isNfeInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -142,7 +142,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Preview')
                     ->icon(Heroicon::Eye)
                     ->color('gray')
-                    ->visible(fn(FiscalDocument $record) => ! $record->isNfse())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfe())
                     ->modalHeading('Preview da NF-e')
                     ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
                         $service = app(NfeDocumentService::class);
@@ -165,7 +165,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Download DANFE')
                     ->icon(Heroicon::ArrowDownTray)
                     ->color('success')
-                    ->visible(fn(FiscalDocument $record) => ! $record->isNfse() && $record->isAuthorized())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
                     ->action(function (FiscalDocument $record): StreamedResponse {
                         $service = app(NfeDocumentService::class);
                         $pdf     = $service->danfe($record, Auth::id());
@@ -189,7 +189,7 @@ class EditFiscalDocument extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Emitir Nota Fiscal de Serviço')
                     ->modalDescription('O envio é assíncrono. Após confirmação, a NFS-e será processada em segundo plano.')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && (! $record->nfseSent() || $record->isNfseRejected()))
+                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && (! $record->isNfseSent() || $record->isNfseRejected()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->emitir($record, Auth::id());
