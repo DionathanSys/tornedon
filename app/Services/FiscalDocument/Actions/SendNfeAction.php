@@ -135,8 +135,8 @@ class SendNfeAction
                 ]);
 
                 // Dispara job de consulta como fallback (15s de delay)
-                dispatch(new \App\Jobs\ConsultNfeJob($fiscalDocument->id, $this->userId))
-                    ->delay(now()->addSeconds(15));
+                // dispatch(new \App\Jobs\ConsultNfeJob($fiscalDocument->id, $this->userId))
+                //     ->delay(now()->addSeconds(15));
 
                 $this->setSuccess('NF-e enviada e em processamento na SEFAZ.');
                 return true;
