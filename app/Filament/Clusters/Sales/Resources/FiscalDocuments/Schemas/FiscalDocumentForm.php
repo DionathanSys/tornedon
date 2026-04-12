@@ -154,12 +154,12 @@ class FiscalDocumentForm
                                             ->color(fn(Status $state) => $state->color()),
                                         TextEntry::make('nfe_status')
                                             ->label('Status NF-e')
-                                            ->visibleOn('edit')
-                                            ->visible(fn($record, $operation): bool => $record->isNfe() && $operation === Operation::Edit)
+                                            // ->visibleOn('edit')
+                                            // ->visible(fn($record, $operation): bool => $record->isNfe() && $operation === Operation::Edit)
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => ! $record->nfse_status ? $record->nfse_status->description() : 'N/D'),
                                         TextEntry::make('document_number')
-                                            ->label('Nº Documento')
+                                            ->label('Nº Documentoa')
                                             ->visibleOn('edit')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->document_number ? $record->document_number : 'N/D')
