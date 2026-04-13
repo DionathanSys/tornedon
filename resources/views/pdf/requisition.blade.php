@@ -229,8 +229,24 @@
         </div>
     </div>
 
+    @if (! empty($pdfData['equipment_lines']))
     <div class="relation-section">
-        <div class="relation-title">Itens da Requisicao</div>
+        <div class="relation-title">Equipamento vinculado</div>
+        <table class="summary-table">
+            <tbody>
+                @foreach ($pdfData['equipment_lines'] as $line)
+                <tr>
+                    <td class="meta-label">{{ $line['label'] }}</td>
+                    <td>{{ $line['value'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
+
+    <div class="relation-section">
+        <div class="relation-title">Itens da Requisição</div>
         <table class="relation-table">
             <thead>
                 <tr>

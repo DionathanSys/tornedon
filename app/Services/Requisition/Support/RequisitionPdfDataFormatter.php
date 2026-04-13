@@ -15,8 +15,8 @@ class RequisitionPdfDataFormatter
         $headerLines = [
             ['label' => 'Empresa', 'value' => $requisition->company?->name ?? '-', 'class' => 'muted'],
             ['label' => 'Cliente', 'value' => $requisition->customer?->name ?? '-'],
-            ['label' => 'Forma de Pagamento', 'value' => $requisition->payment_method?->description() ?? '-'],
-            ['label' => 'Condicao de Pagamento', 'value' => $requisition->payment_condition?->description() ?? '-'],
+            // ['label' => 'Forma de Pagamento', 'value' => $requisition->payment_method?->description() ?? '-'],
+            // ['label' => 'Condicao de Pagamento', 'value' => $requisition->payment_condition?->description() ?? '-'],
         ];
 
         $responsibles = collect([
@@ -28,6 +28,8 @@ class RequisitionPdfDataFormatter
         ])->filter(fn (array $field) => filled($field['value']) && $field['value'] !== '-')
             ->values()
             ->all();
+
+        $equipmentLines = $this->buildEquipmentLines($requisition->equipment);
 
         $items = $requisition->items->map(fn ($item) => [
             'product' => $item->product?->name ?? '-',
@@ -55,11 +57,12 @@ class RequisitionPdfDataFormatter
         }
 
         return [
-            'title' => 'Requisicao #' . $requisition->number,
+            'title' => 'Requisição #' . $requisition->number,
             'status' => $requisition->status?->description() ?? '-',
             'sale_date' => $this->formatDate($requisition->sale_date),
             'header_lines' => $headerLines,
             'responsibles' => $responsibles,
+            'equipment_lines' => $equipmentLines,
             'items' => $items,
             'observations' => $requisition->observations ?: null,
             'payment_mode' => $paymentMode,
@@ -100,5 +103,26 @@ class RequisitionPdfDataFormatter
         $logoMime = $logoDisk->mimeType($requisition->company->logo_path) ?: 'image/png';
 
         return 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($requisition->company->logo_path));
+    }
+
+    /**
+     * @return array<int, array{label: string, value: string}>
+     */
+    private function buildEquipmentLines($equipment): array
+    {
+        if (! $equipment) {
+            return [];
+        }
+
+        return collect([
+            ['label' => 'Nome', 'value' => $equipment->name],
+            ['label' => 'Identificacao', 'value' => $equipment->identifier],
+            ['label' => 'Tipo', 'value' => $equipment->type?->description()],
+            ['label' => 'Marca', 'value' => $equipment->mark],
+            ['label' => 'Modelo', 'value' => $equipment->model],
+            ['label' => 'Proprietario', 'value' => $equipment->owner?->name],
+        ])->filter(fn (array $field) => filled($field['value']))
+            ->values()
+            ->all();
     }
 }

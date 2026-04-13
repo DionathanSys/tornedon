@@ -43,6 +43,8 @@ class ServiceOrderPdfDataFormatter
             ['label' => 'Vendedor', 'value' => $serviceOrder->salesperson?->name],
         ])->filter(fn (array $field) => filled($field['value']))->values()->all();
 
+        $equipmentLines = $this->buildEquipmentLines($serviceOrder->equipment);
+
         $summaryLines = collect([
             ['label' => 'Serviços', 'value' => $this->formatMoney($itemsTotal)],
             $travelValue > 0 ? ['label' => 'Deslocamento', 'value' => $this->formatMoney($travelValue)] : null,
@@ -70,6 +72,7 @@ class ServiceOrderPdfDataFormatter
             'completion_date' => $this->formatDate($serviceOrder->completion_date),
             'header_lines' => $headerLines,
             'responsibles' => $responsibles,
+            'equipment_lines' => $equipmentLines,
             'items' => $items,
             'customer_observations' => $serviceOrder->customer_observations ?? null,
             'solution' => $serviceOrder->solution ?? null,  
@@ -179,5 +182,26 @@ class ServiceOrderPdfDataFormatter
         $logoMime = $logoDisk->mimeType($serviceOrder->company->logo_path) ?: 'image/png';
 
         return 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($serviceOrder->company->logo_path));
+    }
+
+    /**
+     * @return array<int, array{label: string, value: string}>
+     */
+    private function buildEquipmentLines($equipment): array
+    {
+        if (! $equipment) {
+            return [];
+        }
+
+        return collect([
+            ['label' => 'Nome', 'value' => $equipment->name],
+            ['label' => 'Identificacao', 'value' => $equipment->identifier],
+            ['label' => 'Tipo', 'value' => $equipment->type?->description()],
+            ['label' => 'Marca', 'value' => $equipment->mark],
+            ['label' => 'Modelo', 'value' => $equipment->model],
+            ['label' => 'Proprietario', 'value' => $equipment->owner?->name],
+        ])->filter(fn (array $field) => filled($field['value']))
+            ->values()
+            ->all();
     }
 }

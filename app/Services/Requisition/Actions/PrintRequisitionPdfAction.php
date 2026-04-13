@@ -24,7 +24,7 @@ class PrintRequisitionPdfAction
                 'company',
                 'salesperson',
                 'serviceOrder',
-                'equipment',
+                'equipment.owner',
                 'items.product',
             ]);
 

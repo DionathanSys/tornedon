@@ -22,7 +22,7 @@ class PrintServiceOrderPdfAction
             $serviceOrder->loadMissing([
                 'customer',
                 'company',
-                'equipment',
+                'equipment.owner',
                 'technician',
                 'supervisor',
                 'salesperson',
