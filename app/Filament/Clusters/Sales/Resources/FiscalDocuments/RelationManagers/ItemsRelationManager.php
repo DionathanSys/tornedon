@@ -2,11 +2,13 @@
 
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers;
 
+use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\CreateItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\CreateNfseItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditNfseItemAction;
+use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -169,18 +171,18 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse),
+                    ->visible(fn (FiscalDocument $record) => ! $isNfse && $record->status == Status::PENDING),
                 DeleteItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse),
+                    ->visible(fn (FiscalDocument $record) => ! $isNfse && $record->status == Status::PENDING),
 
                 // NFS-e actions
                 EditNfseItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => $isNfse),
+                    ->visible(fn (FiscalDocument $record) => $isNfse && $record->status == Status::PENDING),
                 DeleteItemAction::make('deleteNfseItem')
                     ->iconButton()
-                    ->visible(fn () => $isNfse),
+                    ->visible(fn (FiscalDocument $record) => $isNfse && $record->status == Status::PENDING),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -188,10 +190,10 @@ class ItemsRelationManager extends RelationManager
                 ]),
                 // NF-e create
                 CreateItemAction::make()
-                    ->visible(fn () => ! $isNfse),
+                    ->visible(fn (FiscalDocument $record) => ! $isNfse && $record->status == Status::PENDING),
                 // NFS-e create
                 CreateNfseItemAction::make()
-                    ->visible(fn () => $isNfse),
+                    ->visible(fn (FiscalDocument $record) => $isNfse && $record->status == Status::PENDING),
             ])
             ->emptyStateDescription($isNfse
                 ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'
