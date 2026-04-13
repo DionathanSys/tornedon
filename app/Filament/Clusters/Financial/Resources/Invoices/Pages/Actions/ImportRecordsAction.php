@@ -24,7 +24,7 @@ final class ImportRecordsAction
     {
         return Action::make('importRecords')
             ->label('Vincular Registros')
-            ->icon(Heroicon::ArrowDownTray)
+            ->icon(Heroicon::Link)
             ->color('gray')
             ->modalHeading('Importar Registros para a Fatura')
             ->modalDescription('Selecione os registros que deseja vincular a esta fatura. Apenas registros encerrados/concluídos do mesmo cliente serão exibidos.')

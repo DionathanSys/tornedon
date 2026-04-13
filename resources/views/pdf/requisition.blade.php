@@ -87,47 +87,80 @@
 
         .meta-label {
             width: 22%;
+            height: 16px;
             background: #f8fafc;
             color: #17385b;
             font-weight: bold;
         }
 
-        .section-title {
+        .relation-section {
             margin: 18px 0 8px 0;
-            padding: 6px 10px;
-            background: #17385b;
-            color: #ffffff;
-            font-size: 13px;
+        }
+
+        .relation-title {
+            margin: 0 0 6px 0;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #d1d5db;
+            color: #17385b;
+            font-size: 12px;
             font-weight: bold;
         }
 
         .notes-box {
-            border: 1px solid #d1d5db;
-            padding: 10px;
-            min-height: 56px;
+            white-space: pre-line;
         }
 
-        .grid th {
-            background: #e8eef4;
-            text-align: center;
+        .relation-table,
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .grid td:nth-child(3),
-        .grid td:nth-child(4),
-        .grid td:nth-child(5),
-        .grid td:nth-child(6) {
+        .relation-table th,
+        .relation-table td {
+            padding: 6px 4px;
+            vertical-align: top;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .relation-table th {
+            color: #6b7280;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            text-align: left;
+        }
+
+        .relation-table td {
+            font-size: 11px;
+        }
+
+        .relation-code,
+        .relation-status,
+        .relation-date {
+            white-space: nowrap;
+        }
+
+        .relation-code {
+            padding-left: 10px !important;
+        }
+
+        .relation-table th:nth-child(3),
+        .relation-table th:nth-child(4),
+        .relation-table th:nth-child(5),
+        .relation-table th:nth-child(6),
+        .relation-table td:nth-child(3),
+        .relation-table td:nth-child(4),
+        .relation-table td:nth-child(5),
+        .relation-table td:nth-child(6) {
             text-align: center;
             white-space: nowrap;
         }
 
-        .summary-table td:last-child {
-            text-align: right;
-            font-weight: bold;
-        }
-
-        .summary-total td {
-            background: #e8eef4;
-            font-size: 13px;
+        .summary-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #e5e7eb;
         }
 
         .signature-block {
@@ -196,54 +229,73 @@
         </div>
     </div>
 
-    <div class="section-title">Itens da Requisicao</div>
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>Produto</th>
-                <th>Unidade</th>
-                <th>Qtd</th>
-                <th>Valor Unit.</th>
-                <th>Desconto</th>
-                <th>Total</th>
-                <th>Obs</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($pdfData['items'] as $item)
+    <div class="relation-section">
+        <div class="relation-title">Itens da Requisicao</div>
+        <table class="relation-table">
+            <thead>
                 <tr>
-                    <td>{{ $item['product'] }}</td>
-                    <td>{{ $item['unit_of_measure'] }}</td>
-                    <td>{{ $item['quantity'] }}</td>
-                    <td>{{ $item['unit_price'] }}</td>
-                    <td>{{ $item['discount_amount'] }}</td>
-                    <td>{{ $item['total_amount'] }}</td>
-                    <td>{{ $item['observations'] }}</td>
+                    <th>Produto</th>
+                    <th>Unidade</th>
+                    <th>Qtd</th>
+                    <th>Valor Unit.</th>
+                    <th>Desconto</th>
+                    <th>Total</th>
+                    <th>Obs</th>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="7" class="text-right">Sem itens.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @forelse ($pdfData['items'] as $item)
+                    <tr>
+                        <td class="relation-code">{{ $item['product'] }}</td>
+                        <td>{{ $item['unit_of_measure'] }}</td>
+                        <td>{{ $item['quantity'] }}</td>
+                        <td>{{ $item['unit_price'] }}</td>
+                        <td>{{ $item['discount_amount'] }}</td>
+                        <td>{{ $item['total_amount'] }}</td>
+                        <td>{{ $item['observations'] }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-right">Sem itens.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 
     @if (filled($pdfData['observations']))
-        <div class="section-title">Observacoes</div>
-        <div class="notes-box">{{ $pdfData['observations'] }}</div>
+        <div class="relation-section">
+            <div class="relation-title">Observacoes</div>
+            <table class="summary-table">
+                <tbody>
+                    <tr>
+                        <td class="meta-label">Observacoes</td>
+                        <td class="notes-box">{{ $pdfData['observations'] }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     @endif
 
-    <div class="section-title">Resumo</div>
-    <table class="summary-table">
-        <tbody>
-            @foreach ($pdfData['summary_lines'] as $line)
-                <tr class="{{ $loop->last ? 'summary-total' : '' }}">
-                    <td>{{ $line['label'] }}</td>
+    <div class="relation-section">
+        <div class="relation-title">Resumo</div>
+        <table class="summary-table">
+            <tbody>
+                @foreach ($pdfData['summary_lines'] as $line)
+                <tr>
+                    <td class="meta-label">{{ $line['label'] }}</td>
                     <td>{{ $line['value'] }}</td>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+                @endforeach
+                @if (! empty($pdfData['payment_mode']))
+                <tr>
+                    <td class="meta-label">Forma de pagamento</td>
+                    <td>{{ $pdfData['payment_mode'] }}</td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
+    </div>
 
     <div class="signature-block">
         <div class="signature-line">Assinatura do Cliente</div>

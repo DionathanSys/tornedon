@@ -12,7 +12,7 @@ final class ViewInvoiceRequisitionAction
     public static function make(): Action
     {
         return Action::make('viewRequisitionInvoice')
-            ->label('Fatura')
+            ->label('Abrir Fatura')
             ->icon(Heroicon::OutlinedDocumentText)
             ->color('gray')
             ->visible(fn (Requisition $record): bool => filled($record->invoice_id))

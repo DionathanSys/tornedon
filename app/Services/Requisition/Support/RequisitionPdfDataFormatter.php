@@ -46,6 +46,14 @@ class RequisitionPdfDataFormatter
             ['label' => 'Valor total', 'value' => $this->formatMoney($requisition->total_amount)],
         ])->filter()->values()->all();
 
+        $paymentMode = null;
+
+        if ($requisition->payment_method || $requisition->payment_condition) {
+            $paymentMode = ($requisition->payment_method?->description() ?? 'N/A')
+                . ' - '
+                . ($requisition->payment_condition?->description() ?? 'N/A');
+        }
+
         return [
             'title' => 'Requisicao #' . $requisition->number,
             'status' => $requisition->status?->description() ?? '-',
@@ -54,6 +62,7 @@ class RequisitionPdfDataFormatter
             'responsibles' => $responsibles,
             'items' => $items,
             'observations' => $requisition->observations ?: null,
+            'payment_mode' => $paymentMode,
             'summary_lines' => $summaryLines,
             'generated_at' => now()->format('d/m/Y H:i'),
             'company_logo' => $this->resolveCompanyLogo($requisition),

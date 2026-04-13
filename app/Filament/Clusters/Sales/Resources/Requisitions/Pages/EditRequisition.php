@@ -113,7 +113,6 @@ class EditRequisition extends EditRecord
                     ->tooltip('Gerar Fatura'),
                 ViewInvoiceRequisitionAction::make()
                     ->size(Size::Small)
-                    ->hiddenLabel()
                     ->tooltip('Visualizar Fatura'),
                 CancelRequisitionAction::make()
                     ->size(Size::Small)

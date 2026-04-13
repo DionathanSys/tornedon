@@ -189,7 +189,7 @@ class FiscalDocumentForm
                                             ->url(fn($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
                                         TextEntry::make('operation_nature')
                                             ->label('Natureza da Operação')
-                                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
 
                                         TextEntry::make('issued_at')
                                             ->label('Data de Emissão')
