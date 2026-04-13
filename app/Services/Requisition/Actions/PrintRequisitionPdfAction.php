@@ -3,6 +3,7 @@
 namespace App\Services\Requisition\Actions;
 
 use App\Models\Requisition;
+use App\Services\Requisition\Support\RequisitionPdfDataFormatter;
 use App\Traits\HandlesActionResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\Log;
 class PrintRequisitionPdfAction
 {
     use HandlesActionResponse;
+
+    public function __construct(
+        private readonly RequisitionPdfDataFormatter $dataFormatter,
+    ) {}
 
     public function execute(Requisition $requisition): ?string
     {
@@ -23,8 +28,10 @@ class PrintRequisitionPdfAction
                 'items.product',
             ]);
 
+            $pdfData = $this->dataFormatter->format($requisition);
+
             $pdfBinary = Pdf::loadView('pdf.requisition', [
-                'record' => $requisition,
+                'pdfData' => $pdfData,
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {

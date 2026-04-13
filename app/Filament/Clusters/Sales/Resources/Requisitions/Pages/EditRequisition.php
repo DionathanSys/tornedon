@@ -86,6 +86,9 @@ class EditRequisition extends EditRecord
                         return $requisition;
                     })
                     ->successRedirectUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
+
+            ])->buttonGroup(),
+            ActionGroup::make([
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
                     ->color(Color::Green)
@@ -99,7 +102,7 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->color('info')
                     ->hiddenLabel()
-                    ->visible(fn($record) => $record->status === Status::CLOSED)
+                    ->visible(fn($record) => in_array($record->status, [Status::CLOSED, Status::INVOICED]))
                     ->tooltip('Baixar PDF da requisição'),
                 ReopenRequisitionAction::make()
                     ->size(Size::Small)
@@ -217,7 +220,7 @@ class EditRequisition extends EditRecord
 
                         return $result;
                     }),
-            ])->buttonGroup(),
+            ])->button()
         ];
     }
 

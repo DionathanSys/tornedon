@@ -963,7 +963,7 @@ class RequisitionService
         $this->resetResponse();
 
         try {
-            $action = new PrintRequisitionPdfAction();
+            $action = app(PrintRequisitionPdfAction::class);
             $pdf    = $action->execute($requisition);
 
             if ($pdf === null || $action->hasError()) {

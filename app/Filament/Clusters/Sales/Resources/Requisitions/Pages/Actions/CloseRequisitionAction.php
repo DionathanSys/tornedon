@@ -26,7 +26,7 @@ final class CloseRequisitionAction
             ->modalHeading('Encerrar Requisição')
             ->modalDescription('Tem certeza que deseja encerrar esta requisição? Esta ação mudará o status para "Encerrada".')
             ->modalSubmitActionLabel('Sim, encerrar')
-            ->form([
+            ->schema([
                 Toggle::make('send_email')
                     ->label('Enviar e-mail ao encerrar?')
                     ->default(fn (Requisition $record): bool => app(DocumentNotificationService::class)->shouldSendForRequisition($record))
