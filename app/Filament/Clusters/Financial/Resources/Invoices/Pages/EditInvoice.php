@@ -47,11 +47,11 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
             ])->buttonGroup(),
             ActionGroup::make([
+                ConfirmInvoiceAction::make()
+                    ->size(Size::Small),
                 PreviewInvoicePdfAction::make()
                     ->hiddenLabel()
                     ->tooltip('Visualizar PDF')
-                    ->size(Size::Small),
-                ConfirmInvoiceAction::make()
                     ->size(Size::Small),
                 DownloadInvoicePdfAction::make()
                     ->hiddenLabel()
@@ -95,7 +95,7 @@ class EditInvoice extends EditRecord
 
                         return $result;
                     }),
-            ])->buttonGroup(),
+            ])->button(),
         ];
     }
 

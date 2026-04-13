@@ -23,7 +23,6 @@ final class CreateServiceOrderAction
     {
         return CreateAction::make()
             ->hiddenLabel()
-            ->color('gray')
             ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)

@@ -30,10 +30,9 @@ final class CloseServiceOrderAction
             ->modalDescription('Tem certeza que deseja encerrar esta ordem de serviço? Esta ação mudará o status para "Encerrada".')
             ->modalSubmitActionLabel('Sim, encerrar')
             ->schema([
-                Toggle::make('send_email')
+                Checkbox::make('send_email')
                     ->label('Enviar e-mail ao encerrar?')
-                    ->default(fn(ServiceOrder $record): bool => app(DocumentNotificationService::class)->shouldSendForServiceOrder($record))
-                    ->inline(false),
+                    ->default(fn(ServiceOrder $record): bool => app(DocumentNotificationService::class)->shouldSendForServiceOrder($record)),
                 Checkbox::make('invoice_after_close')
                     ->label('Faturar ao encerrar')
                     ->helperText('Se marcado, a ordem de serviço será faturada logo após o encerramento.')

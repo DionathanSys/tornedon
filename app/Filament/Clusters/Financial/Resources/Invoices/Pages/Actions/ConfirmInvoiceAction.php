@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
@@ -44,7 +45,7 @@ final class ConfirmInvoiceAction
                     ->native(false)
                     ->required(),
             ])
-            ->action(function (Action $action, Invoice $record, array $data): void {
+            ->action(function (Action $action, Invoice $record, array $data, EditInvoice $livewire): void {
                 $service = app(InvoiceService::class);
                 $result = $service->confirm($record, $data, Auth::id());
 
@@ -73,6 +74,8 @@ final class ConfirmInvoiceAction
                 notify::success(
                     "Fatura confirmada com sucesso. {$result['documents_count']} documento(s) fiscal(is) ({$types}) e {$result['account_receivables_count']} conta(s) a receber geradas."
                 );
+
+                $livewire->dispatch('invoice-confirmed');
             });
     }
 

@@ -8,6 +8,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class AccountReceivablesRelationManager extends RelationManager
 {
@@ -20,6 +21,12 @@ class AccountReceivablesRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Contas à Receber';
 
     protected static string|BackedEnum|null $icon = Heroicon::ArrowTrendingUp;
+
+    #[On('invoice-confirmed')]
+    public function refreshAccountReceivables(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {

@@ -14,6 +14,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class FiscalDocumentsRelationManager extends RelationManager
 {
@@ -26,6 +27,12 @@ class FiscalDocumentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Documentos Fiscais';
 
     protected static string|BackedEnum|null $icon = Heroicon::DocumentText;
+
+    #[On('invoice-confirmed')]
+    public function refreshFiscalDocuments(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {

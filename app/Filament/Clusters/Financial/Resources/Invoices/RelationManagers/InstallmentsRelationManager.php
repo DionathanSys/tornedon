@@ -10,6 +10,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class InstallmentsRelationManager extends RelationManager
 {
@@ -22,6 +23,12 @@ class InstallmentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Parcelas';
 
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
+
+    #[On('invoice-confirmed')]
+    public function refreshInstallments(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
