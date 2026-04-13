@@ -87,6 +87,7 @@ class FiscalDocumentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->poll('10s')
             ->defaultSort('created_at', 'desc')
             ->headerActions([])
             ->recordActions([

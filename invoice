@@ -1,0 +1,19 @@
+app\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction.php:107:                                $so->state()->invoice($so, $userId, $record->id);
+app\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction.php:120:                                $req->state()->invoice($req, $userId, $record->id);
+app\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction.php:133:                                $po->state()->invoice($record->id);
+app\Filament\Clusters\Sales\Resources\Quotes\Pages\EditQuote.php:93:        if (! $this->record->state()->canEdit()) {
+app\Filament\Clusters\Sales\Resources\Requisitions\Schemas\RequisitionForm.php:86:                            ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
+app\Filament\Clusters\Sales\Resources\Requisitions\Schemas\RequisitionForm.php:91:                    ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
+app\Services\ProductionOrder\ProductionOrderService.php:281:                    $record->state()->invoice($invoice->id);
+app\Services\Quote\Actions\ApproveQuote.php:40:            $quote->state()->approve($quote, $this->approvedBy);
+app\Services\Quote\Actions\RejectQuote.php:36:            $quote->state()->reject($quote, $reason, $this->rejectedBy);
+app\Services\Quote\Actions\ReopenQuoteAction.php:37:            $quote->state()->reopen($quote, $this->userId);
+app\Services\Quote\Actions\SendForApproval.php:35:            $quote->state()->sendForApproval($quote, $this->userId);
+app\Services\Requisition\Actions\CancelRequisitionAction.php:30:                $requisition->state()->cancel($requisition, $this->userId);
+app\Services\Requisition\Actions\CloseRequisitionAction.php:74:                $requisition->state()->close($requisition, $this->userId);
+app\Services\Requisition\Actions\ReopenRequisitionAction.php:36:                $requisition->state()->reopen($requisition, $this->userId);
+app\Services\Requisition\RequisitionService.php:539:                    $record->state()->invoice($record, $userId, $invoice->id);
+app\Services\ServiceOrder\Actions\CancelServiceOrderAction.php:28:            $order->state()->cancel($order, $this->userId);
+app\Services\ServiceOrder\Actions\CloseServiceOrderAction.php:28:            $order->state()->close($order, $this->userId);
+app\Services\ServiceOrder\Actions\ReopenServiceOrderAction.php:28:            $order->state()->reopen($order, $this->userId);
+app\Services\ServiceOrder\ServiceOrderService.php:619:                    $record->state()->invoice($record, $userId, $invoice->id);

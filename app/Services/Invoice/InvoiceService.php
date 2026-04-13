@@ -2,6 +2,9 @@
 
 namespace App\Services\Invoice;
 
+use App\Enum\Requisition\Status as RequisitionStatus;
+use App\Enum\ServiceOrder\State as ServiceOrderState;
+use App\Enum\StockMovement\Type as StockMovementType;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\FiscalDocument\NfseDescriptionMode;
@@ -9,7 +12,12 @@ use App\Enum\Invoice\Status;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
+use App\Models\Requisition;
+use App\Models\RequisitionItem;
 use App\Models\ServiceOrderItem;
+use App\Models\StockMovement;
+use App\Services\ProductStock\ProductStockService;
+use App\Services\StockMovement\StockMovementService;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
@@ -553,6 +561,8 @@ class InvoiceService
 
     private function syncInvoiceStatusAfterFiscalDocumentGeneration(Invoice $invoice, int $userId): void
     {
+        $this->syncLinkedDocumentsAfterFiscalDocumentGeneration($invoice, $userId);
+
         $invoice->update([
             'status'       => Status::CONFIRMED->value,
             'pending'      => false,
@@ -567,6 +577,169 @@ class InvoiceService
             'invoice_id' => $invoice->id,
             'status'     => Status::CONFIRMED->value,
         ]);
+    }
+
+    private function syncLinkedDocumentsAfterFiscalDocumentGeneration(Invoice $invoice, int $userId): void
+    {
+        $invoice->loadMissing([
+            'requisitions.items.product',
+            'serviceOrders.items.service',
+        ]);
+
+        foreach ($invoice->requisitions as $requisition) {
+            $this->syncRequisitionAfterFiscalDocumentGeneration($requisition, $invoice->id, $userId);
+        }
+
+        foreach ($invoice->serviceOrders as $serviceOrder) {
+            if ($serviceOrder->status === ServiceOrderState::CLOSED) {
+                $serviceOrder->state()->invoice($serviceOrder, $userId, $invoice->id);
+            } elseif ($serviceOrder->invoice_id !== $invoice->id) {
+                $serviceOrder->update([
+                    'invoice_id' => $invoice->id,
+                    'updated_by' => $userId,
+                ]);
+            }
+        }
+    }
+
+    private function syncRequisitionAfterFiscalDocumentGeneration(Requisition $requisition, int $invoiceId, int $userId): void
+    {
+        if ($requisition->status === RequisitionStatus::CLOSED) {
+            $requisition->state()->invoice($requisition, $userId, $invoiceId);
+            $requisition->refresh();
+        } elseif ($requisition->invoice_id !== $invoiceId) {
+            $requisition->update([
+                'invoice_id' => $invoiceId,
+                'updated_by' => $userId,
+            ]);
+            $requisition->refresh();
+        }
+
+        if (! $requisition->stock_consumed) {
+            $this->processRequisitionStockExits($requisition, $userId);
+        }
+    }
+
+    private function processRequisitionStockExits(Requisition $requisition, int $userId): void
+    {
+        $stockMovementService = app(StockMovementService::class);
+        $productStockService = app(ProductStockService::class);
+
+        $items = $requisition->items()
+            ->where('stock_consumed', false)
+            ->with('product')
+            ->get();
+
+        if ($items->isEmpty()) {
+            $requisition->update(['stock_consumed' => true]);
+            return;
+        }
+
+        foreach ($items as $item) {
+            if (! $item->product_id) {
+                $item->update([
+                    'stock_consumed' => true,
+                    'stock_consumed_at' => now(),
+                ]);
+                continue;
+            }
+
+            if (! $item->product?->has_stock_control) {
+                $item->update([
+                    'stock_consumed' => true,
+                    'stock_consumed_at' => now(),
+                ]);
+                continue;
+            }
+
+            $productStock = $productStockService->findByProductId(
+                $item->product_id,
+                $requisition->company_id
+            );
+
+            if (! $productStock) {
+                throw new \RuntimeException(
+                    'Estoque não encontrado para o produto #' . $item->product_id
+                );
+            }
+
+            $baseData = [
+                'product_stock_id' => $productStock->id,
+                'product_id' => $item->product_id,
+                'company_id' => $requisition->company_id,
+                'quantity' => (float) $item->quantity,
+                'unit_price' => (float) ($item->unit_price ?? 0),
+                'source_type' => 'requisition',
+                'source_id' => $requisition->id,
+                'observations' => $item->observations,
+            ];
+
+            $exit = $stockMovementService->create(array_merge($baseData, [
+                'type' => StockMovementType::EXIT->value,
+                'reason' => 'Saída por emissão de documento fiscal - requisição #' . $requisition->number,
+            ]), $userId);
+
+            if (! $exit) {
+                throw new \RuntimeException(
+                    'Falha ao criar saída de estoque para produto #' . $item->product_id
+                    . ': ' . $stockMovementService->getMessage()
+                );
+            }
+
+            $this->releaseReservationIfNeeded($stockMovementService, $requisition, $item, $baseData, $userId);
+
+            $item->update([
+                'stock_consumed' => true,
+                'stock_consumed_at' => now(),
+            ]);
+        }
+
+        $requisition->update([
+            'stock_consumed' => true,
+            'stock_reserved' => false,
+        ]);
+    }
+
+    private function releaseReservationIfNeeded(
+        StockMovementService $stockMovementService,
+        Requisition $requisition,
+        RequisitionItem $item,
+        array $baseData,
+        int $userId
+    ): void {
+        $reservedQuantity = (float) StockMovement::query()
+            ->where('source_type', 'requisition')
+            ->where('source_id', $requisition->id)
+            ->where('product_id', $item->product_id)
+            ->whereIn('type', [
+                StockMovementType::RESERVATION->value,
+                StockMovementType::RESERVATION_RELEASE->value,
+            ])
+            ->get(['type', 'quantity'])
+            ->sum(function (StockMovement $movement): float {
+                return $movement->type === StockMovementType::RESERVATION->value
+                    ? (float) $movement->quantity
+                    : -(float) $movement->quantity;
+            });
+
+        if ($reservedQuantity <= 0.0001) {
+            return;
+        }
+
+        $releaseQuantity = min($reservedQuantity, (float) $item->quantity);
+
+        $release = $stockMovementService->create(array_merge($baseData, [
+            'type' => StockMovementType::RESERVATION_RELEASE->value,
+            'quantity' => $releaseQuantity,
+            'reason' => 'Liberação de reserva por emissão de documento fiscal - requisição #' . $requisition->number,
+        ]), $userId);
+
+        if (! $release) {
+            throw new \RuntimeException(
+                'Falha ao liberar reserva de estoque para produto #' . $item->product_id
+                . ': ' . $stockMovementService->getMessage()
+            );
+        }
     }
     /**
      * Gera o PDF da fatura em base64.
