@@ -142,7 +142,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Preview')
                     ->icon(Heroicon::Eye)
                     ->color('gray')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfe())
+                    ->visible(fn(FiscalDocument $record) => ! $record->isNfeAuthorized())
                     ->modalHeading('Preview da NF-e')
                     ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
                         $service = app(NfeDocumentService::class);

@@ -168,6 +168,12 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->state(fn($record): string => $record->document_number ? $record->document_number : 'N/D')
                                             ->placeholder('N/D'),
+                                        TextEntry::make('document_series')
+                                            ->label('Série')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->state(fn($record): string => $record->document_series ? $record->document_series : 'N/D')
+                                            ->placeholder('N/D'),
                                         TextEntry::make('document_key')
                                             ->label('Chave Doc.')
                                             ->visibleOn('edit')
@@ -181,36 +187,28 @@ class FiscalDocumentForm
                                             ->visible(fn($state): bool => $state !== null)
                                             ->formatStateUsing(fn($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
                                             ->url(fn($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
-                                        Select::make('operation_nature')
+                                        TextEntry::make('operation_nature')
                                             ->label('Natureza da Operação')
-                                            ->options(OperationNature::toSelectArray())
-                                            ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
-                                            ->searchable()
-                                            ->required()
                                             ->columnSpan(['md' => 2, 'lg' => 4]),
 
-                                        DatePicker::make('issued_at')
+                                        TextEntry::make('issued_at')
                                             ->label('Data de Emissão')
                                             ->visibleOn('edit')
-                                            ->readOnly()
-                                            ->displayFormat('d/m/Y')
+                                            ->formatStateUsing(fn($state): ?string => $state ? $state->format('d/m/Y') : 'N/D')
                                             ->default(now())
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
 
-                                        DatePicker::make('movement_at')
+                                        TextEntry::make('movement_at')
                                             ->label('Data Entrada/Saída')
                                             ->visible(false)
-                                            ->readOnly()
-                                            ->displayFormat('d/m/Y')
+                                            ->formatStateUsing(fn($state): ?string => $state ? $state->format('d/m/Y') : 'N/D')
                                             ->default(now())
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
 
-                                        Select::make('operation_type')
+                                        TextEntry::make('operation_type')
                                             ->label('Tipo de Operação')
-                                            ->options(OperationType::toSelectArray())
+                                            ->formatStateUsing(fn($state): ?string => $state ? $state->description() : 'N/D')
                                             ->default(OperationType::SAIDA->value)
-                                            ->required()
-                                            ->native(false)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
 
                                         Select::make('issue_purpose')
@@ -219,7 +217,7 @@ class FiscalDocumentForm
                                             ->default(IssuePurpose::NORMAL->value)
                                             ->required()
                                             ->native(false)
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->columnStart(1),
 
                                         Select::make('buyer_presence_indicator')
@@ -227,7 +225,7 @@ class FiscalDocumentForm
                                             ->options(BuyerPresenceIndicator::toSelectArray())
                                             ->default(BuyerPresenceIndicator::OUTROS->value)
                                             ->native(false)
-                                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
 
                                         Toggle::make('is_final_consumer')
                                             ->label('Consumidor Final')

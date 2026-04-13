@@ -27,11 +27,6 @@ final class InvoiceRequisitionAction
             ->modalDescription('Tem certeza que deseja faturar esta requisição? Esta ação mudará o status para "Faturada" e não poderá ser desfeita.')
             ->modalSubmitActionLabel('Sim, faturar')
             ->schema([
-                Checkbox::make('request_fiscal_document')
-                    ->label('Solicitar documento fiscal agora')
-                    ->helperText('Se desmarcado, a fatura será criada em aberto para posterior emissão do documento fiscal.')
-                    ->default(false)
-                    ->visible(false),
             ])
             ->visible(fn (Requisition $record): bool => $record->status === Status::CLOSED)
             ->action(function (Requisition $record, array $data): void {
