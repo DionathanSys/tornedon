@@ -12,6 +12,8 @@ use App\Models\ServiceOrder;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\DTO\EmailAttachment;
 use App\Services\Email\DTO\EmailMessage;
+use App\Services\FiscalDocument\Actions\ConsultNfeAction;
+use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
@@ -45,6 +47,18 @@ class SendInvoiceEmailAction
                 $this->setError('A fatura não possui documento fiscal vinculado para envio.');
                 return false;
             }
+
+            $invoice->fiscalDocuments->each(function (FiscalDocument $fiscalDocument): void {
+                $this->refreshFiscalDocumentFromConsultation($fiscalDocument);
+            });
+
+            $invoice->refresh()->loadMissing([
+                'customer',
+                'company',
+                'fiscalDocuments',
+                'serviceOrders',
+                'requisitions',
+            ]);
 
             $fiscalDocuments = $invoice->fiscalDocuments
                 ->filter(fn (FiscalDocument $fiscalDocument): bool => $this->canEmailFiscalDocument($fiscalDocument))
@@ -194,6 +208,23 @@ class SendInvoiceEmailAction
             && $this->buildPersistedFiscalAttachment($fiscalDocument, 'xml', 'fiscal.xml') instanceof EmailAttachment;
     }
 
+    private function refreshFiscalDocumentFromConsultation(FiscalDocument $fiscalDocument): void
+    {
+        if (empty($fiscalDocument->document_key)) {
+            return;
+        }
+
+        if ($fiscalDocument->isNfse()) {
+            $action = app(ConsultNfseAction::class);
+            $action->execute($fiscalDocument);
+
+            return;
+        }
+
+        $action = app(ConsultNfeAction::class);
+        $action->execute($fiscalDocument);
+    }
+
     private function buildInvoicePdfAttachment(Invoice $invoice): EmailAttachment
     {
         $pdfAction = app(PrintInvoicePdfAction::class);
@@ -216,6 +247,17 @@ class SendInvoiceEmailAction
     private function buildFiscalPdfAttachment(FiscalDocument $fiscalDocument): EmailAttachment
     {
         $number = (string) ($fiscalDocument->document_number ?: $fiscalDocument->id);
+        $payloadPdf = $this->extractFiscalPdfBase64($fiscalDocument);
+
+        if ($payloadPdf !== null) {
+            return new EmailAttachment(
+                filename: $fiscalDocument->isNfse() ? "nfse-{$number}.pdf" : "danfe-{$number}.pdf",
+                contentBase64: $payloadPdf,
+                mimeType: 'application/pdf',
+                kind: 'fiscal_pdf',
+            );
+        }
+
         $persisted = $this->buildPersistedFiscalAttachment($fiscalDocument, 'danfe', "danfe-{$number}.pdf");
 
         if ($persisted instanceof EmailAttachment) {
@@ -274,6 +316,34 @@ class SendInvoiceEmailAction
             mimeType: 'application/xml',
             kind: 'fiscal_xml',
         );
+    }
+
+    private function extractFiscalPdfBase64(FiscalDocument $fiscalDocument): ?string
+    {
+        $candidates = [
+            Arr::get($fiscalDocument->nfe_payload, 'pdf'),
+            Arr::get($fiscalDocument->nfe_payload, 'pdf_base64'),
+            Arr::get($fiscalDocument->nfe_payload, 'danfe'),
+            Arr::get($fiscalDocument->nfe_payload, 'danfe_base64'),
+            Arr::get($fiscalDocument->nfse_payload, 'pdf'),
+            Arr::get($fiscalDocument->nfse_payload, 'pdf_base64'),
+            Arr::get($fiscalDocument->logs, 'pdf'),
+            Arr::get($fiscalDocument->logs, 'pdf_base64'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate) || trim($candidate) === '') {
+                continue;
+            }
+
+            $value = trim($candidate);
+
+            if (base64_decode($value, true) !== false) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function buildServiceOrderPdfAttachment(ServiceOrder $serviceOrder): EmailAttachment

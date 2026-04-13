@@ -2,15 +2,14 @@
 
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
+use App\Jobs\SendInvoiceEmailJob;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
-use App\Services\Invoice\Actions\SendInvoiceEmailAction as SendInvoiceEmailServiceAction;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 final class SendInvoiceEmailAction
 {
@@ -21,12 +20,9 @@ final class SendInvoiceEmailAction
             ->icon(Heroicon::Envelope)
             ->color('info')
             ->modalHeading('Enviar e-mail da fatura')
-            ->modalDescription('O e-mail será enviado para os destinatários configurados no vínculo empresa-cliente, com os anexos fiscais e operacionais disponíveis.')
+            ->modalDescription('O envio será processado em segundo plano. O job consultará os documentos fiscais na API e anexará os retornos disponíveis.')
             ->modalSubmitActionLabel('Enviar')
-            ->visible(fn (Invoice $record): bool => $record->fiscalDocuments()->get()->contains(
-                fn ($fiscalDocument): bool => ($fiscalDocument->isNfe() && $fiscalDocument->isNfeAuthorized())
-                    || ($fiscalDocument->isNfse() && $fiscalDocument->isNfseAuthorized())
-            ))
+            ->visible(fn (Invoice $record): bool => $record->fiscalDocuments()->exists())
             ->schema([
                 TextInput::make('subject')
                     ->label('Assunto')
@@ -41,33 +37,20 @@ final class SendInvoiceEmailAction
                     ->default(fn (Invoice $record): string => self::defaultBody($record)),
             ])
             ->action(function (Action $action, Invoice $record, array $data): void {
-                $service = app(SendInvoiceEmailServiceAction::class);
-                $sent = $service->execute(
-                    invoice: $record,
+                if (! $record->fiscalDocuments()->exists()) {
+                    notify::error('A fatura não possui documento fiscal vinculado para envio.');
+                    $action->halt();
+                    return;
+                }
+
+                SendInvoiceEmailJob::dispatch(
+                    invoiceId: (int) $record->id,
                     subject: (string) ($data['subject'] ?? ''),
                     body: (string) ($data['body'] ?? ''),
                     userId: (int) Auth::id(),
                 );
 
-                if (! $sent || $service->hasError()) {
-                    Log::error('SendInvoiceEmailAction UI: erro ao enviar e-mail da fatura', [
-                        'invoice_id' => $record->id,
-                        'message' => $service->getMessage(),
-                        'error_code' => $service->getErrorCode(),
-                        'errors' => $service->getErrors(),
-                    ]);
-
-                    notify::error(
-                        message: $service->getMessage() ?: 'Não foi possível enviar o e-mail da fatura.',
-                        errorCode: $service->getErrorCode()
-                    );
-
-                    $action->halt();
-
-                    return;
-                }
-
-                notify::success('E-mail da fatura enviado com sucesso.');
+                notify::success('Envio do e-mail enfileirado com sucesso.');
             });
     }
 

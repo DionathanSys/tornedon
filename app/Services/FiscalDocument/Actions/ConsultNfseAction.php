@@ -67,10 +67,19 @@ class ConsultNfseAction
 
             if ($resp->sucesso ?? false) {
                 // Autorizada
+                $payload = is_array($fiscalDocument->nfse_payload) ? $fiscalDocument->nfse_payload : [];
+                if (! empty($resp->xml)) {
+                    $payload['xml_base64'] = $resp->xml;
+                }
+                if (! empty($resp->pdf)) {
+                    $payload['pdf_base64'] = $resp->pdf;
+                }
+
                 $updates['nfse_status']    = NfeStatus::AUTHORIZED->value;
                 $updates['nfse_protocol'] = $resp->protocolo ?? null;
                 $updates['status']         = Status::CONFIRMED->value;
                 $updates['confirmed_at']   = now();
+                $updates['nfse_payload']   = $payload;
 
                 if (! empty($resp->numero)) {
                     $updates['document_number'] = $resp->numero;
