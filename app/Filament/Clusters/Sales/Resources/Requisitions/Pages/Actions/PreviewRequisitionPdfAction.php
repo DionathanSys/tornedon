@@ -17,7 +17,7 @@ final class PreviewRequisitionPdfAction
             ->label('Preview PDF')
             ->icon(Heroicon::Eye)
             ->color('gray')
-            ->modalHeading('Preview da Requisicao')
+            ->modalHeading('Preview da Requisição')
             ->modalContent(function (Requisition $record): \Illuminate\Contracts\Support\Htmlable {
                 $service = app(RequisitionService::class);
                 $data    = $service->preview($record, Auth::id());

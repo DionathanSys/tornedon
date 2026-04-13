@@ -42,7 +42,14 @@ class EditServiceOrder extends EditRecord
     {
         return [
             ActionGroup::make([
+                Action::make('back')
+                    ->hiddenLabel()
+                    ->tooltip('Voltar')
+                    ->icon(Heroicon::ArrowUturnLeft)
+                    ->url(ServiceOrderResource::getUrl()),
                 CreateServiceOrderAction::make(),
+            ])->buttonGroup(),
+            ActionGroup::make([
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()
                     ->tooltip('Duplicar ordem de serviço'),
@@ -159,7 +166,7 @@ class EditServiceOrder extends EditRecord
 
                         return $result;
                     }),
-            ])->buttonGroup()
+            ])->button()
         ];
     }
 

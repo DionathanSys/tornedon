@@ -8,6 +8,7 @@ use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
+use BackedEnum;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -24,6 +25,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -31,6 +33,14 @@ use Filament\Tables\Table;
 class ServiceOrdersRelationManager extends RelationManager
 {
     protected static string $relationship = 'serviceOrders';
+
+    protected static ?string $title = 'Ordens de Serviço';
+
+    protected static ?string $modelLabel = 'Ordem de Serviço';
+
+    protected static ?string $pluralModelLabel = 'Ordens de Serviço';
+
+    protected static string|BackedEnum|null $icon = Heroicon::ClipboardDocumentList;
 
     public function form(Schema $schema): Schema
     {

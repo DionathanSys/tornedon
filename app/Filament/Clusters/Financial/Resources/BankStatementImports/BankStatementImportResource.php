@@ -25,9 +25,9 @@ class BankStatementImportResource extends Resource
 
     protected static ?string $cluster = FinancialCluster::class;
 
-    protected static ?string $modelLabel = 'Importacao OFX';
+    protected static ?string $modelLabel = 'Importação OFX';
 
-    protected static ?string $pluralModelLabel = 'Importacoes OFX';
+    protected static ?string $pluralModelLabel = 'Importações OFX';
 
     protected static ?int $navigationSort = 6;
 

@@ -6,6 +6,7 @@ use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
+use BackedEnum;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -22,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -29,6 +31,14 @@ use Filament\Tables\Table;
 class RequisitionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'requisitions';
+
+    protected static ?string $title = 'Requisições';
+
+    protected static ?string $modelLabel = 'Requisição';
+
+    protected static ?string $pluralModelLabel = 'Requisições';
+
+    protected static string|BackedEnum|null $icon = Heroicon::ClipboardDocumentList;
 
     public function form(Schema $schema): Schema
     {

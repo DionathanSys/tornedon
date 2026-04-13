@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Invoice extends Model
 {
@@ -92,6 +93,16 @@ class Invoice extends Model
     public function accountReceivables(): HasMany
     {
         return $this->hasMany(AccountReceivable::class);
+    }
+
+    public function installments(): HasManyThrough
+    {
+        return $this->through('accountReceivables')->has('installments');
+    }
+
+    public function payments(): HasManyThrough
+    {
+        return $this->through('accountReceivables')->has('payments');
     }
 
     public function fiscalDocuments(): HasMany

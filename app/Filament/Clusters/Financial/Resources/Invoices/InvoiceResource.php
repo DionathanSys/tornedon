@@ -6,6 +6,10 @@ use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\CreateInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\ListInvoices;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\AccountReceivablesRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
@@ -39,6 +43,18 @@ class InvoiceResource extends Resource
     public static function table(Table $table): Table
     {
         return InvoicesTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            FiscalDocumentsRelationManager::class,
+            AccountReceivablesRelationManager::class,
+            InstallmentsRelationManager::class,
+            PaymentsRelationManager::class,
+            RequisitionsRelationManager::class,
+            ServiceOrdersRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

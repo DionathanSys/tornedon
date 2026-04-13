@@ -22,7 +22,7 @@ final class CreateServiceOrderAction
     public static function make(): CreateAction
     {
         return CreateAction::make()
-            ->label('OS')
+            ->hiddenLabel()
             ->color('gray')
             ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
