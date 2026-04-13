@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Tables;
 use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
 use Filament\Actions\CreateAction;
@@ -80,6 +81,8 @@ class InvoicesTable
                 PreviewInvoicePdfAction::make()
                     ->iconButton(),
                 DownloadInvoicePdfAction::make()
+                    ->iconButton(),
+                SendInvoiceEmailAction::make()
                     ->iconButton(),
                 EditAction::make()
                     ->iconButton(),

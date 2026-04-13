@@ -9,6 +9,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInv
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedFiscalDocumentsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedProductionOrdersAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedRequisitionsAction;
@@ -57,6 +58,11 @@ class EditInvoice extends EditRecord
                     ->hiddenLabel()
                     ->color('gray')
                     ->tooltip('Baixar PDF')
+                    ->size(Size::Small),
+                SendInvoiceEmailAction::make()
+                    ->hiddenLabel()
+                    ->color('info')
+                    ->tooltip('Enviar e-mail')
                     ->size(Size::Small),
                 ImportRecordsAction::make()
                     ->size(Size::Small),

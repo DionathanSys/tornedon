@@ -12,7 +12,9 @@ class BankStatementImportInfolist
     {
         return $schema
             ->components([
-                Section::make('Importacao OFX')
+                Section::make('Importação OFX')
+                    ->collapsible()
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('financialAccount.name')
                             ->label('Conta Financeira'),
@@ -42,7 +44,7 @@ class BankStatementImportInfolist
                             ->date('d/m/Y')
                             ->placeholder('-'),
                     ])
-                    ->columns(3),
+                    ->columns(6),
             ]);
     }
 }

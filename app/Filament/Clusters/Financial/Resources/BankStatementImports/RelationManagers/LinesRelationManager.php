@@ -45,7 +45,7 @@ class LinesRelationManager extends RelationManager
                     ->date('d/m/Y')
                     ->sortable(),
                 TextColumn::make('description')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->searchable()
                     ->wrap()
                     ->limit(60),
@@ -72,7 +72,7 @@ class LinesRelationManager extends RelationManager
                     ->placeholder('-')
                     ->limit(40),
                 TextColumn::make('metadata.suggestions.0.label')
-                    ->label('Melhor sugestao')
+                    ->label('Melhor sugestão')
                     ->wrap()
                     ->placeholder('-'),
                 TextColumn::make('metadata.suggestions.0.reason')
@@ -85,7 +85,7 @@ class LinesRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([
                 Action::make('refresh_suggestions')
-                    ->label('Atualizar sugestoes')
+                    ->label('Atualizar sugestões')
                     ->icon('heroicon-o-arrow-path')
                     ->iconButton()
                     ->action(function (BankStatementLine $record): void {
@@ -93,7 +93,7 @@ class LinesRelationManager extends RelationManager
                         $service->refreshSuggestions($record);
 
                         Notification::make()
-                            ->title('Sugestoes atualizadas.')
+                            ->title('Sugestões atualizadas.')
                             ->success()
                             ->send();
                     }),
