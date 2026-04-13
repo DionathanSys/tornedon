@@ -120,7 +120,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar SEFAZ')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && $record->isNfeInProcessing())
+                    ->visible(fn(FiscalDocument $record) => ($record->isNfe() && $record->isNfeInProcessing()) || Auth::user()->is_admin)
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
