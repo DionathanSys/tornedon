@@ -171,18 +171,18 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    ->visible(fn (FiscalDocument $record) => ! $isNfse && $record->status == Status::PENDING),
+                    ->visible(fn () => ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
                 DeleteItemAction::make()
                     ->iconButton()
-                    ->visible(fn (FiscalDocument $record) => ! $isNfse && $record->status == Status::PENDING),
+                    ->visible(fn () => ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
 
                 // NFS-e actions
                 EditNfseItemAction::make()
                     ->iconButton()
-                    ->visible(fn (FiscalDocument $record) => $isNfse && $record->status == Status::PENDING),
+                    ->visible(fn () => $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
                 DeleteItemAction::make('deleteNfseItem')
                     ->iconButton()
-                    ->visible(fn (FiscalDocument $record) => $isNfse && $record->status == Status::PENDING),
+                    ->visible(fn () => $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -190,10 +190,10 @@ class ItemsRelationManager extends RelationManager
                 ]),
                 // NF-e create
                 CreateItemAction::make()
-                    ->visible(fn (FiscalDocument $record) => ! $isNfse && $record->status == Status::PENDING),
+                    ->visible(fn () => ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
                 // NFS-e create
                 CreateNfseItemAction::make()
-                    ->visible(fn (FiscalDocument $record) => $isNfse && $record->status == Status::PENDING),
+                    ->visible(fn () => $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
             ])
             ->emptyStateDescription($isNfse
                 ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'

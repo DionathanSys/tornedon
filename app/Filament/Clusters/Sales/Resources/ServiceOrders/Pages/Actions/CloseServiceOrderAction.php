@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
@@ -109,7 +110,7 @@ final class CloseServiceOrderAction
                 $record->refresh();
 
                 if ($record->invoice_id) {
-                    return ServiceOrderResource::getUrl('edit', ['record' => $record]);
+                    return InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]);
                 }
 
                 return ServiceOrderResource::getUrl('edit', ['record' => $record]);
