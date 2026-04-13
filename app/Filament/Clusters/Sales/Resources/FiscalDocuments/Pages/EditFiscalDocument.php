@@ -142,7 +142,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Preview')
                     ->icon(Heroicon::Eye)
                     ->color('gray')
-                    ->visible(fn(FiscalDocument $record) => ! $record->isNfeAuthorized())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && ! $record->isNfeAuthorized())
                     ->modalHeading('Preview da NF-e')
                     ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
                         $service = app(NfeDocumentService::class);
@@ -158,6 +158,7 @@ class EditFiscalDocument extends EditRecord
                             '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
                         );
                     })
+                    ->modalSubmitAction(false)
                     ->modalWidth('6xl')
                     ->after(fn() => $this->refreshFormData(['errors_messages'])),
 
@@ -249,6 +250,7 @@ class EditFiscalDocument extends EditRecord
                             '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
                         );
                     })
+                    ->modalSubmitAction(false)
                     ->modalWidth('6xl'),
 
                 Action::make('pdf_nfse')
