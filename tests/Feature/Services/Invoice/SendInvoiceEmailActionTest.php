@@ -88,16 +88,17 @@ class SendInvoiceEmailActionTest extends TestCase
             'customer_id' => $invoice->customer_id,
             'company_id' => $invoice->company_id,
             'invoice_id' => $invoice->id,
-            'status' => FiscalDocumentStatus::PENDING->value,
-            'issued_at' => now()->toDateString(),
-            'movement_at' => now()->toDateString(),
-            'document_type' => DocumentModel::NFE->value,
-            'document_number' => '1002',
-            'nfe_payload' => ['xml' => '<xml>doc-2</xml>'],
-            'pending' => true,
-            'confirmed' => false,
-            'canceled' => false,
-        ]);
+                'status' => FiscalDocumentStatus::CONFIRMED->value,
+                'issued_at' => now()->toDateString(),
+                'movement_at' => now()->toDateString(),
+                'document_type' => DocumentModel::NFE->value,
+                'document_number' => '1002',
+                'nfe_payload' => ['xml' => '<xml>doc-2</xml>'],
+                'pending' => false,
+                'confirmed' => true,
+                'canceled' => false,
+                'confirmed_at' => now(),
+            ]);
 
         $this->mockInvoicePdf('invoice-pdf');
         $this->mockFiscalDanfe(['danfe-1', 'danfe-2']);
@@ -291,15 +292,16 @@ class SendInvoiceEmailActionTest extends TestCase
                 'customer_id' => $customer->id,
                 'company_id' => $company->id,
                 'invoice_id' => $invoice->id,
-                'status' => FiscalDocumentStatus::PENDING->value,
+                'status' => FiscalDocumentStatus::CONFIRMED->value,
                 'issued_at' => now()->toDateString(),
                 'movement_at' => now()->toDateString(),
                 'document_type' => DocumentModel::NFE->value,
                 'document_number' => '1001',
                 'nfe_payload' => ['xml' => '<xml>doc-1</xml>'],
-                'pending' => true,
-                'confirmed' => false,
+                'pending' => false,
+                'confirmed' => true,
                 'canceled' => false,
+                'confirmed_at' => now(),
             ]);
         }
 

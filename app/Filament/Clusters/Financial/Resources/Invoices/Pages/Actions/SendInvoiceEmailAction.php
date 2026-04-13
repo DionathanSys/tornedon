@@ -23,7 +23,10 @@ final class SendInvoiceEmailAction
             ->modalHeading('Enviar e-mail da fatura')
             ->modalDescription('O e-mail será enviado para os destinatários configurados no vínculo empresa-cliente, com os anexos fiscais e operacionais disponíveis.')
             ->modalSubmitActionLabel('Enviar')
-            ->visible(fn (Invoice $record): bool => $record->fiscalDocuments()->exists())
+            ->visible(fn (Invoice $record): bool => $record->fiscalDocuments()->get()->contains(
+                fn ($fiscalDocument): bool => ($fiscalDocument->isNfe() && $fiscalDocument->isNfeAuthorized())
+                    || ($fiscalDocument->isNfse() && $fiscalDocument->isNfseAuthorized())
+            ))
             ->schema([
                 TextInput::make('subject')
                     ->label('Assunto')

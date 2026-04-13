@@ -46,6 +46,15 @@ class SendInvoiceEmailAction
                 return false;
             }
 
+            $fiscalDocuments = $invoice->fiscalDocuments
+                ->filter(fn (FiscalDocument $fiscalDocument): bool => $this->canEmailFiscalDocument($fiscalDocument))
+                ->values();
+
+            if ($fiscalDocuments->isEmpty()) {
+                $this->setError('A fatura não possui documento fiscal autorizado apto para envio por e-mail.');
+                return false;
+            }
+
             $companyPartner = $this->resolveCompanyPartner($invoice);
             if (! $companyPartner instanceof CompanyPartner) {
                 $this->setError('Nenhum vínculo ativo entre empresa e cliente foi encontrado para o envio.');
@@ -58,7 +67,7 @@ class SendInvoiceEmailAction
                 return false;
             }
 
-            $attachments = $this->buildAttachments($invoice);
+            $attachments = $this->buildAttachments($invoice, $fiscalDocuments->all());
 
             $htmlBody = nl2br(e(trim($body)));
 
@@ -147,14 +156,15 @@ class SendInvoiceEmailAction
     }
 
     /**
+     * @param  array<int,FiscalDocument>  $fiscalDocuments
      * @return EmailAttachment[]
      */
-    private function buildAttachments(Invoice $invoice): array
+    private function buildAttachments(Invoice $invoice, array $fiscalDocuments): array
     {
         $attachments = [];
         $attachments[] = $this->buildInvoicePdfAttachment($invoice);
 
-        foreach ($invoice->fiscalDocuments as $fiscalDocument) {
+        foreach ($fiscalDocuments as $fiscalDocument) {
             $attachments[] = $this->buildFiscalPdfAttachment($fiscalDocument);
             $attachments[] = $this->buildFiscalXmlAttachment($fiscalDocument);
         }
@@ -168,6 +178,20 @@ class SendInvoiceEmailAction
         }
 
         return $attachments;
+    }
+
+    private function canEmailFiscalDocument(FiscalDocument $fiscalDocument): bool
+    {
+        if ($fiscalDocument->isNfe() && $fiscalDocument->isNfeAuthorized()) {
+            return true;
+        }
+
+        if ($fiscalDocument->isNfse() && $fiscalDocument->isNfseAuthorized()) {
+            return true;
+        }
+
+        return $this->buildPersistedFiscalAttachment($fiscalDocument, 'danfe', 'fiscal.pdf') instanceof EmailAttachment
+            && $this->buildPersistedFiscalAttachment($fiscalDocument, 'xml', 'fiscal.xml') instanceof EmailAttachment;
     }
 
     private function buildInvoicePdfAttachment(Invoice $invoice): EmailAttachment
