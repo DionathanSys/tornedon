@@ -106,6 +106,15 @@ class ConsultNfeAction
             $fiscalDocument->update($updates);
 
             if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                $stockMovementAction = app(ProcessAuthorizedNfeStockMovementsAction::class);
+                if (! $stockMovementAction->execute($fiscalDocument->fresh(['invoice.requisitions.items.product']))) {
+                    Log::warning('ConsultNfeAction: falha ao processar movimentações de estoque após autorização', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'message'            => $stockMovementAction->getMessage(),
+                        'errors'             => $stockMovementAction->getErrors(),
+                    ]);
+                }
+
                 $storeAttachmentsAction = app(StoreFiscalDocumentAttachmentsAction::class);
                 if (! $storeAttachmentsAction->execute($fiscalDocument->fresh())) {
                     Log::warning('ConsultNfeAction: falha ao persistir anexos fiscais após autorização', [

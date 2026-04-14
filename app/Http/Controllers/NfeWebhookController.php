@@ -8,6 +8,7 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -156,6 +157,19 @@ class NfeWebhookController extends Controller
         $doc->update($updates);
 
         if ($status === 'autorizado') {
+            $stockMovementAction = app(ProcessAuthorizedNfeStockMovementsAction::class);
+            $stockProcessed = $stockMovementAction->execute($doc->fresh(['invoice.requisitions.items.product']));
+
+            if (! $stockProcessed) {
+                Log::warning('NfeWebhookController: falha ao processar movimentações de estoque após autorização', [
+                    'fiscal_document_id' => $doc->id,
+                    'invoice_id'         => $doc->invoice_id,
+                    'message'            => $stockMovementAction->getMessage(),
+                    'error_code'         => $stockMovementAction->getErrorCode(),
+                    'errors'             => $stockMovementAction->getErrors(),
+                ]);
+            }
+
             $generationService = app(AccountReceivableGenerationService::class);
             $ok = $generationService->generateFromFiscalDocument($doc->fresh(['invoice']));
 
