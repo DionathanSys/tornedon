@@ -47,6 +47,7 @@ final class CloseServiceOrderAction
                     ->label('Encerrar Requisição')
                     ->helperText('Encerrar também a requisição vinculada a esta ordem de serviço.')
                     ->visible(fn (ServiceOrder $record): bool => $record->requisition?->status === RequisitionStatus::OPEN)
+                    ->disabled(fn (Get $get): bool => (bool) $get('invoice_linked_requisition'))
                     ->live(),
                 Checkbox::make('invoice_linked_requisition')
                     ->label('Faturar Requisição')

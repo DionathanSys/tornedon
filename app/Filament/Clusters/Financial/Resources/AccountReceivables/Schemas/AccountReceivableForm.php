@@ -113,8 +113,8 @@ class AccountReceivableForm
                         Money::make('due_amount')
                             ->label('Valor à Receber')
                             ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->required()
-                            ->prefix('R$'),
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                            ->required(),
                         DatePicker::make('paid_date')
                             ->label('Data de Recebimento')
                             ->columnSpan(['md' => 1, 'lg' => 3])
@@ -125,8 +125,8 @@ class AccountReceivableForm
                         Money::make('paid_amount')
                             ->label('Valor Recebido')
                             ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->default(0)
-                            ->prefix('R$')
                             ->disabled(),
                     ]),
                 Section::make('Informações Adicionais')
@@ -140,7 +140,7 @@ class AccountReceivableForm
                     ->persistCollapsed()
                     ->schema([
                         TextInput::make('document_number')
-                            ->label('N Documento')
+                            ->label('Nº Documento')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->maxLength(50),
                         TextInput::make('description')

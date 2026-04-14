@@ -48,14 +48,6 @@ class EditServiceOrder extends EditRecord
                     ->tooltip('Voltar')
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->url(ServiceOrderResource::getUrl()),
-                Action::make('view-linked-requisition')
-                    ->hiddenLabel()
-                    ->tooltip('Abrir requisição vinculada')
-                    ->icon(Heroicon::ClipboardDocumentList)
-                    ->color('gray')
-                    ->visible(fn (): bool => $this->record->requisition()->exists())
-                    ->url(fn (): string => RequisitionResource::getUrl('edit', ['record' => $this->record->requisition]))
-                    ->openUrlInNewTab(),
                 CreateServiceOrderAction::make(),
             ])->buttonGroup(),
             ActionGroup::make([
@@ -72,6 +64,12 @@ class EditServiceOrder extends EditRecord
                     ->color('gray')
                     ->hiddenLabel(),
                 InvoiceServiceOrderAction::make(),
+                Action::make('view-linked-requisition')
+                    ->tooltip('Abrir requisição')
+                    ->icon(Heroicon::ClipboardDocumentList)
+                    ->visible(fn (): bool => $this->record->requisition()->exists())
+                    ->url(fn (): string => RequisitionResource::getUrl('edit', ['record' => $this->record->requisition]))
+                    ->openUrlInNewTab(),
                 ViewInvoiceServiceOrderAction::make(),
                 CancelServiceOrderAction::make()
                     ->hiddenLabel(),

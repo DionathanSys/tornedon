@@ -26,12 +26,12 @@ class AccountReceivablesTable
                     ->sortable()
                     ->limit(40),
                 TextColumn::make('document_number')
-                    ->label('N Documento')
+                    ->label('Nº Documento')
                     ->searchable()
                     ->sortable()
                     ->placeholder('-'),
                 TextColumn::make('description')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->searchable()
                     ->limit(40)
                     ->placeholder('-'),
