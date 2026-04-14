@@ -131,8 +131,7 @@ class RequisitionsTable
 
                             return $result;
                         }),
-                ])
-                    ->iconButton(),
+                ])->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

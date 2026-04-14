@@ -28,7 +28,7 @@
               "type": "markdown",
               "state": {
                 "file": "financeiro-contas-cash-extrato.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
@@ -93,7 +93,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "e2f395d1b7b0fd73",

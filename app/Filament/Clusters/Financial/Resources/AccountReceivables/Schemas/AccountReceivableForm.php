@@ -161,13 +161,13 @@ class AccountReceivableForm
                             ->preload()
                             ->native(false)
                             ->visibleOn('create')
-                            ->helperText('A categoria sera aplicada as parcelas geradas para esta conta.'),
+                            ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
                         Toggle::make('paid')
                             ->label('Recebido')
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(false)
                             ->disabled()
-                            ->helperText('Controle automatico por parcelas.'),
+                            ->helperText('Controle automático por parcelas.'),
                     ]),
                 Livewire::make(InstallmentsRelationManager::class, fn(AccountReceivable $record) => [
                     'ownerRecord' => $record,

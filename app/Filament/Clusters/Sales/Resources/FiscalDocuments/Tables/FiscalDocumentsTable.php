@@ -155,7 +155,9 @@ class FiscalDocumentsTable
             ])
             ->reorderableColumns()
             ->recordActions([
-                ActionGroup::make(FiscalDocumentRecordActions::make(includeEditAction: true)),
+                ActionGroup::make(
+                    FiscalDocumentRecordActions::make(includeEditAction: true)
+                )->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
             ])
             ->toolbarActions([
                 CreateAction::make()
