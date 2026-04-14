@@ -5,6 +5,7 @@ namespace App\Services\Requisition;
 use App\Enum\Requisition\Status;
 use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
+use App\Models\Invoice;
 use App\Models\Requisition;
 use App\Models\RequisitionSequence;
 use App\Services\Invoice\InvoiceService;
@@ -534,13 +535,7 @@ class RequisitionService
                     throw new \RuntimeException($this->getMessage());
                 }
 
-                // 2. Transição de estado e vínculo com a invoice para cada requisição
-                foreach ($records as $record) {
-                    $record->state()->invoice($record, $userId, $invoice->id);
-
-                    // Libera reserva e gera saída física por item
-                    $this->processStockExits($record, $userId);
-                }
+                $this->attachRecordsToInvoice($records, $invoice, $userId);
 
                 Log::info('RequisitionService: Requisição(ões) faturada(s) com sucesso', [
                     'metodo'          => __METHOD__ . '@' . __LINE__,
@@ -582,6 +577,100 @@ class RequisitionService
                 'error_code'      => $this->getErrorCode(),
                 'exception'       => $e->getMessage(),
                 'trace'           => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    public function invoiceIntoExisting(Requisition|Collection $records, int $userId, Invoice $invoice): ?Invoice
+    {
+        $this->resetResponse();
+
+        $records = $records instanceof Requisition ? new Collection([$records]) : $records;
+
+        if ($records->isEmpty()) {
+            $this->setError('Nenhuma requisição informada para faturamento.');
+            return null;
+        }
+
+        $customerIds = $records->pluck('customer_id')->push($invoice->customer_id)->unique();
+        if ($customerIds->count() > 1) {
+            $this->setError('A requisição deve pertencer ao mesmo cliente da fatura da ordem de serviço.');
+            return null;
+        }
+
+        if ((int) $invoice->company_id !== (int) $records->first()->company_id) {
+            $this->setError('A requisição deve pertencer à mesma empresa da fatura da ordem de serviço.');
+            return null;
+        }
+
+        $notClosed = $records->filter(fn (Requisition $req) => $req->status !== Status::CLOSED);
+        if ($notClosed->isNotEmpty()) {
+            $this->setError('Apenas requisições com status "Encerrada" podem ser faturadas na mesma fatura da ordem de serviço.');
+            return null;
+        }
+
+        foreach ($records as $record) {
+            if ($record->invoice_id !== null) {
+                $this->setError("A requisição #{$record->number} já está vinculada a outra fatura.");
+                return null;
+            }
+
+            if ($record->items()->count() === 0) {
+                $this->setError("A requisição #{$record->number} não possui itens.");
+                return null;
+            }
+        }
+
+        try {
+            return DB::transaction(function () use ($records, $userId, $invoice): Invoice {
+                $this->attachRecordsToInvoice($records, $invoice, $userId);
+
+                Log::info('RequisitionService: Requisição(ões) faturada(s) em fatura existente', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'requisition_ids' => $records->pluck('id')->all(),
+                    'invoice_id' => $invoice->id,
+                ]);
+
+                $this->setSuccess('Requisição(ões) faturada(s) com sucesso na mesma fatura da ordem de serviço.');
+
+                return $invoice->fresh();
+            });
+        } catch (DomainValidationException $e) {
+            $this->setError('Transição inválida', $e->errors);
+
+            Log::warning('RequisitionService: Transição inválida ao faturar em fatura existente', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'requisition_ids' => $records->pluck('id')->all(),
+                'invoice_id' => $invoice->id,
+                'errors' => $e->errors,
+            ]);
+
+            return null;
+        } catch (QueryException $e) {
+            $this->setError('Erro ao faturar requisição na fatura da ordem de serviço.');
+
+            Log::error('RequisitionService: QueryException ao faturar em fatura existente', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'requisition_ids' => $records->pluck('id')->all(),
+                'invoice_id' => $invoice->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            if (! $this->hasError()) {
+                $this->setError('Erro ao faturar requisição na fatura da ordem de serviço.');
+            }
+
+            Log::error('RequisitionService: Erro ao faturar em fatura existente', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'requisition_ids' => $records->pluck('id')->all(),
+                'invoice_id' => $invoice->id,
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -692,6 +781,14 @@ class RequisitionService
         }
 
         $requisition->update(['stock_consumed' => true]);
+    }
+
+    private function attachRecordsToInvoice(Collection $records, Invoice $invoice, int $userId): void
+    {
+        foreach ($records as $record) {
+            $record->state()->invoice($record, $userId, $invoice->id);
+            $this->processStockExits($record, $userId);
+        }
     }
 
     /**

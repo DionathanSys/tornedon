@@ -196,7 +196,9 @@ class ServiceOrdersTable
                     BulkInvoiceServiceOrderAction::make(),
                 ]),
                 CreateServiceOrderAction::make()
-                    ->label('Ordem Serviço'),
+                    ->label('Ordem Serviço')
+                    ->hiddenLabel(false)
+                    ->color('gray'),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }
