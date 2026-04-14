@@ -45,6 +45,7 @@ class RequisitionValidator
             'customer_id.required'         => 'O cliente é obrigatório.',
             'customer_id.exists'           => 'Cliente não encontrado.',
             'service_order_id.exists'      => 'Ordem de serviço não encontrada.',
+            'service_order_id.unique'      => 'Já existe uma requisição vinculada a esta ordem de serviço.',
             'sale_date.required'           => 'A data da venda é obrigatória.',
             'sale_date.date'               => 'A data da venda deve ser uma data válida.',
             'status.required'              => 'O status é obrigatório.',
@@ -73,6 +74,12 @@ class RequisitionValidator
                 'string',
                 'max:50',
                 Rule::unique('requisitions', 'number')->where('company_id', $data['company_id'] ?? null),
+            ],
+            'service_order_id' => [
+                'nullable',
+                'integer',
+                'exists:service_orders,id',
+                Rule::unique('requisitions', 'service_order_id'),
             ],
             'company_id'    => 'required|integer|exists:companies,id',
             'customer_id'   => 'required|integer|exists:partners,id',
@@ -106,6 +113,12 @@ class RequisitionValidator
                 Rule::unique('requisitions', 'number')
                     ->where('company_id', $companyId)
                     ->ignore($requisitionId),
+            ],
+            'service_order_id' => [
+                'nullable',
+                'integer',
+                'exists:service_orders,id',
+                Rule::unique('requisitions', 'service_order_id')->ignore($requisitionId),
             ],
             'company_id'    => 'sometimes|required|integer|exists:companies,id',
             'customer_id'   => 'sometimes|required|integer|exists:partners,id',

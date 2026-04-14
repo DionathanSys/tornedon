@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
@@ -157,6 +159,23 @@ class ServiceOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ServiceOrderItem::class);
+    }
+
+    public function requisition(): HasOne
+    {
+        return $this->hasOne(Requisition::class);
+    }
+
+    public function requisitionItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            RequisitionItem::class,
+            Requisition::class,
+            'service_order_id',
+            'requisition_id',
+            'id',
+            'id',
+        );
     }
 
     public function remittanceAssets(): BelongsToMany

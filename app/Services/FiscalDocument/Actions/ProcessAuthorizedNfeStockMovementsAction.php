@@ -100,14 +100,14 @@ class ProcessAuthorizedNfeStockMovementsAction
             }
 
             $baseData = [
-                'product_stock_id' => $productStock->id,
-                'product_id' => $item->product_id,
-                'company_id' => $requisition->company_id,
-                'quantity' => (float) $item->quantity,
-                'unit_price' => (float) ($item->unit_price ?? 0),
-                'source_type' => 'requisition',
-                'source_id' => $requisition->id,
-                'observations' => $item->observations,
+                'product_stock_id'   => $productStock->id,
+                'product_id'         => $item->product_id,
+                'company_id'         => $requisition->company_id,
+                'quantity'           => (float) $item->quantity,
+                'unit_price'         => (float) ($item->unit_price ?? 0),
+                'source_type'        => 'requisition',
+                'source_id'          => $requisition->id,
+                'observations'       => $item->observations,
             ];
 
             $releaseQuantity = $this->resolveReservedQuantity($requisition, $item);

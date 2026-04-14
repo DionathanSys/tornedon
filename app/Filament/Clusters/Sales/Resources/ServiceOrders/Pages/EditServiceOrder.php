@@ -14,6 +14,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewSer
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\SignServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\CompanyPreference;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -47,6 +48,14 @@ class EditServiceOrder extends EditRecord
                     ->tooltip('Voltar')
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->url(ServiceOrderResource::getUrl()),
+                Action::make('view-linked-requisition')
+                    ->hiddenLabel()
+                    ->tooltip('Abrir requisição vinculada')
+                    ->icon(Heroicon::ClipboardDocumentList)
+                    ->color('gray')
+                    ->visible(fn (): bool => $this->record->requisition()->exists())
+                    ->url(fn (): string => RequisitionResource::getUrl('edit', ['record' => $this->record->requisition]))
+                    ->openUrlInNewTab(),
                 CreateServiceOrderAction::make(),
             ])->buttonGroup(),
             ActionGroup::make([

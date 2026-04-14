@@ -12,6 +12,7 @@ use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ProductsRelationManager;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
@@ -172,6 +173,13 @@ class ServiceOrderForm
                                     'pageClass' => EditServiceOrder::class,
                                 ])
                                     ->key('items-relation-manager')
+                                    ->columnSpanFull()
+                                    ->visibleOn([Operation::Edit]),
+                                ComponentsLivewire::make(ProductsRelationManager::class, fn(ServiceOrder $record) => [
+                                    'ownerRecord' => $record,
+                                    'pageClass' => EditServiceOrder::class,
+                                ])
+                                    ->key('products-relation-manager')
                                     ->columnSpanFull()
                                     ->visibleOn([Operation::Edit]),
                             ]),
