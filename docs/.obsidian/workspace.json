@@ -34,9 +34,26 @@
               "icon": "lucide-file",
               "title": "financeiro-contas-cash-extrato"
             }
+          },
+          {
+            "id": "cd1408aa20cdf956",
+            "type": "leaf",
+            "state": {
+              "type": "canvas",
+              "state": {
+                "file": "Sem título.canvas",
+                "viewState": {
+                  "x": 0,
+                  "y": -279,
+                  "zoom": 0
+                }
+              },
+              "icon": "lucide-layout-dashboard",
+              "title": "Sem título"
+            }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -200,8 +217,10 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "202585979ad900c1",
+  "active": "cd1408aa20cdf956",
   "lastOpenFiles": [
+    "financeiro-contas-cash-extrato.md",
+    "Sem título.canvas",
     "Sem título 2.md",
     "fluxo-emissao-notas-fiscais.md",
     "Estudo para melhoria de Emissão NF.md",
@@ -235,8 +254,6 @@
     "Pasted image 20260402130026.png",
     "Pasted image 20260402130009.png",
     "regras-negocio/remessa-retorno-os.md",
-    "plano-refatoracao-anexos-polimorficos.md",
-    "regras-negocio/quote-production-workflow.md",
-    "regras-negocio/partner-creation.md"
+    "plano-refatoracao-anexos-polimorficos.md"
   ]
 }

@@ -19,6 +19,7 @@ use Filament\Support\Icons\Heroicon;
 use App\Notification\NotifyService as notify;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -132,7 +133,7 @@ class RequisitionsTable
                             return $result;
                         }),
                 ])->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
-            ])
+                    ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkInvoiceRequisitionAction::make(),

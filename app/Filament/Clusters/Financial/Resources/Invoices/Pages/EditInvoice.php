@@ -66,12 +66,6 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
                 ImportRecordsAction::make()
                     ->size(Size::Small),
-                // GenerateFiscalDocumentAction::make(DocumentModel::NFE)
-                //     ->color('gray')
-                //     ->size(Size::Small),
-                // GenerateFiscalDocumentAction::make(DocumentModel::NFSE)
-                //     ->color('gray')
-                //     ->size(Size::Small),
                 DeleteAction::make()
                     ->size(Size::Small)
                     ->icon(Heroicon::Trash)

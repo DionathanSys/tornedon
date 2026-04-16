@@ -237,7 +237,7 @@ class InvoiceService
 
                 $this->setSuccess('Fatura confirmada com sucesso', $result);
 
-                Log::info('Fatura confirmada com sucesso via service', [
+                Log::info('Fatura confirmada com sucesso via service - Invoice ID: ' . $invoice->id, [
                     'metodo'                    => __METHOD__ . '@' . __LINE__,
                     'invoice_id'                => $invoice->id,
                     'documents_count'           => $result['documents_count'] ?? 0,

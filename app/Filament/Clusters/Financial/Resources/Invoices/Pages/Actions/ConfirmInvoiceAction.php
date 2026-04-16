@@ -11,6 +11,7 @@ use App\Services\Invoice\InvoiceService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Callout;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -27,9 +28,9 @@ final class ConfirmInvoiceAction
             ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber.')
             ->visible(fn (Invoice $record): bool => ! $record->confirmed && ! $record->canceled)
             ->schema([
-                Placeholder::make('document_types')
-                    ->label('Documentos que serão gerados')
-                    ->content(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record)),
+                Callout::make('Documentos que serão gerados')
+                    ->description(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record))
+                    ->info(),
 
                 Select::make('payment_method')
                     ->label('Forma de Pagamento')
@@ -46,6 +47,13 @@ final class ConfirmInvoiceAction
                     ->required(),
             ])
             ->action(function (Action $action, Invoice $record, array $data, EditInvoice $livewire): void {
+
+                Log::info('ConfirmInvoiceAction UI: confirmando fatura - Invoice ID: ' . $record->id, [
+                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'invoice_id' => $record->id,
+                    'data'       => $data,
+                ]);
+
                 $service = app(InvoiceService::class);
                 $result = $service->confirm($record, $data, Auth::id());
 

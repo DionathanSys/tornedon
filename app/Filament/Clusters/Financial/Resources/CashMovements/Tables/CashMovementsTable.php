@@ -104,6 +104,7 @@ class CashMovementsTable
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar(),
             ])
+            ->recordUrl(null)
             ->recordActions([
                 EditAction::make()
                     ->iconButton()

@@ -20,6 +20,7 @@ use App\Services\Invoice\InvoiceService;
 use App\Traits\HandlesActionResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ConfirmInvoiceAction
@@ -34,7 +35,7 @@ class ConfirmInvoiceAction
     public function execute(array $data): ?array
     {
         try {
-            Log::debug('Iniciando confirmacao de fatura', [
+            Log::debug('Iniciando confirmacao de fatura - Invoice ID: ' . $this->invoice->id, [
                 'metodo' => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
                 'user_id' => $this->confirmedBy,
@@ -58,9 +59,9 @@ class ConfirmInvoiceAction
             $paymentCondition = PaymentCondition::from((string) $data['payment_condition']);
 
             $this->invoice->update([
-                'payment_method' => $paymentMethod->value,
+                'payment_method'    => $paymentMethod->value,
                 'payment_condition' => $paymentCondition->value,
-                'updated_by' => $this->confirmedBy,
+                'updated_by'        => $this->confirmedBy,
             ]);
 
             $this->invoice->refresh();
@@ -84,13 +85,13 @@ class ConfirmInvoiceAction
                         $invoiceService->getErrorCode()
                     );
 
-                    Log::error('ConfirmInvoiceAction: falha ao gerar documento fiscal na confirmacao da fatura', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
-                        'invoice_id' => $this->invoice->id,
+                    Log::error('ConfirmInvoiceAction: falha ao gerar documento fiscal na confirmação da fatura', [
+                        'metodo'        => __METHOD__ . '@' . __LINE__,
+                        'invoice_id'    => $this->invoice->id,
                         'document_type' => $documentType->value,
-                        'message' => $invoiceService->getMessage(),
-                        'error_code' => $invoiceService->getErrorCode(),
-                        'errors' => $invoiceService->getErrors(),
+                        'message'       => $invoiceService->getMessage(),
+                        'error_code'    => $invoiceService->getErrorCode(),
+                        'errors'        => $invoiceService->getErrors(),
                     ]);
 
                     return null;
@@ -101,8 +102,7 @@ class ConfirmInvoiceAction
 
             $createdReceivables = $this->createAccountReceivables(
                 $paymentMethod,
-                $paymentCondition,
-                $generatedDocuments
+                $paymentCondition
             );
 
             if ($createdReceivables === null) {
@@ -110,12 +110,12 @@ class ConfirmInvoiceAction
             }
 
             $this->invoice->update([
-                'status' => InvoiceStatus::CONFIRMED->value,
-                'pending' => false,
-                'confirmed' => true,
-                'confirmed_at' => now(),
-                'confirmed_by' => $this->confirmedBy,
-                'updated_by' => $this->confirmedBy,
+                'status'        => InvoiceStatus::CONFIRMED->value,
+                'pending'       => false,
+                'confirmed'     => true,
+                'confirmed_at'  => now(),
+                'confirmed_by'  => $this->confirmedBy,
+                'updated_by'    => $this->confirmedBy,
             ]);
 
             $result = [
@@ -158,32 +158,32 @@ class ConfirmInvoiceAction
     private function validateCanConfirm(): bool
     {
         if ($this->invoice->canceled || $this->invoice->status === InvoiceStatus::CANCELLED) {
-            $this->setError('Nao e possivel confirmar uma fatura cancelada.');
+            $this->setError('Não é possível confirmar uma fatura cancelada.');
             return false;
         }
 
         if ($this->invoice->confirmed || $this->invoice->status === InvoiceStatus::CONFIRMED) {
-            $this->setError('Esta fatura ja foi confirmada.');
+            $this->setError('Esta fatura já foi confirmada.');
             return false;
         }
 
         if ($this->invoice->fiscalDocuments->isNotEmpty()) {
-            $this->setError('Esta fatura ja possui documento fiscal gerado.');
+            $this->setError('Esta fatura já possui documento fiscal gerado.');
             return false;
         }
 
         if ($this->invoice->accountReceivables->isNotEmpty()) {
-            $this->setError('Esta fatura ja possui contas a receber vinculadas.');
+            $this->setError('Esta fatura já possui contas a receber vinculadas.');
             return false;
         }
 
         if ($this->invoice->requisitions->isEmpty() && $this->invoice->serviceOrders->isEmpty()) {
-            $this->setError('A fatura nao possui itens vinculados para confirmacao.');
+            $this->setError('A fatura não possui itens vinculados para confirmação.');
             return false;
         }
 
         if (! $this->hasProductItems() && ! $this->hasServiceItems()) {
-            $this->setError('A fatura nao possui itens validos para gerar documento fiscal.');
+            $this->setError('A fatura não possui itens válidos para gerar documento fiscal.');
             return false;
         }
 
@@ -228,9 +228,9 @@ class ConfirmInvoiceAction
             $invoiceService = app(InvoiceService::class);
 
             return [
-                'document_type' => DocumentModel::NFSE->value,
-                'nfse_model' => NfseModel::MUNICIPAL->value,
-                'issued_at' => $issueDate,
+                'document_type'         => DocumentModel::NFSE->value,
+                'nfse_model'            => NfseModel::MUNICIPAL->value,
+                'issued_at'             => $issueDate,
                 'nfse_description_mode' => NfseDescriptionMode::AUTO->value,
                 'nfse_item_description' => $invoiceService->buildNfseItemDescription(
                     $this->invoice,
@@ -240,28 +240,26 @@ class ConfirmInvoiceAction
         }
 
         return [
-            'document_type' => DocumentModel::NFE->value,
-            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
-            'operation_type' => OperationType::SAIDA->value,
-            'issue_purpose' => IssuePurpose::NORMAL->value,
-            'is_final_consumer' => true,
+            'document_type'            => DocumentModel::NFE->value,
+            'operation_nature'         => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type'           => OperationType::SAIDA->value,
+            'issue_purpose'            => IssuePurpose::NORMAL->value,
+            'is_final_consumer'        => true,
             'buyer_presence_indicator' => BuyerPresenceIndicator::PRESENCIAL->value,
-            'issued_at' => $issueDate,
-            'movement_at' => $issueDate,
-            'freight_data' => [
+            'issued_at'                => $issueDate,
+            'movement_at'              => $issueDate,
+            'freight_data'             => [
                 'modalidade_frete' => FreightModality::SEM_FRETE->value,
             ],
         ];
     }
 
     /**
-     * @param  array<int, FiscalDocument>  $generatedDocuments
      * @return array<int, mixed>|null
      */
     private function createAccountReceivables(
         PaymentMethod $paymentMethod,
-        PaymentCondition $paymentCondition,
-        array $generatedDocuments
+        PaymentCondition $paymentCondition
     ): ?array {
         $installments = $this->buildInstallments($paymentCondition);
 
@@ -270,25 +268,25 @@ class ConfirmInvoiceAction
         }
 
         $service = app(AccountReceivableService::class);
-        $singleFiscalDocumentId = count($generatedDocuments) === 1 ? $generatedDocuments[0]->id : null;
+
         $accountReceivable = $service->create([
-            'customer_id' => $this->invoice->customer_id,
-            'company_id' => $this->invoice->company_id,
-            'invoice_id' => $this->invoice->id,
-            'fiscal_document_id' => $singleFiscalDocumentId,
-            'sequence_number' => '01',
-            'due_date' => $installments[0]['due_date'],
-            'paid_date' => null,
-            'due_amount' => round((float) $this->invoice->netValue, 2),
-            'paid_amount' => 0,
-            'document_number' => $this->invoice->invoice_number,
-            'description' => sprintf(
-                'Conta a receber gerada automaticamente na confirmacao da fatura %s',
-                $this->invoice->invoice_number
+            'customer_id'        => $this->invoice->customer_id,
+            'company_id'         => $this->invoice->company_id,
+            'invoice_id'         => $this->invoice->id,
+            'fiscal_document_id' => null,
+            'sequence_number'    => '01',
+            'due_date'           => $installments[0]['due_date'],
+            'paid_date'          => null,
+            'due_amount'         => round((float) $this->invoice->netValue, 2),
+            'paid_amount'        => 0,
+            'document_number'    => Str::padLeft($this->invoice->invoice_number, 5, '0'),
+            'description'        => sprintf(
+                'Referente à fatura %s',
+                Str::padLeft($this->invoice->invoice_number, 5, '0')
             ),
-            'paid' => false,
-            'payment_method' => $paymentMethod->value,
-            'installment_count' => count($installments),
+            'paid'               => false,
+            'payment_method'     => $paymentMethod->value,
+            'installment_count'  => count($installments),
             'installment_due_mode' => 'interval_30_days',
         ], $this->confirmedBy);
 
@@ -322,7 +320,7 @@ class ConfirmInvoiceAction
         $netValue = round((float) $this->invoice->netValue, 2);
 
         if ($netValue <= 0) {
-            $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
+            $this->setError('Valor líquido da fatura inválido para gerar contas a receber.');
             return [];
         }
 
@@ -337,9 +335,9 @@ class ConfirmInvoiceAction
             $amountCents = $baseCents + ($i === $installmentsCount ? $remainder : 0);
 
             $installments[] = [
-                'sequence_number' => str_pad((string) $i, 2, '0', STR_PAD_LEFT),
-                'due_date' => $this->resolveDueDate($condition, $baseDate, $i)->toDateString(),
-                'due_amount' => round($amountCents / 100, 2),
+                'sequence_number'    => str_pad((string) $i, 2, '0', STR_PAD_LEFT),
+                'due_date'           => $this->resolveDueDate($condition, $baseDate, $i)->toDateString(),
+                'due_amount'         => round($amountCents / 100, 2),
                 'installment_number' => $i,
                 'installments_count' => $installmentsCount,
             ];
