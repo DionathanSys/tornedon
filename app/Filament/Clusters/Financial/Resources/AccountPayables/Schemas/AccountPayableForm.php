@@ -11,6 +11,7 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\I
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayable;
+use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
@@ -193,6 +194,32 @@ class AccountPayableForm
                             ->native(false)
                             ->visibleOn('create')
                             ->helperText('A categoria sera aplicada as parcelas geradas para esta conta.'),
+                        Toggle::make('is_effective')
+                            ->label('Efetivada?')
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->default(true)
+                            ->live()
+                            ->visibleOn('create')
+                            ->helperText('Quando desmarcada, a conta fica apenas prevista e nao pode gerar baixa automatica na criacao.'),
+                        Toggle::make('auto_register_payment_on_due_date')
+                            ->label('Registrar automaticamente o pagamento na data de vencimento?')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->default(false)
+                            ->live()
+                            ->visibleOn('create')
+                            ->visible(fn (callable $get): bool => (bool) ($get('is_effective') ?? true))
+                            ->helperText('Gera os pagamentos das parcelas usando a data de vencimento e atualiza o caixa automaticamente.'),
+                        Select::make('auto_payment_financial_account_id')
+                            ->label('Conta Financeira do Pagamento Automatico')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->required(fn (callable $get): bool => (bool) ($get('auto_register_payment_on_due_date') ?? false))
+                            ->visibleOn('create')
+                            ->visible(fn (callable $get): bool => (bool) ($get('is_effective') ?? true)
+                                && (bool) ($get('auto_register_payment_on_due_date') ?? false)),
                         Toggle::make('paid')
                             ->label('Pago')
                             ->columnSpan(['md' => 1, 'lg' => 1])

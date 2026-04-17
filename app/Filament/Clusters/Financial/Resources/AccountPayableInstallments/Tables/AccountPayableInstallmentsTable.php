@@ -7,9 +7,12 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableReso
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayableInstallment;
 use Filament\Actions\Action;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
@@ -23,10 +26,9 @@ class AccountPayableInstallmentsTable
             ->columns([
                 TextColumn::make('accountPayable.supplier.name')
                     ->label('Fornecedor')
-                    ->searchable()
                     ->sortable()
                     ->limit(40)
-                    ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
+                    ->url(fn(AccountPayableInstallment $record): ?string => $record->accountPayable
                         ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
                         : null),
                 TextColumn::make('accountPayable.document_number')
@@ -35,7 +37,7 @@ class AccountPayableInstallmentsTable
                     ->sortable()
                     ->placeholder('-'),
                 TextColumn::make('description')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->searchable()
                     ->limit(50)
                     ->placeholder('-'),
@@ -83,8 +85,8 @@ class AccountPayableInstallmentsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
-                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
+                    ->color(fn($state) => $state?->color() ?? 'gray')
                     ->sortable(),
                 TextColumn::make('paid_date')
                     ->label('Data Pgto.')
@@ -96,13 +98,23 @@ class AccountPayableInstallmentsTable
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('notes')
-                    ->label('Observacoes')
+                    ->label('Observações')
                     ->limit(40)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('due_date', 'asc')
             ->filters([
+                Filter::make('supplier_id')
+                    ->label('Fornecedor')
+                    ->schema([
+                        SelectPartner::make('supplier_id')
+                    ])
+                    ->query(function ($query, $state) {
+                        $query->whereHas('accountPayable', function ($query) use ($state) {
+                            $query->where('supplier_id', $state);
+                        });
+                    }),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
@@ -112,7 +124,14 @@ class AccountPayableInstallmentsTable
                     ->label('Vencimento')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar(),
+                    ->alwaysShowCalendar()
+                    ->icon('heroicon-o-backspace'),
+                DateRangeFilter::make('paid_date')
+                    ->label('Data Pgto.')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar()
+                    ->icon('heroicon-o-backspace'),
             ])
             ->recordActions([
                 RegisterInstallmentPaymentAction::make()
@@ -125,17 +144,18 @@ class AccountPayableInstallmentsTable
                     ->label('Abrir agrupador')
                     ->icon('heroicon-o-folder-open')
                     ->iconButton()
-                    ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
+                    ->url(fn(AccountPayableInstallment $record): ?string => $record->accountPayable
                         ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
                         : null),
             ])
             ->toolbarActions([
                 Action::make('create_account_payable')
-                    ->label('Novo lancamento')
-                    ->icon('heroicon-o-plus')
+                    ->label('Novo lançamento')
+                    ->icon(Heroicon::Plus)
+                    ->color('gray')
                     ->url(AccountPayableResource::getUrl('create')),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
-            ->emptyStateDescription('As parcelas das contas a pagar aparecerao aqui.');
+            ->emptyStateDescription('As parcelas das contas à pagar aparecerão aqui.');
     }
 }

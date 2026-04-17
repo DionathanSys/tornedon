@@ -5,6 +5,7 @@ namespace App\Services\AccountPayable\Validators;
 use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\FinancialAccount;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -23,9 +24,12 @@ class AccountPayableValidator
             'note_number' => 'nullable|string|max:100',
             'document_number' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:255',
+            'is_effective' => 'nullable|boolean',
             'paid' => 'nullable|boolean',
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
+            'auto_register_payment_on_due_date' => 'nullable|boolean',
+            'auto_payment_financial_account_id' => ['nullable', 'integer'],
         ];
     }
 
@@ -67,8 +71,50 @@ class AccountPayableValidator
             'installment_fixed_day' => 'nullable|required_if:installment_due_mode,fixed_day_of_month|integer|min:1|max:31',
             'installment_interval_days' => 'nullable|required_if:installment_due_mode,custom_interval_days|integer|min:1|max:365',
         ]);
+        $validator = Validator::make($data, $rules, self::messages());
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        $validator->after(function ($validator) use ($data): void {
+            $autoRegister = (bool) ($data['auto_register_payment_on_due_date'] ?? false);
+            $isEffective = (bool) ($data['is_effective'] ?? true);
+
+            if ($autoRegister && ! $isEffective) {
+                $validator->errors()->add(
+                    'auto_register_payment_on_due_date',
+                    'O pagamento automatico so pode ser usado quando a conta estiver efetivada.'
+                );
+            }
+
+            if (! $autoRegister) {
+                return;
+            }
+
+            $accountId = $data['auto_payment_financial_account_id'] ?? null;
+
+            if (blank($accountId)) {
+                $validator->errors()->add(
+                    'auto_payment_financial_account_id',
+                    'Selecione a conta financeira para registrar o pagamento automatico.'
+                );
+
+                return;
+            }
+
+            $companyId = (int) ($data['company_id'] ?? 0);
+            $account = FinancialAccount::query()
+                ->where('company_id', $companyId)
+                ->find((int) $accountId);
+
+            if (! $account) {
+                $validator->errors()->add('auto_payment_financial_account_id', 'Conta financeira nao encontrada.');
+                return;
+            }
+
+            if (! $account->is_active) {
+                $validator->errors()->add('auto_payment_financial_account_id', 'A conta financeira selecionada esta inativa.');
+            }
+        });
+
+        return $validator->validate();
     }
 
     /**

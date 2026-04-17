@@ -10,6 +10,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class SelectPartner
@@ -38,7 +39,7 @@ class SelectPartner
             ->createOptionForm(QuickCreateCustomerPartnerForm::schema())
             ->createOptionUsing(function (array $data): int {
                 $companyId = Filament::getTenant()?->id;
-                $userId = auth()->id();
+                $userId = Auth::id();
 
                 if (! $companyId || ! $userId) {
                     throw ValidationException::withMessages([

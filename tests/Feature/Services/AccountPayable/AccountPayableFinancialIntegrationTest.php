@@ -211,4 +211,60 @@ class AccountPayableFinancialIntegrationTest extends TestCase
             $installments->first()->description
         );
     }
+
+    public function test_create_payable_can_auto_register_payments_when_effective(): void
+    {
+        $payable = $this->service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-04-10',
+            'due_amount' => 200,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 2,
+            'installment_due_mode' => 'custom_interval_days',
+            'installment_interval_days' => 30,
+            'financial_category_id' => $this->payableCategory->id,
+            'is_effective' => true,
+            'auto_register_payment_on_due_date' => true,
+            'auto_payment_financial_account_id' => $this->financialAccount->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($payable, $this->service->getMessage());
+
+        $payable->refresh();
+
+        $this->assertTrue($payable->is_effective);
+        $this->assertTrue($payable->paid);
+        $this->assertSame(AccountPayableStatus::PAID, $payable->status);
+        $this->assertCount(2, $payable->payments);
+        $this->assertDatabaseCount('cash_movements', 2);
+
+        $paymentDates = $payable->payments
+            ->sortBy('payment_date')
+            ->pluck('payment_date')
+            ->map(fn ($date) => $date?->format('Y-m-d'))
+            ->values()
+            ->all();
+
+        $this->assertSame(['2026-04-10', '2026-05-10'], $paymentDates);
+    }
+
+    public function test_create_payable_rejects_auto_register_when_not_effective(): void
+    {
+        $payable = $this->service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-04-10',
+            'due_amount' => 100,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 1,
+            'financial_category_id' => $this->payableCategory->id,
+            'is_effective' => false,
+            'auto_register_payment_on_due_date' => true,
+            'auto_payment_financial_account_id' => $this->financialAccount->id,
+        ], $this->user->id);
+
+        $this->assertNull($payable);
+        $this->assertArrayHasKey('auto_register_payment_on_due_date', $this->service->getErrors());
+    }
 }

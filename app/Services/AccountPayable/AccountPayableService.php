@@ -15,6 +15,7 @@ use App\Services\AccountPayable\Actions\Installment\SyncAccountPayableStatusFrom
 use App\Services\AccountPayable\Actions\Installment\UpdateAccountPayableInstallmentAction;
 use App\Services\AccountPayable\Actions\UpdateAccountPayableAction;
 use App\Services\AccountPayable\Validators\AccountPayableInstallmentValidator;
+use App\Services\AccountPayable\Validators\AccountPayableValidator;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
@@ -40,9 +41,18 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($data, $createdBy) {
+                AccountPayableValidator::validateCreate([
+                    ...$data,
+                    'sequence_number' => $data['sequence_number'] ?? '01',
+                    'status' => $data['status'] ?? Status::PENDING->value,
+                ]);
+
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
+                $shouldAutoRegisterPayment = (bool) ($data['auto_register_payment_on_due_date'] ?? false);
+                $autoPaymentFinancialAccountId = $data['auto_payment_financial_account_id'] ?? null;
                 unset($data['installment_count']);
+                unset($data['auto_register_payment_on_due_date'], $data['auto_payment_financial_account_id']);
 
                 $installments = $this->buildInstallmentsData($data, $installmentCount, $scheduleConfig);
                 $action = new CreateAccountPayableAction($createdBy);
@@ -59,6 +69,8 @@ class AccountPayableService
                     throw new \RuntimeException('Nenhuma conta a pagar foi gerada.');
                 }
 
+                $createdInstallments = [];
+
                 foreach ($installments as $installmentData) {
                     $createInstallmentAction = new CreateAccountPayableInstallmentAction();
                     $createdInstallment = $createInstallmentAction->execute(
@@ -70,6 +82,8 @@ class AccountPayableService
                             $createInstallmentAction->getErrors() ?: ['parcela' => [$createInstallmentAction->getMessage()]]
                         );
                     }
+
+                    $createdInstallments[] = $createdInstallment;
                 }
 
                 $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($accountPayable);
@@ -79,6 +93,29 @@ class AccountPayableService
                     throw ValidationException::withMessages([
                         'conta_a_pagar' => [$syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar.'],
                     ]);
+                }
+
+                if ($shouldAutoRegisterPayment) {
+                    foreach ($createdInstallments as $installment) {
+                        $payment = $this->registerInstallmentPayment(
+                            installment: $installment->fresh(),
+                            amount: (float) $installment->due_amount,
+                            paymentDate: (string) $installment->due_date?->toDateString(),
+                            extra: [
+                                'financial_account_id' => $autoPaymentFinancialAccountId,
+                                'description' => InstallmentDescription::forPayableInstallment($installment),
+                                'notes' => 'Pagamento registrado automaticamente na criacao da conta.',
+                            ],
+                        );
+
+                        if ($payment === null) {
+                            throw ValidationException::withMessages(
+                                $this->getErrors() ?: ['pagamento_automatico' => [$this->getMessage() ?: 'Falha ao registrar pagamento automatico.']]
+                            );
+                        }
+                    }
+
+                    $syncedAccountPayable = $accountPayable->fresh();
                 }
 
                 $this->setSuccess('Conta a pagar criada com sucesso');
@@ -165,6 +202,7 @@ class AccountPayableService
             'due_amount' => $totalAmount,
             'paid_amount' => 0,
             'paid_date' => null,
+            'is_effective' => (bool) ($data['is_effective'] ?? true),
             'paid' => false,
         ];
     }
