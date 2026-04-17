@@ -197,10 +197,10 @@ class AccountPayableForm
                         Toggle::make('is_effective')
                             ->label('Efetivada?')
                             ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->default(true)
+                            ->default(false)
                             ->live()
                             ->visibleOn('create')
-                            ->helperText('Quando desmarcada, a conta fica apenas prevista e nao pode gerar baixa automatica na criacao.'),
+                            ->helperText('Quando marcada, irá gerar a baixa das parcelas na data de vencimento.'),
                         Toggle::make('auto_register_payment_on_due_date')
                             ->label('Registrar automaticamente o pagamento na data de vencimento?')
                             ->columnSpan(['md' => 2, 'lg' => 4])
@@ -208,7 +208,7 @@ class AccountPayableForm
                             ->live()
                             ->visibleOn('create')
                             ->visible(fn (callable $get): bool => (bool) ($get('is_effective') ?? true))
-                            ->helperText('Gera os pagamentos das parcelas usando a data de vencimento e atualiza o caixa automaticamente.'),
+                            ->helperText('Um servico diario verifica as parcelas vencendo hoje e registra a baixa automaticamente.'),
                         Select::make('auto_payment_financial_account_id')
                             ->label('Conta Financeira do Pagamento Automatico')
                             ->columnSpan(['md' => 2, 'lg' => 4])

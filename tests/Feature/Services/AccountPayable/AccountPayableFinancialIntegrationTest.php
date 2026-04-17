@@ -212,12 +212,12 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         );
     }
 
-    public function test_create_payable_can_auto_register_payments_when_effective(): void
+    public function test_create_payable_can_store_auto_payment_settings_when_effective(): void
     {
         $payable = $this->service->create([
             'supplier_id' => $this->supplier->id,
             'company_id' => $this->company->id,
-            'due_date' => '2026-04-10',
+            'due_date' => '2026-04-20',
             'due_amount' => 200,
             'payment_method' => PaymentMethod::PIX->value,
             'installment_count' => 2,
@@ -234,19 +234,12 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $payable->refresh();
 
         $this->assertTrue($payable->is_effective);
-        $this->assertTrue($payable->paid);
-        $this->assertSame(AccountPayableStatus::PAID, $payable->status);
-        $this->assertCount(2, $payable->payments);
-        $this->assertDatabaseCount('cash_movements', 2);
-
-        $paymentDates = $payable->payments
-            ->sortBy('payment_date')
-            ->pluck('payment_date')
-            ->map(fn ($date) => $date?->format('Y-m-d'))
-            ->values()
-            ->all();
-
-        $this->assertSame(['2026-04-10', '2026-05-10'], $paymentDates);
+        $this->assertTrue($payable->auto_register_payment_on_due_date);
+        $this->assertSame($this->financialAccount->id, $payable->auto_payment_financial_account_id);
+        $this->assertFalse($payable->paid);
+        $this->assertSame(AccountPayableStatus::PENDING, $payable->status);
+        $this->assertCount(0, $payable->payments);
+        $this->assertDatabaseCount('cash_movements', 0);
     }
 
     public function test_create_payable_rejects_auto_register_when_not_effective(): void

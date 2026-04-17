@@ -9,6 +9,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('emails:alert-failures')->everyFiveMinutes();
+Schedule::command('account-payables:process-auto-payments')
+    ->dailyAt('00:10')
+    ->withoutOverlapping()
+    ->description('Baixa automaticamente parcelas a pagar vencendo no dia');
 
 if ((bool) config('backup.database.enabled', true)) {
     Schedule::command('backup:database')
