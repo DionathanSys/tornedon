@@ -62,8 +62,10 @@ class AccountPayableValidator
             'installment_due_mode' => ['nullable', Rule::in([
                 ...array_keys(PaymentCondition::installmentIntervalOptions()),
                 'fixed_day_of_month',
+                'custom_interval_days',
             ])],
             'installment_fixed_day' => 'nullable|required_if:installment_due_mode,fixed_day_of_month|integer|min:1|max:31',
+            'installment_interval_days' => 'nullable|required_if:installment_due_mode,custom_interval_days|integer|min:1|max:365',
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();

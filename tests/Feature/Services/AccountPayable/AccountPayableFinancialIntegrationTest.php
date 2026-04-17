@@ -112,11 +112,13 @@ class AccountPayableFinancialIntegrationTest extends TestCase
             'paid_amount' => 0,
             'balance_amount' => 150,
             'financial_category_id' => $this->payableCategory->id,
+            'description' => 'Fornecedor Teste | Doc. AP-001 | Parcela 01',
             'notes' => 'Parcela AP',
         ]);
 
         $payment = $this->service->registerInstallmentPayment($installment, 150, '2026-04-10', [
             'financial_account_id' => $this->financialAccount->id,
+            'description' => 'Pagamento PIX fornecedor abril',
             'notes' => 'Pagamento total',
         ]);
 
@@ -133,6 +135,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $this->assertSame('Fornecedor Teste', data_get($movement->participants_snapshot, 'counterparty_partner_name'));
         $this->assertSame('Empresa Financeiro AP', $movement->party_from_label);
         $this->assertSame('Fornecedor Teste', $movement->party_to_label);
+        $this->assertSame('Pagamento parcela 01 - Pagamento PIX fornecedor abril', $movement->description);
 
         $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
         $this->assertDatabaseCount('cash_movements', 2);
@@ -178,5 +181,34 @@ class AccountPayableFinancialIntegrationTest extends TestCase
             'status' => AccountPayableStatus::PENDING->value,
             'financial_category_id' => $this->payableParentCategory->id,
         ]);
+    }
+
+    public function test_create_payable_with_custom_interval_generates_installments_and_default_descriptions(): void
+    {
+        $payable = $this->service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-04-10',
+            'due_amount' => 300,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 3,
+            'installment_due_mode' => 'custom_interval_days',
+            'installment_interval_days' => 15,
+            'financial_category_id' => $this->payableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($payable, $this->service->getMessage());
+
+        $installments = $payable->fresh()->installments()->orderBy('sequence_number')->get();
+
+        $this->assertCount(3, $installments);
+        $this->assertSame(
+            ['2026-04-10', '2026-04-25', '2026-05-10'],
+            $installments->pluck('due_date')->map(fn ($date) => $date?->format('Y-m-d'))->all()
+        );
+        $this->assertSame(
+            'Fornecedor Teste | Doc. Sem documento | Parcela 01',
+            $installments->first()->description
+        );
     }
 }

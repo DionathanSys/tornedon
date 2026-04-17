@@ -6,6 +6,7 @@ use App\Enum\AccountReceivable\Status as AccountReceivableStatus;
 use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Invoice\Status as InvoiceStatus;
+use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
@@ -126,6 +127,7 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
             'received_amount' => 0,
             'balance_amount' => 200,
             'financial_category_id' => $this->receivableCategory->id,
+            'description' => 'Cliente Teste | Doc. AR-001 | Parcela 01',
         ]);
 
         $payment = $this->service->registerInstallmentPayment($installment, 100, '2026-04-15', [
@@ -138,6 +140,7 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $updated = $this->service->updateInstallmentPayment($payment->fresh(), [
             'amount' => 120,
             'financial_account_id' => $this->financialAccount->id,
+            'description' => 'Recebimento parcial renegociado',
         ]);
 
         $this->assertNotNull($updated, $this->service->getMessage());
@@ -151,6 +154,7 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $this->assertSame('Cliente Teste', data_get($movement->participants_snapshot, 'counterparty_partner_name'));
         $this->assertSame('Cliente Teste', $movement->party_from_label);
         $this->assertSame('Empresa Financeiro AR', $movement->party_to_label);
+        $this->assertSame('Recebimento parcela 01 - Recebimento parcial renegociado', $movement->description);
     }
 
     public function test_validator_rejects_category_with_invalid_scope_for_receivable_installment(): void
@@ -194,5 +198,34 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
             'confirmed' => true,
             'created_by' => $this->user->id,
         ]);
+    }
+
+    public function test_create_receivable_with_term_mode_generates_consistent_installments(): void
+    {
+        $receivable = $this->service->create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $this->createInvoice()->id,
+            'due_date' => '2026-04-10',
+            'due_amount' => 300,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 3,
+            'installment_due_mode' => PaymentCondition::DAYS_15->value,
+            'financial_category_id' => $this->receivableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($receivable, $this->service->getMessage());
+
+        $installments = $receivable->fresh()->installments()->orderBy('sequence_number')->get();
+
+        $this->assertCount(3, $installments);
+        $this->assertSame(
+            ['2026-04-10', '2026-04-25', '2026-05-10'],
+            $installments->pluck('due_date')->map(fn ($date) => $date?->format('Y-m-d'))->all()
+        );
+        $this->assertSame(
+            'Cliente Teste | Doc. Sem documento | Parcela 01',
+            $installments->first()->description
+        );
     }
 }

@@ -33,7 +33,7 @@ final class ImportOfxAction
                     FileUpload::make('file')
                         ->label('Arquivo OFX')
                         ->storeFiles(false)
-                        ->helperText('Selecione um arquivo com extensao .ofx.')
+                        ->helperText('Selecione um arquivo com extensão .ofx.')
                         ->required(),
                 ]))
             ->action(function (array $data): void {
@@ -42,7 +42,7 @@ final class ImportOfxAction
 
                 if (! $file instanceof TemporaryUploadedFile) {
                     Notification::make()
-                        ->title('Selecione um arquivo OFX valido.')
+                        ->title('Selecione um arquivo OFX válido.')
                         ->danger()
                         ->send();
 
@@ -54,7 +54,7 @@ final class ImportOfxAction
 
                 if ($extension !== 'ofx') {
                     Notification::make()
-                        ->title('Selecione um arquivo OFX com extensao .ofx.')
+                        ->title('Selecione um arquivo OFX com extensão .ofx.')
                         ->danger()
                         ->send();
 
@@ -65,7 +65,7 @@ final class ImportOfxAction
 
                 if (! is_string($contents) || ! str_contains(strtoupper($contents), '<OFX>')) {
                     Notification::make()
-                        ->title('O arquivo enviado nao possui um conteudo OFX valido.')
+                        ->title('O arquivo enviado não possui um conteúdo OFX válido.')
                         ->danger()
                         ->send();
 

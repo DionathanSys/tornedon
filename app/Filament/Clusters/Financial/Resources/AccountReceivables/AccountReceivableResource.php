@@ -29,7 +29,7 @@ class AccountReceivableResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Contas à Receber';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 9;
 
     public static function form(Schema $schema): Schema
     {

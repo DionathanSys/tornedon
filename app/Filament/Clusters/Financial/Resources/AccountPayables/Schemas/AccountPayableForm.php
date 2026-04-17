@@ -12,6 +12,7 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\P
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayable;
 use App\Models\FinancialCategory;
+use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -35,7 +36,7 @@ class AccountPayableForm
                 'lg' => 12,
             ])
             ->components([
-                Section::make('Dados da Conta a Pagar')
+                Section::make('Lancamento a Pagar')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -73,7 +74,8 @@ class AccountPayableForm
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->options([
                                 ...PaymentCondition::installmentIntervalOptions(),
-                                'fixed_day_of_month' => 'Dia fixo do mês',
+                                InstallmentSchedule::FIXED_DAY_OF_MONTH => 'Dia fixo do mes',
+                                InstallmentSchedule::CUSTOM_INTERVAL_DAYS => 'Intervalo personalizado',
                             ])
                             ->default(PaymentCondition::DAYS_30->value)
                             ->native(false)
@@ -88,11 +90,23 @@ class AccountPayableForm
                             ->minValue(1)
                             ->maxValue(31)
                             ->required(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
-                                && $get('installment_due_mode') === 'fixed_day_of_month')
+                                && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
-                                && $get('installment_due_mode') === 'fixed_day_of_month')
+                                && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->helperText('Usado da 2ª parcela em diante. Se o mês não tiver esse dia, será usado o último dia do mês.'),
+                        TextInput::make('installment_interval_days')
+                            ->label('Intervalo em Dias')
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(365)
+                            ->required(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                                && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS)
+                            ->visibleOn('create')
+                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                                && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS)
+                            ->helperText('Define o intervalo de dias entre uma parcela e outra.'),
                         Select::make('status')
                             ->label('Status')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -159,10 +173,11 @@ class AccountPayableForm
                             ->autocomplete(false)
                             ->maxLength(100),
                         TextInput::make('description')
-                            ->label('Descrição')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->label('Descricao Base')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
                             ->autocomplete(false)
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->helperText('Usada como sugestao para as parcelas quando nenhuma descricao individual for informada.'),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 3])

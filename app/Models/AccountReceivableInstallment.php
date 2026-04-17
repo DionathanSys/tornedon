@@ -30,6 +30,7 @@ class AccountReceivableInstallment extends Model
         'bank_account_id',
         'financial_category_id',
         'cost_center_id',
+        'description',
         'notes',
     ];
 

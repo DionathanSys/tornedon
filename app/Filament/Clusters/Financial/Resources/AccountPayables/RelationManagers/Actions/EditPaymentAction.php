@@ -46,6 +46,10 @@ final class EditPaymentAction
                     ->preload()
                     ->native(false)
                     ->required(),
+                Textarea::make('description')
+                    ->label('Descricao do Movimento')
+                    ->rows(2)
+                    ->maxLength(255),
                 Textarea::make('notes')
                     ->label('Observacoes')
                     ->rows(3),
@@ -58,6 +62,7 @@ final class EditPaymentAction
                 'discount_amount' => $record->discount_amount,
                 'bank_account_id' => $record->bank_account_id,
                 'financial_account_id' => $record->financial_account_id,
+                'description' => $record->description,
                 'notes' => $record->notes,
             ])
             ->action(function (AccountPayableInstallmentPayment $record, array $data): void {

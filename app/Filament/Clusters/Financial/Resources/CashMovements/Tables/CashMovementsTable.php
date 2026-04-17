@@ -102,7 +102,8 @@ class CashMovementsTable
                     ->label('Data Movimento')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar(),
+                    ->alwaysShowCalendar()
+                    ->defaultThisMonth(),
             ])
             ->recordUrl(null)
             ->recordActions([

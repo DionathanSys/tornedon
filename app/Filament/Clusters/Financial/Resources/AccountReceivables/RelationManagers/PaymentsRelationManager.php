@@ -9,6 +9,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class PaymentsRelationManager extends RelationManager
 {
@@ -21,6 +22,12 @@ class PaymentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Recebimentos';
 
     protected static string|BackedEnum|null $icon = Heroicon::Banknotes;
+
+    #[On('refresh-payments')]
+    public function refreshPayments(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -58,6 +65,11 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Conta')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('description')
+                    ->label('Descricao')
+                    ->limit(50)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observacoes')
                     ->limit(40)
@@ -70,12 +82,14 @@ class PaymentsRelationManager extends RelationManager
                 EditPaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-payments');
+                        $livewire->dispatch('refresh-installments');
                     }),
                 DeletePaymentAction::make()
                     ->iconButton()
                     ->after(function (PaymentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-payments');
+                        $livewire->dispatch('refresh-installments');
                     }),
             ])
             ->toolbarActions([])

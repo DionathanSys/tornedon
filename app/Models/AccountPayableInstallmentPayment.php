@@ -17,6 +17,7 @@ class AccountPayableInstallmentPayment extends Model
         'discount_amount',
         'bank_account_id',
         'financial_account_id',
+        'description',
         'notes',
     ];
 

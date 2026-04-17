@@ -10,6 +10,8 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
 use App\Models\FinancialCategory;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -33,7 +35,7 @@ class AccountReceivableForm
                 'lg' => 12,
             ])
             ->components([
-                Section::make('Dados da Conta à Receber')
+                Section::make('Lancamento a Receber')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -67,15 +69,16 @@ class AccountReceivableForm
                             ->label('Intervalo das Parcelas')
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->options([
-                                'interval_30_days' => 'A cada 30 dias',
-                                'fixed_day_of_month' => 'Dia fixo do mes',
+                                ...PaymentCondition::installmentIntervalOptions(),
+                                InstallmentSchedule::FIXED_DAY_OF_MONTH => 'Dia fixo do mes',
+                                InstallmentSchedule::CUSTOM_INTERVAL_DAYS => 'Intervalo personalizado',
                             ])
-                            ->default('interval_30_days')
+                            ->default(PaymentCondition::DAYS_30->value)
                             ->native(false)
                             ->live()
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
-                            ->helperText('Escolha se as proximas parcelas avancam em 30 dias ou em um dia fixo do mes.'),
+                            ->helperText('Defina o intervalo entre vencimentos usando condicoes de prazo, dia fixo do mes ou intervalo personalizado.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mes')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -83,11 +86,23 @@ class AccountReceivableForm
                             ->minValue(1)
                             ->maxValue(31)
                             ->required(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
-                                && $get('installment_due_mode') === 'fixed_day_of_month')
+                                && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
-                                && $get('installment_due_mode') === 'fixed_day_of_month')
+                                && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->helperText('Usado da 2a parcela em diante. Se o mes nao tiver esse dia, sera usado o ultimo dia do mes.'),
+                        TextInput::make('installment_interval_days')
+                            ->label('Intervalo em Dias')
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(365)
+                            ->required(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                                && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS)
+                            ->visibleOn('create')
+                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                                && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS)
+                            ->helperText('Define o intervalo de dias entre uma parcela e outra.'),
                         Select::make('status')
                             ->label('Status')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -144,9 +159,10 @@ class AccountReceivableForm
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->maxLength(50),
                         TextInput::make('description')
-                            ->label('Descrição')
+                            ->label('Descricao Base')
                             ->columnSpan(['md' => 2, 'lg' => 5])
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->helperText('Usada como sugestao para as parcelas quando nenhuma descricao individual for informada.'),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 3])

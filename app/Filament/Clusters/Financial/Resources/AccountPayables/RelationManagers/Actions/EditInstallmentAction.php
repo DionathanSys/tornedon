@@ -30,6 +30,10 @@ final class EditInstallmentAction
                     ->searchable()
                     ->preload()
                     ->native(false),
+                Textarea::make('description')
+                    ->label('Descricao da Parcela')
+                    ->rows(2)
+                    ->maxLength(255),
                 Textarea::make('notes')
                     ->label('Observacoes')
                     ->rows(3),
@@ -37,6 +41,7 @@ final class EditInstallmentAction
             ->fillForm(fn (AccountPayableInstallment $record): array => [
                 'due_date' => $record->due_date?->format('Y-m-d'),
                 'financial_category_id' => $record->financial_category_id,
+                'description' => $record->description,
                 'notes' => $record->notes,
             ])
             ->action(function (AccountPayableInstallment $record, array $data): void {

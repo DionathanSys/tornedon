@@ -62,6 +62,12 @@ final class RegisterInstallmentPaymentAction
                         ->native(false)
                         ->required()
                         ->columnSpan(1),
+                    Textarea::make('description')
+                        ->label('Descricao do Movimento')
+                        ->rows(2)
+                        ->default(fn (AccountReceivableInstallment $record) => $record->description ?? $record->accountReceivable?->description)
+                        ->maxLength(255)
+                        ->columnSpanFull(),
                     Textarea::make('notes')
                         ->label('Observacoes')
                         ->rows(3)
@@ -79,6 +85,7 @@ final class RegisterInstallmentPaymentAction
                         'discount_amount' => (float) ($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
                         'financial_account_id' => $data['financial_account_id'] ?? null,
+                        'description' => $data['description'] ?? null,
                         'notes' => $data['notes'] ?? null,
                     ]
                 );
@@ -96,6 +103,10 @@ final class RegisterInstallmentPaymentAction
                     ->title($service->getMessage() ?: 'Recebimento registrado com sucesso.')
                     ->success()
                     ->send();
+            })
+            ->after(function (\Livewire\Component $livewire): void {
+                $livewire->dispatch('refresh-installments');
+                $livewire->dispatch('refresh-payments');
             });
     }
 }

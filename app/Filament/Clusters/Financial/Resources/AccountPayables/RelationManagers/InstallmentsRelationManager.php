@@ -97,6 +97,11 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Categoria')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('description')
+                    ->label('Descricao')
+                    ->limit(50)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observacoes')
                     ->limit(40)

@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\FinancialCategory;
 use App\Models\FinancialAccount;
 use App\Models\Partner;
+use App\Support\Financial\InstallmentDescription;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -780,13 +781,11 @@ class CashMovementService
         AccountPayableInstallmentPayment|AccountReceivableInstallmentPayment $payment,
         string $prefix,
     ): string {
-        $installment = $payment->installment;
-        $headerDescription = $payment instanceof AccountPayableInstallmentPayment
-            ? $installment->accountPayable?->description
-            : $installment->accountReceivable?->description;
-        $document = $installment->notes ?: $headerDescription ?: 'lancamento financeiro';
-        $sequence = $installment->sequence_number ? "parcela {$installment->sequence_number}" : 'parcela';
+        $description = $payment instanceof AccountPayableInstallmentPayment
+            ? InstallmentDescription::forPayablePayment($payment)
+            : InstallmentDescription::forReceivablePayment($payment);
+        $sequence = $payment->installment?->sequence_number ? "parcela {$payment->installment->sequence_number}" : 'parcela';
 
-        return trim("{$prefix} {$sequence} - {$document}", ' -');
+        return trim("{$prefix} {$sequence} - {$description}", ' -');
     }
 }

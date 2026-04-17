@@ -66,6 +66,12 @@ final class RegisterInstallmentPaymentAction
                         ->native(false)
                         ->required()
                         ->columnSpan(1),
+                    Textarea::make('description')
+                        ->label('Descricao do Movimento')
+                        ->rows(2)
+                        ->default(fn (AccountPayableInstallment $record) => $record->description ?? $record->accountPayable?->description)
+                        ->maxLength(255)
+                        ->columnSpanFull(),
                     Textarea::make('notes')
                         ->label('Observações')
                         ->rows(3)
@@ -83,6 +89,7 @@ final class RegisterInstallmentPaymentAction
                         'discount_amount' => (float) ($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
                         'financial_account_id' => $data['financial_account_id'] ?? null,
+                        'description' => $data['description'] ?? null,
                         'notes' => $data['notes'] ?? null,
                     ]
                 );

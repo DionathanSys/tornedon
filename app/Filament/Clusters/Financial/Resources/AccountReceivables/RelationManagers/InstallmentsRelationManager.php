@@ -10,6 +10,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Attributes\On;
 
 class InstallmentsRelationManager extends RelationManager
 {
@@ -22,6 +23,12 @@ class InstallmentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Parcelas';
 
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
+
+    #[On('refresh-installments')]
+    public function refreshInstallments(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -90,6 +97,11 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Categoria')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('description')
+                    ->label('Descricao')
+                    ->limit(50)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observacoes')
                     ->limit(40)
@@ -102,17 +114,19 @@ class InstallmentsRelationManager extends RelationManager
                 RegisterInstallmentPaymentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-installments');
+                        $livewire->dispatch('refresh-payments');
                     }),
                 EditInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-installments');
                     }),
                 DeleteInstallmentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-page');
+                        $livewire->dispatch('refresh-installments');
+                        $livewire->dispatch('refresh-payments');
                     }),
             ])
             ->toolbarActions([])

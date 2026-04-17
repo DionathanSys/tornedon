@@ -65,6 +65,11 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Conta')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('description')
+                    ->label('Descricao')
+                    ->limit(50)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observacoes')
                     ->limit(40)

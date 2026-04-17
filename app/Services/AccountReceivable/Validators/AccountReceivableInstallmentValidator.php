@@ -55,6 +55,7 @@ class AccountReceivableInstallmentValidator
             'bank_account_id' => self::bankAccountRule(true),
             'financial_category_id' => self::financialCategoryRule($data, 'receivable', true),
             'cost_center_id' => ['nullable', 'integer'],
+            'description' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ];
     }
@@ -67,7 +68,7 @@ class AccountReceivableInstallmentValidator
             array_unshift($rules[$field], 'sometimes');
         }
 
-        foreach (['received_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'received_amount', 'balance_amount', 'bank_account_id', 'financial_category_id', 'cost_center_id', 'notes'] as $field) {
+        foreach (['received_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'received_amount', 'balance_amount', 'bank_account_id', 'financial_category_id', 'cost_center_id', 'description', 'notes'] as $field) {
             array_unshift($rules[$field], 'sometimes');
         }
 
@@ -86,6 +87,7 @@ class AccountReceivableInstallmentValidator
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'bank_account_id' => self::bankAccountRule(false),
             'financial_account_id' => self::financialAccountRule($data),
+            'description' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ];
     }

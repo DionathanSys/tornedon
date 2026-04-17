@@ -30,7 +30,7 @@ class AccountPayableResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Contas à Pagar';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 8;
 
     public static function form(Schema $schema): Schema
     {

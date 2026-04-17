@@ -1,35 +1,35 @@
 <?php
 
-namespace App\Filament\Clusters\Financial\Resources\AccountPayableInstallments\Tables;
+namespace App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\Tables;
 
-use App\Enum\AccountPayable\Status;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
-use App\Models\AccountPayableInstallment;
+use App\Enum\AccountReceivable\Status;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Models\AccountReceivableInstallment;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
-class AccountPayableInstallmentsTable
+class AccountReceivableInstallmentsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('sequence_number')
             ->columns([
-                TextColumn::make('accountPayable.supplier.name')
-                    ->label('Fornecedor')
+                TextColumn::make('accountReceivable.customer.name')
+                    ->label('Cliente')
                     ->searchable()
                     ->sortable()
                     ->limit(40)
-                    ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
-                        ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
+                    ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
+                        ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
                         : null),
-                TextColumn::make('accountPayable.document_number')
+                TextColumn::make('accountReceivable.document_number')
                     ->label('Nº Documento')
                     ->searchable()
                     ->sortable()
@@ -47,36 +47,16 @@ class AccountPayableInstallmentsTable
                     ->label('Vencimento')
                     ->date('d/m/Y')
                     ->sortable(),
-                TextColumn::make('original_amount')
-                    ->label('Valor Original')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('due_amount')
                     ->label('Valor Atual')
                     ->money('BRL')
                     ->sortable(),
-                TextColumn::make('paid_amount')
-                    ->label('Valor Pago')
+                TextColumn::make('received_amount')
+                    ->label('Valor Recebido')
                     ->money('BRL')
                     ->sortable(),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('interest_amount')
-                    ->label('Juros')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('fine_amount')
-                    ->label('Multa')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('discount_amount')
-                    ->label('Desconto')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -86,18 +66,13 @@ class AccountPayableInstallmentsTable
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->sortable(),
-                TextColumn::make('paid_date')
-                    ->label('Data Pgto.')
+                TextColumn::make('received_date')
+                    ->label('Data Receb.')
                     ->date('d/m/Y')
                     ->placeholder('-')
                     ->sortable(),
                 TextColumn::make('financialCategory.full_name')
                     ->label('Categoria')
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('notes')
-                    ->label('Observacoes')
-                    ->limit(40)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -125,17 +100,17 @@ class AccountPayableInstallmentsTable
                     ->label('Abrir agrupador')
                     ->icon('heroicon-o-folder-open')
                     ->iconButton()
-                    ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
-                        ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
+                    ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
+                        ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
                         : null),
             ])
             ->toolbarActions([
-                Action::make('create_account_payable')
+                Action::make('create_account_receivable')
                     ->label('Novo lancamento')
                     ->icon('heroicon-o-plus')
-                    ->url(AccountPayableResource::getUrl('create')),
+                    ->url(AccountReceivableResource::getUrl('create')),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
-            ->emptyStateDescription('As parcelas das contas a pagar aparecerao aqui.');
+            ->emptyStateDescription('As parcelas das contas a receber aparecerao aqui.');
     }
 }

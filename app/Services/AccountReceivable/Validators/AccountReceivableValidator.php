@@ -3,6 +3,7 @@
 namespace App\Services\AccountReceivable\Validators;
 
 use App\Enum\AccountReceivable\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -24,8 +25,13 @@ class AccountReceivableValidator
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'installment_count' => 'nullable|integer|min:1|max:24',
-            'installment_due_mode' => ['nullable', Rule::in(['interval_30_days', 'fixed_day_of_month'])],
+            'installment_due_mode' => ['nullable', Rule::in([
+                ...array_keys(PaymentCondition::installmentIntervalOptions()),
+                'fixed_day_of_month',
+                'custom_interval_days',
+            ])],
             'installment_fixed_day' => 'nullable|required_if:installment_due_mode,fixed_day_of_month|integer|min:1|max:31',
+            'installment_interval_days' => 'nullable|required_if:installment_due_mode,custom_interval_days|integer|min:1|max:365',
         ];
     }
 

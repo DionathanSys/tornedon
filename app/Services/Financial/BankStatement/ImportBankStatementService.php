@@ -46,7 +46,7 @@ class ImportBankStatementService
 
             if (! $account) {
                 throw ValidationException::withMessages([
-                    'financial_account_id' => ['Conta financeira invalida para a empresa informada.'],
+                    'financial_account_id' => ['Conta financeira inválida para a empresa informada.'],
                 ]);
             }
 
@@ -58,7 +58,7 @@ class ImportBankStatementService
 
             if ($transactions->isEmpty()) {
                 throw ValidationException::withMessages([
-                    'file' => ['O OFX nao possui transacoes compativeis com a importacao.'],
+                    'file' => ['O OFX não possui transações compatíveis com a importação.'],
                 ]);
             }
 
@@ -98,17 +98,17 @@ class ImportBankStatementService
 
                 foreach ($transactions as $transaction) {
                     BankStatementLine::create([
-                        'bank_statement_import_id' => $import->id,
-                        'company_id' => $account->company_id,
-                        'financial_account_id' => $account->id,
-                        'transaction_date' => $transaction->transactionDate,
-                        'amount' => $transaction->amount,
-                        'balance_amount' => null,
-                        'description' => $transaction->description,
-                        'external_id' => $transaction->externalId ?? $transaction->lineHash(),
-                        'document_number' => $transaction->documentNumber,
-                        'reconciliation_status' => 'pending',
-                        'metadata' => [
+                        'bank_statement_import_id'  => $import->id,
+                        'company_id'                => $account->company_id,
+                        'financial_account_id'      => $account->id,
+                        'transaction_date'          => $transaction->transactionDate,
+                        'amount'                    => $transaction->amount,
+                        'balance_amount'            => null,
+                        'description'               => $transaction->description,
+                        'external_id'               => $transaction->externalId ?? $transaction->lineHash(),
+                        'document_number'           => $transaction->documentNumber,
+                        'reconciliation_status'     => 'pending',
+                        'metadata'                  => [
                             ...$transaction->toArray(),
                             'bank' => $header->institutionName,
                         ],

@@ -9,6 +9,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
+use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -248,7 +249,8 @@ class AccountReceivableGenerationService
             'paid' => false,
             'payment_method' => $paymentMethod->value,
             'installment_count' => $installmentCount,
-            'installment_due_mode' => 'interval_30_days',
+            'installment_due_mode' => $condition->isTerm() ? $condition->value : InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
+            'installment_interval_days' => $condition->isTerm() ? null : 30,
         ];
     }
 

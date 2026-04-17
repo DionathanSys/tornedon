@@ -17,9 +17,10 @@ use App\Services\AccountReceivable\Actions\UpdateAccountReceivableAction;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
+use App\Support\Financial\InstallmentDescription;
+use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
-use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -40,7 +41,7 @@ class AccountReceivableService
         try {
             return DB::transaction(function () use ($data, $createdBy) {
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
-                $scheduleConfig = $this->extractInstallmentScheduleConfig($data);
+                $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
 
                 $installments = $this->buildInstallmentsData($data, $installmentCount, $scheduleConfig);
@@ -213,6 +214,8 @@ class AccountReceivableService
                     'discount_amount' => (float) ($extra['discount_amount'] ?? 0),
                     'bank_account_id' => $extra['bank_account_id'] ?? null,
                     'financial_account_id' => $extra['financial_account_id'] ?? null,
+                    'description' => $extra['description']
+                        ?? InstallmentDescription::forReceivableInstallment($installment),
                     'notes' => $extra['notes'] ?? null,
                 ]);
 
@@ -442,6 +445,7 @@ class AccountReceivableService
                     'discount_amount' => $data['discount_amount'] ?? $payment->discount_amount,
                     'bank_account_id' => $data['bank_account_id'] ?? $payment->bank_account_id,
                     'financial_account_id' => $data['financial_account_id'] ?? $payment->financial_account_id,
+                    'description' => $data['description'] ?? $payment->description,
                     'notes' => $data['notes'] ?? $payment->notes,
                 ]);
 
@@ -636,7 +640,7 @@ class AccountReceivableService
             $installments[] = [
                 ...$data,
                 'sequence_number' => $this->formatSequenceNumber($index + 1),
-                'due_date' => $this->installmentDueDate($baseDate, $index, $scheduleConfig)->toDateString(),
+                'due_date' => InstallmentSchedule::dueDate($baseDate, $index, $scheduleConfig)->toDateString(),
                 'due_amount' => $amountInCents / 100,
             ];
         }
@@ -662,39 +666,6 @@ class AccountReceivableService
             'paid_date' => null,
             'paid' => false,
         ];
-    }
-
-    /**
-     * @return array{mode: string, fixed_day: int|null}
-     */
-    private function extractInstallmentScheduleConfig(array &$data): array
-    {
-        $config = [
-            'mode' => (string) ($data['installment_due_mode'] ?? 'interval_30_days'),
-            'fixed_day' => isset($data['installment_fixed_day']) ? (int) $data['installment_fixed_day'] : null,
-        ];
-
-        unset($data['installment_due_mode'], $data['installment_fixed_day']);
-
-        return $config;
-    }
-
-    private function installmentDueDate(Carbon $baseDate, int $index, array $scheduleConfig = []): CarbonInterface
-    {
-        if ($index === 0) {
-            return $baseDate->copy();
-        }
-
-        $mode = $scheduleConfig['mode'] ?? 'interval_30_days';
-
-        if ($mode === 'fixed_day_of_month') {
-            $fixedDay = (int) ($scheduleConfig['fixed_day'] ?? $baseDate->day);
-            $dueDate = $baseDate->copy()->addMonthsNoOverflow($index);
-
-            return $dueDate->day(min($fixedDay, $dueDate->daysInMonth));
-        }
-
-        return $baseDate->copy()->addDays(30 * $index);
     }
 
     private function formatSequenceNumber(int $sequence): string
@@ -759,6 +730,8 @@ class AccountReceivableService
                 'receivable'
             ),
             'cost_center_id' => $installmentData['cost_center_id'] ?? null,
+            'description' => $installmentData['description']
+                ?? InstallmentDescription::fallbackForReceivable($accountReceivable, $installmentData['sequence_number'] ?? null),
             'notes' => $installmentData['notes'] ?? $installmentData['description'] ?? null,
         ];
     }
