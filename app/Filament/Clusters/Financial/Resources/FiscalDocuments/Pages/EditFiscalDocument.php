@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\ConfirmEntryAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Notification\NotifyService as notify;
@@ -21,6 +22,7 @@ class EditFiscalDocument extends EditRecord
     {
         return [
             ConfirmEntryAction::make(),
+            GeneratePurchaseReturnAction::make(),
 
             ActionGroup::make([
                 DeleteAction::make()

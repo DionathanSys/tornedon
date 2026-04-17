@@ -3,9 +3,16 @@
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Tables;
 
 use App\Enum\FiscalDocument\Status;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
+use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class FiscalDocumentsTable
 {
@@ -63,6 +70,28 @@ class FiscalDocumentsTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->recordActions([
+                EditAction::make(),
+                Action::make('generatePurchaseReturn')
+                    ->label('Gerar nota de devolução')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record): bool => GeneratePurchaseReturnAction::isVisible($record))
+                    ->action(function ($record): void {
+                        $service = app(PurchaseReturnFiscalDocumentService::class);
+                        $returnDocument = $service->generateFromEntry($record, Auth::id());
+
+                        if ($service->hasError() || $returnDocument === null) {
+                            notify::error(message: $service->getMessageUser());
+                            return;
+                        }
+
+                        notify::success('Nota de devolução gerada com sucesso.');
+
+                        redirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
+                    }),
             ])
             ->defaultSort('created_at', 'desc');
     }
