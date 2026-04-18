@@ -2,9 +2,11 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Pages;
 
+use App\Filament\Clusters\Financial\Resources\AccountPayableInstallments\AccountPayableInstallmentResource;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Notification\NotifyService as notify;
 use App\Services\AccountPayable\AccountPayableService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -20,6 +22,11 @@ class EditAccountPayable extends EditRecord
     {
         return [
             ActionGroup::make([
+                Action::make('back')
+                    ->label('Voltar')
+                    ->icon('heroicon-o-arrow-left')
+                    ->color('gray')
+                    ->url(AccountPayableInstallmentResource::getUrl()),
                 DeleteAction::make()
                     ->using(function (Model $record): bool {
                         Log::debug('EditAccountPayable: Iniciando exclusão de conta a pagar', [
@@ -52,7 +59,7 @@ class EditAccountPayable extends EditRecord
 
                         return $result;
                     }),
-            ])->button(),
+            ])->buttonGroup(),
         ];
     }
 

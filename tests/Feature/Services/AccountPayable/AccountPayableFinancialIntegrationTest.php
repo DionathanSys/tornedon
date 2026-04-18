@@ -212,6 +212,31 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         );
     }
 
+    public function test_create_payable_can_use_per_installment_amount_mode(): void
+    {
+        $payable = $this->service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-04-10',
+            'due_amount' => 125,
+            'amount_input_mode' => 'per_installment',
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 3,
+            'installment_due_mode' => 'custom_interval_days',
+            'installment_interval_days' => 30,
+            'financial_category_id' => $this->payableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($payable, $this->service->getMessage());
+
+        $payable->refresh();
+        $installments = $payable->installments()->orderBy('sequence_number')->get();
+
+        $this->assertSame(375.0, (float) $payable->due_amount);
+        $this->assertCount(3, $installments);
+        $this->assertSame([125.0, 125.0, 125.0], $installments->pluck('due_amount')->map(fn ($value) => (float) $value)->all());
+    }
+
     public function test_create_payable_can_store_auto_payment_settings_when_effective(): void
     {
         $payable = $this->service->create([

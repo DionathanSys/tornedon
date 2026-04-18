@@ -66,7 +66,7 @@ class PaymentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('description')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->limit(50)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),

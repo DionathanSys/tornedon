@@ -130,11 +130,27 @@ class AccountPayableForm
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->required()
                             ->displayFormat('d/m/Y'),
+                        Select::make('amount_input_mode')
+                            ->label('Como Informar o Valor')
+                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->options([
+                                'total' => 'Valor total da conta',
+                                'per_installment' => 'Valor de cada parcela',
+                            ])
+                            ->default('total')
+                            ->native(false)
+                            ->live()
+                            ->visibleOn('create'),
                         Money::make('due_amount')
-                            ->label('Valor a Pagar')
+                            ->label(fn (callable $get): string => $get('amount_input_mode') === 'per_installment'
+                                ? 'Valor de Cada Parcela'
+                                : 'Valor Total da Conta')
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->required(),
+                            ->required()
+                            ->helperText(fn (callable $get): string => $get('amount_input_mode') === 'per_installment'
+                                ? 'O total da conta sera calculado pela quantidade de parcelas.'
+                                : 'O valor total sera distribuido entre as parcelas.'),
                         DatePicker::make('paid_date')
                             ->label('Data de Pagamento')
                             ->columnSpan(['md' => 1, 'lg' => 3])
@@ -174,11 +190,11 @@ class AccountPayableForm
                             ->autocomplete(false)
                             ->maxLength(100),
                         TextInput::make('description')
-                            ->label('Descricao Base')
+                            ->label('Descrição Base')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->autocomplete(false)
                             ->maxLength(255)
-                            ->helperText('Usada como sugestao para as parcelas quando nenhuma descricao individual for informada.'),
+                            ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 3])
@@ -193,7 +209,7 @@ class AccountPayableForm
                             ->preload()
                             ->native(false)
                             ->visibleOn('create')
-                            ->helperText('A categoria sera aplicada as parcelas geradas para esta conta.'),
+                            ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
                         Toggle::make('is_effective')
                             ->label('Efetivada?')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -225,6 +241,7 @@ class AccountPayableForm
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(false)
                             ->disabled()
+                            ->visibleOn('edit')
                             ->helperText('Controle automático por parcelas.'),
 
                     ]),

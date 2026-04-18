@@ -52,6 +52,7 @@ class AccountPayableService
                 unset($data['installment_count']);
 
                 $installments = $this->buildInstallmentsData($data, $installmentCount, $scheduleConfig);
+                unset($data['amount_input_mode']);
                 $action = new CreateAccountPayableAction($createdBy);
                 $headerData = $this->buildHeaderData($data, $installments);
                 $accountPayable = $action->execute($headerData);
@@ -132,16 +133,32 @@ class AccountPayableService
      */
     private function buildInstallmentsData(array $data, int $installmentCount, array $scheduleConfig = []): array
     {
+        $amountMode = (string) ($data['amount_input_mode'] ?? 'total');
+        $inputAmountInCents = (int) round(((float) ($data['due_amount'] ?? 0)) * 100);
+
         if ($installmentCount === 1) {
             $data['sequence_number'] = $this->formatSequenceNumber(1);
             return [$data];
         }
 
         $baseDate = Carbon::parse($data['due_date']);
-        $totalInCents = (int) round(((float) $data['due_amount']) * 100);
-        $baseInstallment = intdiv($totalInCents, $installmentCount);
-        $remainder = $totalInCents - ($baseInstallment * $installmentCount);
         $installments = [];
+
+        if ($amountMode === 'per_installment') {
+            for ($index = 0; $index < $installmentCount; $index++) {
+                $installments[] = [
+                    ...$data,
+                    'sequence_number' => $this->formatSequenceNumber($index + 1),
+                    'due_date' => InstallmentSchedule::dueDate($baseDate, $index, $scheduleConfig)->toDateString(),
+                    'due_amount' => $inputAmountInCents / 100,
+                ];
+            }
+
+            return $installments;
+        }
+
+        $baseInstallment = intdiv($inputAmountInCents, $installmentCount);
+        $remainder = $inputAmountInCents - ($baseInstallment * $installmentCount);
 
         for ($index = 0; $index < $installmentCount; $index++) {
             $amountInCents = $baseInstallment + ($index === $installmentCount - 1 ? $remainder : 0);

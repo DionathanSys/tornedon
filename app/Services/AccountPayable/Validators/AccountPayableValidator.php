@@ -28,6 +28,7 @@ class AccountPayableValidator
             'paid' => 'nullable|boolean',
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
+            'amount_input_mode' => ['nullable', Rule::in(['total', 'per_installment'])],
             'auto_register_payment_on_due_date' => 'nullable|boolean',
             'auto_payment_financial_account_id' => ['nullable', 'integer'],
         ];

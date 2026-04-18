@@ -54,7 +54,7 @@ final class RegisterInstallmentPaymentAction
                         ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     TextInput::make('bank_account_id')
-                        ->label('Conta bancaria (ID)')
+                        ->label('Conta bancária (ID)')
                         ->numeric()
                         ->visible(false)
                         ->columnSpan(1),
@@ -67,7 +67,7 @@ final class RegisterInstallmentPaymentAction
                         ->required()
                         ->columnSpan(1),
                     Textarea::make('description')
-                        ->label('Descricao do Movimento')
+                        ->label('Descrição do Movimento')
                         ->rows(2)
                         ->default(fn (AccountPayableInstallment $record) => $record->description ?? $record->accountPayable?->description)
                         ->maxLength(255)
