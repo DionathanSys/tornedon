@@ -143,16 +143,12 @@ class AccountPayableInstallmentsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    RegisterInstallmentPaymentAction::make()
-                    ->iconButton(),
-                EditInstallmentAction::make()
-                    ->iconButton(),
-                DeleteInstallmentAction::make()
-                    ->iconButton(),
+                    RegisterInstallmentPaymentAction::make(),
+                EditInstallmentAction::make(),
+                DeleteInstallmentAction::make(),
                 Action::make('open_account')
                     ->label('Abrir agrupador')
                     ->icon('heroicon-o-folder-open')
-                    ->iconButton()
                     ->url(fn(AccountPayableInstallment $record): ?string => $record->accountPayable
                         ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
                         : null),
