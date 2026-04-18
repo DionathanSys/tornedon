@@ -174,6 +174,10 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
+        .summary-value {
+            text-align: right;
+        }
+
         .signature-block {
             margin-top: 32px;
             text-align: center;
@@ -270,7 +274,7 @@
     @endif
 
     <div class="relation-section">
-        <div class="relation-title">Itens</div>
+        <div class="relation-title">Serviços</div>
         <table class="relation-table">
             <thead>
                 <tr>
@@ -379,7 +383,7 @@
                 @foreach ($pdfData['summary_lines'] as $line)
                 <tr>
                     <td class="meta-label">{{ $line['label'] }}</td>
-                    <td>{{ $line['value'] }}</td>
+                    <td class="summary-value">{{ $line['value'] }}</td>
                 </tr>
                 @endforeach
             </tbody>
