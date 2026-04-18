@@ -115,7 +115,7 @@ class AccountReceivableInstallmentsTable
                     ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
                         ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
                         : null),])->icon(Heroicon::Bars3)
-                ], RecordActionsPosition::AfterCells)
+                ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 Action::make('create_account_receivable')
                     ->label('Novo lancamento')
