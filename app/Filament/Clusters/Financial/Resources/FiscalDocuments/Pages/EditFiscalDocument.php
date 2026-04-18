@@ -22,9 +22,8 @@ class EditFiscalDocument extends EditRecord
     {
         return [
             ConfirmEntryAction::make(),
-            GeneratePurchaseReturnAction::make(),
-
             ActionGroup::make([
+                GeneratePurchaseReturnAction::make(),
                 DeleteAction::make()
                     ->using(function (Model $record): bool {
                         Log::debug('EditFiscalDocument: Iniciando exclusão de nota de entrada', [
@@ -59,6 +58,13 @@ class EditFiscalDocument extends EditRecord
                     }),
             ])->button(),
         ];
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['is_final_consumer'] = true;
+
+        return $data;
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
