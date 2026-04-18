@@ -10,8 +10,10 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\A
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayableInstallment;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -140,7 +142,8 @@ class AccountPayableInstallmentsTable
                     ->icon('heroicon-o-backspace'),
             ])
             ->recordActions([
-                RegisterInstallmentPaymentAction::make()
+                ActionGroup::make([
+                    RegisterInstallmentPaymentAction::make()
                     ->iconButton(),
                 EditInstallmentAction::make()
                     ->iconButton(),
@@ -153,7 +156,8 @@ class AccountPayableInstallmentsTable
                     ->url(fn(AccountPayableInstallment $record): ?string => $record->accountPayable
                         ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
                         : null),
-            ])
+                ])->icon(Heroicon::Bars3)
+                ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 Action::make('create_account_payable')
                     ->label('Novo lançamento')

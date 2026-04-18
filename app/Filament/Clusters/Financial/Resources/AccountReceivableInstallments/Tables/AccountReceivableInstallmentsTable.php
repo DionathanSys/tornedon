@@ -120,6 +120,7 @@ class AccountReceivableInstallmentsTable
                 Action::make('create_account_receivable')
                     ->label('Novo lancamento')
                     ->icon('heroicon-o-plus')
+                    ->color('gray')
                     ->url(AccountReceivableResource::getUrl('create')),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
