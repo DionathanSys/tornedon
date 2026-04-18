@@ -72,8 +72,7 @@ class InvoiceForm
                                     ]),
                             ]),
                         Tab::make('Produtos')
-                            ->visibleOn('edit')
-                            ->visible(fn($record) => $record->requisitions->count())
+                            ->visible(fn($record) => $record?->requisitions->count())
                             ->schema([
                                 Livewire::make(RequisitionsRelationManager::class, fn(Invoice $record) => [
                                     'ownerRecord' => $record,
@@ -83,8 +82,7 @@ class InvoiceForm
                                     ->columnSpanFull(),
                             ]),
                         Tab::make('Serviços')
-                            ->visibleOn('edit')
-                            ->visible(fn($record) => $record->serviceOrders->count())
+                            ->visible(fn($record) => $record?->serviceOrders->count())
                             ->schema([
                                 Livewire::make(ServiceOrdersRelationManager::class, fn(Invoice $record) => [
                                     'ownerRecord' => $record,
