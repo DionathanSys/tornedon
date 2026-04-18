@@ -40,11 +40,13 @@ class AccountPayableInstallmentsTable
                     ->label('Descrição')
                     ->searchable()
                     ->limit(50)
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sequence_number')
                     ->label('Parcela')
                     ->badge()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
                     ->label('Vencimento')
                     ->date('d/m/Y')
@@ -57,11 +59,13 @@ class AccountPayableInstallmentsTable
                 TextColumn::make('due_amount')
                     ->label('Valor Atual')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('paid_amount')
                     ->label('Valor Pago')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
                     ->money('BRL')
@@ -92,11 +96,12 @@ class AccountPayableInstallmentsTable
                     ->label('Data Pgto.')
                     ->date('d/m/Y')
                     ->placeholder('-')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('financialCategory.full_name')
                     ->label('Categoria')
                     ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observações')
                     ->limit(40)
@@ -125,6 +130,7 @@ class AccountPayableInstallmentsTable
                     ->autoApply()
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
+                    ->defaultThisMonth()
                     ->icon('heroicon-o-backspace'),
                 DateRangeFilter::make('paid_date')
                     ->label('Data Pgto.')

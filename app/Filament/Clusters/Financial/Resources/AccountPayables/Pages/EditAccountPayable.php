@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -23,9 +24,9 @@ class EditAccountPayable extends EditRecord
         return [
             ActionGroup::make([
                 Action::make('back')
-                    ->label('Voltar')
-                    ->icon('heroicon-o-arrow-left')
-                    ->color('gray')
+                    ->hiddenLabel()
+                    ->tooltip('Voltar')
+                    ->icon(Heroicon::ArrowUturnLeft)
                     ->url(AccountPayableInstallmentResource::getUrl()),
                 DeleteAction::make()
                     ->using(function (Model $record): bool {

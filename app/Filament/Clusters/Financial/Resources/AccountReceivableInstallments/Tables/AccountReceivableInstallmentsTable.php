@@ -9,7 +9,10 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use App\Models\AccountReceivableInstallment;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
@@ -33,44 +36,52 @@ class AccountReceivableInstallmentsTable
                     ->label('Nº Documento')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('description')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->searchable()
                     ->limit(50)
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sequence_number')
                     ->label('Parcela')
                     ->badge()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
                     ->label('Vencimento')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_amount')
                     ->label('Valor Atual')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_amount')
                     ->label('Valor Recebido')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
                     ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->color(fn ($state) => $state?->color() ?? 'gray')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_date')
                     ->label('Data Receb.')
                     ->date('d/m/Y')
                     ->placeholder('-')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('financialCategory.full_name')
                     ->label('Categoria')
                     ->placeholder('-')
@@ -90,7 +101,8 @@ class AccountReceivableInstallmentsTable
                     ->alwaysShowCalendar(),
             ])
             ->recordActions([
-                RegisterInstallmentPaymentAction::make()
+                ActionGroup::make([
+                    RegisterInstallmentPaymentAction::make()
                     ->iconButton(),
                 EditInstallmentAction::make()
                     ->iconButton(),
@@ -102,8 +114,8 @@ class AccountReceivableInstallmentsTable
                     ->iconButton()
                     ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
                         ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
-                        : null),
-            ])
+                        : null),])->icon(Heroicon::Bars3)
+                ], RecordActionsPosition::AfterCells)
             ->toolbarActions([
                 Action::make('create_account_receivable')
                     ->label('Novo lancamento')
