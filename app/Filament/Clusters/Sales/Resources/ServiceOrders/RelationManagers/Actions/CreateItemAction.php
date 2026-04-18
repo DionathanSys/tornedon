@@ -33,6 +33,7 @@ final class CreateItemAction
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
             ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->modalHeading('Adicionar Serviço')
             ->schema([
                 Hidden::make('item.min_sale_price')
                     ->saved(false)

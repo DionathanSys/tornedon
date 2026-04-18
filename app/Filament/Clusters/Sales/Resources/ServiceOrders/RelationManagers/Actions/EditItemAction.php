@@ -30,6 +30,7 @@ final class EditItemAction
     {
         return EditAction::make()
             ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->modalHeading('Editar Item')
             ->schema([
                 Hidden::make('item.min_sale_price')
                     ->saved(false)
