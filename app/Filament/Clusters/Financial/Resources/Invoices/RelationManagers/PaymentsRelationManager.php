@@ -4,11 +4,14 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeletePaymentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditPaymentAction;
+use App\Models\AccountReceivableInstallmentPayment;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Livewire\Attributes\On;
 
 class PaymentsRelationManager extends RelationManager
@@ -27,6 +30,13 @@ class PaymentsRelationManager extends RelationManager
     public function refreshPayments(): void
     {
         $this->resetTable();
+    }
+
+    public function getRelationship(): Relation | Builder
+    {
+        return AccountReceivableInstallmentPayment::query()
+            ->whereHas('installment.accountReceivable', fn (Builder $query): Builder => $query
+                ->where('invoice_id', $this->getOwnerRecord()->getKey()));
     }
 
     public function table(Table $table): Table
