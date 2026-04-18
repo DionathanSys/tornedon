@@ -7,10 +7,10 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePu
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 
