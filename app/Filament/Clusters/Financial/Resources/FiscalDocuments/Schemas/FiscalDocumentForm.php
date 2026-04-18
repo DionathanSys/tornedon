@@ -34,7 +34,7 @@ class FiscalDocumentForm
                     ->collapsible()
                     ->compact()
                     ->schema([
-                        SelectPartner::make('customer_id')
+                        SelectPartner::make('customer_id', 'all')
                             ->label('Fornecedor')
                             ->columnSpan(['md' => 3, 'lg' => 6]),
                         Select::make('document_type')

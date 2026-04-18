@@ -57,7 +57,6 @@ class CompanyPartnersTable
                             ->label('Tipo de Parceiro')
                             ->native(false)
                             ->options(Type::toSelectArray())
-                            ->default(Type::CUSTOMER->value)
                             ->placeholder('Selecione um tipo'),
                     ])
                     ->query(function ($query, array $data) {
