@@ -301,6 +301,42 @@
         </table>
     </div>
 
+    @if (! empty($pdfData['requisition']))
+    <div class="relation-section">
+        <div class="relation-title">{{ $pdfData['requisition']['title'] }}</div>
+        <table class="relation-table">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Unidade</th>
+                    <th>Qtd</th>
+                    <th>Valor Unit.</th>
+                    <th>Desconto</th>
+                    <th>Total</th>
+                    <th>Obs</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($pdfData['requisition']['items'] as $item)
+                <tr>
+                    <td class="relation-code">{{ $item['product'] }}</td>
+                    <td>{{ $item['unit_of_measure'] }}</td>
+                    <td>{{ $item['quantity'] }}</td>
+                    <td>{{ $item['unit_price'] }}</td>
+                    <td>{{ $item['discount_amount'] }}</td>
+                    <td>{{ $item['total_amount'] }}</td>
+                    <td>{{ $item['observations'] }}</td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-right">Sem produtos vinculados.</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+    @endif
+
     @if (filled($pdfData['customer_observations']) || filled($pdfData['solution']) || filled($pdfData['technician_observations']))
     <div class="relation-section">
         <div class="relation-title">Observações</div>

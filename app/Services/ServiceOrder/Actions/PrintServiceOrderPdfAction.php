@@ -27,6 +27,7 @@ class PrintServiceOrderPdfAction
                 'supervisor',
                 'salesperson',
                 'items.service',
+                'requisition.items.product',
             ]);
 
             $pdfData = $this->dataFormatter->format($serviceOrder);

@@ -17,6 +17,13 @@ class ServiceOrderPdfDataFormatter
             2
         );
         $travelValue = (float) $serviceOrder->travel_value;
+        $requisition = $serviceOrder->requisition;
+        $productsTotal = round((float) ($requisition?->total_amount ?? 0), 2);
+        $discountTotal = round(
+            (float) $serviceOrder->discount_amount + (float) ($requisition?->discount_amount ?? 0),
+            2
+        );
+        $grandTotal = round((float) $serviceOrder->total_amount + $productsTotal, 2);
 
         $additionalInfoLabels = [
             'accessories' => 'Acessorios entregues',
@@ -47,11 +54,12 @@ class ServiceOrderPdfDataFormatter
 
         $summaryLines = collect([
             ['label' => 'Serviços', 'value' => $this->formatMoney($itemsTotal)],
+            $productsTotal > 0 ? ['label' => 'Produtos', 'value' => $this->formatMoney($productsTotal)] : null,
             $travelValue > 0 ? ['label' => 'Deslocamento', 'value' => $this->formatMoney($travelValue)] : null,
-            $serviceOrder->discount_amount > 0
-                ? ['label' => 'Desconto total', 'value' => $this->formatMoney($serviceOrder->discount_amount)]
+            $discountTotal > 0
+                ? ['label' => 'Desconto total', 'value' => $this->formatMoney($discountTotal)]
                 : null,
-            ['label' => 'Valor total', 'value' => $this->formatMoney($serviceOrder->total_amount)],
+            ['label' => 'Valor total', 'value' => $this->formatMoney($grandTotal)],
         ])->filter()->values()->all();
 
         $items = $serviceOrder->items->map(fn ($item) => [
@@ -62,6 +70,23 @@ class ServiceOrderPdfDataFormatter
             'total_amount' => $this->formatMoney($item->total_amount),
             'observations' => $item->observations ?? '-',
         ])->all();
+
+        $requisitionData = null;
+
+        if ($requisition !== null) {
+            $requisitionData = [
+                'title' => 'Requisição #' . $requisition->number,
+                'items' => $requisition->items->map(fn ($item) => [
+                    'product' => $item->product?->name ?? '-',
+                    'unit_of_measure' => $item->unit_of_measure ?? '-',
+                    'quantity' => $this->formatQuantity($item->quantity),
+                    'unit_price' => $this->formatMoney($item->unit_price),
+                    'discount_amount' => $this->formatMoney($item->discount_amount),
+                    'total_amount' => $this->formatMoney($item->total_amount),
+                    'observations' => $item->observations ?? '-',
+                ])->all(),
+            ];
+        }
 
         $additionalInfoText = $this->buildAdditionalInfoText($serviceOrder->additional_info ?? [], $additionalInfoLabels);
 
@@ -74,8 +99,9 @@ class ServiceOrderPdfDataFormatter
             'responsibles' => $responsibles,
             'equipment_lines' => $equipmentLines,
             'items' => $items,
+            'requisition' => $requisitionData,
             'customer_observations' => $serviceOrder->customer_observations ?? null,
-            'solution' => $serviceOrder->solution ?? null,  
+            'solution' => $serviceOrder->solution ?? null,
             'technician_observations' => $serviceOrder->technician_observations ?? null,
             'additional_info_text' => $additionalInfoText,
             'summary_lines' => $summaryLines,

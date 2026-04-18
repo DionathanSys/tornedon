@@ -34,7 +34,7 @@ class ProductsRelationManager extends RelationManager
                 $requisition = $serviceOrder->requisition;
 
                 if ($requisition === null) {
-                    return 'Ao adicionar o primeiro produto, o sistema criará automaticamente uma requisição vinculada a esta OS.';
+                    return '';
                 }
 
                 return "Produtos vinculados à requisição # {$requisition->number}.";
