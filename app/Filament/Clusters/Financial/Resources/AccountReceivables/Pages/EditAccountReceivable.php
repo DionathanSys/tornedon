@@ -2,12 +2,15 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages;
 
+use App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\AccountReceivableInstallmentResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Notification\NotifyService as notify;
 use App\Services\AccountReceivable\AccountReceivableService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +23,10 @@ class EditAccountReceivable extends EditRecord
     {
         return [
             ActionGroup::make([
+                Action::make('back')
+                    ->label('Voltar')
+                    ->icon(Heroicon::ArrowLeft)
+                    ->url(AccountReceivableInstallmentResource::getUrl()),
                 DeleteAction::make()
                     ->using(function (Model $record): bool {
                         Log::debug('EditAccountReceivable: Iniciando exclusão de conta a receber', [

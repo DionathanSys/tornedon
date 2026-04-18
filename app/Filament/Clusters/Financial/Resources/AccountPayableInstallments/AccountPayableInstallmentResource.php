@@ -22,9 +22,9 @@ class AccountPayableInstallmentResource extends Resource
 
     protected static ?string $cluster = FinancialCluster::class;
 
-    protected static ?string $modelLabel = 'Parcela à Pagar';
+    protected static ?string $modelLabel = 'Parcela Pagar';
 
-    protected static ?string $pluralModelLabel = 'Parcelas à Pagar';
+    protected static ?string $pluralModelLabel = 'Parcelas Pagar';
 
     protected static ?int $navigationSort = 2;
 

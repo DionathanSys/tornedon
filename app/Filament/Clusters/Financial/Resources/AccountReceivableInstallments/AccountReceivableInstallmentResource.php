@@ -22,9 +22,9 @@ class AccountReceivableInstallmentResource extends Resource
 
     protected static ?string $cluster = FinancialCluster::class;
 
-    protected static ?string $modelLabel = 'Parcela a Receber';
+    protected static ?string $modelLabel = 'Parcela Receber';
 
-    protected static ?string $pluralModelLabel = 'Parcelas a Receber';
+    protected static ?string $pluralModelLabel = 'Parcelas Receber';
 
     protected static ?int $navigationSort = 3;
 
