@@ -20,3 +20,8 @@ if ((bool) config('backup.database.enabled', true)) {
         ->withoutOverlapping()
         ->description('Gera backup diário do banco de dados');
 }
+
+Schedule::command('sefaz:dfe-sync-dispatch')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->description('Despacha a sincronização assíncrona de DF-e recebidos por empresa');

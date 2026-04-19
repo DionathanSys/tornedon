@@ -60,6 +60,11 @@ class Company extends Model
         return $this->hasMany(Equipment::class);
     }
 
+    public function sefazDistributionDocuments(): HasMany
+    {
+        return $this->hasMany(SefazDistributionDocument::class);
+    }
+
     public function serviceProvisionLocation(): Attribute
     {
         return Attribute::make(
