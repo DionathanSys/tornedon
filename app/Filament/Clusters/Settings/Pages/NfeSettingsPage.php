@@ -251,7 +251,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                 'erro' => $e->getMessage(),
                 'tenant' => $companyId,
                 'payload' => $payload,
-                'company_document' => $company?->document_number,
+                'company_document' => 65102068000127,//$company?->document_number,
             ]);
 
             Notification::make()
