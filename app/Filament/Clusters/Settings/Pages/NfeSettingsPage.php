@@ -5,6 +5,10 @@ namespace App\Filament\Clusters\Settings\Pages;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\CompanyPreference;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\Fiscal\Sefaz\CompanySefazCertificateService;
+use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
+use App\Services\Fiscal\Sefaz\DTO\DfeDistributionResult;
+use App\Services\Fiscal\Sefaz\SefazDfeDistributionService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Actions\Action;
@@ -12,10 +16,11 @@ use Filament\Forms;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 
 /**
  * Página de configurações da integração NF-e (IntegraNotas).
@@ -62,6 +67,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             'serie_padrao'      => CompanyPreference::get('integranotas.serie_padrao', $companyId) ?? '1',
             'nfse_serie_padrao' => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
             'webhook_secret'    => CompanyPreference::get('integranotas.webhook_secret', $companyId),
+            'sefaz_a1_password' => CompanyPreference::get(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, $companyId),
         ]);
 
     }
@@ -75,7 +81,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                 ->color('warning')
                 ->modalHeading('Consulta de documentos na prefeitura')
                 ->modalDescription('Informe o intervalo de número e data de emissão para retornar o PDF com as notas.')
-                ->form([
+                ->schema([
                     Forms\Components\TextInput::make('nfse_numero_inicial')
                         ->label('NFS-e número inicial')
                         ->numeric()
@@ -96,6 +102,40 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                         ->afterOrEqual('data_emissao_inicial'),
                 ])
                 ->action(fn (array $data): StreamedResponse => $this->downloadMunicipalDocumentsPdf($data)),
+            Action::make('consultarDfeRecebidas')
+                ->label('Consultar DF-e recebidos (SEFAZ)')
+                ->icon('heroicon-o-inbox-arrow-down')
+                ->color('success')
+                ->modalHeading('Consulta de DF-e recebidos (NF-e modelo 55)')
+                ->modalDescription('Busca documentos emitidos contra o CNPJ da empresa e gera um ZIP com XMLs + resposta completa da API.')
+                ->schema([
+                    Forms\Components\ToggleButtons::make('modo')
+                        ->label('Modo da consulta')
+                        ->options([
+                            'ultimo_nsu' => 'A partir do último NSU',
+                            'numero_nsu' => 'NSU específico',
+                        ])
+                        ->inline()
+                        ->default('ultimo_nsu')
+                        ->required(),
+                    Forms\Components\TextInput::make('ultimo_nsu')
+                        ->label('Último NSU')
+                        ->helperText('Use o último NSU retornado com sucesso para sincronização contínua.')
+                        ->default((string) (CompanyPreference::get('sefaz.distribuicao_dfe.ultimo_nsu', Filament::getTenant()?->id) ?? '0'))
+                        ->visible(fn (Get $get): bool => $get('modo') === 'ultimo_nsu')
+                        ->required(fn (Get $get): bool => $get('modo') === 'ultimo_nsu')
+                        ->rule('regex:/^[0-9]{1,15}$/'),
+                    Forms\Components\TextInput::make('numero_nsu')
+                        ->label('Número NSU')
+                        ->helperText('Quando informado, retorna somente o documento daquele NSU.')
+                        ->visible(fn (Get $get): bool => $get('modo') === 'numero_nsu')
+                        ->required(fn (Get $get): bool => $get('modo') === 'numero_nsu')
+                        ->rule('regex:/^[0-9]{1,15}$/'),
+                    Forms\Components\Toggle::make('salvar_ultimo_nsu')
+                        ->label('Salvar automaticamente o último NSU retornado')
+                        ->default(true),
+                ])
+                ->action(fn (array $data): StreamedResponse => $this->downloadReceivedFiscalDocuments($data)),
         ];
     }
 
@@ -142,6 +182,123 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
             return response()->streamDownload(fn () => null, 'notas-prefeitura.pdf');
         }
+    }
+
+    private function downloadReceivedFiscalDocuments(array $data): StreamedResponse
+    {
+        $company = Filament::getTenant();
+        $companyId = $company?->id;
+        $payload = [
+            'ultimo_nsu' => $data['modo'] === 'ultimo_nsu' ? (string) ($data['ultimo_nsu'] ?? '0') : null,
+            'numero_nsu' => $data['modo'] === 'numero_nsu' ? (string) ($data['numero_nsu'] ?? '') : null,
+        ];
+
+        try {
+            if (! $company) {
+                throw new \RuntimeException('Empresa não identificada para consultar DF-e na SEFAZ.');
+            }
+
+            $mode = $data['modo'] === 'numero_nsu' ? 'numero_nsu' : 'ultimo_nsu';
+            $value = $mode === 'numero_nsu'
+                ? (string) ($payload['numero_nsu'] ?? '')
+                : (string) ($payload['ultimo_nsu'] ?? '0');
+
+            $result = app(SefazDfeDistributionService::class)->distribute($company, $mode, $value);
+
+            if (! $result->success) {
+                $message = trim("{$result->statusCode} - {$result->statusMessage}", ' -');
+                Notification::make()
+                    ->title('Erro ao consultar DF-e recebidos')
+                    ->body($message !== '' ? $message : 'Não foi possível consultar os DF-e recebidos para este CNPJ.')
+                    ->danger()
+                    ->send();
+
+                return response()->streamDownload(fn () => null, 'dfe-recebidos.zip');
+            }
+
+            if (($data['salvar_ultimo_nsu'] ?? true) === true && $result->ultNsu !== null) {
+                CompanyPreference::set('sefaz.distribuicao_dfe.ultimo_nsu', $result->ultNsu, $companyId);
+            }
+
+            $zipPath = $this->buildDfeZip($result);
+
+            Notification::make()
+                ->title('Consulta realizada com sucesso')
+                ->body(sprintf(
+                    'Foram encontrados %d documento(s). %s',
+                    count($result->documents),
+                    count($result->documents) > 0 ? 'O ZIP está sendo gerado para download.' : 'Somente a resposta da SEFAZ será incluída no ZIP.'
+                ))
+                ->success()
+                ->send();
+
+            return response()->streamDownload(function () use ($zipPath) {
+                $stream = fopen($zipPath, 'rb');
+                if ($stream === false) {
+                    return;
+                }
+
+                while (! feof($stream)) {
+                    echo fread($stream, 8192);
+                }
+
+                fclose($stream);
+                @unlink($zipPath);
+            }, 'dfe-recebidos.zip', ['Content-Type' => 'application/zip']);
+        } catch (\Throwable $e) {
+            Log::error('NfeSettingsPage: erro ao consultar DF-e recebidos', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'erro' => $e->getMessage(),
+                'tenant' => $companyId,
+                'payload' => $payload,
+                'company_document' => $company?->document_number,
+            ]);
+
+            Notification::make()
+                ->title('Erro ao consultar DF-e recebidos')
+                ->body('Não foi possível consultar os documentos emitidos contra o CNPJ da empresa: ' . $e->getMessage())
+                ->danger()
+                ->send();
+
+            return response()->streamDownload(fn () => null, 'dfe-recebidos.zip');
+        }
+    }
+
+    private function buildDfeZip(DfeDistributionResult $result): string
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'dfe_recebidos_');
+        if ($tmpFile === false) {
+            throw new \RuntimeException('Não foi possível preparar o arquivo temporário do ZIP.');
+        }
+
+        $zipPath = "{$tmpFile}.zip";
+        @unlink($tmpFile);
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Não foi possível criar o arquivo ZIP de retorno.');
+        }
+
+        $zip->addFromString('resposta-sefaz.xml', $result->rawXml);
+        $zip->addFromString('resumo.json', json_encode($result->toSummary(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        foreach ($result->documents as $index => $document) {
+            $zip->addFromString(
+                sprintf('%03d-%s', $index + 1, $this->sanitizeFilename($document)),
+                $document->xml,
+            );
+        }
+
+        $zip->close();
+
+        return $zipPath;
+    }
+
+    private function sanitizeFilename(DfeDistributionDocument $document): string
+    {
+        $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', $document->filename()) ?? 'dfe.xml';
+
+        return trim($name, '-') !== '' ? $name : 'dfe.xml';
     }
 
     public function form(Schema $schema): Schema
@@ -209,6 +366,21 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2])
                     ->collapsible(),
 
+                \Filament\Schemas\Components\Section::make('Consulta DF-e via SEFAZ')
+                    ->description('Configurações usadas exclusivamente para consultar NF-e recebidas diretamente no Ambiente Nacional.')
+                    ->icon('heroicon-o-shield-check')
+                    ->schema([
+                        Forms\Components\TextInput::make('sefaz_a1_password')
+                            ->label('Senha do certificado A1')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(255)
+                            ->helperText('Senha do arquivo A1 vinculado à empresa para autenticação mútua TLS na SEFAZ.')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible(),
+
                 \Filament\Schemas\Components\Section::make('Webhook')
                     ->description('A IntegraNotas enviará notificações ao endpoint POST /webhook/nfe após processar cada NF-e.')
                     ->icon('heroicon-o-arrow-path')
@@ -252,6 +424,10 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
         if (isset($data['webhook_secret'])) {
             CompanyPreference::set('integranotas.webhook_secret', $data['webhook_secret'], $companyId);
+        }
+
+        if (isset($data['sefaz_a1_password'])) {
+            CompanyPreference::set(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, (string) $data['sefaz_a1_password'], $companyId);
         }
 
         Notification::make()

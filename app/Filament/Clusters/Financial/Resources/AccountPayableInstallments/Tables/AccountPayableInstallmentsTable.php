@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -162,6 +163,8 @@ class AccountPayableInstallmentsTable
                     ->url(AccountPayableResource::getUrl('create')),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
-            ->emptyStateDescription('As parcelas das contas à pagar aparecerão aqui.');
+            ->emptyStateDescription('As parcelas das contas à pagar aparecerão aqui.')
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2);
     }
 }

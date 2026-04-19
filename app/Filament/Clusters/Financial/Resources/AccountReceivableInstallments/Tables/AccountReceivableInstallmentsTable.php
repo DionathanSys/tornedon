@@ -12,6 +12,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -98,7 +99,8 @@ class AccountReceivableInstallmentsTable
                     ->label('Vencimento')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar(),
+                    ->alwaysShowCalendar()
+                    ->defaultLast7Days(),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -120,6 +122,8 @@ class AccountReceivableInstallmentsTable
                     ->url(AccountReceivableResource::getUrl('create')),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
-            ->emptyStateDescription('As parcelas das contas a receber aparecerao aqui.');
+            ->emptyStateDescription('As parcelas das contas a receber aparecerao aqui.')
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2);
     }
 }
