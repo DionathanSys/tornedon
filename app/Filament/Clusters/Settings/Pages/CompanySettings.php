@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Settings\Pages;
 
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\Company;
+use App\Services\Company\CompanyCertificateStorageService;
 use App\Services\Company\CompanyLogoStorageService;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -13,6 +14,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class CompanySettings extends Page implements Forms\Contracts\HasForms
@@ -49,6 +51,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
             'phone'            => $company->phone,
             'document_number'  => $company->document_number,
             'logo_path'        => $company->logo_path ? [$company->logo_path] : [],
+            'certificate'      => $company->certificate ? [$company->certificate] : [],
         ]);
     }
 
@@ -98,6 +101,32 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                             ->maxLength(20),
                     ])
                     ->columns(['md' => 2, 'lg' => 2]),
+
+                Section::make('Certificado Digital')
+                    ->description('Arquivo A1 (.pfx ou .p12) usado para consultar DF-e diretamente na SEFAZ.')
+                    ->icon('heroicon-o-shield-check')
+                    ->schema([
+                        Forms\Components\FileUpload::make('certificate')
+                            ->label('Certificado A1')
+                            ->disk('local')
+                            ->directory(fn () => 'certificates/' . (Filament::getTenant()?->id ?? 'tmp'))
+                            ->acceptedFileTypes([
+                                'application/x-pkcs12',
+                                'application/x-pkcs7-certificates',
+                                'application/octet-stream',
+                            ])
+                            ->maxSize(5120)
+                            ->downloadable()
+                            ->openable()
+                            ->previewable(false)
+                            ->getUploadedFileNameForStorageUsing(
+                                fn (TemporaryUploadedFile $file): string => 'certificate_' . now()->format('YmdHis') . '.' . strtolower($file->getClientOriginalExtension() ?: 'pfx')
+                            )
+                            ->helperText('Envie um arquivo .pfx ou .p12. A senha do certificado é configurada na tela "Configurações NF-e".')
+                            ->columnSpanFull()
+                            ->rules(['extensions:pfx,p12']),
+                    ])
+                    ->columns(['md' => 2, 'lg' => 2]),
             ])
             ->statePath('data');
     }
@@ -119,16 +148,36 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
         $data = $this->form->getState();
 
         try {
-            // Processa a logo
             $logoService = app(CompanyLogoStorageService::class);
+            $certificateService = app(CompanyCertificateStorageService::class);
             $newLogoPath = is_array($data['logo_path']) ? (reset($data['logo_path']) ?: null) : ($data['logo_path'] ?: null);
+            $newCertificatePath = is_array($data['certificate'] ?? null) ? (reset($data['certificate']) ?: null) : ($data['certificate'] ?? null);
             $documentNumber = $this->normalizeDocumentNumber($data['document_number'] ?? null);
+            $certificateChanged = $newCertificatePath !== $company->certificate;
+
+            Log::info('CompanySettings: salvando configuracoes da empresa', [
+                'company_id' => $company->id,
+                'user_id' => Auth::id(),
+                'certificate_changed' => $certificateChanged,
+                'current_certificate' => $this->describeCertificatePath($company->certificate),
+                'new_certificate' => $this->describeCertificatePath($newCertificatePath),
+            ]);
 
             if ($newLogoPath !== $company->logo_path) {
                 $logoService->save($company, $newLogoPath);
             }
 
-            // Atualiza os dados básicos
+            if ($newCertificatePath !== $company->certificate) {
+                Log::info('CompanySettings: iniciando troca do certificado da empresa', [
+                    'company_id' => $company->id,
+                    'user_id' => Auth::id(),
+                    'current_certificate' => $this->describeCertificatePath($company->certificate),
+                    'new_certificate' => $this->describeCertificatePath($newCertificatePath),
+                ]);
+
+                $certificateService->save($company, $newCertificatePath);
+            }
+
             $company->update([
                 'name'            => $data['name'],
                 'email'           => $data['email'] ?? null,
@@ -137,12 +186,26 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                 'updated_by'      => Auth::id(),
             ]);
 
+            Log::info('CompanySettings: configuracoes da empresa salvas com sucesso', [
+                'company_id' => $company->id,
+                'user_id' => Auth::id(),
+                'certificate_changed' => $certificateChanged,
+                'certificate' => $this->describeCertificatePath($company->fresh()->certificate),
+            ]);
+
             Notification::make()
                 ->title('Configurações salvas')
                 ->body('As informações da empresa foram atualizadas.')
                 ->success()
                 ->send();
         } catch (\Throwable $e) {
+            Log::error('CompanySettings: erro ao salvar configuracoes da empresa', [
+                'company_id' => $company->id,
+                'user_id' => Auth::id(),
+                'certificate' => $this->describeCertificatePath($company->certificate),
+                'erro' => $e->getMessage(),
+            ]);
+
             Notification::make()
                 ->title('Erro ao salvar')
                 ->body('Ocorreu um erro: ' . $e->getMessage())
@@ -160,5 +223,25 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
         $normalized = preg_replace('/\D+/', '', $documentNumber);
 
         return filled($normalized) ? $normalized : null;
+    }
+
+    /**
+     * @return array{name:?string,extension:?string,path_hash:?string}
+     */
+    private function describeCertificatePath(?string $path): array
+    {
+        if (! filled($path)) {
+            return [
+                'name' => null,
+                'extension' => null,
+                'path_hash' => null,
+            ];
+        }
+
+        return [
+            'name' => basename($path),
+            'extension' => strtolower(pathinfo($path, PATHINFO_EXTENSION)),
+            'path_hash' => substr(sha1($path), 0, 12),
+        ];
     }
 }
