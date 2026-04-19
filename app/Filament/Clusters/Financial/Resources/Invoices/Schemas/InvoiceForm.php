@@ -39,9 +39,18 @@ class InvoiceForm
                                     ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->schema([
+                                        Select::make('customer_id')
+                                            ->label('Cliente')
+                                            ->disabled()
+                                            ->columnSpan(['md' => 3, 'lg' => 6])
+                                            ->relationship('customer', 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->required(),
                                         TextInput::make('invoice_number')
                                             ->label('Número da Fatura')
                                             ->disabled()
+                                            ->columnStart(1)
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->required()
                                             ->maxLength(50),
@@ -64,14 +73,6 @@ class InvoiceForm
                                             ->options(PaymentCondition::toGroupedSelectArray())
                                             ->native(false)
                                             ->searchable(),
-                                        Select::make('customer_id')
-                                            ->label('Cliente')
-                                            ->disabled()
-                                            ->columnSpan(['md' => 3, 'lg' => 6])
-                                            ->relationship('customer', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->required(),
                                         Money::make('services_amount')
                                             ->label('Valor de Serviços')
                                             ->disabled()
@@ -105,6 +106,7 @@ class InvoiceForm
                                             ->label('Desconto (R$)')
                                             ->maxValue(fn(Get $get): float => (float) ($get('total_amount') ?? 0))
                                             ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->live(onBlur: true)
                                             ->formatStateUsing(fn($state) => number_format((float) $state, 2, ',', '.'))
                                             ->disabled(fn(?Invoice $record): bool => (bool) ($record?->confirmed || $record?->canceled)),
                                     ]),
