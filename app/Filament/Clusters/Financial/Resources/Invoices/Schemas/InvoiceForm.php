@@ -6,6 +6,7 @@ use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Models\Invoice;
@@ -74,7 +75,7 @@ class InvoiceForm
                                             ->disabled()
                                             ->readOnly()
                                             ->dehydrated(false)
-                                            ->formatStateUsing(fn (?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
+                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
                                             ->prefix('R$')
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                         TextInput::make('products_amount')
@@ -82,7 +83,7 @@ class InvoiceForm
                                             ->disabled()
                                             ->readOnly()
                                             ->dehydrated(false)
-                                            ->formatStateUsing(fn (?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
+                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
                                             ->prefix('R$')
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                         TextInput::make('total_amount')
@@ -90,30 +91,22 @@ class InvoiceForm
                                             ->disabled()
                                             ->readOnly()
                                             ->dehydrated(false)
-                                            ->formatStateUsing(fn (?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
+                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
                                             ->prefix('R$')
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                     ]),
-                            ]),
-                        Tab::make('Produtos')
-                            ->visible(fn($record) => $record?->requisitions?->count())
-                            ->schema([
-                                Livewire::make(RequisitionsRelationManager::class, fn(Invoice $record) => [
-                                    'ownerRecord' => $record,
-                                    'pageClass' => EditInvoice::class,
-                                ])
-                                    
-                                    ->columnSpanFull(),
-                            ]),
-                        Tab::make('Serviços')
-                            ->visible(fn($record) => $record?->serviceOrders?->count())
-                            ->schema([
-                                Livewire::make(ServiceOrdersRelationManager::class, fn(Invoice $record) => [
-                                    'ownerRecord' => $record,
-                                    'pageClass' => EditInvoice::class,
-                                ])
-                                    
-                                    ->columnSpanFull(),
+                                Section::make('Dados Fiscais')
+                                    ->columnSpanFull()
+                                    ->columns(1)
+                                    ->contained(false)
+                                    ->schema([
+                                        Livewire::make(FiscalDocumentsRelationManager::class, fn(Invoice $record) => [
+                                            'ownerRecord' => $record,
+                                            'pageClass' => EditInvoice::class,
+                                        ])
+
+                                            ->columnSpanFull(),
+                                    ]),
                             ]),
                     ]),
 

@@ -16,6 +16,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
 use App\Filament\Clusters\Financial\Resources\Invoices\Tables\InvoicesTable;
 use App\Models\Invoice;
 use BackedEnum;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -48,12 +49,15 @@ class InvoiceResource extends Resource
     public static function getRelations(): array
     {
         return [
-            FiscalDocumentsRelationManager::class,
-            AccountReceivablesRelationManager::class,
-            InstallmentsRelationManager::class,
-            PaymentsRelationManager::class,
-            RequisitionsRelationManager::class,
-            ServiceOrdersRelationManager::class,
+            RelationGroup::make('Contas', [
+                AccountReceivablesRelationManager::class,
+                InstallmentsRelationManager::class,
+                PaymentsRelationManager::class,
+            ]),
+            RelationGroup::make('Itens', [
+                RequisitionsRelationManager::class,
+                ServiceOrdersRelationManager::class,
+            ]),
         ];
     }
 
