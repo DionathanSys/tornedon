@@ -4,6 +4,7 @@ namespace App\Services\Fiscal\Sefaz;
 
 use App\Models\Company;
 use App\Models\CompanyPreference;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -17,7 +18,7 @@ class CompanySefazCertificateService
      *     private_key_pem:string,
      *     certificate_path:string,
      *     password:string,
-     *     certificate_document:string
+     *     certificate_document:?string
      * }
      */
     public function loadForCompany(Company $company): array
@@ -52,14 +53,24 @@ class CompanySefazCertificateService
         }
 
         $parsedCertificate = openssl_x509_parse($certPem);
-        $certificateDocument = preg_replace('/\D+/', '', (string) ($parsedCertificate['subject']['serialNumber'] ?? ''));
-
-        if ($certificateDocument === '' || strlen($certificateDocument) < 8) {
-            throw new RuntimeException('Não foi possível identificar o CNPJ/CPF no certificado A1 da empresa.');
+        if (! is_array($parsedCertificate)) {
+            throw new RuntimeException('Não foi possível interpretar o certificado A1 da empresa.');
         }
 
-        if (substr($certificateDocument, 0, 8) !== substr($companyDocument, 0, 8)) {
+        $certificateDocument = $this->extractCertificateDocument($parsedCertificate, $companyDocument);
+
+        if ($certificateDocument !== null && substr($certificateDocument, 0, 8) !== substr($companyDocument, 0, 8)) {
             throw new RuntimeException('O certificado A1 não pertence ao mesmo CNPJ-base da empresa selecionada.');
+        }
+
+        if ($certificateDocument === null) {
+            Log::warning('CompanySefazCertificateService: certificado carregado sem CNPJ/CPF identificavel no parse', [
+                'company_id' => $company->id,
+                'company_document' => $companyDocument,
+                'certificate_path' => $certificateReference,
+                'subject' => $parsedCertificate['subject'] ?? null,
+                'name' => $parsedCertificate['name'] ?? null,
+            ]);
         }
 
         return [
@@ -69,6 +80,50 @@ class CompanySefazCertificateService
             'password' => $password,
             'certificate_document' => $certificateDocument,
         ];
+    }
+
+    public function extractCertificateDocument(array $parsedCertificate, ?string $companyDocument = null): ?string
+    {
+        $candidates = [];
+
+        $subjectSerialNumber = $this->normalizeDocumentCandidate((string) ($parsedCertificate['subject']['serialNumber'] ?? ''));
+        if ($subjectSerialNumber !== null) {
+            $candidates[] = $subjectSerialNumber;
+        }
+
+        foreach ($this->collectDocumentCandidates($parsedCertificate) as $candidate) {
+            $candidates[] = $candidate;
+        }
+
+        $candidates = array_values(array_unique(array_filter($candidates)));
+
+        if ($companyDocument !== null) {
+            foreach ($candidates as $candidate) {
+                if ($candidate === $companyDocument) {
+                    return $candidate;
+                }
+            }
+
+            foreach ($candidates as $candidate) {
+                if (substr($candidate, 0, 8) === substr($companyDocument, 0, 8)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if (strlen($candidate) === 14) {
+                return $candidate;
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if (strlen($candidate) === 11) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function readCertificateBinary(string $reference): string
@@ -110,5 +165,44 @@ class CompanySefazCertificateService
         $default = (string) config('filesystems.default', 'local');
 
         return array_values(array_unique([$default, 'local', 'public']));
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function collectDocumentCandidates(mixed $value): array
+    {
+        if (is_array($value)) {
+            $candidates = [];
+
+            foreach ($value as $item) {
+                foreach ($this->collectDocumentCandidates($item) as $candidate) {
+                    $candidates[] = $candidate;
+                }
+            }
+
+            return $candidates;
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        preg_match_all('/\b\d{11,14}\b/', $value, $matches);
+
+        return array_values(array_filter(
+            array_map(fn (string $candidate): ?string => $this->normalizeDocumentCandidate($candidate), $matches[0] ?? [])
+        ));
+    }
+
+    private function normalizeDocumentCandidate(string $value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        if (! in_array(strlen($digits), [11, 14], true)) {
+            return null;
+        }
+
+        return $digits;
     }
 }

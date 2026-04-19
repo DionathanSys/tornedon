@@ -149,6 +149,34 @@ XML;
         $this->assertCount(0, $result->documents);
     }
 
+    public function test_certificate_service_extracts_company_document_from_non_serial_fields(): void
+    {
+        $service = app(CompanySefazCertificateService::class);
+
+        $document = $service->extractCertificateDocument([
+            'subject' => [
+                'CN' => 'LF MECANICA E AUTO PECAS LTDA:65102068000127',
+            ],
+            'name' => '/C=BR/O=ICP-Brasil/CN=LF MECANICA E AUTO PECAS LTDA:65102068000127',
+        ], '65102068000127');
+
+        $this->assertSame('65102068000127', $document);
+    }
+
+    public function test_certificate_service_returns_null_when_document_cannot_be_identified(): void
+    {
+        $service = app(CompanySefazCertificateService::class);
+
+        $document = $service->extractCertificateDocument([
+            'subject' => [
+                'CN' => 'LF MECANICA E AUTO PECAS LTDA',
+            ],
+            'name' => '/C=BR/O=ICP-Brasil/CN=LF MECANICA E AUTO PECAS LTDA',
+        ], '65102068000127');
+
+        $this->assertNull($document);
+    }
+
     /**
      * @param  array<int,array{nsu:string,schema:string,xml:string}>  $documents
      */
