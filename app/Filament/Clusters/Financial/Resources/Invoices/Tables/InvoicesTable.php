@@ -8,17 +8,20 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvo
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class InvoicesTable
 {
@@ -76,47 +79,56 @@ class InvoicesTable
                     ->options(Status::toSelectArray())
                     ->multiple()
                     ->native(false),
+                DateRangeFilter::make('invoice_date')
+                    ->label('Dt. Fatura')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar()
+                    ->defaultLast7Days(),
             ])
             ->recordActions([
-                PreviewInvoicePdfAction::make()
-                    ->iconButton(),
-                DownloadInvoicePdfAction::make()
-                    ->iconButton(),
-                SendInvoiceEmailAction::make()
-                    ->iconButton(),
-                EditAction::make()
-                    ->iconButton(),
-                DeleteAction::make()
-                    ->iconButton()
-                    ->using(function (Model $record): bool {
-                        $service = app(InvoiceService::class);
-                        $result = $service->delete($record, Auth::id());
+                ActionGroup::make([
+                    PreviewInvoicePdfAction::make()
+                        ->iconButton(),
+                    DownloadInvoicePdfAction::make()
+                        ->iconButton(),
+                    SendInvoiceEmailAction::make()
+                        ->iconButton(),
+                    EditAction::make()
+                        ->iconButton(),
+                    DeleteAction::make()
+                        ->iconButton()
+                        ->using(function (Model $record): bool {
+                            $service = app(InvoiceService::class);
+                            $result = $service->delete($record, Auth::id());
 
-                        if ($service->hasError()) {
-                            Log::error($service->getMessage(), [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
-                                'message' => $service->getMessage(),
-                                'error_code' => $service->getErrorCode(),
-                                'errors' => $service->getErrors(),
-                                'invoice_id' => $record->id,
-                            ]);
+                            if ($service->hasError()) {
+                                Log::error($service->getMessage(), [
+                                    'metodo' => __METHOD__ . '@' . __LINE__,
+                                    'message' => $service->getMessage(),
+                                    'error_code' => $service->getErrorCode(),
+                                    'errors' => $service->getErrors(),
+                                    'invoice_id' => $record->id,
+                                ]);
 
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
+                                notify::error(
+                                    message: $service->getMessageUser(),
+                                    errorCode: $service->getErrorCode()
+                                );
 
-                            return false;
-                        }
+                                return false;
+                            }
 
-                        return $result;
-                    }),
+                            return $result;
+                        }),
+                ])->icon(Heroicon::Bars3)
             ])
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Fatura')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small),
-            ]);
+            ])
+            ->columnManagerLayout(ColumnManagerLayout::Modal);
     }
 }
