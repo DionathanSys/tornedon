@@ -167,7 +167,7 @@ class InvoicesTable
     private static function resolveInvoiceSummaryTotals(Builder $query): array
     {
         $filteredInvoices = DB::query()->fromSub(
-            (clone $query)->select('invoices.id', 'invoices.manual_discount_amount'),
+            (clone $query)->select('invoices.id'),
             'filtered_invoices'
         );
 
@@ -216,7 +216,7 @@ class InvoicesTable
             ->leftJoinSub($requisitionTotalsByInvoice, 'requisition_totals', 'requisition_totals.invoice_id', '=', 'filtered_invoices.id')
             ->selectRaw('
                 COALESCE(SUM(COALESCE(service_totals.total_amount, 0) + COALESCE(requisition_totals.total_amount, 0)), 0) as total_amount,
-                COALESCE(SUM(COALESCE(service_totals.discount_amount, 0) + COALESCE(requisition_totals.discount_amount, 0) + COALESCE(filtered_invoices.manual_discount_amount, 0)), 0) as discount_amount
+                COALESCE(SUM(COALESCE(service_totals.discount_amount, 0) + COALESCE(requisition_totals.discount_amount, 0)), 0) as discount_amount
             ')
             ->first();
 

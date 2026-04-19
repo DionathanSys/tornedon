@@ -147,49 +147,6 @@ class AccountReceivableGenerationServiceTest extends TestCase
         );
     }
 
-    public function test_generates_receivable_using_manual_invoice_discount(): void
-    {
-        $invoice = $this->createInvoice('2026-03-10', manualDiscountAmount: 20.00);
-
-        ServiceOrder::create([
-            'number' => 'OS-' . uniqid(),
-            'customer_id' => $this->customer->id,
-            'company_id' => $this->company->id,
-            'order_date' => '2026-03-10',
-            'status' => ServiceOrderState::INVOICED->value,
-            'priority' => ServiceOrderPriority::NORMAL->value,
-            'type' => ServiceOrderType::MAINTENANCE->value,
-            'travel_value' => 120.00,
-            'payment_method' => PaymentMethod::BANK_SLIP->value,
-            'payment_condition' => PaymentCondition::INSTALLMENTS_2X->value,
-            'invoice_id' => $invoice->id,
-        ]);
-
-        $fiscalDocument = $this->createAuthorizedNfeForInvoice($invoice);
-
-        $ok = $this->service->generateFromFiscalDocument($fiscalDocument);
-
-        $this->assertTrue($ok, $this->service->getMessage());
-
-        $accountReceivable = AccountReceivable::query()->with('installments')->sole();
-
-        $this->assertSame(100.0, $accountReceivable->due_amount);
-        $this->assertSame(
-            [
-                ['sequence_number' => '01', 'due_amount' => 50.0],
-                ['sequence_number' => '02', 'due_amount' => 50.0],
-            ],
-            $accountReceivable->installments
-                ->sortBy('sequence_number')
-                ->values()
-                ->map(fn ($installment) => [
-                    'sequence_number' => $installment->sequence_number,
-                    'due_amount' => $installment->due_amount,
-                ])
-                ->all()
-        );
-    }
-
     public function test_blocks_generation_when_payment_method_is_missing(): void
     {
         $invoice = $this->createInvoice('2026-03-10');
@@ -216,14 +173,13 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $this->assertDatabaseCount('account_receivable_installments', 0);
     }
 
-    private function createInvoice(string $invoiceDate, float $manualDiscountAmount = 0): Invoice
+    private function createInvoice(string $invoiceDate): Invoice
     {
         return Invoice::create([
             'customer_id' => $this->customer->id,
             'company_id' => $this->company->id,
             'invoice_number' => (string) random_int(100000, 999999),
             'invoice_date' => $invoiceDate,
-            'manual_discount_amount' => $manualDiscountAmount,
             'status' => InvoiceStatus::CONFIRMED->value,
             'pending' => false,
             'confirmed' => true,

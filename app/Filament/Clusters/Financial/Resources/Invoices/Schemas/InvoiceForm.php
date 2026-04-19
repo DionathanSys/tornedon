@@ -7,8 +7,6 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
-use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Models\Invoice;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -18,7 +16,6 @@ use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -102,13 +99,6 @@ class InvoiceForm
                                             ->dehydrated(false)
                                             ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->net_value ?? 0), 2, ',', '.'))
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        Money::make('manual_discount_amount')
-                                            ->label('Desconto (R$)')
-                                            ->maxValue(fn(Get $get): float => (float) ($get('total_amount') ?? 0))
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->live(onBlur: true)
-                                            ->formatStateUsing(fn($state) => number_format((float) $state, 2, ',', '.'))
-                                            ->disabled(fn(?Invoice $record): bool => (bool) ($record?->confirmed || $record?->canceled)),
                                     ]),
                                 Section::make('')
                                     ->hiddenLabel()

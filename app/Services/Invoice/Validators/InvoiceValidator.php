@@ -14,35 +14,32 @@ class InvoiceValidator
     private static function commonRules(): array
     {
         return [
-            'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
-            'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
-            'manual_discount_amount'    => ['nullable', 'numeric', 'min:0'],
-            'pending'                   => 'boolean',
-            'confirmed'                 => 'boolean',
-            'canceled'                  => 'boolean',
+            'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
+            'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
+            'pending' => 'boolean',
+            'confirmed' => 'boolean',
+            'canceled' => 'boolean',
         ];
     }
 
     private static function messages(): array
     {
         return [
-            'customer_id.required'           => 'O cliente é obrigatório.',
-            'customer_id.exists'             => 'Cliente não encontrado.',
-            'company_id.required'            => 'A empresa é obrigatória.',
-            'company_id.exists'              => 'Empresa não encontrada.',
-            'invoice_number.required'        => 'O número da fatura é obrigatório.',
-            'invoice_number.unique'          => 'Já existe uma fatura com este número.',
-            'invoice_date.required'          => 'A data da fatura e obrigatoria.',
-            'invoice_date.date'              => 'A data da fatura deve ser uma data valida.',
-            'payment_method.enum'            => 'A forma de pagamento deve ser um valor válido.',
-            'payment_condition.enum'         => 'A condicao de pagamento deve ser um valor válido.',
-            'manual_discount_amount.numeric' => 'O desconto da fatura deve ser numérico.',
-            'manual_discount_amount.min'     => 'O desconto da fatura não pode ser negativo.',
-            'status.required'                => 'O status é obrigatório.',
-            'status.enum'                    => 'O status deve ser um valor válido.',
-            'pending.boolean'                => 'O campo "pending" deve ser verdadeiro ou falso.',
-            'confirmed.boolean'              => 'O campo "confirmed" deve ser verdadeiro ou falso.',
-            'canceled.boolean'               => 'O campo "canceled" deve ser verdadeiro ou falso.',
+            'customer_id.required' => 'O cliente Ã© obrigatÃ³rio.',
+            'customer_id.exists' => 'Cliente nÃ£o encontrado.',
+            'company_id.required' => 'A empresa Ã© obrigatÃ³ria.',
+            'company_id.exists' => 'Empresa nÃ£o encontrada.',
+            'invoice_number.required' => 'O nÃºmero da fatura Ã© obrigatÃ³rio.',
+            'invoice_number.unique' => 'JÃ¡ existe uma fatura com este nÃºmero.',
+            'invoice_date.required' => 'A data da fatura e obrigatoria.',
+            'invoice_date.date' => 'A data da fatura deve ser uma data valida.',
+            'payment_method.enum' => 'A forma de pagamento deve ser um valor vÃ¡lido.',
+            'payment_condition.enum' => 'A condicao de pagamento deve ser um valor vÃ¡lido.',
+            'status.required' => 'O status Ã© obrigatÃ³rio.',
+            'status.enum' => 'O status deve ser um valor vÃ¡lido.',
+            'pending.boolean' => 'O campo "pending" deve ser verdadeiro ou falso.',
+            'confirmed.boolean' => 'O campo "confirmed" deve ser verdadeiro ou falso.',
+            'canceled.boolean' => 'O campo "canceled" deve ser verdadeiro ou falso.',
         ];
     }
 
@@ -52,8 +49,8 @@ class InvoiceValidator
     public static function validateCreate(array $data): array
     {
         $rules = array_merge(self::commonRules(), [
-            'customer_id'    => 'required|integer|exists:partners,id',
-            'company_id'     => 'required|integer|exists:companies,id',
+            'customer_id' => 'required|integer|exists:partners,id',
+            'company_id' => 'required|integer|exists:companies,id',
             'invoice_number' => [
                 'required',
                 'string',
