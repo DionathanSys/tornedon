@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -71,7 +72,7 @@ class InvoiceForm
                                             ->searchable()
                                             ->preload()
                                             ->required(),
-                                        TextInput::make('services_amount')
+                                        Money::make('services_amount')
                                             ->label('Valor de Serviços')
                                             ->disabled()
                                             ->readOnly()
@@ -79,21 +80,21 @@ class InvoiceForm
                                             ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
                                             ->columnStart(1)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        TextInput::make('products_amount')
+                                        Money::make('products_amount')
                                             ->label('Valor de Produtos')
                                             ->disabled()
                                             ->readOnly()
                                             ->dehydrated(false)
                                             ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        TextInput::make('total_amount')
+                                        Money::make('total_amount')
                                             ->label('Valor Total')
                                             ->disabled()
                                             ->readOnly()
                                             ->dehydrated(false)
                                             ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        TextInput::make('net_value')
+                                        Money::make('net_value')
                                             ->label('Valor Líquido')
                                             ->disabled()
                                             ->readOnly()
@@ -102,9 +103,8 @@ class InvoiceForm
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                         Money::make('manual_discount_amount')
                                             ->label('Desconto (R$)')
-                                            ->maxValue(fn(?Invoice $record): float => (float) ($record?->total_amount ?? 0))
-                                            ->helperText(fn(?Invoice $record): float => (float) ($record?->total_amount ?? 0))
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->maxValue(fn(Get $get): float => (float) ($get('total_amount') ?? 0))
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->formatStateUsing(fn($state) => number_format((float) $state, 2, ',', '.'))
                                             ->disabled(fn(?Invoice $record): bool => (bool) ($record?->confirmed || $record?->canceled)),
                                     ]),
