@@ -35,6 +35,19 @@ class FiscalDocumentsRelationManager extends RelationManager
         $this->resetTable();
     }
 
+    public function getAutoRefreshInterval(): ?string
+    {
+        return $this->isAutoRefreshEnabled() ? '5s' : null;
+    }
+
+    public function isAutoRefreshEnabled(): bool
+    {
+        return $this->getOwnerRecord()
+            ->fiscalDocuments()
+            ->get()
+            ->contains(fn ($document): bool => $document->isNfeInProcessing() || $document->isNfseInProcessing());
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -88,7 +101,7 @@ class FiscalDocumentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->poll(null)
+            ->poll(fn (): ?string => $this->getAutoRefreshInterval())
             ->defaultSort('created_at', 'desc')
             ->headerActions([])
             ->recordActions([
