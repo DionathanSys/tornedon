@@ -14,6 +14,14 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Invoice extends Model
 {
+    protected $appends = [
+        'total_amount',
+        'discount_amount',
+        'net_value',
+        'services_amount',
+        'products_amount',
+    ];
+
     protected static function booted(): void
     {
         static::deleting(function (self $invoice): void {
@@ -136,10 +144,37 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                $soTotal  = $this->serviceOrders->sum(fn ($so) => (float) $so->total_amount);
-                $reqTotal = $this->requisitions->sum(fn ($req) => (float) $req->total_amount);
+                return round($this->servicesAmount + $this->productsAmount, 2);
+            }
+        );
+    }
 
-                return round($soTotal + $reqTotal, 2);
+    /**
+     * Total de serviÃ§os da fatura: soma dos totais das OS vinculadas.
+     */
+    protected function servicesAmount(): Attribute
+    {
+        return Attribute::make(
+            get: function (): float {
+                return round(
+                    $this->serviceOrders->sum(fn ($serviceOrder) => (float) $serviceOrder->total_amount),
+                    2
+                );
+            }
+        );
+    }
+
+    /**
+     * Total de produtos da fatura: soma dos totais das requisiÃ§Ãµes vinculadas.
+     */
+    protected function productsAmount(): Attribute
+    {
+        return Attribute::make(
+            get: function (): float {
+                return round(
+                    $this->requisitions->sum(fn ($requisition) => (float) $requisition->total_amount),
+                    2
+                );
             }
         );
     }

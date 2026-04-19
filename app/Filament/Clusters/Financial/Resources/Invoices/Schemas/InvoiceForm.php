@@ -69,6 +69,30 @@ class InvoiceForm
                                             ->searchable()
                                             ->preload()
                                             ->required(),
+                                        TextInput::make('services_amount')
+                                            ->label('Valor de ServiÃ§os')
+                                            ->disabled()
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->formatStateUsing(fn (?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
+                                            ->prefix('R$')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('products_amount')
+                                            ->label('Valor de Produtos')
+                                            ->disabled()
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->formatStateUsing(fn (?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
+                                            ->prefix('R$')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('total_amount')
+                                            ->label('Valor Total')
+                                            ->disabled()
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->formatStateUsing(fn (?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
+                                            ->prefix('R$')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
                                     ]),
                             ]),
                         Tab::make('Produtos')

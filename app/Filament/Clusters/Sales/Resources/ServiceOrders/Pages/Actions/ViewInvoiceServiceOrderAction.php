@@ -14,7 +14,7 @@ final class ViewInvoiceServiceOrderAction
     public static function make(): Action
     {
         return Action::make('viewServiceOrderInvoice')
-            ->label('Fatura')
+            ->label('Acessar Fatura')
             ->icon(Heroicon::OutlinedDocumentText)
             ->color('gray')
             ->visible(fn (ServiceOrder $record): bool => filled($record->invoice_id) && filled(static::resolveInvoiceResource()))

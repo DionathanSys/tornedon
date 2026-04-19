@@ -18,6 +18,7 @@ use App\Models\ServiceOrder;
 use App\Support\ServiceOrderTravelData;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Partner\PartnerService;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -36,6 +37,8 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Notifications\Notification;
+use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -49,6 +52,7 @@ class ServiceOrderForm
             ->components([
                 Tabs::make('ServiceOrderTabs')
                     ->columnSpanFull()
+                    ->persistTab()
                     ->tabs([
                         Tab::make('Dados Gerais')
                             ->icon(Heroicon::InformationCircle)
@@ -320,6 +324,22 @@ class ServiceOrderForm
                                     ])
                                     ->columnSpanFull()
                                     ->contained(false)
+                                    ->footerActionsAlignment(Alignment::End)
+                                    ->footerActions([
+                                        Action::make('saveSignature')
+                                            ->label('Salvar assinatura')
+                                            ->icon(Heroicon::Bookmark)
+                                            ->color('primary')
+                                            ->action(function ($livewire, Section $component): void {
+                                                $livewire->saveFormComponentOnly($component);
+                                                $livewire->refreshFormData(['customer_signature', 'customer_signed_at']);
+
+                                                Notification::make()
+                                                    ->success()
+                                                    ->title('Assinatura salva com sucesso.')
+                                                    ->send();
+                                            }),
+                                    ])
                                     ->schema([
                                         SignaturePad::make('customer_signature')
                                             ->hiddenLabel()
@@ -337,7 +357,7 @@ class ServiceOrderForm
                                             ->info()
                                             ->columnStart(1)
                                             ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->description('Assine dentro da caixa azul. Use "Limpar" para remover o desenho atual apenas do formulário e clique em "Salvar" para gravar a nova assinatura ou confirmar a remoção. Use "Cancelar" para sair sem salvar.'),
+                                            ->description('Assine dentro da caixa azul. Use "Limpar" para remover o desenho atual apenas do formulário e clique em "Salvar assinatura" para gravar a nova assinatura ou confirmar a remoção.'),
                                     ]),
                             ]),
                         Tab::make('Anexos')

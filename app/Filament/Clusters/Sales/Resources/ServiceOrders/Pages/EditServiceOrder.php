@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 
+use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
@@ -49,6 +50,10 @@ class EditServiceOrder extends EditRecord
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->url(ServiceOrderResource::getUrl()),
                 CreateServiceOrderAction::make(),
+                $this->getSaveFormAction()
+                    ->formId('form')
+                    ->hiddenLabel()
+                    ->icon(Heroicon::Bookmark),
             ])->buttonGroup(),
             ActionGroup::make([
                 DuplicateServiceOrderAction::make()
@@ -66,6 +71,7 @@ class EditServiceOrder extends EditRecord
                 InvoiceServiceOrderAction::make(),
                 Action::make('view-linked-requisition')
                     ->tooltip('Abrir requisição')
+                    ->label('Acessar Requisição')
                     ->icon(Heroicon::ClipboardDocumentList)
                     ->visible(fn (): bool => $this->record->requisition()->exists())
                     ->url(fn (): string => RequisitionResource::getUrl('edit', ['record' => $this->record->requisition]))
@@ -175,6 +181,17 @@ class EditServiceOrder extends EditRecord
                     }),
             ])->button()
         ];
+    }
+
+    protected function getFormActions(): array
+    {
+        if ($this->record->status === State::OPEN) {
+            return [
+                ...parent::getFormActions(),
+            ];
+        }
+
+        return [];
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages;
 
 use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ConfirmInvoiceAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
@@ -97,6 +98,17 @@ class EditInvoice extends EditRecord
                     }),
             ])->button(),
         ];
+    }
+
+    protected function getFormActions(): array
+    {
+        if ($this->record->status === Status::PENDING) {
+            return [
+                ...parent::getFormActions(),
+            ];
+        }
+
+        return [];
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model

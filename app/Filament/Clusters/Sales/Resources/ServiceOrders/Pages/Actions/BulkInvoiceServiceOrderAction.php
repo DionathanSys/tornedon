@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -25,12 +26,6 @@ final class BulkInvoiceServiceOrderAction
             ->modalHeading('Faturar Ordens de Serviço')
             ->modalDescription('Tem certeza que deseja faturar as ordens de serviço selecionadas? Será criada uma única fatura agrupando todos os registros.')
             ->modalSubmitActionLabel('Sim, faturar')
-            ->schema([
-                Checkbox::make('request_fiscal_document')
-                    ->label('Solicitar documento fiscal agora')
-                    ->helperText('Se desmarcado, a fatura será criada em aberto para posterior emissão do documento fiscal.')
-                    ->default(false),
-            ])
             ->deselectRecordsAfterCompletion()
             ->action(function (Collection $records, array $data): void {
                 // Validação: mesmo cliente
@@ -95,6 +90,7 @@ final class BulkInvoiceServiceOrderAction
                 notify::success(
                     $records->count() . ' ordem(ns) de serviço faturada(s) com sucesso. Fatura #' . $invoice->invoice_number
                 );
-            });
+            })
+            ->successRedirectUrl(fn($records) => InvoiceResource::getUrl('edit', ['record' => $records->first()->invoice_id]));
     }
 }
