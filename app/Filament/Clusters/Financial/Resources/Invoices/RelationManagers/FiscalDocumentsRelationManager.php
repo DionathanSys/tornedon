@@ -29,6 +29,7 @@ class FiscalDocumentsRelationManager extends RelationManager
     protected static string|BackedEnum|null $icon = Heroicon::DocumentText;
 
     #[On('invoice-confirmed')]
+    #[On('invoice-fiscal-documents-refresh')]
     public function refreshFiscalDocuments(): void
     {
         $this->resetTable();

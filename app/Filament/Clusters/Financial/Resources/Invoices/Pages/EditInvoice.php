@@ -31,9 +31,30 @@ class EditInvoice extends EditRecord
 {
     protected static string $resource = InvoiceResource::class;
 
+    protected string $view = 'filament.clusters.financial.resources.invoices.pages.edit-invoice';
+
     public function getSubheading(): ?string
     {
         return "Fatura # {$this->record->invoice_number} - {$this->record->status->description()}";
+    }
+
+    public function getAutoRefreshInterval(): ?string
+    {
+        return $this->isAutoRefreshEnabled() ? '5s' : null;
+    }
+
+    public function isAutoRefreshEnabled(): bool
+    {
+        return $this->getRecord()
+            ->fiscalDocuments()
+            ->get()
+            ->contains(fn ($document): bool => $document->isNfeInProcessing() || $document->isNfseInProcessing());
+    }
+
+    public function refreshInvoiceState(): void
+    {
+        $this->getRecord()->refresh();
+        $this->dispatch('invoice-fiscal-documents-refresh');
     }
 
     protected function getHeaderActions(): array
