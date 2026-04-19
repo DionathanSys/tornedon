@@ -96,6 +96,7 @@ class InvoiceForm
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                     ]),
                                 Section::make('Dados Fiscais')
+                                    ->hiddenLabel()
                                     ->columnSpanFull()
                                     ->columns(1)
                                     ->contained(false)

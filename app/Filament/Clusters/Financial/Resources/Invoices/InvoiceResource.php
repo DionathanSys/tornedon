@@ -52,7 +52,6 @@ class InvoiceResource extends Resource
             RelationGroup::make('Contas', [
                 AccountReceivablesRelationManager::class,
                 InstallmentsRelationManager::class,
-                PaymentsRelationManager::class,
             ]),
             RelationGroup::make('Itens', [
                 RequisitionsRelationManager::class,
