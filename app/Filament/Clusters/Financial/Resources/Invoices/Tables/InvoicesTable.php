@@ -33,7 +33,7 @@ class InvoicesTable
         return $table
             ->columns([
                 TextColumn::make('invoice_number')
-                    ->label('NÃºmero')
+                    ->label('Número')
                     ->searchable()
                     ->sortable()
                     ->icon(Heroicon::Hashtag),
@@ -43,8 +43,9 @@ class InvoicesTable
                     ->sortable()
                     ->limit(40),
                 TextColumn::make('invoice_date')
-                    ->label('Data da Fatura')
+                    ->label('Dt. Fatura')
                     ->date('d/m/Y')
+                    ->width('1%')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('status')
@@ -147,11 +148,11 @@ class InvoicesTable
                 ])->icon(Heroicon::Bars3),
             ])
             ->toolbarActions([
-                CreateAction::make()
-                    ->label('Fatura')
-                    ->icon(Heroicon::Plus)
-                    ->color('gray')
-                    ->size(Size::Small),
+                // CreateAction::make()
+                //     ->label('Fatura')
+                //     ->icon(Heroicon::Plus)
+                //     ->color('gray')
+                //     ->size(Size::Small),
             ])
             ->columnManagerLayout(ColumnManagerLayout::Modal)
             ->columnManagerColumns(2);
