@@ -92,6 +92,13 @@ class InvoiceForm
                                             ->dehydrated(false)
                                             ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        Money::make('discount_amount')
+                                            ->label('Desconto')
+                                            ->disabled()
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->discount_amount ?? 0), 2, ',', '.'))
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
                                         Money::make('net_value')
                                             ->label('Valor Líquido')
                                             ->disabled()
