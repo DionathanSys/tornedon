@@ -52,18 +52,18 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'status' => Status::class,
-        'invoice_date' => 'date',
-        'payment_method' => PaymentMethod::class,
-        'payment_condition' => PaymentCondition::class,
+        'status'             => Status::class,
+        'invoice_date'       => 'date',
+        'payment_method'     => PaymentMethod::class,
+        'payment_condition'  => PaymentCondition::class,
         'manual_discount_amount' => MoneyCast::class,
-        'pending' => 'boolean',
-        'confirmed' => 'boolean',
-        'canceled' => 'boolean',
-        'confirmed_at' => 'datetime',
-        'canceled_at' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'pending'            => 'boolean',
+        'confirmed'          => 'boolean',
+        'canceled'           => 'boolean',
+        'confirmed_at'       => 'datetime',
+        'canceled_at'        => 'datetime',
+        'created_at'         => 'datetime',
+        'updated_at'         => 'datetime',
     ];
 
     /* ==============================
@@ -152,7 +152,7 @@ class Invoice extends Model
     }
 
     /**
-     * Total de serviÃ§os da fatura: soma dos totais das OS vinculadas.
+     * Total de serviços da fatura: soma dos totais das OS vinculadas.
      */
     protected function servicesAmount(): Attribute
     {
@@ -167,7 +167,7 @@ class Invoice extends Model
     }
 
     /**
-     * Total de produtos da fatura: soma dos totais das requisiÃ§Ãµes vinculadas.
+     * Total de produtos da fatura: soma dos totais das requisições vinculadas.
      */
     protected function productsAmount(): Attribute
     {
