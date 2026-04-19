@@ -141,10 +141,33 @@ class CompanySefazCertificateService
             return $binary;
         }
 
+        foreach ($this->candidateAbsolutePaths($reference) as $absolutePath) {
+            if (! is_file($absolutePath) || ! is_readable($absolutePath)) {
+                continue;
+            }
+
+            $binary = file_get_contents($absolutePath);
+            if ($binary === false) {
+                continue;
+            }
+
+            Log::info('CompanySefazCertificateService: certificado encontrado por caminho absoluto legadoo', [
+                'reference' => $reference,
+                'resolved_path' => $absolutePath,
+            ]);
+
+            return $binary;
+        }
+
         foreach ($this->candidateDisks() as $disk) {
             if (! Storage::disk($disk)->exists($reference)) {
                 continue;
             }
+
+            Log::info('CompanySefazCertificateService: certificado encontrado no storage', [
+                'reference' => $reference,
+                'disk' => $disk,
+            ]);
 
             return Storage::disk($disk)->get($reference);
         }
@@ -165,6 +188,20 @@ class CompanySefazCertificateService
         $default = (string) config('filesystems.default', 'local');
 
         return array_values(array_unique([$default, 'local', 'public']));
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function candidateAbsolutePaths(string $reference): array
+    {
+        $normalized = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $reference), DIRECTORY_SEPARATOR);
+
+        return array_values(array_unique([
+            storage_path('app' . DIRECTORY_SEPARATOR . $normalized),
+            storage_path('app/private' . DIRECTORY_SEPARATOR . $normalized),
+            storage_path('app/public' . DIRECTORY_SEPARATOR . $normalized),
+        ]));
     }
 
     /**
