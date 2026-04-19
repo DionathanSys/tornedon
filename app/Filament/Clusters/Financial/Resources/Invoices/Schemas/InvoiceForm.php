@@ -33,7 +33,7 @@ class InvoiceForm
                     ->tabs([
                         Tab::make('Geral')
                             ->schema([
-                                Section::make('Dados da Fatura')
+                                Section::make('')
                                     ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                                     ->columnSpanFull()
                                     ->schema([
