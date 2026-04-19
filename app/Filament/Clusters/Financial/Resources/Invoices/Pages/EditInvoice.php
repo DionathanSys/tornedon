@@ -17,6 +17,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedR
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedServiceOrdersAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -47,6 +48,17 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
                 ViewLinkedProductionOrdersAction::make()
                     ->size(Size::Small),
+            ])->buttonGroup(),
+            ActionGroup::make([
+                Action::make('back')
+                    ->hiddenLabel()
+                    ->tooltip('Voltar')
+                    ->icon(Heroicon::ArrowUturnLeft)
+                    ->url(InvoiceResource::getUrl()),
+                $this->getSaveFormAction()
+                    ->formId('form')
+                    ->hiddenLabel()
+                    ->icon(Heroicon::Bookmark),
             ])->buttonGroup(),
             ActionGroup::make([
                 ConfirmInvoiceAction::make()

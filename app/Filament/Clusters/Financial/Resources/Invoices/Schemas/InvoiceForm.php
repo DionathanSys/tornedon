@@ -86,6 +86,13 @@ class InvoiceForm
                                             ->dehydrated(false)
                                             ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('total_amount')
+                                            ->label('Valor Total')
+                                            ->disabled()
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
                                         TextInput::make('net_value')
                                             ->label('Valor Líquido')
                                             ->disabled()
@@ -96,6 +103,7 @@ class InvoiceForm
                                         Money::make('manual_discount_amount')
                                             ->label('Desconto (R$)')
                                             ->maxValue(fn(?Invoice $record): float => (float) ($record?->total_amount ?? 0))
+                                            ->helperText(fn(?Invoice $record): float => (float) ($record?->total_amount ?? 0))
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->formatStateUsing(fn($state) => number_format((float) $state, 2, ',', '.'))
                                             ->disabled(fn(?Invoice $record): bool => (bool) ($record?->confirmed || $record?->canceled)),
