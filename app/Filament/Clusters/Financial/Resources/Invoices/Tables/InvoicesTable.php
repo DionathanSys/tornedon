@@ -8,12 +8,14 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvo
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -42,20 +44,28 @@ class InvoicesTable
                 TextColumn::make('invoice_date')
                     ->label('Data da Fatura')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('status')
                     ->label('Status')
                     ->sortable()
                     ->badge()
                     ->formatStateUsing(fn($state) => $state?->description() ?? '-')
-                    ->color(fn($state) => $state?->color() ?? 'gray'),
+                    ->color(fn($state) => $state?->color() ?? 'gray')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL'),
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->summarize(Sum::make()->money('BRL')),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
                     ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('net_value')
+                    ->label('Valor Líquido')
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
@@ -88,16 +98,11 @@ class InvoicesTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    PreviewInvoicePdfAction::make()
-                        ->iconButton(),
-                    DownloadInvoicePdfAction::make()
-                        ->iconButton(),
-                    SendInvoiceEmailAction::make()
-                        ->iconButton(),
-                    EditAction::make()
-                        ->iconButton(),
+                    PreviewInvoicePdfAction::make(),
+                    DownloadInvoicePdfAction::make(),
+                    SendInvoiceEmailAction::make(),
+                    EditAction::make(),
                     DeleteAction::make()
-                        ->iconButton()
                         ->using(function (Model $record): bool {
                             $service = app(InvoiceService::class);
                             $result = $service->delete($record, Auth::id());
@@ -127,8 +132,10 @@ class InvoicesTable
                 CreateAction::make()
                     ->label('Fatura')
                     ->icon(Heroicon::Plus)
+                    ->color('gray')
                     ->size(Size::Small),
             ])
-            ->columnManagerLayout(ColumnManagerLayout::Modal);
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2);
     }
 }

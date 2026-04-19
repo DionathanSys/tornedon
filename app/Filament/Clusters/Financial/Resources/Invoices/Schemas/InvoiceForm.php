@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class InvoiceForm
 {
@@ -62,6 +63,11 @@ class InvoiceForm
                                             ->options(PaymentCondition::toGroupedSelectArray())
                                             ->native(false)
                                             ->searchable(),
+                                        Money::make('manual_discount_amount')
+                                            ->label('Desconto (R$)')
+                                            ->maxValue(fn (?Invoice $record): float => (float) ($record?->total_amount ?? 0))
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->disabled(fn (?Invoice $record): bool => (bool) ($record?->confirmed || $record?->canceled)),
                                         Select::make('customer_id')
                                             ->label('Cliente')
                                             ->disabled()

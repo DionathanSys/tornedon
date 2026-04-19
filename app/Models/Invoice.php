@@ -38,6 +38,7 @@ class Invoice extends Model
         'invoice_date',
         'payment_method',
         'payment_condition',
+        'manual_discount_amount',
         'status',
         'pending',
         'confirmed',
@@ -55,6 +56,7 @@ class Invoice extends Model
         'invoice_date' => 'date',
         'payment_method' => PaymentMethod::class,
         'payment_condition' => PaymentCondition::class,
+        'manual_discount_amount' => MoneyCast::class,
         'pending' => 'boolean',
         'confirmed' => 'boolean',
         'canceled' => 'boolean',
@@ -188,8 +190,9 @@ class Invoice extends Model
             get: function (): float {
                 $soDiscount  = $this->serviceOrders->sum(fn ($so) => (float) $so->discount_amount);
                 $reqDiscount = $this->requisitions->sum(fn ($req) => (float) $req->discount_amount);
+                $manualDiscount = (float) ($this->manual_discount_amount ?? 0);
 
-                return round($soDiscount + $reqDiscount, 2);
+                return round($soDiscount + $reqDiscount + $manualDiscount, 2);
             }
         );
     }

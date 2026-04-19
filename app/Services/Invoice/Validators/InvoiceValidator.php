@@ -14,32 +14,35 @@ class InvoiceValidator
     private static function commonRules(): array
     {
         return [
-            'payment_method'    => ['nullable', Rule::enum(PaymentMethod::class)],
-            'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
-            'pending'           => 'boolean',
-            'confirmed'         => 'boolean',
-            'canceled'          => 'boolean',
+            'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
+            'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
+            'manual_discount_amount'    => ['nullable', 'numeric', 'min:0'],
+            'pending'                   => 'boolean',
+            'confirmed'                 => 'boolean',
+            'canceled'                  => 'boolean',
         ];
     }
 
     private static function messages(): array
     {
         return [
-            'customer_id.required'      => 'O cliente é obrigatório.',
-            'customer_id.exists'        => 'Cliente não encontrado.',
-            'company_id.required'       => 'A empresa é obrigatória.',
-            'company_id.exists'         => 'Empresa não encontrada.',
-            'invoice_number.required'   => 'O número da fatura é obrigatório.',
-            'invoice_number.unique'     => 'Já existe uma fatura com este número.',
-            'invoice_date.required'     => 'A data da fatura é obrigatória.',
-            'invoice_date.date'         => 'A data da fatura deve ser uma data válida.',
-            'payment_method.enum'       => 'A forma de pagamento deve ser um valor válido.',
-            'payment_condition.enum'    => 'A condição de pagamento deve ser um valor válido.',
-            'status.required'           => 'O status é obrigatório.',
-            'status.enum'               => 'O status deve ser um valor válido.',
-            'pending.boolean'           => 'O campo "pending" deve ser verdadeiro ou falso.',
-            'confirmed.boolean'         => 'O campo "confirmed" deve ser verdadeiro ou falso.',
-            'canceled.boolean'          => 'O campo "canceled" deve ser verdadeiro ou falso.',
+            'customer_id.required'           => 'O cliente é obrigatório.',
+            'customer_id.exists'             => 'Cliente não encontrado.',
+            'company_id.required'            => 'A empresa é obrigatória.',
+            'company_id.exists'              => 'Empresa não encontrada.',
+            'invoice_number.required'        => 'O número da fatura é obrigatório.',
+            'invoice_number.unique'          => 'Já existe uma fatura com este número.',
+            'invoice_date.required'          => 'A data da fatura e obrigatoria.',
+            'invoice_date.date'              => 'A data da fatura deve ser uma data valida.',
+            'payment_method.enum'            => 'A forma de pagamento deve ser um valor válido.',
+            'payment_condition.enum'         => 'A condicao de pagamento deve ser um valor válido.',
+            'manual_discount_amount.numeric' => 'O desconto da fatura deve ser numérico.',
+            'manual_discount_amount.min'     => 'O desconto da fatura não pode ser negativo.',
+            'status.required'                => 'O status é obrigatório.',
+            'status.enum'                    => 'O status deve ser um valor válido.',
+            'pending.boolean'                => 'O campo "pending" deve ser verdadeiro ou falso.',
+            'confirmed.boolean'              => 'O campo "confirmed" deve ser verdadeiro ou falso.',
+            'canceled.boolean'               => 'O campo "canceled" deve ser verdadeiro ou falso.',
         ];
     }
 
@@ -58,8 +61,8 @@ class InvoiceValidator
                 Rule::unique('invoices', 'invoice_number')
                     ->where('company_id', $data['company_id'] ?? null),
             ],
-            'invoice_date'  => 'required|date',
-            'status'        => ['required', Rule::enum(Status::class)],
+            'invoice_date' => 'required|date',
+            'status' => ['required', Rule::enum(Status::class)],
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();
@@ -71,8 +74,8 @@ class InvoiceValidator
     public static function validateUpdate(array $data, int $invoiceId): array
     {
         $rules = array_merge(self::commonRules(), [
-            'invoice_date'  => 'sometimes|date',
-            'status'        => ['sometimes', 'required', Rule::enum(Status::class)],
+            'invoice_date' => 'sometimes|date',
+            'status' => ['sometimes', 'required', Rule::enum(Status::class)],
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();
