@@ -70,7 +70,7 @@ class InvoiceForm
                                             ->preload()
                                             ->required(),
                                         TextInput::make('services_amount')
-                                            ->label('Valor de ServiÃ§os')
+                                            ->label('Valor de Serviços')
                                             ->disabled()
                                             ->readOnly()
                                             ->dehydrated(false)
