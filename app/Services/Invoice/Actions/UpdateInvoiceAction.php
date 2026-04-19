@@ -28,6 +28,21 @@ class UpdateInvoiceAction
                 'data'       => $data,
             ]);
 
+            if ($this->invoice->discount_amount < $this->invoice->total_amount) {
+                $this->setError('O desconto não pode ser maior que o valor total da fatura');
+
+                Log::error($this->getMessage(), [
+                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'message'    => $this->getMessage(),
+                    'error_code' => $this->getErrorCode(),
+                    'invoice_id' => $this->invoice->id,
+                    'data'       => $data,
+                    'user_id'    => $this->updatedBy,
+                ]);
+
+                return null;
+            }
+
             $validated = InvoiceValidator::validateUpdate($data, $this->invoice->id);
 
             unset($validated['company_id']);
