@@ -54,11 +54,14 @@ class EditInvoice extends EditRecord
                     ->hiddenLabel()
                     ->tooltip('Voltar')
                     ->icon(Heroicon::ArrowUturnLeft)
-                    ->url(InvoiceResource::getUrl()),
+                    ->url(InvoiceResource::getUrl())
+                    ->size(Size::Small),
                 $this->getSaveFormAction()
                     ->formId('form')
                     ->hiddenLabel()
-                    ->icon(Heroicon::Bookmark),
+                    ->tooltip('Salvar')
+                    ->icon(Heroicon::Bookmark)
+                    ->size(Size::Small),
             ])->buttonGroup(),
             ActionGroup::make([
                 ConfirmInvoiceAction::make()
