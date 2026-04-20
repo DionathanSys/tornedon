@@ -88,6 +88,7 @@ class StockMovementForm
                 ->label('Quantidade')
                 ->prefix(null)
                 ->suffix('un.')
+                ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
                 ->required()
                 ->live(onBlur: true)
                 ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))

@@ -23,6 +23,7 @@ class StockMovementsTable
         return $table
             ->modifyQueryUsing(fn(): Builder => StockMovement::query()
                 ->where('company_id', Filament::getTenant()->id))
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('created_at')
                     ->label('Data')

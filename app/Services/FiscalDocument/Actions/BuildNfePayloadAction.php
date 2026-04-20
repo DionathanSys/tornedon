@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
+use App\Enum\Tax\TaxRegime;
 use App\Models\FiscalDocument;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -49,6 +50,7 @@ class BuildNfePayloadAction
             $company  = $fiscalDocument->company;
             $customer = $fiscalDocument->customer;
             $address  = $customer->address->first();
+            $taxRegime = $company?->fiscalProfile()->first()?->tax_regime;
 
             $issuedAt    = now()->format('Y-m-d') . 'T00:00:00-03:00';
             $movementAt  = now()->format('Y-m-d') . 'T00:00:00-03:00';
@@ -153,6 +155,27 @@ class BuildNfePayloadAction
                 }
 
                 $itens[] = $itemPayload;
+            }
+
+            if ($taxRegime !== null) {
+                $regime = $taxRegime instanceof TaxRegime
+                    ? $taxRegime
+                    : TaxRegime::tryFrom((string) $taxRegime);
+
+                if ($regime !== null) {
+                    $compatibilityError = $this->validateIcmsTaxRegimeCompatibility($itens, $regime);
+
+                    if ($compatibilityError !== null) {
+                        $this->setError($compatibilityError);
+                        Log::warning('BuildNfePayloadAction: incompatibilidade CST/CSOSN com regime tributario', [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'company_id' => $fiscalDocument->company_id,
+                            'tax_regime' => $regime->value,
+                            'erro' => $compatibilityError,
+                        ]);
+                        return null;
+                    }
+                }
             }
 
             // ------------------------------------------------------------------
@@ -296,5 +319,32 @@ class BuildNfePayloadAction
             ->filter(fn (array $item) => $item['campo'] !== '' || $item['texto'] !== '')
             ->values()
             ->toArray();
+    }
+
+    private function validateIcmsTaxRegimeCompatibility(array $items, TaxRegime $regime): ?string
+    {
+        $usesCsosn = $regime->usaCsosn();
+
+        foreach ($items as $index => $item) {
+            $taxSituation = data_get($item, 'imposto.icms.situacao_tributaria');
+
+            if (! is_string($taxSituation) || trim($taxSituation) === '') {
+                continue;
+            }
+
+            $taxSituationInt = (int) $taxSituation;
+            $isCsosn = $taxSituationInt >= 100;
+            $itemNumber = $index + 1;
+
+            if ($usesCsosn && ! $isCsosn) {
+                return "Item {$itemNumber}: a empresa está no {$regime->description()} e deve informar CSOSN (100-900) no ICMS, não CST '{$taxSituation}'.";
+            }
+
+            if (! $usesCsosn && $isCsosn) {
+                return "Item {$itemNumber}: a empresa está no {$regime->description()} e deve informar CST ICMS (00-90), não CSOSN '{$taxSituation}'.";
+            }
+        }
+
+        return null;
     }
 }
