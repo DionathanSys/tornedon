@@ -22,6 +22,13 @@ class ListAccountPayableInstallments extends ListRecords
         return [
             'all' => Tab::make('Todas')
                 ->badgeColor('gray'),
+            Status::PENDING->value => Tab::make('Pendente')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('status', Status::PENDING->value))
+                ->badge(static::getResource()::getEloquentQuery()
+                    ->where('status', Status::PENDING->value)
+                    ->count())
+                ->badgeColor(Status::PENDING->color()),
             Status::OVERDUE->value => Tab::make('Vencida')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
                     ->where('status', Status::OVERDUE->value))
@@ -34,6 +41,6 @@ class ListAccountPayableInstallments extends ListRecords
 
     public function getDefaultActiveTab(): string|int|null
     {
-        return 'all';
+        return Status::PENDING->value;
     }
 }
