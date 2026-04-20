@@ -7,7 +7,7 @@ use App\Enum\Product\Origin;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProduct;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
