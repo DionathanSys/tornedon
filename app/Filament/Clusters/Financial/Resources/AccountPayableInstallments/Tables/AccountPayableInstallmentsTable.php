@@ -18,6 +18,7 @@ use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class AccountPayableInstallmentsTable
@@ -134,13 +135,31 @@ class AccountPayableInstallmentsTable
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
                     ->defaultThisMonth()
-                    ->icon('heroicon-o-backspace'),
+                    ->icon('heroicon-o-backspace')
+                    ->query(function (Builder $query, $startDate, $endDate): Builder {
+                        if (!$startDate || !$endDate) {
+                            return $query;
+                        }
+
+                        return $query
+                            ->whereDate('due_date', '>=', $startDate->toDateString())
+                            ->whereDate('due_date', '<=', $endDate->toDateString());
+                    }),
                 DateRangeFilter::make('paid_date')
                     ->label('Data Pgto.')
                     ->autoApply()
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
-                    ->icon('heroicon-o-backspace'),
+                    ->icon('heroicon-o-backspace')
+                    ->query(function (Builder $query, $startDate, $endDate): Builder {
+                        if (!$startDate || !$endDate) {
+                            return $query;
+                        }
+
+                        return $query
+                            ->whereDate('paid_date', '>=', $startDate->toDateString())
+                            ->whereDate('paid_date', '<=', $endDate->toDateString());
+                    }),
             ])
             ->recordActions([
                 ActionGroup::make([
