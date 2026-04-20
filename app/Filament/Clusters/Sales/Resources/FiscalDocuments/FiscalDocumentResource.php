@@ -43,8 +43,7 @@ class FiscalDocumentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('operation_type', OperationType::SAIDA->value)
-            ->orWhere('operation_type', null);
+            ->where('operation_type', OperationType::SAIDA->value);
     }
 
     public static function table(Table $table): Table

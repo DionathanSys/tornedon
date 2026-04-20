@@ -38,10 +38,6 @@ class ListFiscalDocuments extends ListRecords
                 ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::REJECTED))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::REJECTED)->count())
                 ->badgeColor(NfeStatus::REJECTED->color()),
-            NfeStatus::CANCELED->value => Tab::make('Cancelada')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::CANCELED))
-                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::CANCELED)->count())
-                ->badgeColor(NfeStatus::CANCELED->color()),
         ];
     }
 
