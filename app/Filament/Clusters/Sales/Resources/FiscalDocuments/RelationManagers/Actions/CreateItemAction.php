@@ -33,7 +33,9 @@ final class CreateItemAction
             ->size(Size::Small)
             ->visible(fn(RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
             ->modalHeading('Adicionar Item à Nota Fiscal')
-            ->schema(SchemaFormItemsNfe::make())
+            ->schema(fn (RelationManager $livewire): array => SchemaFormItemsNfe::make(
+                showTaxesTab: SchemaFormItemsNfe::shouldShowTaxesTab($livewire->getOwnerRecord())
+            ))
             ->using(function (array $data, RelationManager $livewire): ?Model {
                 $fiscalDocument = $livewire->getOwnerRecord();
 
