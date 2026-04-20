@@ -25,10 +25,11 @@ class ListAccountReceivableInstallments extends ListRecords
             Status::PENDING->value => Tab::make('Pendente')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
                     ->where('status', Status::PENDING->value)
-                    ->orWhere('status', Status::PARTIALLY_RECEIVED->value))
+                    // ->orWhere('status', Status::PARTIALLY_RECEIVED->value)
+                    )
                 ->badge(static::getResource()::getEloquentQuery()
                     ->where('status', Status::PENDING->value)
-                    ->orWhere('status', Status::PARTIALLY_RECEIVED->value)
+                    // ->orWhere('status', Status::PARTIALLY_RECEIVED->value)
                     ->count())
                 ->badgeColor(Status::PENDING->color()),
             Status::OVERDUE->value => Tab::make('Vencida')
