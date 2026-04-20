@@ -7,6 +7,7 @@ use App\Enum\Product\Origin;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProduct;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -78,11 +79,9 @@ class SchemaFormItemsNfe
                     TextInput::make('cest_code')
                         ->label('CEST')
                         ->maxLength(9)
-                        ->visible(false)
                         ->columnSpan([ 'md' => 3, 'lg' => 6]),
                     TextInput::make('cfop_code')
                         ->label('CFOP')
-                        ->visible(false)
                         ->maxLength(4)
                         ->columnSpan([ 'md' => 3, 'lg' => 6]),
                     TextInput::make('barcode')  
@@ -104,6 +103,78 @@ class SchemaFormItemsNfe
                         ->label('Seguro'),
                     Money::make('other_expenses_amount')
                         ->label('Outras'),
+                ]),
+
+            Section::make('Dados fiscais do item')
+                ->description('Use esta seção para completar manualmente CFOP e tributos quando a nota de origem estiver incompleta.')
+                ->columns(['md' => 6, 'lg' => 12])
+                ->collapsible()
+                ->collapsed($context !== 'edit')
+                ->columnSpanFull()
+                ->schema([
+                    Grid::make(['md' => 6, 'lg' => 12])
+                        ->columnSpanFull()
+                        ->schema([
+                            TextInput::make('tax_data.imposto.icms.situacao_tributaria')
+                                ->label('CST/CSOSN ICMS')
+                                ->maxLength(3)
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            TextInput::make('tax_data.imposto.icms.modalidade_base_calculo')
+                                ->label('Mod. BC ICMS')
+                                ->maxLength(2)
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            Money::make('tax_data.imposto.icms.valor_base_calculo')
+                                ->label('BC ICMS')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            TextInput::make('tax_data.imposto.icms.aliquota')
+                                ->label('Aliq. ICMS %')
+                                ->numeric()
+                                ->step('0.01')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            Money::make('tax_data.imposto.icms.valor')
+                                ->label('Valor ICMS')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                        ]),
+
+                    Grid::make(['md' => 6, 'lg' => 12])
+                        ->columnSpanFull()
+                        ->schema([
+                            TextInput::make('tax_data.imposto.pis.situacao_tributaria')
+                                ->label('CST PIS')
+                                ->maxLength(2)
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            Money::make('tax_data.imposto.pis.valor_base_calculo')
+                                ->label('BC PIS')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            TextInput::make('tax_data.imposto.pis.aliquota')
+                                ->label('Aliq. PIS %')
+                                ->numeric()
+                                ->step('0.01')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            Money::make('tax_data.imposto.pis.valor')
+                                ->label('Valor PIS')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                        ]),
+
+                    Grid::make(['md' => 6, 'lg' => 12])
+                        ->columnSpanFull()
+                        ->schema([
+                            TextInput::make('tax_data.imposto.cofins.situacao_tributaria')
+                                ->label('CST COFINS')
+                                ->maxLength(2)
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            Money::make('tax_data.imposto.cofins.valor_base_calculo')
+                                ->label('BC COFINS')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            TextInput::make('tax_data.imposto.cofins.aliquota')
+                                ->label('Aliq. COFINS %')
+                                ->numeric()
+                                ->step('0.01')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                            Money::make('tax_data.imposto.cofins.valor')
+                                ->label('Valor COFINS')
+                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                        ]),
                 ]),
 
             Textarea::make('additional_information')

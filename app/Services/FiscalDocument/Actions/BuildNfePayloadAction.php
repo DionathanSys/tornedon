@@ -38,7 +38,8 @@ class BuildNfePayloadAction
                 'natureza'           => $fiscalDocument->operation_nature,
             ]);
 
-            $fiscalDocument->loadMissing([
+            $fiscalDocument->refresh();
+            $fiscalDocument->load([
                 'company',
                 'customer.address',
                 'items.product',
