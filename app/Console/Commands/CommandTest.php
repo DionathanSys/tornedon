@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Enum;
+use App\Enum\FiscalDocument\OperationType;
+use App\Enum\FiscalDocument\Status;
 use App\Models\Address;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
@@ -42,7 +44,13 @@ class CommandTest extends Command
       $origin = FiscalDocumentItemOrigin::query()
                 ->where('origin_fiscal_document_id', $record->id)
                 ->exists();
-                
+
+      $visible = $record->isNfe()
+            && $record->operation_type === OperationType::ENTRADA
+            && $record->status !== Status::CANCELLED
+            && ! $record->canceled
+            && ! $origin;
+
       Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
             'metodo' => __METHOD__ . '@' . __LINE__,
             'isNfe' => $record->isNfe(),
@@ -50,6 +58,7 @@ class CommandTest extends Command
             'status' => $record->status,
             'canceled' => $record->canceled,
             'origin_fiscal_document_id' => $origin,
+            'visible' => $visible,
         ]);
 
    }
