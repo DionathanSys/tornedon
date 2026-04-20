@@ -47,6 +47,53 @@ run_supervisorctl() {
     (cd "$ROOT_DIR" && "${supervisor_cmd[@]}" "$@")
 }
 
+restart_supervisor_programs() {
+    local program
+
+    for program in ${SUPERVISOR_PROGRAMS}; do
+        log "Reiniciando programa do supervisor: ${program}"
+        run_supervisorctl restart "$program"
+    done
+}
+
+terminate_horizon_gracefully() {
+    local horizon_output
+    local horizon_status=0
+
+    log "Finalizando o Horizon de forma graciosa"
+
+    if horizon_output="$(run_in_root "$PHP_BIN" "$ARTISAN" horizon:terminate 2>&1)"; then
+        horizon_status=0
+    else
+        horizon_status=$?
+    fi
+
+    if [[ -n "${horizon_output}" ]]; then
+        printf '%s\n' "${horizon_output}"
+    fi
+
+    if [[ "${horizon_status}" -ne 0 ]]; then
+        log "Aviso: o comando horizon:terminate retornou erro (${horizon_status})."
+    fi
+
+    if grep -Fq "Failed to kill process" <<< "${horizon_output}" || grep -Fq "Operation not permitted" <<< "${horizon_output}"; then
+        log "Aviso: o Horizon nao conseguiu encerrar todos os workers com o usuario atual."
+
+        if [[ "${RELOAD_SUPERVISOR}" == "1" ]]; then
+            log "Aplicando fallback com restart via supervisor"
+            restart_supervisor_programs
+            return
+        fi
+
+        log "Se o Horizon estiver sob o Supervisor com outro usuario, rode o deploy com RELOAD_SUPERVISOR=1."
+        return
+    fi
+
+    if [[ "${horizon_status}" -ne 0 ]]; then
+        return "${horizon_status}"
+    fi
+}
+
 ensure_no_unmerged_files() {
     local unmerged_files
 
@@ -173,8 +220,7 @@ run_in_root "$PHP_BIN" "$ARTISAN" optimize
 normalize_permissions
 
 if [[ "${RESTART_QUEUES}" == "1" ]]; then
-    log "Finalizando o Horizon de forma graciosa"
-    run_in_root "$PHP_BIN" "$ARTISAN" horizon:terminate
+    terminate_horizon_gracefully
 fi
 
 if [[ "${RELOAD_SUPERVISOR}" == "1" ]]; then
@@ -182,10 +228,7 @@ if [[ "${RELOAD_SUPERVISOR}" == "1" ]]; then
     run_supervisorctl reread
     run_supervisorctl update
 
-    for program in ${SUPERVISOR_PROGRAMS}; do
-        log "Reiniciando programa do supervisor: ${program}"
-        run_supervisorctl restart "$program"
-    done
+    restart_supervisor_programs
 fi
 
 log "Deploy concluido no ambiente ${APP_ENVIRONMENT}"

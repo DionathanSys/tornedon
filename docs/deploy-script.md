@@ -78,6 +78,14 @@ Deploy recarregando o supervisor:
 RELOAD_SUPERVISOR=1 ./deploy/deploy.sh
 ```
 
+Se o `horizon:terminate` exibir `Failed to kill process ... (Operation not permitted)`, normalmente o Horizon foi iniciado por outro usuario no `supervisor`. Nesse caso, prefira:
+
+```bash
+RELOAD_SUPERVISOR=1 ./deploy/deploy.sh
+```
+
+Assim o script tenta o encerramento gracioso e, se houver erro de permissao ao matar os workers, faz fallback para `supervisorctl restart` nos programas configurados em `SUPERVISOR_PROGRAMS`.
+
 Deploy com programas customizados no supervisor:
 
 ```bash
