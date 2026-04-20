@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class NfeSequence extends Model
@@ -67,8 +68,16 @@ class NfeSequence extends Model
                 ]);
             }
 
-            $seq->increment('last_number');
-            $seq->refresh();
+            $usedNumbers = self::usedDocumentNumbers($companyId, $serie);
+            $nextNumber = max($seq->last_number, $usedNumbers->max() ?? 0) + 1;
+
+            while ($usedNumbers->contains($nextNumber)) {
+                $nextNumber++;
+            }
+
+            $seq->forceFill([
+                'last_number' => $nextNumber,
+            ])->save();
 
             return $seq;
         });
@@ -91,6 +100,25 @@ class NfeSequence extends Model
             ->where('operation_nature', $operationNature)
             ->first();
 
-        return ($seq->last_number ?? 0) + 1;
+        $usedNumbers = self::usedDocumentNumbers($companyId, $serie);
+        $nextNumber = max($seq->last_number ?? 0, $usedNumbers->max() ?? 0) + 1;
+
+        while ($usedNumbers->contains($nextNumber)) {
+            $nextNumber++;
+        }
+
+        return $nextNumber;
+    }
+
+    private static function usedDocumentNumbers(int $companyId, string $serie): Collection
+    {
+        return FiscalDocument::query()
+            ->where('company_id', $companyId)
+            ->where('document_series', $serie)
+            ->whereNotNull('document_number')
+            ->pluck('document_number')
+            ->map(fn ($number) => (int) preg_replace('/\D/', '', (string) $number))
+            ->filter(fn (int $number) => $number > 0)
+            ->values();
     }
 }

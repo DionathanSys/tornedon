@@ -63,7 +63,6 @@ class FiscalDocumentsTable
                     ->sortable()
                     ->wrap()
                     ->lineClamp(2)
-                    ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('operation_nature')
