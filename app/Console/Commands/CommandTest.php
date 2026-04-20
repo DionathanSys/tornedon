@@ -41,7 +41,8 @@ class CommandTest extends Command
 
       $origin = FiscalDocumentItemOrigin::query()
                 ->where('origin_fiscal_document_id', $record->id)
-                ->first();
+                ->exists();
+                
       Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
             'metodo' => __METHOD__ . '@' . __LINE__,
             'isNfe' => $record->isNfe(),
