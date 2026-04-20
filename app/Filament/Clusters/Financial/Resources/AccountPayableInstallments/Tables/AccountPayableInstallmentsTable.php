@@ -19,6 +19,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class AccountPayableInstallmentsTable
@@ -32,7 +33,7 @@ class AccountPayableInstallmentsTable
                     ->label('Fornecedor')
                     ->sortable()
                     ->limit(40)
-                    ->url(fn(AccountPayableInstallment $record): ?string => $record->accountPayable
+                    ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
                         ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
                         : null),
                 TextColumn::make('accountPayable.document_number')
@@ -93,8 +94,8 @@ class AccountPayableInstallmentsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
-                    ->color(fn($state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->sortable(),
                 TextColumn::make('paid_date')
                     ->label('Data Pgto.')
@@ -117,7 +118,7 @@ class AccountPayableInstallmentsTable
                 Filter::make('supplier_id')
                     ->label('Fornecedor')
                     ->schema([
-                        SelectPartner::make('supplier_id')
+                        SelectPartner::make('supplier_id'),
                     ])
                     ->query(function ($query, $state) {
                         $query->whereHas('accountPayable', function ($query) use ($state) {
@@ -136,14 +137,22 @@ class AccountPayableInstallmentsTable
                     ->alwaysShowCalendar()
                     ->defaultThisMonth()
                     ->icon('heroicon-o-backspace')
-                    ->query(function (Builder $query, $startDate, $endDate): Builder {
-                        if (!$startDate || !$endDate) {
+                    ->modifyQueryUsing(function (Builder $query, ?string $dateString = null): Builder {
+                        if (blank($dateString)) {
                             return $query;
                         }
 
+                        $dates = array_map('trim', explode(' - ', $dateString));
+
+                        if (count($dates) !== 2) {
+                            return $query;
+                        }
+
+                        [$from, $until] = $dates;
+
                         return $query
-                            ->whereDate('due_date', '>=', $startDate->toDateString())
-                            ->whereDate('due_date', '<=', $endDate->toDateString());
+                            ->whereDate('due_date', '>=', Carbon::createFromFormat('d/m/Y', $from)->toDateString())
+                            ->whereDate('due_date', '<=', Carbon::createFromFormat('d/m/Y', $until)->toDateString());
                     }),
                 DateRangeFilter::make('paid_date')
                     ->label('Data Pgto.')
@@ -151,29 +160,37 @@ class AccountPayableInstallmentsTable
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
                     ->icon('heroicon-o-backspace')
-                    ->query(function (Builder $query, $startDate, $endDate): Builder {
-                        if (!$startDate || !$endDate) {
+                    ->modifyQueryUsing(function (Builder $query, ?string $dateString = null): Builder {
+                        if (blank($dateString)) {
                             return $query;
                         }
 
+                        $dates = array_map('trim', explode(' - ', $dateString));
+
+                        if (count($dates) !== 2) {
+                            return $query;
+                        }
+
+                        [$from, $until] = $dates;
+
                         return $query
-                            ->whereDate('paid_date', '>=', $startDate->toDateString())
-                            ->whereDate('paid_date', '<=', $endDate->toDateString());
+                            ->whereDate('paid_date', '>=', Carbon::createFromFormat('d/m/Y', $from)->toDateString())
+                            ->whereDate('paid_date', '<=', Carbon::createFromFormat('d/m/Y', $until)->toDateString());
                     }),
             ])
             ->recordActions([
                 ActionGroup::make([
                     RegisterInstallmentPaymentAction::make(),
-                EditInstallmentAction::make(),
-                DeleteInstallmentAction::make(),
-                Action::make('open_account')
-                    ->label('Abrir agrupador')
-                    ->icon('heroicon-o-folder-open')
-                    ->url(fn(AccountPayableInstallment $record): ?string => $record->accountPayable
-                        ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
-                        : null),
-                ])->icon(Heroicon::Bars3)
-                ], RecordActionsPosition::BeforeCells)
+                    EditInstallmentAction::make(),
+                    DeleteInstallmentAction::make(),
+                    Action::make('open_account')
+                        ->label('Abrir agrupador')
+                        ->icon('heroicon-o-folder-open')
+                        ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
+                            ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
+                            : null),
+                ])->icon(Heroicon::Bars3),
+            ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 Action::make('create_account_payable')
                     ->label('Novo lançamento')
