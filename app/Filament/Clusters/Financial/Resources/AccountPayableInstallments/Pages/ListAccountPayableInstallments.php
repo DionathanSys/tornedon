@@ -17,38 +17,23 @@ class ListAccountPayableInstallments extends ListRecords
         return [];
     }
 
-    // public function getTabs(): array
-    // {
-    //     return [
-    //         'all' => Tab::make('Todas')
-    //             ->badgeColor('gray'),
-    //         Status::PENDING->value => Tab::make('Pendente')
-    //             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-    //                 ->where(function (Builder $query): Builder {
-    //                     return $query
-    //                         ->where('status', Status::PENDING->value)
-    //                         ->orWhere('status', Status::PARTIALLY_PAID->value);
-    //                 }))
-    //             ->badge(static::getResource()::getEloquentQuery()
-    //                 ->where(function (Builder $query): Builder {
-    //                     return $query
-    //                         ->where('status', Status::PENDING->value)
-    //                         ->orWhere('status', Status::PARTIALLY_PAID->value);
-    //                 })
-    //                 ->count())
-    //             ->badgeColor(Status::PENDING->color()),
-    //         Status::OVERDUE->value => Tab::make('Vencida')
-    //             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-    //                 ->where('status', Status::OVERDUE->value))
-    //             ->badge(static::getResource()::getEloquentQuery()
-    //                 ->where('status', Status::OVERDUE->value)
-    //                 ->count())
-    //             ->badgeColor(Status::OVERDUE->color()),
-    //     ];
-    // }
+    public function getTabs(): array
+    {
+        return [
+            'all' => Tab::make('Todas')
+                ->badgeColor('gray'),
+            Status::OVERDUE->value => Tab::make('Vencida')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('status', Status::OVERDUE->value))
+                ->badge(static::getResource()::getEloquentQuery()
+                    ->where('status', Status::OVERDUE->value)
+                    ->count())
+                ->badgeColor(Status::OVERDUE->color()),
+        ];
+    }
 
-    // public function getDefaultActiveTab(): string|int|null
-    // {
-    //     return Status::PENDING->value;
-    // }
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return 'all';
+    }
 }
