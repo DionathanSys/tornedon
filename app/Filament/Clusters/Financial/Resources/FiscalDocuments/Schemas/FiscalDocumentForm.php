@@ -11,6 +11,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDo
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\FiscalDocument;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -44,11 +45,11 @@ class FiscalDocumentForm
                             ->default(DocumentModel::NFE->value)
                             ->native(false)
                             ->required(),
-                        TextEntry::make('status')
-                            ->label('Status')
+                        TextEntry::make('confirmed_at')
+                            ->label('Confirmada em')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->visibleOn('edit')
-                            ->formatStateUsing(fn(Status $state) => $state->description())
+                            ->formatStateUsing(fn(?Carbon $state) => $state?->format('d/m/Y H:i:s') ?? 'Não confirmada')
                             ->badge(),
                     ]),
                 Section::make('Identificação')
