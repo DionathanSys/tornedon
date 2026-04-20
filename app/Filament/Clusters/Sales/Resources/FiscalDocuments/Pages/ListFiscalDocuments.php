@@ -30,14 +30,13 @@ class ListFiscalDocuments extends ListRecords
                 ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::IN_PROCESSING))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::IN_PROCESSING)->count())
                 ->badgeColor(NfeStatus::IN_PROCESSING->color()),
-            NfeStatus::AUTHORIZED->value => Tab::make('Autorizada')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::AUTHORIZED))
-                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::AUTHORIZED)->count())
-                ->badgeColor(NfeStatus::AUTHORIZED->color()),
             NfeStatus::REJECTED->value => Tab::make('Rejeitada')
                 ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::REJECTED))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::REJECTED)->count())
                 ->badgeColor(NfeStatus::REJECTED->color()),
+            NfeStatus::AUTHORIZED->value => Tab::make('Autorizada')
+                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::AUTHORIZED)),
+
         ];
     }
 
@@ -64,8 +63,6 @@ class ListFiscalDocuments extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-
-        ];
+        return [];
     }
 }

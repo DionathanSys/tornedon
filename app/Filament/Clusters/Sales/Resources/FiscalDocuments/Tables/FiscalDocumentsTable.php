@@ -68,6 +68,7 @@ class FiscalDocumentsTable
                 Tables\Columns\TextColumn::make('operation_nature')
                     ->label('Natureza')
                     ->formatStateUsing(fn(OperationNature $state) => $state->description())
+                    ->placeholder('Não possui')
                     ->limit(25)
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -108,11 +109,11 @@ class FiscalDocumentsTable
 
                 Tables\Columns\TextColumn::make('document_key')
                     ->label('Chave de Acesso')
-                    ->limit(20)
+                    ->copyable()
+                    ->copyMessage('Chave de acesso copiada')
                     ->searchable()
-                    ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->placeholder('—'),
+                    ->placeholder('N/A'),
 
                 Tables\Columns\TextColumn::make('confirmed_at')
                     ->label('Confirmado em')
@@ -138,17 +139,11 @@ class FiscalDocumentsTable
 
                 Tables\Filters\SelectFilter::make('nfe_status')
                     ->label('Status NF-e')
-                    ->options(array_merge(
-                        ['null' => 'Não enviado'],
-                        NfeStatus::toSelectArray()
-                    )),
+                    ->options(NfeStatus::toSelectArray()),
 
                 Tables\Filters\SelectFilter::make('nfse_status')
                     ->label('Status NFS-e')
-                    ->options(array_merge(
-                        ['null' => 'Não enviada'],
-                        NfeStatus::toSelectArray()
-                    )),
+                    ->options(NfeStatus::toSelectArray()),
 
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Status')
@@ -164,6 +159,7 @@ class FiscalDocumentsTable
                 CreateAction::make()
                     ->label('Documento Fiscal')
                     ->icon(Heroicon::Plus)
+                    ->color('gray')
                     ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
