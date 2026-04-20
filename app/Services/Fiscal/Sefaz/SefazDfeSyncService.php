@@ -14,6 +14,8 @@ class SefazDfeSyncService
     public const LAST_RUN_AT_KEY = 'sefaz.distribuicao_dfe.last_run_at';
     public const LAST_SUCCESS_AT_KEY = 'sefaz.distribuicao_dfe.last_success_at';
     public const LAST_STATUS_KEY = 'sefaz.distribuicao_dfe.last_status';
+    public const LAST_STATUS_CODE_KEY = 'sefaz.distribuicao_dfe.last_status_code';
+    public const LAST_STATUS_MESSAGE_KEY = 'sefaz.distribuicao_dfe.last_status_message';
     public const LAST_ERROR_KEY = 'sefaz.distribuicao_dfe.last_error';
 
     public function __construct(
@@ -30,6 +32,8 @@ class SefazDfeSyncService
     {
         CompanyPreference::set(self::LAST_RUN_AT_KEY, now()->toIso8601String(), $company->id);
         CompanyPreference::set(self::LAST_STATUS_KEY, 'running', $company->id);
+        CompanyPreference::set(self::LAST_STATUS_CODE_KEY, null, $company->id);
+        CompanyPreference::set(self::LAST_STATUS_MESSAGE_KEY, null, $company->id);
         CompanyPreference::set(self::LAST_ERROR_KEY, null, $company->id);
 
         $lastNsuPref = CompanyPreference::get(self::LAST_NSU_KEY, $company->id, '0');
@@ -42,7 +46,11 @@ class SefazDfeSyncService
         ]);
 
         $result = $this->distributionService->distribute($company, 'ultimo_nsu', $lastNsu);
+        CompanyPreference::set(self::LAST_STATUS_CODE_KEY, $result->statusCode, $company->id);
+        CompanyPreference::set(self::LAST_STATUS_MESSAGE_KEY, $result->statusMessage, $company->id);
+
         if (! $result->success) {
+            CompanyPreference::set(self::LAST_STATUS_KEY, 'rejected', $company->id);
             $message = trim("{$result->statusCode} - {$result->statusMessage}", ' -');
             throw new RuntimeException($message !== '' ? $message : 'A SEFAZ rejeitou a sincronização DF-e.');
         }

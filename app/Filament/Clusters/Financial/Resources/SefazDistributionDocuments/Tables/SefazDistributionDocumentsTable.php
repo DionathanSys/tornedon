@@ -37,10 +37,8 @@ class SefazDistributionDocumentsTable
                     ->label('Chave')
                     ->tooltip(fn(SefazDistributionDocument $record): string => $record->document_key)
                     ->searchable()
-                    ->limit(20)
                     ->copyable()
                     ->copyMessage('Chave copiada')
-                    ->copyMessageDuration(1500)
                     ->toggleable(),
                 TextColumn::make('status')
                     ->label('Status')

@@ -58,9 +58,19 @@ class DispatchSefazDfeSyncCommand extends Command
         }
 
         try {
-            return CarbonImmutable::parse($lastRunAt)->lte(now()->subMinutes(1));
+            return CarbonImmutable::parse($lastRunAt)->lte(now()->subMinutes($this->resolveCooldownMinutes($company)));
         } catch (\Throwable) {
             return true;
         }
+    }
+
+    private function resolveCooldownMinutes(Company $company): int
+    {
+        $lastStatusCode = CompanyPreference::get(SefazDfeSyncService::LAST_STATUS_CODE_KEY, $company->id);
+        if (is_array($lastStatusCode)) {
+            $lastStatusCode = $lastStatusCode['value'] ?? null;
+        }
+
+        return in_array((string) $lastStatusCode, ['137', '656'], true) ? 70 : 1;
     }
 }
