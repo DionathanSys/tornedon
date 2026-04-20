@@ -24,11 +24,17 @@ class ListAccountPayableInstallments extends ListRecords
                 ->badgeColor('gray'),
             Status::PENDING->value => Tab::make('Pendente')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                    ->where('status', Status::PENDING->value)
-                    ->orWhere('status', Status::PARTIALLY_PAID->value))
+                    ->where(function (Builder $query): Builder {
+                        return $query
+                            ->where('status', Status::PENDING->value)
+                            ->orWhere('status', Status::PARTIALLY_PAID->value);
+                    }))
                 ->badge(static::getResource()::getEloquentQuery()
-                    ->where('status', Status::PENDING->value)
-                    ->orWhere('status', Status::PARTIALLY_PAID->value)
+                    ->where(function (Builder $query): Builder {
+                        return $query
+                            ->where('status', Status::PENDING->value)
+                            ->orWhere('status', Status::PARTIALLY_PAID->value);
+                    })
                     ->count())
                 ->badgeColor(Status::PENDING->color()),
             Status::OVERDUE->value => Tab::make('Vencida')
