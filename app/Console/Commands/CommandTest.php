@@ -38,8 +38,6 @@ class CommandTest extends Command
    {
       $record = FiscalDocument::find(72);
 
-      dd($record);
-
       Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
             'metodo' => __METHOD__ . '@' . __LINE__,
             'record' => $record,
