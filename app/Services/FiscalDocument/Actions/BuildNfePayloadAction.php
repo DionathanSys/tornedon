@@ -194,6 +194,16 @@ class BuildNfePayloadAction
 
             // Totais e cobrança (tax_data)
             if (! empty($fiscalDocument->tax_data)) {
+                $originDocumentKey = data_get($fiscalDocument->tax_data, 'purchase_return_origin.document_key');
+
+                if (is_string($originDocumentKey) && trim($originDocumentKey) !== '') {
+                    $payload['notas_referenciadas'] = [[
+                        'nfe' => [
+                            'chave' => trim($originDocumentKey),
+                        ],
+                    ]];
+                }
+
                 $payload['totais'] = $fiscalDocument->tax_data['totais'] ?? [];
                 if (! empty($fiscalDocument->tax_data['cobranca'])) {
                     $payload['cobranca'] = $fiscalDocument->tax_data['cobranca'];
