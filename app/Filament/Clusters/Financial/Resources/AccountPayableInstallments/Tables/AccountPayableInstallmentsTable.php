@@ -118,7 +118,7 @@ class AccountPayableInstallmentsTable
                 Filter::make('supplier_id')
                     ->label('Fornecedor')
                     ->schema([
-                        SelectPartner::make('supplier_id'),
+                        SelectPartner::make('supplier_id', 'all'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $supplierId = $data['supplier_id'] ?? null;
