@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enum;
 use App\Models\Address;
 use App\Models\CompanyPartner;
+use App\Models\FiscalDocument;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\User;
@@ -35,6 +36,19 @@ class CommandTest extends Command
 
    public function handle()
    {
+      $record = FiscalDocument::find(72);
+
+      dd($record);
+
+      Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'record' => $record,
+            'isNfe' => $record->isNfe(),
+            'operation_type' => $record->operation_type,
+            'status' => $record->status,
+            'canceled' => $record->canceled,
+            'origin_fiscal_document_id' => $record->id,
+        ]);
 
    }
 }
