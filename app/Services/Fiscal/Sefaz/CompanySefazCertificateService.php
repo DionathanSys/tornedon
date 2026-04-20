@@ -141,6 +141,8 @@ class CompanySefazCertificateService
             return $binary;
         }
 
+        $relativeCandidates = $this->candidateRelativeReferences($reference);
+
         foreach ($this->candidateAbsolutePaths($reference) as $absolutePath) {
             if (! is_file($absolutePath) || ! is_readable($absolutePath)) {
                 continue;
@@ -160,17 +162,27 @@ class CompanySefazCertificateService
         }
 
         foreach ($this->candidateDisks() as $disk) {
-            if (! Storage::disk($disk)->exists($reference)) {
-                continue;
+            foreach ($relativeCandidates as $relativeReference) {
+                if (! Storage::disk($disk)->exists($relativeReference)) {
+                    continue;
+                }
+
+                Log::info('CompanySefazCertificateService: certificado encontrado no storage', [
+                    'reference' => $reference,
+                    'resolved_reference' => $relativeReference,
+                    'disk' => $disk,
+                ]);
+
+                return Storage::disk($disk)->get($relativeReference);
             }
-
-            Log::info('CompanySefazCertificateService: certificado encontrado no storage', [
-                'reference' => $reference,
-                'disk' => $disk,
-            ]);
-
-            return Storage::disk($disk)->get($reference);
         }
+
+        Log::error('CompanySefazCertificateService: certificado nao encontrado', [
+            'reference' => $reference,
+            'relative_candidates' => $relativeCandidates,
+            'absolute_candidates' => $this->candidateAbsolutePaths($reference),
+            'candidate_disks' => $this->candidateDisks(),
+        ]);
 
         throw new RuntimeException('O arquivo do certificado A1 configurado não foi encontrado no storage da aplicação.');
     }
@@ -195,13 +207,46 @@ class CompanySefazCertificateService
      */
     private function candidateAbsolutePaths(string $reference): array
     {
-        $normalized = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $reference), DIRECTORY_SEPARATOR);
+        $candidates = [];
 
-        return array_values(array_unique([
-            storage_path('app' . DIRECTORY_SEPARATOR . $normalized),
-            storage_path('app/private' . DIRECTORY_SEPARATOR . $normalized),
-            storage_path('app/public' . DIRECTORY_SEPARATOR . $normalized),
-        ]));
+        foreach ($this->candidateRelativeReferences($reference) as $normalized) {
+            $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $normalized);
+
+            $candidates[] = storage_path($normalized);
+            $candidates[] = storage_path('app' . DIRECTORY_SEPARATOR . $normalized);
+            $candidates[] = storage_path('app/private' . DIRECTORY_SEPARATOR . $normalized);
+            $candidates[] = storage_path('app/public' . DIRECTORY_SEPARATOR . $normalized);
+        }
+
+        return array_values(array_unique(array_map(
+            static fn (string $path): string => str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path),
+            $candidates,
+        )));
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function candidateRelativeReferences(string $reference): array
+    {
+        $normalized = ltrim(str_replace(['\\', '/'], '/', trim($reference)), '/');
+        $candidates = [$normalized];
+
+        foreach (['storage/', 'storage/app/', 'app/', 'app/private/', 'app/public/'] as $prefix) {
+            if (str_starts_with($normalized, $prefix)) {
+                $candidates[] = ltrim(substr($normalized, strlen($prefix)), '/');
+            }
+        }
+
+        if (! str_starts_with($normalized, 'private/')) {
+            $candidates[] = 'private/' . $normalized;
+        }
+
+        if (! str_starts_with($normalized, 'public/')) {
+            $candidates[] = 'public/' . $normalized;
+        }
+
+        return array_values(array_unique(array_filter($candidates, static fn (string $candidate): bool => $candidate !== '')));
     }
 
     /**

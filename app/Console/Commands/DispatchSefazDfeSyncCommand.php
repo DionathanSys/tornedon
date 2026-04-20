@@ -58,7 +58,7 @@ class DispatchSefazDfeSyncCommand extends Command
         }
 
         try {
-            return CarbonImmutable::parse($lastRunAt)->lte(now()->subMinutes(90));
+            return CarbonImmutable::parse($lastRunAt)->lte(now()->subMinutes(1));
         } catch (\Throwable) {
             return true;
         }
