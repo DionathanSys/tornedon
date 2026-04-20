@@ -25,7 +25,7 @@ class GeneratePurchaseReturnAction
             ->requiresConfirmation()
             ->modalHeading('Gerar NF-e de devolução')
             ->modalDescription('Será criado um documento fiscal de saída em rascunho, vinculado a esta nota de entrada.')
-            ->visible(fn (FiscalDocument $record): bool => static::isVisible($record))
+            ->visible(fn(FiscalDocument $record): bool => static::isVisible($record))
             ->action(function (FiscalDocument $record): void {
                 $service = app(PurchaseReturnFiscalDocumentService::class);
                 $returnDocument = $service->generateFromEntry($record, Auth::id());
@@ -60,12 +60,22 @@ class GeneratePurchaseReturnAction
             'origin_fiscal_document_id' => $record->id,
         ]);
 
-        return $record->isNfe()
+        $visible = $record->isNfe()
             && $record->operation_type === OperationType::ENTRADA
             && $record->status !== Status::CANCELLED
             && ! $record->canceled
             && ! FiscalDocumentItemOrigin::query()
                 ->where('origin_fiscal_document_id', $record->id)
                 ->exists();
+
+        dd([
+            $visible,
+            'isNfe' => $record->isNfe(),
+            'operation_type' => $record->operation_type,
+            'status' => $record->status,
+            'canceled' => $record->canceled,
+            'origin_fiscal_document_id' => $record->id
+        ]);
+        return $visible;
     }
 }
