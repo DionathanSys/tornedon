@@ -204,7 +204,7 @@ class ProductForm
                                             ->label('Origem do Preço de Venda')
                                             ->native(false)
                                             ->options(OriginSalePrice::toSelectArray())
-                                            ->default(OriginSalePrice::CALCULATED->value)
+                                            ->default(OriginSalePrice::CALCULATED_II->value)
                                             ->columnSpan(['md' => 1, 'lg' => 2]),
                                         Money::make('sale_price_value')
                                             ->label('Valor de Venda Fixo')
