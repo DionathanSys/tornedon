@@ -20,7 +20,7 @@ class StockMovementService
      |==============================*/
 
     /**
-     * Lista todas as movimentações de estoque de uma empresa.
+     * Lista todas as movimentacoes de estoque de uma empresa.
      *
      * @param int $companyId
      * @param array $filters
@@ -28,7 +28,7 @@ class StockMovementService
      */
     public function list(int $companyId, array $filters = []): Collection
     {
-        Log::debug('StockMovementService: Listando movimentações de estoque', [
+        Log::debug('StockMovementService: Listando movimentacoes de estoque', [
             'metodo'     => __METHOD__ . '@' . __LINE__,
             'company_id' => $companyId,
             'filters'    => $filters,
@@ -69,7 +69,7 @@ class StockMovementService
     }
 
     /**
-     * Busca uma movimentação pelo ID.
+     * Busca uma movimentacao pelo ID.
      *
      * @param int $id
      * @param int|null $companyId
@@ -94,7 +94,7 @@ class StockMovementService
     }
 
     /**
-     * Lista movimentações de um produto específico.
+     * Lista movimentacoes de um produto especifico.
      *
      * @param int $productId
      * @param int $companyId
@@ -114,11 +114,11 @@ class StockMovementService
     }
 
     /* ==============================
-     |  Operações de Escrita
+     |  Operacoes de Escrita
      |==============================*/
 
     /**
-     * Cria uma nova movimentação de estoque.
+     * Cria uma nova movimentacao de estoque.
      *
      * @param array $data
      * @param int $createdBy
@@ -150,14 +150,14 @@ class StockMovementService
                     return null;
                 }
 
-                $this->setSuccess('Movimentação de estoque criada com sucesso');
+                $this->setSuccess('Movimentacao de estoque criada com sucesso');
 
                 return $movement;
             });
         } catch (\Exception $e) {
-            $this->setError('Erro ao criar movimentação de estoque');
+            $this->setError('Erro ao criar movimentacao de estoque');
 
-            Log::error('StockMovementService: Erro ao criar movimentação', [
+            Log::error('StockMovementService: Erro ao criar movimentacao', [
                 'metodo'    => __METHOD__ . '@' . __LINE__,
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
@@ -169,7 +169,7 @@ class StockMovementService
     }
 
     /**
-     * Atualiza uma movimentação de estoque.
+     * Atualiza uma movimentacao de estoque.
      *
      * @param StockMovement $movement
      * @param array $data
@@ -203,14 +203,14 @@ class StockMovementService
                     return null;
                 }
 
-                $this->setSuccess('Movimentação de estoque atualizada com sucesso');
+                $this->setSuccess('Movimentacao de estoque atualizada com sucesso');
 
                 return $updated;
             });
         } catch (\Exception $e) {
-            $this->setError('Erro ao atualizar movimentação de estoque');
+            $this->setError('Erro ao atualizar movimentacao de estoque');
 
-            Log::error('StockMovementService: Erro ao atualizar movimentação', [
+            Log::error('StockMovementService: Erro ao atualizar movimentacao', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'exception'          => $e->getMessage(),
@@ -223,7 +223,7 @@ class StockMovementService
     }
 
     /**
-     * Exclui (soft delete) uma movimentação de estoque.
+     * Exclui uma movimentacao de estoque.
      *
      * @param StockMovement $movement
      * @return bool
@@ -254,9 +254,9 @@ class StockMovementService
                     return false;
                 }
 
-                $this->setSuccess('Movimentação de estoque excluída com sucesso');
+                $this->setSuccess('Movimentacao de estoque excluida com sucesso');
 
-                Log::info('StockMovementService: Movimentação de estoque excluída com sucesso', [
+                Log::info('StockMovementService: Movimentacao de estoque excluida com sucesso', [
                     'metodo'             => __METHOD__ . '@' . __LINE__,
                     'stock_movement_id'  => $movement->id,
                 ]);
@@ -264,9 +264,9 @@ class StockMovementService
                 return $result;
             });
         } catch (\Exception $e) {
-            $this->setError('Erro ao excluir movimentação de estoque');
+            $this->setError('Erro ao excluir movimentacao de estoque');
 
-            Log::error('StockMovementService: Erro ao excluir movimentação', [
+            Log::error('StockMovementService: Erro ao excluir movimentacao', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'stock_movement_id'  => $movement->id,
                 'exception'          => $e->getMessage(),
@@ -278,7 +278,7 @@ class StockMovementService
     }
 
     /**
-     * Exclui permanentemente (force delete) uma movimentação de estoque.
+     * Exclui permanentemente (force delete) uma movimentacao de estoque.
      *
      * @param StockMovement $movement
      * @return bool
@@ -309,9 +309,9 @@ class StockMovementService
                     return false;
                 }
 
-                $this->setSuccess('Movimentação de estoque removida permanentemente com sucesso');
+                $this->setSuccess('Movimentacao de estoque removida permanentemente com sucesso');
 
-                Log::info('StockMovementService: Movimentação removida permanentemente', [
+                Log::info('StockMovementService: Movimentacao removida permanentemente', [
                     'metodo'             => __METHOD__ . '@' . __LINE__,
                     'stock_movement_id'  => $movement->id,
                 ]);
@@ -319,7 +319,7 @@ class StockMovementService
                 return $result;
             });
         } catch (\Exception $e) {
-            $this->setError('Erro ao remover permanentemente movimentação de estoque');
+            $this->setError('Erro ao remover permanentemente movimentacao de estoque');
 
             Log::error('StockMovementService: Erro ao remover permanentemente', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
@@ -329,51 +329,6 @@ class StockMovementService
             ]);
 
             return false;
-        }
-    }
-
-    /**
-     * Restaura uma movimentação de estoque excluída (soft delete).
-     *
-     * @param int $id
-     * @return StockMovement|null
-     */
-    public function restore(int $id): ?StockMovement
-    {
-        $this->resetResponse();
-
-        try {
-            return DB::transaction(function () use ($id) {
-                $movement = StockMovement::onlyTrashed()->find($id);
-
-                if (!$movement) {
-                    $this->setError('Movimentação de estoque não encontrada', [], 404);
-                    return null;
-                }
-
-                $movement->restore();
-                $movement->refresh();
-
-                $this->setSuccess('Movimentação de estoque restaurada com sucesso');
-
-                Log::info('StockMovementService: Movimentação restaurada com sucesso', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'stock_movement_id'  => $movement->id,
-                ]);
-
-                return $movement;
-            });
-        } catch (\Exception $e) {
-            $this->setError('Erro ao restaurar movimentação de estoque');
-
-            Log::error('StockMovementService: Erro ao restaurar movimentação', [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
-                'id'        => $id,
-                'exception' => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-            ]);
-
-            return null;
         }
     }
 }

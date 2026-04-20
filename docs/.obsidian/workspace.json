@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Tasks App Gestor.md",
+                "file": "fluxo-finalizacao-venda-produto.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Tasks App Gestor"
+              "title": "fluxo-finalizacao-venda-produto"
             }
           },
           {
@@ -121,8 +121,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -230,9 +229,10 @@
   },
   "active": "168b0b2ebcdf7634",
   "lastOpenFiles": [
+    "Tasks App Gestor.md",
+    "fluxo-finalizacao-venda-produto.md",
     "Plano Importação DF-e.md",
     "financeiro-contas-cash-extrato.md",
-    "Tasks App Gestor.md",
     "Sem título.canvas",
     "Sem título 2.md",
     "fluxo-emissao-notas-fiscais.md",

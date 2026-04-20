@@ -2,9 +2,8 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk;
 
-use App\Enum\StockMovement\Type;
 use App\Models\ProductStock;
-use App\Models\StockMovement;
+use App\Services\StockMovement\Actions\CalculateProductStockSnapshotAction;
 use Filament\Actions\BulkAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -17,8 +16,6 @@ use Illuminate\Support\Facades\Log;
  */
 final class CheckProductStockBulkAction
 {
-    private const TOLERANCE = 0.001;
-
     public static function make(): BulkAction
     {
         return BulkAction::make('checkProductStock')
@@ -27,10 +24,12 @@ final class CheckProductStockBulkAction
             ->color('info')
             ->requiresConfirmation()
             ->modalHeading('Verificar Consistência do Estoque')
-            ->modalDescription('Analisa os estoques vinculados às movimentações selecionadas e reporta divergências entre os saldos armazenados e o recálculo por movimentações. Nenhum dado será alterado.')
+            ->modalDescription('Analisa os estoques vinculados às movimentações selecionadas e reporta divergências entre saldo total, saldo reservado, custo e metadados do último movimento. Nenhum dado será alterado.')
             ->modalSubmitActionLabel('Verificar')
             ->deselectRecordsAfterCompletion()
             ->action(function (Collection $records): void {
+                $calculator = app(CalculateProductStockSnapshotAction::class);
+
                 // Coleta IDs únicos de ProductStock das movimentações selecionadas
                 $stockIds = $records->pluck('product_stock_id')->unique()->filter()->values();
 
@@ -52,40 +51,21 @@ final class CheckProductStockBulkAction
                     }
 
                     $totalChecked++;
-                    $expected = self::calculateExpected($stockId);
+                    $expected = $calculator->calculate($stock);
+                    $diff = $calculator->diff($stock, $expected);
 
-                    $storedQty = round((float) $stock->quantity_total, 3);
-                    $expQty    = round($expected['quantity_total'], 3);
-                    $storedAvg = round((float) $stock->average_cost, 4);
-                    $expAvg    = round($expected['average_cost'], 4);
-
-                    $qtyDiv = abs($storedQty - $expQty) > self::TOLERANCE;
-                    $avgDiv = abs($storedAvg - $expAvg) > self::TOLERANCE;
-
-                    if ($qtyDiv || $avgDiv) {
+                    if ($diff !== []) {
                         $productName = $stock->product?->name ?? "Estoque #{$stock->id}";
                         $lines = ["**{$productName}** (stock #{$stock->id})"];
 
-                        if ($qtyDiv) {
-                            $lines[] = "- Qtde total: armazenado=" . number_format($storedQty, 3, ',', '.') .
-                                ' | esperado=' . number_format($expQty, 3, ',', '.') .
-                                ' | diff=' . number_format($storedQty - $expQty, 3, ',', '.');
-                        }
-                        if ($avgDiv) {
-                            $lines[] = "- Custo médio: armazenado=R$ " . number_format($storedAvg, 2, ',', '.') .
-                                ' | esperado=R$ ' . number_format($expAvg, 2, ',', '.') .
-                                ' | diff=R$ ' . number_format($storedAvg - $expAvg, 2, ',', '.');
-                        }
+                        self::appendDiffLines($lines, $diff);
 
                         $divergences[] = implode("\n", $lines);
 
                         Log::warning('CheckProductStockBulkAction: Divergência detectada', [
                             'product_stock_id'       => $stock->id,
                             'product_id'             => $stock->product_id,
-                            'stored_qty_total'       => $storedQty,
-                            'expected_qty_total'     => $expQty,
-                            'stored_average_cost'    => $storedAvg,
-                            'expected_average_cost'  => $expAvg,
+                            'diff'                   => $diff,
                         ]);
                     }
                 }
@@ -109,52 +89,63 @@ final class CheckProductStockBulkAction
             });
     }
 
-    // ── Lógica de cálculo (espelho do ReconcileProductStockCommand) ──────────
-
-    private static function calculateExpected(int $productStockId): array
+    /**
+     * @param  array<int, string>  $lines
+     * @param  array<string, array{stored:mixed, expected:mixed}>  $diff
+     */
+    private static function appendDiffLines(array &$lines, array $diff): void
     {
-        $movements = StockMovement::where('product_stock_id', $productStockId)
-            ->orderBy('created_at', 'asc')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $quantityTotal    = 0.0;
-        $totalInboundCost  = 0.0;
-        $totalInboundQty   = 0.0;
-        $lastCost          = null;
-        $lastSalePrice     = null;
-
-        foreach ($movements as $movement) {
-            /** @var Type $type */
-            $type      = $movement->type;
-            $quantity  = (float) $movement->quantity;
-            $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
-
-            $delta = $type->applyDelta($quantity);
-            $quantityTotal += $delta;
-
-            if ($type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
-                $totalInboundQty  += abs($quantity);
-                $totalInboundCost += abs($quantity) * $unitPrice;
-                $lastCost = $unitPrice;
-            } elseif ($type === Type::ADJUSTMENT && $delta > 0 && $unitPrice !== null && $unitPrice > 0) {
-                $totalInboundQty  += $delta;
-                $totalInboundCost += $delta * $unitPrice;
-                $lastCost = $unitPrice;
-            }
-
-            if ($type->isOutbound() && $unitPrice !== null && $unitPrice > 0) {
-                $lastSalePrice = $unitPrice;
-            }
+        if (isset($diff['quantity_total'])) {
+            $stored = (float) $diff['quantity_total']['stored'];
+            $expected = (float) $diff['quantity_total']['expected'];
+            $lines[] = '- Qtde total: armazenado=' . number_format($stored, 3, ',', '.')
+                . ' | esperado=' . number_format($expected, 3, ',', '.')
+                . ' | diff=' . number_format($stored - $expected, 3, ',', '.');
         }
 
-        return [
-            'quantity_total'  => round($quantityTotal, 3),
-            'average_cost'    => $totalInboundQty > 0
-                ? round($totalInboundCost / $totalInboundQty, 4)
-                : 0.0,
-            'last_cost'      => $lastCost,
-            'last_sale_price' => $lastSalePrice,
-        ];
+        if (isset($diff['quantity_reserved'])) {
+            $stored = (float) $diff['quantity_reserved']['stored'];
+            $expected = (float) $diff['quantity_reserved']['expected'];
+            $lines[] = '- Qtde reservada: armazenado=' . number_format($stored, 3, ',', '.')
+                . ' | esperado=' . number_format($expected, 3, ',', '.')
+                . ' | diff=' . number_format($stored - $expected, 3, ',', '.');
+        }
+
+        if (isset($diff['average_cost'])) {
+            $stored = (float) $diff['average_cost']['stored'];
+            $expected = (float) $diff['average_cost']['expected'];
+            $lines[] = '- Custo médio: armazenado=R$ ' . number_format($stored, 2, ',', '.')
+                . ' | esperado=R$ ' . number_format($expected, 2, ',', '.')
+                . ' | diff=R$ ' . number_format($stored - $expected, 2, ',', '.');
+        }
+
+        if (isset($diff['last_cost'])) {
+            $lines[] = '- Último custo: armazenado=' . self::formatMoneyOrDash($diff['last_cost']['stored'])
+                . ' | esperado=' . self::formatMoneyOrDash($diff['last_cost']['expected']);
+        }
+
+        if (isset($diff['last_sale_price'])) {
+            $lines[] = '- Último preço de venda: armazenado=' . self::formatMoneyOrDash($diff['last_sale_price']['stored'])
+                . ' | esperado=' . self::formatMoneyOrDash($diff['last_sale_price']['expected']);
+        }
+
+        if (isset($diff['last_movement_date'])) {
+            $lines[] = '- Data do último movimento: armazenado=' . ($diff['last_movement_date']['stored'] ?? '-')
+                . ' | esperado=' . ($diff['last_movement_date']['expected'] ?? '-');
+        }
+
+        if (isset($diff['last_movement_type'])) {
+            $lines[] = '- Tipo do último movimento: armazenado=' . ($diff['last_movement_type']['stored'] ?? '-')
+                . ' | esperado=' . ($diff['last_movement_type']['expected'] ?? '-');
+        }
+    }
+
+    private static function formatMoneyOrDash(mixed $value): string
+    {
+        if ($value === null) {
+            return '-';
+        }
+
+        return 'R$ ' . number_format((float) $value, 2, ',', '.');
     }
 }

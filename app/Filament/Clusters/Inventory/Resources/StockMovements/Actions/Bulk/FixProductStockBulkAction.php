@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk;
 
 use App\Models\ProductStock;
+use App\Services\StockMovement\Actions\CalculateProductStockSnapshotAction;
 use App\Services\StockMovement\Actions\RecalculateProductStockFromMovementsAction;
 use Filament\Actions\BulkAction;
 use Filament\Notifications\Notification;
@@ -24,7 +25,7 @@ final class FixProductStockBulkAction
             ->color('warning')
             ->requiresConfirmation()
             ->modalHeading('Corrigir Saldos de Estoque')
-            ->modalDescription('Recalcula os saldos (quantidade disponível, custo médio, último custo) dos estoques vinculados às movimentações selecionadas, usando as movimentações ativas como fonte da verdade. Esta operação é irreversível.')
+            ->modalDescription('Recalcula saldo total, saldo reservado, custo médio e metadados do último movimento dos estoques vinculados às movimentações selecionadas, usando as movimentações ativas como fonte da verdade. Esta operação é irreversível.')
             ->modalSubmitActionLabel('Corrigir')
             ->modalSubmitAction(fn($action) => $action->color('warning'))
             ->deselectRecordsAfterCompletion()
@@ -40,13 +41,15 @@ final class FixProductStockBulkAction
                     return;
                 }
 
-                $fixed  = 0;
-                $failed = 0;
-                $action = new RecalculateProductStockFromMovementsAction();
+                $fixed      = 0;
+                $skipped    = 0;
+                $failed     = 0;
+                $action     = new RecalculateProductStockFromMovementsAction();
+                $calculator = app(CalculateProductStockSnapshotAction::class);
 
                 foreach ($stockIds as $stockId) {
                     try {
-                        DB::transaction(function () use ($stockId, $action, &$fixed): void {
+                        DB::transaction(function () use ($stockId, $action, $calculator, &$fixed, &$skipped): void {
                             $stock = ProductStock::where('id', $stockId)
                                 ->lockForUpdate()
                                 ->first();
@@ -55,10 +58,19 @@ final class FixProductStockBulkAction
                                 return;
                             }
 
+                            $expected = $calculator->calculate($stock);
+                            $diff = $calculator->diff($stock, $expected);
+
+                            if ($diff === []) {
+                                $skipped++;
+                                return;
+                            }
+
                             $result = $action->recalculate($stock);
 
                             Log::info('FixProductStockBulkAction: Estoque recalculado', [
                                 'product_stock_id' => $stockId,
+                                'diff'             => $diff,
                                 'result'           => $result,
                             ]);
 
@@ -78,12 +90,12 @@ final class FixProductStockBulkAction
 
                 if ($failed === 0) {
                     Notification::make()
-                        ->title("✓ {$fixed}/{$total} estoque(s) recalculado(s) com sucesso.")
+                        ->title("✓ {$fixed} corrigido(s), {$skipped} já consistente(s), de {$total} estoque(s).")
                         ->success()
                         ->send();
                 } else {
                     Notification::make()
-                        ->title("{$fixed} corrido(s), {$failed} falha(s) de {$total} estoque(s).")
+                        ->title("{$fixed} corrigido(s), {$skipped} consistente(s), {$failed} falha(s) de {$total} estoque(s).")
                         ->body('Verifique os logs para detalhes das falhas.')
                         ->warning()
                         ->persistent()

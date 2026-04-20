@@ -3,8 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ProductStock;
-use App\Models\StockMovement;
-use App\Enum\StockMovement\Type;
+use App\Services\StockMovement\Actions\CalculateProductStockSnapshotAction;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,6 +23,16 @@ use Illuminate\Support\Facades\Log;
  */
 class ReconcileProductStockCommand extends Command
 {
+    private const FIELDS_TO_FIX = [
+        'quantity_total',
+        'quantity_reserved',
+        'average_cost',
+        'last_cost',
+        'last_sale_price',
+        'last_movement_date',
+        'last_movement_type',
+    ];
+
     protected $signature = 'stock:reconcile
         {--company= : ID da empresa (opcional, processa todas se omitido)}
         {--stock=   : ID de um ProductStock específico (opcional)}
@@ -35,9 +44,12 @@ class ReconcileProductStockCommand extends Command
     /** Tolerância para comparação de floats */
     private float $tolerance;
 
+    private CalculateProductStockSnapshotAction $calculator;
+
     public function handle(): int
     {
         $this->tolerance = (float) $this->option('tolerance');
+        $this->calculator = app(CalculateProductStockSnapshotAction::class);
         $fix             = (bool)  $this->option('fix');
         $companyId       = $this->option('company')  ? (int) $this->option('company')  : null;
         $stockId         = $this->option('stock')     ? (int) $this->option('stock')    : null;
@@ -109,49 +121,20 @@ class ReconcileProductStockCommand extends Command
 
     private function checkStock(ProductStock $stock, bool $fix): array
     {
-        $expected = $this->calculateExpected($stock->id);
-
-        $storedQty = round((float) $stock->quantity_total, 3);
-        $expQty    = round($expected['quantity_total'], 3);
-
-        $storedAvg = round((float) $stock->average_cost, 4);
-        $expAvg    = round($expected['average_cost'], 4);
-
-        $qtyDivergence = abs($storedQty - $expQty) > $this->tolerance;
-        $avgDivergence = abs($storedAvg - $expAvg) > $this->tolerance;
-
-        $hasDivergence = $qtyDivergence || $avgDivergence;
+        $expected = $this->calculator->calculate($stock);
+        $diff = $this->calculator->diff($stock, $expected, $this->tolerance);
+        $hasDivergence = $diff !== [];
 
         if ($hasDivergence) {
             $this->newLine();
             $this->warn("  ⚠  ProductStock #{$stock->id} (produto #{$stock->product_id}, empresa #{$stock->company_id})");
-
-            if ($qtyDivergence) {
-                $this->line(sprintf(
-                    '     qty_total    : armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
-                    number_format($storedQty, 3, ',', '.'),
-                    number_format($expQty, 3, ',', '.'),
-                    number_format($storedQty - $expQty, 3, ',', '.'),
-                ));
-            }
-
-            if ($avgDivergence) {
-                $this->line(sprintf(
-                    '     average_cost : armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
-                    number_format($storedAvg, 4, ',', '.'),
-                    number_format($expAvg, 4, ',', '.'),
-                    number_format($storedAvg - $expAvg, 4, ',', '.'),
-                ));
-            }
+            $this->renderDiff($diff);
 
             Log::warning('ReconcileProductStockCommand: Divergência detectada', [
                 'product_stock_id'       => $stock->id,
                 'product_id'             => $stock->product_id,
                 'company_id'             => $stock->company_id,
-                'stored_qty_total'       => $storedQty,
-                'expected_qty_total'     => $expQty,
-                'stored_average_cost'    => $storedAvg,
-                'expected_average_cost'  => $expAvg,
+                'diff'                   => $diff,
             ]);
         }
 
@@ -167,14 +150,7 @@ class ReconcileProductStockCommand extends Command
                         return;
                     }
 
-                    $locked->update([
-                        'quantity_total'     => $expected['quantity_total'],
-                        'average_cost'       => $expected['average_cost'],
-                        'last_cost'          => $expected['last_cost'],
-                        'last_sale_price'    => $expected['last_sale_price'],
-                        'last_movement_date' => $expected['last_movement_date'],
-                        'last_movement_type' => $expected['last_movement_type'],
-                    ]);
+                    $locked->update($this->onlyFixableFields($expected));
                 });
 
                 $this->line('     <fg=green>→ Corrigido com sucesso.</>');
@@ -200,66 +176,61 @@ class ReconcileProductStockCommand extends Command
         ];
     }
 
-    /* ─────────────────────────────────────────────────────────── */
-
     /**
-     * Recalcula os valores esperados de um ProductStock somando todas
-     * as movimentações ativas, sem alterar nada no banco.
+     * @param  array<string, array{stored:mixed, expected:mixed}>  $diff
      */
-    private function calculateExpected(int $productStockId): array
+    private function renderDiff(array $diff): void
     {
-        $movements = StockMovement::where('product_stock_id', $productStockId)
-            ->orderBy('created_at', 'asc')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $quantityTotal    = 0.0;
-        $totalInboundCost  = 0.0;
-        $totalInboundQty   = 0.0;
-
-        $lastCost         = null;
-        $lastSalePrice    = null;
-        $lastMovementDate = null;
-        $lastMovementType = null;
-
-        foreach ($movements as $movement) {
-            /** @var Type $type */
-            $type      = $movement->type;
-            $quantity  = (float) $movement->quantity;
-            $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
-
-            $delta = $type->applyDelta($quantity);
-            $quantityTotal += $delta;
-
-            if ($type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
-                $totalInboundQty  += abs($quantity);
-                $totalInboundCost += abs($quantity) * $unitPrice;
-                $lastCost = $unitPrice;
-            } elseif ($type === Type::ADJUSTMENT && $delta > 0 && $unitPrice !== null && $unitPrice > 0) {
-                $totalInboundQty  += $delta;
-                $totalInboundCost += $delta * $unitPrice;
-                $lastCost = $unitPrice;
-            }
-
-            if ($type->isOutbound() && $unitPrice !== null && $unitPrice > 0) {
-                $lastSalePrice = $unitPrice;
-            }
-
-            $lastMovementDate = $movement->created_at->toDateString();
-            $lastMovementType = $type->value;
+        if (isset($diff['quantity_total'])) {
+            $stored = (float) $diff['quantity_total']['stored'];
+            $expected = (float) $diff['quantity_total']['expected'];
+            $this->line(sprintf(
+                '     qty_total        : armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
+                number_format($stored, 3, ',', '.'),
+                number_format($expected, 3, ',', '.'),
+                number_format($stored - $expected, 3, ',', '.'),
+            ));
         }
 
-        $averageCost = $totalInboundQty > 0
-            ? round($totalInboundCost / $totalInboundQty, 4)
-            : 0.0;
+        if (isset($diff['quantity_reserved'])) {
+            $stored = (float) $diff['quantity_reserved']['stored'];
+            $expected = (float) $diff['quantity_reserved']['expected'];
+            $this->line(sprintf(
+                '     qty_reserved     : armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
+                number_format($stored, 3, ',', '.'),
+                number_format($expected, 3, ',', '.'),
+                number_format($stored - $expected, 3, ',', '.'),
+            ));
+        }
 
-        return [
-            'quantity_total'     => round($quantityTotal, 3),
-            'average_cost'       => $averageCost,
-            'last_cost'          => $lastCost,
-            'last_sale_price'    => $lastSalePrice,
-            'last_movement_date' => $lastMovementDate,
-            'last_movement_type' => $lastMovementType,
-        ];
+        if (isset($diff['average_cost'])) {
+            $stored = (float) $diff['average_cost']['stored'];
+            $expected = (float) $diff['average_cost']['expected'];
+            $this->line(sprintf(
+                '     average_cost     : armazenado=<fg=red>%s</> | esperado=<fg=green>%s</> | diff=%s',
+                number_format($stored, 4, ',', '.'),
+                number_format($expected, 4, ',', '.'),
+                number_format($stored - $expected, 4, ',', '.'),
+            ));
+        }
+
+        foreach (['last_cost', 'last_sale_price', 'last_movement_date', 'last_movement_type'] as $field) {
+            if (isset($diff[$field])) {
+                $this->line(sprintf(
+                    '     %-16s: armazenado=<fg=red>%s</> | esperado=<fg=green>%s</>',
+                    $field,
+                    $diff[$field]['stored'] ?? '-',
+                    $diff[$field]['expected'] ?? '-',
+                ));
+            }
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function onlyFixableFields(array $expected): array
+    {
+        return array_intersect_key($expected, array_flip(self::FIELDS_TO_FIX));
     }
 }

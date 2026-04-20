@@ -35,20 +35,24 @@ class SefazDistributionDocumentsTable
                     ->sortable(),
                 TextColumn::make('document_key')
                     ->label('Chave')
+                    ->tooltip(fn(SefazDistributionDocument $record): string => $record->document_key)
                     ->searchable()
                     ->limit(20)
+                    ->copyable()
+                    ->copyMessage('Chave copiada')
+                    ->copyMessageDuration(1500)
                     ->toggleable(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn (Status $state): string => $state->description())
-                    ->color(fn (Status $state): string => $state->color())
+                    ->formatStateUsing(fn(Status $state): string => $state->description())
+                    ->color(fn(Status $state): string => $state->color())
                     ->sortable(),
                 TextColumn::make('manifestation_status')
                     ->label('Manifestação')
                     ->badge()
-                    ->formatStateUsing(fn (ManifestationStatus $state): string => $state->description())
-                    ->color(fn (ManifestationStatus $state): string => $state->color())
+                    ->formatStateUsing(fn(ManifestationStatus $state): string => $state->description())
+                    ->color(fn(ManifestationStatus $state): string => $state->color())
                     ->sortable(),
                 IconColumn::make('full_xml_available')
                     ->label('XML completo')
@@ -75,11 +79,11 @@ class SefazDistributionDocumentsTable
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->options(collect(Status::cases())->mapWithKeys(fn (Status $status) => [
+                    ->options(collect(Status::cases())->mapWithKeys(fn(Status $status) => [
                         $status->value => $status->description(),
                     ])->all()),
                 SelectFilter::make('manifestation_status')
-                    ->options(collect(ManifestationStatus::cases())->mapWithKeys(fn (ManifestationStatus $status) => [
+                    ->options(collect(ManifestationStatus::cases())->mapWithKeys(fn(ManifestationStatus $status) => [
                         $status->value => $status->description(),
                     ])->all()),
             ])
@@ -89,7 +93,7 @@ class SefazDistributionDocumentsTable
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->visible(fn (SefazDistributionDocument $record): bool => ! $record->full_xml_available
+                    ->visible(fn(SefazDistributionDocument $record): bool => ! $record->full_xml_available
                         && in_array($record->manifestation_status, [
                             ManifestationStatus::FAILED,
                             ManifestationStatus::REJECTED,
