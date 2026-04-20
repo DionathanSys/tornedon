@@ -55,16 +55,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Plano Importação DF-e.md",
+                "file": "Tasks App Gestor.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Plano Importação DF-e"
+              "title": "Tasks App Gestor"
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -227,11 +227,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "168b0b2ebcdf7634",
+  "active": "017d10adea4eaaf7",
   "lastOpenFiles": [
-    "Tasks App Gestor.md",
-    "fluxo-finalizacao-venda-produto.md",
     "Plano Importação DF-e.md",
+    "fluxo-finalizacao-venda-produto.md",
+    "Tasks App Gestor.md",
     "financeiro-contas-cash-extrato.md",
     "Sem título.canvas",
     "Sem título 2.md",

@@ -50,6 +50,16 @@ class GeneratePurchaseReturnAction
 
     public static function isVisible(FiscalDocument $record): bool
     {
+        Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'record' => $record,
+            'isNfe' => $record->isNfe(),
+            'operation_type' => $record->operation_type,
+            'status' => $record->status,
+            'canceled' => $record->canceled,
+            'origin_fiscal_document_id' => $record->id,
+        ]);
+
         return $record->isNfe()
             && $record->operation_type === OperationType::ENTRADA
             && $record->status !== Status::CANCELLED
