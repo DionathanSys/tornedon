@@ -21,7 +21,6 @@ class FiscalDocumentsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('operation_type', OperationType::ENTRADA))
             ->columns([
                 TextColumn::make('document_number')
                     ->label('Número NF')

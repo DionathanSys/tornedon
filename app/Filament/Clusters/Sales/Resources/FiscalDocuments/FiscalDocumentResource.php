@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments;
 
+use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\CreateFiscalDocument;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\ListFiscalDocuments;
@@ -15,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class FiscalDocumentResource extends Resource
 {
@@ -33,6 +35,15 @@ class FiscalDocumentResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return FiscalDocumentForm::configure($schema);
+    }
+
+    /**
+     * Restringe o resource apenas a notas de entrada (operation_type = ENTRADA).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->where('operation_type', OperationType::SAIDA->value);
     }
 
     public static function table(Table $table): Table
