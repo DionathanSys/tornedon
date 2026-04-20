@@ -49,7 +49,8 @@ class FiscalDocumentForm
                             ->label('Confirmada em')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->visibleOn('edit')
-                            ->formatStateUsing(fn(?Carbon $state) => $state?->format('d/m/Y H:i:s') ?? 'Não confirmada')
+                            ->formatStateUsing(fn(?Carbon $state) => $state?->format('d/m/Y H:i:s'))
+                            ->placeholder('Não confirmada')
                             ->badge(),
                     ]),
                 Section::make('Identificação')
