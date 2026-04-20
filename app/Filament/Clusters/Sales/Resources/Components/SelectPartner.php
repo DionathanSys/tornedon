@@ -31,9 +31,9 @@ class SelectPartner
                     ->getLabelForSelect((int) $value)
             );
 
-        if ($type !== 'customer') {
-            return $select;
-        }
+        // if ($type !== 'customer') {
+        //     return $select;
+        // }
 
         return $select
             ->createOptionForm(QuickCreateCustomerPartnerForm::schema())
