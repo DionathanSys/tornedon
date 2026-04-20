@@ -194,4 +194,87 @@ class BuildNfePayloadActionTest extends TestCase
         $this->assertSame('5202', $payload['itens'][0]['cfop']);
         $this->assertSame('00', $payload['itens'][0]['imposto']['icms']['situacao_tributaria']);
     }
+
+    public function test_it_preserves_preview_number_set_in_memory_while_reloading_relations(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Preview',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Fornecedor Preview',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => null,
+            'document_series' => null,
+            'operation_nature' => OperationNature::DEVOLUCAO_COMPRA->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::DEVOLUCAO->value,
+            'is_final_consumer' => false,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-PREV-001',
+            'name' => 'Produto Preview',
+            'unit' => \App\Enum\Product\Unit::UN->value,
+            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        FiscalDocumentItem::query()->create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+            'cfop_code' => '5202',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'included_in_total' => true,
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => ['situacao_tributaria' => '00'],
+                    'pis' => ['situacao_tributaria' => '01'],
+                    'cofins' => ['situacao_tributaria' => '01'],
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $document->document_number = '1';
+        $document->document_series = '1';
+
+        $payload = app(BuildNfePayloadAction::class)->execute($document);
+
+        $this->assertNotNull($payload);
+        $this->assertSame(1, $payload['numero']);
+        $this->assertSame('1', $payload['serie']);
+    }
 }

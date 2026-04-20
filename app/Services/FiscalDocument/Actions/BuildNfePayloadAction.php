@@ -38,12 +38,13 @@ class BuildNfePayloadAction
                 'natureza'           => $fiscalDocument->operation_nature,
             ]);
 
-            $fiscalDocument->refresh();
-            $fiscalDocument->load([
-                'company',
-                'customer.address',
-                'items.product',
-            ]);
+            $company = $fiscalDocument->company()->first();
+            $customer = $fiscalDocument->customer()->with('address')->first();
+            $items = $fiscalDocument->items()->with('product')->get();
+
+            $fiscalDocument->setRelation('company', $company);
+            $fiscalDocument->setRelation('customer', $customer);
+            $fiscalDocument->setRelation('items', $items);
 
             $company  = $fiscalDocument->company;
             $customer = $fiscalDocument->customer;

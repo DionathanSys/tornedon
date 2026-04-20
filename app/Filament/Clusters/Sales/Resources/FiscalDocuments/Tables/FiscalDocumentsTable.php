@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Tables;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Support\Actions\FiscalDocumentRecordActions;
@@ -67,6 +68,7 @@ class FiscalDocumentsTable
 
                 Tables\Columns\TextColumn::make('operation_nature')
                     ->label('Natureza')
+                    ->formatStateUsing(fn(OperationNature $state) => $state->description())
                     ->limit(25)
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: true),
