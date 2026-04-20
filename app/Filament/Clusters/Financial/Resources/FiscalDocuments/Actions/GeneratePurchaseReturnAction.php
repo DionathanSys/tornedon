@@ -68,14 +68,6 @@ class GeneratePurchaseReturnAction
                 ->where('origin_fiscal_document_id', $record->id)
                 ->exists();
 
-        dd([
-            $visible,
-            'isNfe' => $record->isNfe(),
-            'operation_type' => $record->operation_type,
-            'status' => $record->status,
-            'canceled' => $record->canceled,
-            'origin_fiscal_document_id' => $record->id
-        ]);
         return $visible;
     }
 }
