@@ -7,6 +7,7 @@ use App\Services\Fiscal\NfeConfigService;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class SefazRecepcaoEventoService
@@ -15,7 +16,7 @@ class SefazRecepcaoEventoService
     private const WSDL_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4';
     private const NFE_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe';
     private const DS_NAMESPACE = 'http://www.w3.org/2000/09/xmldsig#';
-    private const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEventoNF';
+    private const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento';
     private const EVENT_TYPE_SCIENCE = '210210';
 
     public function __construct(
@@ -82,7 +83,7 @@ class SefazRecepcaoEventoService
         $document->appendChild($envelope);
         $body = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Body');
         $envelope->appendChild($body);
-        $request = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeRecepcaoEventoNF');
+        $request = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeRecepcaoEvento');
         $body->appendChild($request);
         $dadosMsg = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeDadosMsg');
         $request->appendChild($dadosMsg);
@@ -200,6 +201,13 @@ class SefazRecepcaoEventoService
         }
 
         if ($httpCode >= 400) {
+            Log::error('SefazRecepcaoEventoService: resposta HTTP de erro na manifestacao DF-e', [
+                'endpoint' => $endpoint,
+                'http_code' => $httpCode,
+                'response_excerpt' => is_string($response) ? mb_substr(trim($response), 0, 1000) : null,
+                'request_excerpt' => mb_substr($requestXml, 0, 1000),
+            ]);
+
             throw new RuntimeException("A SEFAZ respondeu com HTTP {$httpCode} na manifestação DF-e.");
         }
 

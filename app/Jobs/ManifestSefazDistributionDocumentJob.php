@@ -17,11 +17,14 @@ class ManifestSefazDistributionDocumentJob implements ShouldBeUnique, ShouldQueu
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    private const MAX_TECHNICAL_ATTEMPTS = 3;
+
     public int $tries = 1;
     public int $uniqueFor = 3600;
 
     public function __construct(
         private readonly int $distributionDocumentId,
+        private readonly int $attemptNumber = 1,
     ) {
     }
 
@@ -43,6 +46,7 @@ class ManifestSefazDistributionDocumentJob implements ShouldBeUnique, ShouldQueu
             $documentService->markManifestationSent($document, [
                 'requested_at' => now()->toIso8601String(),
                 'event_type' => '210210',
+                'attempt_number' => $this->attemptNumber,
             ]);
 
             $result = $recepcaoEventoService->manifestScience($document->company, $document->document_key);
@@ -53,13 +57,27 @@ class ManifestSefazDistributionDocumentJob implements ShouldBeUnique, ShouldQueu
                     ->delay(now()->addMinutes(5));
             }
         } catch (\Throwable $exception) {
-            $documentService->markManifestationFailure($document, $exception->getMessage());
+            $shouldRetry = $this->attemptNumber < self::MAX_TECHNICAL_ATTEMPTS;
+
+            $documentService->markManifestationFailure(
+                $document,
+                $exception->getMessage(),
+                $this->attemptNumber,
+                $shouldRetry,
+            );
+
+            if ($shouldRetry) {
+                dispatch(new self($document->id, $this->attemptNumber + 1))
+                    ->delay(now()->addMinutes($this->attemptNumber * 10));
+            }
 
             Log::error('ManifestSefazDistributionDocumentJob: falha ao manifestar documento', [
                 'distribution_document_id' => $document->id,
                 'company_id' => $document->company_id,
                 'document_key' => $document->document_key,
                 'error' => $exception->getMessage(),
+                'attempt_number' => $this->attemptNumber,
+                'will_retry' => $shouldRetry,
             ]);
         }
     }

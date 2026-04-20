@@ -125,12 +125,20 @@ class SefazDistributionDocumentService
                 : Status::ERROR,
             'manifestation_status' => $accepted ? ManifestationStatus::ACCEPTED : ManifestationStatus::REJECTED,
             'distribution_payload' => array_merge($document->distribution_payload ?? [], [
-                'manifestation' => $result,
+                'manifestation' => array_merge($result, [
+                    'failure_type' => $accepted ? null : 'functional',
+                    'retry_allowed' => false,
+                ]),
             ]),
         ])->save();
     }
 
-    public function markManifestationFailure(SefazDistributionDocument $document, string $message): void
+    public function markManifestationFailure(
+        SefazDistributionDocument $document,
+        string $message,
+        int $attemptNumber = 1,
+        bool $retryAllowed = false,
+    ): void
     {
         $document->forceFill([
             'status' => $document->full_xml_available ? Status::FULL_XML_AVAILABLE : Status::ERROR,
@@ -138,7 +146,24 @@ class SefazDistributionDocumentService
             'distribution_payload' => array_merge($document->distribution_payload ?? [], [
                 'manifestation' => array_merge(($document->distribution_payload['manifestation'] ?? []), [
                     'error' => $message,
+                    'failure_type' => 'technical',
+                    'attempt_number' => $attemptNumber,
+                    'retry_allowed' => $retryAllowed,
                     'failed_at' => now()->toIso8601String(),
+                ]),
+            ]),
+        ])->save();
+    }
+
+    public function prepareManualManifestationRetry(SefazDistributionDocument $document): void
+    {
+        $document->forceFill([
+            'status' => $document->full_xml_available ? Status::FULL_XML_AVAILABLE : Status::MANIFESTATION_PENDING,
+            'manifestation_status' => ManifestationStatus::PENDING,
+            'distribution_payload' => array_merge($document->distribution_payload ?? [], [
+                'manifestation' => array_merge(($document->distribution_payload['manifestation'] ?? []), [
+                    'manual_retry_requested_at' => now()->toIso8601String(),
+                    'retry_allowed' => true,
                 ]),
             ]),
         ])->save();
