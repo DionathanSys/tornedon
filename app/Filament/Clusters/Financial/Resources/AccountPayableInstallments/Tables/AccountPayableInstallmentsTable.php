@@ -43,7 +43,8 @@ class AccountPayableInstallmentsTable
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->searchable()
-                    ->limit(50)
+                    ->wrap()
+                    ->lineClamp(5)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sequence_number')
