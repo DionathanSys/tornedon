@@ -2,6 +2,7 @@
 
 namespace App\Services\FiscalDocument\Actions;
 
+use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Models\FiscalDocument;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -94,7 +95,16 @@ class BuildNfePayloadAction
 
             $itens = [];
             foreach ($fiscalDocument->items as $index => $item) {
-                $taxData   = $item->tax_data ?? [];
+                $taxData = is_array($item->tax_data) ? $item->tax_data : [];
+                $fiscalSnapshot = is_array($item->fiscal_snapshot) ? $item->fiscal_snapshot : [];
+
+                if (($taxData['imposto'] ?? null) === null && $fiscalSnapshot !== []) {
+                    $taxData = array_replace_recursive(
+                        $taxData,
+                        FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData((float) $item->total_price)
+                    );
+                }
+
                 $quantityCommercial = (float) number_format((float) $item->quantity, 4, '.', '');
                 $baseUnitPriceCommercial = (float) $item->unit_price;
                 $grossValueFloat = round($quantityCommercial * $baseUnitPriceCommercial, 2);
@@ -117,7 +127,7 @@ class BuildNfePayloadAction
                     'codigo_produto'           => $item->product_code,
                     'descricao'                => $item->description ?? $item->product?->name ?? '',
                     'codigo_ncm'               => $item->ncm_code,
-                    'cfop'                     => $item->cfop_code,
+                    'cfop'                     => $item->cfop_code ?: ($fiscalSnapshot['cfop'] ?? null),
                     'unidade_comercial'        => $item->unit_of_measure,
                     'quantidade_comercial'     => $quantityCommercial,
                     'valor_unitario_comercial' => number_format($unitPriceCommercial, 10, '.', ''),

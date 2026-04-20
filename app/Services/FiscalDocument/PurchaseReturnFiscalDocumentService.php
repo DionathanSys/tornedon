@@ -2,6 +2,7 @@
 
 namespace App\Services\FiscalDocument;
 
+use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
@@ -195,6 +196,15 @@ class PurchaseReturnFiscalDocumentService
     private function buildReturnItemData(FiscalDocumentItem $originItem, int $returnDocumentId, int $itemNumber): array
     {
         $fiscalSnapshot = is_array($originItem->fiscal_snapshot) ? $originItem->fiscal_snapshot : [];
+        $taxData = is_array($originItem->tax_data) ? $originItem->tax_data : [];
+
+        if (($taxData['imposto'] ?? null) === null && $fiscalSnapshot !== []) {
+            $taxData = array_replace_recursive(
+                $taxData,
+                FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData((float) $originItem->total_price)
+            );
+        }
+
         $fiscalSnapshot['purchase_return_origin'] = [
             'fiscal_document_item_id' => $originItem->id,
             'item_number' => $originItem->item_number,
@@ -210,7 +220,7 @@ class PurchaseReturnFiscalDocumentService
             'ncm_code' => $originItem->ncm_code,
             'cest_code' => $originItem->cest_code,
             'barcode' => $originItem->barcode,
-            'cfop_code' => $originItem->cfop_code,
+            'cfop_code' => $originItem->cfop_code ?: ($fiscalSnapshot['cfop'] ?? null),
             'quantity' => (float) $originItem->quantity,
             'unit_of_measure' => $originItem->unit_of_measure,
             'taxable_unit' => $originItem->taxable_unit,
@@ -223,7 +233,7 @@ class PurchaseReturnFiscalDocumentService
             'insurance_amount' => $originItem->insurance_amount !== null ? (float) $originItem->insurance_amount : null,
             'other_expenses_amount' => $originItem->other_expenses_amount !== null ? (float) $originItem->other_expenses_amount : null,
             'included_in_total' => (bool) $originItem->included_in_total,
-            'tax_data' => is_array($originItem->tax_data) ? $originItem->tax_data : null,
+            'tax_data' => $taxData !== [] ? $taxData : null,
             'fiscal_snapshot' => $fiscalSnapshot,
             'additional_information' => $originItem->additional_information,
         ];

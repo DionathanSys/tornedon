@@ -80,6 +80,41 @@ class PurchaseReturnFiscalDocumentServiceTest extends TestCase
         $this->assertSame('A nota de entrada não possui itens para gerar devolução.', $service->getMessage());
     }
 
+    public function test_it_derives_cfop_and_tax_data_from_snapshot_when_origin_item_fields_are_empty(): void
+    {
+        [$user, $company, $supplier] = $this->createBaseContext();
+        $originDocument = $this->createEntryDocument($company, $supplier, $user);
+        $originItem = $this->createEntryItem($originDocument, $company, $user);
+
+        $originItem->update([
+            'cfop_code' => null,
+            'tax_data' => [],
+            'fiscal_snapshot' => [
+                'cfop' => '5202',
+                'cst_icms' => '00',
+                'aliquota_icms' => 18,
+                'cst_pis' => '01',
+                'aliquota_pis' => 1.65,
+                'cst_cofins' => '01',
+                'aliquota_cofins' => 7.6,
+            ],
+        ]);
+
+        $service = app(PurchaseReturnFiscalDocumentService::class);
+        $returnDocument = $service->generateFromEntry($originDocument->fresh('items'), $user->id);
+
+        $this->assertNotNull($returnDocument, $service->getMessage());
+
+        $returnItem = FiscalDocumentItem::query()
+            ->where('fiscal_document_id', $returnDocument->id)
+            ->first();
+
+        $this->assertSame('5202', $returnItem?->cfop_code);
+        $this->assertSame('00', data_get($returnItem?->tax_data, 'imposto.icms.situacao_tributaria'));
+        $this->assertSame('01', data_get($returnItem?->tax_data, 'imposto.pis.situacao_tributaria'));
+        $this->assertSame('01', data_get($returnItem?->tax_data, 'imposto.cofins.situacao_tributaria'));
+    }
+
     private function createBaseContext(): array
     {
         $user = User::factory()->create();
