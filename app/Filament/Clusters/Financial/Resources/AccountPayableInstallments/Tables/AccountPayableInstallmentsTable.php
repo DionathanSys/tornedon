@@ -19,7 +19,6 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class AccountPayableInstallmentsTable
@@ -120,9 +119,15 @@ class AccountPayableInstallmentsTable
                     ->schema([
                         SelectPartner::make('supplier_id'),
                     ])
-                    ->query(function ($query, $state) {
-                        $query->whereHas('accountPayable', function ($query) use ($state) {
-                            $query->where('supplier_id', $state);
+                    ->query(function (Builder $query, array $data): Builder {
+                        $supplierId = $data['supplier_id'] ?? null;
+
+                        if (blank($supplierId)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('accountPayable', function (Builder $query) use ($supplierId): Builder {
+                            return $query->where('supplier_id', $supplierId);
                         });
                     }),
                 SelectFilter::make('status')
