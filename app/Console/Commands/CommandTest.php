@@ -6,6 +6,7 @@ use App\Enum;
 use App\Models\Address;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentItemOrigin;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\User;
@@ -38,14 +39,16 @@ class CommandTest extends Command
    {
       $record = FiscalDocument::find(72);
 
+      $origin = FiscalDocumentItemOrigin::query()
+                ->where('origin_fiscal_document_id', $record->id)
+                ->first();
       Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
             'metodo' => __METHOD__ . '@' . __LINE__,
-            'record' => $record,
             'isNfe' => $record->isNfe(),
             'operation_type' => $record->operation_type,
             'status' => $record->status,
             'canceled' => $record->canceled,
-            'origin_fiscal_document_id' => $record->id,
+            'origin_fiscal_document_id' => $origin,
         ]);
 
    }
