@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\CompanyPreference;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 use RuntimeException;
 
 class CompanySefazCertificateService
@@ -39,11 +40,7 @@ class CompanySefazCertificateService
         }
 
         $binary = $this->readCertificateBinary($certificateReference);
-        $pkcs12 = [];
-
-        if (! openssl_pkcs12_read($binary, $pkcs12, $password)) {
-            throw new RuntimeException('Não foi possível abrir o certificado A1 com a senha informada.');
-        }
+        $pkcs12 = $this->extractPkcs12Contents($binary, $password, $company->id, $certificateReference);
 
         $certPem = trim((string) ($pkcs12['cert'] ?? ''));
         $keyPem = trim((string) ($pkcs12['pkey'] ?? ''));
@@ -153,7 +150,7 @@ class CompanySefazCertificateService
                 continue;
             }
 
-            Log::info('CompanySefazCertificateService: certificado encontrado por caminho absoluto legadoo', [
+            Log::info('CompanySefazCertificateService: certificado encontrado por caminho absoluto legado', [
                 'reference' => $reference,
                 'resolved_path' => $absolutePath,
             ]);
@@ -286,5 +283,125 @@ class CompanySefazCertificateService
         }
 
         return $digits;
+    }
+
+    /**
+     * @return array{cert?:string,pkey?:string,extracerts?:array<int,string>}
+     */
+    private function extractPkcs12Contents(string $binary, string $password, int $companyId, string $reference): array
+    {
+        $pkcs12 = [];
+
+        if (openssl_pkcs12_read($binary, $pkcs12, $password)) {
+            return $pkcs12;
+        }
+
+        Log::warning('CompanySefazCertificateService: openssl_pkcs12_read falhou, tentando fallback legacy', [
+            'company_id' => $companyId,
+            'reference' => $reference,
+        ]);
+
+        try {
+            $legacyPkcs12 = $this->extractPkcs12WithLegacyOpenSsl($binary, $password);
+
+            Log::info('CompanySefazCertificateService: certificado A1 legado carregado com fallback openssl -legacy', [
+                'company_id' => $companyId,
+                'reference' => $reference,
+            ]);
+
+            return $legacyPkcs12;
+        } catch (Throwable $exception) {
+            throw new RuntimeException(
+                'Não foi possível abrir o certificado A1 com a senha informada ou o arquivo usa criptografia legada incompatível com o OpenSSL padrão do servidor.',
+                previous: $exception,
+            );
+        }
+    }
+
+    /**
+     * @return array{cert:string,pkey:string,extracerts:array<int,string>}
+     */
+    private function extractPkcs12WithLegacyOpenSsl(string $binary, string $password): array
+    {
+        $inputFile = tempnam(sys_get_temp_dir(), 'pkcs12_');
+        if ($inputFile === false) {
+            throw new RuntimeException('Não foi possível preparar arquivo temporário para o certificado A1 legado.');
+        }
+
+        $outputFile = tempnam(sys_get_temp_dir(), 'pkcs12_out_');
+        if ($outputFile === false) {
+            @unlink($inputFile);
+            throw new RuntimeException('Não foi possível preparar saída temporária para o certificado A1 legado.');
+        }
+
+        file_put_contents($inputFile, $binary);
+
+        $command = sprintf(
+            'openssl pkcs12 -legacy -in %s -passin env:PKCS12_PASSWORD -nodes -out %s',
+            escapeshellarg($inputFile),
+            escapeshellarg($outputFile),
+        );
+
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = proc_open($command, $descriptors, $pipes, null, [
+            'PKCS12_PASSWORD' => $password,
+        ]);
+
+        if (! is_resource($process)) {
+            @unlink($inputFile);
+            @unlink($outputFile);
+            throw new RuntimeException('Não foi possível iniciar o comando openssl pkcs12 -legacy.');
+        }
+
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $exitCode = proc_close($process);
+        $pemBundle = is_file($outputFile) ? (file_get_contents($outputFile) ?: '') : '';
+
+        @unlink($inputFile);
+        @unlink($outputFile);
+
+        if ($exitCode !== 0 || trim($pemBundle) === '') {
+            throw new RuntimeException(sprintf(
+                'Falha ao abrir o certificado A1 com openssl -legacy. stdout: %s stderr: %s',
+                trim((string) $stdout),
+                trim((string) $stderr),
+            ));
+        }
+
+        return $this->parseLegacyPemBundle($pemBundle);
+    }
+
+    /**
+     * @return array{cert:string,pkey:string,extracerts:array<int,string>}
+     */
+    private function parseLegacyPemBundle(string $pemBundle): array
+    {
+        preg_match_all('/-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----/s', $pemBundle, $certificateMatches);
+        preg_match('/-----BEGIN (?:RSA )?PRIVATE KEY-----(.*?)-----END (?:RSA )?PRIVATE KEY-----/s', $pemBundle, $privateKeyMatch);
+
+        $certificates = array_map(
+            static fn (string $chunk): string => trim("-----BEGIN CERTIFICATE-----{$chunk}-----END CERTIFICATE-----"),
+            $certificateMatches[1] ?? [],
+        );
+
+        if ($certificates === [] || ! isset($privateKeyMatch[0])) {
+            throw new RuntimeException('O bundle PEM retornado pelo openssl -legacy não contém certificado e chave privada válidos.');
+        }
+
+        return [
+            'cert' => $certificates[0],
+            'pkey' => trim($privateKeyMatch[0]),
+            'extracerts' => array_values(array_slice($certificates, 1)),
+        ];
     }
 }
