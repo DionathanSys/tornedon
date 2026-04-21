@@ -4,6 +4,7 @@ namespace App\Services\ProductionOrder\Actions;
 
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,9 @@ class ReturnToProductionAction
     public function execute(ProductionOrder $productionOrder): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($productionOrder);
+
             if ($productionOrder->status !== Status::QC_CHECK) {
                 $this->setError('Apenas ordens em controle de qualidade podem retornar para produção');
                 return false;
@@ -27,6 +31,16 @@ class ReturnToProductionAction
                 'status'     => Status::IN_PROGRESS->value,
                 'updated_by' => $this->userId,
             ]);
+            $productionOrder->refresh();
+
+            $audit->recordModelEvent(
+                $productionOrder,
+                'production_order.returned',
+                "Ordem de produção #{$productionOrder->production_order_number} retornou para produção",
+                $before,
+                $audit->snapshot($productionOrder),
+                $this->userId,
+            );
 
             Log::info('ReturnToProductionAction: Ordem retornada para produção após QC', [
                 'production_order_id'     => $productionOrder->id,

@@ -3,6 +3,7 @@
 namespace App\Services\Invoice\Actions;
 
 use App\Models\Invoice;
+use App\Services\Audit\AuditRecorder;
 use App\Models\User;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -31,7 +32,18 @@ class DeleteInvoiceAction
                 return false;
             }
 
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->invoice);
             $result = $this->invoice->delete();
+
+            $audit->recordModelEvent(
+                $this->invoice,
+                'invoice.deleted',
+                "Fatura #{$this->invoice->invoice_number} excluída",
+                $before,
+                null,
+                $this->deletedBy,
+            );
 
             Log::info('Fatura excluída com sucesso', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,

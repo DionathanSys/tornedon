@@ -4,6 +4,7 @@ namespace App\Services\ProductionOrder\Actions;
 
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,9 @@ class CancelProductionAction
     public function execute(ProductionOrder $productionOrder): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($productionOrder);
+
             if (!$productionOrder->canCancel()) {
                 $this->setError('Esta ordem de produção não pode ser cancelada');
                 return false;
@@ -28,6 +32,16 @@ class CancelProductionAction
                 'cancelled_at' => now(),
                 'updated_by'   => $this->userId,
             ]);
+            $productionOrder->refresh();
+
+            $audit->recordModelEvent(
+                $productionOrder,
+                'production_order.canceled',
+                "Ordem de produção #{$productionOrder->production_order_number} cancelada",
+                $before,
+                $audit->snapshot($productionOrder),
+                $this->userId,
+            );
 
             Log::info('CancelProductionAction: Ordem de produção cancelada', [
                 'production_order_id'     => $productionOrder->id,

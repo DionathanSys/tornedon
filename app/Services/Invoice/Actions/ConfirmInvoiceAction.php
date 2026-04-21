@@ -15,6 +15,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
+use App\Services\Audit\AuditRecorder;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Invoice\InvoiceService;
 use App\Traits\HandlesActionResponse;
@@ -35,6 +36,9 @@ class ConfirmInvoiceAction
     public function execute(array $data): ?array
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->invoice);
+
             Log::debug('Iniciando confirmacao de fatura - Invoice ID: ' . $this->invoice->id, [
                 'metodo' => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
@@ -117,6 +121,7 @@ class ConfirmInvoiceAction
                 'confirmed_by'  => $this->confirmedBy,
                 'updated_by'    => $this->confirmedBy,
             ]);
+            $this->invoice->refresh();
 
             $result = [
                 'invoice_id' => $this->invoice->id,
@@ -127,6 +132,21 @@ class ConfirmInvoiceAction
                 ),
                 'account_receivables_count' => count($createdReceivables),
             ];
+
+            $audit->recordModelEvent(
+                $this->invoice,
+                'invoice.confirmed',
+                "Fatura #{$this->invoice->invoice_number} confirmada",
+                $before,
+                $audit->snapshot($this->invoice),
+                $this->confirmedBy,
+                null,
+                [
+                    'documents_count' => $result['documents_count'],
+                    'documents_types' => $result['documents_types'],
+                    'account_receivables_count' => $result['account_receivables_count'],
+                ],
+            );
 
             Log::info('Fatura confirmada com sucesso', [
                 'metodo' => __METHOD__ . '@' . __LINE__,

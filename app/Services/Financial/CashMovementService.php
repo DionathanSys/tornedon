@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\FinancialCategory;
 use App\Models\FinancialAccount;
 use App\Models\Partner;
+use App\Services\Audit\AuditRecorder;
 use App\Support\Financial\InstallmentDescription;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
@@ -64,6 +65,7 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($data, $userId) {
+                $audit = app(AuditRecorder::class);
                 $this->assertAmountIsPositive((float) ($data['amount'] ?? 0));
 
                 $companyId = (int) $data['company_id'];
@@ -104,6 +106,15 @@ class CashMovementService
                     'updated_by' => $userId,
                 ]);
 
+                $audit->recordModelEvent(
+                    $movement,
+                    'cash_movement.created',
+                    'Movimento financeiro criado',
+                    null,
+                    $audit->snapshot($movement),
+                    $userId,
+                );
+
                 $this->setSuccess('Movimento financeiro criado com sucesso.');
 
                 return $movement;
@@ -131,6 +142,9 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($movement, $data, $userId) {
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($movement);
+
                 if ($this->isTransferMovement($movement)) {
                     throw ValidationException::withMessages([
                         'transfer_group_id' => ['Transferencias devem ser editadas pelo fluxo especifico de transferencia.'],
@@ -177,6 +191,16 @@ class CashMovementService
                     'updated_by' => $userId,
                 ]);
 
+                $movement->refresh();
+                $audit->recordModelEvent(
+                    $movement,
+                    'cash_movement.updated',
+                    'Movimento financeiro atualizado',
+                    $before,
+                    $audit->snapshot($movement),
+                    $userId,
+                );
+
                 $this->setSuccess('Movimento financeiro atualizado com sucesso.');
 
                 return $movement->fresh();
@@ -205,6 +229,7 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($data, $userId) {
+                $audit = app(AuditRecorder::class);
                 $companyId = (int) $data['company_id'];
                 $amount = (float) ($data['amount'] ?? 0);
                 $this->assertAmountIsPositive($amount);
@@ -250,6 +275,21 @@ class CashMovementService
                     userId: $userId,
                 );
 
+                $outflow->refresh();
+                $audit->recordModelEvent(
+                    $outflow,
+                    'cash_movement.transfer_created',
+                    'Transferência entre contas criada',
+                    null,
+                    $audit->snapshot($outflow),
+                    $userId,
+                    null,
+                    [
+                        'transfer_group_id' => $transferGroupId,
+                        'destination_financial_account_id' => $destinationAccount->id,
+                    ],
+                );
+
                 $this->setSuccess('Transferencia entre contas criada com sucesso.', [
                     'transfer_group_id' => $transferGroupId,
                 ]);
@@ -280,7 +320,9 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($movement, $data, $userId) {
+                $audit = app(AuditRecorder::class);
                 [$outflow, $inflow] = $this->resolveTransferPair($movement);
+                $before = $audit->snapshot($movement);
 
                 if ($outflow->reversed_at !== null || $inflow->reversed_at !== null) {
                     throw ValidationException::withMessages([
@@ -340,11 +382,28 @@ class CashMovementService
                     ),
                 ]);
 
-                $this->setSuccess('Transferencia entre contas atualizada com sucesso.');
-
-                return $movement->direction === CashMovementDirection::OUTFLOW
+                $targetMovement = $movement->direction === CashMovementDirection::OUTFLOW
                     ? $outflow->fresh()
                     : $inflow->fresh();
+
+                $audit->recordModelEvent(
+                    $targetMovement,
+                    'cash_movement.updated',
+                    'Transferência entre contas atualizada',
+                    $before,
+                    $audit->snapshot($targetMovement),
+                    $userId,
+                    null,
+                    [
+                        'transfer_group_id' => $movement->transfer_group_id,
+                        'source_financial_account_id' => $sourceAccount->id,
+                        'destination_financial_account_id' => $destinationAccount->id,
+                    ],
+                );
+
+                $this->setSuccess('Transferencia entre contas atualizada com sucesso.');
+
+                return $targetMovement;
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao da transferencia.', $e->errors(), 422);
@@ -371,7 +430,9 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($movement, $userId) {
+                $audit = app(AuditRecorder::class);
                 [$outflow, $inflow] = $this->resolveTransferPair($movement);
+                $before = $audit->snapshot($movement);
 
                 if (
                     $outflow->reversed_at !== null
@@ -438,9 +499,26 @@ class CashMovementService
 
                 $this->setSuccess('Transferencia entre contas estornada com sucesso.');
 
-                return $movement->id === $outflow->id
+                $targetMovement = $movement->id === $outflow->id
                     ? $outflowReversal->fresh()
                     : $movement->fresh()?->reversals()->latest('id')->first();
+
+                if ($targetMovement) {
+                    $audit->recordModelEvent(
+                        $targetMovement,
+                        'cash_movement.transfer_reversed',
+                        'Transferência entre contas estornada',
+                        $before,
+                        $audit->snapshot($targetMovement),
+                        $userId,
+                        null,
+                        [
+                            'transfer_group_id' => $movement->transfer_group_id,
+                        ],
+                    );
+                }
+
+                return $targetMovement;
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao do estorno da transferencia.', $e->errors(), 422);
@@ -471,6 +549,7 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($payment, $direction, $categoryScope, $descriptionPrefix, $userId) {
+                $audit = app(AuditRecorder::class);
                 $account = $this->resolveFinancialAccount((int) $payment->financial_account_id, (int) $payment->company_id);
                 $counterpartyPartner = $this->resolvePaymentCounterpartyPartner($payment);
 
@@ -487,6 +566,8 @@ class CashMovementService
                     'origin_type' => $payment::class,
                     'origin_id' => $payment->id,
                 ]);
+                $before = $movement->exists ? $audit->snapshot($movement) : null;
+                $isNewMovement = ! $movement->exists;
 
                 $movement->fill([
                     'company_id' => $payment->company_id,
@@ -515,10 +596,25 @@ class CashMovementService
                 }
 
                 $movement->save();
+                $movement = $movement->fresh();
+
+                $audit->recordModelEvent(
+                    $movement,
+                    $isNewMovement ? 'cash_movement.created' : 'cash_movement.updated',
+                    $isNewMovement ? 'Movimento financeiro criado a partir de baixa' : 'Movimento financeiro atualizado a partir de baixa',
+                    $before,
+                    $audit->snapshot($movement),
+                    $userId,
+                    null,
+                    [
+                        'origin_type' => $payment::class,
+                        'origin_id' => $payment->id,
+                    ],
+                );
 
                 $this->setSuccess('Movimento financeiro sincronizado com sucesso.');
 
-                return $movement->fresh();
+                return $movement;
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);

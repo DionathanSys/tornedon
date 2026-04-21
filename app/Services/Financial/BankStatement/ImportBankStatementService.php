@@ -6,6 +6,7 @@ use App\Domain\DTO\Financial\OfxStatementHeaderDTO;
 use App\Models\BankStatementImport;
 use App\Models\BankStatementLine;
 use App\Models\FinancialAccount;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\BankStatement\Contracts\BankOfxNormalizerInterface;
 use App\Services\Financial\BankStatement\Contracts\OfxStatementParserInterface;
 use App\Services\Financial\BankStatement\Normalizers\BradescoOfxNormalizer;
@@ -74,6 +75,7 @@ class ImportBankStatementService
                 $reference,
                 $userId
             ) {
+                $audit = app(AuditRecorder::class);
                 $import = BankStatementImport::query()->firstOrNew([
                     'company_id' => $account->company_id,
                     'financial_account_id' => $account->id,
@@ -118,6 +120,22 @@ class ImportBankStatementService
                 foreach ($import->lines()->get() as $line) {
                     $this->suggestService->suggestForLine($line);
                 }
+
+                $import->refresh();
+                $audit->recordModelEvent(
+                    $import,
+                    'bank_statement_import.imported',
+                    "Extrato {$fileName} importado",
+                    null,
+                    $audit->snapshot($import),
+                    $userId,
+                    null,
+                    [
+                        'reference' => $reference,
+                        'line_count' => $transactions->count(),
+                        'financial_account_id' => $account->id,
+                    ],
+                );
 
                 return $import->fresh('lines');
             });

@@ -16,12 +16,14 @@ use App\Listeners\Quote\UpdateQuoteItemsStatusOnReopenListener;
 use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
+use App\Models\AuditEntry;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\ProductionOrder;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
+use App\Policies\AuditEntryPolicy;
 use App\Observers\FiscalDocumentObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\ProductionOrderObserver;
@@ -94,6 +96,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         // Registrar policies
+        Gate::policy(AuditEntry::class, AuditEntryPolicy::class);
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
 

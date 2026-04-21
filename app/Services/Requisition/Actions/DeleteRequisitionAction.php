@@ -3,6 +3,7 @@
 namespace App\Services\Requisition\Actions;
 
 use App\Models\Requisition;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,17 @@ class DeleteRequisitionAction
                 return false;
             }
 
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->requisition);
             $result = $this->requisition->delete();
+
+            $audit->recordModelEvent(
+                $this->requisition,
+                'requisition.deleted',
+                "Requisição #{$this->requisition->number} excluída",
+                $before,
+                null,
+            );
 
             Log::info('Requisição excluída (soft delete) com sucesso', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,

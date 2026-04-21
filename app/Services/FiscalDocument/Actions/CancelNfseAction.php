@@ -5,6 +5,8 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Enum\Audit\AuditSource;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -22,6 +24,8 @@ class CancelNfseAction
     ): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($fiscalDocument);
             $codigoCancelamento = trim($codigoCancelamento);
             $motivoCancelamento = trim($motivoCancelamento);
 
@@ -60,6 +64,21 @@ class CancelNfseAction
                     'status'      => Status::CANCELLED->value,
                     'canceled_at' => now(),
                 ]);
+                $fiscalDocument->refresh();
+
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfse_canceled',
+                    'NFS-e cancelada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::INTEGRATION,
+                    [
+                        'cancel_code' => $codigoCancelamento,
+                        'cancel_reason' => $motivoCancelamento,
+                    ],
+                );
 
                 Log::info('CancelNfseAction: NFS-e cancelada', [
                     'fiscal_document_id' => $fiscalDocument->id,

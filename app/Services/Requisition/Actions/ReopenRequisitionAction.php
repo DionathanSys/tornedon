@@ -4,6 +4,7 @@ namespace App\Services\Requisition\Actions;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,9 @@ class ReopenRequisitionAction
     public function execute(Requisition $requisition): ?Requisition
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($requisition);
+
             Log::debug('ReopenRequisitionAction: Reabrindo requisição', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
@@ -40,6 +44,15 @@ class ReopenRequisitionAction
 
                 $requisition->refresh();
             });
+
+            $audit->recordModelEvent(
+                $requisition,
+                'requisition.reopened',
+                "Requisição #{$requisition->number} reaberta",
+                $before,
+                $audit->snapshot($requisition),
+                $this->userId,
+            );
 
             $this->setSuccess();
             return $requisition;

@@ -10,6 +10,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
+use App\Models\AuditEntry;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
@@ -155,6 +156,13 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $this->assertSame('Cliente Teste', $movement->party_from_label);
         $this->assertSame('Empresa Financeiro AR', $movement->party_to_label);
         $this->assertSame('Recebimento parcela 01 - Recebimento parcial renegociado', $movement->description);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountReceivable::class,
+            'auditable_id' => $receivable->id,
+            'event' => 'account_receivable.payment_registered',
+            'action' => 'payment_registered',
+        ]);
     }
 
     public function test_validator_rejects_category_with_invalid_scope_for_receivable_installment(): void
@@ -215,6 +223,14 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         ], $this->user->id);
 
         $this->assertNotNull($receivable, $this->service->getMessage());
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountReceivable::class,
+            'auditable_id' => $receivable->id,
+            'actor_user_id' => $this->user->id,
+            'event' => 'account_receivable.created',
+            'action' => 'created',
+        ]);
 
         $installments = $receivable->fresh()->installments()->orderBy('sequence_number')->get();
 
@@ -226,6 +242,14 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $this->assertSame(
             'Cliente Teste | Doc. Sem documento | Parcela 01',
             $installments->first()->description
+        );
+        $this->assertSame(
+            1,
+            AuditEntry::query()
+                ->where('auditable_type', AccountReceivable::class)
+                ->where('auditable_id', $receivable->id)
+                ->where('event', 'account_receivable.created')
+                ->count()
         );
     }
 }

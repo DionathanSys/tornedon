@@ -12,6 +12,7 @@ use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
+use App\Models\AuditEntry;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Models\Company;
@@ -185,6 +186,14 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertSame('Bradesco', data_get($import->metadata, 'institution_name'));
         $this->assertDatabaseCount('bank_statement_imports', 1);
         $this->assertDatabaseCount('bank_statement_lines', 2);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => \App\Models\BankStatementImport::class,
+            'auditable_id' => $import->id,
+            'actor_user_id' => $this->user->id,
+            'event' => 'bank_statement_import.imported',
+            'action' => 'imported',
+        ]);
 
         $firstLine = BankStatementLine::query()->where('external_id', 'A1')->first();
         $this->assertNotNull($firstLine);
@@ -245,6 +254,13 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertSame('reconciled', $resolved->reconciliation_status->value);
         $this->assertSame($movement->id, $resolved->cash_movement_id);
         $this->assertSame('cash_movement', data_get($resolved->metadata, 'decision.type'));
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => \App\Models\BankStatementImport::class,
+            'auditable_id' => $import->id,
+            'event' => 'bank_statement_import.movement_reconciled',
+            'action' => 'movement_reconciled',
+        ]);
     }
 
     public function test_reconciles_outflow_with_payable_installment_and_creates_payment(): void
@@ -315,6 +331,13 @@ class BankStatementImportAndReconciliationTest extends TestCase
             'financial_account_id' => $this->financialAccount->id,
         ]);
         $this->assertSame('account_payable_installment', data_get($resolved->metadata, 'decision.type'));
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountPayable::class,
+            'auditable_id' => $payable->id,
+            'event' => 'account_payable.payment_registered',
+            'action' => 'payment_registered',
+        ]);
     }
 
     public function test_reconciles_inflow_with_receivable_installment_and_creates_receipt(): void
@@ -394,6 +417,13 @@ class BankStatementImportAndReconciliationTest extends TestCase
             'financial_account_id' => $this->financialAccount->id,
         ]);
         $this->assertSame('account_receivable_installment', data_get($resolved->metadata, 'decision.type'));
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountReceivable::class,
+            'auditable_id' => $receivable->id,
+            'event' => 'account_receivable.payment_registered',
+            'action' => 'payment_registered',
+        ]);
     }
 
     public function test_creates_manual_movement_when_no_candidate_is_selected(): void
@@ -426,6 +456,21 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertSame('Despesa avulsa conciliada manualmente', $movement->description);
         $this->assertSame(42.5, (float) $movement->amount);
         $this->assertSame('manual', data_get($resolved->metadata, 'decision.type'));
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => \App\Models\BankStatementImport::class,
+            'auditable_id' => $import->id,
+            'event' => 'bank_statement_import.manual_movement_created',
+            'action' => 'manual_movement_created',
+        ]);
+        $this->assertGreaterThanOrEqual(
+            1,
+            AuditEntry::query()
+                ->where('auditable_type', CashMovement::class)
+                ->where('auditable_id', $movement->id)
+                ->where('event', 'cash_movement.created')
+                ->count()
+        );
     }
 
     /**

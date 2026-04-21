@@ -4,6 +4,7 @@ namespace App\Services\ServiceOrder\Actions;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\ServiceOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,9 @@ class ReopenServiceOrderAction
     public function execute(ServiceOrder $order): ?ServiceOrder
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($order);
+
             Log::debug('ReopenServiceOrderAction: Reabrindo ordem de serviço', [
                 'metodo'           => __METHOD__ . '@' . __LINE__,
                 'service_order_id' => $order->id,
@@ -28,6 +32,14 @@ class ReopenServiceOrderAction
             $order->state()->reopen($order, $this->userId);
 
             $order->refresh();
+            $audit->recordModelEvent(
+                $order,
+                'service_order.reopened',
+                "Ordem de serviço #{$order->number} reaberta",
+                $before,
+                $audit->snapshot($order),
+                $this->userId,
+            );
 
             $this->setSuccess();
             return $order;

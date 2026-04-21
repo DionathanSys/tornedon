@@ -3,6 +3,7 @@
 namespace App\Services\Invoice\Actions;
 
 use App\Models\Invoice;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Invoice\Validators\InvoiceValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -21,6 +22,9 @@ class UpdateInvoiceAction
     public function execute(array $data): ?Invoice
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->invoice);
+
             Log::debug('Iniciando atualização de fatura', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,
                 'invoice_id' => $this->invoice->id,
@@ -49,6 +53,16 @@ class UpdateInvoiceAction
             $validated['updated_by'] = $this->updatedBy;
 
             $this->invoice->update($validated);
+            $this->invoice->refresh();
+
+            $audit->recordModelEvent(
+                $this->invoice,
+                'invoice.updated',
+                "Fatura #{$this->invoice->invoice_number} atualizada",
+                $before,
+                $audit->snapshot($this->invoice),
+                $this->updatedBy,
+            );
 
             Log::info('Fatura atualizada com sucesso', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,

@@ -14,6 +14,7 @@ use App\Services\AccountPayable\Actions\Installment\RegisterAccountPayableInstal
 use App\Services\AccountPayable\Actions\Installment\SyncAccountPayableStatusFromInstallmentsAction;
 use App\Services\AccountPayable\Actions\Installment\UpdateAccountPayableInstallmentAction;
 use App\Services\AccountPayable\Actions\UpdateAccountPayableAction;
+use App\Services\Audit\AuditRecorder;
 use App\Services\AccountPayable\Validators\AccountPayableInstallmentValidator;
 use App\Services\AccountPayable\Validators\AccountPayableValidator;
 use App\Services\Financial\CashMovementService;
@@ -41,6 +42,7 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($data, $createdBy) {
+                $audit = app(AuditRecorder::class);
                 AccountPayableValidator::validateCreate([
                     ...$data,
                     'sequence_number' => $data['sequence_number'] ?? '01',
@@ -88,6 +90,20 @@ class AccountPayableService
                         'conta_a_pagar' => [$syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a pagar.'],
                     ]);
                 }
+
+                $syncedAccountPayable->refresh();
+                $audit->recordModelEvent(
+                    $syncedAccountPayable,
+                    'account_payable.created',
+                    'Conta a pagar criada',
+                    null,
+                    $audit->snapshot($syncedAccountPayable),
+                    $createdBy,
+                    null,
+                    [
+                        'installments_count' => $installmentCount,
+                    ],
+                );
 
                 $this->setSuccess('Conta a pagar criada com sucesso');
 
@@ -270,6 +286,8 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($accountPayable, $data, $updatedBy) {
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($accountPayable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
 
                 $action = new UpdateAccountPayableAction($updatedBy, $accountPayable);
@@ -310,6 +328,16 @@ class AccountPayableService
                     return null;
                 }
 
+                $synced->refresh();
+                $audit->recordModelEvent(
+                    $synced,
+                    'account_payable.updated',
+                    'Conta a pagar atualizada',
+                    $before,
+                    $audit->snapshot($synced),
+                    $updatedBy,
+                );
+
                 $this->setSuccess('Conta a pagar atualizada com sucesso');
 
                 Log::info('Conta a pagar atualizada com sucesso via service', [
@@ -346,7 +374,10 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($installment, $amount, $paymentDate, $extra) {
+                $audit = app(AuditRecorder::class);
+                $userId = $extra['user_id'] ?? auth()->id();
                 $installment->loadMissing('accountPayable');
+                $before = $audit->snapshot($installment->accountPayable);
                 $paymentAction = new RegisterAccountPayableInstallmentPaymentAction($installment);
                 $payment = $paymentAction->execute([
                     'account_payable_installment_id' => $installment->id,
@@ -395,7 +426,7 @@ class AccountPayableService
                 }
 
                 if ($payment->financial_account_id) {
-                    $movement = $this->cashMovementService->syncForPayablePayment($payment);
+                    $movement = $this->cashMovementService->syncForPayablePayment($payment, $userId);
 
                     if ($this->cashMovementService->hasError() || $movement === null) {
                         $this->setError(
@@ -408,6 +439,22 @@ class AccountPayableService
                         return null;
                     }
                 }
+
+                $auditable = $installment->accountPayable->fresh();
+                $audit->recordModelEvent(
+                    $auditable,
+                    'account_payable.payment_registered',
+                    "Pagamento registrado para a parcela {$installment->sequence_number}",
+                    $before,
+                    $audit->snapshot($auditable),
+                    $userId,
+                    null,
+                    [
+                        'installment_id' => $installment->id,
+                        'payment_id' => $payment->id,
+                        'payment_amount' => (float) $payment->amount,
+                    ],
+                );
 
                 $this->setSuccess('Pagamento da parcela registrado com sucesso.');
 
@@ -576,6 +623,7 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($payment, $data) {
+                $userId = $data['user_id'] ?? auth()->id();
                 $payment->loadMissing('installment.accountPayable');
 
                 $validated = AccountPayableInstallmentValidator::validatePayment([
@@ -612,7 +660,7 @@ class AccountPayableService
                 }
 
                 if ($payment->financial_account_id) {
-                    $movement = $this->cashMovementService->syncForPayablePayment($payment->fresh());
+                    $movement = $this->cashMovementService->syncForPayablePayment($payment->fresh(), $userId);
 
                     if ($this->cashMovementService->hasError() || $movement === null) {
                         $this->setError(
@@ -654,9 +702,10 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($payment) {
+                $userId = auth()->id();
                 $payment->loadMissing('installment.accountPayable');
 
-                $reversal = $this->cashMovementService->reverseForPayablePayment($payment);
+                $reversal = $this->cashMovementService->reverseForPayablePayment($payment, $userId);
 
                 if ($this->cashMovementService->hasError()) {
                     $this->setError(
@@ -717,6 +766,8 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($accountPayable) {
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($accountPayable);
                 $action = new DeleteAccountPayableAction($accountPayable);
                 $result = $action->execute();
 
@@ -737,6 +788,15 @@ class AccountPayableService
 
                     return false;
                 }
+
+                $audit->recordModelEvent(
+                    $accountPayable,
+                    'account_payable.deleted',
+                    'Conta a pagar excluida',
+                    $before,
+                    null,
+                    auth()->id(),
+                );
 
                 $this->setSuccess('Conta a pagar excluída com sucesso');
 

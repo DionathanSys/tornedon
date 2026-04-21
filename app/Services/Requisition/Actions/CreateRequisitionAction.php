@@ -3,6 +3,7 @@
 namespace App\Services\Requisition\Actions;
 
 use App\Models\Requisition;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Requisition\Validators\RequisitionValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -36,6 +37,16 @@ class CreateRequisitionAction
             $validated['created_by'] = $this->createdBy;
 
             $requisition = Requisition::create($validated);
+            $audit = app(AuditRecorder::class);
+
+            $audit->recordModelEvent(
+                $requisition,
+                'requisition.created',
+                "Requisição #{$requisition->number} criada",
+                null,
+                $audit->snapshot($requisition),
+                $this->createdBy,
+            );
 
             Log::info('Requisição criada com sucesso', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,

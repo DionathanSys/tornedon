@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,17 @@ class DeleteFiscalDocumentAction
                 return false;
             }
 
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->fiscalDocument);
             $result = $this->fiscalDocument->delete();
+
+            $audit->recordModelEvent(
+                $this->fiscalDocument,
+                'fiscal_document.deleted',
+                'Documento fiscal excluído',
+                $before,
+                null,
+            );
 
             Log::info('Documento fiscal excluído com sucesso', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,

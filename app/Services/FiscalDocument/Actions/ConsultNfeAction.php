@@ -5,6 +5,8 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Enum\Audit\AuditSource;
+use App\Services\Audit\AuditRecorder;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +28,9 @@ class ConsultNfeAction
     public function execute(FiscalDocument $fiscalDocument): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($fiscalDocument);
+
             if (empty($fiscalDocument->document_key)) {
                 $this->setError('Chave de acesso não encontrada no documento fiscal.');
                 return false;
@@ -104,6 +109,29 @@ class ConsultNfeAction
             }
 
             $fiscalDocument->update($updates);
+            $fiscalDocument->refresh();
+
+            if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfe_authorized',
+                    'NF-e autorizada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::JOB,
+                );
+            } elseif (($updates['nfe_status'] ?? null) === NfeStatus::REJECTED->value) {
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfe_rejected',
+                    'NF-e rejeitada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::JOB,
+                );
+            }
 
             if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
                 $stockMovementAction = app(ProcessAuthorizedNfeStockMovementsAction::class);

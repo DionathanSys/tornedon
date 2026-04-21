@@ -15,6 +15,7 @@ use App\Services\AccountReceivable\Actions\Installment\SyncAccountReceivableStat
 use App\Services\AccountReceivable\Actions\Installment\UpdateAccountReceivableInstallmentAction;
 use App\Services\AccountReceivable\Actions\UpdateAccountReceivableAction;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
@@ -40,6 +41,7 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($data, $createdBy) {
+                $audit = app(AuditRecorder::class);
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
@@ -80,6 +82,20 @@ class AccountReceivableService
                         'conta_a_receber' => [$syncAction->getMessage() ?: 'Falha ao sincronizar status da conta a receber.'],
                     ]);
                 }
+
+                $syncedAccountReceivable->refresh();
+                $audit->recordModelEvent(
+                    $syncedAccountReceivable,
+                    'account_receivable.created',
+                    'Conta a receber criada',
+                    null,
+                    $audit->snapshot($syncedAccountReceivable),
+                    $createdBy,
+                    null,
+                    [
+                        'installments_count' => $installmentCount,
+                    ],
+                );
 
                 $this->setSuccess('Conta a receber criada com sucesso');
 
@@ -126,6 +142,8 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($accountReceivable, $data, $updatedBy) {
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($accountReceivable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
 
                 $action = new UpdateAccountReceivableAction($updatedBy, $accountReceivable);
@@ -166,6 +184,16 @@ class AccountReceivableService
                     return null;
                 }
 
+                $synced->refresh();
+                $audit->recordModelEvent(
+                    $synced,
+                    'account_receivable.updated',
+                    'Conta a receber atualizada',
+                    $before,
+                    $audit->snapshot($synced),
+                    $updatedBy,
+                );
+
                 $this->setSuccess('Conta a receber atualizada com sucesso');
 
                 Log::info('Conta a receber atualizada com sucesso via service', [
@@ -202,7 +230,10 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($installment, $amount, $paymentDate, $extra) {
+                $audit = app(AuditRecorder::class);
+                $userId = $extra['user_id'] ?? auth()->id();
                 $installment->loadMissing('accountReceivable');
+                $before = $audit->snapshot($installment->accountReceivable);
                 $paymentAction = new RegisterAccountReceivableInstallmentPaymentAction($installment);
                 $payment = $paymentAction->execute([
                     'account_receivable_installment_id' => $installment->id,
@@ -251,7 +282,7 @@ class AccountReceivableService
                 }
 
                 if ($payment->financial_account_id) {
-                    $movement = $this->cashMovementService->syncForReceivablePayment($payment);
+                    $movement = $this->cashMovementService->syncForReceivablePayment($payment, $userId);
 
                     if ($this->cashMovementService->hasError() || $movement === null) {
                         $this->setError(
@@ -264,6 +295,22 @@ class AccountReceivableService
                         return null;
                     }
                 }
+
+                $auditable = $installment->accountReceivable->fresh();
+                $audit->recordModelEvent(
+                    $auditable,
+                    'account_receivable.payment_registered',
+                    "Recebimento registrado para a parcela {$installment->sequence_number}",
+                    $before,
+                    $audit->snapshot($auditable),
+                    $userId,
+                    null,
+                    [
+                        'installment_id' => $installment->id,
+                        'payment_id' => $payment->id,
+                        'payment_amount' => (float) $payment->amount,
+                    ],
+                );
 
                 $this->setSuccess('Recebimento da parcela registrado com sucesso.');
 
@@ -433,6 +480,7 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($payment, $data) {
+                $userId = $data['user_id'] ?? auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
                 $validated = AccountReceivableInstallmentValidator::validatePayment([
@@ -469,7 +517,7 @@ class AccountReceivableService
                 }
 
                 if ($payment->financial_account_id) {
-                    $movement = $this->cashMovementService->syncForReceivablePayment($payment->fresh());
+                    $movement = $this->cashMovementService->syncForReceivablePayment($payment->fresh(), $userId);
 
                     if ($this->cashMovementService->hasError() || $movement === null) {
                         $this->setError(
@@ -511,9 +559,10 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($payment) {
+                $userId = auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
-                $reversal = $this->cashMovementService->reverseForReceivablePayment($payment);
+                $reversal = $this->cashMovementService->reverseForReceivablePayment($payment, $userId);
 
                 if ($this->cashMovementService->hasError()) {
                     $this->setError(
@@ -574,6 +623,8 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($accountReceivable) {
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($accountReceivable);
                 $action = new DeleteAccountReceivableAction($accountReceivable);
                 $result = $action->execute();
 
@@ -594,6 +645,15 @@ class AccountReceivableService
 
                     return false;
                 }
+
+                $audit->recordModelEvent(
+                    $accountReceivable,
+                    'account_receivable.deleted',
+                    'Conta a receber excluida',
+                    $before,
+                    null,
+                    auth()->id(),
+                );
 
                 $this->setSuccess('Conta a receber excluida com sucesso');
 

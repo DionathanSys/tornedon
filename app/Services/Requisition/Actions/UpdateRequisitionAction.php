@@ -3,6 +3,7 @@
 namespace App\Services\Requisition\Actions;
 
 use App\Models\Requisition;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Requisition\Validators\RequisitionValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -27,6 +28,9 @@ class UpdateRequisitionAction
     public function execute(array $data): ?Requisition
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->requisition);
+
             Log::debug('Iniciando atualização de requisição', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $this->requisition->id,
@@ -46,6 +50,16 @@ class UpdateRequisitionAction
             $validated['updated_by'] = $this->updatedBy;
 
             $this->requisition->update($validated);
+            $this->requisition->refresh();
+
+            $audit->recordModelEvent(
+                $this->requisition,
+                'requisition.updated',
+                "Requisição #{$this->requisition->number} atualizada",
+                $before,
+                $audit->snapshot($this->requisition),
+                $this->updatedBy,
+            );
 
             Log::info('Requisição atualizada com sucesso', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,

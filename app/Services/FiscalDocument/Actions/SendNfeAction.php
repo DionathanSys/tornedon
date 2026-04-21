@@ -4,6 +4,8 @@ namespace App\Services\FiscalDocument\Actions;
 
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
+use App\Enum\Audit\AuditSource;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +31,9 @@ class SendNfeAction
     public function execute(FiscalDocument $fiscalDocument, ?string $serie = null, ?string $operationNature = null): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($fiscalDocument);
+
             Log::debug('SendNfeAction: iniciando envio de NF-e', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'company_id'         => $fiscalDocument->company_id,
@@ -126,6 +131,17 @@ class SendNfeAction
                     'nfe_ambiente' => $ambiente,
                     'nfe_payload'  => $payload,
                 ]);
+                $fiscalDocument->refresh();
+
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfe_sent',
+                    'NF-e enviada para processamento',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    $this->userId,
+                    AuditSource::INTEGRATION,
+                );
 
                 Log::info('SendNfeAction: NF-e enviada com sucesso, aguardando processamento', [
                     'fiscal_document_id' => $fiscalDocument->id,

@@ -5,6 +5,8 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Enum\Audit\AuditSource;
+use App\Services\Audit\AuditRecorder;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +27,9 @@ class ConsultNfseAction
     public function execute(FiscalDocument $fiscalDocument): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($fiscalDocument);
+
             Log::debug('ConsultNfseAction: consultando status de NFS-e', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'document_key'       => $fiscalDocument->document_key,
@@ -140,6 +145,29 @@ class ConsultNfseAction
             }
 
             $fiscalDocument->update($updates);
+            $fiscalDocument->refresh();
+
+            if (($updates['nfse_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfse_authorized',
+                    'NFS-e autorizada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::JOB,
+                );
+            } elseif (($updates['nfse_status'] ?? null) === NfeStatus::REJECTED->value) {
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfse_rejected',
+                    'NFS-e rejeitada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::JOB,
+                );
+            }
 
             if (($updates['nfse_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
                 $storeAttachmentsAction = app(StoreFiscalDocumentAttachmentsAction::class);

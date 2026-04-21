@@ -4,6 +4,7 @@ namespace App\Services\Requisition\Actions;
 
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,9 @@ class CancelRequisitionAction
     public function execute(Requisition $requisition): ?Requisition
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($requisition);
+
             Log::debug('CancelRequisitionAction: Cancelando requisição', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
@@ -37,6 +41,15 @@ class CancelRequisitionAction
 
                 $requisition->refresh();
             });
+
+            $audit->recordModelEvent(
+                $requisition,
+                'requisition.canceled',
+                "Requisição #{$requisition->number} cancelada",
+                $before,
+                $audit->snapshot($requisition),
+                $this->userId,
+            );
 
             $this->setSuccess();
             return $requisition;

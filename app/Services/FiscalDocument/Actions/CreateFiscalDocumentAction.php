@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
+use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\Validators\FiscalDocumentValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -33,6 +34,16 @@ class CreateFiscalDocumentAction
             $validated = $this->applyInitialFiscalStatus($validated);
 
             $fiscalDocument = FiscalDocument::create($validated);
+            $audit = app(AuditRecorder::class);
+
+            $audit->recordModelEvent(
+                $fiscalDocument,
+                'fiscal_document.created',
+                'Documento fiscal criado',
+                null,
+                $audit->snapshot($fiscalDocument),
+                $this->createdBy,
+            );
 
             Log::info('Documento fiscal criado com sucesso', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,

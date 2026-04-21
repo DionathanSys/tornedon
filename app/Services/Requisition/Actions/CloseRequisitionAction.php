@@ -6,6 +6,7 @@ use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
 use App\Models\StockMovement;
+use App\Services\Audit\AuditRecorder;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
@@ -24,6 +25,9 @@ class CloseRequisitionAction
     public function execute(Requisition $requisition): ?Requisition
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($requisition);
+
             Log::debug('CloseRequisitionAction: Encerrando requisicao', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
@@ -74,6 +78,14 @@ class CloseRequisitionAction
                 $requisition->state()->close($requisition, $this->userId);
                 $requisition->update(['stock_reserved' => true]);
                 $requisition->refresh();
+                $audit->recordModelEvent(
+                    $requisition,
+                    'requisition.closed',
+                    "Requisição #{$requisition->number} encerrada",
+                    $before,
+                    $audit->snapshot($requisition),
+                    $this->userId,
+                );
 
                 $this->setSuccess();
 

@@ -3,6 +3,7 @@
 namespace App\Services\ServiceOrder\Actions;
 
 use App\Models\ServiceOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Services\ServiceOrder\Validators\ServiceOrderValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -27,6 +28,9 @@ class UpdateServiceOrderAction
     public function execute(array $data): ?ServiceOrder
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->serviceOrder);
+
             Log::debug('Iniciando atualização de ordem de serviço', [
                 'metodo'            => __METHOD__ . '@' . __LINE__,
                 'service_order_id'  => $this->serviceOrder->id,
@@ -46,6 +50,16 @@ class UpdateServiceOrderAction
             $validated['updated_by'] = $this->updatedBy;
 
             $this->serviceOrder->update($validated);
+            $this->serviceOrder->refresh();
+
+            $audit->recordModelEvent(
+                $this->serviceOrder,
+                'service_order.updated',
+                "Ordem de serviço #{$this->serviceOrder->number} atualizada",
+                $before,
+                $audit->snapshot($this->serviceOrder),
+                $this->updatedBy,
+            );
 
             Log::info('Ordem de serviço atualizada com sucesso', [
                 'metodo'            => __METHOD__ . '@' . __LINE__,

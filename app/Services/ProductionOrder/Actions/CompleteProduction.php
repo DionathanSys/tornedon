@@ -5,6 +5,7 @@ namespace App\Services\ProductionOrder\Actions;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Services\ProductionOrder\DestinationHandlers\StockDestinationHandler;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,9 @@ class CompleteProduction
     public function execute(ProductionOrder $productionOrder): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($productionOrder);
+
             if (!$productionOrder->canComplete()) {
                 $this->setError('Esta ordem de produção não pode ser concluída');
                 return false;
@@ -58,6 +62,15 @@ class CompleteProduction
             }
 
             DB::commit();
+            $productionOrder->refresh();
+            $audit->recordModelEvent(
+                $productionOrder,
+                'production_order.completed',
+                "Ordem de produção #{$productionOrder->production_order_number} concluída",
+                $before,
+                $audit->snapshot($productionOrder),
+                $this->userId,
+            );
             $this->setSuccess();
             return true;
 

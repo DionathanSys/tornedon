@@ -3,6 +3,7 @@
 namespace App\Services\Invoice\Actions;
 
 use App\Models\Invoice;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Invoice\Validators\InvoiceValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -30,6 +31,16 @@ class CreateInvoiceAction
             $validated['created_by'] = $this->createdBy;
 
             $invoice = Invoice::create($validated);
+            $audit = app(AuditRecorder::class);
+
+            $audit->recordModelEvent(
+                $invoice,
+                'invoice.created',
+                "Fatura #{$invoice->invoice_number} criada",
+                null,
+                $audit->snapshot($invoice),
+                $this->createdBy,
+            );
 
             Log::info('Fatura criada com sucesso', [
                 'metodo'     => __METHOD__ . '@' . __LINE__,

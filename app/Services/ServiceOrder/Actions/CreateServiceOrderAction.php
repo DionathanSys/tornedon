@@ -3,6 +3,7 @@
 namespace App\Services\ServiceOrder\Actions;
 
 use App\Models\ServiceOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Services\ServiceOrder\Validators\ServiceOrderValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -36,6 +37,16 @@ class CreateServiceOrderAction
             $validated['created_by'] = $this->createdBy;
 
             $serviceOrder = ServiceOrder::create($validated);
+            $audit = app(AuditRecorder::class);
+
+            $audit->recordModelEvent(
+                $serviceOrder,
+                'service_order.created',
+                "Ordem de serviço #{$serviceOrder->number} criada",
+                null,
+                $audit->snapshot($serviceOrder),
+                $this->createdBy,
+            );
 
             Log::info('Ordem de serviço criada com sucesso', [
                 'metodo'            => __METHOD__ . '@' . __LINE__,

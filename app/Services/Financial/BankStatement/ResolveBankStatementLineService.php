@@ -6,6 +6,7 @@ use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivableInstallment;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
+use App\Services\Audit\AuditRecorder;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Financial\CashMovementService;
@@ -30,6 +31,7 @@ class ResolveBankStatementLineService
 
         try {
             return DB::transaction(function () use ($line, $cashMovementId, $userId, $decision) {
+                $audit = app(AuditRecorder::class);
                 $line = $line->fresh();
                 $this->assertLineCanBeResolved($line);
 
@@ -67,6 +69,25 @@ class ResolveBankStatementLineService
                         ...$decision,
                     ]),
                 ]);
+
+                $import = $line->import()->first();
+
+                if ($import) {
+                    $audit->recordModelEvent(
+                        $import,
+                        'bank_statement_import.movement_reconciled',
+                        "Linha #{$line->id} conciliada com movimento financeiro",
+                        null,
+                        $audit->snapshot($import),
+                        $userId,
+                        null,
+                        [
+                            'bank_statement_line_id' => $line->id,
+                            'cash_movement_id' => $movement->id,
+                            'decision' => $decision,
+                        ],
+                    );
+                }
 
                 $this->setSuccess('Linha do extrato conciliada com sucesso.');
 
@@ -116,6 +137,7 @@ class ResolveBankStatementLineService
                     'discount_amount' => (float) ($payload['discount_amount'] ?? 0),
                     'financial_account_id' => $line->financial_account_id,
                     'notes' => $payload['notes'] ?? $line->description,
+                    'user_id' => $userId,
                 ],
             );
 
@@ -187,6 +209,7 @@ class ResolveBankStatementLineService
                     'discount_amount' => (float) ($payload['discount_amount'] ?? 0),
                     'financial_account_id' => $line->financial_account_id,
                     'notes' => $payload['notes'] ?? $line->description,
+                    'user_id' => $userId,
                 ],
             );
 
@@ -230,6 +253,7 @@ class ResolveBankStatementLineService
     public function createManualMovement(BankStatementLine $line, array $payload, ?int $userId = null): ?BankStatementLine
     {
         $this->resetResponse();
+        $audit = app(AuditRecorder::class);
 
         $movement = $this->cashMovementService->createManual([
             'company_id' => $line->company_id,
@@ -253,10 +277,32 @@ class ResolveBankStatementLineService
             return null;
         }
 
-        return $this->reconcileWithCashMovement($line, $movement->id, $userId, [
+        $resolved = $this->reconcileWithCashMovement($line, $movement->id, $userId, [
             'type' => 'manual',
             'created_cash_movement_id' => $movement->id,
         ]);
+
+        if ($resolved) {
+            $import = $line->import()->first();
+
+            if ($import) {
+                $audit->recordModelEvent(
+                    $import,
+                    'bank_statement_import.manual_movement_created',
+                    "Movimento manual criado para a linha #{$line->id}",
+                    null,
+                    $audit->snapshot($import),
+                    $userId,
+                    null,
+                    [
+                        'bank_statement_line_id' => $line->id,
+                        'cash_movement_id' => $movement->id,
+                    ],
+                );
+            }
+        }
+
+        return $resolved;
     }
 
     public function ignore(BankStatementLine $line, ?int $userId = null, ?string $reason = null): ?BankStatementLine
@@ -264,6 +310,7 @@ class ResolveBankStatementLineService
         $this->resetResponse();
 
         try {
+            $audit = app(AuditRecorder::class);
             $line->update([
                 'reconciliation_status' => 'ignored',
                 'metadata' => $this->mergeDecisionMetadata($line, [
@@ -273,6 +320,24 @@ class ResolveBankStatementLineService
                     'resolved_at' => now()->toDateTimeString(),
                 ]),
             ]);
+
+            $import = $line->import()->first();
+
+            if ($import) {
+                $audit->recordModelEvent(
+                    $import,
+                    'bank_statement_import.line_ignored',
+                    "Linha #{$line->id} ignorada",
+                    null,
+                    $audit->snapshot($import),
+                    $userId,
+                    null,
+                    [
+                        'bank_statement_line_id' => $line->id,
+                        'reason' => $reason,
+                    ],
+                );
+            }
 
             $this->setSuccess('Linha marcada como ignorada.');
 

@@ -4,6 +4,7 @@ namespace App\Services\ProductionOrder\Actions;
 
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,9 @@ class StartProduction
     public function execute(ProductionOrder $productionOrder): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($productionOrder);
+
             if (!$productionOrder->canStart()) {
                 $this->setError('Esta ordem de produção não pode ser iniciada');
                 return false;
@@ -28,6 +32,16 @@ class StartProduction
                 'started_at' => now(),
                 'updated_by' => $this->userId,
             ]);
+            $productionOrder->refresh();
+
+            $audit->recordModelEvent(
+                $productionOrder,
+                'production_order.started',
+                "Ordem de produção #{$productionOrder->production_order_number} iniciada",
+                $before,
+                $audit->snapshot($productionOrder),
+                $this->userId,
+            );
 
             $this->setSuccess();
             return true;

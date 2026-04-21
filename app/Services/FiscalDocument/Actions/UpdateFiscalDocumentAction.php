@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
+use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\Validators\FiscalDocumentValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -21,6 +22,9 @@ class UpdateFiscalDocumentAction
     public function execute(array $data): ?FiscalDocument
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($this->fiscalDocument);
+
             Log::debug('Iniciando atualização de documento fiscal', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $this->fiscalDocument->id,
@@ -37,6 +41,16 @@ class UpdateFiscalDocumentAction
             $validated['updated_by'] = $this->updatedBy;
 
             $this->fiscalDocument->update($validated);
+            $this->fiscalDocument->refresh();
+
+            $audit->recordModelEvent(
+                $this->fiscalDocument,
+                'fiscal_document.updated',
+                'Documento fiscal atualizado',
+                $before,
+                $audit->snapshot($this->fiscalDocument),
+                $this->updatedBy,
+            );
 
             Log::info('Documento fiscal atualizado com sucesso', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,

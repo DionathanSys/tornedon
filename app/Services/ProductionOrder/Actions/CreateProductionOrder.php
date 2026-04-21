@@ -4,6 +4,7 @@ namespace App\Services\ProductionOrder\Actions;
 
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Services\ProductionOrder\Validators\ProductionOrderValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +35,16 @@ class CreateProductionOrder
                 'assigned_machine'  => $validatedData['assigned_machine'] ?? null,
                 'created_by'        => $this->createdBy,
             ]);
+            $audit = app(AuditRecorder::class);
+
+            $audit->recordModelEvent(
+                $productionOrder,
+                'production_order.created',
+                "Ordem de produção #{$productionOrder->production_order_number} criada",
+                null,
+                $audit->snapshot($productionOrder),
+                $this->createdBy,
+            );
 
             $this->setSuccess();
 

@@ -4,67 +4,39 @@
     "type": "split",
     "children": [
       {
-        "id": "8849ebd263ea0739",
+        "id": "09854814e9a983ac",
         "type": "tabs",
         "children": [
           {
-            "id": "076b1de0c9686f8a",
+            "id": "9e3acf14be100817",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "fluxo-emissao-notas-fiscais.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "fluxo-emissao-notas-fiscais"
-            }
-          },
-          {
-            "id": "202585979ad900c1",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "financeiro-contas-cash-extrato.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "financeiro-contas-cash-extrato"
-            }
-          },
-          {
-            "id": "168b0b2ebcdf7634",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "fluxo-finalizacao-venda-produto.md",
+                "file": "Sem título 1.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "fluxo-finalizacao-venda-produto"
+              "title": "Sem título 1"
             }
           },
           {
-            "id": "017d10adea4eaaf7",
+            "id": "1aa353e4728911d4",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Tasks App Gestor.md",
+                "file": "Plan/Estrutura Fiscal.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Tasks App Gestor"
+              "title": "Estrutura Fiscal"
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -227,19 +199,26 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "017d10adea4eaaf7",
+  "active": "1aa353e4728911d4",
   "lastOpenFiles": [
-    "Plano Importação DF-e.md",
-    "fluxo-finalizacao-venda-produto.md",
-    "Tasks App Gestor.md",
+    "reports/relatorio-auditoria-2026-04-21.pdf",
+    "reports/relatorio-auditoria-2026-04-21.md",
+    "reports",
+    "Sem título 1.md",
+    "Plan/Estrutura Fiscal.md",
+    "Plan",
+    "fluxo-emissao-notas-fiscais.md",
     "financeiro-contas-cash-extrato.md",
+    "fluxo-finalizacao-venda-produto.md",
+    "relatorios/2026-04-20-nfe-devolucao-alteracoes.md",
+    "Tasks App Gestor.md",
+    "relatorios",
+    "Plano Importação DF-e.md",
     "Sem título.canvas",
     "Sem título 2.md",
-    "fluxo-emissao-notas-fiscais.md",
     "Estudo para melhoria de Emissão NF.md",
     "docs/Plano de Implementação do Financeiro Integrado.md",
     "Sem título.md",
-    "Sem título 1.md",
     "Projeto/📥 Caixa de Entrada.md",
     "Projeto/Análise de Feature.md",
     "2G Alinhamento.md",
@@ -252,10 +231,8 @@
     "Consideracoes plano fiscal.md",
     "CODING-STANDARDS.md",
     "Arquitetura e Padrões.md",
-    "Projeto/Plano de evolução NFSe intercambiável por cidade.md",
     "Pasted image 20260402124855.png",
     "Pasted image 20260402125036.png",
-    "docs/plano-notificacoes-documentos.md",
     "Pasted image 20260402131724.png",
     "Pasted image 20260402131645.png",
     "Pasted image 20260402131538.png",
@@ -263,8 +240,6 @@
     "Pasted image 20260402130917.png",
     "Pasted image 20260402130405.png",
     "Pasted image 20260402130026.png",
-    "Pasted image 20260402130009.png",
-    "regras-negocio/remessa-retorno-os.md",
-    "plano-refatoracao-anexos-polimorficos.md"
+    "Pasted image 20260402130009.png"
   ]
 }

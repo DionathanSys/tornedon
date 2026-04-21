@@ -28,7 +28,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         'name',
         'email',
         'password',
+        'is_admin',
     ];
+
+    protected string $guard_name = 'web';
 
     /**
      * The attributes that should be hidden for serialization.
@@ -79,6 +82,19 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function belongsToCompany(int $companyId): bool
     {
         return $this->companies()->where('companies.id', $companyId)->exists();
+    }
+
+    public function canViewAuditLogs(): bool
+    {
+        if ((bool) $this->is_admin) {
+            return true;
+        }
+
+        if (method_exists($this, 'hasPermissionTo') && $this->hasPermissionTo('view_audit_logs')) {
+            return true;
+        }
+
+        return $this->can('view_audit_logs');
     }
 
 }

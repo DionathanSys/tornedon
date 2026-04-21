@@ -8,6 +8,7 @@ use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
+use App\Models\AuditEntry;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
@@ -136,6 +137,13 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $this->assertSame('Empresa Financeiro AP', $movement->party_from_label);
         $this->assertSame('Fornecedor Teste', $movement->party_to_label);
         $this->assertSame('Pagamento parcela 01 - Pagamento PIX fornecedor abril', $movement->description);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountPayable::class,
+            'auditable_id' => $payable->id,
+            'event' => 'account_payable.payment_registered',
+            'action' => 'payment_registered',
+        ]);
 
         $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
         $this->assertDatabaseCount('cash_movements', 2);
@@ -198,6 +206,14 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         ], $this->user->id);
 
         $this->assertNotNull($payable, $this->service->getMessage());
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountPayable::class,
+            'auditable_id' => $payable->id,
+            'actor_user_id' => $this->user->id,
+            'event' => 'account_payable.created',
+            'action' => 'created',
+        ]);
 
         $installments = $payable->fresh()->installments()->orderBy('sequence_number')->get();
 
@@ -228,6 +244,14 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         ], $this->user->id);
 
         $this->assertNotNull($payable, $this->service->getMessage());
+        $this->assertSame(
+            1,
+            AuditEntry::query()
+                ->where('auditable_type', AccountPayable::class)
+                ->where('auditable_id', $payable->id)
+                ->where('event', 'account_payable.created')
+                ->count()
+        );
 
         $payable->refresh();
         $installments = $payable->installments()->orderBy('sequence_number')->get();
@@ -242,7 +266,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $payable = $this->service->create([
             'supplier_id' => $this->supplier->id,
             'company_id' => $this->company->id,
-            'due_date' => '2026-04-20',
+            'due_date' => '2026-05-20',
             'due_amount' => 200,
             'payment_method' => PaymentMethod::PIX->value,
             'installment_count' => 2,

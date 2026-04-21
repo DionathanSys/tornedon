@@ -4,6 +4,7 @@ namespace Tests\Feature\Services\Financial;
 
 use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
+use App\Models\AuditEntry;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
@@ -107,6 +108,14 @@ class CashMovementServiceTest extends TestCase
         $this->assertSame('Empresa Movimento', $movement->party_from_label);
         $this->assertSame('Nao informado', $movement->party_to_label);
         $this->assertStringContainsString('Conta Principal', $movement->tracking_label);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => CashMovement::class,
+            'auditable_id' => $movement->id,
+            'actor_user_id' => $this->user->id,
+            'event' => 'cash_movement.created',
+            'action' => 'created',
+        ]);
     }
 
     public function test_manual_cash_movement_tracks_partner_and_accounts_with_snapshot(): void
@@ -330,6 +339,20 @@ class CashMovementServiceTest extends TestCase
         $this->assertSame('Transferencia ajustada', $outflow->description);
         $this->assertSame('2026-04-11', $outflow->transaction_date?->format('Y-m-d'));
         $this->assertSame('Atualizada', $inflow->notes);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => CashMovement::class,
+            'auditable_id' => $updated->id,
+            'event' => 'cash_movement.updated',
+            'action' => 'updated',
+        ]);
+        $this->assertSame(
+            1,
+            AuditEntry::query()
+                ->where('event', 'cash_movement.updated')
+                ->where('auditable_id', $updated->id)
+                ->count()
+        );
     }
 
     public function test_reverse_transfer_creates_two_reversals_and_prevents_duplicate_reverse(): void
@@ -373,6 +396,13 @@ class CashMovementServiceTest extends TestCase
         $this->assertNull($duplicateReverse);
         $this->assertArrayHasKey('transfer_group_id', $this->service->getErrors());
         $this->assertDatabaseCount('cash_movements', 4);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => CashMovement::class,
+            'auditable_id' => $reversal->id,
+            'event' => 'cash_movement.transfer_reversed',
+            'action' => 'transfer_reversed',
+        ]);
     }
 
     public function test_update_manual_rejects_complete_transfer_pair_but_keeps_legacy_manual_records_editable(): void

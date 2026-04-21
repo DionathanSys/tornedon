@@ -4,6 +4,7 @@ namespace App\Services\ProductionOrder\Actions;
 
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,9 @@ class SendToQcAction
     public function execute(ProductionOrder $productionOrder): bool
     {
         try {
+            $audit = app(AuditRecorder::class);
+            $before = $audit->snapshot($productionOrder);
+
             if ($productionOrder->status !== Status::IN_PROGRESS) {
                 $this->setError('Apenas ordens em produção podem ser enviadas para QC');
                 return false;
@@ -27,6 +31,16 @@ class SendToQcAction
                 'status'     => Status::QC_CHECK->value,
                 'updated_by' => $this->userId,
             ]);
+            $productionOrder->refresh();
+
+            $audit->recordModelEvent(
+                $productionOrder,
+                'production_order.sent_to_qc',
+                "Ordem de produção #{$productionOrder->production_order_number} enviada para QC",
+                $before,
+                $audit->snapshot($productionOrder),
+                $this->userId,
+            );
 
             Log::info('SendToQcAction: Ordem enviada para controle de qualidade', [
                 'production_order_id'     => $productionOrder->id,
