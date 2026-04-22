@@ -177,7 +177,7 @@ class EditFiscalDocument extends EditRecord
                         $pdf     = $service->danfe($record, Auth::id());
 
                         if (! $pdf) {
-                            Notification::make()->title($service->getMessage())->danger()->send();
+                            notify::error($service->getMessage());
                             return response()->streamDownload(fn() => null, 'danfe.pdf');
                         }
 
@@ -202,15 +202,11 @@ class EditFiscalDocument extends EditRecord
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()
-                                ->title('NFS-e enfileirada para emissão.')
-                                ->body('O processamento inicial foi concluído pelo sistema. O retorno da prefeitura ainda está pendente e a tela será atualizada automaticamente enquanto a nota estiver em processamento.')
-                                ->success()
-                                ->send();
+                            notify::success('NFS-e enfileirada para emissão. O processamento inicial foi concluído pelo sistema. O retorno da prefeitura ainda está pendente e a tela será atualizada automaticamente enquanto a nota estiver em processamento.');
                             return;
                         }
 
-                        Notification::make()->title($service->getMessage())->danger()->send();
+                        notify::error($service->getMessage());
                     }),
 
                 Action::make('consultar_nfse')
@@ -224,15 +220,11 @@ class EditFiscalDocument extends EditRecord
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()
-                                ->title('Consulta da NFS-e realizada.')
-                                ->body('O retorno mais recente da prefeitura já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.')
-                                ->success()
-                                ->send();
+                            notify::success('Consulta da NFS-e realizada. O retorno mais recente da prefeitura já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.');
                             return;
                         }
 
-                        Notification::make()->title($service->getMessage())->danger()->send();
+                        notify::error($service->getMessage());
                     }),
 
                 Action::make('preview_nfse')

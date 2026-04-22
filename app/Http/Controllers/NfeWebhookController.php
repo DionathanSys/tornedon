@@ -156,6 +156,12 @@ class NfeWebhookController extends Controller
 
         $doc->update($updates);
 
+        Log::info('NfeWebhookController: status atualizado', [
+            'fiscal_document_id' => $doc->id,
+            'status'             => $doc->status,
+            'key'                => 'TEST:BAIXA_ESTOQUE',
+        ]);
+
         if ($status === 'autorizado') {
             $stockMovementAction = app(ProcessAuthorizedNfeStockMovementsAction::class);
             $stockProcessed = $stockMovementAction->execute($doc->fresh(['invoice.requisitions.items.product']));
@@ -167,6 +173,7 @@ class NfeWebhookController extends Controller
                     'message'            => $stockMovementAction->getMessage(),
                     'error_code'         => $stockMovementAction->getErrorCode(),
                     'errors'             => $stockMovementAction->getErrors(),
+                    'key'                => 'TEST:BAIXA_ESTOQUE',
                 ]);
             }
 

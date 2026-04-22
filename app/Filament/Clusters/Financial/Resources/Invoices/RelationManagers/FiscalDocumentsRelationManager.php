@@ -97,7 +97,8 @@ class FiscalDocumentsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('document_key')
                     ->label('Chave')
-                    ->limit(20)
+                    ->copyable()
+                    ->copyMessage('Chave copiada para a área de transferência')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

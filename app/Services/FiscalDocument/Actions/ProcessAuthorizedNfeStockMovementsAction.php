@@ -20,6 +20,12 @@ class ProcessAuthorizedNfeStockMovementsAction
 
     public function execute(FiscalDocument $fiscalDocument): bool
     {
+        Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'fiscal_document_id' => $fiscalDocument->id,
+            'key'                => 'TEST:BAIXA_ESTOQUE',
+        ]);
+
         try {
             if ($fiscalDocument->document_type !== DocumentModel::NFE) {
                 $this->setSuccess();
@@ -37,6 +43,13 @@ class ProcessAuthorizedNfeStockMovementsAction
                 ])->first();
 
                 if (! $invoice || $invoice->requisitions->isEmpty()) {
+
+                    Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem requisições', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'key'                => 'TEST:BAIXA_ESTOQUE',
+                    ]);
+
                     $this->setSuccess();
                     return true;
                 }
@@ -44,14 +57,37 @@ class ProcessAuthorizedNfeStockMovementsAction
                 $userId = $this->resolveUserId($fiscalDocument, $invoice->created_by ?? null);
 
                 foreach ($invoice->requisitions as $requisition) {
+
+                    Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'requisition_id' => $requisition->id,
+                        'key'                => 'TEST:BAIXA_ESTOQUE',
+                    ]);
+
                     $this->processRequisition($requisition, $userId);
 
                     if ($this->hasError()) {
+
+                        Log::debug('ProcessAuthorizedNfeStockMovementsAction: erro', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,    
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'requisition_id' => $requisition->id,
+                            'key'                => 'TEST:BAIXA_ESTOQUE',
+                        ]);
+
                         return false;
                     }
                 }
 
                 $this->setSuccess();
+
+                Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,    
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'key'                => 'TEST:BAIXA_ESTOQUE',
+                ]);
+
                 return true;
             });
         } catch (\Throwable $e) {
@@ -62,6 +98,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                 'fiscal_document_id' => $fiscalDocument->id,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'key'                => 'TEST:BAIXA_ESTOQUE',
             ]);
 
             return false;
@@ -70,6 +107,12 @@ class ProcessAuthorizedNfeStockMovementsAction
 
     private function processRequisition(Requisition $requisition, int $userId): void
     {
+        Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
+            'metodo' => __METHOD__ . '@' . __LINE__,    
+            'requisition_id' => $requisition->id,
+            'key'                => 'TEST:BAIXA_ESTOQUE',
+        ]);
+
         $stockMovementService = app(StockMovementService::class);
         $productStockService = app(ProductStockService::class);
 
@@ -78,16 +121,31 @@ class ProcessAuthorizedNfeStockMovementsAction
             ->values();
 
         if ($items->isEmpty()) {
+            Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem itens', [
+                'metodo' => __METHOD__ . '@' . __LINE__,    
+                'requisition_id' => $requisition->id,
+                'key'                => 'TEST:BAIXA_ESTOQUE',
+            ]);
             return;
         }
 
         foreach ($items as $item) {
             if (! $item->product_id) {
+                Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem produto', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,    
+                    'requisition_id' => $requisition->id,
+                    'key'                => 'TEST:BAIXA_ESTOQUE',
+                ]);
                 $this->markItemAsConsumed($item);
                 continue;
             }
 
             if (! $item->product?->has_stock_control) {
+                Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem controle de estoque', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,    
+                    'requisition_id' => $requisition->id,
+                    'key'                => 'TEST:BAIXA_ESTOQUE',
+                ]);
                 $this->markItemAsConsumed($item);
                 continue;
             }
@@ -95,6 +153,11 @@ class ProcessAuthorizedNfeStockMovementsAction
             $productStock = $productStockService->findByProductId($item->product_id, $requisition->company_id);
 
             if (! $productStock) {
+                Log::debug('ProcessAuthorizedNfeStockMovementsAction: estoque não encontrado', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,    
+                    'requisition_id' => $requisition->id,
+                    'key'                => 'TEST:BAIXA_ESTOQUE',
+                ]);
                 $this->setError('Estoque não encontrado para o produto #' . $item->product_id);
                 return;
             }
@@ -113,6 +176,7 @@ class ProcessAuthorizedNfeStockMovementsAction
             $releaseQuantity = $this->resolveReservedQuantity($requisition, $item);
 
             if ($releaseQuantity > 0.0001) {
+
                 $release = $stockMovementService->create(array_merge($baseData, [
                     'type' => Type::RESERVATION_RELEASE->value,
                     'quantity' => $releaseQuantity,
@@ -150,6 +214,14 @@ class ProcessAuthorizedNfeStockMovementsAction
             'stock_consumed' => ! $hasPendingItems,
             'stock_reserved' => $hasPendingItems ? $requisition->stock_reserved : false,
         ]);
+
+        Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
+            'metodo' => __METHOD__ . '@' . __LINE__,    
+            'requisition_id' => $requisition->id,
+            'hasPendingItems' => $hasPendingItems,
+            'stock_reserved' => $requisition->stock_reserved,
+            'key'                => 'TEST:BAIXA_ESTOQUE',
+        ]);
     }
 
     private function resolveReservedQuantity(Requisition $requisition, RequisitionItem $item): float
@@ -174,6 +246,13 @@ class ProcessAuthorizedNfeStockMovementsAction
 
     private function markItemAsConsumed(RequisitionItem $item): void
     {
+        Log::debug('ProcessAuthorizedNfeStockMovementsAction: marcando item como consumido', [
+            'metodo' => __METHOD__ . '@' . __LINE__,    
+            'requisition_id' => $item->requisition_id,
+            'item_id' => $item->id,
+            'key'                => 'TEST:BAIXA_ESTOQUE',
+        ]);
+
         $item->update([
             'stock_consumed' => true,
             'stock_consumed_at' => now(),
