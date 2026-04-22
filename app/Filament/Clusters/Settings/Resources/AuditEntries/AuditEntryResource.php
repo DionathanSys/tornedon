@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class AuditEntryResource extends Resource
 {
@@ -53,6 +54,6 @@ class AuditEntryResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canViewAuditLogs() ?? false;
+        return Auth::user()?->canViewAuditLogs() ?? false;
     }
 }

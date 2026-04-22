@@ -26,106 +26,98 @@ class InvoiceForm
         return $schema
             ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
             ->components([
-                Tabs::make()
-                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
+                Section::make('Dados da Fatura')
+                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
                     ->columnSpanFull()
-                    ->tabs([
-                        Tab::make('Geral')
-                            ->schema([
-                                Section::make('Dados da Fatura')
-                                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
-                                    ->columnSpanFull()
-                                    ->schema([
-                                        Select::make('customer_id')
-                                            ->label('Cliente')
-                                            ->disabled()
-                                            ->columnSpan(['md' => 3, 'lg' => 6])
-                                            ->relationship('customer', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->required(),
-                                        TextInput::make('invoice_number')
-                                            ->label('Número da Fatura')
-                                            ->disabled()
-                                            ->columnStart(1)
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->required()
-                                            ->maxLength(50),
-                                        DatePicker::make('invoice_date')
-                                            ->label('Data da Fatura')
-                                            ->disabled()
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->default(now())
-                                            ->required()
-                                            ->displayFormat('d/m/Y'),
-                                        Select::make('payment_method')
-                                            ->label('Forma de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->options(PaymentMethod::toSelectArray())
-                                            ->native(false)
-                                            ->searchable(),
-                                        Select::make('payment_condition')
-                                            ->label('Condição de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->options(PaymentCondition::toGroupedSelectArray())
-                                            ->native(false)
-                                            ->searchable(),
-                                        Money::make('services_amount')
-                                            ->label('Valor de Serviços')
-                                            ->disabled()
-                                            ->readOnly()
-                                            ->dehydrated(false)
-                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
-                                            ->columnStart(1)
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        Money::make('products_amount')
-                                            ->label('Valor de Produtos')
-                                            ->disabled()
-                                            ->readOnly()
-                                            ->dehydrated(false)
-                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        Money::make('total_amount')
-                                            ->label('Valor Total')
-                                            ->disabled()
-                                            ->readOnly()
-                                            ->dehydrated(false)
-                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        Money::make('discount_amount')
-                                            ->label('Desconto')
-                                            ->disabled()
-                                            ->readOnly()
-                                            ->dehydrated(false)
-                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->discount_amount ?? 0), 2, ',', '.'))
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        Money::make('net_value')
-                                            ->label('Valor Líquido')
-                                            ->disabled()
-                                            ->readOnly()
-                                            ->dehydrated(false)
-                                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->net_value ?? 0), 2, ',', '.'))
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                                    ]),
-                                Section::make('')
-                                    ->hiddenLabel()
-                                    ->columnSpanFull()
-                                    ->columns(1)
-                                    ->contained(false)
-                                    ->schema([
-                                        Livewire::make(FiscalDocumentsRelationManager::class, fn(Invoice $record) => [
-                                            'ownerRecord' => $record,
-                                            'pageClass' => EditInvoice::class,
-                                        ])
+                    ->schema([
+                        Hidden::make('company_id'),
+                        Hidden::make('created_by'),
+                        Hidden::make('updated_by'),
+                        Select::make('customer_id')
+                            ->label('Cliente')
+                            ->disabled()
+                            ->columnSpan(['md' => 3, 'lg' => 6])
+                            ->relationship('customer', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        TextInput::make('invoice_number')
+                            ->label('Número da Fatura')
+                            ->disabled()
+                            ->columnStart(1)
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->required()
+                            ->maxLength(50),
+                        DatePicker::make('invoice_date')
+                            ->label('Data da Fatura')
+                            ->disabled()
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->default(now())
+                            ->required()
+                            ->displayFormat('d/m/Y'),
+                        Select::make('payment_method')
+                            ->label('Forma de Pagamento')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->options(PaymentMethod::toSelectArray())
+                            ->native(false)
+                            ->searchable(),
+                        Select::make('payment_condition')
+                            ->label('Condição de Pagamento')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->options(PaymentCondition::toGroupedSelectArray())
+                            ->native(false)
+                            ->searchable(),
+                        Money::make('services_amount')
+                            ->label('Valor de Serviços')
+                            ->disabled()
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
+                            ->columnStart(1)
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Money::make('products_amount')
+                            ->label('Valor de Produtos')
+                            ->disabled()
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Money::make('total_amount')
+                            ->label('Valor Total')
+                            ->disabled()
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Money::make('discount_amount')
+                            ->label('Desconto')
+                            ->disabled()
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->discount_amount ?? 0), 2, ',', '.'))
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                        Money::make('net_value')
+                            ->label('Valor Líquido')
+                            ->disabled()
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->net_value ?? 0), 2, ',', '.'))
+                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                    ]),
+                Section::make('')
+                    ->hiddenLabel()
+                    ->columnSpanFull()
+                    ->columns(1)
+                    ->contained(false)
+                    ->schema([
+                        Livewire::make(FiscalDocumentsRelationManager::class, fn(Invoice $record) => [
+                            'ownerRecord' => $record,
+                            'pageClass' => EditInvoice::class,
+                        ])
 
-                                            ->columnSpanFull(),
-                                    ]),
-                            ]),
+                            ->columnSpanFull(),
                     ]),
 
-                Hidden::make('company_id'),
-                Hidden::make('created_by'),
-                Hidden::make('updated_by'),
             ]);
     }
 }

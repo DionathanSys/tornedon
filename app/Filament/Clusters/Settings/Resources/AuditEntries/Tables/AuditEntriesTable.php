@@ -224,6 +224,8 @@ class AuditEntriesTable
             'movement_reconciled' => 'Movimento conciliado',
             'manual_movement_created' => 'Movimento manual criado',
             'payment_registered' => 'Pagamento registrado',
+            'installment_updated' => 'Parcela atualizada',
+            'installment_deleted' => 'Parcela excluída',
             'transfer_created' => 'Transferência criada',
             'transfer_reversed' => 'Transferência estornada',
         ];

@@ -344,7 +344,10 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($installment, $data) {
+                $audit = app(AuditRecorder::class);
+                $userId = auth()->id();
                 $installment->loadMissing('accountReceivable');
+                $before = $audit->snapshot($installment);
 
                 if ($installment->accountReceivable->company_id !== $installment->company_id) {
                     throw ValidationException::withMessages([
@@ -369,7 +372,8 @@ class AccountReceivableService
                     return null;
                 }
 
-                $this->recalculateReceivableInstallment($updated->fresh());
+                $updated = $updated->fresh();
+                $this->recalculateReceivableInstallment($updated);
 
                 $syncAction = new SyncAccountReceivableStatusFromInstallmentsAction($installment->accountReceivable);
                 $synced = $syncAction->execute();
@@ -384,6 +388,20 @@ class AccountReceivableService
 
                     return null;
                 }
+
+                $audit->recordModelEvent(
+                    $synced->fresh(),
+                    'account_receivable.installment_updated',
+                    "Parcela {$updated->sequence_number} da conta a receber atualizada",
+                    $before,
+                    $audit->snapshot($updated),
+                    $userId,
+                    null,
+                    [
+                        'installment_id' => $updated->id,
+                        'sequence_number' => $updated->sequence_number,
+                    ],
+                );
 
                 $this->setSuccess('Parcela atualizada com sucesso.');
 
@@ -414,7 +432,12 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($installment) {
+                $audit = app(AuditRecorder::class);
+                $userId = auth()->id();
                 $installment->loadMissing('accountReceivable');
+                $before = $audit->snapshot($installment);
+                $installmentId = $installment->id;
+                $sequenceNumber = $installment->sequence_number;
 
                 if ($installment->accountReceivable->company_id !== $installment->company_id) {
                     throw ValidationException::withMessages([
@@ -449,6 +472,20 @@ class AccountReceivableService
 
                     return false;
                 }
+
+                $audit->recordModelEvent(
+                    $synced->fresh(),
+                    'account_receivable.installment_deleted',
+                    "Parcela {$sequenceNumber} da conta a receber excluída",
+                    $before,
+                    null,
+                    $userId,
+                    null,
+                    [
+                        'installment_id' => $installmentId,
+                        'sequence_number' => $sequenceNumber,
+                    ],
+                );
 
                 $this->setSuccess('Parcela excluida com sucesso.');
 

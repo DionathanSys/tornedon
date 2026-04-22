@@ -252,4 +252,80 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
                 ->count()
         );
     }
+
+    public function test_update_and_delete_installment_generate_audit_entries(): void
+    {
+        $this->actingAs($this->user);
+
+        $receivable = AccountReceivable::create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $this->createInvoice()->id,
+            'sequence_number' => '01',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-20',
+            'paid_date' => null,
+            'due_amount' => 300,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+            'description' => 'Conta com parcelas auditáveis',
+        ]);
+
+        $firstInstallment = AccountReceivableInstallment::create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-20',
+            'original_amount' => 150,
+            'due_amount' => 150,
+            'received_amount' => 0,
+            'balance_amount' => 150,
+            'financial_category_id' => $this->receivableCategory->id,
+            'description' => 'Parcela 01',
+        ]);
+
+        $secondInstallment = AccountReceivableInstallment::create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '02',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-05-20',
+            'original_amount' => 150,
+            'due_amount' => 150,
+            'received_amount' => 0,
+            'balance_amount' => 150,
+            'financial_category_id' => $this->receivableCategory->id,
+            'description' => 'Parcela 02',
+        ]);
+
+        $updated = $this->service->updateInstallment($firstInstallment, [
+            'due_date' => '2026-04-25',
+            'due_amount' => 160,
+            'original_amount' => 160,
+            'financial_category_id' => $this->receivableCategory->id,
+            'description' => 'Parcela 01 ajustada',
+        ]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountReceivable::class,
+            'auditable_id' => $receivable->id,
+            'event' => 'account_receivable.installment_updated',
+            'action' => 'installment_updated',
+        ]);
+
+        $deleted = $this->service->deleteInstallment($secondInstallment->fresh());
+
+        $this->assertTrue($deleted, $this->service->getMessage());
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountReceivable::class,
+            'auditable_id' => $receivable->id,
+            'event' => 'account_receivable.installment_deleted',
+            'action' => 'installment_deleted',
+        ]);
+    }
 }

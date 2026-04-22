@@ -309,4 +309,79 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $this->assertNull($payable);
         $this->assertArrayHasKey('auto_register_payment_on_due_date', $this->service->getErrors());
     }
+
+    public function test_update_and_delete_installment_generate_audit_entries(): void
+    {
+        $this->actingAs($this->user);
+
+        $payable = AccountPayable::create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountPayableStatus::PENDING->value,
+            'due_date' => '2026-04-20',
+            'paid_date' => null,
+            'due_amount' => 300,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+            'description' => 'Conta com parcelas auditáveis',
+        ]);
+
+        $firstInstallment = AccountPayableInstallment::create([
+            'account_payable_id' => $payable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountPayableStatus::PENDING->value,
+            'due_date' => '2026-04-20',
+            'original_amount' => 150,
+            'due_amount' => 150,
+            'paid_amount' => 0,
+            'balance_amount' => 150,
+            'financial_category_id' => $this->payableCategory->id,
+            'description' => 'Parcela 01',
+        ]);
+
+        $secondInstallment = AccountPayableInstallment::create([
+            'account_payable_id' => $payable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '02',
+            'status' => AccountPayableStatus::PENDING->value,
+            'due_date' => '2026-05-20',
+            'original_amount' => 150,
+            'due_amount' => 150,
+            'paid_amount' => 0,
+            'balance_amount' => 150,
+            'financial_category_id' => $this->payableCategory->id,
+            'description' => 'Parcela 02',
+        ]);
+
+        $updated = $this->service->updateInstallment($firstInstallment, [
+            'due_date' => '2026-04-25',
+            'due_amount' => 160,
+            'original_amount' => 160,
+            'financial_category_id' => $this->payableCategory->id,
+            'description' => 'Parcela 01 ajustada',
+        ]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountPayable::class,
+            'auditable_id' => $payable->id,
+            'event' => 'account_payable.installment_updated',
+            'action' => 'installment_updated',
+        ]);
+
+        $deleted = $this->service->deleteInstallment($secondInstallment->fresh());
+
+        $this->assertTrue($deleted, $this->service->getMessage());
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => AccountPayable::class,
+            'auditable_id' => $payable->id,
+            'event' => 'account_payable.installment_deleted',
+            'action' => 'installment_deleted',
+        ]);
+    }
 }

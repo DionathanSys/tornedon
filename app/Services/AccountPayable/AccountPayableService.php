@@ -487,7 +487,10 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($installment, $data) {
+                $audit = app(AuditRecorder::class);
+                $userId = auth()->id();
                 $installment->loadMissing('accountPayable');
+                $before = $audit->snapshot($installment);
 
                 if ($installment->accountPayable->company_id !== $installment->company_id) {
                     throw ValidationException::withMessages([
@@ -512,7 +515,8 @@ class AccountPayableService
                     return null;
                 }
 
-                $this->recalculatePayableInstallment($updated->fresh());
+                $updated = $updated->fresh();
+                $this->recalculatePayableInstallment($updated);
 
                 $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($installment->accountPayable);
                 $synced = $syncAction->execute();
@@ -527,6 +531,20 @@ class AccountPayableService
 
                     return null;
                 }
+
+                $audit->recordModelEvent(
+                    $synced->fresh(),
+                    'account_payable.installment_updated',
+                    "Parcela {$updated->sequence_number} da conta a pagar atualizada",
+                    $before,
+                    $audit->snapshot($updated),
+                    $userId,
+                    null,
+                    [
+                        'installment_id' => $updated->id,
+                        'sequence_number' => $updated->sequence_number,
+                    ],
+                );
 
                 $this->setSuccess('Parcela atualizada com sucesso.');
 
@@ -557,7 +575,12 @@ class AccountPayableService
 
         try {
             return DB::transaction(function () use ($installment) {
+                $audit = app(AuditRecorder::class);
+                $userId = auth()->id();
                 $installment->loadMissing('accountPayable');
+                $before = $audit->snapshot($installment);
+                $installmentId = $installment->id;
+                $sequenceNumber = $installment->sequence_number;
 
                 if ($installment->accountPayable->company_id !== $installment->company_id) {
                     throw ValidationException::withMessages([
@@ -592,6 +615,20 @@ class AccountPayableService
 
                     return false;
                 }
+
+                $audit->recordModelEvent(
+                    $synced->fresh(),
+                    'account_payable.installment_deleted',
+                    "Parcela {$sequenceNumber} da conta a pagar excluída",
+                    $before,
+                    null,
+                    $userId,
+                    null,
+                    [
+                        'installment_id' => $installmentId,
+                        'sequence_number' => $sequenceNumber,
+                    ],
+                );
 
                 $this->setSuccess('Parcela excluída com sucesso.');
 
