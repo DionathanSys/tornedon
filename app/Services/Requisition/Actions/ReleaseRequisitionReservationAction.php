@@ -32,7 +32,7 @@ class ReleaseRequisitionReservationAction
             $stockMovementService = app(StockMovementService::class);
 
             $items = $requisition->items()
-                ->where('stock_consumed', false)
+                ->whereNull('stock_consumed_at')
                 ->with('product')
                 ->get();
 

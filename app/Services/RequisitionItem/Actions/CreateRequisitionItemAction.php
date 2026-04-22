@@ -60,6 +60,8 @@ class CreateRequisitionItemAction
             $validated = RequisitionItemValidator::validateCreate($data);
 
             $validated['created_by'] = $this->createdBy;
+            $validated['stock_consumed'] = false;
+            $validated['stock_consumed_at'] = null;
 
             $item = RequisitionItem::create($validated);
 

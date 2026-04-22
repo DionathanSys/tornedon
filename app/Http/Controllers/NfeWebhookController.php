@@ -158,7 +158,7 @@ class NfeWebhookController extends Controller
 
         Log::info('NfeWebhookController: status atualizado', [
             'fiscal_document_id' => $doc->id,
-            'status'             => $doc->status,
+            'status'             => $status,
             'key'                => 'TEST:BAIXA_ESTOQUE',
         ]);
 

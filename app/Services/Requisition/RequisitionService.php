@@ -690,7 +690,7 @@ class RequisitionService
         $productStockService  = app(ProductStockService::class);
 
         $items = $requisition->items()
-            ->where('stock_consumed', false)
+            ->whereNull('stock_consumed_at')
             ->get();
 
         if ($items->isEmpty()) {

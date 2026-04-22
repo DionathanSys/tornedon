@@ -35,6 +35,8 @@ class CreateRequisitionAction
 
             $validated = RequisitionValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
+            $validated['stock_consumed'] ??= false;
+            $validated['stock_reserved'] ??= false;
 
             $requisition = Requisition::create($validated);
             $audit = app(AuditRecorder::class);
