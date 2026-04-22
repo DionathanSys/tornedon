@@ -5,6 +5,7 @@ namespace Tests\Feature\Http;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
+use App\Models\AuditEntry;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\Partner;
@@ -38,6 +39,14 @@ class NfeWebhookControllerTest extends TestCase
         $this->assertSame(NfeStatus::REJECTED, $document->nfe_status);
         $this->assertSame(Status::PENDING, $document->status);
         $this->assertSame('webhook', $document->errors_messages[0]['origem'] ?? null);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $document->company_id,
+            'auditable_type' => FiscalDocument::class,
+            'auditable_id' => $document->id,
+            'event' => 'fiscal_document.nfe_rejected',
+            'action' => 'nfe_rejected',
+            'source' => 'integration',
+        ]);
     }
 
     public function test_webhook_keeps_cancelled_status_for_real_cancellation(): void
@@ -60,6 +69,56 @@ class NfeWebhookControllerTest extends TestCase
 
         $this->assertSame(NfeStatus::CANCELED, $document->nfse_status);
         $this->assertSame(Status::CANCELLED, $document->status);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $document->company_id,
+            'auditable_type' => FiscalDocument::class,
+            'auditable_id' => $document->id,
+            'event' => 'fiscal_document.nfse_canceled',
+            'action' => 'nfse_canceled',
+            'source' => 'integration',
+        ]);
+    }
+
+    public function test_webhook_marks_authorized_document_and_records_audit_entry(): void
+    {
+        $document = $this->createFiscalDocument(DocumentModel::NFE);
+        $document->update([
+            'status' => Status::PENDING->value,
+            'nfe_status' => NfeStatus::IN_PROCESSING->value,
+            'document_key' => 'WEBHOOK-NFE-AUTHORIZED',
+        ]);
+
+        $response = $this->postJson(route('webhook.nfe'), [
+            'chave' => 'WEBHOOK-NFE-AUTHORIZED',
+            'status' => 'autorizada',
+            'protocolo' => 'PROTO-123',
+            'numero' => '1001',
+            'serie' => '1',
+        ]);
+
+        $response->assertOk();
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::AUTHORIZED, $document->nfe_status);
+        $this->assertSame(Status::CONFIRMED, $document->status);
+        $this->assertSame('PROTO-123', $document->nfe_protocolo);
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $document->company_id,
+            'auditable_type' => FiscalDocument::class,
+            'auditable_id' => $document->id,
+            'event' => 'fiscal_document.nfe_authorized',
+            'action' => 'nfe_authorized',
+            'source' => 'integration',
+        ]);
+        $this->assertSame(
+            1,
+            AuditEntry::query()
+                ->where('auditable_type', FiscalDocument::class)
+                ->where('auditable_id', $document->id)
+                ->where('event', 'fiscal_document.nfe_authorized')
+                ->count()
+        );
     }
 
     private function createFiscalDocument(DocumentModel $documentType): FiscalDocument

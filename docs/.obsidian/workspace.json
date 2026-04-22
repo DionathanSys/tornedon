@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "fluxo-produto-requisicao-fatura-documento-fiscal.md",
+                "file": "Tasks App Gestor.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "fluxo-produto-requisicao-fatura-documento-fiscal"
+              "title": "Tasks App Gestor"
             }
           },
           {
@@ -35,7 +35,8 @@
               "title": "Estrutura Fiscal"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -92,8 +93,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -199,11 +199,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "9e3acf14be100817",
+  "active": "1aa353e4728911d4",
   "lastOpenFiles": [
-    "fluxo-finalizacao-venda-produto.md",
-    "fluxo-produto-requisicao-fatura-documento-fiscal.md",
     "Tasks App Gestor.md",
+    "fluxo-produto-requisicao-fatura-documento-fiscal.md",
+    "fluxo-finalizacao-venda-produto.md",
     "Sem título 1.md",
     "Plan/Estrutura Fiscal.md",
     "reports/relatorio-auditoria-2026-04-21.pdf",

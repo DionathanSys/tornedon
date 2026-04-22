@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enum\Audit\AuditSource;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
 use Illuminate\Http\JsonResponse;
@@ -96,6 +98,9 @@ class NfeWebhookController extends Controller
 
     private function processarRetorno(FiscalDocument $doc, array $payload): void
     {
+        $audit = app(AuditRecorder::class);
+        $before = $audit->snapshot($doc);
+
         // Detecta o tipo de documento para atualizar os campos corretos
         $isNfse = $doc->document_type === DocumentModel::NFSE;
 
@@ -155,6 +160,23 @@ class NfeWebhookController extends Controller
         }
 
         $doc->update($updates);
+        $doc->refresh();
+
+        $audit->recordModelEvent(
+            $doc,
+            $this->resolveAuditEvent($isNfse, $status),
+            $this->resolveAuditSummary($isNfse, $status),
+            $before,
+            $audit->snapshot($doc),
+            null,
+            AuditSource::INTEGRATION,
+            [
+                'channel' => 'webhook',
+                'payload_status' => $payload['status'] ?? null,
+                'payload_code' => $payload['codigo'] ?? null,
+                'protocol' => $payload['protocolo'] ?? null,
+            ],
+        );
 
         Log::info('NfeWebhookController: status atualizado', [
             'fiscal_document_id' => $doc->id,
@@ -205,6 +227,34 @@ class NfeWebhookController extends Controller
             'autorizado', 'autorizada' => 'autorizado',
             'cancelado', 'cancelada' => 'cancelado',
             default => null,
+        };
+    }
+
+    private function resolveAuditEvent(bool $isNfse, ?string $status): string
+    {
+        if ($isNfse) {
+            return match ($status) {
+                'autorizado' => 'fiscal_document.nfse_authorized',
+                'cancelado' => 'fiscal_document.nfse_canceled',
+                default => 'fiscal_document.nfse_rejected',
+            };
+        }
+
+        return match ($status) {
+            'autorizado' => 'fiscal_document.nfe_authorized',
+            'cancelado' => 'fiscal_document.nfe_canceled',
+            default => 'fiscal_document.nfe_rejected',
+        };
+    }
+
+    private function resolveAuditSummary(bool $isNfse, ?string $status): string
+    {
+        $documentLabel = $isNfse ? 'NFS-e' : 'NF-e';
+
+        return match ($status) {
+            'autorizado' => "{$documentLabel} autorizada via webhook",
+            'cancelado' => "{$documentLabel} cancelada via webhook",
+            default => "{$documentLabel} rejeitada via webhook",
         };
     }
 }
