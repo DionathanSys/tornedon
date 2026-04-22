@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Notification\NotifyService as notify;
 
 class EditFiscalDocument extends EditRecord
 {
@@ -69,7 +70,7 @@ class EditFiscalDocument extends EditRecord
 
     public function getAutoRefreshInterval(): ?string
     {
-        return $this->isAutoRefreshEnabled() ? '5s' : null;
+        return $this->isAutoRefreshEnabled() ? '15s' : null;
     }
 
     public function isAutoRefreshEnabled(): bool
@@ -104,15 +105,11 @@ class EditFiscalDocument extends EditRecord
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()
-                                ->title('NF-e enfileirada para emissão.')
-                                ->body('O processamento inicial foi concluído pelo sistema. O retorno da SEFAZ ainda está pendente e a tela será atualizada automaticamente enquanto a nota estiver em processamento.')
-                                ->success()
-                                ->send();
+                            notify::success('NF-e enfileirada para emissão. O retorno da SEFAZ ainda está pendente.');
                             return;
                         }
 
-                        Notification::make()->title($service->getMessage())->danger()->send();
+                        notify::error($service->getMessage());
                     })
                     ->successRedirectUrl(fn(FiscalDocument $record) => FiscalDocumentResource::getUrl('edit', ['record' => $record])),
 
@@ -127,15 +124,11 @@ class EditFiscalDocument extends EditRecord
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            Notification::make()
-                                ->title('Consulta da NF-e realizada.')
-                                ->body('O retorno mais recente da SEFAZ já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.')
-                                ->success()
-                                ->send();
+                            notify::success('Consulta da NF-e realizada. O retorno mais recente da SEFAZ já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.');
                             return;
                         }
 
-                        Notification::make()->title($service->getMessage())->danger()->send();
+                        notify::error($service->getMessage());
                     }),
 
                 Action::make('preview')
@@ -158,8 +151,20 @@ class EditFiscalDocument extends EditRecord
                             '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
                         );
                     })
-                    ->modalSubmitAction(false)
+                    ->modalSubmitActionLabel('Emitir')
                     ->modalWidth('6xl')
+                    ->action(function (FiscalDocument $record): void {
+                        $service = app(NfeDocumentService::class);
+                        $service->emitir($record, Auth::id());
+                        $this->syncFiscalDocumentState();
+
+                        if ($service->isSuccess()) {
+                            notify::success('NF-e enfileirada para emissão. O retorno da SEFAZ ainda está pendente.');
+                            return;
+                        }
+
+                        notify::error($service->getMessage());
+                    })
                     ->after(fn() => $this->refreshFormData(['errors_messages'])),
 
                 Action::make('danfe')
@@ -212,7 +217,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar NFS-e')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse())// && $record->isNfseInProcessing())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfse()) // && $record->isNfseInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -398,7 +403,7 @@ class EditFiscalDocument extends EditRecord
             'contrato' => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
         ];
 
-        $payload = array_filter($payload, fn (string $value): bool => $value !== '');
+        $payload = array_filter($payload, fn(string $value): bool => $value !== '');
 
         if ($payload === []) {
             return null;

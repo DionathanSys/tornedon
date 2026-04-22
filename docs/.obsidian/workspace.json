@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Sem título 1.md",
+                "file": "fluxo-finalizacao-venda-produto.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Sem título 1"
+              "title": "fluxo-finalizacao-venda-produto"
             }
           },
           {
@@ -35,8 +35,7 @@
               "title": "Estrutura Fiscal"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -199,19 +198,20 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "1aa353e4728911d4",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
+    "fluxo-produto-requisicao-fatura-documento-fiscal.md",
+    "Tasks App Gestor.md",
+    "Sem título 1.md",
+    "Plan/Estrutura Fiscal.md",
     "reports/relatorio-auditoria-2026-04-21.pdf",
     "reports/relatorio-auditoria-2026-04-21.md",
     "reports",
-    "Sem título 1.md",
-    "Plan/Estrutura Fiscal.md",
     "Plan",
     "fluxo-emissao-notas-fiscais.md",
     "financeiro-contas-cash-extrato.md",
     "fluxo-finalizacao-venda-produto.md",
     "relatorios/2026-04-20-nfe-devolucao-alteracoes.md",
-    "Tasks App Gestor.md",
     "relatorios",
     "Plano Importação DF-e.md",
     "Sem título.canvas",
