@@ -13,31 +13,39 @@ class AuditEntryInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(3)
             ->components([
                 TextEntry::make('summary')
                     ->label('Resumo')
                     ->weight(FontWeight::Bold)
                     ->columnSpanFull(),
                 TextEntry::make('event')
-                    ->label('Evento'),
+                    ->label('Evento')
+                    ->columnSpan(1),
                 TextEntry::make('action_label')
-                    ->label('Ação'),
+                    ->label('Ação')
+                    ->columnSpan(1),
                 TextEntry::make('entity_label')
-                    ->label('Entidade'),
+                    ->label('Entidade')
+                    ->columnSpan(1),
                 TextEntry::make('auditable_id')
-                    ->label('Registro'),
-                TextEntry::make('actor_name')
-                    ->label('Ator')
-                    ->placeholder('Sistema'),
+                    ->label('Registro')
+                    ->columnSpan(1),
                 TextEntry::make('source_label')
                     ->label('Origem'),
+                TextEntry::make('actor_name')
+                    ->label('Ator')
+                    ->placeholder('Sistema')
+                    ->columnStart(1)
+                    ->columnSpan(1),
                 TextEntry::make('occurred_at')
                     ->label('Ocorrido em')
                     ->dateTime('d/m/Y H:i:s'),
-                self::jsonRepeatableEntry('before', 'Antes'),
-                self::jsonRepeatableEntry('after', 'Depois'),
                 self::jsonRepeatableEntry('diff', 'Diferenças'),
                 self::jsonRepeatableEntry('metadata', 'Metadados'),
+                self::jsonRepeatableEntry('before', 'Antes'),
+                self::jsonRepeatableEntry('after', 'Depois'),
+
             ]);
     }
 
@@ -54,7 +62,7 @@ class AuditEntryInfolist
                 }
 
                 return collect($data)
-                    ->map(fn (mixed $value, string $key): array => [
+                    ->map(fn(mixed $value, string $key): array => [
                         'field' => $key,
                         'value' => is_array($value)
                             ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
