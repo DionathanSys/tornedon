@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Settings\Resources\AuditEntries\Tables;
 
 use App\Enum\Audit\AuditSource;
+use App\Filament\Clusters\Settings\Resources\AuditEntries\Schemas\AuditEntryInfolist;
 use App\Models\AccountPayable;
 use App\Models\AccountReceivable;
 use App\Models\AuditEntry;
@@ -14,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -119,48 +121,50 @@ class AuditEntriesTable
                     ->icon('heroicon-o-eye')
                     ->modalHeading(fn(AuditEntry $record): string => "Auditoria #{$record->id}")
                     ->modalSubmitAction(false)
-                    ->schema([
-                        TextEntry::make('summary')
-                            ->label('Resumo')
-                            ->weight(FontWeight::Bold)
-                            ->columnSpanFull(),
-                        TextEntry::make('event')
-                            ->label('Evento'),
-                        TextEntry::make('action_label')
-                            ->label('Ação'),
-                        TextEntry::make('entity_label')
-                            ->label('Entidade'),
-                        TextEntry::make('auditable_id')
-                            ->label('Registro'),
-                        TextEntry::make('actor_name')
-                            ->label('Ator')
-                            ->placeholder('Sistema'),
-                        TextEntry::make('source_label')
-                            ->label('Origem'),
-                        TextEntry::make('occurred_at')
-                            ->label('Ocorrido em')
-                            ->dateTime('d/m/Y H:i:s'),
-                        TextEntry::make('before')
-                            ->label('Antes')
-                            ->formatStateUsing(fn($state): string => self::formatJson($state))
-                            ->html()
-                            ->columnSpanFull(),
-                        TextEntry::make('after')
-                            ->label('Depois')
-                            ->formatStateUsing(fn($state): string => self::formatJson($state))
-                            ->html()
-                            ->columnSpanFull(),
-                        TextEntry::make('diff')
-                            ->label('Diferenças')
-                            ->formatStateUsing(fn($state): string => self::formatJson($state))
-                            ->html()
-                            ->columnSpanFull(),
-                        TextEntry::make('metadata')
-                            ->label('Metadados')
-                            ->formatStateUsing(fn($state): string => self::formatJson($state))
-                            ->html()
-                            ->columnSpanFull(),
-                    ]),
+                    ->schema(fn(Schema $schema) => AuditEntryInfolist::configure($schema))
+                    // ->schema([
+                        // TextEntry::make('summary')
+                        //     ->label('Resumo')
+                        //     ->weight(FontWeight::Bold)
+                        //     ->columnSpanFull(),
+                        // TextEntry::make('event')
+                        //     ->label('Evento'),
+                        // TextEntry::make('action_label')
+                        //     ->label('Ação'),
+                        // TextEntry::make('entity_label')
+                        //     ->label('Entidade'),
+                        // TextEntry::make('auditable_id')
+                        //     ->label('Registro'),
+                        // TextEntry::make('actor_name')
+                        //     ->label('Ator')
+                        //     ->placeholder('Sistema'),
+                        // TextEntry::make('source_label')
+                        //     ->label('Origem'),
+                        // TextEntry::make('occurred_at')
+                        //     ->label('Ocorrido em')
+                        //     ->dateTime('d/m/Y H:i:s'),
+                        // TextEntry::make('before')
+                        //     ->label('Antes')
+                        //     ->formatStateUsing(fn($state): string => self::formatJson($state))
+                        //     ->html()
+                        //     ->columnSpanFull(),
+                        // TextEntry::make('after')
+                        //     ->label('Depois')
+                        //     ->formatStateUsing(fn($state): string => self::formatJson($state))
+                        //     ->html()
+                        //     ->columnSpanFull(),
+                        // TextEntry::make('diff')
+                        //     ->label('Diferenças')
+                        //     ->formatStateUsing(fn($state): string => self::formatJson($state))
+                        //     ->html()
+                        //     ->columnSpanFull(),
+                        // TextEntry::make('metadata')
+                        //     ->label('Metadados')
+                        //     ->formatStateUsing(fn($state): string => self::formatJson($state))
+                        //     ->html()
+                        //     ->columnSpanFull(),
+                    // ])
+                    ,
             ])
             ->toolbarActions([]);
     }
@@ -224,6 +228,8 @@ class AuditEntriesTable
             'movement_reconciled' => 'Movimento conciliado',
             'manual_movement_created' => 'Movimento manual criado',
             'payment_registered' => 'Pagamento registrado',
+            'installment_updated' => 'Parcela atualizada',
+            'installment_deleted' => 'Parcela excluída',
             'transfer_created' => 'Transferência criada',
             'transfer_reversed' => 'Transferência estornada',
         ];
