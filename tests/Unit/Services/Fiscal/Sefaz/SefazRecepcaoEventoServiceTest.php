@@ -29,7 +29,7 @@ class SefazRecepcaoEventoServiceTest extends TestCase
         $this->assertStringContainsString('<tpEvento>210210</tpEvento>', $xml);
         $this->assertStringContainsString('<descEvento>Ciencia da Operacao</descEvento>', $xml);
         $this->assertStringContainsString('<Signature', $xml);
-        $this->assertStringContainsString('<nfeRecepcaoEvento', $xml);
+        $this->assertStringContainsString('<nfeRecepcaoEventoNF', $xml);
         $this->assertStringContainsString('35260412345678000199550010000003211000000321', $xml);
     }
 
