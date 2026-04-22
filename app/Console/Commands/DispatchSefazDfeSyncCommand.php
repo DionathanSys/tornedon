@@ -9,6 +9,7 @@ use App\Services\Fiscal\Sefaz\CompanySefazCertificateService;
 use App\Services\Fiscal\Sefaz\SefazDfeSyncService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class DispatchSefazDfeSyncCommand extends Command
 {
@@ -27,6 +28,11 @@ class DispatchSefazDfeSyncCommand extends Command
         $dispatched = 0;
 
         foreach ($companies as $company) {
+            Log::info('Company: ' . $company->name, [
+                'isEligible' => $this->isEligible($company),
+                'lastStatusCode' => CompanyPreference::get(SefazDfeSyncService::LAST_STATUS_CODE_KEY, $company->id),
+                'lastRunAt' => CompanyPreference::get(SefazDfeSyncService::LAST_RUN_AT_KEY, $company->id),
+            ]);
             if (! $this->isEligible($company)) {
                 continue;
             }

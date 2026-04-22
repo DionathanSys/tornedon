@@ -79,7 +79,7 @@ class SefazDfeSyncService
         CompanyPreference::set(self::LAST_SUCCESS_AT_KEY, now()->toIso8601String(), $company->id);
         CompanyPreference::set(self::LAST_STATUS_KEY, 'success', $company->id);
 
-        Log::info('SefazDfeSyncService: sincronização DF-e concluída', [
+        Log::info('SefazDfeSyncService: sincronização DF-e concluída ' . $company->name, [
             'company_id' => $company->id,
             'status_code' => $result->statusCode,
             'status_message' => $result->statusMessage,
@@ -101,7 +101,7 @@ class SefazDfeSyncService
         CompanyPreference::set(self::LAST_STATUS_KEY, 'error', $company->id);
         CompanyPreference::set(self::LAST_ERROR_KEY, $exception->getMessage(), $company->id);
 
-        Log::error('SefazDfeSyncService: sincronização DF-e falhou', [
+        Log::error('SefazDfeSyncService: sincronização DF-e falhou ' . $company->name, [
             'company_id' => $company->id,
             'company_document' => $company->document_number,
             'error' => $exception->getMessage(),

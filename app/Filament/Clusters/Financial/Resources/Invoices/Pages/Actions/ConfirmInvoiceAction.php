@@ -7,9 +7,11 @@ use App\Enum\Payment\Method;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\NfeDocumentService;
+use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\InvoiceService;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Callout;
 use Filament\Support\Icons\Heroicon;
@@ -25,12 +27,17 @@ final class ConfirmInvoiceAction
             ->icon(Heroicon::Check)
             ->color('success')
             ->modalHeading('Confirmar Fatura')
-            ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber.')
+            ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber. Opcionalmente, você pode disparar a emissão dos documentos logo após a confirmação.')
             ->visible(fn (Invoice $record): bool => ! $record->confirmed && ! $record->canceled)
             ->schema([
                 Callout::make('Documentos que serão gerados')
                     ->description(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record))
                     ->info(),
+
+                Checkbox::make('emit_fiscal_documents')
+                    ->label('Disparar emissão dos documentos fiscais gerados')
+                    ->helperText('Quando marcado, a NF-e e/ou NFS-e criada será enviada imediatamente para processamento.')
+                    ->default(false),
 
                 Select::make('payment_method')
                     ->label('Forma de Pagamento')
@@ -83,8 +90,76 @@ final class ConfirmInvoiceAction
                     "Fatura confirmada com sucesso. {$result['documents_count']} documento(s) fiscal(is) ({$types}) e {$result['account_receivables_count']} conta(s) a receber geradas."
                 );
 
+                if (($data['emit_fiscal_documents'] ?? false) === true) {
+                    $emissionResult = self::emitGeneratedFiscalDocuments($record, Auth::id());
+
+                    if ($emissionResult['failed'] === 0) {
+                        notify::success(
+                            "Emissão disparada com sucesso para {$emissionResult['sent']} documento(s) fiscal(is)."
+                        );
+                    } else {
+                        $details = collect($emissionResult['errors'])
+                            ->take(2)
+                            ->implode(' | ');
+
+                        notify::warning(
+                            "A emissão foi disparada com pendências: {$emissionResult['sent']} documento(s) enviado(s) e {$emissionResult['failed']} com erro(s). {$details}"
+                        );
+                    }
+
+                    $livewire->refreshInvoiceState();
+                }
+
                 $livewire->dispatch('invoice-confirmed');
             });
+    }
+
+    /**
+     * @return array{sent:int, failed:int, errors:array<int, string>}
+     */
+    private static function emitGeneratedFiscalDocuments(Invoice $record, int $userId): array
+    {
+        $record->refresh()->loadMissing('fiscalDocuments');
+
+        $sent = 0;
+        $errors = [];
+
+        foreach ($record->fiscalDocuments as $document) {
+            $service = $document->isNfse()
+                ? app(NfseDocumentService::class)
+                : app(NfeDocumentService::class);
+
+            $emitted = $service->emitir($document, $userId);
+
+            if ($emitted) {
+                $sent++;
+                continue;
+            }
+
+            $message = $service->getMessageUser() ?: $service->getMessage() ?: 'Erro ao emitir documento fiscal.';
+
+            $errors[] = sprintf(
+                '%s #%d: %s',
+                strtoupper((string) $document->document_type->value),
+                $document->id,
+                $message
+            );
+
+            Log::warning('ConfirmInvoiceAction UI: falha ao disparar emissão do documento fiscal', [
+                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'invoice_id'         => $record->id,
+                'fiscal_document_id' => $document->id,
+                'document_type'      => $document->document_type->value,
+                'message'            => $message,
+                'user_id'            => $userId,
+            ]);
+        }
+
+        return [
+            'sent' => $sent,
+            'failed' => count($errors),
+            'errors' => $errors,
+        ];
     }
 
     private static function resolveDocumentTypesDescription(Invoice $record): string
