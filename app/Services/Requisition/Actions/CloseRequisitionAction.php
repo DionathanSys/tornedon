@@ -35,7 +35,7 @@ class CloseRequisitionAction
                 'stock_reserved' => $requisition->stock_reserved,
             ]);
 
-            return DB::transaction(function () use ($requisition) {
+            return DB::transaction(function () use ($requisition, $audit, $before) {
                 $productStockService = app(ProductStockService::class);
                 $items = $requisition
                     ->items()
