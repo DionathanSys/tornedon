@@ -38,16 +38,16 @@ class AuditEntriesTable
                 TextColumn::make('source')
                     ->label('Origem')
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => $state?->description() ?? (string) $state)
-                    ->color(fn ($state): string => $state?->color() ?? 'gray'),
+                    ->formatStateUsing(fn($state): string => $state?->description() ?? (string) $state)
+                    ->color(fn($state): string => $state?->color() ?? 'gray'),
                 TextColumn::make('auditable_type')
                     ->label('Entidade')
-                    ->formatStateUsing(fn (?string $state): string => AuditEntry::resolveAuditableTypeLabel($state))
+                    ->formatStateUsing(fn(?string $state): string => AuditEntry::resolveAuditableTypeLabel($state))
                     ->toggleable(),
                 TextColumn::make('action')
                     ->label('Ação')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => str($state)->replace('_', ' ')->headline()->value())
+                    ->formatStateUsing(fn(string $state): string => str($state)->replace('_', ' ')->headline()->value())
                     ->sortable(),
                 TextColumn::make('summary')
                     ->label('Resumo')
@@ -58,7 +58,7 @@ class AuditEntriesTable
             ->filters([
                 Filter::make('occurred_between')
                     ->label('Período')
-                    ->form([
+                    ->schema([
                         DatePicker::make('from')
                             ->label('De'),
                         DatePicker::make('until')
@@ -66,8 +66,8 @@ class AuditEntriesTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '>=', $date))
-                            ->when($data['until'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '<=', $date));
+                            ->when($data['from'] ?? null, fn(Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '>=', $date))
+                            ->when($data['until'] ?? null, fn(Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '<=', $date));
                     }),
                 SelectFilter::make('auditable_type')
                     ->label('Entidade')
@@ -91,7 +91,7 @@ class AuditEntriesTable
                     ->preload(),
                 Filter::make('record')
                     ->label('Documento/ID')
-                    ->form([
+                    ->schema([
                         TextInput::make('term')
                             ->label('Documento ou ID'),
                     ])
@@ -117,9 +117,9 @@ class AuditEntriesTable
                 Action::make('details')
                     ->label('Detalhes')
                     ->icon('heroicon-o-eye')
-                    ->modalHeading(fn (AuditEntry $record): string => "Auditoria #{$record->id}")
+                    ->modalHeading(fn(AuditEntry $record): string => "Auditoria #{$record->id}")
                     ->modalSubmitAction(false)
-                    ->infolist([
+                    ->schema([
                         TextEntry::make('summary')
                             ->label('Resumo')
                             ->weight(FontWeight::Bold)
@@ -142,22 +142,22 @@ class AuditEntriesTable
                             ->dateTime('d/m/Y H:i:s'),
                         TextEntry::make('before')
                             ->label('Antes')
-                            ->formatStateUsing(fn ($state): string => self::formatJson($state))
+                            ->formatStateUsing(fn($state): string => self::formatJson($state))
                             ->html()
                             ->columnSpanFull(),
                         TextEntry::make('after')
                             ->label('Depois')
-                            ->formatStateUsing(fn ($state): string => self::formatJson($state))
+                            ->formatStateUsing(fn($state): string => self::formatJson($state))
                             ->html()
                             ->columnSpanFull(),
                         TextEntry::make('diff')
                             ->label('Diferenças')
-                            ->formatStateUsing(fn ($state): string => self::formatJson($state))
+                            ->formatStateUsing(fn($state): string => self::formatJson($state))
                             ->html()
                             ->columnSpanFull(),
                         TextEntry::make('metadata')
                             ->label('Metadados')
-                            ->formatStateUsing(fn ($state): string => self::formatJson($state))
+                            ->formatStateUsing(fn($state): string => self::formatJson($state))
                             ->html()
                             ->columnSpanFull(),
                     ]),
@@ -224,8 +224,6 @@ class AuditEntriesTable
             'movement_reconciled' => 'Movimento conciliado',
             'manual_movement_created' => 'Movimento manual criado',
             'payment_registered' => 'Pagamento registrado',
-            'installment_updated' => 'Parcela atualizada',
-            'installment_deleted' => 'Parcela excluída',
             'transfer_created' => 'Transferência criada',
             'transfer_reversed' => 'Transferência estornada',
         ];
