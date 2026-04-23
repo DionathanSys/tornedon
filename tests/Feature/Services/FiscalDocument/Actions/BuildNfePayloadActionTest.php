@@ -366,6 +366,91 @@ class BuildNfePayloadActionTest extends TestCase
         );
     }
 
+    public function test_it_uses_net_taxable_base_when_rebuilding_taxes_from_snapshot(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Desconto',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Desconto',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => '105',
+            'document_series' => '1',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => false,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-DESC-001',
+            'name' => 'Produto com Desconto',
+            'unit' => \App\Enum\Product\Unit::UN->value,
+            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        FiscalDocumentItem::query()->create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'discount_amount' => 15,
+            'included_in_total' => true,
+            'tax_data' => [],
+            'fiscal_snapshot' => [
+                'cfop' => '5102',
+                'cst_icms' => '00',
+                'aliquota_icms' => 18,
+                'cst_pis' => '01',
+                'aliquota_pis' => 1.65,
+                'cst_cofins' => '01',
+                'aliquota_cofins' => 7.6,
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $payload = app(BuildNfePayloadAction::class)->execute($document->fresh('items.product', 'customer.address', 'company'));
+
+        $this->assertNotNull($payload);
+        $this->assertSame('15.00', data_get($payload, 'itens.0.valor_desconto'));
+        $this->assertSame(85.0, (float) data_get($payload, 'itens.0.imposto.icms.valor_base_calculo'));
+        $this->assertSame(85.0, (float) data_get($payload, 'itens.0.imposto.pis.valor_base_calculo'));
+        $this->assertSame(85.0, (float) data_get($payload, 'itens.0.imposto.cofins.valor_base_calculo'));
+    }
+
     public function test_it_blocks_cst_for_simples_nacional_emitter(): void
     {
         $user = User::factory()->create();

@@ -18,6 +18,7 @@ use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
+use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -368,7 +369,8 @@ class InvoiceService
                                 'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
                                 'quantity'           => (float) $reqItem->quantity,
                                 'unit_price'         => (float) $reqItem->unit_price,
-                                'total_price'        => round((float) $reqItem->quantity * (float) $reqItem->unit_price, 2),
+                                'total_price'        => FiscalItemAmounts::grossTotal($reqItem->quantity, $reqItem->unit_price),
+                                'discount_amount'    => round((float) ($reqItem->discount_amount ?? 0), 2),
                                 'included_in_total'  => true,
                             ];
                         }
@@ -719,7 +721,10 @@ class InvoiceService
         $serviceId = $serviceIds->count() === 1 ? $serviceIds->first() : null;
 
         $totalValue = round($sourceItems->sum(
-            fn (array $row): float => round((float) $row['item']->quantity * (float) $row['item']->unit_price, 2)
+            fn (array $row): float => FiscalItemAmounts::grossTotal($row['item']->quantity, $row['item']->unit_price)
+        ), 2);
+        $totalDiscount = round($sourceItems->sum(
+            fn (array $row): float => (float) ($row['item']->discount_amount ?? 0)
         ), 2);
 
         $orderNumbers = $sourceItems
@@ -751,6 +756,7 @@ class InvoiceService
             'quantity' => 1,
             'unit_price' => $totalValue,
             'total_price' => $totalValue,
+            'discount_amount' => $totalDiscount,
             'municipal_tax_code' => $municipalTaxCode,
             'nbs_code' => $nbsCode,
             'cnae_code' => $cnaeCode,
@@ -783,7 +789,8 @@ class InvoiceService
                                     'service_name' => $service?->name ?? $item->observations,
                                     'quantity' => (float) $item->quantity,
                                     'unit_price' => (float) $item->unit_price,
-                                    'total_price' => round((float) $item->quantity * (float) $item->unit_price, 2),
+                                    'total_price' => FiscalItemAmounts::grossTotal($item->quantity, $item->unit_price),
+                                    'discount_amount' => round((float) ($item->discount_amount ?? 0), 2),
                                     'service_code' => $service?->service_code,
                                     'municipal_tax_code' => $service?->municipal_tax_code,
                                     'nbs_code' => $service?->nbs_code,

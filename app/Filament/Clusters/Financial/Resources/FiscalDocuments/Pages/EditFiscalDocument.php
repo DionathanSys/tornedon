@@ -33,8 +33,8 @@ class EditFiscalDocument extends EditRecord
         }
 
         return [
-            ConfirmEntryAction::make(),
             ActionGroup::make([
+                ConfirmEntryAction::make(),
                 GeneratePurchaseReturnAction::make(),
                 DeleteAction::make()
                     ->using(function (Model $record): bool {

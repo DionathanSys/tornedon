@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Enum\Tax\TaxRegime;
 use App\Models\FiscalDocument;
+use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -101,11 +102,12 @@ class BuildNfePayloadAction
             foreach ($fiscalDocument->items as $index => $item) {
                 $taxData = is_array($item->tax_data) ? $item->tax_data : [];
                 $fiscalSnapshot = is_array($item->fiscal_snapshot) ? $item->fiscal_snapshot : [];
+                $taxableBase = FiscalItemAmounts::taxableBase($item->total_price, $item->discount_amount);
 
                 if (($taxData['imposto'] ?? null) === null && $fiscalSnapshot !== []) {
                     $taxData = array_replace_recursive(
                         $taxData,
-                        FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData((float) $item->total_price)
+                        FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData($taxableBase)
                     );
                 }
 

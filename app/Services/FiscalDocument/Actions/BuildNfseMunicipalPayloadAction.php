@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
+use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -88,6 +89,8 @@ class BuildNfseMunicipalPayloadAction
             // ------------------------------------------------------------------
             $itens = [];
             $valorServicosTotal = 0.0;
+            $valorDescontoIncondicionadoTotal = 0.0;
+            $valorBaseCalculoTotal = 0.0;
             $discriminacoes = [];
             $serviceCodeCandidates = [];
             $nbsCodeCandidates = [];
@@ -116,7 +119,14 @@ class BuildNfseMunicipalPayloadAction
                 }
 
                 $valorServicosItem = round((float) $item->total_price, 2);
+                $valorDescontoIncondicionadoItem = round((float) ($item->discount_amount ?? 0), 2);
+                $valorBaseCalculoItem = FiscalItemAmounts::taxableBase(
+                    $valorServicosItem,
+                    $valorDescontoIncondicionadoItem
+                );
                 $valorServicosTotal += $valorServicosItem;
+                $valorDescontoIncondicionadoTotal += $valorDescontoIncondicionadoItem;
+                $valorBaseCalculoTotal += $valorBaseCalculoItem;
                 $discriminacoes[] = $discriminacao;
 
                 if ($codigoServico !== '') {
@@ -131,7 +141,12 @@ class BuildNfseMunicipalPayloadAction
                     'codigo'        => $codigoServico,
                     'discriminacao' => substr($discriminacao, 0, 2000),
                     'valor_servicos'=> $valorServicosItem,
+                    'valor_base_calculo' => $valorBaseCalculoItem,
                 ];
+
+                if ($valorDescontoIncondicionadoItem > 0) {
+                    $itemPayload['valor_desconto_incondicionado'] = $valorDescontoIncondicionadoItem;
+                }
 
                 Log::debug('Atualizando item NFS-e via RelationManager', [
                     'metodo'  => __METHOD__ . '@' . __LINE__,
@@ -169,8 +184,7 @@ class BuildNfseMunicipalPayloadAction
                 $aliquota = (float) ($item->iss_rate ?? $profile?->iss_rate_default ?? 0);
                 if ($aliquota > 0) {
                     $itemPayload['valor_aliquota'] = round($aliquota, 2);
-                    $valorServicos = (float) $itemPayload['valor_servicos'];
-                    $itemPayload['valor_iss'] = round($valorServicos * $aliquota / 100, 2);
+                    $itemPayload['valor_iss'] = round($valorBaseCalculoItem * $aliquota / 100, 2);
                 }
 
                 // Retenções declaratórias (do tax_data do item)
@@ -263,8 +277,13 @@ class BuildNfseMunicipalPayloadAction
                 'discriminacao' => substr($discriminacaoGeral, 0, 2000),
                 'codigo_nbs' => $codigoNbs,
                 'valor_servicos' => round($valorServicosTotal, 2),
+                'valor_base_calculo' => round($valorBaseCalculoTotal, 2),
                 'itens' => $itens,
             ];
+
+            if (round($valorDescontoIncondicionadoTotal, 2) > 0) {
+                $servico['valor_desconto_incondicionado'] = round($valorDescontoIncondicionadoTotal, 2);
+            }
 
             // Município de incidência e prestação
             $companyAddress = $company->address ?? [];

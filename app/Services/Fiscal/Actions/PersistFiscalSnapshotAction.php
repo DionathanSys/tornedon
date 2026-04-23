@@ -5,6 +5,7 @@ namespace App\Services\Fiscal\Actions;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Models\FiscalDocument;
 use App\Models\FiscalProfile;
+use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -44,7 +45,10 @@ class PersistFiscalSnapshotAction
                     continue;
                 }
 
-                $baseCalculo = (float) $item->total_price;
+                $baseCalculo = FiscalItemAmounts::taxableBase(
+                    $item->total_price,
+                    $item->discount_amount
+                );
 
                 $updateData = [
                     'fiscal_snapshot' => $decision->toSnapshotArray(),
