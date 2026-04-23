@@ -220,12 +220,7 @@ class ServiceOrderPdfDataFormatter
         }
 
         return collect([
-            ['label' => 'Nome', 'value' => $equipment->name],
-            ['label' => 'Identificacao', 'value' => $equipment->identifier],
-            ['label' => 'Tipo', 'value' => $equipment->type?->description()],
-            ['label' => 'Marca', 'value' => $equipment->mark],
-            ['label' => 'Modelo', 'value' => $equipment->model],
-            ['label' => 'Proprietario', 'value' => $equipment->owner?->name],
+            ['label' => 'Nome', 'value' => $equipment->identifier . ' - ' . $equipment->name],
         ])->filter(fn (array $field) => filled($field['value']))
             ->values()
             ->all();
