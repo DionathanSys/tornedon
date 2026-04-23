@@ -9,9 +9,11 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -74,27 +76,30 @@ class FiscalDocumentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->recordActions([
-                EditAction::make(),
-                Action::make('generatePurchaseReturn')
-                    ->label('Gerar nota de devolução')
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->visible(fn ($record): bool => GeneratePurchaseReturnAction::isVisible($record))
-                    ->action(function ($record): void {
-                        $service = app(PurchaseReturnFiscalDocumentService::class);
-                        $returnDocument = $service->generateFromEntry($record, Auth::id());
+                ActionGroup::make([
+                    EditAction::make(),
+                    Action::make('generatePurchaseReturn')
+                        ->label('Gerar nota de devolução')
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->visible(fn($record): bool => GeneratePurchaseReturnAction::isVisible($record))
+                        ->action(function ($record): void {
+                            $service = app(PurchaseReturnFiscalDocumentService::class);
+                            $returnDocument = $service->generateFromEntry($record, Auth::id());
 
-                        if ($service->hasError() || $returnDocument === null) {
-                            notify::error(message: $service->getMessageUser());
-                            return;
-                        }
+                            if ($service->hasError() || $returnDocument === null) {
+                                notify::error(message: $service->getMessageUser());
+                                return;
+                            }
 
-                        notify::success('Nota de devolução gerada com sucesso.');
+                            notify::success('Nota de devolução gerada com sucesso.');
 
-                        redirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
-                    }),
-            ])
+                            redirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
+                        }),
+                ])
+
+                    ], RecordActionsPosition::BeforeCells)
             ->defaultSort('created_at', 'desc');
     }
 }
