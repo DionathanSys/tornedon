@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument\Actions;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\OperationType;
 use App\Models\FiscalDocument;
 use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\Validators\FiscalDocumentValidatorResolver;
@@ -102,6 +103,7 @@ class CreateFiscalDocumentAction
         if ($documentType === DocumentModel::NFSE->value) {
             $validated['nfse_status'] = NfeStatus::PENDING->value;
             $validated['nfe_status'] = null;
+            $validated['operation_type'] = $validated['operation_type'] ?? OperationType::SAIDA->value;
 
             return $validated;
         }

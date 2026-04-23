@@ -101,5 +101,6 @@ class FiscalDocumentServiceCreateTest extends TestCase
         $this->assertNotNull($document, $service->getMessage());
         $this->assertSame(NfeStatus::PENDING, $document->nfse_status);
         $this->assertNull($document->nfe_status);
+        $this->assertSame(OperationType::SAIDA, $document->operation_type);
     }
 }
