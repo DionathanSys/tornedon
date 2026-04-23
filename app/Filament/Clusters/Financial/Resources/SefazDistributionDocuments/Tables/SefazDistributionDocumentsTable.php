@@ -16,6 +16,7 @@ use App\Services\Fiscal\Sefaz\SefazDistributionFiscalDocumentImportService;
 use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use Filament\Facades\Filament;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -151,7 +152,8 @@ class SefazDistributionDocumentsTable
                     ->query(fn ($query) => $query->where('import_status', ImportStatus::IMPORTED->value)),
             ])
             ->recordActions([
-                Action::make('viewTimeline')
+                ActionGroup::make([
+                    Action::make('viewTimeline')
                     ->label('Acompanhar')
                     ->icon('heroicon-o-clock')
                     ->url(fn (SefazDistributionDocument $record): string => SefazDistributionDocumentResource::getUrl('view', [
@@ -444,6 +446,7 @@ class SefazDistributionDocumentsTable
                         'record' => $record->fiscal_document_id,
                         'tenant' => Filament::getTenant(),
                     ])),
+                ])
             ])
             ->defaultSort('last_seen_at', 'desc');
     }
