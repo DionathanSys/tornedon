@@ -11,6 +11,7 @@ use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
@@ -97,7 +98,7 @@ class FiscalDocumentsTable
 
                             redirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
                         }),
-                ])
+                ])->icon(Heroicon::Bars3)
 
                     ], RecordActionsPosition::BeforeCells)
             ->defaultSort('created_at', 'desc');
