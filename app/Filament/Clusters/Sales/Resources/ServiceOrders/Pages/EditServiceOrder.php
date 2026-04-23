@@ -67,7 +67,6 @@ class EditServiceOrder extends EditRecord
                     ->hiddenLabel(),
                 CloseServiceOrderAction::make()
                     ->color('gray')
-                    ->hidden(fn($record): bool => $record->items->isEmpty() || $record->requisition()->exists())
                     ->hiddenLabel(),
                 InvoiceServiceOrderAction::make(),
                 Action::make('view-linked-requisition')

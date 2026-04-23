@@ -2,13 +2,18 @@
 
 namespace App\Services\Fiscal\Sefaz;
 
+use App\Enum\Audit\AuditSource;
 use App\Enum\Partner\Type as PartnerType;
+use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
+use App\Models\AuditEntry;
 use App\Models\Company;
 use App\Models\CompanyPartner;
+use App\Models\FiscalDocument;
 use App\Models\Partner;
 use App\Models\SefazDistributionDocument;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
 use Illuminate\Support\Facades\Log;
 
@@ -17,6 +22,7 @@ class SefazDistributionDocumentService
     public function __construct(
         private readonly SefazDistributionDocumentParser $parser,
         private readonly SefazDfeStorageService $storageService,
+        private readonly AuditRecorder $auditRecorder,
     ) {
     }
 
@@ -42,8 +48,11 @@ class SefazDistributionDocumentService
             'company_id' => $company->id,
             'document_key' => $documentKey,
         ]);
+        $wasRecentlyCreated = ! $record->exists;
+        $previousFullXml = (bool) $record->full_xml_available;
+        $previousImportStatus = $record->import_status;
 
-        $partnerId = $this->resolvePartnerId($company, $parsed['issuer_document'] ?? null, $parsed['issuer_name'] ?? null);
+        $partner = $this->resolveOrCreatePartner($company, $parsed['issuer_document'] ?? null, $parsed['issuer_name'] ?? null);
         $isFullXml = (bool) ($parsed['is_full_xml'] ?? false);
 
         $summaryPath = $record->summary_xml_path;
@@ -63,7 +72,7 @@ class SefazDistributionDocumentService
         ]);
 
         $record->fill([
-            'partner_id' => $partnerId ?? $record->partner_id,
+            'partner_id' => $partner?->id ?? $record->partner_id,
             'nsu' => $document->nsu !== '' ? $document->nsu : $record->nsu,
             'schema' => $document->schema,
             'document_type' => 'nfe',
@@ -76,6 +85,7 @@ class SefazDistributionDocumentService
             'raw_response_path' => $rawResponsePath !== '' ? $rawResponsePath : $record->raw_response_path,
             'distribution_payload' => $payload,
             'last_seen_at' => now(),
+            'last_job_uuid' => app()->bound('queue.job') ? app('queue.job')->uuid() : null,
         ]);
 
         if ($isFullXml) {
@@ -85,9 +95,19 @@ class SefazDistributionDocumentService
             $record->full_xml_path = $fullPath;
             $record->items_json = $parsed['items'];
             $record->import_ready_at ??= now();
+            if ($record->import_status !== ImportStatus::IGNORED) {
+                $record->import_status = $record->imported_at !== null ? ImportStatus::IMPORTED : ImportStatus::READY_TO_IMPORT;
+            }
+            $record->last_action = 'full_xml_available';
+            $record->last_action_at = now();
+            $record->last_error_code = null;
+            $record->last_error_message = null;
         } else {
             $record->summary_xml_path = $summaryPath;
             $record->full_xml_available = false;
+            if ($record->import_status !== ImportStatus::IGNORED) {
+                $record->import_status = ImportStatus::PENDING_XML;
+            }
 
             if ($record->manifestation_status === ManifestationStatus::ACCEPTED) {
                 $record->status = Status::MANIFESTED_WAITING_FULL_XML;
@@ -95,9 +115,47 @@ class SefazDistributionDocumentService
                 $record->status = Status::DETECTED_SUMMARY;
                 $record->manifestation_status = ManifestationStatus::PENDING;
             }
+
+            $record->last_action = $wasRecentlyCreated ? 'detected' : 'updated_summary';
+            $record->last_action_at = now();
         }
 
         $record->save();
+
+        if ($wasRecentlyCreated) {
+            $this->recordAuditEvent(
+                $record,
+                event: 'sefaz_distribution.detected',
+                summary: 'DF-e detectado na distribuição da SEFAZ',
+                source: AuditSource::INTEGRATION,
+                metadata: [
+                    'nsu' => $record->nsu,
+                    'schema' => $record->schema,
+                ],
+            );
+        }
+
+        if (! $previousFullXml && $record->full_xml_available) {
+            $this->recordAuditEvent(
+                $record,
+                event: 'sefaz_distribution.full_xml_available',
+                summary: 'XML completo disponibilizado para importação',
+                source: AuditSource::INTEGRATION,
+                metadata: [
+                    'nsu' => $record->nsu,
+                    'schema' => $record->schema,
+                ],
+            );
+        }
+
+        if ($previousImportStatus !== $record->import_status && $record->import_status === ImportStatus::READY_TO_IMPORT) {
+            $this->recordAuditEvent(
+                $record,
+                event: 'sefaz_distribution.reprocessed',
+                summary: 'Documento atualizado para pronto para importar',
+                source: AuditSource::INTEGRATION,
+            );
+        }
 
         return $record;
     }
@@ -112,7 +170,20 @@ class SefazDistributionDocumentService
             'status' => $document->full_xml_available ? Status::FULL_XML_AVAILABLE : Status::MANIFESTATION_PENDING,
             'manifestation_status' => ManifestationStatus::SENT,
             'distribution_payload' => $distributionPayload,
+            'last_action' => 'manifestation_requested',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
+            'last_job_uuid' => app()->bound('queue.job') ? app('queue.job')->uuid() : $document->last_job_uuid,
         ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.manifestation_requested',
+            summary: 'Manifestação do destinatário solicitada',
+            source: AuditSource::JOB,
+            metadata: $payload,
+        );
     }
 
     public function markManifestationResult(SefazDistributionDocument $document, array $result): void
@@ -130,7 +201,20 @@ class SefazDistributionDocumentService
                     'retry_allowed' => false,
                 ]),
             ]),
+            'last_action' => $accepted ? 'manifestation_succeeded' : 'manifestation_failed',
+            'last_action_at' => now(),
+            'last_error_code' => $accepted ? null : (string) ($result['event_status_code'] ?? ''),
+            'last_error_message' => $accepted ? null : (string) ($result['event_status_message'] ?? 'Falha funcional na manifestação'),
+            'last_job_uuid' => app()->bound('queue.job') ? app('queue.job')->uuid() : $document->last_job_uuid,
         ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: $accepted ? 'sefaz_distribution.manifestation_succeeded' : 'sefaz_distribution.manifestation_failed',
+            summary: $accepted ? 'Manifestação aceita pela SEFAZ' : 'Manifestação rejeitada pela SEFAZ',
+            source: AuditSource::JOB,
+            metadata: $result,
+        );
     }
 
     public function markManifestationFailure(
@@ -152,7 +236,24 @@ class SefazDistributionDocumentService
                     'failed_at' => now()->toIso8601String(),
                 ]),
             ]),
+            'last_action' => 'manifestation_failed',
+            'last_action_at' => now(),
+            'last_error_code' => 'technical_failure',
+            'last_error_message' => $message,
+            'last_job_uuid' => app()->bound('queue.job') ? app('queue.job')->uuid() : $document->last_job_uuid,
         ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.manifestation_failed',
+            summary: 'Manifestação falhou por erro técnico',
+            source: AuditSource::JOB,
+            metadata: [
+                'message' => $message,
+                'attempt_number' => $attemptNumber,
+                'retry_allowed' => $retryAllowed,
+            ],
+        );
     }
 
     public function prepareManualManifestationRetry(SefazDistributionDocument $document): void
@@ -166,7 +267,18 @@ class SefazDistributionDocumentService
                     'retry_allowed' => true,
                 ]),
             ]),
+            'last_action' => 'manual_manifestation_retry',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
         ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.reprocessed',
+            summary: 'Manifestação marcada para nova tentativa manual',
+            source: AuditSource::WEB,
+        );
     }
 
     public function markRefreshFailure(SefazDistributionDocument $document, string $message): void
@@ -183,17 +295,237 @@ class SefazDistributionDocumentService
                     'failed_at' => now()->toIso8601String(),
                 ],
             ]),
+            'last_action' => 'refresh_failed',
+            'last_action_at' => now(),
+            'last_error_code' => 'refresh_failed',
+            'last_error_message' => $message,
+            'last_job_uuid' => app()->bound('queue.job') ? app('queue.job')->uuid() : $document->last_job_uuid,
         ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.reprocessed',
+            summary: 'Busca do XML completo falhou',
+            source: AuditSource::JOB,
+            metadata: [
+                'error' => $message,
+            ],
+        );
     }
 
-    private function resolvePartnerId(Company $company, ?string $issuerDocument, ?string $issuerName): ?int
+    public function markManualRefreshRequested(SefazDistributionDocument $document): void
+    {
+        $document->forceFill([
+            'last_action' => 'manual_refresh_requested',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.reprocessed',
+            summary: 'Busca manual do XML completo solicitada',
+            source: AuditSource::WEB,
+        );
+    }
+
+    public function markImportRequested(SefazDistributionDocument $document, ?int $actorUserId = null): void
+    {
+        $document->forceFill([
+            'import_status' => ImportStatus::IMPORTING,
+            'import_attempted_at' => now(),
+            'import_error' => null,
+            'ignored_at' => null,
+            'ignored_by' => null,
+            'ignore_reason' => null,
+            'last_action' => 'import_requested',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.import_requested',
+            summary: 'Importação do DF-e iniciada',
+            actorUserId: $actorUserId,
+            source: $actorUserId ? AuditSource::WEB : AuditSource::SYSTEM,
+        );
+    }
+
+    public function markImportSucceeded(
+        SefazDistributionDocument $document,
+        FiscalDocument $fiscalDocument,
+        ?int $actorUserId = null,
+        bool $reusedExisting = false,
+    ): void {
+        $document->forceFill([
+            'fiscal_document_id' => $fiscalDocument->id,
+            'partner_id' => $document->partner_id ?: $fiscalDocument->customer_id,
+            'status' => Status::IMPORTED,
+            'import_status' => ImportStatus::IMPORTED,
+            'import_error' => null,
+            'imported_at' => now(),
+            'imported_by' => $actorUserId,
+            'last_action' => 'import_succeeded',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.import_succeeded',
+            summary: $reusedExisting
+                ? 'DF-e vinculado a documento fiscal já existente'
+                : 'DF-e importado para documento fiscal',
+            actorUserId: $actorUserId,
+            source: $actorUserId ? AuditSource::WEB : AuditSource::SYSTEM,
+            metadata: [
+                'fiscal_document_id' => $fiscalDocument->id,
+                'reused_existing' => $reusedExisting,
+            ],
+        );
+    }
+
+    public function markImportFailure(
+        SefazDistributionDocument $document,
+        string $message,
+        ?string $errorCode = null,
+        ?int $actorUserId = null,
+    ): void {
+        $document->forceFill([
+            'import_status' => ImportStatus::IMPORT_ERROR,
+            'import_error' => $message,
+            'last_action' => 'import_failed',
+            'last_action_at' => now(),
+            'last_error_code' => $errorCode,
+            'last_error_message' => $message,
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.import_failed',
+            summary: 'Falha ao importar DF-e para documento fiscal',
+            actorUserId: $actorUserId,
+            source: $actorUserId ? AuditSource::WEB : AuditSource::SYSTEM,
+            metadata: [
+                'error_code' => $errorCode,
+                'error' => $message,
+            ],
+        );
+    }
+
+    public function ignoreDocument(SefazDistributionDocument $document, string $reason, ?int $actorUserId = null): void
+    {
+        $document->forceFill([
+            'import_status' => ImportStatus::IGNORED,
+            'ignored_at' => now(),
+            'ignored_by' => $actorUserId,
+            'ignore_reason' => $reason,
+            'last_action' => 'ignored',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.ignored',
+            summary: 'Documento ignorado na inbox de DF-e',
+            actorUserId: $actorUserId,
+            source: $actorUserId ? AuditSource::WEB : AuditSource::SYSTEM,
+            metadata: [
+                'reason' => $reason,
+            ],
+        );
+    }
+
+    public function reactivateDocument(SefazDistributionDocument $document, ?int $actorUserId = null): void
+    {
+        $document->forceFill([
+            'import_status' => $document->full_xml_available ? ImportStatus::READY_TO_IMPORT : ImportStatus::PENDING_XML,
+            'ignored_at' => null,
+            'ignored_by' => null,
+            'ignore_reason' => null,
+            'last_action' => 'reactivated',
+            'last_action_at' => now(),
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.reprocessed',
+            summary: 'Documento reativado na inbox de DF-e',
+            actorUserId: $actorUserId,
+            source: $actorUserId ? AuditSource::WEB : AuditSource::SYSTEM,
+        );
+    }
+
+    public function updatePartnerLink(SefazDistributionDocument $document, Partner $partner, ?int $actorUserId = null): void
+    {
+        CompanyPartner::query()->updateOrCreate(
+            [
+                'company_id' => $document->company_id,
+                'partner_id' => $partner->id,
+            ],
+            [
+                'type' => [PartnerType::SUPPLIER->value],
+                'invoice_threshold' => 0,
+                'is_active' => true,
+            ],
+        );
+
+        $document->forceFill([
+            'partner_id' => $partner->id,
+            'last_action' => 'partner_linked',
+            'last_action_at' => now(),
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.reprocessed',
+            summary: 'Fornecedor vinculado manualmente ao DF-e',
+            actorUserId: $actorUserId,
+            source: AuditSource::WEB,
+            metadata: [
+                'partner_id' => $partner->id,
+            ],
+        );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    public function updateItemMappings(SefazDistributionDocument $document, array $items, ?int $actorUserId = null): void
+    {
+        $document->forceFill([
+            'items_json' => $items,
+            'last_action' => 'items_linked',
+            'last_action_at' => now(),
+        ])->save();
+
+        $this->recordAuditEvent(
+            $document->fresh(),
+            event: 'sefaz_distribution.reprocessed',
+            summary: 'Itens do DF-e vinculados manualmente a produtos',
+            actorUserId: $actorUserId,
+            source: AuditSource::WEB,
+        );
+    }
+
+    public function resolveOrCreatePartner(Company $company, ?string $issuerDocument, ?string $issuerName): ?Partner
     {
         if (! is_string($issuerDocument) || ! in_array(strlen($issuerDocument), [11, 14], true) || ! is_string($issuerName) || trim($issuerName) === '') {
             return null;
         }
 
+        $formattedDocument = $this->formatDocumentNumber($issuerDocument);
+
         $partner = Partner::query()->firstOrCreate(
-            ['document_number' => $this->formatDocumentNumber($issuerDocument)],
+            ['document_number' => $formattedDocument],
             [
                 'name' => trim($issuerName),
                 'document_type' => strlen($issuerDocument) === 14 ? 'cnpj' : 'cpf',
@@ -201,6 +533,13 @@ class SefazDistributionDocumentService
                 'created_by' => $company->created_by,
             ],
         );
+
+        if ($partner->name !== trim($issuerName)) {
+            $partner->forceFill([
+                'name' => trim($issuerName),
+                'updated_by' => $company->updated_by ?? $company->created_by,
+            ])->save();
+        }
 
         CompanyPartner::query()->updateOrCreate(
             [
@@ -214,7 +553,7 @@ class SefazDistributionDocumentService
             ],
         );
 
-        return $partner->id;
+        return $partner;
     }
 
     private function formatDocumentNumber(string $digits): string
@@ -222,5 +561,25 @@ class SefazDistributionDocumentService
         return strlen($digits) === 14
             ? preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $digits) ?? $digits
             : (preg_replace('/^(\d{3})(\d{3})(\d{3})(\d{2})$/', '$1.$2.$3-$4', $digits) ?? $digits);
+    }
+
+    private function recordAuditEvent(
+        SefazDistributionDocument $document,
+        string $event,
+        string $summary,
+        ?int $actorUserId = null,
+        ?AuditSource $source = null,
+        array $metadata = [],
+    ): ?AuditEntry {
+        return $this->auditRecorder->recordModelEvent(
+            $document,
+            $event,
+            $summary,
+            null,
+            $this->auditRecorder->snapshot($document),
+            $actorUserId,
+            $source,
+            $metadata,
+        );
     }
 }
