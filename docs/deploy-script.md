@@ -15,16 +15,17 @@ chmod +x deploy/deploy.sh
 Esse fluxo executa:
 
 1. `git pull origin main`
-2. `artisan down`
-3. `composer install --no-dev --optimize-autoloader`
-4. `artisan optimize:clear`
-5. `artisan migrate --force`
-6. `artisan config:cache`
-7. `artisan route:cache`
-8. `artisan view:cache`
-9. `artisan optimize`
-10. `artisan horizon:terminate`
-11. `artisan up`
+2. valida a conexao com o banco antes de migrar
+3. `artisan down`
+4. `composer install --no-dev --optimize-autoloader`
+5. `artisan optimize:clear`
+6. `artisan migrate --force`
+7. `artisan config:cache`
+8. `artisan route:cache`
+9. `artisan view:cache`
+10. `artisan optimize`
+11. `artisan horizon:terminate`
+12. `artisan up`
 
 Antes e depois do ciclo de cache/deploy, o script tambem normaliza permissoes em `storage` e `bootstrap/cache` para evitar que esses caminhos fiquem presos ao usuario que rodou o ultimo comando no servidor.
 
@@ -57,6 +58,7 @@ BUILD_FRONTEND=1 ./deploy/deploy.sh
 - `DEPLOY_USER`: usuario que deve manter acesso apos o deploy. Padrao usuario atual
 - `WRITABLE_PATHS`: caminhos gravaveis normalizados. Padrao `storage bootstrap/cache`
 - `DEPLOY_UMASK`: umask aplicada durante o deploy. Padrao `0002`
+- `DB_CONNECT_TIMEOUT`: timeout da conexao PDO MySQL/MariaDB em segundos. Padrao `10`
 
 ## Exemplos
 
@@ -142,4 +144,18 @@ Se tambem atualizar assets frontend:
 ```bash
 cd /home/dionathan/tornedon
 BUILD_FRONTEND=1 ./deploy/deploy.sh
+```
+
+## Falha de timeout no banco
+
+Se o deploy falhar com `SQLSTATE[HY000] [2002] Connection timed out`, o problema costuma estar fora do codigo:
+
+- `DB_HOST`/`DB_PORT` incorretos no `.env` do servidor
+- firewall ou security group bloqueando a porta `3306`
+- MySQL/MariaDB remoto fora do ar ou sem bind externo
+
+O script agora valida a conexao antes de colocar a aplicacao em manutencao. Se precisar, ajuste o tempo de espera:
+
+```bash
+DB_CONNECT_TIMEOUT=15 ./deploy/deploy.sh
 ```

@@ -41,6 +41,60 @@ run_in_root() {
     (cd "$ROOT_DIR" && "$@")
 }
 
+check_database_connection() {
+    local db_check_output
+
+    log "Validando conectividade com o banco antes das migracoes"
+
+    if db_check_output="$(
+        cd "$ROOT_DIR" && "$PHP_BIN" -r '
+            require "vendor/autoload.php";
+
+            $app = require "bootstrap/app.php";
+            $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+            $kernel->bootstrap();
+
+            $defaultConnection = config("database.default");
+            $connectionConfig = config("database.connections." . $defaultConnection, []);
+
+            $host = $connectionConfig["host"] ?? "n/a";
+            $port = $connectionConfig["port"] ?? "n/a";
+            $database = $connectionConfig["database"] ?? "n/a";
+
+            try {
+                Illuminate\Support\Facades\DB::connection()->getPdo();
+                echo sprintf(
+                    "Conexao %s pronta (%s:%s / %s)\n",
+                    $defaultConnection,
+                    $host,
+                    $port,
+                    $database
+                );
+            } catch (Throwable $e) {
+                fwrite(
+                    STDERR,
+                    sprintf(
+                        "Falha ao conectar usando %s (%s:%s / %s): %s\n",
+                        $defaultConnection,
+                        $host,
+                        $port,
+                        $database,
+                        $e->getMessage()
+                    )
+                );
+                exit(1);
+            }
+        ' 2>&1
+    )"; then
+        printf '%s\n' "${db_check_output}"
+        return 0
+    fi
+
+    printf '%s\n' "${db_check_output}" >&2
+    log "Abortando deploy antes do modo de manutencao porque o banco nao respondeu."
+    return 1
+}
+
 run_supervisorctl() {
     # Split the configured command so values like "sudo supervisorctl" work as expected.
     read -r -a supervisor_cmd <<< "$SUPERVISORCTL_BIN"
@@ -185,6 +239,10 @@ log "Atualizando o codigo da branch ${APP_BRANCH}"
 run_in_root "$GIT_BIN" pull origin "$APP_BRANCH"
 
 normalize_permissions
+
+if [[ "${RUN_MIGRATIONS}" == "1" ]]; then
+    check_database_connection
+fi
 
 if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
     log "Colocando a aplicacao em modo de manutencao"
