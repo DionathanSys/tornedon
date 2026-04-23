@@ -44,7 +44,7 @@ class FiscalDocumentItemResolverService
             productId:      $product->id,   
             productStockId: $stock?->id,
             productCode:    $product->product_code,
-            productOrigin:  $product->tax?->product_origin->value,
+            productOrigin:  $product->tax?->product_origin?->value,
             ncmCode:        $product->tax?->ncm_code,
             cestCode:       $product->tax?->cest_code,
             barcode:        $product->barcode,

@@ -51,15 +51,5 @@ class CommandTest extends Command
             && ! $record->canceled
             && ! $origin;
 
-      Log::debug('GeneratePurchaseReturnAction: verificando visibilidade', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'isNfe' => $record->isNfe(),
-            'operation_type' => $record->operation_type,
-            'status' => $record->status,
-            'canceled' => $record->canceled,
-            'origin_fiscal_document_id' => $origin,
-            'visible' => $visible,
-        ]);
-
    }
 }
