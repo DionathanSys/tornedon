@@ -21,6 +21,7 @@ class SefazDistributionFiscalDocumentImportService
         private readonly SefazDistributionFiscalDocumentXmlParser $parser,
         private readonly SefazDistributionDocumentService $distributionDocumentService,
         private readonly AuditRecorder $auditRecorder,
+        private readonly SefazItemMappingService $itemMappingService,
     ) {
     }
 
@@ -167,6 +168,8 @@ class SefazDistributionFiscalDocumentImportService
                     ]);
                 }
 
+                $this->itemMappingService->syncMappings($locked->fresh(['partner']), $items, $actorUserId);
+
                 $this->auditRecorder->recordModelEvent(
                     $fiscalDocument,
                     'fiscal_document.created',
@@ -209,6 +212,14 @@ class SefazDistributionFiscalDocumentImportService
             ->map(function (array $item) use ($distributionDocument, $mappedItems): array {
                 $mapped = $mappedItems->get((string) ($item['line'] ?? '')) ?? [];
                 $productId = $mapped['product_id'] ?? null;
+
+                if ($productId === null) {
+                    $productId = $this->itemMappingService->findMappedProductId(
+                        $distributionDocument->company_id,
+                        $distributionDocument->partner_id,
+                        $item['product_code'] ?? null,
+                    );
+                }
 
                 if ($productId === null) {
                     $productId = $this->resolveProductId($distributionDocument->company_id, $item['product_code'] ?? null, $item['barcode'] ?? null);

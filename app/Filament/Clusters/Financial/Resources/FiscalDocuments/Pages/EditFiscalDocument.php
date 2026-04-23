@@ -9,6 +9,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePu
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\ConfirmEntryAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Notification\NotifyService as notify;
+use Filament\Actions\Action;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -23,6 +24,14 @@ class EditFiscalDocument extends EditRecord
 
     protected function getHeaderActions(): array
     {
+        if ($this->getRecord()->isImportedFromDfe()) {
+            return [
+                Action::make('view_only')
+                    ->label('Documento importado via DF-e')
+                    ->disabled(),
+            ];
+        }
+
         return [
             ConfirmEntryAction::make(),
             ActionGroup::make([
@@ -123,5 +132,14 @@ class EditFiscalDocument extends EditRecord
     protected function getUpdatedNotificationTitle(): ?string
     {
         return 'Nota de entrada atualizada com sucesso';
+    }
+
+    protected function getFormActions(): array
+    {
+        if ($this->getRecord()->isImportedFromDfe()) {
+            return [];
+        }
+
+        return parent::getFormActions();
     }
 }

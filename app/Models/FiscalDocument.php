@@ -283,6 +283,11 @@ class FiscalDocument extends Model
             && $this->nfse_status !== NfeStatus::PENDING;
     }
 
+    public function isImportedFromDfe(): bool
+    {
+        return (bool) data_get($this->logs, 'imported_from_dfe', false);
+    }
+
     public function blocksNfseResubmission(): bool
     {
         return in_array($this->nfse_status, [

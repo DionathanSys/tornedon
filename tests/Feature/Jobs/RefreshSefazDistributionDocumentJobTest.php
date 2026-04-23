@@ -3,6 +3,7 @@
 namespace Tests\Feature\Jobs;
 
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
+use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\Status;
 use App\Jobs\RefreshSefazDistributionDocumentJob;
 use App\Models\Company;
@@ -72,6 +73,7 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
 
         $this->assertTrue($document->full_xml_available);
         $this->assertSame(Status::FULL_XML_AVAILABLE, $document->status);
+        $this->assertSame(ImportStatus::READY_TO_IMPORT, $document->import_status);
         $this->assertNotNull($document->import_ready_at);
         $this->assertCount(1, $document->items_json ?? []);
         $this->assertNotNull($document->full_xml_path);

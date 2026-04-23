@@ -72,6 +72,10 @@ class Partner extends Model
         return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
     }
 
+    public function sefazItemMappings(): HasMany
+    {
+        return $this->hasMany(SefazItemMapping::class);
+    }
 
 
 

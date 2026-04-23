@@ -23,6 +23,7 @@ class SefazDistributionDocumentService
         private readonly SefazDistributionDocumentParser $parser,
         private readonly SefazDfeStorageService $storageService,
         private readonly AuditRecorder $auditRecorder,
+        private readonly SefazItemMappingService $itemMappingService,
     ) {
     }
 
@@ -93,7 +94,7 @@ class SefazDistributionDocumentService
             $record->manifestation_status = ManifestationStatus::ACCEPTED;
             $record->full_xml_available = true;
             $record->full_xml_path = $fullPath;
-            $record->items_json = $parsed['items'];
+            $record->items_json = $this->applyMappedProducts($company->id, $partner?->id ?? $record->partner_id, $parsed['items']);
             $record->import_ready_at ??= now();
             if ($record->import_status !== ImportStatus::IGNORED) {
                 $record->import_status = $record->imported_at !== null ? ImportStatus::IMPORTED : ImportStatus::READY_TO_IMPORT;
@@ -480,6 +481,7 @@ class SefazDistributionDocumentService
 
         $document->forceFill([
             'partner_id' => $partner->id,
+            'items_json' => $this->applyMappedProducts($document->company_id, $partner->id, $document->items_json),
             'last_action' => 'partner_linked',
             'last_action_at' => now(),
         ])->save();
@@ -496,11 +498,36 @@ class SefazDistributionDocumentService
         );
     }
 
+    public function createAndLinkSupplier(
+        SefazDistributionDocument $document,
+        string $name,
+        string $documentNumber,
+        ?int $actorUserId = null,
+    ): Partner {
+        $digits = preg_replace('/\D+/', '', $documentNumber) ?? '';
+
+        if (! in_array(strlen($digits), [11, 14], true)) {
+            throw new \RuntimeException('Informe um CPF ou CNPJ válido para cadastrar o fornecedor.');
+        }
+
+        $partner = $this->resolveOrCreatePartner($document->company, $digits, $name);
+
+        if (! $partner) {
+            throw new \RuntimeException('Não foi possível cadastrar o fornecedor para o DF-e.');
+        }
+
+        $this->updatePartnerLink($document->fresh(), $partner, $actorUserId);
+
+        return $partner;
+    }
+
     /**
      * @param  array<int, array<string, mixed>>  $items
      */
     public function updateItemMappings(SefazDistributionDocument $document, array $items, ?int $actorUserId = null): void
     {
+        $this->itemMappingService->syncMappings($document, $items, $actorUserId);
+
         $document->forceFill([
             'items_json' => $items,
             'last_action' => 'items_linked',
@@ -561,6 +588,41 @@ class SefazDistributionDocumentService
         return strlen($digits) === 14
             ? preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $digits) ?? $digits
             : (preg_replace('/^(\d{3})(\d{3})(\d{3})(\d{2})$/', '$1.$2.$3-$4', $digits) ?? $digits);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>|null  $items
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function applyMappedProducts(int $companyId, ?int $partnerId, ?array $items): ?array
+    {
+        if (! is_array($items)) {
+            return $items;
+        }
+
+        return collect($items)
+            ->map(function (array $item) use ($companyId, $partnerId): array {
+                if (($item['product_id'] ?? null) !== null) {
+                    return $item;
+                }
+
+                $mappedProductId = $this->itemMappingService->findMappedProductId(
+                    $companyId,
+                    $partnerId,
+                    $item['product_code'] ?? null,
+                );
+
+                if ($mappedProductId === null) {
+                    return $item;
+                }
+
+                $partnerProduct = \App\Models\Product::query()->find($mappedProductId);
+                $item['product_id'] = $mappedProductId;
+                $item['product_name'] = $partnerProduct?->name;
+
+                return $item;
+            })
+            ->all();
     }
 
     private function recordAuditEvent(

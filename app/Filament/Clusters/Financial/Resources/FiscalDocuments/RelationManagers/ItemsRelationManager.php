@@ -22,6 +22,11 @@ class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
 
+    private function importedReadOnly(): bool
+    {
+        return $this->getOwnerRecord()->isImportedFromDfe();
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -156,29 +161,29 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse),
+                    ->visible(fn () => ! $isNfse && ! $this->importedReadOnly()),
                 DeleteItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse),
+                    ->visible(fn () => ! $isNfse && ! $this->importedReadOnly()),
 
                 // NFS-e actions
                 EditNfseItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => $isNfse),
+                    ->visible(fn () => $isNfse && ! $this->importedReadOnly()),
                 DeleteItemAction::make('deleteNfseItem')
                     ->iconButton()
-                    ->visible(fn () => $isNfse),
+                    ->visible(fn () => $isNfse && ! $this->importedReadOnly()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                ]),
+                ])->visible(fn () => ! $this->importedReadOnly()),
                 // NF-e create
                 CreateItemAction::make()
-                    ->visible(fn () => ! $isNfse),
+                    ->visible(fn () => ! $isNfse && ! $this->importedReadOnly()),
                 // NFS-e create
                 CreateNfseItemAction::make()
-                    ->visible(fn () => $isNfse),
+                    ->visible(fn () => $isNfse && ! $this->importedReadOnly()),
             ])
             ->emptyStateDescription($isNfse
                 ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'

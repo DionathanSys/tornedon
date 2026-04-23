@@ -24,6 +24,11 @@ use Filament\Schemas\Schema;
 
 class FiscalDocumentForm
 {
+    private static function importedReadOnly(?FiscalDocument $record): bool
+    {
+        return $record?->isImportedFromDfe() ?? false;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -37,6 +42,7 @@ class FiscalDocumentForm
                     ->schema([
                         SelectPartner::make('customer_id', 'all')
                             ->label('Fornecedor')
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->columnSpan(['md' => 3, 'lg' => 6]),
                         Select::make('document_type')
                             ->label('Tipo Documento')
@@ -44,6 +50,7 @@ class FiscalDocumentForm
                             ->options(DocumentModel::toSelectArray())
                             ->default(DocumentModel::NFE->value)
                             ->native(false)
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->required(),
                         TextEntry::make('confirmed_at')
                             ->label('Confirmada em')
@@ -62,16 +69,19 @@ class FiscalDocumentForm
                             ->label('Número da NF')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->maxLength(20)
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->autocomplete(false),
                         TextInput::make('document_series')
                             ->label('Série')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->maxLength(5)
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->autocomplete(false),
                         TextInput::make('document_key')
                             ->label('Chave de Acesso')
                             ->columnSpan(['md' => 2, 'lg' => 7])
                             ->maxLength(50)
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->autocomplete(false),
                     ]),
                 Section::make('Operação')
@@ -85,6 +95,7 @@ class FiscalDocumentForm
                             ->options(OperationNature::toSelectArray())
                             ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
                             ->searchable()
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->required(),
                         Select::make('issue_purpose')
                             ->label('Finalidade de Emissão')
@@ -92,6 +103,7 @@ class FiscalDocumentForm
                             ->options(IssuePurpose::toSelectArray())
                             ->default(IssuePurpose::NORMAL->value)
                             ->native(false)
+                            ->disabled(fn (?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->required(),
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(FiscalDocument $record) => [

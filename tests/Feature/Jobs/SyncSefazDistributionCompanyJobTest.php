@@ -3,6 +3,7 @@
 namespace Tests\Feature\Jobs;
 
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
+use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Jobs\ManifestSefazDistributionDocumentJob;
 use App\Jobs\SyncSefazDistributionCompanyJob;
 use App\Models\Company;
@@ -61,6 +62,7 @@ class SyncSefazDistributionCompanyJobTest extends TestCase
             'document_key' => '35260412345678000199550010000003211000000321',
             'nsu' => '000000000000050',
             'manifestation_status' => ManifestationStatus::PENDING->value,
+            'import_status' => ImportStatus::PENDING_XML->value,
         ]);
 
         Bus::assertDispatched(ManifestSefazDistributionDocumentJob::class);

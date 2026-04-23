@@ -8,6 +8,7 @@ use App\Enum\Product\Unit;
 use App\Services\Product\ProductCodeService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -83,5 +84,10 @@ class Product extends Model
     public function stock(): HasOne
     {
         return $this->hasOne(ProductStock::class);
+    }
+
+    public function sefazItemMappings(): HasMany
+    {
+        return $this->hasMany(SefazItemMapping::class);
     }
 }

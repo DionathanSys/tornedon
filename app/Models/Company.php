@@ -65,6 +65,11 @@ class Company extends Model
         return $this->hasMany(SefazDistributionDocument::class);
     }
 
+    public function sefazItemMappings(): HasMany
+    {
+        return $this->hasMany(SefazItemMapping::class);
+    }
+
     public function serviceProvisionLocation(): Attribute
     {
         return Attribute::make(
