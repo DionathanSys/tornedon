@@ -2,21 +2,20 @@
 
 namespace App\Services\FiscalDocument;
 
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
-use App\Services\Fiscal\NfeConfigService;
+use App\Jobs\ProcessQueuedNfeEmissionJob;
 use App\Services\FiscalDocument\Actions\ConsultNfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfeDanfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfePreviewAction;
-use App\Services\FiscalDocument\Actions\ReserveNfeNumberAction;
 use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
-use App\Services\FiscalDocument\Actions\SendNfeAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Serviço de orquestração da integração NF-e com a API IntegraNotas.
  *
- * O envio é síncrono.
+ * A solicitação de emissão é enfileirada e processada em série por grupo de emissão.
  * A consulta de retorno permanece assíncrona via polling/webhook.
  */
 class NfeDocumentService
@@ -48,7 +47,7 @@ class NfeDocumentService
     }
 
     /**
-     * Executa o envio da NF-e de forma síncrona.
+     * Valida e enfileira a emissão da NF-e.
      *
      * @param FiscalDocument $doc
      * @param int            $userId
@@ -61,7 +60,7 @@ class NfeDocumentService
 
         try {
             if ($doc->blocksNfeResubmission()) {
-                $this->setError('NF-e já enviada. Status atual: ' . $doc->nfe_status?->description());
+                $this->setError('NF-e já possui solicitação de emissão. Status atual: ' . $doc->nfe_status?->description());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                     'contexto' => [
                         'status_atual' => $doc->nfe_status?->value,
@@ -70,68 +69,37 @@ class NfeDocumentService
                 return false;
             }
 
-            $currentNumber = (int) preg_replace('/\D/', '', (string) ($doc->document_number ?? ''));
+            $preflightService = app(FiscalEmissionPreflightService::class);
+            $preflight = $preflightService->validateForQueue($doc);
 
-            if ($currentNumber < 1) {
-                $configService = app(NfeConfigService::class);
-
-                $serie = $serie ?? $configService->resolveSerie($doc->company_id);
-
-                $rawNature = $doc->operation_nature;
-                $natureValue = $rawNature instanceof \App\Enum\FiscalDocument\OperationNature
-                    ? $rawNature->value
-                    : $rawNature;
-                $operationNature = $operationNature ?? $natureValue;
-
-                if (empty($operationNature)) {
-                    $this->setError('Natureza da operação não definida. Preencha o campo antes de emitir a NF-e.');
-                    $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
-                        'contexto' => [
-                            'serie'           => $serie,
-                            'operationNature' => $operationNature,
-                            'user_id'         => $userId,
-                        ],
-                    ]);
-                    return false;
-                }
-
-                $reserveAction = new ReserveNfeNumberAction();
-
-                if (! $reserveAction->execute($doc, $serie, $operationNature)) {
-                    $this->setError($reserveAction->getMessage());
-                    $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
-                        'contexto' => [
-                            'serie'           => $serie,
-                            'operationNature' => $operationNature,
-                            'user_id'         => $userId,
-                        ],
-                    ]);
-                    return false;
-                }
-
-                $doc->refresh();
-            }
-
-            $action = new SendNfeAction($userId);
-            $result = $action->execute($doc, $serie, $operationNature);
-
-            if (! $result || $action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors());
+            if ($preflight === null || $preflightService->hasError()) {
+                $this->setError($preflightService->getMessage(), $preflightService->getErrors());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
-                    'erros' => $action->getErrors(),
+                    'erros' => $preflightService->getErrors(),
                     'contexto' => [
-                        'serie'           => $serie,
+                        'serie' => $serie,
                         'operationNature' => $operationNature,
-                        'user_id'         => $userId,
+                        'user_id' => $userId,
                     ],
                 ]);
                 return false;
             }
 
-            $this->setSuccess($action->getMessage() ?: 'NF-e enviada para processamento.');
+            $doc->update([
+                'status' => \App\Enum\FiscalDocument\Status::PENDING->value,
+                'nfe_status' => NfeStatus::QUEUED->value,
+                'emission_requested_at' => now(),
+                'emission_group_key' => $preflight->queueGroupKey,
+                'updated_by' => $userId,
+            ]);
 
-            Log::info('NfeDocumentService: emissão síncrona concluída', [
+            dispatch(new ProcessQueuedNfeEmissionJob($preflight->queueGroupKey));
+
+            $this->setSuccess('NF-e enfileirada para emissão.');
+
+            Log::info('NfeDocumentService: emissão enfileirada', [
                 'fiscal_document_id' => $doc->id,
+                'emission_group_key' => $preflight->queueGroupKey,
                 'user_id'            => $userId,
             ]);
 

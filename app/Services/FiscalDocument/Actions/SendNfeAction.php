@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument\Actions;
 
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
+use App\Models\NfeSequence;
 use App\Enum\Audit\AuditSource;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
@@ -13,11 +14,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Orquestra o envio de uma NF-e à API IntegraNotas:
  *
- *  1. Reserva o número (ReserveNfeNumberAction) — atômico
+ *  1. Atribui temporariamente o menor número livre do grupo
  *  2. Monta o payload (BuildNfePayloadAction)
  *  3. Chama $nfe->cria($payload) via SDK
- *  4. Em código 5023 (lote em processamento): salva chave, status, payload, ambiente
- *  5. Em 5001/5002 (erro de validação): salva erros em errors_messages
+ *  4. Em código 5023 (lote em processamento): confirma consumo do número, salva chave, status, payload e ambiente
+ *  5. Em falhas antes da aceitação: limpa a atribuição do número
  *  6. Dispara ConsultNfeJob como fallback de polling (webhook é o canal primário)
  */
 class SendNfeAction
@@ -42,8 +43,13 @@ class SendNfeAction
                 'serie'              => $serie,
             ]);
 
-            // Bloqueia reenvio apenas quando já houve envio efetivo/processamento.
-            if ($fiscalDocument->blocksNfeResubmission()) {
+            // A fila processa documentos em status queued. Bloqueamos somente
+            // estados que já indicam envio efetivo ou impossibilidade de reenvio.
+            if (
+                $fiscalDocument->isNfeInProcessing()
+                || $fiscalDocument->isNfeAuthorized()
+                || $fiscalDocument->isNfeCanceled()
+            ) {
                 $msgErro = 'Esta NF-e já foi enviada (status: ' . $fiscalDocument->nfe_status?->description() . ')';
                 $this->setError($msgErro);
                 Log::warning('SendNfeAction: tentativa de reenvio bloqueada', [
@@ -70,18 +76,12 @@ class SendNfeAction
             }
 
             // ------------------------------------------------------------------
-            // 1. Reservar número (somente se ainda não reservado, ex: reenvio)
-            // Também cobre casos inválidos como "000000", que viram 0 no payload.
+            // 1. Atribuir número somente no momento do envio real
             // ------------------------------------------------------------------
             $currentNumber = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->document_number ?? ''));
 
             if ($currentNumber < 1) {
-                $reserveAction = new ReserveNfeNumberAction();
-                if (! $reserveAction->execute($fiscalDocument, $serie, $operationNature)) {
-                    $this->setError($reserveAction->getMessage());
-                    return false;
-                }
-
+                $this->assignNumberForAttempt($fiscalDocument, $serie, $operationNature);
                 $fiscalDocument->refresh();
             }
 
@@ -124,12 +124,20 @@ class SendNfeAction
             // 4. Processar resposta
             // ------------------------------------------------------------------
             if ($resp->sucesso && ($resp->codigo ?? null) === 5023) {
+                $confirmed = NfeSequence::confirmNumber(
+                    (int) $fiscalDocument->company_id,
+                    (string) $fiscalDocument->document_series,
+                    (string) $operationNature,
+                    (int) $fiscalDocument->document_number,
+                );
+
                 // Lote em processamento — salva chave e aguarda webhook/polling
                 $fiscalDocument->update([
                     'document_key' => $resp->chave,
                     'nfe_status'   => NfeStatus::IN_PROCESSING->value,
                     'nfe_ambiente' => $ambiente,
                     'nfe_payload'  => $payload,
+                    'nfe_sequence_id' => $confirmed['sequence_id'],
                 ]);
                 $fiscalDocument->refresh();
 
@@ -160,6 +168,8 @@ class SendNfeAction
 
             // Erros de validação dos dados (5001 = emitente, 5002 = dados gerais)
             if (in_array($resp->codigo ?? null, [5001, 5002])) {
+                $this->releaseNumberAssignment($fiscalDocument);
+
                 $errors   = $fiscalDocument->errors_messages ?? [];
                 $errors[] = [
                     'at'      => now()->toDateTimeString(),
@@ -182,6 +192,8 @@ class SendNfeAction
             }
 
             // Qualquer outro erro
+            $this->releaseNumberAssignment($fiscalDocument);
+
             $errors   = $fiscalDocument->errors_messages ?? [];
             $errors[] = [
                 'at'      => now()->toDateTimeString(),
@@ -201,6 +213,8 @@ class SendNfeAction
             return false;
 
         } catch (\Exception $e) {
+            $this->releaseNumberAssignment($fiscalDocument);
+
             $msgErro = 'Erro ao enviar NF-e: ' . $e->getMessage();
             $this->setError($msgErro);
 
@@ -215,5 +229,35 @@ class SendNfeAction
 
             return false;
         }
+    }
+
+    private function assignNumberForAttempt(FiscalDocument $fiscalDocument, string $serie, string $operationNature): void
+    {
+        $number = NfeSequence::peekNextNumber(
+            (int) $fiscalDocument->company_id,
+            $serie,
+            $operationNature,
+        );
+
+        $fiscalDocument->update([
+            'document_number' => (string) $number,
+            'document_series' => $serie,
+            'operation_nature' => $operationNature,
+        ]);
+    }
+
+    private function releaseNumberAssignment(FiscalDocument $fiscalDocument): void
+    {
+        $currentNumber = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->document_number ?? ''));
+
+        if ($currentNumber < 1 || $fiscalDocument->isNfeInProcessing() || $fiscalDocument->isNfeAuthorized()) {
+            return;
+        }
+
+        $fiscalDocument->update([
+            'document_number' => null,
+            'document_series' => null,
+            'nfe_sequence_id' => null,
+        ]);
     }
 }

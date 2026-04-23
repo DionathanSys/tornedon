@@ -22,6 +22,10 @@ class ListFiscalDocuments extends ListRecords
         return [
             'all' => Tab::make('Todas')
                 ->badgeColor('gray'),
+            NfeStatus::QUEUED->value => Tab::make('Na Fila')
+                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::QUEUED))
+                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::QUEUED)->count())
+                ->badgeColor(NfeStatus::QUEUED->color()),
             NfeStatus::PENDING->value => Tab::make('Pendente')
                 ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::PENDING))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::PENDING)->count())

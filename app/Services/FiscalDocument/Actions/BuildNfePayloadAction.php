@@ -52,8 +52,8 @@ class BuildNfePayloadAction
             $address  = $customer->address->first();
             $taxRegime = $company?->fiscalProfile()->first()?->tax_regime;
 
-            $issuedAt    = now()->format('Y-m-d') . 'T00:00:00-03:00';
-            $movementAt  = now()->format('Y-m-d') . 'T00:00:00-03:00';
+            $issuedAt = ($fiscalDocument->issued_at ?? now())->format('Y-m-d') . 'T00:00:00-03:00';
+            $movementAt = ($fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now())->format('Y-m-d') . 'T00:00:00-03:00';
 
             // ------------------------------------------------------------------
             // Monta destinatário
@@ -82,7 +82,7 @@ class BuildNfePayloadAction
                     'codigo_municipio' => $address->city_code ?? '',
                     'nome_municipio'   => $address->city ?? '',
                     'uf'               => $address->state ?? '',
-                    'cep'              => preg_replace('/\D/', '', $address->zip_code ?? ''),
+                    'cep'              => preg_replace('/\D/', '', $address->postal_code ?? ''),
                     'codigo_pais'      => '1058',
                     'nome_pais'        => 'BRASIL',
                     'telefone'         => preg_replace('/\D/', '', $address->phone ?? ''),

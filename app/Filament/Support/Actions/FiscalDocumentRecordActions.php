@@ -31,7 +31,7 @@ final class FiscalDocumentRecordActions
                 ->requiresConfirmation()
                 ->modalHeading('Emitir Nota Fiscal Eletrônica')
                 ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
-                ->visible(fn(FiscalDocument $record) => $record->isNfe() && (! $record->isNfeSent() || $record->isNfeRejected()))
+                ->visible(fn(FiscalDocument $record) => $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
                 ->action(function (FiscalDocument $record): void {
                     $service = app(NfeDocumentService::class);
                     $service->emitir($record, Auth::id());
@@ -84,7 +84,7 @@ final class FiscalDocumentRecordActions
                     $service->emitir($record, Auth::id());
 
                     if ($service->isSuccess()) {
-                        notify::success('NF-e enfileirada para emissão. O retorno da SEFAZ ainda está pendente.');
+                        notify::success('NF-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
                         return;
                     }
 

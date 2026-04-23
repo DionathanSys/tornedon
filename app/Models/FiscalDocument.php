@@ -72,6 +72,9 @@ class FiscalDocument extends Model
         'nfe_protocolo',
         'nfe_payload',
         'nfe_sequence_id',
+        'emission_requested_at',
+        'emission_attempted_at',
+        'emission_group_key',
         'nfse_model',
         'nfse_status',
         'nfse_payload',
@@ -107,6 +110,8 @@ class FiscalDocument extends Model
         'nfe_status'      => NfeStatus::class,
         'nfe_payload'     => 'array',
         'nfe_ambiente'    => 'integer',
+        'emission_requested_at' => 'datetime',
+        'emission_attempted_at' => 'datetime',
         'nfse_status'     => NfeStatus::class,
         'nfse_payload'    => 'array',
         'created_at'      => 'datetime',
@@ -206,6 +211,11 @@ class FiscalDocument extends Model
         return $this->nfe_status === NfeStatus::PENDING;
     }
 
+    public function isNfeQueued(): bool
+    {
+        return $this->nfe_status === NfeStatus::QUEUED;
+    }
+
     public function isNfeInProcessing(): bool
     {
         return $this->nfe_status === NfeStatus::IN_PROCESSING;
@@ -229,12 +239,13 @@ class FiscalDocument extends Model
     public function isNfeSent(): bool
     {
         return $this->nfe_status !== null
-            && $this->nfe_status !== NfeStatus::PENDING;
+            && ! in_array($this->nfe_status, [NfeStatus::PENDING, NfeStatus::QUEUED], true);
     }
 
     public function blocksNfeResubmission(): bool
     {
         return in_array($this->nfe_status, [
+            NfeStatus::QUEUED,
             NfeStatus::IN_PROCESSING,
             NfeStatus::AUTHORIZED,
             NfeStatus::CANCELED,

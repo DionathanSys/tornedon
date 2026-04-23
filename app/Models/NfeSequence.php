@@ -110,6 +110,44 @@ class NfeSequence extends Model
         return $nextNumber;
     }
 
+    /**
+     * Confirma o consumo de um número aceito pela API sem reservar previamente a sequência.
+     *
+     * @return array{number: int, sequence_id: int}
+     */
+    public static function confirmNumber(int $companyId, string $serie, string $operationNature, int $number): array
+    {
+        $sequence = DB::transaction(function () use ($companyId, $serie, $operationNature, $number) {
+            $seq = self::where('company_id', $companyId)
+                ->where('serie', $serie)
+                ->where('operation_nature', $operationNature)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $seq) {
+                $seq = self::create([
+                    'company_id' => $companyId,
+                    'serie' => $serie,
+                    'operation_nature' => $operationNature,
+                    'last_number' => 0,
+                ]);
+            }
+
+            if ($number > $seq->last_number) {
+                $seq->forceFill([
+                    'last_number' => $number,
+                ])->save();
+            }
+
+            return $seq;
+        });
+
+        return [
+            'number' => $number,
+            'sequence_id' => $sequence->id,
+        ];
+    }
+
     private static function usedDocumentNumbers(int $companyId, string $serie): Collection
     {
         return FiscalDocument::query()

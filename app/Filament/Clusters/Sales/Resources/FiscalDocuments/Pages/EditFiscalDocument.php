@@ -98,14 +98,14 @@ class EditFiscalDocument extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Emitir Nota Fiscal Eletrônica')
                     ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && (! $record->isNfeSent() || $record->isNfeRejected()))
+                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->emitir($record, Auth::id());
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            notify::success('NF-e enfileirada para emissão. O retorno da SEFAZ ainda está pendente.');
+                            notify::success('NF-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
                             return;
                         }
 
@@ -159,7 +159,7 @@ class EditFiscalDocument extends EditRecord
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            notify::success('NF-e enfileirada para emissão. O retorno da SEFAZ ainda está pendente.');
+                            notify::success('NF-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
                             return;
                         }
 
@@ -202,7 +202,7 @@ class EditFiscalDocument extends EditRecord
                         $this->syncFiscalDocumentState();
 
                         if ($service->isSuccess()) {
-                            notify::success('NFS-e enfileirada para emissão. O processamento inicial foi concluído pelo sistema. O retorno da prefeitura ainda está pendente e a tela será atualizada automaticamente enquanto a nota estiver em processamento.');
+                            notify::success('NFS-e enfileirada para emissão. O retorno da prefeitura ainda está pendente e a tela será atualizada automaticamente.');
                             return;
                         }
 
@@ -213,7 +213,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar NFS-e')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse()) // && $record->isNfseInProcessing())
+                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && $record->isNfseInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -390,9 +390,9 @@ class EditFiscalDocument extends EditRecord
     private function buildAdditionalPurchaseInformation(array $data): ?string
     {
         $payload = [
-            'nota_empenho' => trim((string) ($data['additional_purchase_information_nota_empenho'] ?? '')),
-            'pedido' => trim((string) ($data['additional_purchase_information_pedido'] ?? '')),
-            'contrato' => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
+            'nota_empenho'  => trim((string) ($data['additional_purchase_information_nota_empenho'] ?? '')),
+            'pedido'        => trim((string) ($data['additional_purchase_information_pedido'] ?? '')),
+            'contrato'      => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
         ];
 
         $payload = array_filter($payload, fn(string $value): bool => $value !== '');
