@@ -37,6 +37,12 @@ class GeneratePurchaseReturnFilamentActionTest extends TestCase
         File::ensureDirectoryExists($compiledPath);
 
         config(['view.compiled' => $compiledPath]);
+
+        $bladeCompiler = app('blade.compiler');
+        $reflection = new \ReflectionClass($bladeCompiler);
+        $cachePath = $reflection->getProperty('cachePath');
+        $cachePath->setAccessible(true);
+        $cachePath->setValue($bladeCompiler, $compiledPath);
     }
 
     public function test_edit_entry_document_action_generates_return_and_redirects_to_sales_document(): void
@@ -61,6 +67,70 @@ class GeneratePurchaseReturnFilamentActionTest extends TestCase
         $this->assertNotNull($returnDocument);
 
         $component->assertRedirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
+    }
+
+    public function test_edit_entry_document_save_applies_missing_nfe_defaults_before_update(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Filament Entrada',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'email' => 'empresa-entrada@example.com',
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $supplier = Partner::query()->create([
+            'name' => 'Fornecedor Entrada',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $user->companies()->attach($company, [
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $originDocument = FiscalDocument::query()->create([
+            'customer_id' => $supplier->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->subDay()->toDateString(),
+            'movement_at' => now()->subDay()->toDateString(),
+            'document_number' => '47349',
+            'document_series' => '17',
+            'document_key' => '42260483305235006400550170000473491105987897',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::ENTRADA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => true,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => null,
+            'pending' => true,
+            'confirmed' => false,
+            'canceled' => false,
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($company);
+
+        Livewire::test(EditFiscalDocument::class, ['record' => (string) $originDocument->getRouteKey()])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $originDocument->refresh();
+
+        $this->assertSame(BuyerPresenceIndicator::OUTROS, $originDocument->buyer_presence_indicator);
+        $this->assertSame(
+            FreightModality::SEM_FRETE->value,
+            data_get($originDocument->freight_data, 'modalidade_frete'),
+        );
     }
 
     private function createScenario(): array

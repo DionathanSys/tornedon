@@ -2,6 +2,9 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\FreightModality;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\ConfirmEntryAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
@@ -63,6 +66,20 @@ class EditFiscalDocument extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['is_final_consumer'] = true;
+
+        if (($data['document_type'] ?? $this->getRecord()->document_type?->value) === DocumentModel::NFE->value) {
+            $data['buyer_presence_indicator'] ??= $this->getRecord()->buyer_presence_indicator?->value
+                ?? BuyerPresenceIndicator::OUTROS->value;
+
+            $data['freight_data'] ??= $this->getRecord()->freight_data
+                ?? ['modalidade_frete' => FreightModality::SEM_FRETE->value];
+
+            $data['freight_data']['modalidade_frete'] ??= data_get(
+                $this->getRecord()->freight_data,
+                'modalidade_frete',
+                FreightModality::SEM_FRETE->value,
+            );
+        }
 
         return $data;
     }

@@ -41,7 +41,7 @@ class NfeDocumentValidator
             'is_final_consumer'             => 'required|boolean',
             'buyer_presence_indicator'      => ['required', Rule::enum(BuyerPresenceIndicator::class)],
             'freight_data'                  => 'sometimes|required|array',
-            'freight_data.freight_modality' => ['required_with:freight_data', Rule::enum(FreightModality::class)],
+            'freight_data.modalidade_frete' => ['required_with:freight_data', Rule::enum(FreightModality::class)],
         ];
     }
 
@@ -58,9 +58,9 @@ class NfeDocumentValidator
             'buyer_presence_indicator.required' => 'O indicador de presença do comprador é obrigatório para NF-e.',
             'buyer_presence_indicator.in'       => 'O indicador de presença do comprador é inválido.',
             'freight_data.required'             => 'Os dados de frete são obrigatórios para NF-e.',
-            'freight_data.freight_modality.required'     => 'A modalidade de frete é obrigatória para NF-e.',
-            'freight_data.freight_modality.required_with' => 'A modalidade de frete é obrigatória quando dados de frete são informados.',
-            'freight_data.freight_modality.in'           => 'A modalidade de frete é inválida.',
+            'freight_data.modalidade_frete.required'      => 'A modalidade de frete é obrigatória para NF-e.',
+            'freight_data.modalidade_frete.required_with' => 'A modalidade de frete é obrigatória quando dados de frete são informados.',
+            'freight_data.modalidade_frete.in'            => 'A modalidade de frete é inválida.',
         ];
     }
 
