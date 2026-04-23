@@ -76,6 +76,7 @@ class AuditEntry extends Model
             'production_order', ProductionOrder::class => 'Ordem de Produção',
             Invoice::class => 'Fatura',
             FiscalDocument::class => 'Documento Fiscal',
+            SefazDistributionDocument::class => 'DF-e Detectado',
             CashMovement::class => 'Movimento Financeiro',
             BankStatementImport::class => 'Importação de Extrato',
             AccountPayable::class => 'Conta a Pagar',
