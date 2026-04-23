@@ -32,7 +32,7 @@ class UpdateInvoiceAction
                 'data'       => $data,
             ]);
 
-            if ($this->invoice->discount_amount < $this->invoice->total_amount) {
+            if ($this->invoice->discount_amount > $this->invoice->total_amount) {
                 $this->setError('O desconto não pode ser maior que o valor total da fatura');
 
                 Log::error($this->getMessage(), [
