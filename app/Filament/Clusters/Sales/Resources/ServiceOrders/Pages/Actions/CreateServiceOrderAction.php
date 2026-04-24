@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Notification\NotifyService as notify;
@@ -12,6 +13,7 @@ use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
@@ -27,11 +29,11 @@ final class CreateServiceOrderAction
             ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
-            ->schema([
-                Select::make('customer_id')
+            ->schema(fn(Schema $schema) => $schema->components([
+                SelectPartner::make('customer_id', 'customer')
                     ->label('Cliente')
-                    ->relationship('customer', 'name'),
-            ])
+                    ->columnSpanFull(),
+            ]))
             ->mutateDataUsing(function (array $data): array {
                 $tenant = Filament::getTenant();
 
