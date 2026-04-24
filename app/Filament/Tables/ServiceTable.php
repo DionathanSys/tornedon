@@ -3,6 +3,7 @@
 namespace App\Filament\Tables;
 
 use App\Models\Service;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Support\Enums\Size;
@@ -66,7 +67,7 @@ class ServiceTable
                     ->size(Size::Small),
             ])
             ->recordActions([
-                //
+                Action::make('teste')
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

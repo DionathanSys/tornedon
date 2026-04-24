@@ -145,7 +145,7 @@ class ItemValueGroup
                         minSalePrice: $min,
                     );
 
-                    return 'Desconto maximo sem violar o preco minimo: R$ ' . number_format($maxDiscount, 2, ',', '.');
+                    return 'Desconto máximo: R$ ' . number_format($maxDiscount, 2, ',', '.');
                 })
                 ->afterStateUpdated(function ($state, Set $set, Get $get) use ($discountAmount, $discountPercentage, $subtotal, $qty, $unitPrice, $totalAmount) {
                     $sub = self::calculateSubtotal(

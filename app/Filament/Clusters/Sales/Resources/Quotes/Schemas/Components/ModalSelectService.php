@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Enums\Width;
 
 class ModalSelectService
 {
@@ -24,6 +25,7 @@ class ModalSelectService
                     ->modalHeading('Buscar Serviço')
                     ->modalSubmitActionLabel('Confirmar seleção')
                     ->slideOver(false)
+                    ->modalWidth(Width::SevenExtraLarge)
             )
             ->afterStateUpdated(
                 fn($state, Set $set, Get $get, $livewire) => SchemaForm::resolveItem($set, $get, Destination::ORDER_SERVICE, $state, $livewire)

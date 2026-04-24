@@ -48,7 +48,6 @@ final class CreateItemAction
                     'minSalePriceField'             => 'item.min_sale_price',
                     'serviceIdField'                => 'service_id',
                     'preserveDiscountOnValueChange' => true,
-                    'enforceEffectiveMinSalePrice'  => true,
                 ]),
                 Textarea::make('observations')
                     ->label('Observações')
