@@ -86,6 +86,7 @@ class ServiceOrdersTable
                 TextColumn::make('equipment.name')
                     ->label('Equipamento')
                     ->searchable()
+                    ->placeholder('Sem equipamento')
                     ->sortable()
                     ->limit(25)
                     ->toggleable()
@@ -93,6 +94,7 @@ class ServiceOrdersTable
                 TextColumn::make('technician.name')
                     ->label('Técnico')
                     ->searchable()
+                    ->placeholder('Sem técnico')
                     ->sortable()
                     ->width('1%')
                     ->limit(25)
@@ -122,6 +124,7 @@ class ServiceOrdersTable
                 TextColumn::make('total_amount')
                     ->label('Total')
                     ->money('BRL')
+                    ->width('1%')
                     ->summarize(
                         Summarizer::make()
                             ->label('Total')
@@ -142,9 +145,7 @@ class ServiceOrdersTable
                 TextColumn::make('invoice.invoice_number')
                     ->label('Fatura')
                     ->sortable()
-                    ->width('1%')
                     ->placeholder('Sem Fatura')
-                    ->toggleable(isToggledHiddenByDefault: true)
                     ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -191,19 +192,15 @@ class ServiceOrdersTable
                     ->label('Data da Ordem')
                     ->autoApply()
                     ->firstDayOfWeek(0)
+                    ->icon('heroicon-o-x-mark')
                     ->alwaysShowCalendar(),
                 SelectFilter::make('type')
                     ->label('Tipo')
                     ->options(Type::toSelectArray())
                     ->native(false)
                     ->multiple(),
-                SelectFilter::make('technician_id')
-                    ->label('Técnico')
-                    ->relationship('technician', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
             ])
+            ->persistFiltersInSession()
             ->defaultSort('order_date', 'desc')
             ->recordActions([
                 ActionGroup::make([
