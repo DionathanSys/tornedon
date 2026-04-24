@@ -16,7 +16,7 @@ final class DownloadServiceOrderPdfAction
     public static function make(): Action
     {
         return Action::make('downloadServiceOrderPdf')
-            ->label('PDF')
+            ->label('Download PDF')
             ->icon(Heroicon::ArrowDownTray)
             ->color('primary')
             ->visible(fn (ServiceOrder $record): bool => in_array($record->status, [State::CLOSED, State::INVOICED]))

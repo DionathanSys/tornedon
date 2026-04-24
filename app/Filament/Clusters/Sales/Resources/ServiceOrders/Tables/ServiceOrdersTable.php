@@ -120,7 +120,8 @@ class ServiceOrdersTable
                             ->label('Desconto')
                             ->money('BRL', 100)
                             ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['discount_amount'])
-                    ),
+                    )
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Total')
                     ->money('BRL')
@@ -130,12 +131,13 @@ class ServiceOrdersTable
                             ->label('Total')
                             ->money('BRL', 100)
                             ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
-                    ),
+                    )
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('scheduled_date')
                     ->label('Dt. Agendada')
                     ->date('d/m/Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('completion_date')
                     ->label('Dt. Conclusão')
                     ->date('d/m/Y')
@@ -213,7 +215,7 @@ class ServiceOrdersTable
                         ->url(fn($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
                         ->visible(fn($record) => $record->invoice_id)
                         ->icon(Heroicon::Eye)
-                        ->label('Ver Fatura'),
+                        ->label('Acessar Fatura'),
                     CancelServiceOrderAction::make(),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),

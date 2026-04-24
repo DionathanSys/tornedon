@@ -11,6 +11,7 @@ use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,11 @@ final class CreateServiceOrderAction
             ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
+            ->schema([
+                Select::make('customer_id')
+                    ->label('Cliente')
+                    ->relationship('customer', 'name'),
+            ])
             ->mutateDataUsing(function (array $data): array {
                 $tenant = Filament::getTenant();
 
