@@ -25,6 +25,7 @@ use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\Summarizers\Summarizer;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Query\Builder;
@@ -48,6 +49,11 @@ class ServiceOrdersTable
                     ->searchable()
                     ->sortable()
                     ->limit(35),
+                TextColumn::make('order_date')
+                    ->label('Dt. Ordem')
+                    ->date('d/m/Y')
+                    ->width('1%')
+                    ->sortable(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->width('1%')
@@ -64,6 +70,7 @@ class ServiceOrdersTable
                 TextColumn::make('priority')
                     ->label('Prioridade')
                     ->badge()
+                    ->width('1%')
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color(fn($state) => $state->color())
                     ->sortable()
@@ -71,6 +78,7 @@ class ServiceOrdersTable
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
+                    ->width('1%')
                     ->formatStateUsing(fn($state) => $state->description())
                     ->color('gray')
                     ->sortable()
@@ -86,12 +94,14 @@ class ServiceOrdersTable
                     ->label('Técnico')
                     ->searchable()
                     ->sortable()
+                    ->width('1%')
                     ->limit(25)
                     ->toggleable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('gross_amount')
                     ->label('Subtotal')
                     ->money('BRL')
+                    ->width('1%')
                     ->summarize(
                         Summarizer::make()
                             ->label('Subtotal')
@@ -102,6 +112,7 @@ class ServiceOrdersTable
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
                     ->money('BRL')
+                    ->width('1%')
                     ->summarize(
                         Summarizer::make()
                             ->label('Desconto')
@@ -117,15 +128,9 @@ class ServiceOrdersTable
                             ->money('BRL', 100)
                             ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
                     ),
-                TextColumn::make('order_date')
-                    ->label('Dt. Ordem')
-                    ->date('d/m/Y')
-                    ->width('1%')
-                    ->sortable(),
                 TextColumn::make('scheduled_date')
                     ->label('Dt. Agendada')
                     ->date('d/m/Y')
-                    ->width('1%')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('completion_date')
@@ -137,6 +142,7 @@ class ServiceOrdersTable
                 TextColumn::make('invoice.invoice_number')
                     ->label('Fatura')
                     ->sortable()
+                    ->width('1%')
                     ->placeholder('Sem Fatura')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
@@ -215,7 +221,7 @@ class ServiceOrdersTable
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
                 ])->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
-            ])
+            ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkInvoiceServiceOrderAction::make(),
