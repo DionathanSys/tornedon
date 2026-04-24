@@ -65,6 +65,13 @@ class AuditRecorder
             return null;
         }
 
+        [$storedBefore, $storedAfter] = $this->compactSnapshots(
+            action: $action,
+            event: $event,
+            before: $resolvedBefore,
+            after: $resolvedAfter,
+        );
+
         return AuditEntry::query()->create([
             'company_id' => $context->companyId,
             'auditable_type' => $model->getMorphClass(),
@@ -75,8 +82,8 @@ class AuditRecorder
             'event' => $event,
             'action' => $action,
             'summary' => $summary,
-            'before' => $resolvedBefore,
-            'after' => $resolvedAfter,
+            'before' => $storedBefore,
+            'after' => $storedAfter,
             'diff' => $diff === [] ? null : $diff,
             'metadata' => array_filter([
                 ...$context->metadata,
@@ -86,6 +93,29 @@ class AuditRecorder
             ], static fn (mixed $value): bool => $value !== null && $value !== ''),
             'occurred_at' => now(),
         ]);
+    }
+
+    /**
+     * @return array{0: ?array, 1: ?array}
+     */
+    private function compactSnapshots(string $action, string $event, ?array $before, ?array $after): array
+    {
+        $snapshotActions = (array) config('audit.storage.full_snapshot_actions', ['created', 'deleted']);
+        $snapshotEvents = (array) config('audit.storage.full_snapshot_events', []);
+
+        if (in_array($event, $snapshotEvents, true)) {
+            return [$before, $after];
+        }
+
+        if (! in_array($action, $snapshotActions, true)) {
+            return [null, null];
+        }
+
+        return match ($action) {
+            'created' => [null, $after],
+            'deleted' => [$before, null],
+            default => [$before, $after],
+        };
     }
 
     private function resolveRecordIdentifier(Model $model): ?string

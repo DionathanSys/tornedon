@@ -25,3 +25,10 @@ Schedule::command('sefaz:dfe-sync-dispatch')
     ->everyThirtyMinutes()
     ->withoutOverlapping()
     ->description('Despacha a sincronização assíncrona de DF-e recebidos por empresa');
+
+if ((bool) config('audit.archive.enabled', true)) {
+    Schedule::command('audit:archive-prune')
+        ->dailyAt((string) config('audit.archive.schedule_at', '03:20'))
+        ->withoutOverlapping()
+        ->description('Arquiva auditorias antigas em JSONL e remove do banco principal');
+}

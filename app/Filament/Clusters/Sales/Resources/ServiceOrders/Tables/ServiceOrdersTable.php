@@ -24,8 +24,11 @@ use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class ServiceOrdersTable
@@ -86,12 +89,34 @@ class ServiceOrdersTable
                     ->limit(25)
                     ->toggleable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('gross_amount')
+                    ->label('Subtotal')
+                    ->money('BRL')
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Subtotal')
+                            ->money('BRL', 100)
+                            ->using(fn (Builder $query): float => self::resolveSummaryTotals($query)['gross_amount'])
+                    )
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money('BRL'),
+                    ->money('BRL')
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total')
+                            ->money('BRL', 100)
+                            ->using(fn (Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
+                    ),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
-                    ->money('BRL'),
+                    ->money('BRL')
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Desconto')
+                            ->money('BRL', 100)
+                            ->using(fn (Builder $query): float => self::resolveSummaryTotals($query)['discount_amount'])
+                    ),
                 TextColumn::make('order_date')
                     ->label('Dt. Ordem')
                     ->date('d/m/Y')
@@ -201,5 +226,34 @@ class ServiceOrdersTable
                     ->color('gray'),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
+    }
+
+    private static function resolveSummaryTotals(Builder $query): array
+    {
+        $filteredServiceOrders = DB::query()->fromSub(
+            (clone $query)->select('service_orders.id', 'service_orders.travel_value'),
+            'filtered_service_orders'
+        );
+
+        $itemTotals = DB::table('service_order_items')
+            ->selectRaw('
+                service_order_id,
+                COALESCE(SUM(total_amount), 0) as total_amount,
+                COALESCE(SUM(discount_amount), 0) as discount_amount
+            ')
+            ->groupBy('service_order_id');
+
+        $totals = $filteredServiceOrders
+            ->leftJoinSub($itemTotals, 'item_totals', 'item_totals.service_order_id', '=', 'filtered_service_orders.id')
+            ->selectRaw('
+                COALESCE(SUM(COALESCE(item_totals.total_amount, 0) + COALESCE(filtered_service_orders.travel_value, 0)), 0) as total_amount,
+                COALESCE(SUM(COALESCE(item_totals.discount_amount, 0)), 0) as discount_amount
+            ')
+            ->first();
+
+        return [
+            'total_amount' => round((float) ($totals->total_amount ?? 0), 2),
+            'discount_amount' => round((float) ($totals->discount_amount ?? 0), 2),
+        ];
     }
 }

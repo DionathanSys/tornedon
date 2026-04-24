@@ -10,6 +10,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -32,10 +33,20 @@ class ItemsRelationManager extends RelationManager
                     ->label('Valor Unitário')
                     ->money('BRL', true)
                     ->visibleFrom('lg'),
-                TextColumn::make('total_amount')
-                    ->label('Valor Total')
+                TextColumn::make('gross_amount')
+                    ->label('Valor Bruto')
+                    ->state(fn ($record): float => round(((float) ($record->quantity ?? 0)) * ((float) ($record->unit_price ?? 0)), 2))
                     ->money('BRL', true)
-                    ->summarize(Sum::make('total_amount')->label('Total')->money('BRL', 100)),
+                    ->summarize(
+                        Sum::make('gross_amount')
+                            ->label('Bruto')
+                            ->using(fn ($query): float => (float) $query->sum(DB::raw('quantity * unit_price')))
+                            ->money('BRL', 100)
+                    ),
+                TextColumn::make('total_amount')
+                    ->label('Valor Líquido')
+                    ->money('BRL', true)
+                    ->summarize(Sum::make('total_amount')->label('Líquido')->money('BRL', 100)),
                 TextColumn::make('discount_percentage')
                     ->label('Des. (%)')
                     ->visibleFrom('lg')

@@ -10,6 +10,28 @@ use Illuminate\Support\Str;
 
 class AuditEntry extends Model
 {
+    /**
+     * @return list<string>
+     */
+    public static function listColumns(): array
+    {
+        return [
+            'id',
+            'company_id',
+            'auditable_type',
+            'auditable_id',
+            'actor_user_id',
+            'actor_name',
+            'source',
+            'event',
+            'action',
+            'summary',
+            'occurred_at',
+            'created_at',
+            'updated_at',
+        ];
+    }
+
     protected $fillable = [
         'company_id',
         'auditable_type',

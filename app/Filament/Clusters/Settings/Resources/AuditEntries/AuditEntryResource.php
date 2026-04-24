@@ -42,7 +42,9 @@ class AuditEntryResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['actorUser']);
+        $query = parent::getEloquentQuery()
+            ->select(AuditEntry::listColumns())
+            ->with(['actorUser:id,name']);
         $companyId = Filament::getTenant()?->id;
 
         if ($companyId) {

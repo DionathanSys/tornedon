@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Settings\Resources\AuditEntries\Schemas;
 
+use App\Models\AuditEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -10,6 +11,11 @@ use Filament\Support\Enums\FontWeight;
 
 class AuditEntryInfolist
 {
+    /**
+     * @var array<int, AuditEntry|null>
+     */
+    private static array $detailCache = [];
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -55,7 +61,8 @@ class AuditEntryInfolist
             ->label($label)
             ->columnSpanFull()
             ->state(function ($record) use ($field): array {
-                $data = $record->{$field};
+                $detailRecord = self::loadDetailRecord((int) $record->id);
+                $data = $detailRecord?->{$field};
 
                 if (empty($data) || ! is_array($data)) {
                     return [];
@@ -81,5 +88,14 @@ class AuditEntryInfolist
                 TextEntry::make('value')
                     ->wrap(),
             ]);
+    }
+
+    private static function loadDetailRecord(int $recordId): ?AuditEntry
+    {
+        if (! array_key_exists($recordId, self::$detailCache)) {
+            self::$detailCache[$recordId] = AuditEntry::query()->find($recordId);
+        }
+
+        return self::$detailCache[$recordId];
     }
 }

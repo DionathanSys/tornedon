@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -46,6 +47,16 @@ class ItemsRelationManager extends RelationManager
                     ->label('Vlr. Unitário')
                     ->money('BRL')
                     ->sortable(),
+                TextColumn::make('gross_amount')
+                    ->label('Vlr. Bruto')
+                    ->state(fn ($record): float => round(((float) ($record->quantity ?? 0)) * ((float) ($record->unit_price ?? 0)), 2))
+                    ->money('BRL')
+                    ->summarize(
+                        Sum::make('gross_amount')
+                            ->label('TT Bruto')
+                            ->using(fn ($query): float => (float) $query->sum(DB::raw('quantity * unit_price')))
+                            ->money('BRL', 100)
+                    ),
                 TextColumn::make('discount_percentage')
                     ->label('Desc. (%)')
                     ->numeric(2, ',', '.')
@@ -57,10 +68,10 @@ class ItemsRelationManager extends RelationManager
                     ->sortable()
                     ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
                 TextColumn::make('total_amount')
-                    ->label('Total')
+                    ->label('Total Líquido')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL', 100)),
+                    ->summarize(Sum::make('total_amount')->label('TT Líquido')->money('BRL', 100)),
                 TextColumn::make('destination')
                     ->label('Finalidade')
                     ->badge()

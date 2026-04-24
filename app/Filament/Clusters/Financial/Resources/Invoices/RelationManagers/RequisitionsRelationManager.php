@@ -112,7 +112,6 @@ class RequisitionsRelationManager extends RelationManager
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
                     ->money('BRL')
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sale_date')
                     ->label('Dt. da Venda')

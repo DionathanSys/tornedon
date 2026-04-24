@@ -34,6 +34,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use Livewire\Attributes\On;
 
@@ -77,6 +78,16 @@ class ItemsRelationManager extends RelationManager
                     ->label('Vlr. Unitário')
                     ->money('BRL')
                     ->sortable(),
+                TextColumn::make('gross_amount')
+                    ->label('Vlr. Bruto')
+                    ->state(fn ($record): float => round(((float) ($record->quantity ?? 0)) * ((float) ($record->unit_price ?? 0)), 2))
+                    ->money('BRL')
+                    ->summarize(
+                        Sum::make('gross_amount')
+                            ->label('TT Bruto')
+                            ->using(fn ($query): float => (float) $query->sum(DB::raw('quantity * unit_price')))
+                            ->money('BRL', 100)
+                    ),
                 TextColumn::make('unit_cost')
                     ->label('Custo Unitário')
                     ->money('BRL')
@@ -93,10 +104,10 @@ class ItemsRelationManager extends RelationManager
                     ->sortable()
                     ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
                 TextColumn::make('total_amount')
-                    ->label('Total')
+                    ->label('Total Líquido')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('total_amount')->label('TT Total')->money('BRL', 100)),
+                    ->summarize(Sum::make('total_amount')->label('TT Líquido')->money('BRL', 100)),
                 IconColumn::make('stock_consumed')
                     ->label('Estoque Consumido')
                     ->boolean()

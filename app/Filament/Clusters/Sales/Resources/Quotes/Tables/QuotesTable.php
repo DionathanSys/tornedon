@@ -11,8 +11,11 @@ use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 
 class QuotesTable
 {
@@ -43,7 +46,12 @@ class QuotesTable
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
                     ->money('BRL')
-                    ->sortable()
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total')
+                            ->money('BRL', 100)
+                            ->using(fn (Builder $query): float => self::resolveSummaryTotal($query))
+                    )
                     ->alignEnd(),
                 TextColumn::make('valid_until')
                     ->label('Válido até')
@@ -92,5 +100,27 @@ class QuotesTable
                     ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function resolveSummaryTotal(Builder $query): float
+    {
+        $filteredQuotes = DB::query()->fromSub(
+            (clone $query)->select('quotes.id'),
+            'filtered_quotes'
+        );
+
+        $itemTotals = DB::table('quote_items')
+            ->selectRaw('
+                quote_id,
+                COALESCE(SUM(total_amount), 0) as total_amount
+            ')
+            ->groupBy('quote_id');
+
+        $totals = $filteredQuotes
+            ->leftJoinSub($itemTotals, 'item_totals', 'item_totals.quote_id', '=', 'filtered_quotes.id')
+            ->selectRaw('COALESCE(SUM(COALESCE(item_totals.total_amount, 0)), 0) as total_amount')
+            ->first();
+
+        return round((float) ($totals->total_amount ?? 0), 2);
     }
 }

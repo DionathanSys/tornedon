@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -64,5 +65,17 @@ class RequisitionItem extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    protected function grossAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value, array $attributes): float => round(
+                array_key_exists('gross_amount', $attributes)
+                    ? (float) $attributes['gross_amount']
+                    : ((float) ($this->quantity ?? 0) * (float) ($this->unit_price ?? 0)),
+                2
+            ),
+        );
     }
 }
