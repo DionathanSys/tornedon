@@ -57,7 +57,7 @@ class QuoteService
         }
 
         return $query->with([
-            'partner',
+            'customer',
             'company',
             'items',
             'productionOrder',
@@ -84,7 +84,7 @@ class QuoteService
         }
 
         return $query->with([
-            'partner',
+            'customer',
             'company',
             'items.product',
             'productionOrder',

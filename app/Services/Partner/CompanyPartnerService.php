@@ -32,6 +32,8 @@ class CompanyPartnerService
         'type',
         'invoice_threshold',
         'customer_discount_percentage',
+        'payment_method',
+        'payment_condition',
         'is_active',
         'notify_service_order_closed',
         'notify_requisition_closed',
@@ -381,6 +383,8 @@ class CompanyPartnerService
         return [
             'type' => $sourceCompanyPartner->type,
             'invoice_threshold' => $sourceCompanyPartner->invoice_threshold,
+            'payment_method' => $sourceCompanyPartner->payment_method?->value,
+            'payment_condition' => $sourceCompanyPartner->payment_condition?->value,
             'is_active' => true,
             'notify_service_order_closed' => (bool) $sourceCompanyPartner->notify_service_order_closed,
             'notify_requisition_closed' => (bool) $sourceCompanyPartner->notify_requisition_closed,

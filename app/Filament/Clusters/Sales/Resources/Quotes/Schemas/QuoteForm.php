@@ -9,8 +9,8 @@ use App\Enum\Quote\Status;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\EditQuote;
 use App\Filament\Clusters\Sales\Resources\Quotes\RelationManagers\ItemsRelationManager;
-use App\Models\CompanyPreference;
 use App\Models\Quote;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -107,6 +107,27 @@ class QuoteForm
                         SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 6])
+                            ->live()
+                            ->afterStateUpdated(function ($state, \Filament\Schemas\Components\Utilities\Get $get, \Filament\Schemas\Components\Utilities\Set $set): void {
+                                if (! $state) {
+                                    return;
+                                }
+
+                                $companyId = Filament::getTenant()->id;
+                                $companyDefaults = app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer($companyId, null);
+                                $defaults = app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                    $companyId,
+                                    (int) $state,
+                                );
+
+                                if (blank($get('payment_method')) || $get('payment_method') === $companyDefaults['payment_method']) {
+                                    $set('payment_method', $defaults['payment_method']);
+                                }
+
+                                if (blank($get('payment_condition')) || $get('payment_condition') === $companyDefaults['payment_condition']) {
+                                    $set('payment_condition', $defaults['payment_condition']);
+                                }
+                            })
                             ->disabledOn('edit'),
                         Callout::make('Orçamento recusado/cancelado')
                             ->columnSpanFull()
@@ -159,14 +180,20 @@ class QuoteForm
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
+                            ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                Filament::getTenant()->id,
+                                null,
+                            )['payment_method']),
                         Select::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
+                            ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                Filament::getTenant()->id,
+                                null,
+                            )['payment_condition']),
                     ]),
                 Livewire::make(ItemsRelationManager::class, fn(Quote $record) => [
                     'ownerRecord' => $record,

@@ -57,32 +57,32 @@ class InvoicesTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL')
+                    ->money('BRL', divideBy: 1)
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
                         Summarizer::make()
                             ->label('Total')
-                            ->money('BRL', 100)
+                            ->money('BRL', 1)
                             ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['total_amount'])
                     ),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
-                    ->money('BRL')
+                    ->money('BRL', divideBy: 1)
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
                         Summarizer::make()
                             ->label('Desconto')
-                            ->money('BRL', 100)
+                            ->money('BRL', 1)
                             ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['discount_amount'])
                     ),
                 TextColumn::make('net_value')
                     ->label('Valor Líquido')
-                    ->money('BRL')
+                    ->money('BRL', divideBy: 1)
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
                         Summarizer::make()
                             ->label('Líquido')
-                            ->money('BRL', 100)
+                            ->money('BRL', 1)
                             ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['net_value'])
                     ),
                 TextColumn::make('createdBy.name')

@@ -73,6 +73,8 @@ class EditCompanyPartner extends EditRecord
         $data['company_partner']['type'] = $data['type'];
         $data['company_partner']['invoice_threshold'] = $data['invoice_threshold'];
         $data['company_partner']['customer_discount_percentage'] = $data['customer_discount_percentage'] ?? 0;
+        $data['company_partner']['payment_method'] = $data['payment_method']?->value ?? $data['payment_method'] ?? null;
+        $data['company_partner']['payment_condition'] = $data['payment_condition']?->value ?? $data['payment_condition'] ?? null;
         $data['company_partner']['is_active'] = $data['is_active'];
         $data['company_partner']['notify_service_order_closed'] = $data['notify_service_order_closed'] ?? false;
         $data['company_partner']['notify_requisition_closed'] = $data['notify_requisition_closed'] ?? false;

@@ -3,6 +3,8 @@
 namespace Tests\Feature\Services\Partner;
 
 use App\Enum\Partner\Type as PartnerType;
+use App\Enum\Payment\Condition;
+use App\Enum\Payment\Method;
 use App\Jobs\ImportCompanyPartnerCnpjDataJob;
 use App\Models\Company;
 use App\Models\CompanyPartner;
@@ -51,6 +53,8 @@ class QuickCreateCustomerPartnerServiceTest extends TestCase
             'state_tax_indicator' => '9',
             'invoice_threshold' => 150.50,
             'customer_discount_percentage' => 5,
+            'payment_method' => Method::PIX->value,
+            'payment_condition' => Condition::CASH->value,
             'is_active' => true,
             'import_cnpj_data' => false,
             'notify_service_order_closed' => true,
@@ -69,6 +73,8 @@ class QuickCreateCustomerPartnerServiceTest extends TestCase
         $this->assertFalse($companyPartner->notify_production_order_closed);
         $this->assertFalse($companyPartner->notify_fiscal_document_confirmed);
         $this->assertEquals(150.50, $companyPartner->invoice_threshold);
+        $this->assertSame(Method::PIX, $companyPartner->payment_method);
+        $this->assertSame(Condition::CASH, $companyPartner->payment_condition);
 
         $this->assertDatabaseHas('partners', [
             'id' => $companyPartner->partner_id,
@@ -85,6 +91,8 @@ class QuickCreateCustomerPartnerServiceTest extends TestCase
             'notify_service_order_closed' => true,
             'notify_requisition_closed' => true,
             'notify_invoice_confirmed' => true,
+            'payment_method' => Method::PIX->value,
+            'payment_condition' => Condition::CASH->value,
         ]);
 
         Bus::assertNotDispatched(ImportCompanyPartnerCnpjDataJob::class);
@@ -153,6 +161,8 @@ class QuickCreateCustomerPartnerServiceTest extends TestCase
             'state_tax_indicator' => '9',
             'invoice_threshold' => 200,
             'customer_discount_percentage' => 12.5,
+            'payment_method' => Method::BANK_TRANSFER->value,
+            'payment_condition' => Condition::DAYS_30->value,
             'is_active' => true,
             'import_cnpj_data' => false,
             'notify_service_order_closed' => true,
@@ -173,6 +183,8 @@ class QuickCreateCustomerPartnerServiceTest extends TestCase
         $this->assertTrue($companyPartner->notify_invoice_confirmed);
         $this->assertTrue($companyPartner->notify_fiscal_document_confirmed);
         $this->assertEquals(12.50, (float) $companyPartner->customer_discount_percentage);
+        $this->assertSame(Method::BANK_TRANSFER, $companyPartner->payment_method);
+        $this->assertSame(Condition::DAYS_30, $companyPartner->payment_condition);
 
         Bus::assertNotDispatched(ImportCompanyPartnerCnpjDataJob::class);
     }

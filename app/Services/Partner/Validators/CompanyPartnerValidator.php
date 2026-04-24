@@ -23,6 +23,8 @@ class CompanyPartnerValidator
             'type.*' => 'required|string|min:1|in:' . implode(',', array_map(fn ($case) => $case->value, Enum\Partner\Type::cases())),
             'invoice_threshold' => 'required|numeric|min:0|max:99999999',
             'customer_discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'payment_method' => 'nullable|string|in:' . implode(',', array_map(fn ($case) => $case->value, Enum\Payment\Method::cases())),
+            'payment_condition' => 'nullable|string|in:' . implode(',', array_map(fn ($case) => $case->value, Enum\Payment\Condition::cases())),
             'is_active' => 'required|boolean',
             'notify_service_order_closed' => 'sometimes|boolean',
             'notify_requisition_closed' => 'sometimes|boolean',
@@ -43,6 +45,8 @@ class CompanyPartnerValidator
             'customer_discount_percentage.numeric' => 'O desconto do cliente deve ser um numero.',
             'customer_discount_percentage.min' => 'O desconto do cliente nao pode ser negativo.',
             'customer_discount_percentage.max' => 'O desconto do cliente nao pode ser maior que 100%.',
+            'payment_method.in' => 'O metodo de pagamento informado e invalido.',
+            'payment_condition.in' => 'A condicao de pagamento informada e invalida.',
             'is_active.required' => 'E obrigatorio definir o status como Ativo/Inativo.',
             'is_active.boolean' => 'Valor invalido para o campo Ativo.',
         ];

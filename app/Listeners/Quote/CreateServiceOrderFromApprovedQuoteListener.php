@@ -8,9 +8,9 @@ use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type;
 use App\Events\Quote\QuoteApproved;
 use App\Models\Quote;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
-use BackedEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -51,6 +51,12 @@ class CreateServiceOrderFromApprovedQuoteListener
                 ]);
 
                 $totalEstimatedHours = $quoteItems->sum('estimated_production_hours');
+                $paymentDefaults = app(CustomerPaymentDefaultsResolver::class)->resolve(
+                    (int) $quote->company_id,
+                    (int) $quote->customer_id,
+                    $quote->payment_method,
+                    $quote->payment_condition,
+                );
 
                 $serviceOrderService = app(ServiceOrderService::class);
                 $serviceOrder = $serviceOrderService->create([
@@ -63,8 +69,8 @@ class CreateServiceOrderFromApprovedQuoteListener
                     'priority' => Priority::NORMAL->value,
                     'type' => Type::MAINTENANCE->value,
                     'estimated_hours' => $totalEstimatedHours,
-                    'payment_method' => $this->normalizeEnumValue($quote->payment_method),
-                    'payment_condition' => $this->normalizeEnumValue($quote->payment_condition),
+                    'payment_method' => $paymentDefaults['payment_method'],
+                    'payment_condition' => $paymentDefaults['payment_condition'],
                     'customer_observations' => "Gerada a partir do orcamento #{$quote->quote_number}\n{$quote->observations}",
                 ], $event->approvedBy);
 
@@ -109,10 +115,5 @@ class CreateServiceOrderFromApprovedQuoteListener
 
             throw $e;
         }
-    }
-
-    private function normalizeEnumValue(mixed $value): mixed
-    {
-        return $value instanceof BackedEnum ? $value->value : $value;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Quote\Actions;
 
 use App\Enum\Quote\Status;
 use App\Models\Quote;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\Quote\Validators\QuoteValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -32,6 +33,13 @@ class CreateQuote
                 'user_id' => $this->createdBy,
                 'data'    => $data,
             ]);
+
+            $data = app(CustomerPaymentDefaultsResolver::class)->resolve(
+                (int) ($data['company_id'] ?? 0),
+                isset($data['customer_id']) ? (int) $data['customer_id'] : null,
+                $data['payment_method'] ?? null,
+                $data['payment_condition'] ?? null,
+            ) + $data;
 
             $validated = QuoteValidator::validateCreate($data);
 

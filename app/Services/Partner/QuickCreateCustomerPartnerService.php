@@ -31,6 +31,8 @@ class QuickCreateCustomerPartnerService
                 'type' => [PartnerType::CUSTOMER->value],
                 'invoice_threshold' => $data['invoice_threshold'],
                 'customer_discount_percentage' => $data['customer_discount_percentage'] ?? 0,
+                'payment_method' => $data['payment_method'] ?? null,
+                'payment_condition' => $data['payment_condition'] ?? null,
                 'is_active' => (bool) ($data['is_active'] ?? true),
                 'notify_service_order_closed' => (bool) ($data['notify_service_order_closed'] ?? false),
                 'notify_requisition_closed' => (bool) ($data['notify_requisition_closed'] ?? false),

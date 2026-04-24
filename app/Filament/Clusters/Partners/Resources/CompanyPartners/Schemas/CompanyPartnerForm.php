@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Schemas;
 
 use App\Enum;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\EditAddressAction;
@@ -156,6 +158,20 @@ class CompanyPartnerForm
                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                     ->formatStateUsing(fn($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                                     ->default(0),
+                                Select::make('company_partner.payment_method')
+                                    ->label('Método de Pagamento')
+                                    ->options(PaymentMethod::toSelectArray())
+                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->native(false)
+                                    ->searchable()
+                                    ->placeholder('Usar preferências'),
+                                Select::make('company_partner.payment_condition')
+                                    ->label('Condição de Pagamento')
+                                    ->options(PaymentCondition::toGroupedSelectArray())
+                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->native(false)
+                                    ->searchable()
+                                    ->placeholder('Usar preferências'),
                             ]),
                         Toggle::make('company_partner.is_active')
                             ->label('Ativo')

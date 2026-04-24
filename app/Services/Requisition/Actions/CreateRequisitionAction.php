@@ -4,6 +4,7 @@ namespace App\Services\Requisition\Actions;
 
 use App\Models\Requisition;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\Requisition\Validators\RequisitionValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -32,6 +33,13 @@ class CreateRequisitionAction
                 'user_id' => $this->createdBy,
                 'data'    => $data,
             ]);
+
+            $data = app(CustomerPaymentDefaultsResolver::class)->resolve(
+                (int) ($data['company_id'] ?? 0),
+                isset($data['customer_id']) ? (int) $data['customer_id'] : null,
+                $data['payment_method'] ?? null,
+                $data['payment_condition'] ?? null,
+            ) + $data;
 
             $validated = RequisitionValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy;

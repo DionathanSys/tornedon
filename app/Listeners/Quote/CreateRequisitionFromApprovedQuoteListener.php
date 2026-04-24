@@ -6,6 +6,7 @@ use App\Enum\Quote\Destination;
 use App\Enum\Quote\Status;
 use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Events\Quote\QuoteApproved;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\Quote\QuoteService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use App\Services\Requisition\RequisitionService;
@@ -50,6 +51,12 @@ class CreateRequisitionFromApprovedQuoteListener
                     'quote_id' => $event->quote->id,
                     'items_count' => $quoteItems->count(),
                 ]);
+                $paymentDefaults = app(CustomerPaymentDefaultsResolver::class)->resolve(
+                    (int) $event->quote->company_id,
+                    (int) $event->quote->customer_id,
+                    $event->quote->payment_method,
+                    $event->quote->payment_condition,
+                );
 
                 $requisitionService = app(RequisitionService::class);
                 $requisition = $requisitionService->create([
@@ -58,8 +65,8 @@ class CreateRequisitionFromApprovedQuoteListener
                     'quote_id'      => $event->quote->id,
                     'sale_date'     => now()->toDateString(),
                     'status'        => RequisitionStatus::OPEN,
-                    'payment_method' => $event->quote->payment_method,
-                    'payment_condition' => $event->quote->payment_condition,
+                    'payment_method' => $paymentDefaults['payment_method'],
+                    'payment_condition' => $paymentDefaults['payment_condition'],
                     'observations'  => "Gerada a partir do orçamento #{$event->quote->quote_number}\n{$event->quote->observations}",
                 ], $event->approvedBy);
 

@@ -10,10 +10,10 @@ use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\EditRequisition;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
-use App\Models\CompanyPreference;
 use Filament\Schemas\Components\Grid;
 use App\Models\Requisition;
 use App\Services\Equipment\EquipmentService;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\Partner\PartnerService;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Enums\FontWeight;
@@ -55,6 +55,27 @@ class RequisitionForm
                             ->label('Cliente')
                             ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                             ->columnStart(1)
+                            ->live()
+                            ->afterStateUpdated(function ($state, Get $get, \Filament\Schemas\Components\Utilities\Set $set): void {
+                                if (! $state) {
+                                    return;
+                                }
+
+                                $companyId = Filament::getTenant()->id;
+                                $companyDefaults = app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer($companyId, null);
+                                $defaults = app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                    $companyId,
+                                    (int) $state,
+                                );
+
+                                if (blank($get('payment_method')) || $get('payment_method') === $companyDefaults['payment_method']) {
+                                    $set('payment_method', $defaults['payment_method']);
+                                }
+
+                                if (blank($get('payment_condition')) || $get('payment_condition') === $companyDefaults['payment_condition']) {
+                                    $set('payment_condition', $defaults['payment_condition']);
+                                }
+                            })
                             ->disabledOn('edit'),
                         Select::make('equipment_id')
                             ->label('Equipamento')
@@ -100,14 +121,20 @@ class RequisitionForm
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->default(fn() => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()->id)),
+                            ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                Filament::getTenant()->id,
+                                null,
+                            )['payment_method']),
                         Select::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 3])
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
                             ->searchable()
-                            ->default(fn() => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()->id)),
+                            ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                Filament::getTenant()->id,
+                                null,
+                            )['payment_condition']),
                         DatePicker::make('delivery_date')
                             ->label('Data de Entrega')
                             ->columnSpan(['md' => 2, 'lg' => 2, 'xl' => 2])

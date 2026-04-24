@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Components;
 
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Tax\StateTaxIndicator;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -79,6 +81,20 @@ class QuickCreateCustomerPartnerForm
                         ->prefix(null)
                         ->columnSpan(['md' => 2, 'lg' => 3])
                         ->default(0),
+                    Select::make('payment_method')
+                        ->label('Método de Pagamento')
+                        ->columnSpan(['md' => 3, 'lg' => 3])
+                        ->options(PaymentMethod::toSelectArray())
+                        ->native(false)
+                        ->searchable()
+                        ->placeholder('Usar preferências'),
+                    Select::make('payment_condition')
+                        ->label('Condição de Pagamento')
+                        ->columnSpan(['md' => 3, 'lg' => 4])
+                        ->options(PaymentCondition::toGroupedSelectArray())
+                        ->native(false)
+                        ->searchable()
+                        ->placeholder('Usar preferências'),
                     Toggle::make('is_active')
                         ->label('Ativo')
                         ->columnSpan(['md' => 2, 'lg' => 2])

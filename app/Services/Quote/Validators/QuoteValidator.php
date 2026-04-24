@@ -74,9 +74,16 @@ class QuoteValidator
      */
     public static function validateUpdate(array $data, int $quoteId): array
     {
-        $rules = array_merge(self::commonRules(), [
+        $rules = array_merge([
             'customer_id'    => 'sometimes|required|integer|exists:partners,id',
             'valid_until'   => 'nullable|date',
+        ], [
+            'payment_method' => ['sometimes', 'required', Rule::enum(Method::class)],
+            'payment_condition' => ['sometimes', 'required', Rule::enum(Condition::class)],
+            'description' => 'nullable|string|max:1000',
+            'observations' => 'nullable|string|max:2000',
+            'customer_observations' => 'nullable|string|max:2000',
+            'additional_info' => 'nullable|array',
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();

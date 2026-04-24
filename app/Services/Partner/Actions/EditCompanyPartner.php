@@ -19,6 +19,8 @@ class EditCompanyPartner
         'type',
         'invoice_threshold',
         'customer_discount_percentage',
+        'payment_method',
+        'payment_condition',
         'is_active',
         'notify_service_order_closed',
         'notify_requisition_closed',

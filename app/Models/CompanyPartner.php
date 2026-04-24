@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +24,8 @@ class CompanyPartner extends Model
         'type',
         'invoice_threshold',
         'customer_discount_percentage',
+        'payment_method',
+        'payment_condition',
         'is_active',
         'notify_service_order_closed',
         'notify_requisition_closed',
@@ -36,6 +40,8 @@ class CompanyPartner extends Model
     protected $casts = [
         'invoice_threshold' => MoneyCast::class,
         'customer_discount_percentage' => 'decimal:2',
+        'payment_method' => PaymentMethod::class,
+        'payment_condition' => PaymentCondition::class,
         'type'              => 'array',
         'is_active'         => 'boolean',
         'notify_service_order_closed' => 'boolean',

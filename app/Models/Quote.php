@@ -44,6 +44,8 @@ class Quote extends Model //implements HasMedia
 
     protected $casts = [
         'status' => Status::class,
+        'payment_method' => PaymentMethod::class,
+        'payment_condition' => PaymentCondition::class,
         'valid_until' => 'date',
         'approved_at' => 'datetime',
         'additional_info' => 'array',
