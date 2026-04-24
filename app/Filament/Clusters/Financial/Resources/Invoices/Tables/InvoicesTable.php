@@ -57,32 +57,32 @@ class InvoicesTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL', divideBy: 1)
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
                         Summarizer::make()
                             ->label('Total')
-                            ->money('BRL', 1)
+                            ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['total_amount'])
                     ),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
-                    ->money('BRL', divideBy: 1)
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
                         Summarizer::make()
                             ->label('Desconto')
-                            ->money('BRL', 1)
+                            ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['discount_amount'])
                     ),
                 TextColumn::make('net_value')
                     ->label('Valor Líquido')
-                    ->money('BRL', divideBy: 1)
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
                         Summarizer::make()
                             ->label('Líquido')
-                            ->money('BRL', 1)
+                            ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                             ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['net_value'])
                     ),
                 TextColumn::make('createdBy.name')
