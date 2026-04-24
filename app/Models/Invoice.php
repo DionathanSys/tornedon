@@ -10,9 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
+    private ?array $resolvedAmounts = null;
+
     protected $appends = [
         'total_amount',
         'discount_amount',
@@ -143,7 +146,7 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                return round($this->servicesAmount + $this->productsAmount, 2);
+                return $this->resolveAmounts()['total_amount'];
             }
         );
     }
@@ -155,10 +158,7 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                return round(
-                    $this->serviceOrders->sum(fn ($serviceOrder) => (float) $serviceOrder->total_amount),
-                    2
-                );
+                return $this->resolveAmounts()['services_amount'];
             }
         );
     }
@@ -170,10 +170,7 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                return round(
-                    $this->requisitions->sum(fn ($requisition) => (float) $requisition->total_amount),
-                    2
-                );
+                return $this->resolveAmounts()['products_amount'];
             }
         );
     }
@@ -185,10 +182,7 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                $soDiscount  = $this->serviceOrders->sum(fn ($so) => (float) $so->discount_amount);
-                $reqDiscount = $this->requisitions->sum(fn ($req) => (float) $req->discount_amount);
-
-                return round($soDiscount + $reqDiscount, 2);
+                return $this->resolveAmounts()['discount_amount'];
             }
         );
     }
@@ -197,8 +191,68 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                return $this->totalAmount;
+                return $this->resolveAmounts()['net_value'];
             }
         );
+    }
+
+    /**
+     * Resolve os totais da fatura diretamente no SQL para evitar dupla conversão monetária.
+     *
+     * @return array{
+     *     services_amount: float,
+     *     products_amount: float,
+     *     discount_amount: float,
+     *     total_amount: float,
+     *     net_value: float
+     * }
+     */
+    private function resolveAmounts(): array
+    {
+        if ($this->resolvedAmounts !== null) {
+            return $this->resolvedAmounts;
+        }
+
+        $serviceOrdersByInvoice = DB::table('service_orders')
+            ->leftJoin('service_order_items', 'service_order_items.service_order_id', '=', 'service_orders.id')
+            ->where('service_orders.invoice_id', $this->getKey())
+            ->groupBy('service_orders.id', 'service_orders.travel_value')
+            ->selectRaw('
+                COALESCE(SUM(service_order_items.total_amount), 0) + COALESCE(service_orders.travel_value, 0) as total_amount,
+                COALESCE(SUM(service_order_items.discount_amount), 0) as discount_amount
+            ');
+
+        $serviceTotals = DB::query()
+            ->fromSub($serviceOrdersByInvoice, 'service_order_totals')
+            ->selectRaw('
+                COALESCE(SUM(service_order_totals.total_amount), 0) as total_amount,
+                COALESCE(SUM(service_order_totals.discount_amount), 0) as discount_amount
+            ')
+            ->first();
+
+        $productTotals = DB::table('requisitions')
+            ->leftJoin('requisition_items', 'requisition_items.requisition_id', '=', 'requisitions.id')
+            ->where('requisitions.invoice_id', $this->getKey())
+            ->selectRaw('
+                COALESCE(SUM(requisition_items.total_amount), 0) as total_amount,
+                COALESCE(SUM(requisition_items.discount_amount), 0) as discount_amount
+            ')
+            ->first();
+
+        $servicesAmount = round((float) ($serviceTotals->total_amount ?? 0), 2);
+        $productsAmount = round((float) ($productTotals->total_amount ?? 0), 2);
+        $discountAmount = round(
+            (float) ($serviceTotals->discount_amount ?? 0) + (float) ($productTotals->discount_amount ?? 0),
+            2
+        );
+        $totalAmount = round($servicesAmount + $productsAmount, 2);
+
+        return $this->resolvedAmounts = [
+            'services_amount' => $servicesAmount,
+            'products_amount' => $productsAmount,
+            'discount_amount' => $discountAmount,
+            'total_amount' => $totalAmount,
+            'net_value' => $totalAmount,
+        ];
     }
 }
