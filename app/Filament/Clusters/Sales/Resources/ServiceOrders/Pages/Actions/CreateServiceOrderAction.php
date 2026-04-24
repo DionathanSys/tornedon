@@ -29,8 +29,7 @@ final class CreateServiceOrderAction
             ->hiddenLabel()
             ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
-            ->size(Size::Small)
-            ->modalWidth(Width::FiveExtraLarge)
+            ->modalWidth(Width::ExtraLarge)
             ->schema(fn(Schema $schema) => $schema->components([
                 SelectPartner::make('customer_id', 'customer')
                     ->label('Cliente')
@@ -39,6 +38,7 @@ final class CreateServiceOrderAction
             ->mutateDataUsing(function (array $data): array {
                 $tenant = Filament::getTenant();
 
+                $data['order_date'] = now();
                 $data['company_id'] = $tenant->id;
                 $data['status'] = State::OPEN;
                 $data['priority'] = Priority::NORMAL;
