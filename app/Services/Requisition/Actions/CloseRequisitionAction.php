@@ -5,6 +5,7 @@ namespace App\Services\Requisition\Actions;
 use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
+use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\Audit\AuditRecorder;
 use App\Services\ProductStock\ProductStockService;
@@ -56,7 +57,7 @@ class CloseRequisitionAction
                         continue;
                     }
 
-                    if (! $productStockService->hasNetAvailableStock($item->product_id, $requisition->company_id, (float) $item->quantity)) {
+                    if (! $this->hasSufficientStockForClose($requisition, $item, $productStockService)) {
                         $this->setError(sprintf(
                             'Saldo insuficiente para "%s". Verifique o estoque antes de encerrar.',
                             $item->product->name ?? "Produto #{$item->product_id}"
@@ -218,5 +219,73 @@ class CloseRequisitionAction
                 'requisition_id' => $requisition->id,
             ]);
         }
+    }
+
+    private function hasSufficientStockForClose(
+        Requisition $requisition,
+        RequisitionItem $item,
+        ProductStockService $productStockService,
+    ): bool {
+        $stock = $productStockService->findByProductId($item->product_id, $requisition->company_id);
+
+        if (! $stock || $stock->allow_negative) {
+            return true;
+        }
+
+        $requestedQuantity = (float) $item->quantity;
+        $availableQuantity = (float) $stock->quantity_available;
+        $reservedForItem = $this->resolveItemReservedQuantity($requisition, $item);
+        $effectiveAvailable = $availableQuantity + $reservedForItem;
+
+        Log::debug('CloseRequisitionAction: Effective availability resolved for close', [
+            'metodo' => __METHOD__ . '@' . __LINE__,
+            'requisition_id' => $requisition->id,
+            'item_id' => $item->id,
+            'product_id' => $item->product_id,
+            'requested_quantity' => $requestedQuantity,
+            'quantity_available' => $availableQuantity,
+            'reserved_for_item' => $reservedForItem,
+            'effective_available' => $effectiveAvailable,
+        ]);
+
+        return $effectiveAvailable >= $requestedQuantity;
+    }
+
+    private function resolveItemReservedQuantity(Requisition $requisition, RequisitionItem $item): float
+    {
+        $itemReservedQuantity = (float) StockMovement::query()
+            ->where('source_type', 'requisition_item')
+            ->where('source_id', $item->id)
+            ->whereIn('type', [
+                Type::RESERVATION->value,
+                Type::RESERVATION_RELEASE->value,
+            ])
+            ->get(['type', 'quantity'])
+            ->sum(function (StockMovement $movement): float {
+                return $movement->type === Type::RESERVATION
+                    ? (float) $movement->quantity
+                    : -(float) $movement->quantity;
+            });
+
+        if ($itemReservedQuantity > 0.0001) {
+            return min($itemReservedQuantity, (float) $item->quantity);
+        }
+
+        $reservedQuantity = (float) StockMovement::query()
+            ->where('source_type', 'requisition')
+            ->where('source_id', $requisition->id)
+            ->where('product_id', $item->product_id)
+            ->whereIn('type', [
+                Type::RESERVATION->value,
+                Type::RESERVATION_RELEASE->value,
+            ])
+            ->get(['type', 'quantity'])
+            ->sum(function (StockMovement $movement): float {
+                return $movement->type === Type::RESERVATION
+                    ? (float) $movement->quantity
+                    : -(float) $movement->quantity;
+            });
+
+        return min(max($reservedQuantity, 0), (float) $item->quantity);
     }
 }

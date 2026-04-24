@@ -1,0 +1,26 @@
+app\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction.php:107:                                $so->state()->invoice($so, $userId, $record->id);
+app\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction.php:120:                                $req->state()->invoice($req, $userId, $record->id);
+app\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction.php:133:                                $po->state()->invoice($record->id);
+app\Filament\Clusters\Sales\Resources\Quotes\Pages\EditQuote.php:93:        if (! $this->record->state()->canEdit()) {
+app\Filament\Clusters\Sales\Resources\Requisitions\Schemas\RequisitionForm.php:107:                            ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
+app\Filament\Clusters\Sales\Resources\Requisitions\Schemas\RequisitionForm.php:112:                    ->disabled(fn($record) => $record ? !$record->state()->canEdit() : false)
+app\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction.php:110:                if ($linkedRequisition instanceof Requisition && $shouldCloseLinkedRequisition && $linkedRequisition->state()->canTransitionTo('close')) {
+app\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\DeleteProductAction.php:24:                    && $requisition->state()->canEdit();
+app\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\EditProductAction.php:33:                    && $requisition->state()->canEdit();
+app\Services\Cnpj\Providers\OpenCnpjaProvider.php:10:class OpenCnpjaProvider implements CnpjApiProviderInterface
+app\Services\ProductionOrder\ProductionOrderService.php:281:                    $record->state()->invoice($invoice->id);
+app\Services\Quote\Actions\ApproveQuote.php:40:            $quote->state()->approve($quote, $this->approvedBy);
+app\Services\Quote\Actions\RejectQuote.php:36:            $quote->state()->reject($quote, $reason, $this->rejectedBy);
+app\Services\Quote\Actions\ReopenQuoteAction.php:37:            $quote->state()->reopen($quote, $this->userId);
+app\Services\Quote\Actions\SendForApproval.php:35:            $quote->state()->sendForApproval($quote, $this->userId);
+app\Services\Requisition\Actions\CancelRequisitionAction.php:34:                $requisition->state()->cancel($requisition, $this->userId);
+app\Services\Requisition\Actions\CloseRequisitionAction.php:79:                $requisition->state()->close($requisition, $this->userId);
+app\Services\Requisition\Actions\ReopenRequisitionAction.php:40:                $requisition->state()->reopen($requisition, $this->userId);
+app\Services\Requisition\RequisitionService.php:789:            $record->state()->invoice($record, $userId, $invoice->id);
+app\Services\Requisition\States\OpenState.php:14:class OpenState implements RequisitionState
+app\Services\ServiceOrder\Actions\CancelServiceOrderAction.php:32:            $order->state()->cancel($order, $this->userId);
+app\Services\ServiceOrder\Actions\CloseServiceOrderAction.php:32:            $order->state()->close($order, $this->userId);
+app\Services\ServiceOrder\Actions\ReopenServiceOrderAction.php:32:            $order->state()->reopen($order, $this->userId);
+app\Services\ServiceOrder\ServiceOrderRequisitionService.php:27:            if (! $requisition->state()->canEdit()) {
+app\Services\ServiceOrder\ServiceOrderService.php:619:                    $record->state()->invoice($record, $userId, $invoice->id);
+app\Services\ServiceOrder\States\OpenState.php:14:class OpenState implements ServiceOrderState

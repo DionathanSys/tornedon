@@ -3,12 +3,19 @@
 namespace Tests\Feature\Services\Requisition;
 
 use App\Enum\Requisition\Status;
+use App\Enum\StockMovement\Type;
 use App\Models\AuditEntry;
 use App\Models\Company;
 use App\Models\Partner;
+use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\Requisition;
+use App\Models\RequisitionItem;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Requisition\Actions\CloseRequisitionAction;
+use App\Enum\Product\OriginSalePrice;
+use App\Enum\Product\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -65,5 +72,90 @@ class CloseRequisitionActionTest extends TestCase
                 ->where('auditable_id', $requisition->id)
                 ->count()
         );
+    }
+
+    public function test_it_closes_requisition_when_the_only_available_stock_is_reserved_by_its_own_item(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Reserva',
+            'document_number' => '98765432000188',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Reserva',
+            'document_type' => 'CPF',
+            'document_number' => '98765432100',
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'has_stock_control' => true,
+            'name' => 'Produto Reservado',
+            'product_code' => 'PRD-RES-001',
+            'unit' => Unit::UN,
+            'origin_sale_price' => OriginSalePrice::FREE,
+            'sale_price_value' => 10,
+            'is_active' => true,
+        ]);
+
+        $stock = ProductStock::query()->create([
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'quantity_total' => 2,
+            'quantity_reserved' => 2,
+            'is_active' => true,
+            'allow_negative' => false,
+            'created_by' => $user->id,
+        ]);
+
+        $requisition = Requisition::query()->create([
+            'number' => 'REQ-00024',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'sale_date' => '2026-04-22',
+            'status' => Status::OPEN,
+            'stock_reserved' => false,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $item = RequisitionItem::query()->create([
+            'requisition_id' => $requisition->id,
+            'product_id' => $product->id,
+            'unit_of_measure' => 'UN',
+            'quantity' => 2,
+            'unit_price' => 10,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        StockMovement::query()->create([
+            'product_stock_id' => $stock->id,
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'type' => Type::RESERVATION,
+            'quantity' => 2,
+            'unit_price' => 10,
+            'reason' => 'Reserva por item de requisição',
+            'source_type' => 'requisition_item',
+            'source_id' => $item->id,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $action = new CloseRequisitionAction($user->id);
+        $result = $action->execute($requisition);
+
+        $this->assertNotNull($result);
+        $this->assertSame(Status::CLOSED, $result->fresh()->status);
+        $this->assertTrue((bool) $result->fresh()->stock_reserved);
     }
 }
