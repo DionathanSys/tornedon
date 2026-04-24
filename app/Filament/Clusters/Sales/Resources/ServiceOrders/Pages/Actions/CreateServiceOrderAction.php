@@ -15,6 +15,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,7 @@ final class CreateServiceOrderAction
             ->toolTip('Nova Ordem de Serviço')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
+            ->modalWidth(Width::FiveExtraLarge)
             ->schema(fn(Schema $schema) => $schema->components([
                 SelectPartner::make('customer_id', 'customer')
                     ->label('Cliente')
