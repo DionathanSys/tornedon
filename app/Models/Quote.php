@@ -9,7 +9,6 @@ use App\Enum\Quote\Status;
 use App\Services\Quote\QuoteNumberGenerator;
 use App\Services\Quote\States\QuoteState;
 use App\Services\Quote\States\StateResolver;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -45,11 +44,13 @@ class Quote extends Model //implements HasMedia
         'status' => Status::class,
         'valid_until' => 'date',
         'approved_at' => 'datetime',
+        'gross_amount' => MoneyCast::class,
+        'discount_amount' => MoneyCast::class,
+        'total_amount' => MoneyCast::class,
         'additional_info' => 'array',
     ];
 
     protected $appends = [
-        'total_amount',
         'total_amount_services',
         'total_amount_products',
     ];
@@ -130,16 +131,6 @@ class Quote extends Model //implements HasMedia
     /* ==============================
      |  Attributes
      |==============================*/
-
-    /**
-     * Calcula o valor total do orçamento somando todos os itens.
-     */
-    protected function totalAmount(): Attribute
-    {
-        return Attribute::make(
-            get: fn() => $this->items->sum('total_amount'),
-        );
-    }
 
     protected function totalAmountServices(): Attribute
     {

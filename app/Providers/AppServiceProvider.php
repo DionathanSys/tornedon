@@ -21,14 +21,21 @@ use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\ProductionOrder;
+use App\Models\Quote;
+use App\Models\QuoteItem;
 use App\Models\Requisition;
+use App\Models\RequisitionItem;
 use App\Models\ServiceOrder;
+use App\Models\ServiceOrderItem;
 use App\Policies\AuditEntryPolicy;
 use App\Observers\FiscalDocumentObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\ProductionOrderObserver;
+use App\Observers\QuoteItemObserver;
 use App\Observers\RequisitionObserver;
+use App\Observers\RequisitionItemObserver;
 use App\Observers\ServiceOrderObserver;
+use App\Observers\ServiceOrderItemObserver;
 use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
 use App\Services\Email\Contracts\EmailProviderInterface;
@@ -105,6 +112,9 @@ class AppServiceProvider extends ServiceProvider
         ProductionOrder::observe(ProductionOrderObserver::class);
         Invoice::observe(InvoiceObserver::class);
         FiscalDocument::observe(FiscalDocumentObserver::class);
+        QuoteItem::observe(QuoteItemObserver::class);
+        RequisitionItem::observe(RequisitionItemObserver::class);
+        ServiceOrderItem::observe(ServiceOrderItemObserver::class);
 
         // Eventos de item de requisição → atualização da quantidade reservada no estoque
         Event::listen(RequisitionItemCreated::class, HandleStockReservationCreated::class);

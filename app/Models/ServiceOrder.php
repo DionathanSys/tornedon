@@ -10,7 +10,6 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Services\ServiceOrder\StateResolver;
 use App\Services\ServiceOrder\States\ServiceOrderState;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -35,11 +34,6 @@ class ServiceOrder extends Model
         });
     }
 
-    protected $appends = [
-        'total_amount',
-        'discount_amount',
-    ];
-
     protected $fillable = [
         'number',
         'customer_id',
@@ -62,6 +56,9 @@ class ServiceOrder extends Model
         'value_km',
         'distance_km',
         'travel_value',
+        'gross_amount',
+        'discount_amount',
+        'total_amount',
         'payment_method',
         'payment_condition',
         'technician_id',
@@ -97,6 +94,9 @@ class ServiceOrder extends Model
         'value_km'              => MoneyCast::class,
         'distance_km'           => 'decimal:2',
         'travel_value'          => MoneyCast::class,
+        'gross_amount'          => MoneyCast::class,
+        'discount_amount'       => MoneyCast::class,
+        'total_amount'          => MoneyCast::class,
         'warranty_expires_at'   => 'date',
         'requires_approval'     => 'boolean',
         'approved_by_customer'  => 'boolean',
@@ -196,44 +196,5 @@ class ServiceOrder extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    /* ==============================
-     |  Computed Attributes
-     |==============================*/
-
-    /**
-     * Total de descontos da OS: soma dos descontos dos itens.
-     */
-    protected function discountAmount(): Attribute
-    {
-        return Attribute::make(
-            get: fn(): float => round($this->sumItemsColumn('discount_amount'), 2)
-        );
-    }
-
-    /**
-     * Total da OS: soma dos totais dos itens + valor de deslocamento.
-     */
-    protected function totalAmount(): Attribute
-    {
-        return Attribute::make(
-            get: fn(): float => round(
-                $this->sumItemsColumn('total_amount')
-                    + (float) $this->travel_value,
-                2
-            )
-        );
-    }
-
-    private function sumItemsColumn(string $column): float
-    {
-        if ($this->relationLoaded('items')) {
-            return (float) $this->items->sum(
-                fn(ServiceOrderItem $item): float => (float) $item->{$column}
-            );
-        }
-
-        return round(((float) $this->items()->sum($column)) / 100, 2);
     }
 }

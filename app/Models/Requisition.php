@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Requisition\Status;
 use App\Services\Requisition\States\RequisitionState;
 use App\Services\Requisition\States\StateResolver;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,6 +32,9 @@ class Requisition extends Model
         'quote_id',
         'sale_date',
         'status',
+        'gross_amount',
+        'discount_amount',
+        'total_amount',
         'payment_method',
         'payment_condition',
         'observations',
@@ -54,6 +57,9 @@ class Requisition extends Model
         'payment_method' => PaymentMethod::class,
         'payment_condition' => PaymentCondition::class,
         'sale_date' => 'date',
+        'gross_amount' => MoneyCast::class,
+        'discount_amount' => MoneyCast::class,
+        'total_amount' => MoneyCast::class,
         'delivery_date' => 'date',
         'invoiced_at' => 'datetime',
         'stock_consumed' => 'boolean',
@@ -132,35 +138,5 @@ class Requisition extends Model
     public function state(): RequisitionState
     {
         return StateResolver::resolve($this);
-    }
-
-    /* ==============================
-     |  Computed Attributes
-     |==============================*/
-
-    /**
-     * Total de descontos da requisição: soma dos descontos dos itens.
-     */
-    protected function discountAmount(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): float => round(
-                $this->items->sum(fn ($item) => (float) $item->discount_amount),
-                2
-            )
-        );
-    }
-
-    /**
-     * Total da requisição: soma dos totais dos itens.
-     */
-    protected function totalAmount(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): float => round(
-                $this->items->sum(fn ($item) => (float) $item->total_amount),
-                2
-            )
-        );
     }
 }

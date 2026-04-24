@@ -30,6 +30,7 @@ class RequisitionItem extends Model
     protected $casts = [
         'quantity' => 'decimal:3',
         'unit_price' => MoneyCast::class,
+        'gross_amount' => MoneyCast::class,
         'total_amount' => MoneyCast::class,
         'unit_cost' => MoneyCast::class,
         'discount_percentage' => 'decimal:2',

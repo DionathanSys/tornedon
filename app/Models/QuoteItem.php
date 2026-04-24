@@ -37,6 +37,7 @@ class QuoteItem extends Model
         'unit_price' => MoneyCast::class,
         'discount_percentage' => 'decimal:3',
         'discount_amount' => MoneyCast::class,
+        'gross_amount' => MoneyCast::class,
         'total_amount' => MoneyCast::class,
         'technical_specifications' => 'array',
         'estimated_production_hours' => 'decimal:2',
