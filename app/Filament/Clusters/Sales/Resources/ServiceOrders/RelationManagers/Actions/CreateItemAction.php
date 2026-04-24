@@ -3,7 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions;
 
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectService;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Components\ModalSelectService;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;

@@ -8,6 +8,7 @@ use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Events\RequisitionItem\RequisitionItemUpdated;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
+use App\Forms\Components\Livewire\AutoSubmitTableSelectLivewireComponent;
 use App\Listeners\Quote\CreateProductionOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateServiceOrderFromApprovedQuoteListener;
@@ -87,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Livewire::component('app.filament.relation-managers.attachments-relation-manager', AttachmentsRelationManager::class);
+        Livewire::component('app.forms.components.livewire.auto-submit-table-select-livewire-component', AutoSubmitTableSelectLivewireComponent::class);
 
         // Mapa de aliases para relacionamentos polimórficos de StockMovement
         Relation::morphMap([
