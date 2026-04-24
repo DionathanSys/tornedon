@@ -238,6 +238,7 @@ class ServiceOrdersTable
         $itemTotals = DB::table('service_order_items')
             ->selectRaw('
                 service_order_id,
+                COALESCE(SUM(quantity * unit_price), 0) as gross_amount,
                 COALESCE(SUM(total_amount), 0) as total_amount,
                 COALESCE(SUM(discount_amount), 0) as discount_amount
             ')
@@ -246,12 +247,14 @@ class ServiceOrdersTable
         $totals = $filteredServiceOrders
             ->leftJoinSub($itemTotals, 'item_totals', 'item_totals.service_order_id', '=', 'filtered_service_orders.id')
             ->selectRaw('
+                COALESCE(SUM(COALESCE(item_totals.gross_amount, 0) + COALESCE(filtered_service_orders.travel_value, 0)), 0) as gross_amount,
                 COALESCE(SUM(COALESCE(item_totals.total_amount, 0) + COALESCE(filtered_service_orders.travel_value, 0)), 0) as total_amount,
                 COALESCE(SUM(COALESCE(item_totals.discount_amount, 0)), 0) as discount_amount
             ')
             ->first();
 
         return [
+            'gross_amount' => round((float) ($totals->gross_amount ?? 0), 2),
             'total_amount' => round((float) ($totals->total_amount ?? 0), 2),
             'discount_amount' => round((float) ($totals->discount_amount ?? 0), 2),
         ];
