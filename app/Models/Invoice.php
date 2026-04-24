@@ -239,10 +239,10 @@ class Invoice extends Model
             ')
             ->first();
 
-        $servicesAmount = round((float) ($serviceTotals->total_amount ?? 0), 2);
-        $productsAmount = round((float) ($productTotals->total_amount ?? 0), 2);
+        $servicesAmount = round(((float) ($serviceTotals->total_amount ?? 0)) / 100, 2);
+        $productsAmount = round(((float) ($productTotals->total_amount ?? 0)) / 100, 2);
         $discountAmount = round(
-            (float) ($serviceTotals->discount_amount ?? 0) + (float) ($productTotals->discount_amount ?? 0),
+            (((float) ($serviceTotals->discount_amount ?? 0)) + ((float) ($productTotals->discount_amount ?? 0))) / 100,
             2
         );
         $totalAmount = round($servicesAmount + $productsAmount, 2);

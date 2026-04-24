@@ -6,6 +6,7 @@ use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
+use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
 use Filament\Actions\ActionGroup;
@@ -57,6 +58,7 @@ class InvoicesTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
+                    ->state(fn (Invoice $record): float => (float) $record->total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
@@ -67,6 +69,7 @@ class InvoicesTable
                     ),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
+                    ->state(fn (Invoice $record): float => (float) $record->discount_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
@@ -77,6 +80,7 @@ class InvoicesTable
                     ),
                 TextColumn::make('net_value')
                     ->label('Valor Líquido')
+                    ->state(fn (Invoice $record): float => (float) $record->net_value)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->summarize(
@@ -221,8 +225,8 @@ class InvoicesTable
             ')
             ->first();
 
-        $totalAmount = round((float) ($totals->total_amount ?? 0), 2);
-        $discountAmount = round((float) ($totals->discount_amount ?? 0), 2);
+        $totalAmount = round(((float) ($totals->total_amount ?? 0)) / 100, 2);
+        $discountAmount = round(((float) ($totals->discount_amount ?? 0)) / 100, 2);
 
         return [
             'total_amount' => $totalAmount,
