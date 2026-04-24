@@ -52,8 +52,8 @@ class ServiceOrdersTable
                     ->label('Status')
                     ->width('1%')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state->description())
-                    ->color(fn ($state) => match ($state) {
+                    ->formatStateUsing(fn($state) => $state->description())
+                    ->color(fn($state) => match ($state) {
                         State::OPEN => 'info',
                         State::CLOSED => 'success',
                         State::INVOICED => 'warning',
@@ -64,14 +64,14 @@ class ServiceOrdersTable
                 TextColumn::make('priority')
                     ->label('Prioridade')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state->description())
-                    ->color(fn ($state) => $state->color())
+                    ->formatStateUsing(fn($state) => $state->description())
+                    ->color(fn($state) => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->formatStateUsing(fn($state) => $state->description())
                     ->color('gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -96,18 +96,9 @@ class ServiceOrdersTable
                         Summarizer::make()
                             ->label('Subtotal')
                             ->money('BRL', 100)
-                            ->using(fn (Builder $query): float => self::resolveSummaryTotals($query)['gross_amount'])
+                            ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['gross_amount'])
                     )
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('total_amount')
-                    ->label('Total')
-                    ->money('BRL')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Total')
-                            ->money('BRL', 100)
-                            ->using(fn (Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
-                    ),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
                     ->money('BRL')
@@ -115,7 +106,16 @@ class ServiceOrdersTable
                         Summarizer::make()
                             ->label('Desconto')
                             ->money('BRL', 100)
-                            ->using(fn (Builder $query): float => self::resolveSummaryTotals($query)['discount_amount'])
+                            ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['discount_amount'])
+                    ),
+                TextColumn::make('total_amount')
+                    ->label('Total')
+                    ->money('BRL')
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total')
+                            ->money('BRL', 100)
+                            ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
                     ),
                 TextColumn::make('order_date')
                     ->label('Dt. Ordem')
@@ -139,7 +139,7 @@ class ServiceOrdersTable
                     ->sortable()
                     ->placeholder('Sem Fatura')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->url(fn ($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
+                    ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -163,11 +163,11 @@ class ServiceOrdersTable
                     ->searchable()
                     ->preload()
                     ->getSearchResultsUsing(
-                        fn (string $search): array => (new EquipmentService)
+                        fn(string $search): array => (new EquipmentService)
                             ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
                     )
                     ->getOptionLabelUsing(
-                        fn ($value): ?string => (new EquipmentService)
+                        fn($value): ?string => (new EquipmentService)
                             ->getLabelForSelect((int) $value)
                     )
                     ->native(false),
@@ -207,8 +207,8 @@ class ServiceOrdersTable
                     CloseServiceOrderAction::make(),
                     InvoiceServiceOrderAction::make(),
                     Action::make('open-invoice')
-                        ->url(fn ($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
-                        ->visible(fn ($record) => $record->invoice_id)
+                        ->url(fn($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
+                        ->visible(fn($record) => $record->invoice_id)
                         ->icon(Heroicon::Eye)
                         ->label('Ver Fatura'),
                     CancelServiceOrderAction::make(),

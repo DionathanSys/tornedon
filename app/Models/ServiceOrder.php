@@ -206,11 +206,11 @@ class ServiceOrder extends Model
         return Attribute::make(
             get: function ($value, array $attributes): float {
                 if (array_key_exists('gross_amount', $attributes)) {
-                    return round((float) $attributes['gross_amount'], 2);
+                    return round(((float) $attributes['gross_amount']) / 100, 2);
                 }
 
                 $grossAmount = array_key_exists('computed_gross_amount', $attributes)
-                    ? (float) $attributes['computed_gross_amount']
+                    ? ((float) $attributes['computed_gross_amount']) / 100
                     : $this->resolveCommercialAmounts()['gross_amount'];
 
                 return round($grossAmount + (float) ($this->travel_value ?? 0), 2);
@@ -223,11 +223,11 @@ class ServiceOrder extends Model
         return Attribute::make(
             get: function ($value, array $attributes): float {
                 if (array_key_exists('discount_amount', $attributes)) {
-                    return round((float) $attributes['discount_amount'], 2);
+                    return round(((float) $attributes['discount_amount']) / 100, 2);
                 }
 
                 $discountAmount = array_key_exists('computed_discount_amount', $attributes)
-                    ? (float) $attributes['computed_discount_amount']
+                    ? ((float) $attributes['computed_discount_amount']) / 100
                     : $this->resolveCommercialAmounts()['discount_amount'];
 
                 return round($discountAmount, 2);
@@ -240,11 +240,11 @@ class ServiceOrder extends Model
         return Attribute::make(
             get: function ($value, array $attributes): float {
                 if (array_key_exists('total_amount', $attributes)) {
-                    return round((float) $attributes['total_amount'], 2);
+                    return round(((float) $attributes['total_amount']) / 100, 2);
                 }
 
                 $totalAmount = array_key_exists('computed_total_amount', $attributes)
-                    ? (float) $attributes['computed_total_amount']
+                    ? ((float) $attributes['computed_total_amount']) / 100
                     : $this->resolveCommercialAmounts()['total_amount'];
 
                 return round($totalAmount + (float) ($this->travel_value ?? 0), 2);
@@ -275,9 +275,9 @@ class ServiceOrder extends Model
             ->first();
 
         return $this->resolvedCommercialAmounts = [
-            'gross_amount' => round((float) ($totals->gross_amount ?? 0), 2),
-            'discount_amount' => round((float) ($totals->discount_amount ?? 0), 2),
-            'total_amount' => round((float) ($totals->total_amount ?? 0), 2),
+            'gross_amount' => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
+            'discount_amount' => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
+            'total_amount' => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
         ];
     }
 }
