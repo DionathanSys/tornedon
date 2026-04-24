@@ -9,6 +9,7 @@ use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -19,51 +20,50 @@ class ServiceTable
         return $table
             ->query(fn (): Builder => Service::query())
             ->columns([
+                TextColumn::make('service_code')
+                    ->label('Código')
+                    ->width('1%')
+                    ->sortable(),
                 TextColumn::make('name')
                     ->label('Serviço')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('price')
                     ->label('Preço')
                     ->money('BRL')
                     ->sortable(),
-                TextColumn::make('cost')
-                    ->label('Custo')
-                    ->money('BRL')
-                    ->sortable(),
-                TextColumn::make('category')
+                TextColumn::make('category.name')
                     ->label('Categoria')
-                    ->searchable(),
+                    ->placeholder('Sem categoria')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('nbs_code')
+                    ->label('Código NBS')
+                    ->placeholder('Sem Código NBS'),
+                TextColumn::make('municipal_tax_code')
+                    ->label('Código ISS')
+                    ->placeholder('Sem Código ISS'),
                 IconColumn::make('is_active')
                     ->label('Ativo')
                     ->boolean(),
-                IconColumn::make('requires_approval')
-                    ->label('Requer Aprovação')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_at')
-                    ->label('Criado Em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->label('Atualizado Em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('deleted_at')
-                    ->label('Excluído Em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('accept_customer_discount')
+                    ->label('Permite Desconto Cliente')
+                    ->boolean(),
             ])
             ->filters([
-                //
+                SelectFilter::make('is_active')
+                    ->label('Ativo')
+                    ->options([
+                        '1' => 'Sim',
+                        '0' => 'Não',
+                    ])
+                    ->default('1'),
             ])
             ->headerActions([
                 CreateAction::make()
-                ->label('Serviço')
-                ->icon(Heroicon::Plus)
-                ->size(Size::Small),
+                    ->label('Serviço')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
             ])
             ->recordActions([
                 //

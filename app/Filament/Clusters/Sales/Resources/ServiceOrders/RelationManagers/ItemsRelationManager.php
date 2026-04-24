@@ -24,19 +24,23 @@ class ItemsRelationManager extends RelationManager
             ->stackedOnMobile()
             ->columns([
                 TextColumn::make('service.service_code')
-                    ->label('Código'),
+                    ->label('Código')
+                    ->width('1%'),
                 TextColumn::make('service.name')
                     ->label('Serviço'),
                 TextColumn::make('quantity')
-                    ->label('Quantidade'),
+                    ->label('Quantidade')
+                    ->width('1%'),
                 TextColumn::make('unit_price')
                     ->label('Valor Unitário')
+                    ->width('1%')
                     ->money('BRL', true)
                     ->visibleFrom('lg'),
                 TextColumn::make('gross_amount')
                     ->label('Valor Bruto')
                     ->state(fn ($record): float => round(((float) ($record->quantity ?? 0)) * ((float) ($record->unit_price ?? 0)), 2))
                     ->money('BRL', true)
+                    ->width('1%')
                     ->summarize(
                         Sum::make('gross_amount')
                             ->label('Bruto')
@@ -45,10 +49,12 @@ class ItemsRelationManager extends RelationManager
                     ),
                 TextColumn::make('total_amount')
                     ->label('Valor Líquido')
+                    ->width('1%')
                     ->money('BRL', true)
                     ->summarize(Sum::make('total_amount')->label('Líquido')->money('BRL', 100)),
                 TextColumn::make('discount_percentage')
                     ->label('Des. (%)')
+                    ->width('1%')
                     ->visibleFrom('lg')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_amount')
@@ -62,16 +68,19 @@ class ItemsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
+                    ->width('1%')
                     ->sortable()
                     ->visibleFrom('lg')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updatedBy.name')
                     ->label('Atualizado por')
+                    ->width('1%')
                     ->sortable()
                     ->visibleFrom('lg')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
+                    ->width('1%')
                     ->dateTime()
                     ->sortable()
                     ->visibleFrom('lg')

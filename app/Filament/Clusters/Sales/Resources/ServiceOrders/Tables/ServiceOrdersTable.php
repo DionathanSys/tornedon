@@ -16,9 +16,11 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceSer
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Services\Equipment\EquipmentService;
+use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
@@ -28,9 +30,12 @@ use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
+use App\Notification\NotifyService as notify;
 
 class ServiceOrdersTable
 {
@@ -101,12 +106,12 @@ class ServiceOrdersTable
                     ->toggleable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('gross_amount')
-                    ->label('Subtotal')
+                    ->label('Valor Bruto')
                     ->money('BRL')
                     ->width('1%')
                     ->summarize(
                         Summarizer::make()
-                            ->label('Subtotal')
+                            ->label('Valor Bruto')
                             ->money('BRL', 100)
                             ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['gross_amount'])
                     )
@@ -123,12 +128,12 @@ class ServiceOrdersTable
                     )
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
-                    ->label('Total')
+                    ->label('Valor Líquido')
                     ->money('BRL')
                     ->width('1%')
                     ->summarize(
                         Summarizer::make()
-                            ->label('Total')
+                            ->label('Valor Líquido')
                             ->money('BRL', 100)
                             ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
                     )
@@ -217,6 +222,40 @@ class ServiceOrdersTable
                         ->icon(Heroicon::Eye)
                         ->label('Acessar Fatura'),
                     CancelServiceOrderAction::make(),
+                    DeleteAction::make()
+                        ->hiddenLabel()
+                        ->icon(Heroicon::Trash)
+                        ->using(function (Model $record): bool {
+                            Log::debug('EditServiceOrder: Iniciando soft delete de ordem de serviço', [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'service_order_id' => $record->id,
+                            ]);
+
+                            $service = app(ServiceOrderService::class);
+                            $result = $service->delete($record);
+
+                            if ($service->hasError()) {
+                                Log::error('EditServiceOrder: Erro ao deletar ordem de serviço', [
+                                    'metodo' => __METHOD__ . '@' . __LINE__,
+                                    'error_code' => $service->getErrorCode(),
+                                    'message' => $service->getMessage(),
+                                    'service_order_id' => $record->id,
+                                ]);
+
+                                notify::error(
+                                    message: $service->getMessageUser(),
+                                    errorCode: $service->getErrorCode()
+                                );
+                                return false;
+                            }
+
+                            Log::info('EditServiceOrder: Ordem de serviço deletada com sucesso', [
+                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'service_order_id' => $record->id,
+                            ]);
+
+                            return $result;
+                        }),
                     ReopenServiceOrderAction::make(),
                     EditAction::make(),
                 ])->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
