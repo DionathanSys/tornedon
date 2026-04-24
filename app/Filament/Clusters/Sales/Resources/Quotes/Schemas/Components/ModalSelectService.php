@@ -22,9 +22,9 @@ class ModalSelectService
                 fn(Action $action) => $action
                     ->label('Selecionar')
                     ->modalHeading('Buscar Serviço')
-                    ->modalSubmitActionLabel('Confirmar seleção'),
+                    ->modalSubmitActionLabel('Confirmar seleção')
+                    ->slideOver(false)
             )
-            ->slideOver(false)
             ->afterStateUpdated(
                 fn($state, Set $set, Get $get, $livewire) => SchemaForm::resolveItem($set, $get, Destination::ORDER_SERVICE, $state, $livewire)
             );
