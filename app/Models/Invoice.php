@@ -137,7 +137,7 @@ class Invoice extends Model
      |==============================*/
 
     /**
-     * Total geral da fatura: soma dos totais das OS, requisições vinculadas.
+     * Total geral líquido da fatura: soma dos totais líquidos das OS e requisições vinculadas.
      */
     protected function totalAmount(): Attribute
     {
@@ -149,7 +149,7 @@ class Invoice extends Model
     }
 
     /**
-     * Total de serviços da fatura: soma dos totais das OS vinculadas.
+     * Total líquido de serviços da fatura: soma dos totais líquidos das OS vinculadas.
      */
     protected function servicesAmount(): Attribute
     {
@@ -164,7 +164,7 @@ class Invoice extends Model
     }
 
     /**
-     * Total de produtos da fatura: soma dos totais das requisições vinculadas.
+     * Total líquido de produtos da fatura: soma dos totais líquidos das requisições vinculadas.
      */
     protected function productsAmount(): Attribute
     {
@@ -197,7 +197,7 @@ class Invoice extends Model
     {
         return Attribute::make(
             get: function (): float {
-                return round($this->totalAmount - $this->discountAmount, 2);
+                return $this->totalAmount;
             }
         );
     }

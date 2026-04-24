@@ -172,6 +172,53 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertSame(15.0, (float) $item->discount_amount);
     }
 
+    public function test_invoice_totals_do_not_apply_service_order_discount_twice(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-002',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $serviceModel = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-002',
+            'name' => 'Servico com desconto',
+            'price' => 75,
+            'tax_rate' => 5,
+            'nbs_code' => '123456789',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        ServiceOrderItem::query()->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $serviceModel->id,
+            'quantity' => 1,
+            'unit_price' => 75,
+            'discount_amount' => 7.5,
+            'created_by' => $user->id,
+        ]);
+
+        $invoice->refresh();
+
+        $this->assertSame(67.5, (float) $invoice->services_amount);
+        $this->assertSame(67.5, (float) $invoice->total_amount);
+        $this->assertSame(7.5, (float) $invoice->discount_amount);
+        $this->assertSame(67.5, (float) $invoice->net_value);
+    }
+
     /**
      * @return array{Company, Partner, Invoice}
      */

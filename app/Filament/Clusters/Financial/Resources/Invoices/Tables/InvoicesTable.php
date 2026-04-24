@@ -161,6 +161,7 @@ class InvoicesTable
     /**
      * Como os totais da fatura são derivados de relacionamentos e não existem como coluna
      * persistida, o resumo precisa agregar via subqueries SQL em vez de Sum::make().
+     * O total_amount da OS/requisição já é líquido, então o desconto não pode ser abatido novamente.
      *
      * @return array{total_amount: float, discount_amount: float, net_value: float}
      */
@@ -226,7 +227,7 @@ class InvoicesTable
         return [
             'total_amount' => $totalAmount,
             'discount_amount' => $discountAmount,
-            'net_value' => round($totalAmount - $discountAmount, 2),
+            'net_value' => $totalAmount,
         ];
     }
 }
