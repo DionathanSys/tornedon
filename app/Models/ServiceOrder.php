@@ -256,9 +256,9 @@ class ServiceOrder extends Model
             ->first();
 
         return $this->resolvedItemsAmounts = [
-            'gross_amount'      => round(((float) ($totals->gross_amount ?? 0)), 2),
-            'discount_amount'   => round(((float) ($totals->discount_amount ?? 0)), 2),
-            'total_amount'      => round(((float) ($totals->total_amount ?? 0)), 2),
+            'gross_amount'      => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
+            'discount_amount'   => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
+            'total_amount'      => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
         ];
     }
 }

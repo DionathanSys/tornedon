@@ -19,14 +19,11 @@ use Filament\Support\Icons\Heroicon;
 use App\Notification\NotifyService as notify;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
@@ -76,23 +73,11 @@ class RequisitionsTable
                     ->toggleable(),
                 TextColumn::make('gross_amount')
                     ->label('Subtotal')
-                    ->money('BRL')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Subtotal')
-                            ->money('BRL', 100)
-                            ->using(fn (Builder $query): float => self::resolveSummaryTotal($query)['gross_amount'])
-                    )
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Total')
-                            ->money('BRL', 100)
-                            ->using(fn (Builder $query): float => self::resolveSummaryTotal($query))
-                    )
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -194,27 +179,5 @@ class RequisitionsTable
                     })
                     ->successRedirectUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
             ]);
-    }
-
-    private static function resolveSummaryTotal(Builder $query): float
-    {
-        $filteredRequisitions = DB::query()->fromSub(
-            (clone $query)->select('requisitions.id'),
-            'filtered_requisitions'
-        );
-
-        $itemTotals = DB::table('requisition_items')
-            ->selectRaw('
-                requisition_id,
-                COALESCE(SUM(total_amount), 0) as total_amount
-            ')
-            ->groupBy('requisition_id');
-
-        $totals = $filteredRequisitions
-            ->leftJoinSub($itemTotals, 'item_totals', 'item_totals.requisition_id', '=', 'filtered_requisitions.id')
-            ->selectRaw('COALESCE(SUM(COALESCE(item_totals.total_amount, 0)), 0) as total_amount')
-            ->first();
-
-        return round((float) ($totals->total_amount ?? 0), 2);
     }
 }

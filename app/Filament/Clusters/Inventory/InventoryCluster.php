@@ -14,6 +14,8 @@ class InventoryCluster extends Cluster
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::End;
 
     protected static ?string $navigationLabel = 'Estoque';
+
+    protected static ?string $clusterBreadcrumb = 'Estoque';
     
     protected static ?int $navigationSort = 2;
 }

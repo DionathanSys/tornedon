@@ -15,5 +15,7 @@ class FinancialCluster extends Cluster
 
     protected static ?string $navigationLabel = 'Financeiro';
 
+    protected static ?string $clusterBreadcrumb = 'Financeiro';
+
     protected static ?int $navigationSort = 4;
 }

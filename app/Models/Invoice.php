@@ -17,6 +17,7 @@ class Invoice extends Model
     private ?array $resolvedAmounts = null;
 
     protected $appends = [
+        'gross_amount',
         'total_amount',
         'discount_amount',
         'net_value',
@@ -140,6 +141,18 @@ class Invoice extends Model
      |==============================*/
 
     /**
+     * Total bruto da fatura: soma dos brutos das OS e requisições vinculadas.
+     */
+    protected function grossAmount(): Attribute
+    {
+        return Attribute::make(
+            get: function (): float {
+                return $this->resolveAmounts()['gross_amount'];
+            }
+        );
+    }
+
+    /**
      * Total geral líquido da fatura: soma dos totais líquidos das OS e requisições vinculadas.
      */
     protected function totalAmount(): Attribute
@@ -200,6 +213,7 @@ class Invoice extends Model
      * Resolve os totais da fatura diretamente no SQL para evitar dupla conversão monetária.
      *
      * @return array{
+     *     gross_amount: float,
      *     services_amount: float,
      *     products_amount: float,
      *     discount_amount: float,
@@ -213,41 +227,92 @@ class Invoice extends Model
             return $this->resolvedAmounts;
         }
 
+        if ($this->relationLoaded('serviceOrders') || $this->relationLoaded('requisitions')) {
+            $serviceOrders = $this->relationLoaded('serviceOrders')
+                ? $this->serviceOrders
+                : $this->serviceOrders()->with('items')->get();
+
+            $requisitions = $this->relationLoaded('requisitions')
+                ? $this->requisitions
+                : $this->requisitions()->with('items')->get();
+
+            $serviceOrders->loadMissing('items');
+            $requisitions->loadMissing('items');
+
+            $servicesAmount = round((float) $serviceOrders->sum('total_amount'), 2);
+            $productsAmount = round((float) $requisitions->sum('total_amount'), 2);
+            $grossAmount = round(
+                (float) $serviceOrders->sum('gross_amount') + (float) $requisitions->sum('gross_amount'),
+                2
+            );
+            $discountAmount = round(
+                (float) $serviceOrders->sum('discount_amount') + (float) $requisitions->sum('discount_amount'),
+                2
+            );
+            $totalAmount = round($servicesAmount + $productsAmount, 2);
+
+            return $this->resolvedAmounts = [
+                'gross_amount' => $grossAmount,
+                'services_amount' => $servicesAmount,
+                'products_amount' => $productsAmount,
+                'discount_amount' => $discountAmount,
+                'total_amount' => $totalAmount,
+                'net_value' => $totalAmount,
+            ];
+        }
+
         $serviceOrdersByInvoice = DB::table('service_orders')
             ->leftJoin('service_order_items', 'service_order_items.service_order_id', '=', 'service_orders.id')
             ->where('service_orders.invoice_id', $this->getKey())
             ->groupBy('service_orders.id', 'service_orders.travel_value')
             ->selectRaw('
-                COALESCE(SUM(service_order_items.total_amount), 0) + COALESCE(service_orders.travel_value, 0) as total_amount,
-                COALESCE(SUM(service_order_items.discount_amount), 0) as discount_amount
+                COALESCE(SUM(service_order_items.gross_amount), 0) + COALESCE(service_orders.travel_value, 0) as gross_amount,
+                COALESCE(SUM(service_order_items.discount_amount), 0) as discount_amount,
+                COALESCE(SUM(service_order_items.total_amount), 0) + COALESCE(service_orders.travel_value, 0) as total_amount
             ');
 
         $serviceTotals = DB::query()
             ->fromSub($serviceOrdersByInvoice, 'service_order_totals')
             ->selectRaw('
-                COALESCE(SUM(service_order_totals.total_amount), 0) as total_amount,
-                COALESCE(SUM(service_order_totals.discount_amount), 0) as discount_amount
+                COALESCE(SUM(service_order_totals.gross_amount), 0) as gross_amount,
+                COALESCE(SUM(service_order_totals.discount_amount), 0) as discount_amount,
+                COALESCE(SUM(service_order_totals.total_amount), 0) as total_amount
             ')
             ->first();
 
-        $productTotals = DB::table('requisitions')
+        $requisitionsByInvoice = DB::table('requisitions')
             ->leftJoin('requisition_items', 'requisition_items.requisition_id', '=', 'requisitions.id')
             ->where('requisitions.invoice_id', $this->getKey())
+            ->groupBy('requisitions.id')
             ->selectRaw('
-                COALESCE(SUM(requisition_items.total_amount), 0) as total_amount,
-                COALESCE(SUM(requisition_items.discount_amount), 0) as discount_amount
+                COALESCE(SUM(requisition_items.gross_amount), 0) as gross_amount,
+                COALESCE(SUM(requisition_items.discount_amount), 0) as discount_amount,
+                COALESCE(SUM(requisition_items.total_amount), 0) as total_amount
+            ');
+
+        $productTotals = DB::query()
+            ->fromSub($requisitionsByInvoice, 'requisition_totals')
+            ->selectRaw('
+                COALESCE(SUM(requisition_totals.gross_amount), 0) as gross_amount,
+                COALESCE(SUM(requisition_totals.discount_amount), 0) as discount_amount,
+                COALESCE(SUM(requisition_totals.total_amount), 0) as total_amount
             ')
             ->first();
 
         $servicesAmount = round(((float) ($serviceTotals->total_amount ?? 0)) / 100, 2);
         $productsAmount = round(((float) ($productTotals->total_amount ?? 0)) / 100, 2);
+        $grossAmount = round(
+            (((float) ($serviceTotals->gross_amount ?? 0)) / 100) + (((float) ($productTotals->gross_amount ?? 0)) / 100),
+            2
+        );
         $discountAmount = round(
-            (((float) ($serviceTotals->discount_amount ?? 0)) + ((float) ($productTotals->discount_amount ?? 0))) / 100,
+            (((float) ($serviceTotals->discount_amount ?? 0)) / 100) + (((float) ($productTotals->discount_amount ?? 0)) / 100),
             2
         );
         $totalAmount = round($servicesAmount + $productsAmount, 2);
 
         return $this->resolvedAmounts = [
+            'gross_amount' => $grossAmount,
             'services_amount' => $servicesAmount,
             'products_amount' => $productsAmount,
             'discount_amount' => $discountAmount,

@@ -26,13 +26,10 @@ use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 use App\Notification\NotifyService as notify;
@@ -107,36 +104,18 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('gross_amount')
                     ->label('Valor Bruto')
-                    ->money('BRL')
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Valor Bruto')
-                            ->money('BRL', 100)
-                            ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['gross_amount'])
-                    )
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
-                    ->money('BRL')
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Desconto')
-                            ->money('BRL', 100)
-                            ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['discount_amount'])
-                    )
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Líquido')
-                    ->money('BRL')
+                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Valor Líquido')
-                            ->money('BRL', 100)
-                            ->using(fn(Builder $query): float => self::resolveSummaryTotals($query)['total_amount'])
-                    )
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('scheduled_date')
                     ->label('Dt. Agendada')
@@ -270,37 +249,5 @@ class ServiceOrdersTable
                     ->color('gray'),
             ])
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
-    }
-
-    private static function resolveSummaryTotals(Builder $query): array
-    {
-        $filteredServiceOrders = DB::query()->fromSub(
-            (clone $query)->select('service_orders.id', 'service_orders.travel_value'),
-            'filtered_service_orders'
-        );
-
-        $itemTotals = DB::table('service_order_items')
-            ->selectRaw('
-                service_order_id,
-                COALESCE(SUM(quantity * unit_price), 0) as gross_amount,
-                COALESCE(SUM(total_amount), 0) as total_amount,
-                COALESCE(SUM(discount_amount), 0) as discount_amount
-            ')
-            ->groupBy('service_order_id');
-
-        $totals = $filteredServiceOrders
-            ->leftJoinSub($itemTotals, 'item_totals', 'item_totals.service_order_id', '=', 'filtered_service_orders.id')
-            ->selectRaw('
-                COALESCE(SUM(COALESCE(item_totals.gross_amount, 0) + COALESCE(filtered_service_orders.travel_value, 0)), 0) as gross_amount,
-                COALESCE(SUM(COALESCE(item_totals.total_amount, 0) + COALESCE(filtered_service_orders.travel_value, 0)), 0) as total_amount,
-                COALESCE(SUM(COALESCE(item_totals.discount_amount, 0)), 0) as discount_amount
-            ')
-            ->first();
-
-        return [
-            'gross_amount' => round((float) ($totals->gross_amount ?? 0), 2),
-            'total_amount' => round((float) ($totals->total_amount ?? 0), 2),
-            'discount_amount' => round((float) ($totals->discount_amount ?? 0), 2),
-        ];
     }
 }

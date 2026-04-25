@@ -15,15 +15,12 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
@@ -56,39 +53,21 @@ class InvoicesTable
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('total_amount')
-                    ->label('Valor Total')
-                    ->state(fn (Invoice $record): float => (float) $record->total_amount)
+                TextColumn::make('gross_amount')
+                    ->label('Valor Bruto')
+                    ->state(fn (Invoice $record): float => (float) $record->gross_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
-                    ->toggleable(isToggledHiddenByDefault: false)
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Total')
-                            ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
-                            ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['total_amount'])
-                    ),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
                     ->state(fn (Invoice $record): float => (float) $record->discount_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
-                    ->toggleable(isToggledHiddenByDefault: false)
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Desconto')
-                            ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
-                            ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['discount_amount'])
-                    ),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('net_value')
                     ->label('Valor Líquido')
                     ->state(fn (Invoice $record): float => (float) $record->net_value)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
-                    ->toggleable(isToggledHiddenByDefault: false)
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Líquido')
-                            ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
-                            ->using(fn (Builder $query): float => self::resolveInvoiceSummaryTotals($query)['net_value'])
-                    ),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
@@ -160,78 +139,5 @@ class InvoicesTable
             ])
             ->columnManagerLayout(ColumnManagerLayout::Modal)
             ->columnManagerColumns(2);
-    }
-
-    /**
-     * Como os totais da fatura são derivados de relacionamentos e não existem como coluna
-     * persistida, o resumo precisa agregar via subqueries SQL em vez de Sum::make().
-     * O total_amount da OS/requisição já é líquido, então o desconto não pode ser abatido novamente.
-     *
-     * @return array{total_amount: float, discount_amount: float, net_value: float}
-     */
-    private static function resolveInvoiceSummaryTotals(Builder $query): array
-    {
-        $filteredInvoices = DB::query()->fromSub(
-            (clone $query)->select('invoices.id'),
-            'filtered_invoices'
-        );
-
-        $serviceOrderItemsByOrder = DB::table('service_orders as service_orders')
-            ->leftJoin('service_order_items as service_order_items', 'service_order_items.service_order_id', '=', 'service_orders.id')
-            ->selectRaw('
-                service_orders.invoice_id,
-                service_orders.id as service_order_id,
-                COALESCE(SUM(service_order_items.total_amount), 0) + COALESCE(service_orders.travel_value, 0) as total_amount,
-                COALESCE(SUM(service_order_items.discount_amount), 0) as discount_amount
-            ')
-            ->whereNotNull('service_orders.invoice_id')
-            ->groupBy('service_orders.invoice_id', 'service_orders.id', 'service_orders.travel_value');
-
-        $serviceTotalsByInvoice = DB::query()
-            ->fromSub($serviceOrderItemsByOrder, 'service_order_totals')
-            ->selectRaw('
-                service_order_totals.invoice_id,
-                COALESCE(SUM(service_order_totals.total_amount), 0) as total_amount,
-                COALESCE(SUM(service_order_totals.discount_amount), 0) as discount_amount
-            ')
-            ->groupBy('service_order_totals.invoice_id');
-
-        $requisitionItemsByRequisition = DB::table('requisitions as requisitions')
-            ->leftJoin('requisition_items as requisition_items', 'requisition_items.requisition_id', '=', 'requisitions.id')
-            ->selectRaw('
-                requisitions.invoice_id,
-                requisitions.id as requisition_id,
-                COALESCE(SUM(requisition_items.total_amount), 0) as total_amount,
-                COALESCE(SUM(requisition_items.discount_amount), 0) as discount_amount
-            ')
-            ->whereNotNull('requisitions.invoice_id')
-            ->groupBy('requisitions.invoice_id', 'requisitions.id');
-
-        $requisitionTotalsByInvoice = DB::query()
-            ->fromSub($requisitionItemsByRequisition, 'requisition_totals')
-            ->selectRaw('
-                requisition_totals.invoice_id,
-                COALESCE(SUM(requisition_totals.total_amount), 0) as total_amount,
-                COALESCE(SUM(requisition_totals.discount_amount), 0) as discount_amount
-            ')
-            ->groupBy('requisition_totals.invoice_id');
-
-        $totals = $filteredInvoices
-            ->leftJoinSub($serviceTotalsByInvoice, 'service_totals', 'service_totals.invoice_id', '=', 'filtered_invoices.id')
-            ->leftJoinSub($requisitionTotalsByInvoice, 'requisition_totals', 'requisition_totals.invoice_id', '=', 'filtered_invoices.id')
-            ->selectRaw('
-                COALESCE(SUM(COALESCE(service_totals.total_amount, 0) + COALESCE(requisition_totals.total_amount, 0)), 0) as total_amount,
-                COALESCE(SUM(COALESCE(service_totals.discount_amount, 0) + COALESCE(requisition_totals.discount_amount, 0)), 0) as discount_amount
-            ')
-            ->first();
-
-        $totalAmount = round(((float) ($totals->total_amount ?? 0)) / 100, 2);
-        $discountAmount = round(((float) ($totals->discount_amount ?? 0)) / 100, 2);
-
-        return [
-            'total_amount' => $totalAmount,
-            'discount_amount' => $discountAmount,
-            'net_value' => $totalAmount,
-        ];
     }
 }

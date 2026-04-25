@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Requisition extends Model
 {
-    private ?array $resolvedCommercialAmounts = null;
+    private ?array $resolvedItemsAmounts = null;
 
     protected static function booted(): void
     {
@@ -145,63 +145,38 @@ class Requisition extends Model
     protected function grossAmount(): Attribute
     {
         return Attribute::make(
-            get: function ($value, array $attributes): float {
-                if (array_key_exists('gross_amount', $attributes)) {
-                    return round(((float) $attributes['gross_amount']) / 100, 2);
-                }
-
-                $grossAmount = array_key_exists('computed_gross_amount', $attributes)
-                    ? ((float) $attributes['computed_gross_amount']) / 100
-                    : $this->resolveCommercialAmounts()['gross_amount'];
-
-                return round($grossAmount, 2);
-            },
+            get: fn (): float => $this->resolveItemsAmount('gross_amount'),
         );
     }
 
     protected function discountAmount(): Attribute
     {
         return Attribute::make(
-            get: function ($value, array $attributes): float {
-                if (array_key_exists('discount_amount', $attributes)) {
-                    return round(((float) $attributes['discount_amount']) / 100, 2);
-                }
-
-                $discountAmount = array_key_exists('computed_discount_amount', $attributes)
-                    ? ((float) $attributes['computed_discount_amount']) / 100
-                    : $this->resolveCommercialAmounts()['discount_amount'];
-
-                return round($discountAmount, 2);
-            },
+            get: fn (): float => $this->resolveItemsAmount('discount_amount'),
         );
     }
 
     protected function totalAmount(): Attribute
     {
         return Attribute::make(
-            get: function ($value, array $attributes): float {
-                if (array_key_exists('total_amount', $attributes)) {
-                    return round(((float) $attributes['total_amount']) / 100, 2);
-                }
-
-                $totalAmount = array_key_exists('computed_total_amount', $attributes)
-                    ? ((float) $attributes['computed_total_amount']) / 100
-                    : $this->resolveCommercialAmounts()['total_amount'];
-
-                return round($totalAmount, 2);
-            },
+            get: fn (): float => $this->resolveItemsAmount('total_amount'),
         );
     }
 
-    private function resolveCommercialAmounts(): array
+    private function resolveItemsAmount(string $column): float
     {
-        if ($this->resolvedCommercialAmounts !== null) {
-            return $this->resolvedCommercialAmounts;
+        return round($this->resolveItemsAmounts()[$column] ?? 0.0, 2);
+    }
+
+    private function resolveItemsAmounts(): array
+    {
+        if ($this->resolvedItemsAmounts !== null) {
+            return $this->resolvedItemsAmounts;
         }
 
         if ($this->relationLoaded('items')) {
-            return $this->resolvedCommercialAmounts = [
-                'gross_amount' => round((float) $this->items->sum(fn (RequisitionItem $item): float => (float) $item->quantity * (float) $item->unit_price), 2),
+            return $this->resolvedItemsAmounts = [
+                'gross_amount' => round((float) $this->items->sum('gross_amount'), 2),
                 'discount_amount' => round((float) $this->items->sum('discount_amount'), 2),
                 'total_amount' => round((float) $this->items->sum('total_amount'), 2),
             ];
@@ -209,13 +184,13 @@ class Requisition extends Model
 
         $totals = $this->items()
             ->selectRaw('
-                COALESCE(SUM(quantity * unit_price), 0) as gross_amount,
+                COALESCE(SUM(gross_amount), 0) as gross_amount,
                 COALESCE(SUM(discount_amount), 0) as discount_amount,
                 COALESCE(SUM(total_amount), 0) as total_amount
             ')
             ->first();
 
-        return $this->resolvedCommercialAmounts = [
+        return $this->resolvedItemsAmounts = [
             'gross_amount' => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
             'discount_amount' => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
             'total_amount' => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
