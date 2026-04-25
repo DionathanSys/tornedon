@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\OperationType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -68,12 +70,8 @@ class NfeSequence extends Model
                 ]);
             }
 
-            $usedNumbers = self::usedDocumentNumbers($companyId, $serie);
-            $nextNumber = max($seq->last_number, $usedNumbers->max() ?? 0) + 1;
-
-            while ($usedNumbers->contains($nextNumber)) {
-                $nextNumber++;
-            }
+            self::ensureSequenceIsSynchronized($companyId, $serie, (int) $seq->last_number);
+            $nextNumber = (int) $seq->last_number + 1;
 
             $seq->forceFill([
                 'last_number' => $nextNumber,
@@ -100,14 +98,10 @@ class NfeSequence extends Model
             ->where('operation_nature', $operationNature)
             ->first();
 
-        $usedNumbers = self::usedDocumentNumbers($companyId, $serie);
-        $nextNumber = max($seq->last_number ?? 0, $usedNumbers->max() ?? 0) + 1;
+        $currentLastNumber = (int) ($seq->last_number ?? 0);
+        self::ensureSequenceIsSynchronized($companyId, $serie, $currentLastNumber);
 
-        while ($usedNumbers->contains($nextNumber)) {
-            $nextNumber++;
-        }
-
-        return $nextNumber;
+        return $currentLastNumber + 1;
     }
 
     /**
@@ -153,10 +147,26 @@ class NfeSequence extends Model
         return FiscalDocument::query()
             ->where('company_id', $companyId)
             ->where('document_series', $serie)
+            ->where('document_type', DocumentModel::NFE->value)
+            ->where('operation_type', OperationType::SAIDA->value)
             ->whereNotNull('document_number')
             ->pluck('document_number')
             ->map(fn ($number) => (int) preg_replace('/\D/', '', (string) $number))
             ->filter(fn (int $number) => $number > 0)
             ->values();
+    }
+
+    private static function ensureSequenceIsSynchronized(int $companyId, string $serie, int $sequenceLastNumber): void
+    {
+        $usedLastNumber = (int) (self::usedDocumentNumbers($companyId, $serie)->max() ?? 0);
+
+        if ($usedLastNumber !== $sequenceLastNumber) {
+            throw new \RuntimeException(sprintf(
+                'Divergência na sequência NF-e da série %s: last_number=%d e último documento fiscal=%d. Emissão bloqueada até conciliação.',
+                $serie,
+                $sequenceLastNumber,
+                $usedLastNumber,
+            ));
+        }
     }
 }
