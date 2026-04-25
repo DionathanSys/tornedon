@@ -79,7 +79,6 @@ class AccountReceivablesRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([])
             ->toolbarActions([])
-            ->emptyStateHeading('Nenhuma conta a receber vinculada')
-            ->emptyStateDescription('As contas a receber desta fatura aparecerao aqui.');
+            ->emptyStateHeading('Sem registros');
     }
 }

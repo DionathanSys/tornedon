@@ -113,7 +113,6 @@ class InstallmentsRelationManager extends RelationManager
                     }),
             ])
             ->toolbarActions([])
-            ->emptyStateHeading('Nenhuma parcela gerada')
-            ->emptyStateDescription('As parcelas das contas a receber desta fatura aparecerao aqui.');
+            ->emptyStateHeading('Sem registros');
     }
 }

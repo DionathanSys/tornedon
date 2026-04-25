@@ -12,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -33,14 +34,16 @@ class InvoiceForm
                         Hidden::make('company_id'),
                         Hidden::make('created_by'),
                         Hidden::make('updated_by'),
-                        Select::make('customer_id')
+                        TextEntry::make('customer.name')
                             ->label('Cliente')
-                            ->disabled()
+                            // ->state(fn(Invoice $record): string => $record->customer->name)
+                            // ->disabled()
                             ->columnSpan(['md' => 3, 'lg' => 6])
-                            ->relationship('customer', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
+                            // ->relationship('customer', 'name')
+                            // ->searchable()
+                            // ->preload()
+                            // ->required(),
+                            ,
                         TextInput::make('invoice_number')
                             ->label('Número da Fatura')
                             ->disabled()
@@ -108,6 +111,7 @@ class InvoiceForm
                     ->hiddenLabel()
                     ->columnSpanFull()
                     ->columns(1)
+                    ->visible(fn (?Invoice $record): bool => $record->fiscalDocuments()->exists())
                     ->contained(false)
                     ->schema([
                         Livewire::make(FiscalDocumentsRelationManager::class, fn(Invoice $record) => [

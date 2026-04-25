@@ -117,7 +117,6 @@ class FiscalDocumentsRelationManager extends RelationManager
                 ActionGroup::make(FiscalDocumentRecordActions::make()),
             ])
             ->toolbarActions([])
-            ->emptyStateHeading('Nenhum documento fiscal vinculado')
-            ->emptyStateDescription('Os documentos fiscais gerados para esta fatura aparecerao aqui.');
+            ->emptyStateHeading('Nenhum documento fiscal vinculado');
     }
 }

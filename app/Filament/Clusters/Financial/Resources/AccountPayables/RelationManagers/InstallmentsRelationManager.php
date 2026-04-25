@@ -126,7 +126,6 @@ class InstallmentsRelationManager extends RelationManager
                     }),
             ])
             ->toolbarActions([])
-            ->emptyStateHeading('Nenhuma parcela gerada')
-            ->emptyStateDescription('As parcelas desta conta a pagar aparecerao aqui.');
+            ->emptyStateHeading('Sem registros');
     }
 }

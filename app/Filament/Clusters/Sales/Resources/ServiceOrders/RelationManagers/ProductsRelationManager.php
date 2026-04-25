@@ -37,7 +37,7 @@ class ProductsRelationManager extends RelationManager
                     return '';
                 }
 
-                return "Produtos vinculados à requisição # {$requisition->number}.";
+                return "Requisição # {$requisition->number} - Status: {$requisition->status->description()}";
             })
             ->stackedOnMobile()
             ->columns([
