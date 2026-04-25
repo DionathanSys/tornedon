@@ -15,6 +15,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateS
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
@@ -104,16 +105,19 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('gross_amount')
                     ->label('Valor Bruto')
+                    ->state(fn (ServiceOrder $record): float => (float) $record->gross_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_amount')
                     ->label('Desc. (R$)')
+                    ->state(fn (ServiceOrder $record): float => (float) $record->discount_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Líquido')
+                    ->state(fn (ServiceOrder $record): float => (float) $record->total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),

@@ -7,6 +7,7 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoice
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
+use App\Models\Requisition;
 use App\Services\Requisition\RequisitionService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -73,10 +74,12 @@ class RequisitionsTable
                     ->toggleable(),
                 TextColumn::make('gross_amount')
                     ->label('Subtotal')
+                    ->state(fn (Requisition $record): float => (float) $record->gross_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
+                    ->state(fn (Requisition $record): float => (float) $record->total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(),
                 TextColumn::make('created_at')

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\MoneyCast;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
@@ -91,9 +90,9 @@ class ServiceOrder extends Model
         'payment_condition'     => PaymentCondition::class,
         'estimated_hours'       => 'decimal:2',
         'actual_hours'          => 'decimal:2',
-        'value_km'              => MoneyCast::class,
+        'value_km'              => 'decimal:2',
         'distance_km'           => 'decimal:2',
-        'travel_value'          => MoneyCast::class,
+        'travel_value'          => 'decimal:2',
         'warranty_expires_at'   => 'date',
         'requires_approval'     => 'boolean',
         'approved_by_customer'  => 'boolean',
