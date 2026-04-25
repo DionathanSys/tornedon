@@ -76,6 +76,11 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
             'pending' => true,
             'confirmed' => false,
         ]);
+        $this->assertSame('Observacao fiscal', $fiscalDocument->additional_tax_information);
+        $this->assertSame('Observacao complementar', $fiscalDocument->additional_taxpayer_information);
+        $this->assertNull($fiscalDocument->tax_observations);
+        $this->assertNull($fiscalDocument->taxpayer_observations);
+        $this->assertNull($fiscalDocument->additional_purchase_information);
         $this->assertDatabaseHas('fiscal_document_items', [
             'fiscal_document_id' => $fiscalDocument->id,
             'product_id' => $product->id,

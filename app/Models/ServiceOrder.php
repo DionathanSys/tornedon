@@ -205,10 +205,6 @@ class ServiceOrder extends Model
     {
         return Attribute::make(
             get: function ($value, array $attributes): float {
-                if (array_key_exists('gross_amount', $attributes)) {
-                    return round(((float) $attributes['gross_amount']) / 100, 2);
-                }
-
                 $grossAmount = array_key_exists('computed_gross_amount', $attributes)
                     ? ((float) $attributes['computed_gross_amount']) / 100
                     : $this->resolveCommercialAmounts()['gross_amount'];
