@@ -36,76 +36,51 @@ class InvoiceForm
                         Hidden::make('updated_by'),
                         TextEntry::make('customer.name')
                             ->label('Cliente')
-                            // ->state(fn(Invoice $record): string => $record->customer->name)
-                            // ->disabled()
-                            ->columnSpan(['md' => 3, 'lg' => 6])
-                            // ->relationship('customer', 'name')
-                            // ->searchable()
-                            // ->preload()
-                            // ->required(),
-                            ,
-                        TextInput::make('invoice_number')
+                            ->columnSpan(['md' => 3, 'lg' => 6]),
+                        TextEntry::make('createdBy.name')
+                            ->label('Criado por')
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                        TextEntry::make('created_at')
+                            ->label('Data da Criação')
+                            ->since()
+                            ->dateTooltip('d/m/Y H:i:s')
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                        TextEntry::make('invoice_number')
                             ->label('Número da Fatura')
-                            ->disabled()
                             ->columnStart(1)
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->required()
-                            ->maxLength(50),
-                        DatePicker::make('invoice_date')
+                            ->columnSpan(['md' => 2]),
+                        TextEntry::make('invoice_date')
                             ->label('Data da Fatura')
-                            ->disabled()
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->default(now())
-                            ->required()
-                            ->displayFormat('d/m/Y'),
-                        Select::make('payment_method')
+                            ->columnSpan(['md' => 2])
+                            ->formatStateUsing(fn(?Invoice $record): string => $record->invoice_date->format('d/m/Y')),
+                        TextEntry::make('payment_method')
                             ->label('Forma de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->options(PaymentMethod::toSelectArray())
-                            ->native(false)
-                            ->searchable(),
-                        Select::make('payment_condition')
+                            ->columnSpan(['md' => 2])
+                            ->state(fn(Invoice $record): string => $record->payment_method?->description() ?? 'Não definida'),
+                        TextEntry::make('payment_condition')
                             ->label('Condição de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->options(PaymentCondition::toGroupedSelectArray())
-                            ->native(false)
-                            ->searchable(),
-                        Money::make('services_amount')
+                            ->columnSpan(['md' => 2])
+                            ->state(fn(Invoice $record): string => $record->payment_condition?->description() ?? 'Não definida'),
+                        TextEntry::make('services_amount')
                             ->label('Valor de Serviços')
-                            ->disabled()
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->services_amount ?? 0), 2, ',', '.'))
                             ->columnStart(1)
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Money::make('products_amount')
+                            ->money('BRL')
+                            ->tooltip(fn(?Invoice $record): string => 'Total líquido das OS vinculadas.')
+                            ->columnSpan(['md' => 2]),
+                        TextEntry::make('products_amount')
                             ->label('Valor de Produtos')
-                            ->disabled()
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->products_amount ?? 0), 2, ',', '.'))
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Money::make('total_amount')
-                            ->label('Valor Total')
-                            ->disabled()
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->total_amount ?? 0), 2, ',', '.'))
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Money::make('discount_amount')
+                            ->money('BRL')
+                            ->tooltip(fn(?Invoice $record): string => 'Total líquido das requisições vinculadas.')
+                            ->columnSpan(['md' => 2]),
+                        TextEntry::make('discount_amount')
                             ->label('Desconto')
-                            ->disabled()
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->discount_amount ?? 0), 2, ',', '.'))
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Money::make('net_value')
-                            ->label('Valor Líquido')
-                            ->disabled()
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->formatStateUsing(fn(?Invoice $record): string => number_format((float) ($record?->net_value ?? 0), 2, ',', '.'))
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                            ->money('BRL')
+                            ->tooltip(fn(?Invoice $record): string => 'Total de descontos da fatura.')
+                            ->columnSpan(['md' => 2]),
+                        TextEntry::make('total_amount')
+                            ->label('Valor Total')
+                            ->money('BRL')
+                            ->columnSpan(['md' => 2]),
                     ]),
                 Section::make('')
                     ->hiddenLabel()
