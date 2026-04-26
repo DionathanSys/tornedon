@@ -259,9 +259,11 @@ class ConfirmInvoiceAction
             ];
         }
 
+        $operationNature = $this->resolveOperationNature();
+
         return [
             'document_type'            => DocumentModel::NFE->value,
-            'operation_nature'         => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_nature'         => $operationNature->value,
             'operation_type'           => OperationType::SAIDA->value,
             'issue_purpose'            => IssuePurpose::NORMAL->value,
             'is_final_consumer'        => true,
@@ -272,6 +274,42 @@ class ConfirmInvoiceAction
                 'modalidade_frete' => FreightModality::SEM_FRETE->value,
             ],
         ];
+    }
+
+    /**
+     * Resolve a natureza da operação com base no endereço da empresa e do cliente.
+     *
+     * Compara a UF do emitente (empresa) com a UF do destinatário (cliente):
+     *   - Mesma UF       → VENDA DENTRO DO ESTADO
+     *   - UFs diferentes → VENDA FORA DO ESTADO
+     */
+    private function resolveOperationNature(): OperationNature
+    {
+        $companyUf = mb_strtoupper(trim(
+            $this->invoice->company->address['state'] ?? ''
+        ));
+
+        $customerUf = mb_strtoupper(trim(
+            $this->invoice->customer?->address?->first()?->state ?? ''
+        ));
+
+        Log::debug('ConfirmInvoiceAction: resolveOperationNature', [
+            'invoice_id'  => $this->invoice->id,
+            'company_uf'  => $companyUf,
+            'customer_uf' => $customerUf,
+        ]);
+
+        if ($companyUf !== '' && $customerUf !== '' && $companyUf !== $customerUf) {
+            Log::info('ConfirmInvoiceAction: Operação interestadual detectada', [
+                'invoice_id'  => $this->invoice->id,
+                'company_uf'  => $companyUf,
+                'customer_uf' => $customerUf,
+            ]);
+
+            return OperationNature::VENDA_FORA_ESTADO;
+        }
+
+        return OperationNature::VENDA_DENTRO_ESTADO;
     }
 
     /**

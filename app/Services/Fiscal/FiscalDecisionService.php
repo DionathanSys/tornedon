@@ -6,6 +6,7 @@ use App\Domain\DTO\Fiscal\FiscalContextDTO;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Models\FiscalProfile;
 use App\Models\ProductTax;
+use App\Services\Fiscal\Actions\ResolveCfopAction;
 use App\Services\Fiscal\TaxRegimeStrategies\TaxRegimeStrategyFactory;
 
 class FiscalDecisionService
@@ -14,8 +15,8 @@ class FiscalDecisionService
      * Resolve a decisão fiscal para um contexto.
      *
      * Separação de responsabilidades:
-        * - CFOP      → FiscalProfile (obrigatório por natureza da operação)
-        * - Alíquotas → ProductTax (por produto) ou estratégia do regime (fallback)
+         * - CFOP      → FiscalProfile (obrigatório por natureza da operação)
+         * - Alíquotas → ProductTax (por produto) ou estratégia do regime (fallback)
      */
     public function resolve(FiscalContextDTO $context): FiscalDecisionDTO
     {
@@ -30,7 +31,10 @@ class FiscalDecisionService
         // 1. CFOP — obrigatório via FiscalProfile (lança exceção se não configurado)
         $cfop = $this->resolveCfopFromFiscalProfile($context, $profile);
 
-        // 2. Alíquotas — ProductTax ou fallback de regime
+        // 2. Auto-swap do primeiro dígito (5↔6, 1↔2) com base na UF
+        $cfop = app(ResolveCfopAction::class)->execute($cfop, $context);
+
+        // 3. Alíquotas — ProductTax ou fallback de regime
         $productDecision = $this->tryProductTax($context, $profile);
 
         if ($productDecision !== null) {
