@@ -2,6 +2,7 @@
 
 namespace App\Services\Fiscal;
 
+use App\Enum\FiscalDocument\NfseModel;
 use App\Models\CompanyPreference;
 use Illuminate\Support\Facades\Log;
 
@@ -51,5 +52,16 @@ class NfseConfigService
     public function resolveWebhookSecret(int $companyId): ?string
     {
         return $this->nfeConfig->resolveWebhookSecret($companyId);
+    }
+
+    /**
+     * Retorna o modelo padrão da NFS-e (Municipal ou Nacional).
+     */
+    public function resolveNfseModeloPadrao(int $companyId): NfseModel
+    {
+        $pref = CompanyPreference::get('integranotas.nfse_modelo_padrao', $companyId);
+        $value = is_array($pref) ? ($pref['value'] ?? null) : $pref;
+
+        return NfseModel::tryFrom((string) ($value ?? '')) ?? NfseModel::MUNICIPAL;
     }
 }

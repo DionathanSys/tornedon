@@ -7,7 +7,6 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfseDescriptionMode;
-use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Invoice\Status as InvoiceStatus;
@@ -17,6 +16,7 @@ use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Services\Audit\AuditRecorder;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Services\Fiscal\NfseConfigService;
 use App\Services\Invoice\InvoiceService;
 use App\Traits\HandlesActionResponse;
 use Carbon\Carbon;
@@ -246,10 +246,12 @@ class ConfirmInvoiceAction
 
         if ($documentType === DocumentModel::NFSE) {
             $invoiceService = app(InvoiceService::class);
+            $nfseModel = app(NfseConfigService::class)
+                ->resolveNfseModeloPadrao((int) $this->invoice->company_id);
 
             return [
                 'document_type'         => DocumentModel::NFSE->value,
-                'nfse_model'            => NfseModel::MUNICIPAL->value,
+                'nfse_model'            => $nfseModel->value,
                 'issued_at'             => $issueDate,
                 'nfse_description_mode' => NfseDescriptionMode::AUTO->value,
                 'nfse_item_description' => $invoiceService->buildNfseItemDescription(

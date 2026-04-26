@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Settings\Pages;
 
+use App\Enum\FiscalDocument\NfseModel;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\CompanyPreference;
 use App\Services\Fiscal\NfeConfigService;
@@ -65,9 +66,10 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             'token_homologacao' => CompanyPreference::get('integranotas.token_homologacao', $companyId),
             'ambiente'          => (string) (CompanyPreference::get('integranotas.ambiente', $companyId) ?? NfeConfigService::AMBIENTE_HOMOLOGACAO),
             'serie_padrao'      => CompanyPreference::get('integranotas.serie_padrao', $companyId) ?? '1',
-            'nfse_serie_padrao' => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
-            'webhook_secret'    => CompanyPreference::get('integranotas.webhook_secret', $companyId),
-            'sefaz_a1_password' => CompanyPreference::get(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, $companyId),
+            'nfse_serie_padrao'    => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
+            'nfse_modelo_padrao'   => CompanyPreference::get('integranotas.nfse_modelo_padrao', $companyId) ?? NfseModel::MUNICIPAL->value,
+            'webhook_secret'       => CompanyPreference::get('integranotas.webhook_secret', $companyId),
+            'sefaz_a1_password'    => CompanyPreference::get(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, $companyId),
         ]);
 
     }
@@ -339,8 +341,17 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->dehydrateStateUsing(fn ($state) => substr(preg_replace('/\D/', '', (string) $state) ?: '1', 0, 5))
                             ->helperText('Informe de 1 a 5 dígitos numéricos, conforme exigência do município/provedor.')
                             ->columnSpan(['md' => 1]),
+
+                        Forms\Components\Select::make('nfse_modelo_padrao')
+                            ->label('Modelo Padrão da NFS-e')
+                            ->options(NfseModel::toSelectArray())
+                            ->native(false)
+                            ->required()
+                            ->default(NfseModel::MUNICIPAL->value)
+                            ->helperText('Define se a NFS-e será emitida pelo modelo Municipal ou Nacional ao confirmar faturas.')
+                            ->columnSpan(['md' => 1]),
                     ])
-                    ->columns(['md' => 3])
+                    ->columns(['md' => 4])
                     ->collapsible(),
 
                 \Filament\Schemas\Components\Section::make('Tokens de Acesso')
@@ -413,6 +424,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
         CompanyPreference::set('integranotas.ambiente', (int) $data['ambiente'], $companyId);
         CompanyPreference::set('integranotas.serie_padrao', $data['serie_padrao'], $companyId);
         CompanyPreference::set('integranotas.nfse_serie_padrao', $data['nfse_serie_padrao'], $companyId);
+        CompanyPreference::set('integranotas.nfse_modelo_padrao', $data['nfse_modelo_padrao'], $companyId);
 
         if (! empty($data['token_homologacao'])) {
             CompanyPreference::set('integranotas.token_homologacao', $data['token_homologacao'], $companyId);
