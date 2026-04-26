@@ -2,23 +2,23 @@
 
 namespace App\Services\FiscalDocument;
 
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
 use App\Models\FiscalProfile;
+use App\Jobs\ProcessQueuedNfseEmissionJob;
 use App\Services\Fiscal\NfseConfigService;
 use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePreviewAction;
-use App\Services\FiscalDocument\Actions\ReserveRpsNumberAction;
 use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
-use App\Services\FiscalDocument\Actions\SendNfseAction;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Serviço de orquestração da integração NFS-e com a API IntegraNotas.
  *
- * O envio é síncrono.
+ * A solicitação de emissão é enfileirada e processada em série por grupo de emissão.
  * A consulta de retorno permanece assíncrona via polling/webhook.
  */
 class NfseDocumentService
@@ -50,7 +50,7 @@ class NfseDocumentService
     }
 
     /**
-     * Executa o envio da NFS-e de forma síncrona.
+     * Valida e enfileira a emissão da NFS-e.
      */
     public function emitir(FiscalDocument $doc, int $userId, ?string $serie = null): bool
     {
@@ -58,7 +58,7 @@ class NfseDocumentService
 
         try {
             if ($doc->blocksNfseResubmission()) {
-                $this->setError('NFS-e já enviada. Status atual: ' . $doc->nfse_status?->description());
+                $this->setError('NFS-e já possui solicitação de emissão. Status atual: ' . $doc->nfse_status?->description());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                     'contexto' => [
                         'status_atual' => $doc->nfse_status?->value,
@@ -67,48 +67,37 @@ class NfseDocumentService
                 return false;
             }
 
-            $currentNumber = (int) preg_replace('/\D/', '', (string) ($doc->rps_number ?? ''));
+            $preflightService = app(FiscalEmissionPreflightService::class);
+            $preflight = $preflightService->validateForQueue($doc);
 
-            if ($currentNumber < 1) {
-                $configService = app(NfseConfigService::class);
-                $serie = $serie ?? $configService->resolveSerie($doc->company_id);
-
-                $reserveAction = new ReserveRpsNumberAction();
-
-                if (! $reserveAction->execute($doc, $serie)) {
-                    $this->setError($reserveAction->getMessage());
-                    $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
-                        'contexto' => [
-                            'serie'   => $serie,
-                            'user_id' => $userId,
-                        ],
-                    ]);
-                    return false;
-                }
-
-                $doc->refresh();
-            }
-
-            $action = new SendNfseAction($userId);
-            $result = $action->execute($doc, $serie);
-
-            if (! $result || $action->hasError()) {
-                $this->setError($action->getMessage(), $action->getErrors());
+            if ($preflight === null || $preflightService->hasError()) {
+                $this->setError($preflightService->getMessage(), $preflightService->getErrors());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
-                    'erros' => $action->getErrors(),
+                    'erros' => $preflightService->getErrors(),
                     'contexto' => [
-                        'serie'   => $serie,
+                        'serie' => $serie,
                         'user_id' => $userId,
                     ],
                 ]);
                 return false;
             }
 
-            $this->setSuccess($action->getMessage() ?: 'NFS-e enviada para processamento.');
+            $doc->update([
+                'status' => \App\Enum\FiscalDocument\Status::PENDING->value,
+                'nfse_status' => NfeStatus::QUEUED->value,
+                'emission_requested_at' => now(),
+                'emission_group_key' => $preflight->queueGroupKey,
+                'updated_by' => $userId,
+            ]);
 
-            Log::info('NfseDocumentService: emissão síncrona concluída', [
+            dispatch(new ProcessQueuedNfseEmissionJob($preflight->queueGroupKey));
+
+            $this->setSuccess('NFS-e enfileirada para emissão.');
+
+            Log::info('NfseDocumentService: emissão enfileirada', [
                 'fiscal_document_id' => $doc->id,
-                'user_id'            => $userId,
+                'emission_group_key' => $preflight->queueGroupKey,
+                'user_id' => $userId,
             ]);
 
             return true;

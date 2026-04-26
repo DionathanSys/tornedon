@@ -122,13 +122,13 @@ final class FiscalDocumentRecordActions
                 ->requiresConfirmation()
                 ->modalHeading('Emitir Nota Fiscal de Serviço')
                 ->modalDescription('O envio é assíncrono. Após confirmação, a NFS-e será processada em segundo plano.')
-                ->visible(fn(FiscalDocument $record) => $record->isNfse() && (! $record->isNfseSent() || $record->isNfseRejected()))
+                ->visible(fn(FiscalDocument $record) => $record->isNfse() && ! $record->isNfseQueued() && (! $record->isNfseSent() || $record->isNfseRejected()))
                 ->action(function (FiscalDocument $record): void {
                     $service = app(NfseDocumentService::class);
                     $service->emitir($record, Auth::id());
 
                     if ($service->isSuccess()) {
-                        notify::success($service->getMessage());
+                        notify::success('NFS-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
                     } else {
                         notify::error($service->getMessage());
                     }

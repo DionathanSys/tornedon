@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Services\FiscalDocument\Scenarios;
+
+use App\Enum\FiscalDocument\OperationNature;
+use App\Models\FiscalDocument;
+
+class RepairRemittanceNfeScenario extends SaleNfeScenario
+{
+    public function supports(FiscalDocument $document): bool
+    {
+        return $document->isNfe()
+            && ($document->operation_nature?->value ?? $document->operation_nature) === OperationNature::REMESSA_CONSERTO->value;
+    }
+
+    public function code(): string
+    {
+        return 'repair_remittance';
+    }
+}

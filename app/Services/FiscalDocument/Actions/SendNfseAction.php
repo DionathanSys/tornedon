@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument\Actions;
 
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
+use App\Models\NfseSequence;
 use App\Enum\Audit\AuditSource;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfseConfigService;
@@ -13,11 +14,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Orquestra o envio de uma NFS-e à API IntegraNotas:
  *
- *  1. Reserva o número RPS (ReserveRpsNumberAction) — atômico
+ *  1. Atribui temporariamente o menor número livre do grupo
  *  2. Monta o payload (BuildNfsePayloadAction) — strategy por modelo
  *  3. Chama $nfse->cria($payload) via SDK
- *  4. Em código 5023 (lote em processamento): salva chave, status, payload, ambiente
- *  5. Em 5001/5002 (erro de validação): salva erros em errors_messages
+ *  4. Em código 5023 (lote em processamento): confirma consumo do RPS, salva chave e status
+ *  5. Em falhas antes da aceitação: limpa a atribuição do número
  *  6. Dispara ConsultNfseJob como fallback de polling
  */
 class SendNfseAction
@@ -42,8 +43,11 @@ class SendNfseAction
                 'serie'              => $serie,
             ]);
 
-            // Bloqueia reenvio apenas quando já houve envio efetivo/processamento.
-            if ($fiscalDocument->blocksNfseResubmission()) {
+            if (
+                $fiscalDocument->isNfseInProcessing()
+                || $fiscalDocument->isNfseAuthorized()
+                || $fiscalDocument->isNfseCanceled()
+            ) {
                 $msgErro = 'Esta NFS-e já foi enviada (status: ' . $fiscalDocument->nfse_status?->description() . ')';
                 $this->setError($msgErro);
                 Log::warning('SendNfseAction: tentativa de reenvio bloqueada', [
@@ -58,17 +62,12 @@ class SendNfseAction
             $serie = $serie ?? $configService->resolveSerie($fiscalDocument->company_id);
 
             // ------------------------------------------------------------------
-            // 1. Reservar número RPS (somente se ainda não reservado)
+            // 1. Atribuir número RPS somente no momento do envio real
             // ------------------------------------------------------------------
             $currentNumber = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->rps_number ?? ''));
 
             if ($currentNumber < 1) {
-                $reserveAction = new ReserveRpsNumberAction();
-                if (! $reserveAction->execute($fiscalDocument, $serie)) {
-                    $this->setError($reserveAction->getMessage());
-                    return false;
-                }
-
+                $this->assignNumberForAttempt($fiscalDocument, $serie);
                 $fiscalDocument->refresh();
             }
 
@@ -112,10 +111,17 @@ class SendNfseAction
             // 4. Processar resposta
             // ------------------------------------------------------------------
             if ($resp->sucesso && ($resp->codigo ?? null) === 5023) {
+                $confirmed = NfseSequence::confirmNumber(
+                    (int) $fiscalDocument->company_id,
+                    (string) $fiscalDocument->rps_series,
+                    (int) $fiscalDocument->rps_number,
+                );
+
                 $fiscalDocument->update([
                     'document_key'  => $resp->chave,
                     'nfse_status'   => NfeStatus::IN_PROCESSING->value,
                     'nfse_payload'  => $payload,
+                    'nfse_sequence_id' => $confirmed['sequence_id'],
                 ]);
                 $fiscalDocument->refresh();
 
@@ -144,6 +150,8 @@ class SendNfseAction
 
             // Erros de validação dos dados
             if (in_array($resp->codigo ?? null, [5001, 5002])) {
+                $this->releaseNumberAssignment($fiscalDocument);
+
                 $errors   = $fiscalDocument->errors_messages ?? [];
                 $baseMessage = $resp->mensagem ?? 'Erro de validação';
 
@@ -196,6 +204,8 @@ class SendNfseAction
             }
 
             // Qualquer outro erro
+            $this->releaseNumberAssignment($fiscalDocument);
+
             $errors   = $fiscalDocument->errors_messages ?? [];
             $baseMessage = $resp->mensagem ?? 'Erro desconhecido';
 
@@ -238,6 +248,8 @@ class SendNfseAction
             return false;
 
         } catch (\Exception $e) {
+            $this->releaseNumberAssignment($fiscalDocument);
+
             $msgErro = 'Erro ao enviar NFS-e: ' . $e->getMessage();
             $this->setError($msgErro);
 
@@ -252,5 +264,33 @@ class SendNfseAction
 
             return false;
         }
+    }
+
+    private function assignNumberForAttempt(FiscalDocument $fiscalDocument, string $serie): void
+    {
+        $number = NfseSequence::peekNextNumber(
+            (int) $fiscalDocument->company_id,
+            $serie,
+        );
+
+        $fiscalDocument->update([
+            'rps_number' => (string) $number,
+            'rps_series' => $serie,
+        ]);
+    }
+
+    private function releaseNumberAssignment(FiscalDocument $fiscalDocument): void
+    {
+        $currentNumber = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->rps_number ?? ''));
+
+        if ($currentNumber < 1 || $fiscalDocument->isNfseInProcessing() || $fiscalDocument->isNfseAuthorized()) {
+            return;
+        }
+
+        $fiscalDocument->update([
+            'rps_number' => null,
+            'rps_series' => null,
+            'nfse_sequence_id' => null,
+        ]);
     }
 }

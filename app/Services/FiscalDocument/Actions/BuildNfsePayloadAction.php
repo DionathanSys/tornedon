@@ -2,14 +2,14 @@
 
 namespace App\Services\FiscalDocument\Actions;
 
-use App\Enum\FiscalDocument\NfseModel;
 use App\Models\FiscalDocument;
+use App\Services\FiscalDocument\Resolvers\NfsePayloadBuilderResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Dispatcher: seleciona o builder de payload NFS-e correto
- * com base no modelo (municipal ou nacional) do FiscalDocument.
+ * Dispatcher: resolve o builder de payload NFS-e correto
+ * com base no modelo e na cidade efetiva de emissão.
  */
 class BuildNfsePayloadAction
 {
@@ -18,23 +18,19 @@ class BuildNfsePayloadAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
-            $model = $fiscalDocument->nfse_model;
-
-            $builder = match ($model) {
-                NfseModel::MUNICIPAL->value, NfseModel::MUNICIPAL => new BuildNfseMunicipalPayloadAction(),
-                NfseModel::NACIONAL->value, NfseModel::NACIONAL  => new BuildNfseNacionalPayloadAction(),
-                default => null,
-            };
+            $resolver = app(NfsePayloadBuilderResolver::class);
+            $resolutionKey = $resolver->resolveKey($fiscalDocument);
+            $builder = $resolver->resolve($fiscalDocument);
 
             if ($builder === null) {
-                $this->setError("Modelo NFS-e inválido ou não definido: {$model}");
+                $this->setError("Nenhum builder NFS-e encontrado para a chave de resolução {$resolutionKey}.");
                 return null;
             }
 
-            $payload = $builder->execute($fiscalDocument);
+            $payload = $builder->build($fiscalDocument);
 
             if ($payload === null) {
-                $this->setError($builder->getMessage());
+                $this->setError(method_exists($builder, 'getMessage') ? $builder->getMessage() : 'Falha ao montar payload da NFS-e.');
                 return null;
             }
 
@@ -47,6 +43,7 @@ class BuildNfsePayloadAction
             Log::error('BuildNfsePayloadAction: erro', [
                 'metodo'             => __METHOD__ . '@' . __LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
+                'resolution_key'     => $resolutionKey ?? null,
                 'exception'          => $e->getMessage(),
                 'trace'              => $e->getTraceAsString(),
             ]);

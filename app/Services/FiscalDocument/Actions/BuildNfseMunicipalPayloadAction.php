@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
+use App\Services\FiscalDocument\Contracts\NfsePayloadBuilder;
 use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -14,10 +15,21 @@ use Illuminate\Support\Facades\Log;
  * regime_tributacao, incentivo_fiscal, tomador, servico { iss_retido, itens[] }.
  */
 class BuildNfseMunicipalPayloadAction
+    implements NfsePayloadBuilder
 {
     use HandlesActionResponse;
 
-    public function execute(FiscalDocument $fiscalDocument): ?array
+    public function supports(FiscalDocument $fiscalDocument): bool
+    {
+        return $fiscalDocument->isNfse();
+    }
+
+    public function identifier(): string
+    {
+        return 'municipal:default';
+    }
+
+    public function build(FiscalDocument $fiscalDocument): ?array
     {
         try {
             Log::debug('BuildNfseMunicipalPayloadAction: iniciando montagem de payload', [
@@ -41,8 +53,7 @@ class BuildNfseMunicipalPayloadAction
             $address  = $customer?->address?->first();
             $profile  = $fiscalDocument->fiscalProfile ?? $company->fiscalProfile;
 
-            // $issuedAt = $fiscalDocument->issued_at->format('Y-m-d') . 'T00:00:00-03:00';
-            $issuedAt = now()->format('Y-m-d') . 'T00:00:00-03:00';
+            $issuedAt = ($fiscalDocument->issued_at ?? now())->format('Y-m-d') . 'T00:00:00-03:00';
 
             // ------------------------------------------------------------------
             // Tomador
@@ -58,6 +69,7 @@ class BuildNfseMunicipalPayloadAction
                 $tomador['cpf'] = $docNumber;
             }
 
+            // IM - Inscrição Municipal (Aceita null)
             if ($customer->municipal_tax_id) {
                 $tomador['im'] = $customer->municipal_tax_id;
             }
@@ -72,17 +84,54 @@ class BuildNfseMunicipalPayloadAction
                 $tomador['email'] = $email;
             }
 
-            if ($address) {
-                $tomador['endereco'] = [
-                    'logradouro'       => $address->street ?? '',
-                    'numero'           => $address->number ?? 'S/N',
-                    'complemento'      => $address->complement ?? '',
-                    'bairro'           => $address->neighborhood ?? '',
-                    'codigo_municipio' => $address->city_code ?? '',
-                    'uf'               => $address->state ?? '',
-                    'cep'              => preg_replace('/\D/', '', $address->postal_code ?? ''),
-                ];
+            if ($address === null) {
+                $msgErro = 'NFS-e municipal requer endereço completo do tomador.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseMunicipalPayloadAction: endereço do tomador ausente', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'customer_id' => $fiscalDocument->customer_id,
+                ]);
+                return null;
             }
+
+            $logradouro = trim((string) ($address->street ?? ''));
+            $numero = trim((string) ($address->number ?? ''));
+            $bairro = trim((string) ($address->neighborhood ?? ''));
+            $codigoMunicipio = preg_replace('/\D/', '', (string) ($address->city_code ?? ''));
+            $uf = trim((string) ($address->state ?? ''));
+            $cep = preg_replace('/\D/', '', (string) ($address->postal_code ?? ''));
+
+            $requiredAddressFields = [
+                'logradouro' => $logradouro,
+                'numero' => $numero,
+                'bairro' => $bairro,
+                'codigo_municipio' => $codigoMunicipio,
+                'uf' => $uf,
+                'cep' => $cep,
+            ];
+
+            foreach ($requiredAddressFields as $field => $value) {
+                if ($value === '') {
+                    $msgErro = "NFS-e municipal requer o campo {$field} no endereço do tomador.";
+                    $this->setError($msgErro);
+                    Log::warning('BuildNfseMunicipalPayloadAction: endereço do tomador incompleto', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'customer_id' => $fiscalDocument->customer_id,
+                        'field' => $field,
+                    ]);
+                    return null;
+                }
+            }
+
+            $tomador['endereco'] = [
+                'logradouro' => $logradouro,
+                'numero' => $numero,
+                'complemento' => trim((string) ($address->complement ?? '')),
+                'bairro' => $bairro,
+                'codigo_municipio' => $codigoMunicipio,
+                'uf' => $uf,
+                'cep' => $cep,
+            ];
 
             // ------------------------------------------------------------------
             // Itens de serviço
@@ -101,10 +150,8 @@ class BuildNfseMunicipalPayloadAction
                 $codigoServico = $this->normalizeServiceCode(
                     $item->municipal_tax_code
                     ?? $item->service?->municipal_tax_code
-                    ?? $item->service_code
-                    ?? $item->service?->service_code
-                    ?? $profile?->default_municipal_tax_code
                     ?? $profile?->default_service_code
+                    ?? $profile?->default_municipal_tax_code
                 );
 
                 $codigoNbs = $this->normalizeNbsCode(
@@ -115,7 +162,7 @@ class BuildNfseMunicipalPayloadAction
 
                 $discriminacao = trim((string) $item->description);
                 if ($discriminacao === '') {
-                    $discriminacao = 'Servicos prestados conforme documento fiscal.';
+                    $discriminacao = 'Serviços prestados conforme documento fiscal.';
                 }
 
                 $valorServicosItem = round((float) $item->total_price, 2);
@@ -168,9 +215,8 @@ class BuildNfseMunicipalPayloadAction
 
                 $ctm = $item->service?->municipal_tax_code
                     ?? $item->municipal_tax_code
-                    ?? $item->service_code
-                    ?? $profile?->default_municipal_tax_code
                     ?? $profile?->default_service_code
+                    ?? $profile?->default_municipal_tax_code
                     ?? null;
                 if ($ctm) {
                     $itemPayload['codigo_tributacao_municipio'] = $ctm;
@@ -205,7 +251,7 @@ class BuildNfseMunicipalPayloadAction
             if (empty($itens)) {
                 $msgErro = 'NFS-e Municipal requer ao menos um item de serviço.';
                 $this->setError($msgErro);
-                Log::warning('BuildNfseMunicipalPayloadAction: validação fallou', [
+                Log::warning('BuildNfseMunicipalPayloadAction: validação falhou', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'erro'               => $msgErro,
                     'items_count'        => $fiscalDocument->items->count(),
@@ -224,7 +270,7 @@ class BuildNfseMunicipalPayloadAction
                 ->implode("\n");
 
             if ($discriminacaoGeral === '') {
-                $discriminacaoGeral = 'Servicos prestados conforme documento fiscal.';
+                $discriminacaoGeral = 'Serviços prestados conforme documento fiscal.';
             }
 
             if ($codigoServico === '') {
@@ -235,9 +281,7 @@ class BuildNfseMunicipalPayloadAction
                     'erro'               => $msgErro,
                     'service_code_attempts' => array_merge(
                         $fiscalDocument->items->pluck('municipal_tax_code')->filter()->values()->toArray(),
-                        $fiscalDocument->items->pluck('service_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service.municipal_tax_code')->filter()->values()->toArray(),
-                        $fiscalDocument->items->pluck('service.service_code')->filter()->values()->toArray()
                     ),
                 ]);
                 return null;
@@ -306,10 +350,20 @@ class BuildNfseMunicipalPayloadAction
             // ------------------------------------------------------------------
             $serie = $this->normalizeSerie($fiscalDocument->rps_series ?? null);
 
+            if ($serie === '') {
+                $msgErro = 'NFS-e municipal requer série RPS válida para emissão.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseMunicipalPayloadAction: série RPS inválida', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'rps_series' => $fiscalDocument->rps_series,
+                ]);
+                return null;
+            }
+
             $payload = [
                 'numero'       => (string) $fiscalDocument->rps_number,
                 'serie'        => $serie,
-                'tipo'         => $fiscalDocument->rps_type ?? '1',
+                'tipo'         => $fiscalDocument->rps_type ?? '1', // 1 é Recibo provisório de serviços
                 'data_emissao' => $issuedAt,
                 'status'       => '1',
                 'tomador'      => $tomador,
@@ -370,12 +424,17 @@ class BuildNfseMunicipalPayloadAction
         }
     }
 
+    public function execute(FiscalDocument $fiscalDocument): ?array
+    {
+        return $this->build($fiscalDocument);
+    }
+
     private function normalizeSerie(?string $serie): string
     {
         $digits = preg_replace('/\D/', '', (string) $serie);
 
         if ($digits === '') {
-            return '1';
+            return '';
         }
 
         return substr($digits, 0, 5);

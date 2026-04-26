@@ -5,12 +5,13 @@ namespace App\Services\FiscalDocument;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Domain\DTO\Fiscal\FiscalEmissionPreflightResult;
 use App\Enum\FiscalDocument\DocumentModel;
-use App\Enum\FiscalDocument\IssuePurpose;
-use App\Enum\FiscalDocument\OperationNature;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
-use App\Models\NfeSequence;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\Fiscal\NfseConfigService;
+use App\Services\FiscalDocument\Resolvers\FiscalEmissionScenarioResolver;
+use App\Services\FiscalDocument\Resolvers\NfseEmissionCityResolver;
+use App\Services\FiscalDocument\Resolvers\NfsePayloadBuilderResolver;
 use App\Services\FiscalDocument\Validators\FiscalProfileValidator;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Arr;
@@ -37,32 +38,28 @@ class FiscalEmissionPreflightService
         $document->loadMissing([
             'company.fiscalProfile',
             'customer.address',
+            'customer.contacts',
             'items.product',
+            'items.service',
+            'fiscalProfile',
         ]);
 
-        if (! $document->isNfe()) {
-            $this->setError('O preflight atual suporta apenas emissão de NF-e.');
+        $scenario = app(FiscalEmissionScenarioResolver::class)->resolve($document);
+
+        if ($scenario === null) {
+            $this->setError('Não foi possível resolver o cenário fiscal do documento.');
             return null;
         }
 
-        if (
-            $document->isNfeInProcessing()
-            || $document->isNfeAuthorized()
-            || $document->isNfeCanceled()
-            || (! $allowQueuedStatus && $document->isNfeQueued())
-        ) {
+        if (! $this->canProceedInCurrentStatus($document, $allowQueuedStatus)) {
             $this->setError('Documento fiscal não pode seguir para emissão no estado atual.');
             return null;
         }
 
-        $configService = app(NfeConfigService::class);
         $companyId = (int) $document->company_id;
-        $environment = $configService->resolveAmbiente($companyId);
-        $series = trim((string) ($document->document_series ?: $configService->resolveSerie($companyId)));
-        $operationNature = $document->operation_nature instanceof OperationNature
-            ? $document->operation_nature->value
-            : trim((string) ($document->operation_nature ?? ''));
-
+        $environment = $this->resolveEnvironment($document);
+        $series = trim($scenario->resolveSeries($document));
+        $operationNature = $scenario->resolveOperationNature($document);
         $errors = [];
 
         if ($companyId < 1) {
@@ -70,10 +67,83 @@ class FiscalEmissionPreflightService
         }
 
         if ($series === '') {
-            $errors['document_series'][] = 'A série da NF-e não pôde ser resolvida.';
+            $errors[$document->isNfe() ? 'document_series' : 'rps_series'][] = 'A série do documento fiscal não pôde ser resolvida.';
         }
 
-        if ($operationNature === '') {
+        if ($document->isNfe()) {
+            $this->validateNfeDocument($document, $errors, $operationNature);
+        } elseif ($document->isNfse()) {
+            $this->validateNfseDocument($document, $errors);
+        } else {
+            $errors['document_type'][] = 'Tipo de documento fiscal não suportado no preflight.';
+        }
+
+        $scenario->validate($document, $errors);
+
+        if ($errors !== []) {
+            $this->setError('Documento fiscal inválido para emissão.', $errors);
+            return null;
+        }
+
+        $payloadBuilderKey = $scenario->payloadBuilderKey($document);
+
+        if ($document->isNfse()) {
+            $payloadBuilderKey = app(NfsePayloadBuilderResolver::class)->resolveKey($document);
+        }
+
+        $result = new FiscalEmissionPreflightResult(
+            passed: true,
+            companyId: $companyId,
+            documentModel: $scenario->documentModel(),
+            operationNature: $operationNature,
+            series: $series,
+            environment: $environment,
+            queueGroupKey: $scenario->buildQueueGroupKey($document, $series, $environment),
+            scenarioCode: $scenario->code(),
+            channelCode: $scenario->channelCode($document),
+            payloadBuilderKey: $payloadBuilderKey,
+            candidateNumber: $scenario->resolveCandidateNumber($document, $series),
+        );
+
+        $this->setSuccess('Documento fiscal apto para emissão.', $result->toArray());
+
+        return $result;
+    }
+
+    private function canProceedInCurrentStatus(FiscalDocument $document, bool $allowQueuedStatus): bool
+    {
+        if ($document->isNfe()) {
+            return ! $document->isNfeInProcessing()
+                && ! $document->isNfeAuthorized()
+                && ! $document->isNfeCanceled()
+                && ($allowQueuedStatus || ! $document->isNfeQueued());
+        }
+
+        if ($document->isNfse()) {
+            return ! $document->isNfseInProcessing()
+                && ! $document->isNfseAuthorized()
+                && ! $document->isNfseCanceled()
+                && ($allowQueuedStatus || ! $document->isNfseQueued());
+        }
+
+        return false;
+    }
+
+    private function resolveEnvironment(FiscalDocument $document): int
+    {
+        if ($document->isNfse()) {
+            return app(NfseConfigService::class)->resolveAmbiente((int) $document->company_id);
+        }
+
+        return app(NfeConfigService::class)->resolveAmbiente((int) $document->company_id);
+    }
+
+    /**
+     * @param  array<int|string,mixed>  $errors
+     */
+    private function validateNfeDocument(FiscalDocument $document, array &$errors, ?string $operationNature): void
+    {
+        if (! is_string($operationNature) || trim($operationNature) === '') {
             $errors['operation_nature'][] = 'A natureza da operação é obrigatória para emissão.';
         }
 
@@ -89,49 +159,23 @@ class FiscalEmissionPreflightService
             $errors['freight_data.modalidade_frete'][] = 'A modalidade de frete é obrigatória para emissão.';
         }
 
-        if ($document->customer === null) {
-            $errors['customer_id'][] = 'Destinatário não encontrado.';
-        } else {
-            $documentNumber = preg_replace('/\D/', '', (string) ($document->customer->document_number ?? ''));
-            if (! in_array(strlen($documentNumber), [11, 14], true)) {
-                $errors['customer.document_number'][] = 'Destinatário deve possuir CPF ou CNPJ válido para emissão.';
-            }
-
-            $address = $document->customer->address?->first();
-            if ($address === null) {
-                $errors['customer.address'][] = 'Destinatário deve possuir endereço cadastrado.';
-            } else {
-                foreach ([
-                    'street' => 'logradouro',
-                    'number' => 'número',
-                    'neighborhood' => 'bairro',
-                    'city' => 'município',
-                    'state' => 'UF',
-                    'postal_code' => 'CEP',
-                    'city_code' => 'código do município',
-                ] as $field => $label) {
-                    if (blank($address->{$field} ?? null)) {
-                        $errors["customer.address.{$field}"][] = "Endereço do destinatário sem {$label}.";
-                    }
-                }
-            }
-        }
+        $this->validateCustomer($document, $errors, true);
 
         try {
-            FiscalProfileValidator::validateProfileExists($companyId);
+            FiscalProfileValidator::validateProfileExists((int) $document->company_id);
 
-            if ($operationNature !== '') {
-                FiscalProfileValidator::validateOperationNatureConfigured($companyId, $operationNature);
+            if (is_string($operationNature) && trim($operationNature) !== '') {
+                FiscalProfileValidator::validateOperationNatureConfigured((int) $document->company_id, $operationNature);
             }
         } catch (ValidationException $e) {
             $errors = array_merge_recursive($errors, $e->errors());
         }
 
-        $normalizedItems = $this->normalizeItemsForEmission($document, $errors);
+        $normalizedItems = $this->normalizeNfeItemsForEmission($document, $errors);
 
         if ($normalizedItems !== [] && $document->company !== null && $document->customer !== null) {
             try {
-                FiscalProfileValidator::validateItemsTaxCompatibility($companyId, $normalizedItems);
+                FiscalProfileValidator::validateItemsTaxCompatibility((int) $document->company_id, $normalizedItems);
 
                 $issuerUf = (string) Arr::get($document->company->address ?? [], 'state', '');
                 $recipientUf = (string) ($document->customer->address?->first()?->state ?? '');
@@ -143,56 +187,150 @@ class FiscalEmissionPreflightService
                 $errors = array_merge_recursive($errors, $e->errors());
             }
         }
+    }
 
-        $scenarioCode = $this->resolveScenarioCode($operationNature);
+    /**
+     * @param  array<int|string,mixed>  $errors
+     */
+    private function validateNfseDocument(FiscalDocument $document, array &$errors): void
+    {
+        $nfseModel = $document->nfse_model instanceof \App\Enum\FiscalDocument\NfseModel
+            ? $document->nfse_model->value
+            : trim((string) ($document->nfse_model ?? ''));
 
-        if (
-            $scenarioCode === 'purchase_return'
-            || $document->issue_purpose === IssuePurpose::DEVOLUCAO
-        ) {
-            $originKey = data_get($document->tax_data, 'purchase_return_origin.document_key');
+        if ($nfseModel === '') {
+            $errors['nfse_model'][] = 'O modelo da NFS-e é obrigatório para emissão.';
+        }
 
-            if (! is_string($originKey) || trim($originKey) === '') {
-                $errors['tax_data.purchase_return_origin.document_key'][] = 'Nota de devolução exige chave da NF-e de origem.';
+        $this->validateCustomer($document, $errors, true);
+
+        $profile = $document->fiscalProfile ?? $document->company?->fiscalProfile;
+        $effectiveCity = app(NfseEmissionCityResolver::class)->resolve($document);
+
+        if ($effectiveCity === null) {
+            $errors['service_city_code'][] = 'A cidade efetiva de emissão da NFS-e não pôde ser resolvida.';
+        }
+
+        $items = $document->items;
+
+        if ($items->isEmpty()) {
+            $errors['items'][] = 'A NFS-e deve conter pelo menos um item de serviço.';
+            return;
+        }
+
+        if ($items->count() > 1) {
+            $errors['items'][] = 'A NFS-e permite apenas um item de serviço por documento.';
+        }
+
+        $item = $items->first();
+
+        if ($item === null) {
+            return;
+        }
+
+        if (blank($item->description)) {
+            $errors['items.0.description'][] = 'A discriminação do serviço é obrigatória.';
+        }
+
+        if ((float) $item->quantity <= 0) {
+            $errors['items.0.quantity'][] = 'A quantidade deve ser maior que zero.';
+        }
+
+        if ((float) $item->unit_price < 0) {
+            $errors['items.0.unit_price'][] = 'O preço unitário não pode ser negativo.';
+        }
+
+        if ((float) $item->total_price <= 0) {
+            $errors['items.0.total_price'][] = 'O valor do serviço deve ser maior que zero.';
+        }
+
+        $serviceCode = $this->normalizeNfseServiceCode(
+            $item->municipal_tax_code
+            ?? $item->service?->municipal_tax_code
+            ?? $item->service_code
+            ?? $item->service?->service_code
+            ?? $profile?->default_municipal_tax_code
+            ?? $profile?->default_service_code
+        );
+
+        if ($serviceCode === '') {
+            $errors['items.0.service_code'][] = 'A NFS-e exige código de serviço válido.';
+        }
+
+        $nbsCode = $this->normalizeDigits($item->nbs_code ?? $item->service?->nbs_code ?? $profile?->default_nbs_code);
+
+        if ($nbsCode === '') {
+            $errors['items.0.nbs_code'][] = 'A NFS-e exige código NBS.';
+        }
+
+        if ($nfseModel === 'municipal') {
+            if (blank($item->iss_exigibility)) {
+                $errors['items.0.iss_exigibility'][] = 'A exigibilidade do ISS é obrigatória para NFS-e municipal.';
             }
         }
 
-        if ($errors !== []) {
-            $this->setError('Documento fiscal inválido para emissão.', $errors);
-            return null;
+        if ($nfseModel === 'nacional') {
+            if ($serviceCode === '') {
+                $errors['items.0.service_code'][] = 'A NFS-e nacional exige código LC 116/2003 no formato esperado.';
+            }
+
+            if (strlen($nbsCode) !== 9) {
+                $errors['items.0.nbs_code'][] = 'A NFS-e nacional exige código NBS com 9 dígitos.';
+            }
+        }
+    }
+
+    /**
+     * @param  array<int|string,mixed>  $errors
+     */
+    private function validateCustomer(FiscalDocument $document, array &$errors, bool $requireAddress): void
+    {
+        if ($document->customer === null) {
+            $errors['customer_id'][] = $document->isNfse() ? 'Tomador do serviço não encontrado.' : 'Destinatário não encontrado.';
+            return;
         }
 
-        $queueGroupKey = $this->buildQueueGroupKey(
-            companyId: $companyId,
-            documentModel: DocumentModel::NFE->value,
-            series: $series,
-            environment: $environment,
-        );
+        $documentNumber = preg_replace('/\D/', '', (string) ($document->customer->document_number ?? ''));
 
-        $candidateNumber = NfeSequence::peekNextNumber($companyId, $series, $operationNature);
+        if (! in_array(strlen($documentNumber), [11, 14], true)) {
+            $errors['customer.document_number'][] = $document->isNfse()
+                ? 'Tomador deve possuir CPF ou CNPJ válido para emissão.'
+                : 'Destinatário deve possuir CPF ou CNPJ válido para emissão.';
+        }
 
-        $result = new FiscalEmissionPreflightResult(
-            passed: true,
-            companyId: $companyId,
-            documentModel: DocumentModel::NFE->value,
-            operationNature: $operationNature,
-            series: $series,
-            environment: $environment,
-            queueGroupKey: $queueGroupKey,
-            scenarioCode: $scenarioCode,
-            candidateNumber: $candidateNumber,
-        );
+        if (! $requireAddress) {
+            return;
+        }
 
-        $this->setSuccess('Documento fiscal apto para emissão.', $result->toArray());
+        $address = $document->customer->address?->first();
 
-        return $result;
+        if ($address === null) {
+            $errors['customer.address'][] = $document->isNfse()
+                ? 'Tomador deve possuir endereço cadastrado.'
+                : 'Destinatário deve possuir endereço cadastrado.';
+            return;
+        }
+
+        foreach ([
+            'street'       => 'logradouro',
+            'number'       => 'número',
+            'neighborhood' => 'bairro',
+            'city'         => 'município',
+            'state'        => 'UF',
+            'postal_code'  => 'CEP',
+            'city_code'    => 'código do município',
+        ] as $field => $label) {
+            if (blank($address->{$field} ?? null)) {
+                $errors["customer.address.{$field}"][] = "Endereço sem {$label}.";
+            }
+        }
     }
 
     /**
      * @param  array<int|string,mixed>  $errors
      * @return array<int,array<string,mixed>>
      */
-    private function normalizeItemsForEmission(FiscalDocument $document, array &$errors): array
+    private function normalizeNfeItemsForEmission(FiscalDocument $document, array &$errors): array
     {
         $items = $document->items;
 
@@ -285,28 +423,19 @@ class FiscalEmissionPreflightService
         })->all();
     }
 
-    private function resolveScenarioCode(string $operationNature): string
+    private function normalizeNfseServiceCode(?string $code): string
     {
-        return match (OperationNature::tryFrom($operationNature)) {
-            OperationNature::DEVOLUCAO_COMPRA => 'purchase_return',
-            OperationNature::REMESSA_CONSERTO => 'repair_remittance',
-            OperationNature::RETORNO_CONSERTO => 'repair_return',
-            OperationNature::REMESSA_DEMONSTRACAO => 'demonstration_remittance',
-            OperationNature::RETORNO_DEMONSTRACAO => 'demonstration_return',
-            OperationNature::TRANSFERENCIA => 'transfer',
-            OperationNature::BONIFICACAO => 'bonus',
-            OperationNature::SIMPLES_REMESSA => 'simple_remittance',
-            default => 'sale',
-        };
+        $digits = $this->normalizeDigits($code);
+
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_pad(substr($digits, 0, 4), 4, '0', STR_PAD_LEFT);
     }
 
-    private function buildQueueGroupKey(int $companyId, string $documentModel, string $series, int $environment): string
+    private function normalizeDigits(?string $value): string
     {
-        return implode(':', [
-            $documentModel,
-            $companyId,
-            $series,
-            $environment,
-        ]);
+        return preg_replace('/\D/', '', (string) ($value ?? ''));
     }
 }

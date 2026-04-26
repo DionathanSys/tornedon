@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
+use App\Services\FiscalDocument\Contracts\NfsePayloadBuilder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -14,10 +15,21 @@ use Illuminate\Support\Facades\Log;
  * tributos_municipais, tributos_nacionais, tributos_totais }.
  */
 class BuildNfseNacionalPayloadAction
+    implements NfsePayloadBuilder
 {
     use HandlesActionResponse;
 
-    public function execute(FiscalDocument $fiscalDocument): ?array
+    public function supports(FiscalDocument $fiscalDocument): bool
+    {
+        return $fiscalDocument->isNfse();
+    }
+
+    public function identifier(): string
+    {
+        return 'nacional:default';
+    }
+
+    public function build(FiscalDocument $fiscalDocument): ?array
     {
         try {
             Log::debug('BuildNfseNacionalPayloadAction: iniciando montagem de payload', [
@@ -41,8 +53,7 @@ class BuildNfseNacionalPayloadAction
             $address  = $customer?->address?->first();
             $profile  = $fiscalDocument->fiscalProfile ?? $company->fiscalProfile;
 
-            // $issuedAt = $fiscalDocument->issued_at->format('Y-m-d') . 'T00:00:00-03:00';
-            $issuedAt = now()->format('Y-m-d') . 'T00:00:00-03:00';
+            $issuedAt = ($fiscalDocument->issued_at ?? now())->format('Y-m-d') . 'T00:00:00-03:00';
 
             // ------------------------------------------------------------------
             // Tomador
@@ -72,17 +83,54 @@ class BuildNfseNacionalPayloadAction
                 $tomador['email'] = $email;
             }
 
-            if ($address) {
-                $tomador['endereco'] = [
-                    'logradouro'       => $address->street ?? '',
-                    'numero'           => $address->number ?? 'S/N',
-                    'complemento'      => $address->complement ?? '',
-                    'bairro'           => $address->neighborhood ?? '',
-                    'uf'               => $address->state ?? '',
-                    'codigo_municipio' => $address->city_code ?? '',
-                    'cep'              => preg_replace('/\D/', '', $address->postal_code ?? ''),
-                ];
+            if ($address === null) {
+                $msgErro = 'NFS-e nacional requer endereço completo do tomador.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseNacionalPayloadAction: endereço do tomador ausente', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'customer_id' => $fiscalDocument->customer_id,
+                ]);
+                return null;
             }
+
+            $logradouro = trim((string) ($address->street ?? ''));
+            $numero = trim((string) ($address->number ?? ''));
+            $bairro = trim((string) ($address->neighborhood ?? ''));
+            $codigoMunicipio = preg_replace('/\D/', '', (string) ($address->city_code ?? ''));
+            $uf = trim((string) ($address->state ?? ''));
+            $cep = preg_replace('/\D/', '', (string) ($address->postal_code ?? ''));
+
+            $requiredAddressFields = [
+                'logradouro' => $logradouro,
+                'numero' => $numero,
+                'bairro' => $bairro,
+                'codigo_municipio' => $codigoMunicipio,
+                'uf' => $uf,
+                'cep' => $cep,
+            ];
+
+            foreach ($requiredAddressFields as $field => $value) {
+                if ($value === '') {
+                    $msgErro = "NFS-e nacional requer o campo {$field} no endereço do tomador.";
+                    $this->setError($msgErro);
+                    Log::warning('BuildNfseNacionalPayloadAction: endereço do tomador incompleto', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'customer_id' => $fiscalDocument->customer_id,
+                        'field' => $field,
+                    ]);
+                    return null;
+                }
+            }
+
+            $tomador['endereco'] = [
+                'logradouro' => $logradouro,
+                'numero' => $numero,
+                'complemento' => trim((string) ($address->complement ?? '')),
+                'bairro' => $bairro,
+                'uf' => $uf,
+                'codigo_municipio' => $codigoMunicipio,
+                'cep' => $cep,
+            ];
 
             // ------------------------------------------------------------------
             // Consolidar serviço (modelo nacional = 1 bloco de serviço, não array de itens)
@@ -261,6 +309,16 @@ class BuildNfseNacionalPayloadAction
             // ------------------------------------------------------------------
             $serie = $this->normalizeSerie($fiscalDocument->rps_series ?? null);
 
+            if ($serie === '') {
+                $msgErro = 'NFS-e nacional requer série RPS válida para emissão.';
+                $this->setError($msgErro);
+                Log::warning('BuildNfseNacionalPayloadAction: série RPS inválida', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'rps_series' => $fiscalDocument->rps_series,
+                ]);
+                return null;
+            }
+
             $payload = [
                 'numero'       => (string) $fiscalDocument->rps_number,
                 'serie'        => $serie,
@@ -323,12 +381,17 @@ class BuildNfseNacionalPayloadAction
         }
     }
 
+    public function execute(FiscalDocument $fiscalDocument): ?array
+    {
+        return $this->build($fiscalDocument);
+    }
+
     private function normalizeSerie(?string $serie): string
     {
         $digits = preg_replace('/\D/', '', (string) $serie);
 
         if ($digits === '') {
-            return '1';
+            return '';
         }
 
         return substr($digits, 0, 5);

@@ -2,6 +2,8 @@
 
 namespace App\Domain\DTO\Fiscal;
 
+use Illuminate\Support\Facades\Log;
+
 class FiscalDecisionDTO
 {
     public function __construct(
@@ -208,7 +210,8 @@ class FiscalDecisionDTO
 
     public static function fromArray(array $data): self
     {
-        return new self(
+        Log::debug('FiscalDecisionDTO::fromArray', $data);
+        $result = new self(
             cfop: $data['cfop'] ?? null,
             cstIcms: $data['cst_icms'] ?? null,
             csosn: $data['csosn'] ?? null,
@@ -232,5 +235,7 @@ class FiscalDecisionDTO
             source: $data['source'] ?? 'regime_default',
             metadata: $data['metadata'] ?? null,
         );
+        Log::debug('FiscalDecisionDTO::fromArray', $result);
+        return $result;
     }
 }

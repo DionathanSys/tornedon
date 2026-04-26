@@ -257,6 +257,11 @@ class FiscalDocument extends Model
         return $this->nfse_status === NfeStatus::PENDING;
     }
 
+    public function isNfseQueued(): bool
+    {
+        return $this->nfse_status === NfeStatus::QUEUED;
+    }
+
     public function isNfseInProcessing(): bool
     {
         return $this->nfse_status === NfeStatus::IN_PROCESSING;
@@ -280,7 +285,7 @@ class FiscalDocument extends Model
     public function isNfseSent(): bool
     {
         return $this->nfse_status !== null
-            && $this->nfse_status !== NfeStatus::PENDING;
+            && ! in_array($this->nfse_status, [NfeStatus::PENDING, NfeStatus::QUEUED], true);
     }
 
     public function isImportedFromDfe(): bool
@@ -291,6 +296,7 @@ class FiscalDocument extends Model
     public function blocksNfseResubmission(): bool
     {
         return in_array($this->nfse_status, [
+            NfeStatus::QUEUED,
             NfeStatus::IN_PROCESSING,
             NfeStatus::AUTHORIZED,
             NfeStatus::CANCELED,
