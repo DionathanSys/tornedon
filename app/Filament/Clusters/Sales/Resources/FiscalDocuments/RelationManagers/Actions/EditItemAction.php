@@ -26,8 +26,20 @@ final class EditItemAction
                 showTaxesTab: SchemaFormItemsNfe::shouldShowTaxesTab($livewire->getOwnerRecord())
             ))
             ->mutateRecordDataUsing(function (array $data): array {
+                Log::debug('Mutating record data', [
+                    'metodo'  => __METHOD__ . '@' . __LINE__,
+                    'item_id' => $data['id'],
+                    'data'    => $data,
+                ]);
+
                 $product = app(ProductStockService::class)->findByProductId($data['product_id'], Filament::getTenant()->id);
                 $data['product_stock_id'] = $product->stock_id ?? null;
+
+                Log::debug('Mutated record data', [
+                    'metodo'  => __METHOD__ . '@' . __LINE__,
+                    'item_id' => $data['id'],
+                    'data'    => $data,
+                ]);
 
                 return $data;
             })
