@@ -114,14 +114,10 @@ class CashMovementsTable
                 Group::make('transaction_date')
                     ->label('Data')
                     ->date('d/m/Y'),
-                Group::make('financial_account_id')
-                    ->label('Conta')
-                    ->relationship('financialAccount', 'name')
-                    ->searchable()
-                    ->preload(),
+                Group::make('financialAccount.name')
+                    ->label('Conta'),
                 Group::make('financialCategory.full_name')
-                    ->label('Categoria')
-                    ->searchable(),
+                    ->label('Categoria'),
             ])
             ->recordUrl(null)
             ->recordActions([
