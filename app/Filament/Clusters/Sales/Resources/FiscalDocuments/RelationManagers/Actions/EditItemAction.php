@@ -6,7 +6,9 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\SchemaFormItem
 use App\Models\FiscalDocumentItem;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
+use App\Services\ProductStock\ProductStockService;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Resources\RelationManagers\RelationManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -18,11 +20,17 @@ final class EditItemAction
     {
         return EditAction::make()
             ->label('Editar')
-            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
-            ->schema(fn (RelationManager $livewire): array => SchemaFormItemsNfe::make(
+            ->visible(fn(RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
+            ->schema(fn(RelationManager $livewire): array => SchemaFormItemsNfe::make(
                 context: 'edit',
                 showTaxesTab: SchemaFormItemsNfe::shouldShowTaxesTab($livewire->getOwnerRecord())
             ))
+            ->mutateRecordDataUsing(function (array $data): array {
+                $product = app(ProductStockService::class)->findByProductId($data['product_id'], Filament::getTenant()->id);
+                $data['product_stock_id'] = $product->stock_id ?? null;
+
+                return $data;
+            })
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
                 Log::debug('Atualizando item de nota fiscal via RelationManager', [
                     'metodo'  => __METHOD__ . '@' . __LINE__,
