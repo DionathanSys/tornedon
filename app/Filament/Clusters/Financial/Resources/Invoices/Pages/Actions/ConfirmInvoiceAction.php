@@ -5,14 +5,19 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
+use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\InvoiceService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Callout;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +32,7 @@ final class ConfirmInvoiceAction
             ->icon(Heroicon::Check)
             ->color('success')
             ->modalHeading('Confirmar Fatura')
-            ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber. Opcionalmente, você pode disparar a emissão dos documentos logo após a confirmação.')
+            ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber. Opcionalmente, você pode disparar a emissão dos documentos logo após a confirmação e registrar o recebimento imediato da fatura.')
             ->visible(fn (Invoice $record): bool => ! $record->confirmed && ! $record->canceled)
             ->schema([
                 Callout::make('Documentos que serão gerados')
@@ -51,7 +56,35 @@ final class ConfirmInvoiceAction
                     ->options(Condition::toGroupedSelectArray())
                     ->default(fn (Invoice $record): ?string => $record->payment_condition?->value)
                     ->native(false)
+                    ->live()
+                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                        $condition = Condition::tryFrom((string) $state);
+
+                        if ($condition?->isCash()) {
+                            $set('mark_as_received', true);
+                        }
+                    })
                     ->required(),
+
+                Checkbox::make('mark_as_received')
+                    ->label('Marcar valores da fatura como já recebidos')
+                    ->helperText('Quando marcado, os pagamentos das parcelas do contas a receber serão registrados automaticamente ao confirmar a fatura.')
+                    ->default(fn (Invoice $record): bool => $record->payment_condition?->isCash() ?? false),
+
+                DatePicker::make('received_at')
+                    ->label('Data do recebimento')
+                    ->default(now())
+                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
+                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
+
+                Select::make('financial_account_id')
+                    ->label('Conta Financeira para baixa')
+                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()?->id ?? 0))
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
+                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
             ])
             ->action(function (Action $action, Invoice $record, array $data, EditInvoice $livewire): void {
 
@@ -86,9 +119,15 @@ final class ConfirmInvoiceAction
                     ->map(static fn (string $type): string => strtoupper($type))
                     ->implode(', ');
 
-                notify::success(
-                    "Fatura confirmada com sucesso. {$result['documents_count']} documento(s) fiscal(is) ({$types}) e {$result['account_receivables_count']} conta(s) a receber geradas."
-                );
+                $paymentsCount = (int) ($result['payments_count'] ?? 0);
+
+                $message = "Fatura confirmada com sucesso. {$result['documents_count']} documento(s) fiscal(is) ({$types}) e {$result['account_receivables_count']} conta(s) a receber geradas.";
+
+                if ($paymentsCount > 0) {
+                    $message .= " {$paymentsCount} pagamento(s) de contas a receber registrado(s) automaticamente.";
+                }
+
+                notify::success($message);
 
                 if (($data['emit_fiscal_documents'] ?? false) === true) {
                     $emissionResult = self::emitGeneratedFiscalDocuments($record, Auth::id());

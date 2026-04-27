@@ -53,8 +53,7 @@
               "title": "Remover campos json de fiscal documents"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -217,11 +216,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "05d3207a4698f61f",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
-    "Tasks App Gestor.md",
-    "Plan/Remover campos json de fiscal documents.md",
     "Projeto/Reestruturação Fiscal.md",
+    "Plan/Remover campos json de fiscal documents.md",
+    "Tasks App Gestor.md",
     "Plan/Plano para Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/plano_evolucao_fiscal.md",

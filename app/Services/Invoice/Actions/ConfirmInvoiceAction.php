@@ -12,6 +12,7 @@ use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\AccountReceivable;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Services\Audit\AuditRecorder;
@@ -113,6 +114,12 @@ class ConfirmInvoiceAction
                 return null;
             }
 
+            $paymentsCount = $this->registerReceivablePaymentsIfNeeded($createdReceivables, $data);
+
+            if ($paymentsCount === null) {
+                return null;
+            }
+
             $this->invoice->update([
                 'status'        => InvoiceStatus::CONFIRMED->value,
                 'pending'       => false,
@@ -131,6 +138,7 @@ class ConfirmInvoiceAction
                     $generatedDocuments
                 ),
                 'account_receivables_count' => count($createdReceivables),
+                'payments_count' => $paymentsCount,
             ];
 
             $audit->recordModelEvent(
@@ -145,6 +153,7 @@ class ConfirmInvoiceAction
                     'documents_count' => $result['documents_count'],
                     'documents_types' => $result['documents_types'],
                     'account_receivables_count' => $result['account_receivables_count'],
+                    'payments_count' => $result['payments_count'],
                 ],
             );
 
@@ -153,6 +162,7 @@ class ConfirmInvoiceAction
                 'invoice_id' => $this->invoice->id,
                 'documents_count' => $result['documents_count'],
                 'account_receivables_count' => $result['account_receivables_count'],
+                'payments_count' => $result['payments_count'],
                 'user_id' => $this->confirmedBy,
             ]);
 
@@ -370,6 +380,82 @@ class ConfirmInvoiceAction
         }
 
         return [$accountReceivable];
+    }
+
+    /**
+     * @param  array<int, AccountReceivable>  $accountReceivables
+     */
+    private function registerReceivablePaymentsIfNeeded(array $accountReceivables, array $data): ?int
+    {
+        if (($data['mark_as_received'] ?? false) !== true) {
+            return 0;
+        }
+
+        $financialAccountId = $data['financial_account_id'] ?? null;
+
+        if (! $financialAccountId) {
+            $this->setError('Selecione uma conta financeira para registrar o recebimento automático.');
+
+            return null;
+        }
+
+        $paymentDate = (string) ($data['received_at'] ?? now()->toDateString());
+        $service = app(AccountReceivableService::class);
+        $paymentsCount = 0;
+
+        foreach ($accountReceivables as $accountReceivable) {
+            $accountReceivable->loadMissing('installments');
+
+            foreach ($accountReceivable->installments as $installment) {
+                $amount = round((float) $installment->balance_amount, 2);
+
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $payment = $service->registerInstallmentPayment(
+                    $installment,
+                    $amount,
+                    $paymentDate,
+                    [
+                        'financial_account_id' => (int) $financialAccountId,
+                        'description' => sprintf(
+                            'Recebimento automático na confirmação da fatura %s',
+                            Str::padLeft($this->invoice->invoice_number, 5, '0')
+                        ),
+                        'user_id' => $this->confirmedBy,
+                    ]
+                );
+
+                if ($service->hasError() || $payment === null) {
+                    $this->setError(
+                        $service->getMessage(),
+                        $service->getErrors(),
+                        422,
+                        $service->getErrorCode()
+                    );
+
+                    Log::error('ConfirmInvoiceAction: falha ao registrar recebimento automático da parcela', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'invoice_id' => $this->invoice->id,
+                        'account_receivable_id' => $accountReceivable->id,
+                        'installment_id' => $installment->id,
+                        'amount' => $amount,
+                        'payment_date' => $paymentDate,
+                        'financial_account_id' => $financialAccountId,
+                        'message' => $service->getMessage(),
+                        'error_code' => $service->getErrorCode(),
+                        'errors' => $service->getErrors(),
+                    ]);
+
+                    return null;
+                }
+
+                $paymentsCount++;
+            }
+        }
+
+        return $paymentsCount;
     }
 
     /**
