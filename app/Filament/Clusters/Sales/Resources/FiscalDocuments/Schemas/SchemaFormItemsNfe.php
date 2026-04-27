@@ -137,7 +137,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.icms.valor_base_calculo')
                                                 ->label('BC ICMS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.icms.aliquota')
                                                 ->label('Aliq. ICMS %')
@@ -146,7 +146,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.icms.valor')
                                                 ->label('Valor ICMS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
@@ -158,7 +158,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.pis.valor_base_calculo')
                                                 ->label('BC PIS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.pis.aliquota')
                                                 ->label('Aliq. PIS %')
@@ -167,7 +167,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.pis.valor')
                                                 ->label('Valor PIS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
@@ -179,7 +179,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.cofins.valor_base_calculo')
                                                 ->label('BC COFINS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.cofins.aliquota')
                                                 ->label('Aliq. COFINS %')
@@ -188,7 +188,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.cofins.valor')
                                                 ->label('Valor COFINS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                 ]),
