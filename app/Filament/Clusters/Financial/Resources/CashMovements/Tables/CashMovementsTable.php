@@ -113,8 +113,7 @@ class CashMovementsTable
             ->groups([
                 Group::make('transaction_date')
                     ->label('Data')
-                    ->date('d/m/Y')
-                    ->sortable(),
+                    ->date('d/m/Y'),
                 Group::make('financial_account_id')
                     ->label('Conta')
                     ->relationship('financialAccount', 'name')
