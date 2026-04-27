@@ -268,10 +268,10 @@ class CashMovement extends Model
         return data_get($this->participants_snapshot, $key);
     }
 
-    public function amount(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => $this->amount * $this->direction->multiplier()
-        );
-    }
+    // public function amount(): Attribute
+    // {
+    //     return Attribute::make(
+    //         get: fn () => $this->amount * $this->direction->multiplier()
+    //     );
+    // }
 }
