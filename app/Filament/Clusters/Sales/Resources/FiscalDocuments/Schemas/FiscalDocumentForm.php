@@ -287,6 +287,7 @@ class FiscalDocumentForm
                                     ->collapsible()
                                     ->collapsed(),
                                 Section::make('Informações adicionais de compra')
+                                    ->visible(fn(Get $get, $operation): bool => $get('document_type') !== DocumentModel::NFSE->value && $operation === 'edit')
                                     ->schema([
                                         TextInput::make('additional_purchase_information_nota_empenho')
                                             ->label('Nota de Empenho')
@@ -346,7 +347,7 @@ class FiscalDocumentForm
                                                     ->disabled(),
                                                 Textarea::make('mensagem')
                                                     ->label('Mensagem')
-                                                    // ->rows(3)
+                                                    ->rows(3)
                                                     ->columnSpanFull()
                                                     ->disabled(),
                                             ])
