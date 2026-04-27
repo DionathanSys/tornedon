@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\Financial\CashMovementDirection;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -265,5 +266,14 @@ class CashMovement extends Model
     private function snapshotValue(string $key): mixed
     {
         return data_get($this->participants_snapshot, $key);
+    }
+
+    public function amount(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => ($this->direction)
+                ? $this->amount * $this->direction->multiplier()
+                : $this->amount,
+        );''
     }
 }
