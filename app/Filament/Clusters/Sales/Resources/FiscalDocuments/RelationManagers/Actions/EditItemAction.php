@@ -27,18 +27,19 @@ final class EditItemAction
             ))
             ->mutateRecordDataUsing(function (array $data): array {
                 Log::debug('Mutating record data', [
-                    'metodo'  => __METHOD__ . '@' . __LINE__,
-                    'item_id' => $data['id'],
-                    'data'    => $data,
+                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'item_id'    => $data['id'],
+                    'product_id' => $data['product_id'],
                 ]);
 
-                $product = app(ProductStockService::class)->findByProductId($data['product_id'], Filament::getTenant()->id);
-                $data['product_stock_id'] = $product->stock_id ?? null;
+                $productStock = app(ProductStockService::class)->findByProductId($data['product_id'], Filament::getTenant()->id);
+                $data['product_stock_id'] = $productStock?->id ?? null;
 
                 Log::debug('Mutated record data', [
-                    'metodo'  => __METHOD__ . '@' . __LINE__,
-                    'item_id' => $data['id'],
-                    'data'    => $data,
+                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'item_id'        => $data['id'],
+                    'product_id'     => $data['product_id'],
+                    'product_stock_id' => $data['product_stock_id'],
                 ]);
 
                 return $data;
