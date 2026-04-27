@@ -271,9 +271,7 @@ class CashMovement extends Model
     public function amount(): Attribute
     {
         return Attribute::make(
-            get: fn () => ($this->direction)
-                ? $this->amount * $this->direction->multiplier()
-                : $this->amount,
+            get: fn () => $this->amount * $this->direction->multiplier()
         );
     }
 }
