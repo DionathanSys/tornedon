@@ -9,9 +9,11 @@ use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTrans
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
@@ -43,7 +45,10 @@ class CashMovementsTable
                 TextColumn::make('amount')
                     ->label('Valor')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize(Sum::make()
+                        ->money('BRL')
+                        ->label('Total')),    
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->searchable()
@@ -104,6 +109,20 @@ class CashMovementsTable
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
                     ->defaultThisMonth(),
+            ])
+            ->groups([
+                Group::make('transaction_date')
+                    ->label('Data')
+                    ->date('d/m/Y')
+                    ->sortable(),
+                Group::make('financial_account_id')
+                    ->label('Conta')
+                    ->relationship('financialAccount', 'name')
+                    ->searchable()
+                    ->preload(),
+                Group::make('financialCategory.full_name')
+                    ->label('Categoria')
+                    ->searchable(),
             ])
             ->recordUrl(null)
             ->recordActions([
