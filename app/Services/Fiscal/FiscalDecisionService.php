@@ -44,25 +44,29 @@ class FiscalDecisionService
                 return $productDecision->withCfop($cfop);
             }
             
-            // Caso contrário, monta o FiscalDecisionDTO baseado na regra
+            // Resolve defaults do regime tributário como base
+            $strategy = TaxRegimeStrategyFactory::make($profile->tax_regime);
+            $regimeDefaults = $strategy->resolveDefaults($context, $profile);
+            
+            // Mescla: regra fiscal sobrepõe apenas campos preenchidos, o resto vem do regime
             return new FiscalDecisionDTO(
                 cfop:             $cfop,
-                cstIcms:          $rule->cst_icms,
-                csosn:            $rule->csosn,
-                modBcIcms:        $profile->icms_modalidade_base_calculo,
-                aliquotaIcms:     $rule->aliquota_icms !== null ? (float) $rule->aliquota_icms : ($profile->icms_aliquota_interna ?? 0),
-                reducaoBaseIcms:  $profile->icms_reducao_base,
-                modBcSt:          null,
-                aliquotaMvaSt:    null,
-                aliquotaSt:       null,
-                reducaoBaseSt:    null,
-                cstPis:           $rule->cst_pis ?? $profile->pis_cst_default,
-                aliquotaPis:      $rule->aliquota_pis !== null ? (float) $rule->aliquota_pis : $profile->pis_aliquota_default,
-                cstCofins:        $rule->cst_cofins ?? $profile->cofins_cst_default,
-                aliquotaCofins:   $rule->aliquota_cofins !== null ? (float) $rule->aliquota_cofins : $profile->cofins_aliquota_default,
-                cstIpi:           $rule->cst_ipi ?? $profile->ipi_cst_default,
-                aliquotaIpi:      $rule->aliquota_ipi !== null ? (float) $rule->aliquota_ipi : $profile->ipi_aliquota_default,
-                enquadramentoIpi: $profile->ipi_enquadramento,
+                cstIcms:          $rule->cst_icms ?? $regimeDefaults->cstIcms,
+                csosn:            $rule->csosn ?? $regimeDefaults->csosn,
+                modBcIcms:        $regimeDefaults->modBcIcms,
+                aliquotaIcms:     $rule->aliquota_icms !== null ? (float) $rule->aliquota_icms : $regimeDefaults->aliquotaIcms,
+                reducaoBaseIcms:  $regimeDefaults->reducaoBaseIcms,
+                modBcSt:          $regimeDefaults->modBcSt,
+                aliquotaMvaSt:    $regimeDefaults->aliquotaMvaSt,
+                aliquotaSt:       $regimeDefaults->aliquotaSt,
+                reducaoBaseSt:    $regimeDefaults->reducaoBaseSt,
+                cstPis:           $rule->cst_pis ?? $regimeDefaults->cstPis,
+                aliquotaPis:      $rule->aliquota_pis !== null ? (float) $rule->aliquota_pis : $regimeDefaults->aliquotaPis,
+                cstCofins:        $rule->cst_cofins ?? $regimeDefaults->cstCofins,
+                aliquotaCofins:   $rule->aliquota_cofins !== null ? (float) $rule->aliquota_cofins : $regimeDefaults->aliquotaCofins,
+                cstIpi:           $rule->cst_ipi ?? $regimeDefaults->cstIpi,
+                aliquotaIpi:      $rule->aliquota_ipi !== null ? (float) $rule->aliquota_ipi : $regimeDefaults->aliquotaIpi,
+                enquadramentoIpi: $regimeDefaults->enquadramentoIpi,
                 source:           'fiscal_rule',
             );
         }

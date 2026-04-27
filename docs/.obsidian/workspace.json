@@ -36,9 +36,25 @@
               "icon": "lucide-file",
               "title": "Reestruturação Fiscal"
             }
+          },
+          {
+            "id": "05d3207a4698f61f",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Plan/Remover campos json de fiscal documents.md",
+                "mode": "source",
+                "source": false
+              },
+              "pinned": true,
+              "icon": "lucide-file",
+              "title": "Remover campos json de fiscal documents"
+            }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -201,9 +217,10 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "4d786013c66acb18",
+  "active": "05d3207a4698f61f",
   "lastOpenFiles": [
     "Tasks App Gestor.md",
+    "Plan/Remover campos json de fiscal documents.md",
     "Projeto/Reestruturação Fiscal.md",
     "Plan/Plano para Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
@@ -230,7 +247,6 @@
     "Excalidraw/Drawing 2026-01-01 12.53.48.excalidraw.md",
     "Magna Gestão/Tarefas.md",
     "Magna Gestão/CTe Bugio.md",
-    "Links/Links.md",
     "Magna Gestão",
     "Links",
     "App",
