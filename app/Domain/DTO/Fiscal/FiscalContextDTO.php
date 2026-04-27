@@ -30,6 +30,7 @@ class FiscalContextDTO
         public readonly ?string $operationNature,
         public readonly Carbon $issuedAt,
         public readonly bool $isCustomManufacturing = false, // produto de fabricação customizada/sob encomenda
+        public readonly ?bool $productHasSt = null,
         // NFS-e
         public readonly ?string $nfseModel = null, // municipal, nacional
         public readonly ?int $serviceId = null,
@@ -61,9 +62,10 @@ class FiscalContextDTO
             ? $document->document_type->value
             : (string) ($document->document_type ?? 'nfe');
 
-        // Verifica se o produto é de fabricação customizada
+        // Verifica se o produto é de fabricação customizada e tem ST
         $product = $item->product_id ? Product::find($item->product_id) : null;
         $isCustomManufacturing = (bool) ($product?->is_custom_manufacturing ?? false);
+        $productHasSt = $product ? (bool) ($product->has_st ?? false) : null;
 
         return new self(
             companyId:              $document->company_id,
@@ -81,6 +83,7 @@ class FiscalContextDTO
             operationNature:        $operationNature,
             issuedAt:               $document->issued_at ?? now(),
             isCustomManufacturing:  $isCustomManufacturing,
+            productHasSt:           $productHasSt,
         );
     }
 
@@ -113,6 +116,7 @@ class FiscalContextDTO
             productOrigin:          null,
             operationNature:        null,
             issuedAt:               $document->issued_at ?? now(),
+            productHasSt:           null,
             nfseModel:              $document->nfse_model,
             serviceId:              $item->service_id,
             serviceCode:            $service?->service_code,
@@ -168,6 +172,7 @@ class FiscalContextDTO
             'operation_nature'          => $this->operationNature,
             'issued_at'                 => $this->issuedAt->toDateString(),
             'is_custom_manufacturing'   => $this->isCustomManufacturing,
+            'product_has_st'            => $this->productHasSt,
             'nfse_model'                => $this->nfseModel,
             'service_id'                => $this->serviceId,
             'service_code'              => $this->serviceCode,

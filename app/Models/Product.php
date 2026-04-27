@@ -22,6 +22,7 @@ class Product extends Model
         'description',
         'category_id',
         'is_active',
+        'has_st',
         'is_custom_manufacturing',
         'has_stock_control',
         'unit',
@@ -43,6 +44,7 @@ class Product extends Model
 
     protected $casts = [
         'is_active'                 => 'boolean',
+        'has_st'                    => 'boolean',
         'is_custom_manufacturing'   => 'boolean',
         'has_stock_control'         => 'boolean',
         'unit'                      => Unit::class,

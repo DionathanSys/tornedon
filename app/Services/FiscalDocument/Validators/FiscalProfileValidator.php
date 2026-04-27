@@ -132,4 +132,47 @@ class FiscalProfileValidator
             throw ValidationException::withMessages($errors);
         }
     }
+
+    /**
+     * Valida coerência entre CFOP e CST/CSOSN em relação à Substituição Tributária (ST).
+     *
+     * @throws ValidationException
+     */
+    public static function validateCfopCstCoherence(array $items): void
+    {
+        $errors = [];
+
+        // CFOPs de ST geralmente são 54xx, 64xx
+        $cfopStPrefixes = ['54', '64'];
+        
+        // CSTs e CSOSNs de ST (clássicos)
+        $cstSt = ['10', '30', '60', '70']; 
+        $csosnSt = ['201', '202', '203', '500'];
+
+        foreach ($items as $index => $item) {
+            $cfop = $item['cfop_code'] ?? null;
+            $icmsSt = $item['tax_data']['imposto']['icms']['situacao_tributaria'] ?? null;
+            
+            if (!$cfop || !$icmsSt) {
+                continue;
+            }
+
+            $isCfopSt = in_array(substr((string)$cfop, 0, 2), $cfopStPrefixes);
+            $isCstSt = in_array((string)$icmsSt, $cstSt) || in_array((string)$icmsSt, $csosnSt);
+
+            if ($isCfopSt && !$isCstSt) {
+                $errors["items.{$index}.tax_data.imposto.icms.situacao_tributaria"] =
+                    "Item #{$index}: O CFOP '{$cfop}' indica Substituição Tributária, mas o CST/CSOSN '{$icmsSt}' não é de ST.";
+            }
+
+            if (!$isCfopSt && $isCstSt) {
+                $errors["items.{$index}.cfop_code"] =
+                    "Item #{$index}: O CST/CSOSN '{$icmsSt}' indica Substituição Tributária, mas o CFOP '{$cfop}' não é de ST.";
+            }
+        }
+
+        if (! empty($errors)) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
 }

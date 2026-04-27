@@ -8,6 +8,7 @@ use App\Models\FiscalProfile;
 use App\Models\ProductTax;
 use App\Services\Fiscal\Actions\ResolveCfopAction;
 use App\Services\Fiscal\TaxRegimeStrategies\TaxRegimeStrategyFactory;
+use App\Services\Fiscal\FiscalRuleResolver;
 
 class FiscalDecisionService
 {
@@ -28,6 +29,45 @@ class FiscalDecisionService
             return $this->emptyDecision();
         }
 
+        // Tenta resolver pela nova tabela fiscal_rules
+        $rule = app(FiscalRuleResolver::class)->resolve($context, $profile);
+
+        if ($rule) {
+            // Usa a regra estruturada
+            $cfop = app(ResolveCfopAction::class)->execute($rule->cfop, $context);
+            
+            // Verifica product tax para override de CST e alíquotas
+            $productDecision = $this->tryProductTax($context, $profile);
+            
+            if ($productDecision !== null) {
+                // Se tem product tax, usa as alíquotas/CST dele, mas mantém o CFOP da regra
+                return $productDecision->withCfop($cfop);
+            }
+            
+            // Caso contrário, monta o FiscalDecisionDTO baseado na regra
+            return new FiscalDecisionDTO(
+                cfop:             $cfop,
+                cstIcms:          $rule->cst_icms,
+                csosn:            $rule->csosn,
+                modBcIcms:        $profile->icms_modalidade_base_calculo,
+                aliquotaIcms:     $rule->aliquota_icms !== null ? (float) $rule->aliquota_icms : ($profile->icms_aliquota_interna ?? 0),
+                reducaoBaseIcms:  $profile->icms_reducao_base,
+                modBcSt:          null,
+                aliquotaMvaSt:    null,
+                aliquotaSt:       null,
+                reducaoBaseSt:    null,
+                cstPis:           $rule->cst_pis ?? $profile->pis_cst_default,
+                aliquotaPis:      $rule->aliquota_pis !== null ? (float) $rule->aliquota_pis : $profile->pis_aliquota_default,
+                cstCofins:        $rule->cst_cofins ?? $profile->cofins_cst_default,
+                aliquotaCofins:   $rule->aliquota_cofins !== null ? (float) $rule->aliquota_cofins : $profile->cofins_aliquota_default,
+                cstIpi:           $rule->cst_ipi ?? $profile->ipi_cst_default,
+                aliquotaIpi:      $rule->aliquota_ipi !== null ? (float) $rule->aliquota_ipi : $profile->ipi_aliquota_default,
+                enquadramentoIpi: $profile->ipi_enquadramento,
+                source:           'fiscal_rule',
+            );
+        }
+
+        // Fallback: Lógica legada (cfop_rules json)
         // 1. CFOP — obrigatório via FiscalProfile (lança exceção se não configurado)
         $cfop = $this->resolveCfopFromFiscalProfile($context, $profile);
 

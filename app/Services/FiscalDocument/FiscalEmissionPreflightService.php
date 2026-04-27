@@ -184,6 +184,8 @@ class FiscalEmissionPreflightService
                 if ($issuerUf !== '' && $recipientUf !== '') {
                     FiscalProfileValidator::validateCfopCompatibility($normalizedItems, $issuerUf, $recipientUf);
                 }
+                
+                FiscalProfileValidator::validateCfopCstCoherence($normalizedItems);
             } catch (ValidationException $e) {
                 $errors = array_merge_recursive($errors, $e->errors());
             }
