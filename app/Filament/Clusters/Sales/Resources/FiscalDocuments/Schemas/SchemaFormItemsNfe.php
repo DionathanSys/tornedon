@@ -71,34 +71,27 @@ class SchemaFormItemsNfe
                             ItemValueGroup::make([
                                 'totalAmountField' => 'total_price',
                             ]),
-
-
-
-                            Section::make('Outros Valores')
-                                ->columns(3)
-                                ->collapsible()
-                                ->collapsed()
-                                ->columnSpanFull()
-                                ->schema([
-                                    Money::make('freight_amount')
-                                        ->label('Frete'),
-                                    Money::make('insurance_amount')
-                                        ->label('Seguro'),
-                                    Money::make('other_expenses_amount')
-                                        ->label('Outras'),
-                                ]),
-
                             Textarea::make('additional_information')
                                 ->label('Informações Adicionais do Item')
                                 ->rows(2)
                                 ->maxLength(500)
                                 ->columnSpanFull(),
                         ]),
+                    Tab::make('Valores')
+                        ->columns(3)
+                        ->columnSpanFull()
+                        ->schema([
+                            Money::make('freight_amount')
+                                ->label('Frete'),
+                            Money::make('insurance_amount')
+                                ->label('Seguro'),
+                            Money::make('other_expenses_amount')
+                                ->label('Outras'),
+                        ]),
                     Tab::make('Impostos')
                         // ->visible($showTaxesTab)
                         ->schema([
                             Section::make('Dados fiscais do item')
-                                ->description('Preencha os impostos manualmente para notas de devolução com origem incompleta.')
                                 ->columns(['md' => 6, 'lg' => 12])
                                 ->columnSpanFull()
                                 ->schema([
@@ -144,6 +137,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.icms.valor_base_calculo')
                                                 ->label('BC ICMS')
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.icms.aliquota')
                                                 ->label('Aliq. ICMS %')
@@ -152,6 +146,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.icms.valor')
                                                 ->label('Valor ICMS')
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
@@ -163,6 +158,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.pis.valor_base_calculo')
                                                 ->label('BC PIS')
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.pis.aliquota')
                                                 ->label('Aliq. PIS %')
@@ -171,6 +167,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.pis.valor')
                                                 ->label('Valor PIS')
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
@@ -182,6 +179,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.cofins.valor_base_calculo')
                                                 ->label('BC COFINS')
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.cofins.aliquota')
                                                 ->label('Aliq. COFINS %')
@@ -190,6 +188,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.cofins.valor')
                                                 ->label('Valor COFINS')
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, '.', ''))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                 ]),
