@@ -62,11 +62,11 @@ class SchemaFormItemsNfe
                                         ->label('Descrição')
                                         ->maxLength(255)
                                         ->columnSpan(5),
-                                    Callout::make('alert')
-                                        ->description('Produto não possui vínculo com estoque')
-                                        ->visible(fn ($get) => ! $get('product_stock_id') && $get('product_id'))
-                                        ->columnSpanFull(),
                                 ]),
+                            Callout::make('alert')
+                                ->description('Produto não possui vínculo com estoque')
+                                ->visible(fn($get) => ! $get('product_stock_id') && $get('product_id'))
+                                ->columnSpanFull(),
 
                             ItemValueGroup::make([
                                 'totalAmountField' => 'total_price',
@@ -122,7 +122,7 @@ class SchemaFormItemsNfe
                                 ->columnSpanFull(),
                         ]),
                     Tab::make('Impostos')
-                        ->visible($showTaxesTab)
+                        // ->visible($showTaxesTab)
                         ->schema([
                             Section::make('Dados fiscais do item')
                                 ->description('Preencha os impostos manualmente para notas de devolução com origem incompleta.')

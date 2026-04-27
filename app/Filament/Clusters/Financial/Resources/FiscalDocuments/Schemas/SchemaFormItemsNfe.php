@@ -50,11 +50,11 @@ class SchemaFormItemsNfe
                         ->label('Descrição')
                         ->maxLength(255)
                         ->columnSpan(5),
-                    Callout::make('alert')
-                        ->description('Produto não possui vínculo com estoque')
-                        ->visible(fn($get) => !$get('product_stock_id') && $get('product_id'))
-                        ->columnSpanFull(),
                 ]),
+            Callout::make('alert')
+                ->description('Produto não possui vínculo com estoque')
+                ->visible(fn($get) => !$get('product_stock_id') && $get('product_id'))
+                ->columnSpanFull(),
 
             ItemValueGroup::make([
                 'totalAmountField' => 'total_price',

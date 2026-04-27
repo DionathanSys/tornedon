@@ -180,7 +180,7 @@ final class CloseServiceOrderAction
 
                     notify::success(
                         $shouldInvoiceLinkedRequisition
-                            ? 'Ordem de serviço encerrada, requisição vinculada faturada e tudo incluído na mesma fatura com sucesso.'
+                            ? 'Ordem de serviço e requisição encerradas e faturadas com sucesso.'
                             : 'Ordem de serviço encerrada e faturada com sucesso.'
                     );
 
