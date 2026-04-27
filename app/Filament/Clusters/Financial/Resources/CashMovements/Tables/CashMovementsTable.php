@@ -48,7 +48,8 @@ class CashMovementsTable
                     ->sortable()
                     ->summarize(Sum::make()
                         ->money('BRL', 100)
-                        ->label('Total')),    
+                        ->label('Total')
+                        ->using(fn (\Illuminate\Database\Query\Builder $query) => $query->sum(\Illuminate\Support\Facades\DB::raw("CASE WHEN direction = 'inflow' THEN amount ELSE -amount END")))),    
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->searchable()
