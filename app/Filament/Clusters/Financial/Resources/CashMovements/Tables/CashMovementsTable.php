@@ -47,7 +47,7 @@ class CashMovementsTable
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make()
-                        ->money('BRL')
+                        ->money('BRL', 100)
                         ->label('Total')),    
                 TextColumn::make('description')
                     ->label('Descrição')
@@ -116,7 +116,7 @@ class CashMovementsTable
                     ->date('d/m/Y'),
                 Group::make('financialAccount.name')
                     ->label('Conta'),
-                Group::make('financialCategory.full_name')
+                Group::make('financialCategory.name')
                     ->label('Categoria'),
             ])
             ->recordUrl(null)
