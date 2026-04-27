@@ -72,34 +72,7 @@ class SchemaFormItemsNfe
                                 'totalAmountField' => 'total_price',
                             ]),
 
-                            Group::make()
-                                ->columns(['md' => 6, 'lg' => 12])
-                                ->columnSpanFull()
-                                ->schema([
-                                    Select::make('product_origin')
-                                        ->label('Origem')
-                                        ->options(Origin::toSelectArray())
-                                        ->required()
-                                        ->columnSpan(['md' => 4, 'lg' => 8])
-                                        ->native(false),
-                                    TextInput::make('ncm_code')
-                                        ->label('NCM')
-                                        ->maxLength(8)
-                                        ->columnSpan(['md' => 2, 'lg' => 4]),
-                                    TextInput::make('cest_code')
-                                        ->label('CEST')
-                                        ->maxLength(9)
-                                        ->columnSpan(['md' => 3, 'lg' => 6]),
-                                    TextInput::make('cfop_code')
-                                        ->label('CFOP')
-                                        ->maxLength(4)
-                                        ->columnSpan(['md' => 3, 'lg' => 6]),
-                                    TextInput::make('barcode')
-                                        ->label('Código de Barras')
-                                        ->maxLength(60)
-                                        ->visible(false)
-                                        ->columnSpan(['md' => 3, 'lg' => 6]),
-                                ]),
+
 
                             Section::make('Outros Valores')
                                 ->columns(3)
@@ -129,10 +102,35 @@ class SchemaFormItemsNfe
                                 ->columns(['md' => 6, 'lg' => 12])
                                 ->columnSpanFull()
                                 ->schema([
-                                    TextInput::make('cfop_code')
-                                        ->label('CFOP')
-                                        ->maxLength(4)
-                                        ->required(),
+                                    Group::make()
+                                        ->columns(['md' => 6, 'lg' => 12])
+                                        ->columnSpanFull()
+                                        ->schema([
+                                            Select::make('product_origin')
+                                                ->label('Origem')
+                                                ->options(Origin::toSelectArray())
+                                                ->required()
+                                                ->columnSpan(['md' => 4, 'lg' => 8])
+                                                ->native(false),
+                                            TextInput::make('ncm_code')
+                                                ->label('NCM')
+                                                ->maxLength(8)
+                                                ->columnSpan(['md' => 2, 'lg' => 4]),
+                                            TextInput::make('cfop_code')
+                                                ->label('CFOP')
+                                                ->maxLength(4)
+                                                ->columnSpan(['md' => 2, 'lg' => 4])
+                                                ->required(),
+                                            TextInput::make('cest_code')
+                                                ->label('CEST')
+                                                ->maxLength(9)
+                                                ->columnSpan(['md' => 2, 'lg' => 4]),
+                                            TextInput::make('barcode')
+                                                ->label('Código de Barras')
+                                                ->maxLength(60)
+                                                ->visible(false)
+                                                ->columnSpan(['md' => 3, 'lg' => 6]),
+                                        ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
                                         ->columnSpanFull()
                                         ->schema([
