@@ -271,7 +271,7 @@ class CashMovement extends Model
     protected function amount(): Attribute
     {
         return Attribute::make(
-            get: fn(string $value) => $value * $this->direction->multiplier(),
+            get: fn(string $value) => ($value / 100) * $this->direction->multiplier(),
         );
     }
 }
