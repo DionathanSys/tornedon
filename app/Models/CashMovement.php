@@ -122,7 +122,7 @@ class CashMovement extends Model
 
         $directions = $group
             ->pluck('direction')
-            ->map(fn (CashMovementDirection|string|null $direction) => $direction instanceof CashMovementDirection ? $direction->value : $direction)
+            ->map(fn(CashMovementDirection|string|null $direction) => $direction instanceof CashMovementDirection ? $direction->value : $direction)
             ->sort()
             ->values()
             ->all();
@@ -268,10 +268,10 @@ class CashMovement extends Model
         return data_get($this->participants_snapshot, $key);
     }
 
-    // public function amount(): Attribute
-    // {
-    //     return Attribute::make(
-    //         get: fn () => $this->amount * $this->direction->multiplier()
-    //     );
-    // }
+    protected function amount(): Attribute
+    {
+        return Attribute::make(
+            get: fn(string $value) => $value * $this->direction->multiplier(),
+        );
+    }
 }
