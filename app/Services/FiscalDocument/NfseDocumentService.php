@@ -77,6 +77,7 @@ class NfseDocumentService
                     'contexto' => [
                         'serie' => $serie,
                         'user_id' => $userId,
+                        'scenario_code' => $preflight?->scenarioCode,
                     ],
                 ]);
                 return false;
@@ -98,6 +99,8 @@ class NfseDocumentService
                 'fiscal_document_id' => $doc->id,
                 'emission_group_key' => $preflight->queueGroupKey,
                 'user_id' => $userId,
+                'scenario_code' => $preflight->scenarioCode,
+                'channel_code' => $preflight->channelCode,
             ]);
 
             return true;

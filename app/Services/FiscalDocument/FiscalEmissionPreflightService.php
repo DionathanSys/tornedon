@@ -103,6 +103,7 @@ class FiscalEmissionPreflightService
             channelCode: $scenario->channelCode($document),
             payloadBuilderKey: $payloadBuilderKey,
             candidateNumber: $scenario->resolveCandidateNumber($document, $series),
+            scenarioContext: $scenario->resolveContext($document),
         );
 
         $this->setSuccess('Documento fiscal apto para emissão.', $result->toArray());

@@ -235,7 +235,7 @@ class FiscalDecisionDTO
             source: $data['source'] ?? 'regime_default',
             metadata: $data['metadata'] ?? null,
         );
-        Log::debug('FiscalDecisionDTO::fromArray', $result);
+        Log::debug('FiscalDecisionDTO::fromArray completed', ['source' => $result->source]);
         return $result;
     }
 }

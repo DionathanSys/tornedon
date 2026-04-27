@@ -29,7 +29,13 @@ class SendNfeAction
         private int $userId,
     ) {}
 
-    public function execute(FiscalDocument $fiscalDocument, ?string $serie = null, ?string $operationNature = null): bool
+    public function execute(
+        FiscalDocument $fiscalDocument,
+        ?string $serie = null,
+        ?string $operationNature = null,
+        ?string $scenarioCode = null,
+        ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null
+    ): bool
     {
         try {
             $audit = app(AuditRecorder::class);
@@ -41,6 +47,7 @@ class SendNfeAction
                 'customer_id'        => $fiscalDocument->customer_id,
                 'nfe_status_atual'   => $fiscalDocument->nfe_status?->value,
                 'serie'              => $serie,
+                'scenario_code'      => $scenarioCode,
             ]);
 
             // A fila processa documentos em status queued. Bloqueamos somente
@@ -89,7 +96,7 @@ class SendNfeAction
             // 2. Montar payload
             // ------------------------------------------------------------------
             $buildAction = new BuildNfePayloadAction();
-            $payload     = $buildAction->execute($fiscalDocument);
+            $payload     = $buildAction->execute($fiscalDocument, $scenarioContext);
 
             if ($payload === null) {
                 $this->setError($buildAction->getMessage());
@@ -109,6 +116,7 @@ class SendNfeAction
                 'ambiente'           => $ambiente,
                 'items_count'        => $fiscalDocument->items->count(),
                 'valor_total'        => $payload['infNFe']['ide']['natOp'] ?? null,
+                'scenario_code'      => $scenarioCode,
             ]);
 
             $resp = $sdk->cria($payload);
@@ -149,6 +157,7 @@ class SendNfeAction
                     $audit->snapshot($fiscalDocument),
                     $this->userId,
                     AuditSource::INTEGRATION,
+                    ['scenario_code' => $scenarioCode]
                 );
 
                 Log::info('SendNfeAction: NF-e enviada com sucesso, aguardando processamento', [
@@ -176,6 +185,7 @@ class SendNfeAction
                     'codigo'  => $resp->codigo ?? null,
                     'mensagem'=> $resp->mensagem ?? 'Erro de validação',
                     'erros'   => (array) ($resp->erros ?? []),
+                    'scenario_code' => $scenarioCode,
                 ];
 
                 $fiscalDocument->update(['errors_messages' => $errors]);
@@ -199,6 +209,7 @@ class SendNfeAction
                 'at'      => now()->toDateTimeString(),
                 'codigo'  => $resp->codigo ?? null,
                 'mensagem'=> $resp->mensagem ?? 'Erro desconhecido',
+                'scenario_code' => $scenarioCode,
             ];
             $fiscalDocument->update(['errors_messages' => $errors]);
 

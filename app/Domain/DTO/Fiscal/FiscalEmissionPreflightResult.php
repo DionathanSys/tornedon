@@ -20,6 +20,7 @@ readonly class FiscalEmissionPreflightResult
         public string $channelCode,
         public ?string $payloadBuilderKey = null,
         public ?int $candidateNumber = null,
+        public ?ScenarioContext $scenarioContext = null,
         public array $errors = [],
         public array $warnings = [],
     ) {
@@ -43,6 +44,7 @@ readonly class FiscalEmissionPreflightResult
             'channel_code' => $this->channelCode,
             'payload_builder_key' => $this->payloadBuilderKey,
             'candidate_number' => $this->candidateNumber,
+            'scenario_context' => $this->scenarioContext?->toArray(),
             'errors' => $this->errors,
             'warnings' => $this->warnings,
         ];

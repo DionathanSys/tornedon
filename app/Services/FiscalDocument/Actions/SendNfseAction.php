@@ -29,7 +29,12 @@ class SendNfseAction
         private int $userId,
     ) {}
 
-    public function execute(FiscalDocument $fiscalDocument, ?string $serie = null): bool
+    public function execute(
+        FiscalDocument $fiscalDocument,
+        ?string $serie = null,
+        ?string $scenarioCode = null,
+        ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null
+    ): bool
     {
         try {
             $audit = app(AuditRecorder::class);
@@ -41,6 +46,7 @@ class SendNfseAction
                 'customer_id'        => $fiscalDocument->customer_id,
                 'nfse_status_atual'  => $fiscalDocument->nfse_status?->value,
                 'serie'              => $serie,
+                'scenario_code'      => $scenarioCode,
             ]);
 
             if (
@@ -96,6 +102,7 @@ class SendNfseAction
                 'ambiente'           => $ambiente,
                 'items_count'        => $fiscalDocument->items->count(),
                 'valor_total'        => $payload['servico']['valor_servicos'] ?? 0,
+                'scenario_code'      => $scenarioCode,
             ]);
 
             $resp = $sdk->cria($payload);
@@ -133,6 +140,7 @@ class SendNfseAction
                     $audit->snapshot($fiscalDocument),
                     $this->userId,
                     AuditSource::INTEGRATION,
+                    ['scenario_code' => $scenarioCode]
                 );
 
                 Log::info('SendNfseAction: NFS-e enviada, aguardando processamento', [
@@ -171,6 +179,7 @@ class SendNfseAction
                             'codigo'   => $resp->codigo ?? null,
                             'mensagem' => $formattedMessage,
                             'erros'    => $erroData,
+                            'scenario_code' => $scenarioCode,
                         ];
                     }
                 } else {
@@ -179,6 +188,7 @@ class SendNfseAction
                         'codigo'   => $resp->codigo ?? null,
                         'mensagem' => $baseMessage,
                         'erros'    => [],
+                        'scenario_code' => $scenarioCode,
                     ];
                 }
 
@@ -225,6 +235,7 @@ class SendNfseAction
                         'codigo'   => $resp->codigo ?? null,
                         'mensagem' => $formattedMessage,
                         'erros'    => $erroData,
+                        'scenario_code' => $scenarioCode,
                     ];
                 }
             } else {
@@ -233,6 +244,7 @@ class SendNfseAction
                     'codigo'   => $resp->codigo ?? null,
                     'mensagem' => $baseMessage,
                     'erros'    => (array) ($resp->erros ?? []),
+                    'scenario_code' => $scenarioCode,
                 ];
             }
             $fiscalDocument->update(['errors_messages' => $errors]);

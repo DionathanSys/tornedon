@@ -109,7 +109,7 @@ class PurchaseReturnFiscalDocumentService
                 return $returnDocument;
             });
         } catch (\Throwable $e) {
-            $this->setError('Erro ao gerar nota de devolução de compra.');
+            $this->setError($e->getMessage());
 
             Log::error('PurchaseReturnFiscalDocumentService: exceção ao gerar devolução', [
                 'metodo' => __METHOD__ . '@' . __LINE__,

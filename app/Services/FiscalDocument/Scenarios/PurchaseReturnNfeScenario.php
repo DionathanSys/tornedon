@@ -27,4 +27,15 @@ class PurchaseReturnNfeScenario extends SaleNfeScenario
             $errors['tax_data.purchase_return_origin.document_key'][] = 'Nota de devolução exige chave da NF-e de origem.';
         }
     }
+
+    public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
+    {
+        $reference = app(FiscalDocumentReferenceResolver::class)->resolvePrimaryReference($document);
+
+        return new \App\Domain\DTO\Fiscal\ScenarioContext(
+            referenceType: 'purchase_return_origin',
+            referenceDocumentKey: $reference?->documentKey,
+            referenceFiscalDocumentId: $reference?->fiscalDocumentId,
+        );
+    }
 }

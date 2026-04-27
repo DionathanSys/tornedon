@@ -27,4 +27,15 @@ class RepairReturnNfeScenario extends SaleNfeScenario
             $errors['tax_data.reference'][] = 'Retorno exige referência ao documento fiscal de origem.';
         }
     }
+
+    public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
+    {
+        $reference = app(FiscalDocumentReferenceResolver::class)->resolvePrimaryReference($document);
+
+        return new \App\Domain\DTO\Fiscal\ScenarioContext(
+            referenceType: 'repair_return',
+            referenceDocumentKey: $reference?->documentKey,
+            referenceFiscalDocumentId: $reference?->fiscalDocumentId,
+        );
+    }
 }

@@ -274,6 +274,6 @@ class CashMovement extends Model
             get: fn () => ($this->direction)
                 ? $this->amount * $this->direction->multiplier()
                 : $this->amount,
-        );''
+        );
     }
 }

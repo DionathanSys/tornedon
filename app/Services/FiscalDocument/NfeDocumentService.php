@@ -80,6 +80,7 @@ class NfeDocumentService
                         'serie' => $serie,
                         'operationNature' => $operationNature,
                         'user_id' => $userId,
+                        'scenario_code' => $preflight?->scenarioCode,
                     ],
                 ]);
                 return false;
@@ -101,6 +102,8 @@ class NfeDocumentService
                 'fiscal_document_id' => $doc->id,
                 'emission_group_key' => $preflight->queueGroupKey,
                 'user_id'            => $userId,
+                'scenario_code'      => $preflight->scenarioCode,
+                'channel_code'       => $preflight->channelCode,
             ]);
 
             return true;

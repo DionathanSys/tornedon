@@ -68,6 +68,7 @@ class ProcessQueuedNfeEmissionJob implements ShouldQueue
                 'preflight',
                 $preflightService->getMessage(),
                 $preflightService->getErrors(),
+                $preflight->scenarioCode ?? null
             );
 
             return;
@@ -79,7 +80,13 @@ class ProcessQueuedNfeEmissionJob implements ShouldQueue
 
         $userId = (int) ($document->updated_by ?? $document->created_by ?? 0);
         $action = new SendNfeAction($userId);
-        $result = $action->execute($document, $preflight->series, $preflight->operationNature);
+        $result = $action->execute(
+            $document,
+            $preflight->series,
+            $preflight->operationNature,
+            $preflight->scenarioCode,
+            $preflight->scenarioContext
+        );
 
         if ($result) {
             return;
@@ -99,6 +106,7 @@ class ProcessQueuedNfeEmissionJob implements ShouldQueue
             'emitir_queue',
             $action->getMessage(),
             $action->getErrors(),
+            $preflight->scenarioCode
         );
     }
 
@@ -116,7 +124,7 @@ class ProcessQueuedNfeEmissionJob implements ShouldQueue
     /**
      * @param  array<int|string,mixed>  $errors
      */
-    private function persistError(FiscalDocument $document, string $action, ?string $message, array $errors): void
+    private function persistError(FiscalDocument $document, string $action, ?string $message, array $errors, ?string $scenarioCode = null): void
     {
         $persistAction = new SaveFiscalDocumentErrorAction();
         $persistAction->execute($document, $message, [
@@ -124,6 +132,7 @@ class ProcessQueuedNfeEmissionJob implements ShouldQueue
             'erros' => $errors,
             'contexto' => [
                 'emission_group_key' => $this->emissionGroupKey,
+                'scenario_code' => $scenarioCode,
             ],
         ]);
 
@@ -132,6 +141,7 @@ class ProcessQueuedNfeEmissionJob implements ShouldQueue
             'action' => $action,
             'message' => $message,
             'emission_group_key' => $this->emissionGroupKey,
+            'scenario_code' => $scenarioCode,
         ]);
     }
 }

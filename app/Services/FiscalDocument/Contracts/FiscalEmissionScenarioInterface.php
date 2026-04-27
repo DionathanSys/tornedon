@@ -28,4 +28,6 @@ interface FiscalEmissionScenarioInterface
      * @param  array<int|string,mixed>  $errors
      */
     public function validate(FiscalDocument $document, array &$errors): void;
+
+    public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext;
 }

@@ -27,7 +27,7 @@ class BuildNfePayloadAction
 {
     use HandlesActionResponse;
 
-    public function execute(FiscalDocument $fiscalDocument): ?array
+    public function execute(FiscalDocument $fiscalDocument, ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null): ?array
     {
         try {
             Log::debug('BuildNfePayloadAction: iniciando montagem de payload', [
@@ -219,14 +219,27 @@ class BuildNfePayloadAction
 
             // Totais e cobrança (tax_data)
             if (! empty($fiscalDocument->tax_data)) {
-                $originDocumentKey = data_get($fiscalDocument->tax_data, 'purchase_return_origin.document_key');
-
-                if (is_string($originDocumentKey) && trim($originDocumentKey) !== '') {
+                if ($scenarioContext?->hasReference()) {
                     $payload['notas_referenciadas'] = [[
                         'nfe' => [
-                            'chave' => trim($originDocumentKey),
+                            'chave' => $scenarioContext->referenceDocumentKey,
                         ],
                     ]];
+                }
+
+                if (!isset($payload['notas_referenciadas'])) {
+                    $originDocumentKey = data_get($fiscalDocument->tax_data, 'purchase_return_origin.document_key');
+
+                    if (is_string($originDocumentKey) && trim($originDocumentKey) !== '') {
+                        $payload['notas_referenciadas'] = [[
+                            'nfe' => [
+                                'chave' => trim($originDocumentKey),
+                            ],
+                        ]];
+                        Log::warning('BuildNfePayloadAction: usando fallback tax_data para notas_referenciadas', [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                        ]);
+                    }
                 }
 
                 $payload['totais'] = $fiscalDocument->tax_data['totais'] ?? [];

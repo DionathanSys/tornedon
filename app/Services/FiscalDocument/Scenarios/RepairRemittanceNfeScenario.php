@@ -17,4 +17,11 @@ class RepairRemittanceNfeScenario extends SaleNfeScenario
     {
         return 'repair_remittance';
     }
+
+    public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
+    {
+        return new \App\Domain\DTO\Fiscal\ScenarioContext(
+            flags: ['no_reference_required' => true],
+        );
+    }
 }

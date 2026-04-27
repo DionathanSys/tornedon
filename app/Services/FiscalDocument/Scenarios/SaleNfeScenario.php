@@ -70,5 +70,13 @@ class SaleNfeScenario implements FiscalEmissionScenarioInterface
 
     public function validate(FiscalDocument $document, array &$errors): void
     {
+        if ($this->resolveContext($document)->hasReference()) {
+            $errors['scenario'][] = 'Cenário de venda não deve conter referência fiscal ativa.';
+        }
+    }
+
+    public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
+    {
+        return new \App\Domain\DTO\Fiscal\ScenarioContext();
     }
 }

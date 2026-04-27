@@ -68,6 +68,11 @@ class MunicipalNfseScenario implements FiscalEmissionScenarioInterface
     {
     }
 
+    public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
+    {
+        return new \App\Domain\DTO\Fiscal\ScenarioContext();
+    }
+
     private function resolveModel(FiscalDocument $document): string
     {
         return $document->nfse_model instanceof NfseModel
