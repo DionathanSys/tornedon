@@ -81,6 +81,15 @@ class SefazRecepcaoEventoService
 
         $envelope = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Envelope');
         $document->appendChild($envelope);
+
+        $header = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Header');
+        $envelope->appendChild($header);
+
+        $cabecMsg = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeCabecMsg');
+        $header->appendChild($cabecMsg);
+        $cabecMsg->appendChild($document->createElementNS(self::WSDL_NAMESPACE, 'cUF', '91'));
+        $cabecMsg->appendChild($document->createElementNS(self::WSDL_NAMESPACE, 'versaoDados', '1.00'));
+
         $body = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Body');
         $envelope->appendChild($body);
         $request = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeRecepcaoEventoNF');
