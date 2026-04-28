@@ -12,7 +12,7 @@ use RuntimeException;
 
 class SefazRecepcaoEventoService
 {
-    private const SOAP_NAMESPACE = 'http://schemas.xmlsoap.org/soap/envelope/';
+    private const SOAP_NAMESPACE = 'http://www.w3.org/2003/05/soap-envelope';
     private const WSDL_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4';
     private const NFE_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe';
     private const DS_NAMESPACE = 'http://www.w3.org/2000/09/xmldsig#';
@@ -183,8 +183,7 @@ class SefazRecepcaoEventoService
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
-                'Content-Type: text/xml; charset=utf-8',
-                'SOAPAction: "' . self::SOAP_ACTION . '"',
+                'Content-Type: application/soap+xml; charset=utf-8; action="' . self::SOAP_ACTION . '"',
                 'Content-Length: ' . strlen($requestXml),
             ],
             CURLOPT_POSTFIELDS => $requestXml,
