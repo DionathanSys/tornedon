@@ -33,7 +33,7 @@ final class ConfirmInvoiceAction
             ->color('success')
             ->modalHeading('Confirmar Fatura')
             ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber. Opcionalmente, você pode disparar a emissão dos documentos logo após a confirmação e registrar o recebimento imediato da fatura.')
-            ->visible(fn (Invoice $record): bool => ! $record->confirmed && ! $record->canceled)
+            ->visible(fn (Invoice $record): bool => true) //! $record->confirmed && ! $record->canceled)
             ->schema([
                 Callout::make('Documentos que serão gerados')
                     ->description(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record))
