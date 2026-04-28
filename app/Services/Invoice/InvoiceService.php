@@ -732,14 +732,7 @@ class InvoiceService
             ->unique()
             ->values();
 
-        $descriptionMode = $fiscalData['nfse_description_mode'] ?? NfseDescriptionMode::AUTO->value;
-        $defaultDescription = $this->buildNfseItemDescription($invoice, (string) $descriptionMode);
-
-        $description = trim((string) ($fiscalData['nfse_item_description'] ?? ''));
-
-        if ($description === '') {
-            $description = $defaultDescription;
-        }
+        $description = $this->buildNfseOrderNumbersDescription($orderNumbers);
 
         // $additionalInformation = mb_substr(
         //     'OS vinculadas: ' . $orderNumbers->map(fn (string $number): string => '#' . $number)->implode(', '),
@@ -933,6 +926,15 @@ class InvoiceService
         $descriptionParts[] = 'Serviços faturados: ' . $serviceSummaries->implode(' | ');
 
         return mb_substr(trim(implode(' ', $descriptionParts)), 0, 2000);
+    }
+
+    private function buildNfseOrderNumbersDescription(Collection $orderNumbers): string
+    {
+        $description = 'Referente às ordens de serviço ' . $orderNumbers
+            ->map(fn (string $number): string => '#' . $number)
+            ->implode(', ');
+
+        return mb_substr(trim($description), 0, 255);
     }
 
     private function formatDecimal(float $value, int $precision = 2): string
