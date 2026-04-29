@@ -38,7 +38,6 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ->url(fn(): string => ProductResource::getUrl('create', [
                         'tenant' => Filament::getTenant(),
                     ]))
-                    ->link()
                     ->openUrlInNewTab(),
                 Action::make('createProductFromXml')
                     ->label('Cadastrar produto do XML')
@@ -52,6 +51,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                             Select::make('item_index')
                                 ->label('Item do XML')
                                 ->required()
+                                ->columnSpanFull()
                                 ->options(function (): array {
                                     $items = collect($this->record->items_json ?? [])->values();
 
@@ -89,10 +89,12 @@ class ViewSefazDistributionDocument extends ViewRecord
                             TextInput::make('name')
                                 ->label('Nome')
                                 ->required()
+                                ->columnSpanFull()
                                 ->maxLength(255),
                             Textarea::make('description')
                                 ->label('Descrição')
                                 ->rows(2)
+                                ->columnSpanFull()
                                 ->maxLength(500),
                             Select::make('unit')
                                 ->label('Unidade')
@@ -113,6 +115,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                             TextInput::make('manufacturer_code')
                                 ->label('Código do fornecedor (XML)')
                                 ->maxLength(100)
+                                ->columnStart(1)
                                 ->columnSpan(2),
                             TextInput::make('barcode')
                                 ->label('EAN')
@@ -157,7 +160,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->label('Valor de venda fixo')
                                 ->numeric()
                                 ->step('0.01')
-                                ->columnSpan(1)
+                                ->columnSpan(2)
                                 ->default(0)
                                 ->visible(fn(callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
                             Toggle::make('has_stock_control')
