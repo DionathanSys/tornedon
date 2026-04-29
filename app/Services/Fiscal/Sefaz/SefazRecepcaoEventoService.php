@@ -2,6 +2,7 @@
 
 namespace App\Services\Fiscal\Sefaz;
 
+use CloudDfe\SdkPHP\Dfe;
 use App\Models\Company;
 use App\Services\Fiscal\NfeConfigService;
 use DOMDocument;
@@ -30,35 +31,38 @@ class SefazRecepcaoEventoService
      */
     public function manifestScience(Company $company, string $accessKey, int $sequence = 1): array
     {
-        $cnpj = preg_replace('/\D+/', '', (string) $company->document_number) ?? '';
-        if (strlen($cnpj) !== 14) {
-            throw new RuntimeException('Informe um CNPJ válido para a empresa antes de manifestar DF-e na SEFAZ.');
-        }
-
         if (preg_match('/^\d{44}$/', $accessKey) !== 1) {
             throw new RuntimeException('A chave de acesso informada para manifestação é inválida.');
         }
 
-        $environment = $this->nfeConfigService->resolveAmbiente($company->id);
-        $certificate = $this->certificateService->loadForCompany($company);
+        $sdk = new Dfe($this->nfeConfigService->buildSdkParams((int) $company->id));
+        $response = $sdk->manifesta([
+            'chave' => $accessKey,
+            'tipo_evento' => self::EVENT_TYPE_SCIENCE,
+            'justificativa' => null,
+        ]);
 
-        $requestXml = $this->buildSoapRequestXml(
-            environment: $environment,
-            cnpj: $cnpj,
-            accessKey: $accessKey,
-            privateKeyPem: $certificate['private_key_pem'],
-            certificatePem: $certificate['certificate_pem'],
-            sequence: $sequence,
-        );
+        $success = (bool) ($response->sucesso ?? false);
+        $code = (string) ($response->codigo ?? '');
+        $message = (string) ($response->mensagem ?? ($success ? 'Manifestação aceita.' : 'Falha na manifestação.'));
 
-        $responseXml = $this->sendSoapRequest(
-            endpoint: $this->resolveEndpoint($environment),
-            requestXml: $requestXml,
-            certificatePem: $certificate['certificate_pem'],
-            privateKeyPem: $certificate['private_key_pem'],
-        );
-
-        return $this->parseSoapResponse($responseXml);
+        return [
+            'success' => $success,
+            'batch_status_code' => $code,
+            'batch_status_message' => $message,
+            'event_status_code' => $code,
+            'event_status_message' => $message,
+            'protocol' => (string) ($response->protocolo ?? ''),
+            'registered_at' => (string) ($response->data_hora_evento ?? ''),
+            'event_errors' => (array) ($response->erros ?? []),
+            'raw_response' => [
+                'sucesso' => $response->sucesso ?? null,
+                'codigo' => $response->codigo ?? null,
+                'mensagem' => $response->mensagem ?? null,
+                'protocolo' => $response->protocolo ?? null,
+                'data_hora_evento' => $response->data_hora_evento ?? null,
+            ],
+        ];
     }
 
     public function buildSoapRequestXml(
