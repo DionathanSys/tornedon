@@ -11,10 +11,10 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\DateRangeFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class StockMovementsTable
 {
@@ -62,6 +62,10 @@ class StockMovementsTable
                     ->label('Referência')
                     ->formatStateUsing(fn($state) => $state ? ucfirst($state) : '-')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('source_type')
+                    ->label('Origem')
+                    ->formatStateUsing(fn($state) => $state ? ucfirst($state) : '-')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('observations')
                     ->label('Observações')
                     ->limit(50)
@@ -70,13 +74,18 @@ class StockMovementsTable
                     ->label('Criado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('created_at')
+                    ->label('Criado em')
+                    ->sortable()
+                    ->dateTime('d/m/Y H:i')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('type')
                     ->label('Tipo de Mov.')
                     ->options(collect(Type::cases())->mapWithKeys(fn($type) => [$type->value => $type->label()])->toArray()),
-                // DateRangeFilter::make('created_at')
-                //     ->label('Período de Movimentação'),
+                DateRangeFilter::make('created_at')
+                    ->label('Período de Movimentação'),
             ])
             ->toolbarActions([
                 CreateStockMovementFromModalAction::make(),
@@ -85,6 +94,10 @@ class StockMovementsTable
                     FixProductStockBulkAction::make(),
                 ])->label('Estoque'),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->reorderableColumns()
+            ->persistSortInSession()
+            ->persistFiltersInSession()
+            ->persistSearchInSession();
     }
 }
