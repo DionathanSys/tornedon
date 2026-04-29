@@ -162,7 +162,8 @@ class ViewSefazDistributionDocument extends ViewRecord
                             Select::make('origin_sale_price')
                                 ->label('Origem do preço de venda')
                                 ->options(OriginSalePrice::toSelectArray())
-                                ->columnSpan(1)
+                                ->columnSpan(2)
+                                ->native(false)
                                 ->default(OriginSalePrice::CALCULATED_II->value)
                                 ->live(),
                             Money::make('sale_price_value')
@@ -170,7 +171,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->numeric()
                                 ->step('0.01')
                                 ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                                ->columnSpan(2)
+                                ->columnSpan(1)
                                 ->default(0)
                                 ->visible(fn(callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
                             Toggle::make('has_stock_control')
