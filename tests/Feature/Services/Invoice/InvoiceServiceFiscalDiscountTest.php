@@ -112,6 +112,10 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $user = User::factory()->create();
         [$company, $customer, $invoice] = $this->createInvoiceContext($user);
 
+        FiscalProfile::query()
+            ->where('company_id', $company->id)
+            ->update(['allow_unconditional_discount_nfse' => true]);
+
         $serviceOrder = ServiceOrder::query()->create([
             'number' => 'SO-001',
             'customer_id' => $customer->id,
@@ -170,6 +174,62 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame(150.0, (float) $item->total_price);
         $this->assertSame(15.0, (float) $item->discount_amount);
+    }
+
+    public function test_it_uses_net_service_total_when_unconditional_discount_is_not_allowed(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-003',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $serviceModel = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-003',
+            'name' => 'Servico sem desconto incondicionado',
+            'price' => 120,
+            'tax_rate' => 5,
+            'nbs_code' => '123456789',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        ServiceOrderItem::query()->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $serviceModel->id,
+            'quantity' => 1,
+            'unit_price' => 120,
+            'discount_amount' => 20,
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(InvoiceService::class);
+        $document = $service->createFiscalDocument($invoice->fresh(), [
+            'document_type' => DocumentModel::NFSE->value,
+            'nfse_model' => NfseModel::MUNICIPAL->value,
+            'issued_at' => now()->toDateString(),
+            'nfse_item_description' => 'Descricao consolidada liquida',
+        ], $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+
+        $item = $document->items()->first();
+
+        $this->assertNotNull($item);
+        $this->assertSame(100.0, (float) $item->total_price);
+        $this->assertSame(0.0, (float) $item->discount_amount);
     }
 
     public function test_invoice_totals_do_not_apply_service_order_discount_twice(): void

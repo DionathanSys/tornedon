@@ -720,12 +720,19 @@ class InvoiceService
 
         $serviceId = $serviceIds->count() === 1 ? $serviceIds->first() : null;
 
-        $totalValue = round($sourceItems->sum(
+        $totalGrossValue = round($sourceItems->sum(
             fn (array $row): float => FiscalItemAmounts::grossTotal($row['item']->quantity, $row['item']->unit_price)
         ), 2);
         $totalDiscount = round($sourceItems->sum(
             fn (array $row): float => (float) ($row['item']->discount_amount ?? 0)
         ), 2);
+        $allowUnconditionalDiscount = (bool) ($profile?->allow_unconditional_discount_nfse ?? false);
+
+        $totalValue = $allowUnconditionalDiscount
+            ? $totalGrossValue
+            : max(0, round($totalGrossValue - $totalDiscount, 2));
+
+        $discountAmount = $allowUnconditionalDiscount ? $totalDiscount : 0.0;
 
         $orderNumbers = $sourceItems
             ->map(fn (array $row): string => (string) ($row['service_order']->number ?? $row['service_order']->id))
@@ -749,7 +756,7 @@ class InvoiceService
             'quantity' => 1,
             'unit_price' => $totalValue,
             'total_price' => $totalValue,
-            'discount_amount' => $totalDiscount,
+            'discount_amount' => $discountAmount,
             'municipal_tax_code' => $municipalTaxCode,
             'nbs_code' => $nbsCode,
             'cnae_code' => $cnaeCode,

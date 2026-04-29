@@ -101,6 +101,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             // NFS-e / ISS
             'iss_rate_default' => $profile?->iss_rate_default,
             'iss_withheld_default' => $profile?->iss_withheld_default ?? false,
+            'allow_unconditional_discount_nfse' => $profile?->allow_unconditional_discount_nfse ?? false,
             'nfse_special_tax_regime' => $profile?->nfse_special_tax_regime,
             'default_service_code' => $profile?->default_service_code,
             'service_cnae_code' => $profile?->service_cnae_code,
@@ -399,6 +400,11 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->helperText('Se ativado, novos itens de NFS-e terão ISS retido por padrão.')
                             ->columnSpan(['md' => 1]),
 
+                        Forms\Components\Toggle::make('allow_unconditional_discount_nfse')
+                            ->label('Permite desconto incondicionado')
+                            ->helperText('Quando ativado, o desconto das ordens de serviço será enviado como desconto incondicionado na NFS-e.')
+                            ->columnSpan(['md' => 1]),
+
                         Forms\Components\Select::make('nfse_special_tax_regime')
                             ->label('Regime Especial de Tributação')
                             ->options([
@@ -533,6 +539,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             // NFS-e / ISS
             'iss_rate_default' => $data['iss_rate_default'] ?? null,
             'iss_withheld_default' => $data['iss_withheld_default'] ?? false,
+            'allow_unconditional_discount_nfse' => $data['allow_unconditional_discount_nfse'] ?? false,
             'nfse_special_tax_regime' => $data['nfse_special_tax_regime'] ?? null,
             'default_service_code' => $data['default_service_code'] ?? null,
             'service_cnae_code' => $data['service_cnae_code'] ?? null,
