@@ -2,10 +2,23 @@
 
 namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Pages;
 
+use App\Enum\Product\OriginSalePrice;
+use App\Enum\Product\Unit;
 use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDistributionDocumentResource;
+use App\Filament\Clusters\Inventory\Resources\Products\ProductResource;
+use App\Models\Product;
+use App\Models\SefazDistributionDocument;
+use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
+use App\Services\Product\ProductService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Facades\Auth;
 
 class ViewSefazDistributionDocument extends ViewRecord
 {
@@ -14,6 +27,197 @@ class ViewSefazDistributionDocument extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('openProductCreatePage')
+                ->label('Abrir cadastro de produto')
+                ->url(fn (): string => ProductResource::getUrl('create', [
+                    'tenant' => Filament::getTenant(),
+                ]))
+                ->link()
+                ->openUrlInNewTab(),
+            Action::make('createProductFromXml')
+                ->label('Cadastrar produto do XML')
+                ->icon('heroicon-o-plus-circle')
+                ->modalWidth('4xl')
+                ->visible(fn (): bool => ! empty(($this->record->items_json ?? [])))
+                ->schema([
+                    Select::make('item_index')
+                        ->label('Item do XML')
+                        ->required()
+                        ->options(function (): array {
+                            $items = collect($this->record->items_json ?? [])->values();
+
+                            return $items
+                                ->mapWithKeys(function (array $item, int $index): array {
+                                    $line = $item['line'] ?? ($index + 1);
+                                    $code = trim((string) ($item['product_code'] ?? ''));
+                                    $description = trim((string) ($item['description'] ?? 'Sem descrição'));
+                                    $label = 'Linha ' . $line . ' - ' . ($code !== '' ? '[' . $code . '] ' : '') . $description;
+
+                                    return [$index => mb_substr($label, 0, 180)];
+                                })
+                                ->all();
+                        })
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $set): void {
+                            $item = collect($this->record->items_json ?? [])->values()->get((int) $state);
+                            if (! is_array($item)) {
+                                return;
+                            }
+
+                            $set('name', (string) ($item['description'] ?? ''));
+                            $set('description', (string) ($item['description'] ?? ''));
+                            $set('manufacturer_code', (string) ($item['product_code'] ?? ''));
+                            $set('barcode', (string) ($item['ean'] ?? ''));
+                            $set('xml_ncm', (string) ($item['ncm'] ?? ''));
+                            $set('xml_unit', (string) ($item['unit'] ?? ''));
+                            $set('xml_quantity', (string) ($item['quantity'] ?? ''));
+                            $set('xml_unit_value', (string) ($item['unit_value'] ?? ''));
+                            $set('xml_total_value', (string) ($item['total_value'] ?? ''));
+
+                            $unit = mb_strtoupper(trim((string) ($item['unit'] ?? 'UN')));
+                            $set('unit', Unit::tryFrom($unit)?->value ?? Unit::UN->value);
+                        }),
+                    TextInput::make('name')
+                        ->label('Nome')
+                        ->required()
+                        ->maxLength(255),
+                    Textarea::make('description')
+                        ->label('Descrição')
+                        ->rows(2)
+                        ->maxLength(500),
+                    Select::make('unit')
+                        ->label('Unidade')
+                        ->required()
+                        ->options(Unit::toSelectArray())
+                        ->default(Unit::UN->value),
+                    TextInput::make('manufacturer_code')
+                        ->label('Código do fornecedor (XML)')
+                        ->maxLength(100),
+                    TextInput::make('barcode')
+                        ->label('EAN')
+                        ->maxLength(60),
+                    TextInput::make('xml_ncm')
+                        ->label('NCM do XML')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('xml_unit')
+                        ->label('Unidade no XML')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('xml_quantity')
+                        ->label('Quantidade no XML')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('xml_unit_value')
+                        ->label('Valor unitário no XML')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('xml_total_value')
+                        ->label('Valor total no XML')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('profit_margin')
+                        ->label('Margem de lucro (%)')
+                        ->numeric()
+                        ->step('0.01')
+                        ->default(0),
+                    TextInput::make('min_sale_price')
+                        ->label('Preço mínimo de venda')
+                        ->numeric()
+                        ->step('0.01')
+                        ->default(0),
+                    Select::make('origin_sale_price')
+                        ->label('Origem do preço de venda')
+                        ->options(OriginSalePrice::toSelectArray())
+                        ->default(OriginSalePrice::CALCULATED_II->value)
+                        ->live(),
+                    TextInput::make('sale_price_value')
+                        ->label('Valor de venda fixo')
+                        ->numeric()
+                        ->step('0.01')
+                        ->default(0)
+                        ->visible(fn (callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
+                    Toggle::make('has_stock_control')
+                        ->label('Controla estoque?')
+                        ->default(false),
+                    Toggle::make('is_active')
+                        ->label('Ativo')
+                        ->default(true),
+                ])
+                ->action(function (array $data): void {
+                    $items = collect($this->record->items_json ?? [])->values();
+                    $index = (int) ($data['item_index'] ?? -1);
+                    $item = $items->get($index);
+
+                    if (! is_array($item)) {
+                        Notification::make()
+                            ->title('Item inválido')
+                            ->danger()
+                            ->body('Selecione um item válido do XML para continuar.')
+                            ->send();
+
+                        return;
+                    }
+
+                    $productService = app(ProductService::class);
+
+                    $productPayload = [
+                        'name' => (string) ($data['name'] ?? ''),
+                        'description' => (string) ($data['description'] ?? ''),
+                        'company_id' => (int) $this->record->company_id,
+                        'unit' => (string) ($data['unit'] ?? Unit::UN->value),
+                        'manufacturer_code' => (string) ($data['manufacturer_code'] ?? ''),
+                        'barcode' => (string) ($data['barcode'] ?? ''),
+                        'profit_margin' => (float) ($data['profit_margin'] ?? 0),
+                        'min_sale_price' => (float) ($data['min_sale_price'] ?? 0),
+                        'origin_sale_price' => (string) ($data['origin_sale_price'] ?? OriginSalePrice::CALCULATED_II->value),
+                        'sale_price_value' => (float) ($data['sale_price_value'] ?? 0),
+                        'has_stock_control' => (bool) ($data['has_stock_control'] ?? false),
+                        'is_active' => (bool) ($data['is_active'] ?? true),
+                        'external_reference_codes' => array_filter([
+                            'xml_product_code' => (string) ($item['product_code'] ?? ''),
+                            'xml_ncm' => (string) ($item['ncm'] ?? ''),
+                            'xml_cfop' => (string) ($item['cfop'] ?? ''),
+                        ], fn ($value): bool => $value !== ''),
+                    ];
+
+                    $product = $productService->create($productPayload, (int) Auth::id());
+
+                    if (! $product instanceof Product) {
+                        Notification::make()
+                            ->title('Falha ao cadastrar produto')
+                            ->danger()
+                            ->body($productService->getMessage() ?: 'Não foi possível cadastrar o produto com os dados informados.')
+                            ->send();
+
+                        return;
+                    }
+
+                    $updatedItems = $items
+                        ->map(function (array $currentItem, int $currentIndex) use ($index, $product): array {
+                            if ($currentIndex !== $index) {
+                                return $currentItem;
+                            }
+
+                            $currentItem['product_id'] = $product->id;
+                            $currentItem['product_name'] = $product->name;
+
+                            return $currentItem;
+                        })
+                        ->all();
+
+                    app(SefazDistributionDocumentService::class)->updateItemMappings(
+                        $this->record->fresh(),
+                        $updatedItems,
+                        Auth::id(),
+                    );
+
+                    Notification::make()
+                        ->title('Produto cadastrado e vinculado')
+                        ->success()
+                        ->body('Produto ' . $product->name . ' vinculado ao item selecionado do DF-e.')
+                        ->send();
+                }),
             Action::make('back_to_list')
                 ->label('Voltar')
                 ->url(route('filament.admin.financial.resources.sefaz-distribution-documents.index', [
