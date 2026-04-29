@@ -40,76 +40,84 @@ class SefazDistributionDocumentsTable
                 TextColumn::make('document_number')
                     ->label('Número NF')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('document_series')
                     ->label('Série')
                     ->searchable()
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('issuer_name')
                     ->label('Emitente')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('document_key')
                     ->label('Chave')
                     ->tooltip(fn(SefazDistributionDocument $record): string => $record->document_key)
                     ->searchable()
                     ->copyable()
                     ->copyMessage('Chave copiada')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn(Status $state): string => $state->description())
                     ->color(fn(Status $state): string => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('import_status')
                     ->label('Importação')
                     ->badge()
                     ->formatStateUsing(fn(ImportStatus $state): string => $state->description())
                     ->color(fn(ImportStatus $state): string => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('manifestation_status')
                     ->label('Manifestação')
                     ->badge()
                     ->formatStateUsing(fn(ManifestationStatus $state): string => $state->description())
                     ->color(fn(ManifestationStatus $state): string => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('full_xml_available')
                     ->label('XML completo')
                     ->boolean()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor total')
                     ->money('BRL', locale: 'pt_BR')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('issued_at')
                     ->label('Emissão')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('import_ready_at')
                     ->label('Pronto p/ importar')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('fiscalDocument.id')
                     ->label('Nota entrada')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('partner_id')
                     ->label('Fornecedor')
                     ->badge()
                     ->formatStateUsing(fn ($state, SefazDistributionDocument $record): string => $record->partner?->name ? 'Vinculado' : 'Pendente')
                     ->color(fn ($state, SefazDistributionDocument $record): string => $record->partner?->name ? 'success' : 'warning')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('last_seen_at')
                     ->label('Última detecção')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('last_action')
                     ->label('Última ação')
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: false)
                     ->placeholder('-'),
             ])
             ->filters([
