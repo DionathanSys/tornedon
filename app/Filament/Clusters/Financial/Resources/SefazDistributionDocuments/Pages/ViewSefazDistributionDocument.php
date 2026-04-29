@@ -33,16 +33,17 @@ class ViewSefazDistributionDocument extends ViewRecord
         return [
             ActionGroup::make([
                 Action::make('openProductCreatePage')
-                    ->label('Abrir cadastro de produto')
+                    ->label('Produto')
+                    ->icon(Heroicon::Plus)
                     ->size(Size::Small)
                     ->url(fn(): string => ProductResource::getUrl('create', [
                         'tenant' => Filament::getTenant(),
                     ]))
                     ->openUrlInNewTab(),
                 Action::make('createProductFromXml')
-                    ->label('Cadastrar produto do XML')
+                    ->label('Produto XML')
                     ->size(Size::Small)
-                    ->icon('heroicon-o-plus-circle')
+                    ->icon(Heroicon::Plus)
                     ->modalWidth('4xl')
                     ->visible(fn(): bool => ! empty(($this->record->items_json ?? [])))
                     ->schema(fn(Schema $schema) => $schema
