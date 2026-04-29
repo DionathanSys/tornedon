@@ -124,10 +124,11 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->disabled()
                                 ->dehydrated(false)
                                 ->columnSpan(1),
-                            TextInput::make('xml_product_origin')
+                            Select::make('xml_product_origin')
                                 ->label('Origem do produto (padrão)')
-                                ->disabled()
-                                ->dehydrated(false)
+                                ->options(Origin::toSelectArray())
+                                ->default(Origin::NACIONAL->value)
+                                ->native(false)
                                 ->columnSpan(1),
                             TextInput::make('manufacturer_code')
                                 ->label('Código do fornecedor (XML)')
