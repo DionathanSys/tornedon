@@ -148,7 +148,6 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->default(0),
                             Money::make('min_sale_price')
                                 ->label('Preço mínimo de venda')
-                                ->numeric()
                                 ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1),
                             Select::make('origin_sale_price')
@@ -158,7 +157,6 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->live(),
                             Money::make('sale_price_value')
                                 ->label('Valor de venda fixo')
-                                ->numeric()
                                 ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1)
                                 ->visible(fn(callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
