@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -451,6 +452,8 @@ class SefazDistributionDocumentsTable
             ->defaultSort('last_seen_at', 'desc')
             ->reorderableColumns()
             ->persistFiltersInSession()
-            ->persistSearchInSession();
+            ->persistSearchInSession()
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2);
     }
 }
