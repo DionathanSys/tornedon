@@ -137,6 +137,14 @@ class ServiceOrdersTable
                     ->sortable()
                     ->placeholder('Sem Fatura')
                     ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
+                TextColumn::make('createdBy.name')
+                    ->label('Criado por')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updatedBy.name')
+                    ->label('Atualizado por')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -252,6 +260,11 @@ class ServiceOrdersTable
                     ->hiddenLabel(false)
                     ->color('gray'),
             ])
+            ->reorderableColumns()
+            ->persistFiltersInSession()
+            ->persistSearchInSession()
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
             ->searchPlaceholder('Buscar por número, cliente, equipamento, local...');
     }
 }
