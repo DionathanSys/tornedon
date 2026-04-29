@@ -75,6 +75,31 @@ class FiscalDocumentForm
                                             ->required()
                                             ->native(false)
                                             ->columnSpan(['md' => 1, 'lg' => 3]),
+                                        TextEntry::make('emission_requested_at')
+                                            ->label('Solicitação de Emissão')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->visibleOn('edit')
+                                            ->placeholder(' - ')
+                                            ->columnStart(1)
+                                            ->columnSpan(['md' => 1, 'lg' => 3]),
+                                        TextEntry::make('emission_attempted_at')
+                                            ->label('Última Tentativa')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder(' - ')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 3]),
+                                        TextEntry::make('confirmed_at')
+                                            ->label('Dt. Confirmação')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder(' - ')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 3]),
+                                        TextEntry::make('updated_at')
+                                            ->label('Últ. Alteração')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder(' - ')
+                                            ->visibleOn('edit')
+                                            ->columnSpan(['md' => 1, 'lg' => 3]),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible(),

@@ -39,12 +39,14 @@ class StockMovementsTable
                     ->formatStateUsing(fn($state) => $state->label())
                     ->color(fn($state) => $state->color())
                     ->badge()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('quantity')
                     ->label('Qtde.')
                     ->numeric(3, ',', '.')
                     ->formatStateUsing(fn($state) => number_format($state, 3, ',', '.') . ' un.')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('unit_price')
                     ->label('Custo Un.')
                     ->money('BRL')
@@ -74,11 +76,6 @@ class StockMovementsTable
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_at')
-                    ->label('Criado em')
-                    ->sortable()
-                    ->dateTime('d/m/Y H:i')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
