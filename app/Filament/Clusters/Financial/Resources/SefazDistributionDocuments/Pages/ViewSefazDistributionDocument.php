@@ -23,6 +23,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ViewSefazDistributionDocument extends ViewRecord
 {
@@ -52,6 +53,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                             Select::make('item_index')
                                 ->label('Item do XML')
                                 ->required()
+                                ->native(false)
                                 ->columnSpanFull()
                                 ->options(function (): array {
                                     $items = collect($this->record->items_json ?? [])->values();
@@ -101,6 +103,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->label('Unidade')
                                 ->required()
                                 ->columnSpan(1)
+                                ->native(false)
                                 ->options(Unit::toSelectArray())
                                 ->default(Unit::UN->value),
                             TextInput::make('xml_unit')
@@ -122,20 +125,24 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->label('EAN')
                                 ->maxLength(60)
                                 ->columnSpan(2),
-                            TextInput::make('xml_quantity')
+                            Money::make('xml_quantity')
                                 ->label('Quantidade no XML')
                                 ->disabled()
+                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                ->prefix(null)
                                 ->columnSpan(1)
                                 ->columnStart(1)
                                 ->dehydrated(false),
-                            TextInput::make('xml_unit_value')
+                            Money::make('xml_unit_value')
                                 ->label('Valor unitário no XML')
                                 ->disabled()
+                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1)
                                 ->dehydrated(false),
-                            TextInput::make('xml_total_value')
+                            Money::make('xml_total_value')
                                 ->label('Valor total no XML')
                                 ->disabled()
+                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1)
                                 ->dehydrated(false),
                             TextInput::make('profit_margin')
@@ -145,10 +152,11 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->columnStart(1)
                                 ->columnSpan(1)
                                 ->default(0),
-                            TextInput::make('min_sale_price')
+                            Money::make('min_sale_price')
                                 ->label('Preço mínimo de venda')
                                 ->numeric()
                                 ->step('0.01')
+                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1)
                                 ->default(0),
                             Select::make('origin_sale_price')
@@ -157,16 +165,18 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->columnSpan(1)
                                 ->default(OriginSalePrice::CALCULATED_II->value)
                                 ->live(),
-                            TextInput::make('sale_price_value')
+                            Money::make('sale_price_value')
                                 ->label('Valor de venda fixo')
                                 ->numeric()
                                 ->step('0.01')
+                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(2)
                                 ->default(0)
                                 ->visible(fn(callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
                             Toggle::make('has_stock_control')
                                 ->label('Controla estoque?')
                                 ->columnSpan(1)
+                                ->columnStart(1)
                                 ->inline(false)
                                 ->default(false),
                             Toggle::make('is_active')
