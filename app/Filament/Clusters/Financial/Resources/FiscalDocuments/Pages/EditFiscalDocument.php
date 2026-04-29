@@ -24,14 +24,6 @@ class EditFiscalDocument extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        if ($this->getRecord()->isImportedFromDfe()) {
-            return [
-                Action::make('view_only')
-                    ->label('Documento importado via DF-e')
-                    ->disabled(),
-            ];
-        }
-
         return [
             ActionGroup::make([
                 ConfirmEntryAction::make(),
