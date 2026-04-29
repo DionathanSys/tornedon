@@ -10,6 +10,7 @@ use App\Models\StockMovement;
 use Filament\Actions\BulkActionGroup;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -98,6 +99,8 @@ class StockMovementsTable
             ->reorderableColumns()
             ->persistSortInSession()
             ->persistFiltersInSession()
-            ->persistSearchInSession();
+            ->persistSearchInSession()
+            ->columnManagerColumns(4)
+            ->columnManagerLayout(ColumnManagerLayout::Modal);
     }
 }
