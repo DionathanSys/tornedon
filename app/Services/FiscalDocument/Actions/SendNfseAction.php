@@ -36,6 +36,8 @@ class SendNfseAction
         ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null
     ): bool
     {
+        $shouldReleaseNumberAssignment = false;
+
         try {
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($fiscalDocument);
@@ -75,6 +77,7 @@ class SendNfseAction
             if ($currentNumber < 1) {
                 $this->assignNumberForAttempt($fiscalDocument, $serie);
                 $fiscalDocument->refresh();
+                $shouldReleaseNumberAssignment = true;
             }
 
             // ------------------------------------------------------------------
@@ -152,14 +155,13 @@ class SendNfseAction
                 dispatch(new \App\Jobs\ConsultNfseJob($fiscalDocument->id, $this->userId))
                     ->delay(now()->addSeconds(15));
 
+                $shouldReleaseNumberAssignment = false;
                 $this->setSuccess();
                 return true;
             }
 
             // Erros de validação dos dados
             if (in_array($resp->codigo ?? null, [5001, 5002])) {
-                $this->releaseNumberAssignment($fiscalDocument);
-
                 $errors   = $fiscalDocument->errors_messages ?? [];
                 $baseMessage = $resp->mensagem ?? 'Erro de validação';
 
@@ -214,8 +216,6 @@ class SendNfseAction
             }
 
             // Qualquer outro erro
-            $this->releaseNumberAssignment($fiscalDocument);
-
             $errors   = $fiscalDocument->errors_messages ?? [];
             $baseMessage = $resp->mensagem ?? 'Erro desconhecido';
 
@@ -260,8 +260,6 @@ class SendNfseAction
             return false;
 
         } catch (\Exception $e) {
-            $this->releaseNumberAssignment($fiscalDocument);
-
             $msgErro = 'Erro ao enviar NFS-e: ' . $e->getMessage();
             $this->setError($msgErro);
 
@@ -275,6 +273,10 @@ class SendNfseAction
             ]);
 
             return false;
+        } finally {
+            if ($shouldReleaseNumberAssignment) {
+                $this->releaseNumberAssignment($fiscalDocument);
+            }
         }
     }
 
