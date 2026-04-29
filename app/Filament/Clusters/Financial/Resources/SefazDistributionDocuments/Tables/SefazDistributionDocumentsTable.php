@@ -448,6 +448,9 @@ class SefazDistributionDocumentsTable
                     ])),
                 ])
             ])
-            ->defaultSort('last_seen_at', 'desc');
+            ->defaultSort('last_seen_at', 'desc')
+            ->reorderableColumns()
+            ->persistFiltersInSession()
+            ->persistSearchInSession();
     }
 }
