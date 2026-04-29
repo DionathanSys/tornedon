@@ -19,6 +19,7 @@ class SefazDistributionDocumentInfolist
         return $schema
             ->components([
                 Section::make('Documento detectado')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('issuer_name')
                             ->label('Emitente')
@@ -33,18 +34,18 @@ class SefazDistributionDocumentInfolist
                         TextEntry::make('status')
                             ->label('Fluxo DF-e')
                             ->badge()
-                            ->formatStateUsing(fn (Status $state): string => $state->description())
-                            ->color(fn (Status $state): string => $state->color()),
+                            ->formatStateUsing(fn(Status $state): string => $state->description())
+                            ->color(fn(Status $state): string => $state->color()),
                         TextEntry::make('import_status')
                             ->label('Importação')
                             ->badge()
-                            ->formatStateUsing(fn (ImportStatus $state): string => $state->description())
-                            ->color(fn (ImportStatus $state): string => $state->color()),
+                            ->formatStateUsing(fn(ImportStatus $state): string => $state->description())
+                            ->color(fn(ImportStatus $state): string => $state->color()),
                         TextEntry::make('manifestation_status')
                             ->label('Manifestação')
                             ->badge()
-                            ->formatStateUsing(fn (ManifestationStatus $state): string => $state->description())
-                            ->color(fn (ManifestationStatus $state): string => $state->color()),
+                            ->formatStateUsing(fn(ManifestationStatus $state): string => $state->description())
+                            ->color(fn(ManifestationStatus $state): string => $state->color()),
                         TextEntry::make('partner.name')
                             ->label('Fornecedor vinculado')
                             ->placeholder('Não vinculado'),
@@ -71,6 +72,9 @@ class SefazDistributionDocumentInfolist
                     ])
                     ->columns(4),
                 Section::make('Timeline operacional')
+                    ->columnSpanFull()
+                    ->persistCollapsed()
+                    ->collapsed()
                     ->schema([
                         RepeatableEntry::make('timeline')
                             ->label('')
@@ -105,7 +109,7 @@ class SefazDistributionDocumentInfolist
 
                                 $auditTimeline = $record->auditEntries
                                     ->sortByDesc('occurred_at')
-                                    ->map(fn ($entry): array => [
+                                    ->map(fn($entry): array => [
                                         'when' => $entry->occurred_at,
                                         'title' => $entry->summary,
                                         'description' => $entry->event,
@@ -114,7 +118,7 @@ class SefazDistributionDocumentInfolist
 
                                 return $baseTimeline
                                     ->concat($auditTimeline)
-                                    ->sortByDesc(fn (array $item) => optional($item['when'])->timestamp ?? 0)
+                                    ->sortByDesc(fn(array $item) => optional($item['when'])->timestamp ?? 0)
                                     ->values()
                                     ->all();
                             })
@@ -137,6 +141,7 @@ class SefazDistributionDocumentInfolist
                             ]),
                     ]),
                 Section::make('Itens detectados')
+                    ->columnSpanFull()
                     ->schema([
                         RepeatableEntry::make('items_json')
                             ->label('')
@@ -161,7 +166,7 @@ class SefazDistributionDocumentInfolist
                                     ->money('BRL', locale: 'pt_BR'),
                             ]),
                     ])
-                    ->collapsed(fn ($record): bool => empty($record->items_json)),
+                    ->collapsed(fn($record): bool => empty($record->items_json)),
             ]);
     }
 }
