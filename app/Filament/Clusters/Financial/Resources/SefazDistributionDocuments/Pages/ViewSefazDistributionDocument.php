@@ -153,10 +153,8 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->columnSpan(1),
                             Select::make('origin_sale_price')
                                 ->label('Origem do preço de venda')
-                                ->options(OriginSalePrice::toSelectArray())
-                                ->columnSpan(2)
-                                ->native(false)
                                 ->default(OriginSalePrice::CALCULATED_II->value)
+                                ->columnSpan(2)
                                 ->live(),
                             Money::make('sale_price_value')
                                 ->label('Valor de venda fixo')
