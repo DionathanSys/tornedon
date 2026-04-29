@@ -95,7 +95,6 @@ class SefazDistributionDocumentParser
         /** @var DOMElement $det */
         foreach ($xpath->query('//*[local-name()="det"]') as $det) {
             $product = $this->firstElement($xpath, './*[local-name()="prod"]', $det);
-            $taxes = $this->firstElement($xpath, './*[local-name()="imposto"]', $det);
             if (! $product instanceof DOMElement) {
                 continue;
             }
@@ -108,7 +107,6 @@ class SefazDistributionDocumentParser
                 'ncm' => $this->firstText($xpath, './*[local-name()="NCM"]', $product),
                 'cest' => $this->firstText($xpath, './*[local-name()="CEST"]', $product),
                 'cfop' => $this->firstText($xpath, './*[local-name()="CFOP"]', $product),
-                'product_origin' => $this->firstText($xpath, './*[local-name()="orig"]', $taxes),
                 'unit' => $this->firstText($xpath, './*[local-name()="uCom"]', $product),
                 'quantity' => $this->normalizeDecimal($this->firstText($xpath, './*[local-name()="qCom"]', $product)),
                 'unit_value' => $this->normalizeDecimal($this->firstText($xpath, './*[local-name()="vUnCom"]', $product)),

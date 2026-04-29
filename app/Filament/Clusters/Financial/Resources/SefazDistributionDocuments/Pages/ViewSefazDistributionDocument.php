@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Pages;
 
 use App\Enum\Product\OriginSalePrice;
+use App\Enum\Product\Origin;
 use App\Enum\Product\Unit;
 use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDistributionDocumentResource;
 use App\Filament\Clusters\Inventory\Resources\Products\ProductResource;
@@ -82,7 +83,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                     $set('barcode', (string) ($item['ean'] ?? ''));
                                     $set('xml_ncm', (string) ($item['ncm'] ?? ''));
                                     $set('xml_cest', (string) ($item['cest'] ?? $item['cest_code'] ?? ''));
-                                    $set('xml_product_origin', (string) ($item['product_origin'] ?? ''));
+                                    $set('xml_product_origin', Origin::NACIONAL->description());
                                     $set('xml_unit', (string) ($item['unit'] ?? ''));
                                     $set('xml_quantity', (string) ($item['quantity'] ?? ''));
                                     $set('xml_unit_value', (string) ($item['unit_value'] ?? ''));
@@ -124,7 +125,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->dehydrated(false)
                                 ->columnSpan(1),
                             TextInput::make('xml_product_origin')
-                                ->label('Origem do XML')
+                                ->label('Origem do produto (padrão)')
                                 ->disabled()
                                 ->dehydrated(false)
                                 ->columnSpan(1),
@@ -229,7 +230,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                             'has_stock_control' => (bool) ($data['has_stock_control'] ?? false),
                             'is_active' => (bool) ($data['is_active'] ?? true),
                             'tax' => array_filter([
-                                'product_origin' => (string) ($item['product_origin'] ?? ''),
+                                'product_origin' => Origin::NACIONAL->value,
                                 'ncm_code' => (string) ($item['ncm'] ?? $item['ncm_code'] ?? ''),
                                 'cest_code' => (string) ($item['cest'] ?? $item['cest_code'] ?? ''),
                             ], fn($value): bool => $value !== ''),
