@@ -56,6 +56,12 @@ class FiscalDocumentsTable
                     ->placeholder('-')
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('rps_number')
+                    ->label('RPS Número')
+                    ->sortable()
+                    ->placeholder('-')
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Cliente')
