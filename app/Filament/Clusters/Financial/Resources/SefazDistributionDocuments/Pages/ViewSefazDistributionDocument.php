@@ -81,6 +81,8 @@ class ViewSefazDistributionDocument extends ViewRecord
                                     $set('manufacturer_code', (string) ($item['product_code'] ?? ''));
                                     $set('barcode', (string) ($item['ean'] ?? ''));
                                     $set('xml_ncm', (string) ($item['ncm'] ?? ''));
+                                    $set('xml_cest', (string) ($item['cest'] ?? $item['cest_code'] ?? ''));
+                                    $set('xml_product_origin', (string) ($item['product_origin'] ?? ''));
                                     $set('xml_unit', (string) ($item['unit'] ?? ''));
                                     $set('xml_quantity', (string) ($item['quantity'] ?? ''));
                                     $set('xml_unit_value', (string) ($item['unit_value'] ?? ''));
@@ -113,6 +115,16 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->columnSpan(1),
                             TextInput::make('xml_ncm')
                                 ->label('NCM do XML')
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->columnSpan(1),
+                            TextInput::make('xml_cest')
+                                ->label('CEST do XML')
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->columnSpan(1),
+                            TextInput::make('xml_product_origin')
+                                ->label('Origem do XML')
                                 ->disabled()
                                 ->dehydrated(false)
                                 ->columnSpan(1),
@@ -216,6 +228,11 @@ class ViewSefazDistributionDocument extends ViewRecord
                             'sale_price_value' => (float) ($data['sale_price_value'] ?? 0),
                             'has_stock_control' => (bool) ($data['has_stock_control'] ?? false),
                             'is_active' => (bool) ($data['is_active'] ?? true),
+                            'tax' => array_filter([
+                                'product_origin' => (string) ($item['product_origin'] ?? ''),
+                                'ncm_code' => (string) ($item['ncm'] ?? $item['ncm_code'] ?? ''),
+                                'cest_code' => (string) ($item['cest'] ?? $item['cest_code'] ?? ''),
+                            ], fn($value): bool => $value !== ''),
                             'external_reference_codes' => array_filter([
                                 'xml_product_code' => (string) ($item['product_code'] ?? ''),
                                 'xml_ncm' => (string) ($item['ncm'] ?? ''),
