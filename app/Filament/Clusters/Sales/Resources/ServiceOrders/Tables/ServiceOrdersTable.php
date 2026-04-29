@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 use App\Notification\NotifyService as notify;
+use Filament\Tables\Enums\ColumnManagerLayout;
 
 class ServiceOrdersTable
 {
