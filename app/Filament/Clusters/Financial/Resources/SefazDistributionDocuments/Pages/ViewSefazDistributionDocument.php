@@ -169,7 +169,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->columnSpan(1)
                                 ->columnStart(1)
                                 ->inline(false)
-                                ->default(false),
+                                ->default(true),
                             Toggle::make('is_active')
                                 ->label('Ativo')
                                 ->columnSpan(1)
