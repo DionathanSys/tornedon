@@ -82,4 +82,20 @@ class CompanyPartner extends Model
             get: fn() => $this->company()->first()->address
         );
     }
+
+    public function hasValidPrimaryAddress(): bool
+    {
+        $address = $this->addresses()->orderBy('id')->first();
+
+        if ($address === null) {
+            return false;
+        }
+
+        return filled($address->street)
+            && filled($address->number)
+            && filled($address->city)
+            && filled($address->city_code)
+            && filled($address->state)
+            && filled($address->country);
+    }
 }
