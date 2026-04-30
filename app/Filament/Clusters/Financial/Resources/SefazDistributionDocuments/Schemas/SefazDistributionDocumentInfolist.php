@@ -164,8 +164,10 @@ class SefazDistributionDocumentInfolist
                                 TextEntry::make('quantity'),
                                 TextEntry::make('total_value')
                                     ->money('BRL', locale: 'pt_BR'),
-                            ]),
+                            ])
+                            ,
                     ])
+
                     ->collapsed(fn($record): bool => empty($record->items_json)),
             ]);
     }

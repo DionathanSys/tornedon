@@ -383,24 +383,26 @@ class SefazDistributionDocumentsTable
                                 ->label('Itens')
                                 ->columnSpanFull()
                                 ->columns(12)
+                                ->deletable(false)
+                                ->addable(false)
                                 ->default(
                                     collect($record->items_json ?? [])->map(function (array $item): array {
                                         return [
-                                            'line' => $item['line'] ?? null,
-                                            'product_code' => $item['product_code'] ?? null,
-                                            'description' => $item['description'] ?? null,
-                                            'quantity' => $item['quantity'] ?? null,
-                                            'product_id' => $item['product_id'] ?? null,
-                                            'product_name' => $item['product_name'] ?? null,
+                                            'line'           => $item['line'] ?? null,
+                                            'product_code'   => $item['product_code'] ?? null,
+                                            'description'    => $item['description'] ?? null,
+                                            'quantity'       => $item['quantity'] ?? null,
+                                            'product_id'     => $item['product_id'] ?? null,
+                                            'product_name'   => $item['product_name'] ?? null,
                                         ];
                                     })->all()
                                 )
                                 ->schema([
                                         TextEntry::make('product_code')
-                                            ->hiddenLabel()
+                                            ->label('Cód. XML')
                                             ->columnSpan(2),
                                         TextEntry::make('description')
-                                            ->hiddenLabel()
+                                            ->label('Descrição XML')
                                             ->tooltip(fn($state) => $state)
                                             ->words(20)
                                             ->columnSpan(6),
