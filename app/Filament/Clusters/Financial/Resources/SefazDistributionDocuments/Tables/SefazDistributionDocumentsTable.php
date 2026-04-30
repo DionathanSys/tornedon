@@ -22,6 +22,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\FusedGroup;
 use Filament\Support\Icons\Heroicon;
@@ -396,12 +397,10 @@ class SefazDistributionDocumentsTable
                                 )
                                 ->schema([
                                     FusedGroup::make([
-                                        TextInput::make('product_code')
-                                            ->disabled()
-                                            ->formatStateUsing(fn($state) => "Cód. " . $state)
+                                        TextEntry::make('product_code')
                                             ->columnSpan(2),
-                                        TextInput::make('description')
-                                            ->disabled()
+                                        TextEntry::make('description')
+                                            ->tooltip(fn($state) => $state)
                                             ->columnSpan(10),
                                     ])
                                         ->label('Informações do item')
