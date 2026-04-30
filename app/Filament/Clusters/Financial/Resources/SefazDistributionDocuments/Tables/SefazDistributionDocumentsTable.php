@@ -17,6 +17,7 @@ use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use Filament\Facades\Filament;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -459,6 +460,10 @@ class SefazDistributionDocumentsTable
                         ])),
                 ])->icon(Heroicon::Bars3)
             ], RecordActionsPosition::BeforeCells)
+            ->toolbarActions([
+                DeleteBulkAction::make()
+                    ->label('Excluir notas'),
+            ])
             ->defaultSort('last_seen_at', 'desc')
             ->reorderableColumns()
             ->persistFiltersInSession()
