@@ -21,7 +21,9 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\FusedGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -378,6 +380,8 @@ class SefazDistributionDocumentsTable
                         ->schema(fn(SefazDistributionDocument $record): array => [
                             Repeater::make('items')
                                 ->label('Itens')
+                                ->columnSpanFull()
+                                ->columns(12)
                                 ->default(
                                     collect($record->items_json ?? [])->map(function (array $item): array {
                                         return [
@@ -391,21 +395,21 @@ class SefazDistributionDocumentsTable
                                     })->all()
                                 )
                                 ->schema([
-                                    Textarea::make('description')
-                                        ->label('Descrição')
-                                        ->disabled()
-                                        ->rows(2),
-                                    Textarea::make('product_code')
-                                        ->label('Código')
-                                        ->disabled()
-                                        ->rows(1),
-                                    Textarea::make('quantity')
-                                        ->label('Quantidade')
-                                        ->disabled()
-                                        ->rows(1),
+                                    FusedGroup::make([
+                                        TextInput::make('product_code')
+                                            ->label('Código')
+                                            ->disabled(),
+                                        TextInput::make('description')
+                                            ->label('Descrição')
+                                            ->disabled(),
+                                        TextInput::make('quantity')
+                                            ->label('Quantidade')
+                                            ->disabled()
+                                    ])->columnSpanFull(),
                                     Select::make('product_id')
                                         ->label('Produto interno')
                                         ->searchable()
+                                        ->columnSpanFull()
                                         ->options(
                                             Product::query()
                                                 ->where('company_id', $record->company_id)
