@@ -259,7 +259,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->size(Size::Small)
                     ->url(SefazDistributionDocumentResource::getUrl()),
-            ])->buttonGroup()
+            ])->label('Ações')
         ];
     }
 }
