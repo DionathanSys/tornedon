@@ -398,14 +398,17 @@ class SefazDistributionDocumentsTable
                                     FusedGroup::make([
                                         TextInput::make('product_code')
                                             ->label('Código')
-                                            ->disabled(),
+                                            ->disabled()
+                                            ->columnSpan(2),
                                         TextInput::make('description')
                                             ->label('Descrição')
-                                            ->disabled(),
+                                            ->disabled()
+                                            ->columnSpan(8),
                                         TextInput::make('quantity')
                                             ->label('Quantidade')
                                             ->disabled()
-                                    ])->columnSpanFull()->columns(3),
+                                            ->columnSpan(2)
+                                    ])->columnSpanFull()->columns(12),
                                     Select::make('product_id')
                                         ->label('Produto interno')
                                         ->searchable()
