@@ -396,7 +396,6 @@ class SefazDistributionDocumentsTable
                                     })->all()
                                 )
                                 ->schema([
-                                    FusedGroup::make([
                                         TextEntry::make('product_code')
                                             ->hiddenLabel()
                                             ->columnSpan(2),
@@ -404,11 +403,7 @@ class SefazDistributionDocumentsTable
                                             ->hiddenLabel()
                                             ->tooltip(fn($state) => $state)
                                             ->words(20)
-                                            ->columnSpan(10),
-                                    ])
-                                        ->label('Informações do item')
-                                        ->columnSpan(8)
-                                        ->columns(12),
+                                            ->columnSpan(6),
                                     Select::make('product_id')
                                         ->label('Produto interno')
                                         ->searchable()
