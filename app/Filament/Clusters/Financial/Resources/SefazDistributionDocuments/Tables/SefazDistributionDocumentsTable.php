@@ -405,7 +405,7 @@ class SefazDistributionDocumentsTable
                                         TextInput::make('quantity')
                                             ->label('Quantidade')
                                             ->disabled()
-                                    ])->columnSpanFull(),
+                                    ])->columnSpanFull()->columns(3),
                                     Select::make('product_id')
                                         ->label('Produto interno')
                                         ->searchable()
