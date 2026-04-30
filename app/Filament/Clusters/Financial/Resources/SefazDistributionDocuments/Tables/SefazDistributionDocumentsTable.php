@@ -403,7 +403,7 @@ class SefazDistributionDocumentsTable
                                         TextEntry::make('description')
                                             ->hiddenLabel()
                                             ->tooltip(fn($state) => $state)
-                                            ->words(10)
+                                            ->words(20)
                                             ->columnSpan(10),
                                     ])
                                         ->label('Informações do item')
