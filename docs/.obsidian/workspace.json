@@ -53,7 +53,8 @@
               "title": "Remover campos json de fiscal documents"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -85,7 +86,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:#invoice",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -216,15 +217,18 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "9e3acf14be100817",
+  "active": "90ca2be9453c4171",
   "lastOpenFiles": [
+    "App/Ajustes.md",
+    "Plan/Remover campos json de fiscal documents.md",
+    "Tasks App Gestor.md",
+    "Notas diárias/2026.04.30.md",
+    "Notas diárias/2026.04.29.md",
     "Notas diárias",
     "Sem título",
     "Manutenção.md",
     "Sem título 1.md",
     "Projeto/Reestruturação Fiscal.md",
-    "Plan/Remover campos json de fiscal documents.md",
-    "Tasks App Gestor.md",
     "Plan/Plano para Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/plano_evolucao_fiscal.md",
@@ -233,7 +237,6 @@
     "reports/plano_evolucao_fiscal.md",
     "Sem título 1.base",
     "Sem título.md",
-    "App/Ajustes.md",
     "Sem título.base",
     "Pneus.md",
     "CODING-STANDARDS.md",
@@ -246,14 +249,12 @@
     "Tasks.md",
     "Sem título 2.md",
     "Sem título 3.md",
-    "2G Alinhamento.md",
     "Magna Gestão",
     "Links",
     "App",
     "reports/relatorio-auditoria-2026-04-21.pdf",
     "reports",
     "Plan",
-    "relatorios",
     "Sem título.canvas",
     "Pasted image 20260402124855.png",
     "Pasted image 20260402125036.png",

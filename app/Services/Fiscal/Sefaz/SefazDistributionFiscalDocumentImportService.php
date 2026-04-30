@@ -43,15 +43,15 @@ class SefazDistributionFiscalDocumentImportService
             throw new \RuntimeException('O XML completo do DF-e não foi encontrado no storage.');
         }
 
-        return DB::transaction(function () use ($distributionDocument, $actorUserId, $xml): FiscalDocument {
-            $locked = SefazDistributionDocument::query()
-                ->whereKey($distributionDocument->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        try {
+            return DB::transaction(function () use ($distributionDocument, $actorUserId, $xml): FiscalDocument {
+                $locked = SefazDistributionDocument::query()
+                    ->whereKey($distributionDocument->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $this->distributionDocumentService->markImportRequested($locked, $actorUserId);
+                $this->distributionDocumentService->markImportRequested($locked, $actorUserId);
 
-            try {
                 if ($locked->fiscal_document_id !== null) {
                     $fiscalDocument = FiscalDocument::query()->find($locked->fiscal_document_id);
 
@@ -86,6 +86,7 @@ class SefazDistributionFiscalDocumentImportService
                 }
 
                 $items = $this->buildItemsPayload($locked, $parsed['items']);
+                $this->assertAllItemsAreMapped($items);
 
                 $fiscalDocument = FiscalDocument::query()->create([
                     'customer_id' => $partner->id,
@@ -189,12 +190,16 @@ class SefazDistributionFiscalDocumentImportService
                 $this->distributionDocumentService->markImportSucceeded($locked, $fiscalDocument, $actorUserId);
 
                 return $fiscalDocument;
-            } catch (\Throwable $exception) {
-                $this->distributionDocumentService->markImportFailure($locked, $exception->getMessage(), actorUserId: $actorUserId);
+            });
+        } catch (\Throwable $exception) {
+            $freshDocument = SefazDistributionDocument::query()->find($distributionDocument->id);
 
-                throw $exception;
+            if ($freshDocument instanceof SefazDistributionDocument) {
+                $this->distributionDocumentService->markImportFailure($freshDocument, $exception->getMessage(), actorUserId: $actorUserId);
             }
-        });
+
+            throw $exception;
+        }
     }
 
     /**
@@ -257,6 +262,34 @@ class SefazDistributionFiscalDocumentImportService
                 ];
             })
             ->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    private function assertAllItemsAreMapped(array $items): void
+    {
+        $unmappedItems = collect($items)
+            ->filter(fn(array $item): bool => empty($item['product_id']))
+            ->map(function (array $item): string {
+                $parts = array_filter([
+                    isset($item['item_number']) ? 'item ' . $item['item_number'] : null,
+                    ! empty($item['product_code']) ? 'cod. ' . $item['product_code'] : null,
+                    ! empty($item['description']) ? $item['description'] : null,
+                ]);
+
+                return implode(' - ', $parts);
+            })
+            ->values();
+
+        if ($unmappedItems->isEmpty()) {
+            return;
+        }
+
+        throw new \RuntimeException(
+            'Nao e possivel importar o DF-e sem vincular todos os itens a produtos internos. Itens pendentes: '
+            . $unmappedItems->implode('; ')
+        );
     }
 
     private function resolveProductId(int $companyId, ?string $productCode, ?string $barcode): ?int

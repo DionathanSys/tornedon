@@ -144,7 +144,7 @@ class SefazDistributionDocumentInfolist
                     ->columnSpanFull()
                     ->schema([
                         RepeatableEntry::make('items_json')
-                            ->label('')
+                            ->hiddenLabel()
                             ->columnSpanFull()
                             ->table([
                                 TableColumn::make('Linha'),

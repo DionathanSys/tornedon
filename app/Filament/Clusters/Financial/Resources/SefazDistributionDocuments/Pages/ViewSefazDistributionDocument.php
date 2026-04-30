@@ -5,10 +5,10 @@ namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\P
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Origin;
 use App\Enum\Product\Unit;
+use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Actions\SefazDistributionDocumentRecordActions;
 use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDistributionDocumentResource;
 use App\Filament\Clusters\Inventory\Resources\Products\ProductResource;
 use App\Models\Product;
-use App\Models\SefazDistributionDocument;
 use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use App\Services\Product\ProductService;
 use Filament\Actions\Action;
@@ -34,6 +34,7 @@ class ViewSefazDistributionDocument extends ViewRecord
     {
         return [
             ActionGroup::make([
+                ...SefazDistributionDocumentRecordActions::make(),
                 Action::make('openProductCreatePage')
                     ->label('Produto')
                     ->icon(Heroicon::Plus)

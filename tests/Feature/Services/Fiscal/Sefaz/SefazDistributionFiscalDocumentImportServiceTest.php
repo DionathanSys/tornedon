@@ -165,6 +165,57 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
         $this->assertSame(ImportStatus::IMPORTED, $distributionDocument->import_status);
     }
 
+    public function test_it_blocks_import_when_any_item_is_not_mapped_to_internal_product(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $company = $this->createCompany($user);
+
+        $xmlPath = 'sefaz/distribution/company-' . $company->id . '/35260412345678000199550010000003211000000321/full/test-unmapped.xml';
+        Storage::disk('local')->put($xmlPath, $this->fullXml());
+
+        $distributionDocument = SefazDistributionDocument::query()->create([
+            'company_id' => $company->id,
+            'document_key' => '35260412345678000199550010000003211000000321',
+            'nsu' => '000000000000052',
+            'schema' => 'procNFe_v4.00.xsd',
+            'document_type' => 'nfe',
+            'issuer_document' => '12345678000199',
+            'issuer_name' => 'Fornecedor Teste',
+            'document_number' => '321',
+            'document_series' => '1',
+            'status' => Status::FULL_XML_AVAILABLE,
+            'manifestation_status' => ManifestationStatus::ACCEPTED,
+            'import_status' => ImportStatus::READY_TO_IMPORT,
+            'full_xml_available' => true,
+            'full_xml_path' => $xmlPath,
+            'items_json' => [
+                [
+                    'line' => 1,
+                    'product_code' => 'P001',
+                    'description' => 'Produto Teste',
+                    'product_id' => null,
+                ],
+            ],
+            'import_ready_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Nao e possivel importar o DF-e sem vincular todos os itens a produtos internos.');
+
+        try {
+            app(SefazDistributionFiscalDocumentImportService::class)->import($distributionDocument, $user->id);
+        } finally {
+            $distributionDocument->refresh();
+            $this->assertSame(ImportStatus::IMPORT_ERROR, $distributionDocument->import_status);
+            $this->assertStringContainsString('Nao e possivel importar o DF-e sem vincular todos os itens a produtos internos.', (string) $distributionDocument->import_error);
+            $this->assertDatabaseCount('fiscal_documents', 0);
+            $this->assertDatabaseCount('fiscal_document_items', 0);
+        }
+    }
+
     private function createCompany(User $user): Company
     {
         return Company::query()->create([
