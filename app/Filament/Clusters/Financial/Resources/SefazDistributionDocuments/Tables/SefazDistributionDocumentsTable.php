@@ -402,19 +402,16 @@ class SefazDistributionDocumentsTable
                                             ->columnSpan(2),
                                         TextInput::make('description')
                                             ->disabled()
-                                            ->columnSpan(8),
-                                        TextInput::make('quantity')
-                                            ->disabled()
-                                            ->formatStateUsing(fn($state) => 'Qtd. ' . $state)
-                                            ->columnSpan(2)
+                                            ->columnSpan(10),
                                     ])
                                         ->label('Informações do item')
-                                        ->columnSpanFull()
+                                        ->columnSpan(8)
                                         ->columns(12),
                                     Select::make('product_id')
                                         ->label('Produto interno')
                                         ->searchable()
-                                        ->columnSpanFull()
+                                        ->native(false)
+                                        ->columnSpan(4)
                                         ->options(
                                             Product::query()
                                                 ->where('company_id', $record->company_id)
@@ -425,8 +422,7 @@ class SefazDistributionDocumentsTable
                                                 ])
                                                 ->all()
                                         ),
-                                ])
-                                ->columns(4),
+                                ]),
                         ])
                         ->action(function (SefazDistributionDocument $record, array $data): void {
                             $currentItems = collect($record->items_json ?? []);
