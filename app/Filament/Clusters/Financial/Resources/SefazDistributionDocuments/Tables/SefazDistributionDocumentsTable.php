@@ -398,9 +398,12 @@ class SefazDistributionDocumentsTable
                                 ->schema([
                                     FusedGroup::make([
                                         TextEntry::make('product_code')
+                                            ->hiddenLabel()
                                             ->columnSpan(2),
                                         TextEntry::make('description')
+                                            ->hiddenLabel()
                                             ->tooltip(fn($state) => $state)
+                                            ->words(10)
                                             ->columnSpan(10),
                                     ])
                                         ->label('Informações do item')
