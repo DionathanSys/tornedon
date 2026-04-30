@@ -398,14 +398,14 @@ class SefazDistributionDocumentsTable
                                     FusedGroup::make([
                                         TextInput::make('product_code')
                                             ->disabled()
-                                            ->state(fn($state) => "Cód. " . $state)
+                                            ->formatStateUsing(fn($state) => "Cód. " . $state)
                                             ->columnSpan(2),
                                         TextInput::make('description')
                                             ->disabled()
                                             ->columnSpan(8),
                                         TextInput::make('quantity')
                                             ->disabled()
-                                            ->state(fn($state) => 'Qtd. ' . $state)
+                                            ->formatStateUsing(fn($state) => 'Qtd. ' . $state)
                                             ->columnSpan(2)
                                     ])
                                         ->label('Informações do item')
