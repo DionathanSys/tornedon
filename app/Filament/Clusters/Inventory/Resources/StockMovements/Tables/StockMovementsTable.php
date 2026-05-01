@@ -54,6 +54,12 @@ class StockMovementsTable
                     ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->base_unit ?? 'UN'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('quantity')
+                    ->label('Qtde. (Deprecated')
+                    ->numeric(3, ',', '.')
+                    ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->base_unit ?? 'UN'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('unit_price')
                     ->label('Custo Un.')
                     ->money('BRL')

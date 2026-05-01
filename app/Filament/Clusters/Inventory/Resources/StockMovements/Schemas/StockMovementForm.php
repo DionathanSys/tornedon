@@ -334,7 +334,7 @@ class StockMovementForm
             $conversion = app(ProductUnitConversionService::class)->convertToBase($stock->product, (string) $unit, $quantity);
 
             return sprintf(
-                '%s | Esta movimentação lançará %s %s no estoque.',
+                '%s | Registro de %s %s',
                 $conversion->displayRule,
                 number_format($conversion->baseQuantity, 3, ',', '.'),
                 $conversion->baseUnit
