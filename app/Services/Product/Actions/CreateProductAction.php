@@ -36,11 +36,6 @@ class CreateProductAction
                 $validated['product_code'] = ProductCodeService::generate($validated['company_id']);
             }
 
-            $validated['alternative_units'] = array_values(array_map(
-                fn(array $conversion): string => $conversion['unit'],
-                $alternativeUnitConversions
-            ));
-
             unset($validated['alternative_unit_conversions']);
 
             $validated['created_by'] = $this->createdBy;
@@ -163,31 +158,16 @@ class CreateProductAction
     {
         $conversions = $validated['alternative_unit_conversions'] ?? null;
 
-        if (is_array($conversions) && $conversions !== []) {
-            $resolved = [];
-
-            foreach ($conversions as $conversion) {
-                $resolved[] = [
-                    'unit' => $conversion['unit'],
-                    'conversion_factor' => $conversion['conversion_factor'],
-                ];
-            }
-
-            return $resolved;
-        }
-
-        $legacyUnits = $validated['alternative_units'] ?? null;
-
-        if (!is_array($legacyUnits) || $legacyUnits === []) {
+        if (!is_array($conversions) || $conversions === []) {
             return [];
         }
 
         $resolved = [];
 
-        foreach ($legacyUnits as $unit) {
+        foreach ($conversions as $conversion) {
             $resolved[] = [
-                'unit' => $unit,
-                'conversion_factor' => 1,
+                'unit' => $conversion['unit'],
+                'conversion_factor' => $conversion['conversion_factor'],
             ];
         }
 

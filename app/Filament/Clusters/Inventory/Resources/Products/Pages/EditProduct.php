@@ -88,6 +88,13 @@ class EditProduct extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['tax'] = $this->record->tax ? $this->record->tax->toArray() : null;
+        $data['alternative_unit_conversions'] = $this->record->alternativeUnitConversions
+            ->map(fn($conversion): array => [
+                'unit' => $conversion->unit?->value ?? (string) $conversion->unit,
+                'conversion_factor' => (float) $conversion->conversion_factor,
+            ])
+            ->values()
+            ->all();
 
         return $data;
     }

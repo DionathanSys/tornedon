@@ -50,7 +50,6 @@ class ProductServiceTest extends TestCase
 
         $this->assertNotNull($product);
         $this->assertTrue($this->service->isSuccess());
-        $this->assertSame([Unit::CX->value, Unit::PC->value], $product->fresh()->alternative_units);
         $this->assertDatabaseHas('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::CX->value,
@@ -74,7 +73,6 @@ class ProductServiceTest extends TestCase
             'origin_sale_price' => 'free',
             'sale_price_value' => 10,
             'is_active' => true,
-            'alternative_units' => [Unit::CX->value],
         ]);
 
         $product->alternativeUnitConversions()->create([
@@ -90,7 +88,6 @@ class ProductServiceTest extends TestCase
 
         $this->assertNotNull($updated);
         $this->assertTrue($this->service->isSuccess());
-        $this->assertSame([Unit::PC->value], $updated->fresh()->alternative_units);
         $this->assertDatabaseMissing('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::CX->value,
@@ -102,7 +99,7 @@ class ProductServiceTest extends TestCase
         ]);
     }
 
-    public function test_it_keeps_legacy_alternative_units_input_in_sync_with_conversion_table(): void
+    public function test_it_clears_alternative_unit_conversions_when_updating_with_empty_list(): void
     {
         $product = Product::query()->create([
             'company_id' => $this->company->id,
@@ -115,21 +112,29 @@ class ProductServiceTest extends TestCase
             'is_active' => true,
         ]);
 
+        $product->alternativeUnitConversions()->create([
+            'unit' => Unit::CX->value,
+            'conversion_factor' => 2,
+        ]);
+
+        $product->alternativeUnitConversions()->create([
+            'unit' => Unit::PC->value,
+            'conversion_factor' => 0.125,
+        ]);
+
         $updated = $this->service->update($product, [
-            'alternative_units' => [Unit::CX->value, Unit::PC->value],
+            'alternative_unit_conversions' => [],
         ], $this->user->id);
 
         $this->assertNotNull($updated);
-        $this->assertSame([Unit::CX->value, Unit::PC->value], $updated->fresh()->alternative_units);
-        $this->assertDatabaseHas('product_alternative_units', [
+        $this->assertTrue($this->service->isSuccess());
+        $this->assertDatabaseMissing('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::CX->value,
-            'conversion_factor' => '1.00000000',
         ]);
-        $this->assertDatabaseHas('product_alternative_units', [
+        $this->assertDatabaseMissing('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::PC->value,
-            'conversion_factor' => '1.00000000',
         ]);
     }
 }

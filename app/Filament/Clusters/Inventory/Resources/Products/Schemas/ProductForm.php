@@ -216,6 +216,35 @@ class ProductForm
                                             ->requiredIf('origin_sale_price', 'fixed'),
                                     ]),
                             ]),
+                        Tab::make('Conversões')
+                            ->icon(Heroicon::Scale)
+                            ->columnSpanFull()
+                            ->schema([
+                                Repeater::make('alternative_unit_conversions')
+                                    ->label('Unidades alternativas')
+                                    ->grid(2)
+                                    ->columnSpanFull()
+                                    ->helperText('Cadastre como a unidade alternativa se converte para a unidade padrão. Ex.: 1 CX = 2 JG.')
+                                    ->default([])
+                                    ->reorderable(false)
+                                    ->collapsed()
+                                    ->addActionLabel('Adicionar unidade alternativa')
+                                    ->schema([
+                                        Select::make('unit')
+                                            ->label('Unidade alternativa')
+                                            ->options(Unit::toSelectArray())
+                                            ->required()
+                                            ->native(false),
+                                        TextInput::make('conversion_factor')
+                                            ->label('Fator para unidade padrão')
+                                            ->helperText('Informe quantas unidades padrão existem em 1 unidade alternativa.')
+                                            ->required()
+                                            ->numeric()
+                                            ->minValue(0.00000001)
+                                            ->step('0.00000001'),
+                                    ])
+                                    ->columns(2),
+                            ]),
                         Tab::make('Impostos')
                             ->icon(Heroicon::CurrencyDollar)
                             ->visibleOn('edit')
