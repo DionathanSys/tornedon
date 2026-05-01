@@ -4,6 +4,7 @@ namespace App\Filament\Tables;
 
 use App\Enum\Product\Unit;
 use App\Models\Product;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
@@ -114,7 +115,9 @@ class ProductTable
                 TrashedFilter::make(),
             ])
             ->headerActions([])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('teste'),
+            ])
             ->toolbarActions([]);
     }
 }

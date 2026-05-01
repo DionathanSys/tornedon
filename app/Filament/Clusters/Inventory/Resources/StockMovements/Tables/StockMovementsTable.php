@@ -9,6 +9,7 @@ use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\CreateStock
 use App\Models\StockMovement;
 use Filament\Actions\BulkActionGroup;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\Size;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -92,7 +93,9 @@ class StockMovementsTable
                     ->label('Período de Movimentação'),
             ])
             ->toolbarActions([
-                CreateStockMovementFromModalAction::make(),
+                CreateStockMovementFromModalAction::make()
+                    ->color('gray')
+                    ->size(Size::Small),
                 BulkActionGroup::make([
                     CheckProductStockBulkAction::make(),
                     FixProductStockBulkAction::make(),
