@@ -21,6 +21,7 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -217,7 +218,8 @@ class ProductForm
                                     ]),
                             ]),
                         Tab::make('Conversões')
-                            ->icon(Heroicon::Scale)
+                            ->icon(Heroicon::AdjustmentsHorizontal)
+                            ->visibleOn('edit')
                             ->columnSpanFull()
                             ->schema([
                                 Repeater::make('alternative_unit_conversions')
@@ -234,6 +236,7 @@ class ProductForm
                                             ->label('Unidade alternativa')
                                             ->options(Unit::toSelectArray())
                                             ->required()
+                                            ->disableOptionWhen(fn(Get $get, string $value) => $value === $get('unit'))
                                             ->native(false),
                                         TextInput::make('conversion_factor')
                                             ->label('Fator para unidade padrão')
