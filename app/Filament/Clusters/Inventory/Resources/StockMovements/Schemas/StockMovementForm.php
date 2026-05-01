@@ -125,7 +125,7 @@ class StockMovementForm
                         ->label('Quantidade da Operação')
                         ->prefix(null)
                         ->suffix('un.')
-                        ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->required()
                         ->live(onBlur: true)
                         ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
@@ -136,7 +136,7 @@ class StockMovementForm
                         ->label('Custo Unitário')
                         ->helperText(fn(Get $get): ?string => self::unitPriceHint((int) $get('product_stock_id')))
                         ->live(onBlur: true)
-                        ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
                         ->columnSpan(1),
 
@@ -145,7 +145,7 @@ class StockMovementForm
                         ->label('Custo Total')
                         ->readOnly()
                         ->helperText('Preenchido automaticamente (qtde × custo unit.)')
-                        ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
+                        ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                         ->columnSpan(1),
                 ]),
             TextInput::make('source_id')
