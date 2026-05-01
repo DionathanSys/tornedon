@@ -133,18 +133,9 @@ class CompanyPartnerForm
                     ->description('Dados de vinculo entre Empresa e Parceiro')
                     ->compact()
                     ->schema([
-                        Select::make('company_partner.type')
-                            ->label('Tipo')
-                            ->columnStart(1)
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->options(Enum\Partner\Type::toSelectArray())
-                            ->native(false)
-                            ->multiple()
-                            ->default(Enum\Partner\Type::CUSTOMER->value)
-                            ->required(),
                         Grid::make()
-                            ->columns(['sm' => 1, 'md' => 2, 'lg' => 4])
-                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->columns(['sm' => 1, 'md' => 10, 'lg' => 12])
+                            ->columnSpanFull()
                             ->schema([
                                 Money::make('company_partner.invoice_threshold')
                                     ->label('Vlr. Min p/ Fatura')
@@ -161,24 +152,34 @@ class CompanyPartnerForm
                                 Select::make('company_partner.payment_method')
                                     ->label('Método de Pagamento')
                                     ->options(PaymentMethod::toSelectArray())
-                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->columnSpan(['md' => 2, 'lg' => 3])
                                     ->native(false)
                                     ->searchable()
                                     ->placeholder('Usar preferências'),
                                 Select::make('company_partner.payment_condition')
                                     ->label('Condição de Pagamento')
                                     ->options(PaymentCondition::toGroupedSelectArray())
-                                    ->columnSpan(['md' => 2, 'lg' => 2])
+                                    ->columnSpan(['md' => 2, 'lg' => 3])
                                     ->native(false)
                                     ->searchable()
                                     ->placeholder('Usar preferências'),
+                                Toggle::make('company_partner.is_active')
+                                    ->label('Ativo')
+                                    ->columnSpan(2)
+                                    ->inline(false)
+                                    ->default(true)
+                                    ->required(),
                             ]),
-                        Toggle::make('company_partner.is_active')
-                            ->label('Ativo')
-                            ->columnSpan(2)
-                            ->inline(false)
-                            ->default(true)
+                        Select::make('company_partner.type')
+                            ->label('Tipo')
+                            ->columnStart(1)
+                            ->columnSpanFull()
+                            ->options(Enum\Partner\Type::toSelectArray())
+                            ->native(false)
+                            ->multiple()
+                            ->default(Enum\Partner\Type::CUSTOMER->value)
                             ->required(),
+
                     ]),
 
                 Section::make('Configurações de Notificações')
