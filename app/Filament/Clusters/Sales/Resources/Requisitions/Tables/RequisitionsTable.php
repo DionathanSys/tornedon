@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Tables;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
@@ -19,6 +20,7 @@ use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use App\Notification\NotifyService as notify;
 use Filament\Facades\Filament;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
@@ -74,13 +76,13 @@ class RequisitionsTable
                     ->toggleable(),
                 TextColumn::make('gross_amount')
                     ->label('Subtotal')
-                    ->state(fn (Requisition $record): float => (float) $record->gross_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn(Requisition $record): float => (float) $record->gross_amount)
+                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->state(fn (Requisition $record): float => (float) $record->total_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn(Requisition $record): float => (float) $record->total_amount)
+                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -138,7 +140,7 @@ class RequisitionsTable
                             return $result;
                         }),
                 ])->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
-                    ], RecordActionsPosition::BeforeCells)
+            ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkInvoiceRequisitionAction::make(),
@@ -147,9 +149,17 @@ class RequisitionsTable
                     ->label('Requisição')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
+                    ->schema(fn(Schema $schema) => $schema->components([
+                        SelectPartner::make('customer_id', 'customer')
+                            ->label('Cliente')
+                            ->columnSpanFull(),
+                    ]))
                     ->mutateDataUsing(function (array $data): array {
                         $tenant = Filament::getTenant();
                         $data['company_id'] = $tenant->id;
+                        $data['status'] = Status::OPEN;
+                        $data['sale_date'] = now();
+                        $data['delivery_date'] = now();
 
                         return $data;
                     })
