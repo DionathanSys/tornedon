@@ -8,6 +8,7 @@ use App\Services\StockMovement\StockMovementService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -19,9 +20,9 @@ final class CreateStockMovementFromModalAction
         return Action::make('createFromModal')
             ->label('Registrar Movimentação')
             ->icon(Heroicon::Plus)
-            ->modalWidth('2xl')
+            ->modalWidth(Width::FiveExtraLarge)
             ->modalHeading('Registrar Movimentação de Estoque')
-            ->schema(fn(Schema $schema) => $schema->columns(2)->components(StockMovementForm::schema()))
+            ->schema(fn(Schema $schema) => $schema->columns(3)->components(StockMovementForm::schema()))
             ->action(function (Action $action, array $data): void {
                 // Garante company_id mesmo que o hidden não seja enviado
                 $data['company_id'] ??= Filament::getTenant()->id;

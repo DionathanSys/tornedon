@@ -80,7 +80,7 @@ class StockMovementForm
                         self::suggestUnitPrice(Type::from($type), $stock->id, $set, $stock);
                     }
                 })
-                ->columnSpan(1),
+                ->columnSpan(3),
 
             // ── Campos ocultos preenchidos automaticamente ─────────────────
             Hidden::make('product_id'),
@@ -93,7 +93,7 @@ class StockMovementForm
                 ->native(false)
                 ->live()
                 ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
-                ->columnSpan(1),
+                ->columnSpan(2),
 
             // ── Quantidade ─────────────────────────────────────────────────
             Money::make('quantity')
@@ -105,7 +105,7 @@ class StockMovementForm
                 ->live(onBlur: true)
                 ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
                 ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
-                ->columnSpan(1),
+                ->columnSpan(2),
 
             // ── Custo unitário ─────────────────────────────────────────────
             Money::make('unit_price')
