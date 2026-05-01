@@ -22,7 +22,7 @@ final class CreateStockMovementFromModalAction
             ->icon(Heroicon::Plus)
             ->modalWidth(Width::FiveExtraLarge)
             ->modalHeading('Registrar Movimentação de Estoque')
-            ->schema(fn(Schema $schema) => $schema->columns(3)->components(StockMovementForm::schema()))
+            ->schema(fn(Schema $schema) => $schema->columns(4)->components(StockMovementForm::schema()))
             ->action(function (Action $action, array $data): void {
                 // Garante company_id mesmo que o hidden não seja enviado
                 $data['company_id'] ??= Filament::getTenant()->id;
