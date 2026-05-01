@@ -236,7 +236,8 @@ class ProductForm
                                             ->label('Unidade alternativa')
                                             ->options(Unit::toSelectArray())
                                             ->required()
-                                            ->disableOptionWhen(fn(Get $get, string $value) => $value == $get('unit'))
+                                            ->disableOptionWhen(fn(Get $get, string $value): bool => $value === $get('../../unit'))
+                                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                             ->native(false),
                                         TextInput::make('conversion_factor')
                                             ->label('Fator para unidade padrão')
