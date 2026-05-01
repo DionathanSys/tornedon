@@ -72,6 +72,24 @@ class StockMovementForm
             Grid::make(3)
                 ->columnSpanFull()
                 ->schema([
+                    Select::make('source_type')
+                        ->label('Tipo de Origem')
+                        ->placeholder('Selecione a origem (opcional)')
+                        ->options([
+                            'requisition'      => 'Requisição',
+                            'service_order'    => 'Ordem de Serviço',
+                            'production_order' => 'Ordem de Produção',
+                            'quote'            => 'Orçamento',
+                            'manual'           => 'Manual',
+                        ])
+                        ->default('manual')
+                        ->live()
+                        ->columnSpan(1),
+                    TextInput::make('reason')
+                        ->label('Motivo')
+                        ->placeholder('Ex.: Compra NF-e 12345, Consumo OP-99…')
+                        ->maxLength(500)
+                        ->columnSpan(1),
                     Select::make('type')
                         ->label('Tipo de Movimento')
                         ->options(
@@ -88,7 +106,11 @@ class StockMovementForm
                             }
                         })
                         ->columnSpan(1),
+                ]),
 
+            Grid::make(4)
+                ->columnSpanFull()
+                ->schema([
                     Select::make('operational_unit')
                         ->label('Unidade da Operação')
                         ->options(fn(Get $get): array => self::availableUnits((int) $get('product_stock_id')))
@@ -109,48 +131,23 @@ class StockMovementForm
                         ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
                         ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
                         ->columnSpan(1),
+                    // ── Custo unitário ─────────────────────────────────────────────
+                    Money::make('unit_price')
+                        ->label('Custo Unitário')
+                        ->helperText(fn(Get $get): ?string => self::unitPriceHint((int) $get('product_stock_id')))
+                        ->live(onBlur: true)
+                        ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
+                        ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
+                        ->columnSpan(1),
+
+                    // ── Custo total (calculado) ────────────────────────────────────
+                    Money::make('total_amount')
+                        ->label('Custo Total')
+                        ->readOnly()
+                        ->helperText('Preenchido automaticamente (qtde × custo unit.)')
+                        ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
+                        ->columnSpan(1),
                 ]),
-
-
-            // ── Custo unitário ─────────────────────────────────────────────
-            Money::make('unit_price')
-                ->label('Custo Unitário')
-                ->helperText(fn(Get $get): ?string => self::unitPriceHint((int) $get('product_stock_id')))
-                ->live(onBlur: true)
-                ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
-                ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
-                ->columnSpan(1),
-
-            // ── Custo total (calculado) ────────────────────────────────────
-            Money::make('total_amount')
-                ->label('Custo Total')
-                ->readOnly()
-                ->helperText('Preenchido automaticamente (qtde × custo unit.)')
-                ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
-                ->columnSpan(1),
-
-            // ── Motivo ─────────────────────────────────────────────────────
-            TextInput::make('reason')
-                ->label('Motivo')
-                ->placeholder('Ex.: Compra NF-e 12345, Consumo OP-99…')
-                ->maxLength(500)
-                ->columnSpan(1),
-
-            // ── Origem / Referência ────────────────────────────────────────
-            Select::make('source_type')
-                ->label('Tipo de Origem')
-                ->placeholder('Selecione a origem (opcional)')
-                ->options([
-                    'requisition'      => 'Requisição',
-                    'service_order'    => 'Ordem de Serviço',
-                    'production_order' => 'Ordem de Produção',
-                    'quote'            => 'Orçamento',
-                    'manual'           => 'Manual',
-                ])
-                ->default('manual')
-                ->live()
-                ->columnSpan(1),
-
             TextInput::make('source_id')
                 ->label('Nº da Origem')
                 ->placeholder('ID do documento de origem')
@@ -159,7 +156,6 @@ class StockMovementForm
                 ->default(0)
                 ->visible(fn(Get $get): bool => filled($get('source_type')) && $get('source_type') !== 'manual')
                 ->columnSpan(1),
-
             // ── Observações ────────────────────────────────────────────────
             Textarea::make('observations')
                 ->label('Observações')
