@@ -735,6 +735,7 @@ class RequisitionService
                 'product_stock_id' => $productStock->id,
                 'product_id'       => $item->product_id,
                 'company_id'       => $requisition->company_id,
+                'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
                 'quantity'         => (float) $item->quantity,
                 'unit_price'       => (float) ($item->unit_price ?? 0),
                 'source_type'      => 'requisition',

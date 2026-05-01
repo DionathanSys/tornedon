@@ -113,6 +113,7 @@ class RequisitionForm
                     ->columnSpanFull()
                     ->visibleOn('edit')
                     ->collapsible()
+                    ->collapsed()
                     ->persistCollapsed()
                     ->schema([
                         Select::make('payment_method')

@@ -8,6 +8,7 @@ use App\Models\FiscalDocument;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
@@ -181,6 +182,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                 'product_stock_id'   => $productStock->id,
                 'product_id'         => $item->product_id,
                 'company_id'         => $requisition->company_id,
+                'operational_unit'   => $item->unit_of_measure ?? $item->product?->unit?->value,
                 'quantity'           => (float) $item->quantity,
                 'unit_price'         => (float) ($item->unit_price ?? 0),
                 'source_type'        => 'requisition_item',
@@ -194,6 +196,7 @@ class ProcessAuthorizedNfeStockMovementsAction
 
                 $release = $stockMovementService->create(array_merge($baseData, [
                     'type' => Type::RESERVATION_RELEASE->value,
+                    'operational_unit' => $item->product?->unit?->value,
                     'quantity' => $releaseQuantity,
                     'reason' => 'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
                 ]), $userId);
@@ -250,15 +253,19 @@ class ProcessAuthorizedNfeStockMovementsAction
                 Type::RESERVATION->value,
                 Type::RESERVATION_RELEASE->value,
             ])
-            ->get(['type', 'quantity'])
+            ->get(['type', 'quantity', 'base_quantity'])
             ->sum(function (StockMovement $movement): float {
+                $quantity = $movement->resolvedBaseQuantity();
+
                 return $movement->type === Type::RESERVATION->value
-                    ? (float) $movement->quantity
-                    : -(float) $movement->quantity;
+                    ? $quantity
+                    : -$quantity;
             });
 
+        $requestedBaseQuantity = $this->resolveItemBaseQuantity($item);
+
         if ($itemReservedQuantity > 0.0001) {
-            return min($itemReservedQuantity, (float) $item->quantity);
+            return min($itemReservedQuantity, $requestedBaseQuantity);
         }
 
         $reservedQuantity = (float) StockMovement::query()
@@ -269,14 +276,16 @@ class ProcessAuthorizedNfeStockMovementsAction
                 Type::RESERVATION->value,
                 Type::RESERVATION_RELEASE->value,
             ])
-            ->get(['type', 'quantity'])
+            ->get(['type', 'quantity', 'base_quantity'])
             ->sum(function (StockMovement $movement): float {
+                $quantity = $movement->resolvedBaseQuantity();
+
                 return $movement->type === Type::RESERVATION->value
-                    ? (float) $movement->quantity
-                    : -(float) $movement->quantity;
+                    ? $quantity
+                    : -$quantity;
             });
 
-        return min(max($reservedQuantity, 0), (float) $item->quantity);
+        return min(max($reservedQuantity, 0), $requestedBaseQuantity);
     }
 
     private function hasItemExit(RequisitionItem $item): bool
@@ -316,5 +325,18 @@ class ProcessAuthorizedNfeStockMovementsAction
         }
 
         return $userId;
+    }
+
+    private function resolveItemBaseQuantity(RequisitionItem $item): float
+    {
+        $product = $item->product;
+
+        if (!$product) {
+            return (float) $item->quantity;
+        }
+
+        return app(ProductUnitConversionService::class)
+            ->convertToBase($product, (string) ($item->unit_of_measure ?? $product->unit?->value), (float) $item->quantity)
+            ->baseQuantity;
     }
 }

@@ -43,7 +43,7 @@ class CalculateProductStockSnapshotAction
         foreach ($movements as $movement) {
             /** @var Type $type */
             $type      = $movement->type;
-            $quantity  = (float) $movement->quantity;
+            $quantity  = $movement->resolvedBaseQuantity();
             $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
 
             if ($type->isReservationType()) {

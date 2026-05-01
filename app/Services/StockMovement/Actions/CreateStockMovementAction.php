@@ -34,6 +34,7 @@ class CreateStockMovementAction
             ]);
 
             $validated = StockMovementValidator::validateCreate($data);
+            $validated = app(PrepareStockMovementDataAction::class)->execute($validated);
             $validated['created_by'] = $this->createdBy;
 
             // source_type e source_id são NOT NULL no banco; garante fallback se não informados
@@ -54,6 +55,8 @@ class CreateStockMovementAction
 
             // Aplica o efeito do movimento no estoque de forma incremental
             app(ApplyMovementToProductStockAction::class)->apply($stock, $movement);
+
+            $movement->refresh();
 
             $this->setSuccess();
 

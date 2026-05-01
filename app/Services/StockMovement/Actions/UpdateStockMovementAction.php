@@ -36,6 +36,7 @@ class UpdateStockMovementAction
             ]);
 
             $validated = StockMovementValidator::validateUpdate($data);
+            $validated = app(PrepareStockMovementDataAction::class)->execute($validated);
             $validated['updated_by'] = $this->updatedBy;
 
             // Bloqueia o ProductStock antes de qualquer alteração

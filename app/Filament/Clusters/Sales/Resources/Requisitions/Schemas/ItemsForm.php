@@ -62,9 +62,9 @@ class ItemsForm
                 Textarea::make('observations')
                     ->label('Observações')
                     ->columnSpanFull(),
-                TextInput::make('additional_info')
-                    ->label('Informações Adicionais')
-                    ->columnSpanFull(),
+                // TextInput::make('additional_info')
+                //     ->label('Informações Adicionais')
+                //     ->columnSpanFull(),
             ]);
     }
 

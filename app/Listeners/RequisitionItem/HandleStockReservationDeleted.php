@@ -41,6 +41,7 @@ class HandleStockReservationDeleted
             'product_id'       => $product->id,
             'company_id'       => $stock->company_id,
             'type'             => Type::RESERVATION_RELEASE->value,
+            'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
             'quantity'         => (float) $item->quantity,
             'unit_price'       => (float) ($item->unit_price ?? 0),
             'reason'           => 'Liberação de reserva por exclusão de item de requisição',

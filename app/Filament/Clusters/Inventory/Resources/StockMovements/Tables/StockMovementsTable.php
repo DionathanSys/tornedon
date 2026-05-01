@@ -41,10 +41,16 @@ class StockMovementsTable
                     ->badge()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('quantity')
-                    ->label('Qtde.')
+                TextColumn::make('operational_quantity')
+                    ->label('Qtde. Operação')
                     ->numeric(3, ',', '.')
-                    ->formatStateUsing(fn($state) => number_format($state, 3, ',', '.') . ' un.')
+                    ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->operational_unit ?? $record->base_unit ?? 'UN'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('base_quantity')
+                    ->label('Qtde. Estoque')
+                    ->numeric(3, ',', '.')
+                    ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->base_unit ?? 'UN'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('unit_price')

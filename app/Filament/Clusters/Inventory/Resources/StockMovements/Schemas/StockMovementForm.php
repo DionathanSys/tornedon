@@ -2,8 +2,10 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Schemas;
 
+use App\Enum\Product\Unit;
 use App\Enum\StockMovement\Type;
 use App\Models\ProductStock;
+use App\Services\Product\ProductUnitConversionService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -70,6 +72,7 @@ class StockMovementForm
                     // Preenche automaticamente campos ocultos
                     $set('product_id', $stock->product_id);
                     $set('company_id', $stock->company_id);
+                    $set('operational_unit', $stock->product?->unit?->value ?? (string) $stock->product?->unit ?? Unit::UN->value);
 
                     // Sugere custo unitário conforme tipo e histórico do estoque
                     $type = $get('type');
@@ -83,15 +86,25 @@ class StockMovementForm
             Hidden::make('product_id'),
             Hidden::make('company_id'),
 
+            Select::make('operational_unit')
+                ->label('Unidade da Operação')
+                ->options(fn(Get $get): array => self::availableUnits((int) $get('product_stock_id')))
+                ->required()
+                ->native(false)
+                ->live()
+                ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
+                ->columnSpan(1),
+
             // ── Quantidade ─────────────────────────────────────────────────
             Money::make('quantity')
-                ->label('Quantidade')
+                ->label('Quantidade da Operação')
                 ->prefix(null)
                 ->suffix('un.')
                 ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
                 ->required()
                 ->live(onBlur: true)
                 ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
+                ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
                 ->columnSpan(1),
 
             // ── Custo unitário ─────────────────────────────────────────────
@@ -228,10 +241,10 @@ class StockMovementForm
         }
 
         $parts = [
-            'Disponível: ' . number_format((float) $stock->quantity_available, 3, ',', '.') . ' un.',
+            'Disponível: ' . number_format((float) $stock->quantity_available, 3, ',', '.') . ' ' . self::baseUnitLabel($stock) . '.',
         ];
         if ((float) $stock->quantity_reserved > 0) {
-            $parts[] = 'Reservado: ' . number_format((float) $stock->quantity_reserved, 3, ',', '.') . ' un.';
+            $parts[] = 'Reservado: ' . number_format((float) $stock->quantity_reserved, 3, ',', '.') . ' ' . self::baseUnitLabel($stock) . '.';
         }
         if ((float) $stock->average_cost > 0) {
             $parts[] = 'Custo médio: R$ ' . number_format((float) $stock->average_cost, 2, ',', '.');
@@ -273,5 +286,66 @@ class StockMovementForm
             return 0.0;
         }
         return (float) str_replace(',', '.', str_replace('.', '', $value));
+    }
+
+    private static function availableUnits(int $stockId): array
+    {
+        if (!$stockId) {
+            return [];
+        }
+
+        $stock = ProductStock::query()
+            ->with('product.alternativeUnitConversions')
+            ->find($stockId);
+
+        if (!$stock?->product) {
+            return [];
+        }
+
+        $service = app(ProductUnitConversionService::class);
+        $units = $service->getAvailableUnits($stock->product);
+        $labels = Unit::toSelectArray();
+
+        $options = [];
+
+        foreach ($units as $unit) {
+            $options[$unit] = $labels[$unit] ?? $unit;
+        }
+
+        return $options;
+    }
+
+    private static function conversionInfo(int $stockId, mixed $unit, float $quantity): ?string
+    {
+        if (!$stockId || !$unit || $quantity <= 0) {
+            return null;
+        }
+
+        $stock = ProductStock::query()
+            ->with('product.alternativeUnitConversions')
+            ->find($stockId);
+
+        if (!$stock?->product) {
+            return null;
+        }
+
+        try {
+            $conversion = app(ProductUnitConversionService::class)->convertToBase($stock->product, (string) $unit, $quantity);
+
+            return sprintf(
+                '%s | Esta movimentação lançará %s %s no estoque.',
+                $conversion->displayRule,
+                number_format($conversion->baseQuantity, 3, ',', '.'),
+                $conversion->baseUnit
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private static function baseUnitLabel(ProductStock $stock): string
+    {
+        return $stock->product?->unit?->value
+            ?? (string) ($stock->product?->unit ?? Unit::UN->value);
     }
 }

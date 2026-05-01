@@ -8,6 +8,7 @@ use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
@@ -145,11 +146,13 @@ class CloseRequisitionAction
                 Type::RESERVATION_RELEASE->value,
                 Type::RESERVATION->value,
             ])
-            ->get(['type', 'quantity'])
+            ->get(['type', 'quantity', 'base_quantity'])
             ->sum(function (StockMovement $movement): float {
+                $quantity = $movement->resolvedBaseQuantity();
+
                 return $movement->type === Type::RESERVATION_RELEASE
-                    ? (float) $movement->quantity
-                    : -(float) $movement->quantity;
+                    ? $quantity
+                    : -$quantity;
             });
 
         Log::debug('CloseRequisitionAction: Net released quantity', [
@@ -198,6 +201,7 @@ class CloseRequisitionAction
                 'product_id'       => $item->product_id,
                 'company_id'       => $requisition->company_id,
                 'type'             => Type::RESERVATION->value,
+                'operational_unit' => $item->unit_of_measure ?? $item->product?->unit?->value,
                 'quantity'         => (float) $item->quantity,
                 'unit_price'       => (float) ($item->unit_price ?? 0),
                 'reason'           => 'Reserva recriada por re-encerramento - requisicao #' . $requisition->number,
@@ -232,7 +236,7 @@ class CloseRequisitionAction
             return true;
         }
 
-        $requestedQuantity = (float) $item->quantity;
+        $requestedQuantity = $this->resolveItemBaseQuantity($item);
         $availableQuantity = (float) $stock->quantity_available;
         $reservedForItem = $this->resolveItemReservedQuantity($requisition, $item);
         $effectiveAvailable = $availableQuantity + $reservedForItem;
@@ -260,15 +264,19 @@ class CloseRequisitionAction
                 Type::RESERVATION->value,
                 Type::RESERVATION_RELEASE->value,
             ])
-            ->get(['type', 'quantity'])
+            ->get(['type', 'quantity', 'base_quantity'])
             ->sum(function (StockMovement $movement): float {
+                $quantity = $movement->resolvedBaseQuantity();
+
                 return $movement->type === Type::RESERVATION
-                    ? (float) $movement->quantity
-                    : -(float) $movement->quantity;
+                    ? $quantity
+                    : -$quantity;
             });
 
+        $requestedBaseQuantity = $this->resolveItemBaseQuantity($item);
+
         if ($itemReservedQuantity > 0.0001) {
-            return min($itemReservedQuantity, (float) $item->quantity);
+            return min($itemReservedQuantity, $requestedBaseQuantity);
         }
 
         $reservedQuantity = (float) StockMovement::query()
@@ -279,13 +287,28 @@ class CloseRequisitionAction
                 Type::RESERVATION->value,
                 Type::RESERVATION_RELEASE->value,
             ])
-            ->get(['type', 'quantity'])
+            ->get(['type', 'quantity', 'base_quantity'])
             ->sum(function (StockMovement $movement): float {
+                $quantity = $movement->resolvedBaseQuantity();
+
                 return $movement->type === Type::RESERVATION
-                    ? (float) $movement->quantity
-                    : -(float) $movement->quantity;
+                    ? $quantity
+                    : -$quantity;
             });
 
-        return min(max($reservedQuantity, 0), (float) $item->quantity);
+        return min(max($reservedQuantity, 0), $requestedBaseQuantity);
+    }
+
+    private function resolveItemBaseQuantity(RequisitionItem $item): float
+    {
+        $product = $item->product;
+
+        if (!$product) {
+            return (float) $item->quantity;
+        }
+
+        return app(ProductUnitConversionService::class)
+            ->convertToBase($product, (string) ($item->unit_of_measure ?? $product->unit?->value), (float) $item->quantity)
+            ->baseQuantity;
     }
 }

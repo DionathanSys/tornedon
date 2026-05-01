@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Pages;
 
 use App\Filament\Clusters\Inventory\Resources\StockMovements\Schemas\StockMovementForm;
 use App\Filament\Clusters\Inventory\Resources\StockMovements\StockMovementResource;
+use App\Models\ProductStock;
 use App\Services\StockMovement\StockMovementService;
 use App\Models\StockMovement;
 use Filament\Actions\DeleteAction;
@@ -21,6 +22,21 @@ class EditStockMovement extends EditRecord
     public function form(Schema $schema): Schema
     {
         return StockMovementForm::configure($schema);
+    }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $stock = ProductStock::query()
+            ->with('product')
+            ->find($data['product_stock_id'] ?? null);
+
+        $baseUnit = $stock?->product?->unit?->value
+            ?? (string) ($stock?->product?->unit ?? 'UN');
+
+        $data['operational_unit'] = $data['operational_unit'] ?? $baseUnit;
+        $data['quantity'] = $data['operational_quantity'] ?? $data['quantity'];
+
+        return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

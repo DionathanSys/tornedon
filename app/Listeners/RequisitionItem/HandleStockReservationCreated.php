@@ -70,6 +70,7 @@ class HandleStockReservationCreated
             'product_id'       => $product->id,
             'company_id'       => $stock->company_id,
             'type'             => Type::RESERVATION->value,
+            'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
             'quantity'         => (float) $item->quantity,
             'unit_price'       => (float) ($item->unit_price ?? 0),
             'reason'           => 'Reserva por item de requisição',

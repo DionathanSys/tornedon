@@ -85,6 +85,7 @@ class ProcessFiscalEntryAction
                 'product_id'       => $item->product_id,
                 'company_id'       => $document->company_id,
                 'type'             => MovementType::ENTRY->value,
+                'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
                 'quantity'         => (float) $item->quantity,
                 'unit_price'       => (float) $item->unit_price,
                 'reason'           => "Nota de Entrada #{$document->document_number} — Produto: {$product->product_code}",

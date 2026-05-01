@@ -31,7 +31,7 @@ class ApplyMovementToProductStockAction
             return $this->applyReservation($stock, $movement, $reverse);
         }
 
-        $quantity  = (float) $movement->quantity;
+        $quantity  = $movement->resolvedBaseQuantity();
         $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
 
         // Calcula o delta positivo/negativo segundo o tipo de movimento
@@ -128,7 +128,7 @@ class ApplyMovementToProductStockAction
     private function applyReservation(ProductStock $stock, StockMovement $movement, bool $reverse): bool
     {
         $type     = $movement->type;
-        $quantity = (float) $movement->quantity;
+        $quantity = $movement->resolvedBaseQuantity();
 
         $delta = $type->applyReservationDelta($quantity);
 

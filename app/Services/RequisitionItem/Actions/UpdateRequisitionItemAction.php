@@ -6,6 +6,7 @@ use App\Events\RequisitionItem\RequisitionItemUpdated;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\RequisitionItem;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\RequisitionItem\Validators\RequisitionItemValidator;
 use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\HandlesActionResponse;
@@ -155,19 +156,14 @@ class UpdateRequisitionItemAction
     {
         $newProductId = isset($data['product_id']) ? (int) $data['product_id'] : $oldProductId;
         $newQuantity  = isset($data['quantity']) ? (float) $data['quantity'] : null;
+        $newUnit      = $data['unit_of_measure'] ?? $this->requisitionItem->unit_of_measure;
+        $oldUnit      = $this->requisitionItem->unit_of_measure;
 
         if ($newQuantity === null && $newProductId === $oldProductId) {
             return null; // Nem produto nem quantidade mudaram
         }
 
-        $productId      = $newProductId;
-        $quantityNeeded = ($newProductId !== $oldProductId)
-            ? ($newQuantity ?? $oldQuantity)               // Produto novo: valida quantidade inteira
-            : ($newQuantity ?? $oldQuantity) - $oldQuantity; // Mesmo produto: valida só o delta
-
-        if ($quantityNeeded <= 0) {
-            return null; // Redução de quantidade ou sem impacto no estoque
-        }
+        $productId = $newProductId;
 
         $product = Product::with('stock')->find($productId);
 
@@ -180,6 +176,25 @@ class UpdateRequisitionItemAction
 
         if (! $stock || $stock->allow_negative) {
             return null;
+        }
+
+        $conversionService = app(ProductUnitConversionService::class);
+        $newBaseQuantity = $conversionService
+            ->convertToBase($product, (string) ($newUnit ?: $product->unit?->value), (float) ($newQuantity ?? $oldQuantity))
+            ->baseQuantity;
+
+        if ($newProductId !== $oldProductId) {
+            $quantityNeeded = $newBaseQuantity;
+        } else {
+            $oldBaseQuantity = $conversionService
+                ->convertToBase($product, (string) ($oldUnit ?: $product->unit?->value), $oldQuantity)
+                ->baseQuantity;
+
+            $quantityNeeded = $newBaseQuantity - $oldBaseQuantity;
+        }
+
+        if ($quantityNeeded <= 0) {
+            return null; // Redução de quantidade ou sem impacto no estoque
         }
 
         // quantity_available é coluna virtual: quantity_total - quantity_reserved

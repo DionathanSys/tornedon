@@ -6,6 +6,7 @@ use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\RequisitionItem;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\RequisitionItem\Validators\RequisitionItemValidator;
 use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\HandlesActionResponse;
@@ -38,7 +39,8 @@ class CreateRequisitionItemAction
         if (isset($data['product_id']) && isset($data['quantity'])) {
             $stockError = $this->validateStockAvailability(
                 (int) $data['product_id'],
-                (float) $data['quantity']
+                (float) $data['quantity'],
+                $data['unit_of_measure'] ?? null,
             );
 
             if ($stockError) {
@@ -145,7 +147,7 @@ class CreateRequisitionItemAction
      * Verifica se existe saldo disponível no estoque para a quantidade solicitada.
      * Retorna null se OK, ou uma mensagem de erro caso não haja saldo.
      */
-    private function validateStockAvailability(int $productId, float $requestedQty): ?string
+    private function validateStockAvailability(int $productId, float $requestedQty, mixed $unitOfMeasure): ?string
     {
         $product = Product::find($productId);
 
@@ -163,9 +165,13 @@ class CreateRequisitionItemAction
             return null;
         }
 
+        $requestedBaseQty = app(ProductUnitConversionService::class)
+            ->convertToBase($product, (string) ($unitOfMeasure ?: $product->unit?->value), $requestedQty)
+            ->baseQuantity;
+
         // quantity_available é coluna virtual: quantity_total - quantity_reserved
-        if ((float) $stock->quantity_available < $requestedQty) {
-            return "Saldo insuficiente no estoque. Disponível: {$stock->quantity_available}, Solicitado: {$requestedQty}";
+        if ((float) $stock->quantity_available < $requestedBaseQty) {
+            return "Saldo insuficiente no estoque. Disponível: {$stock->quantity_available}, Solicitado: {$requestedBaseQty}";
         }
 
         return null;

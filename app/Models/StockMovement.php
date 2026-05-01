@@ -15,6 +15,11 @@ class StockMovement extends Model
         'product_id',
         'company_id',
         'type',
+        'operational_unit',
+        'operational_quantity',
+        'base_unit',
+        'base_quantity',
+        'conversion_factor_snapshot',
         'quantity',
         'unit_price',
         'total_amount',
@@ -29,6 +34,9 @@ class StockMovement extends Model
 
     protected $casts = [
         'type' => Type::class,
+        'operational_quantity' => 'decimal:3',
+        'base_quantity' => 'decimal:3',
+        'conversion_factor_snapshot' => 'decimal:8',
         'quantity' => 'decimal:3',
         'unit_price' => MoneyCast::class,
         'total_amount' => MoneyCast::class,
@@ -69,5 +77,15 @@ class StockMovement extends Model
     public function source(): MorphTo
     {
         return $this->morphTo(__FUNCTION__, 'source_type', 'source_id');
+    }
+
+    public function resolvedBaseQuantity(): float
+    {
+        return (float) ($this->base_quantity ?? $this->quantity ?? 0);
+    }
+
+    public function resolvedOperationalQuantity(): float
+    {
+        return (float) ($this->operational_quantity ?? $this->quantity ?? 0);
     }
 }

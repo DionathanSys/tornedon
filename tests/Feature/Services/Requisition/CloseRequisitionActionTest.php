@@ -158,4 +158,99 @@ class CloseRequisitionActionTest extends TestCase
         $this->assertSame(Status::CLOSED, $result->fresh()->status);
         $this->assertTrue((bool) $result->fresh()->stock_reserved);
     }
+
+    public function test_it_closes_requisition_using_reserved_base_quantity_for_alternative_unit(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Reserva Alternativa',
+            'document_number' => '11222333000144',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Reserva Alternativa',
+            'document_type' => 'CPF',
+            'document_number' => '11122233344',
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'has_stock_control' => true,
+            'name' => 'Produto Jogo',
+            'product_code' => 'PRD-ALT-001',
+            'unit' => Unit::JG,
+            'origin_sale_price' => OriginSalePrice::FREE,
+            'sale_price_value' => 10,
+            'is_active' => true,
+        ]);
+
+        $product->alternativeUnitConversions()->create([
+            'unit' => Unit::PC->value,
+            'conversion_factor' => 0.125,
+        ]);
+
+        $stock = ProductStock::query()->create([
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'quantity_total' => 1,
+            'quantity_reserved' => 1,
+            'is_active' => true,
+            'allow_negative' => false,
+            'created_by' => $user->id,
+        ]);
+
+        $requisition = Requisition::query()->create([
+            'number' => 'REQ-00025',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'sale_date' => '2026-04-22',
+            'status' => Status::OPEN,
+            'stock_reserved' => false,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $item = RequisitionItem::query()->create([
+            'requisition_id' => $requisition->id,
+            'product_id' => $product->id,
+            'unit_of_measure' => Unit::PC->value,
+            'quantity' => 8,
+            'unit_price' => 10,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        StockMovement::query()->create([
+            'product_stock_id' => $stock->id,
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'type' => Type::RESERVATION,
+            'operational_unit' => Unit::PC->value,
+            'operational_quantity' => 8,
+            'base_unit' => Unit::JG->value,
+            'base_quantity' => 1,
+            'conversion_factor_snapshot' => 0.125,
+            'quantity' => 1,
+            'unit_price' => 10,
+            'reason' => 'Reserva por item de requisição',
+            'source_type' => 'requisition_item',
+            'source_id' => $item->id,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $action = new CloseRequisitionAction($user->id);
+        $result = $action->execute($requisition);
+
+        $this->assertNotNull($result);
+        $this->assertSame(Status::CLOSED, $result->fresh()->status);
+        $this->assertTrue((bool) $result->fresh()->stock_reserved);
+    }
 }
