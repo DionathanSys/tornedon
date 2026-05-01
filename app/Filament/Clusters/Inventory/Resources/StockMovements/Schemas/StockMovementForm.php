@@ -11,6 +11,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -26,25 +28,6 @@ class StockMovementForm
     public static function schema(): array
     {
         return [
-            // ── Tipo de movimento ──────────────────────────────────────────
-            Select::make('type')
-                ->label('Tipo de Movimento')
-                ->options(
-                    collect(Type::cases())
-                        ->mapWithKeys(fn(Type $t) => [$t->value => $t->label()])
-                        ->toArray()
-                )
-                ->required()
-                ->native(false) 
-                ->live()
-                ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
-                    if ($state) {
-                        self::suggestUnitPrice(Type::from($state), (int) $get('product_stock_id'), $set);
-                    }
-                })
-                ->columnSpan(1),
-
-            // ── Produto / Estoque ──────────────────────────────────────────
             Select::make('product_stock_id')
                 ->label('Produto')
                 ->native(false)
@@ -80,32 +63,54 @@ class StockMovementForm
                         self::suggestUnitPrice(Type::from($type), $stock->id, $set, $stock);
                     }
                 })
-                ->columnSpan(3),
+                ->columnSpan(4),
 
             // ── Campos ocultos preenchidos automaticamente ─────────────────
             Hidden::make('product_id'),
             Hidden::make('company_id'),
 
-            Select::make('operational_unit')
-                ->label('Unidade da Operação')
-                ->options(fn(Get $get): array => self::availableUnits((int) $get('product_stock_id')))
-                ->required()
-                ->native(false)
-                ->live()
-                ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
-                ->columnSpan(2),
+            Grid::make(3)
+                ->columnSpanFull()
+                ->schema([
+                    Select::make('type')
+                        ->label('Tipo de Movimento')
+                        ->options(
+                            collect(Type::cases())
+                                ->mapWithKeys(fn(Type $t) => [$t->value => $t->label()])
+                                ->toArray()
+                        )
+                        ->required()
+                        ->native(false)
+                        ->live()
+                        ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
+                            if ($state) {
+                                self::suggestUnitPrice(Type::from($state), (int) $get('product_stock_id'), $set);
+                            }
+                        })
+                        ->columnSpan(1),
 
-            // ── Quantidade ─────────────────────────────────────────────────
-            Money::make('quantity')
-                ->label('Quantidade da Operação')
-                ->prefix(null)
-                ->suffix('un.')
-                ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
-                ->required()
-                ->live(onBlur: true)
-                ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
-                ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
-                ->columnSpan(2),
+                    Select::make('operational_unit')
+                        ->label('Unidade da Operação')
+                        ->options(fn(Get $get): array => self::availableUnits((int) $get('product_stock_id')))
+                        ->required()
+                        ->native(false)
+                        ->live()
+                        ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
+                        ->columnSpan(1),
+
+                    // ── Quantidade ─────────────────────────────────────────────────
+                    Money::make('quantity')
+                        ->label('Quantidade da Operação')
+                        ->prefix(null)
+                        ->suffix('un.')
+                        ->formatStateUsing(fn($state) => $state !== null ? number_format($state, 2, ',', '.') : 0)
+                        ->required()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn(Set $set, Get $get) => self::recalcTotal($set, $get))
+                        ->helperText(fn(Get $get): ?string => self::conversionInfo((int) $get('product_stock_id'), $get('operational_unit'), self::parseMoney($get('quantity'))))
+                        ->columnSpan(1),
+                ]),
+
 
             // ── Custo unitário ─────────────────────────────────────────────
             Money::make('unit_price')
