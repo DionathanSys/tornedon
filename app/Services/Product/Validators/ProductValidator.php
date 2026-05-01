@@ -164,9 +164,13 @@ class ProductValidator
             $baseUnit = $data['unit'] ?? null;
 
             if ($baseUnit === null && $productId !== null) {
-                $baseUnit = (string) Product::query()
+                $storedUnit = Product::query()
                     ->whereKey($productId)
                     ->value('unit');
+
+                $baseUnit = $storedUnit instanceof Unit
+                    ? $storedUnit->value
+                    : (string) $storedUnit;
             }
 
             if (!$baseUnit) {

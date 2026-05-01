@@ -15,7 +15,7 @@ class ProductAlternativeUnit extends Model
     ];
 
     protected $casts = [
-        'unit' => Unit::class,
+        'unit'              => Unit::class,
         'conversion_factor' => 'decimal:8',
     ];
 

@@ -12,7 +12,6 @@ final class SefazDistributionDocumentRecordActions
     public static function make(): array
     {
         return [
-            ViewTimelineAction::make(),
             ImportDocumentAction::make(),
             DownloadXmlAction::make(),
             ViewXmlAction::make(),

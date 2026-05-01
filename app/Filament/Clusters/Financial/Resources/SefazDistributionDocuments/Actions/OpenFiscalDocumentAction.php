@@ -12,7 +12,7 @@ class OpenFiscalDocumentAction
     public static function make(): Action
     {
         return Action::make('openFiscalDocument')
-            ->label('Visualizar nota de entrada')
+            ->label('Nota de entrada')
             ->icon('heroicon-o-arrow-top-right-on-square')
             ->color('primary')
             ->visible(fn(SefazDistributionDocument $record): bool => $record->fiscal_document_id !== null)

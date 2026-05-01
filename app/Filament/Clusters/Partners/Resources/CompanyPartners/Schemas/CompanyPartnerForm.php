@@ -185,6 +185,8 @@ class CompanyPartnerForm
                 Section::make('Configurações de Notificações')
                     ->columns(['sm' => 1, 'md' => 4, 'lg' => 8,])
                     ->columnSpanFull()
+                    ->collapsed()
+                    ->persistCollapsed()
                     ->compact()
                     ->schema([
                         Grid::make()

@@ -30,8 +30,16 @@ class UpdateProductAction
         try {
             // Validacao
             $validated = ProductValidator::validateUpdate($data, $this->product->id, $this->product->company_id);
-            $hasAlternativeUnitConversions = array_key_exists('alternative_unit_conversions', $validated);
-            $alternativeUnitConversions = $validated['alternative_unit_conversions'] ?? [];
+            $hasAlternativeUnits = array_key_exists('alternative_units', $validated)
+                || array_key_exists('alternative_unit_conversions', $validated);
+            $alternativeUnitConversions = $this->resolveAlternativeUnitConversions($validated);
+
+            if ($hasAlternativeUnits) {
+                $validated['alternative_units'] = array_values(array_map(
+                    fn(array $conversion): string => $conversion['unit'],
+                    $alternativeUnitConversions
+                ));
+            }
 
             // Remove campos que nao devem ser atualizados
             unset($validated['product_code'], $validated['company_id'], $validated['alternative_unit_conversions']);
@@ -41,7 +49,7 @@ class UpdateProductAction
             // Persistencia
             $this->product->update($validated);
 
-            if ($hasAlternativeUnitConversions) {
+            if ($hasAlternativeUnits) {
                 $this->syncAlternativeUnitConversions($alternativeUnitConversions);
             }
 
@@ -158,5 +166,40 @@ class UpdateProductAction
         }
 
         $this->product->alternativeUnitConversions()->createMany($payload);
+    }
+
+    private function resolveAlternativeUnitConversions(array $validated): array
+    {
+        $conversions = $validated['alternative_unit_conversions'] ?? null;
+
+        if (is_array($conversions) && $conversions !== []) {
+            $resolved = [];
+
+            foreach ($conversions as $conversion) {
+                $resolved[] = [
+                    'unit' => $conversion['unit'],
+                    'conversion_factor' => $conversion['conversion_factor'],
+                ];
+            }
+
+            return $resolved;
+        }
+
+        $legacyUnits = $validated['alternative_units'] ?? null;
+
+        if (!is_array($legacyUnits) || $legacyUnits === []) {
+            return [];
+        }
+
+        $resolved = [];
+
+        foreach ($legacyUnits as $unit) {
+            $resolved[] = [
+                'unit' => $unit,
+                'conversion_factor' => 1,
+            ];
+        }
+
+        return $resolved;
     }
 }

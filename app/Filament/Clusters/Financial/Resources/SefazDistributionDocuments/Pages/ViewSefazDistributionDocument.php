@@ -36,7 +36,7 @@ class ViewSefazDistributionDocument extends ViewRecord
             ActionGroup::make([
                 ...SefazDistributionDocumentRecordActions::make(),
                 Action::make('openProductCreatePage')
-                    ->label('Produto')
+                    ->label('Cad. Produto')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
                     ->url(fn(): string => ProductResource::getUrl('create', [
@@ -44,7 +44,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ]))
                     ->openUrlInNewTab(),
                 Action::make('createProductFromXml')
-                    ->label('Produto XML')
+                    ->label('Cad. Produto XML')
                     ->size(Size::Small)
                     ->icon(Heroicon::Plus)
                     ->modalWidth('4xl')
@@ -254,12 +254,11 @@ class ViewSefazDistributionDocument extends ViewRecord
                             ->send();
                     }),
                 Action::make('back')
-                    ->hiddenLabel()
-                    ->tooltip('Voltar')
+                    ->label('Voltar')
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->size(Size::Small)
                     ->url(SefazDistributionDocumentResource::getUrl()),
-            ])->label('Ações')
+            ])->label('Ações')->button()
         ];
     }
 }

@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
-use App\Services\Product\ProductCodeService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -86,6 +85,11 @@ class Product extends Model
     public function stock(): HasOne
     {
         return $this->hasOne(ProductStock::class);
+    }
+
+    public function alternativeUnitConversions(): HasMany
+    {
+        return $this->hasMany(ProductAlternativeUnit::class);
     }
 
     public function sefazItemMappings(): HasMany

@@ -30,14 +30,26 @@ class CreateProductAction
     {
         try {
             $validated = ProductValidator::validateCreate($data);
+            $alternativeUnitConversions = $this->resolveAlternativeUnitConversions($validated);
 
             if (empty($validated['product_code'])) {
                 $validated['product_code'] = ProductCodeService::generate($validated['company_id']);
             }
 
+            $validated['alternative_units'] = array_values(array_map(
+                fn(array $conversion): string => $conversion['unit'],
+                $alternativeUnitConversions
+            ));
+
+            unset($validated['alternative_unit_conversions']);
+
             $validated['created_by'] = $this->createdBy;
 
             $product = Product::create($validated);
+
+            if ($alternativeUnitConversions !== []) {
+                $product->alternativeUnitConversions()->createMany($alternativeUnitConversions);
+            }
 
             // Sincroniza o estoque do produto se necessário
             if (isset($validated['has_stock_control'])) {
@@ -145,5 +157,40 @@ class CreateProductAction
 
             return null;
         }
+    }
+
+    private function resolveAlternativeUnitConversions(array $validated): array
+    {
+        $conversions = $validated['alternative_unit_conversions'] ?? null;
+
+        if (is_array($conversions) && $conversions !== []) {
+            $resolved = [];
+
+            foreach ($conversions as $conversion) {
+                $resolved[] = [
+                    'unit' => $conversion['unit'],
+                    'conversion_factor' => $conversion['conversion_factor'],
+                ];
+            }
+
+            return $resolved;
+        }
+
+        $legacyUnits = $validated['alternative_units'] ?? null;
+
+        if (!is_array($legacyUnits) || $legacyUnits === []) {
+            return [];
+        }
+
+        $resolved = [];
+
+        foreach ($legacyUnits as $unit) {
+            $resolved[] = [
+                'unit' => $unit,
+                'conversion_factor' => 1,
+            ];
+        }
+
+        return $resolved;
     }
 }

@@ -46,7 +46,7 @@ class ProductService
             });
         }
 
-        return $query->with(['category', 'tax', 'stock'])->get();
+        return $query->with(['category', 'tax', 'stock', 'alternativeUnitConversions'])->get();
     }
 
     /**
@@ -78,7 +78,7 @@ class ProductService
             });
         }
 
-        return $query->with(['category', 'tax', 'stock'])
+        return $query->with(['category', 'tax', 'stock', 'alternativeUnitConversions'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
     }
@@ -98,7 +98,7 @@ class ProductService
             $query->where('company_id', $companyId);
         }
 
-        return $query->with(['category', 'tax', 'stock'])->first();
+        return $query->with(['category', 'tax', 'stock', 'alternativeUnitConversions'])->first();
     }
 
     /**
@@ -112,7 +112,7 @@ class ProductService
     {
         return Product::where('product_code', $productCode)
             ->where('company_id', $companyId)
-            ->with(['category', 'tax', 'stock'])
+            ->with(['category', 'tax', 'stock', 'alternativeUnitConversions'])
             ->first();
     }
 
