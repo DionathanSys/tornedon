@@ -101,7 +101,7 @@ class ItemsForm
             code: $product->product_code,
             name: $product->name,
             unit: $product->unit,
-            price: $price,
+            price: (float) ($price ?? 0),  // null = FREE price mode; form starts at 0 for user input
             minSalePrice: $productStock->min_sale_price ?? 0,
         );
 

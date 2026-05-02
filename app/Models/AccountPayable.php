@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AccountPayable extends Model
 {
@@ -80,5 +81,10 @@ class AccountPayable extends Model
             'account_payable_id',
             'account_payable_installment_id'
         );
+    }
+
+    public function purchaseClosing(): HasOne
+    {
+        return $this->hasOne(PurchaseClosing::class);
     }
 }

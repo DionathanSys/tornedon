@@ -13,6 +13,7 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FiscalDocument extends Model
@@ -175,6 +176,18 @@ class FiscalDocument extends Model
     public function accountReceivables(): HasMany
     {
         return $this->hasMany(AccountReceivable::class);
+    }
+
+    public function purchaseClosingLinks(): HasMany
+    {
+        return $this->hasMany(PurchaseClosingFiscalDocument::class);
+    }
+
+    public function purchaseClosings(): BelongsToMany
+    {
+        return $this->belongsToMany(PurchaseClosing::class, 'purchase_closing_fiscal_documents')
+            ->withPivot(['document_amount', 'discount_amount'])
+            ->withTimestamps();
     }
 
     public function nfeSequence(): BelongsTo

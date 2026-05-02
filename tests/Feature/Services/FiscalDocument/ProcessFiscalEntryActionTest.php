@@ -5,6 +5,7 @@ namespace Tests\Feature\Services\FiscalDocument;
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
 use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
@@ -16,7 +17,8 @@ use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Models\User;
-use App\Services\FiscalDocument\Actions\ProcessFiscalEntryAction;
+use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
+use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,7 +26,7 @@ class ProcessFiscalEntryActionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_process_fiscal_entry_generates_account_payable_without_breaking_current_flow(): void
+    public function test_generate_fiscal_entry_payable_creates_account_payable_for_confirmed_entry(): void
     {
         $user = User::factory()->create();
 
@@ -49,6 +51,7 @@ class ProcessFiscalEntryActionTest extends TestCase
             'issued_at' => '2026-04-08',
             'movement_at' => '2026-04-08',
             'document_type' => DocumentModel::NFE->value,
+            'operation_type' => OperationType::ENTRADA->value,
             'document_number' => 'NF-ENT-100',
             'document_series' => '1',
             'created_by' => $user->id,
@@ -71,7 +74,7 @@ class ProcessFiscalEntryActionTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = app(ProcessFiscalEntryAction::class)->execute($document, [
+        $result = app(GenerateFiscalEntryPayableAction::class)->execute($document, [
             'payment_method' => Method::PIX->value,
             'payment_condition' => Condition::CASH->value,
             'due_date' => '2026-04-08',
@@ -81,13 +84,12 @@ class ProcessFiscalEntryActionTest extends TestCase
         $resultJson = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $this->assertSame(1, $result['payables'], $resultJson ?: 'Sem retorno serializavel.');
-        $this->assertSame(0, $result['stock_movements']);
         $this->assertCount(0, $result['errors']);
         $this->assertDatabaseCount('account_payables', 1);
         $this->assertDatabaseCount('account_payable_installments', 1);
     }
 
-    public function test_process_fiscal_entry_uses_taxable_unit_and_quantity_for_stock_entry_when_available(): void
+    public function test_process_fiscal_entry_stock_uses_taxable_unit_and_quantity_when_available(): void
     {
         $user = User::factory()->create();
 
@@ -134,6 +136,7 @@ class ProcessFiscalEntryActionTest extends TestCase
             'issued_at' => '2026-04-08',
             'movement_at' => '2026-04-08',
             'document_type' => DocumentModel::NFE->value,
+            'operation_type' => OperationType::ENTRADA->value,
             'document_number' => 'NF-ENT-101',
             'document_series' => '1',
             'created_by' => $user->id,
@@ -158,16 +161,12 @@ class ProcessFiscalEntryActionTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = app(ProcessFiscalEntryAction::class)->execute($document, [
-            'payment_method' => Method::PIX->value,
-            'payment_condition' => Condition::CASH->value,
-            'due_date' => '2026-04-08',
-            'description' => 'NF de entrada com unidade tributavel',
-        ], $user->id);
+        $result = app(ProcessFiscalEntryStockAction::class)->execute($document, $user->id);
 
         $movement = StockMovement::query()->latest('id')->first();
 
         $this->assertSame(1, $result['stock_movements']);
+        $this->assertSame([], $result['errors']);
         $this->assertNotNull($movement);
         $this->assertSame(Unit::JG->value, $movement->operational_unit);
         $this->assertEquals(2.0, (float) $movement->operational_quantity);
