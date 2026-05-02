@@ -67,8 +67,7 @@
               "title": "stock-movement-examples"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -231,8 +230,9 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "30478a803ebbd241",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
+    "Outros/stock-movement-examples.md",
     "Outros/stock-movement-control.md",
     "Outros/service-order-authorization.md",
     "Outros/QUOTE-EVENTS-IMPLEMENTATION.md",
@@ -258,7 +258,6 @@
     "DATABASE-BACKUP.md",
     "2G Alinhamento.md",
     "Arquitetura e Padrões.md",
-    "CODING-STANDARDS.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

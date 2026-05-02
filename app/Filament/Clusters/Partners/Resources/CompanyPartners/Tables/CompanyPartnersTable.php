@@ -35,6 +35,22 @@ class CompanyPartnersTable
                     ->label('Vlr. Mín Fatura')
                     ->money('BRL')
                     ->sortable(),
+                TextColumn::make('customer_discount_percentage')
+                    ->label('Desc. Cliente (%)')
+                    ->numeric(2)
+                    ->suffix('%')
+                    ->sortable()
+                    ->placeholder('Sem Desconto'),
+                TextColumn::make('type')
+                    ->label('Tipo')
+                    ->formatStateUsing(function ($state) {
+                        $types = explode(',', $state);
+                        return implode(', ', array_map(function ($type) {
+                            return Type::from($type)->description();
+                        }, $types));
+                    })
+                    ->badge()
+                    ->sortable(),
                 IconColumn::make('is_active')
                     ->label('Ativo')
                     ->boolean(),
@@ -66,11 +82,10 @@ class CompanyPartnersTable
                         );
                     }),
                 Filter::make('is_active')
-                    ->label('Ativo')    
+                    ->label('Ativo')
                     ->toggle(),
             ])
-            ->recordActions([
-            ])
+            ->recordActions([])
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Parceiro')

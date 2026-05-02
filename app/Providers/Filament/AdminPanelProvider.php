@@ -34,9 +34,6 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->topbar()
             ->topNavigation()
-            // ->sidebarFullyCollapsibleOnDesktop()
-            // ->sidebarCollapsibleOnDesktop()
-            // ->sidebarWidth('13rem')
             ->id('admin')
             ->path('admin')
             ->login()
@@ -81,6 +78,11 @@ class AdminPanelProvider extends PanelProvider
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications()
+            ->unsavedChangesAlerts()
+            ->registerErrorNotification(
+                title: 'Ocorreu um erro',
+                body: 'Tente novamente mais tarde.',
+            )
             ->navigationGroups([
                 'Parceiros',
                 'Estoque',
