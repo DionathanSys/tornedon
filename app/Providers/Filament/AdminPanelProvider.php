@@ -81,17 +81,12 @@ class AdminPanelProvider extends PanelProvider
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications()
-            // ->navigationGroups([
-            //     NavigationGroup::make()
-            //         ->label('Parceiros')
-            //         ->collapsed(),
-            // ])
             ->navigationGroups([
                 'Parceiros',
                 'Estoque',
-                'Configurações',
                 'Vendas',
                 'Financeiro',
+                'Configurações',
             ])
         ;
     }
