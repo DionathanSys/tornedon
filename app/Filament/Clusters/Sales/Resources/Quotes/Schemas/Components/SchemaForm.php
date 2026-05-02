@@ -2,8 +2,11 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components;
 
+use App\Enum\Product\Unit;
 use App\Enum\Quote\Destination;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
+use App\Models\Product;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\QuoteItem\QuoteItemResolverService;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use Filament\Forms\Components\Hidden;
@@ -75,9 +78,17 @@ class SchemaForm
                     ->dehydrated(false)
                     ->columnSpanFull(),
 
-                TextInput::make('unit_of_measure')
+                Select::make('unit_of_measure')
                     ->label('Unidade de Medida')
-                    ->disabled()
+                    ->options(fn(Get $get): array => self::availableUnits((int) ($get('item.real_product_id') ?? 0), (string) ($get('item.real_service_id') ? Unit::UN->value : '')))
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->helperText(fn(Get $get): ?string => self::conversionInfo(
+                        (int) ($get('item.real_product_id') ?? 0),
+                        $get('unit_of_measure'),
+                        self::parseStateNumber($get('quantity')),
+                    ))
                     ->saved(true)
                     ->columnSpan(1),
 
@@ -162,5 +173,60 @@ class SchemaForm
         }
 
         return (float) str_replace(',', '.', str_replace('.', '', (string) $value));
+    }
+
+    private static function availableUnits(int $productId, string $serviceUnit = ''): array
+    {
+        if ($productId < 1) {
+            return $serviceUnit !== '' ? [$serviceUnit => $serviceUnit] : [];
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (!$product) {
+            return [];
+        }
+
+        $units = app(ProductUnitConversionService::class)->getAvailableUnits($product);
+        $labels = Unit::toSelectArray();
+
+        $options = [];
+
+        foreach ($units as $unit) {
+            $options[$unit] = $labels[$unit] ?? $unit;
+        }
+
+        return $options;
+    }
+
+    private static function conversionInfo(int $productId, mixed $unit, float $quantity): ?string
+    {
+        if ($productId < 1 || !$unit || $quantity <= 0) {
+            return null;
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (!$product) {
+            return null;
+        }
+
+        try {
+            $conversion = app(ProductUnitConversionService::class)
+                ->convertToBase($product, (string) $unit, $quantity);
+
+            return sprintf(
+                '%s | Equivale a %s %s em estoque',
+                $conversion->displayRule,
+                number_format($conversion->baseQuantity, 3, ',', '.'),
+                $conversion->baseUnit,
+            );
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

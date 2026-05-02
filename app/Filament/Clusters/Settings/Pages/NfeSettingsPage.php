@@ -21,6 +21,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use UnitEnum;
 use ZipArchive;
 
 /**
@@ -38,7 +39,9 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
     protected string $view = 'filament.clusters.settings.pages.nfe-settings';
 
-    protected static ?string $cluster = SettingsCluster::class;
+    // protected static ?string $cluster = SettingsCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Integração NF-e';
 

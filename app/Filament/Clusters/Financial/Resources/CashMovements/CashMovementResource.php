@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 use Illuminate\Database\Eloquent\Builder;
 
 class CashMovementResource extends Resource
@@ -23,7 +24,9 @@ class CashMovementResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowsRightLeft;
 
-    protected static ?string $cluster = FinancialCluster::class;
+    // protected static ?string $cluster = FinancialCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Movimento Financeiro';
 

@@ -13,6 +13,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class AuditEntryResource extends Resource
 {
@@ -20,7 +21,9 @@ class AuditEntryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
-    protected static ?string $cluster = SettingsCluster::class;
+    // protected static ?string $cluster = SettingsCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
 
     protected static ?string $modelLabel = 'Evento de Auditoria';
 

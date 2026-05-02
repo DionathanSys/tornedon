@@ -15,6 +15,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use UnitEnum;
 
 class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 {
@@ -24,7 +25,9 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
     protected string $view = 'filament.clusters.settings.pages.company-preferences';
 
-    protected static ?string $cluster = SettingsCluster::class;
+    // protected static ?string $cluster = SettingsCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Preferências';
 

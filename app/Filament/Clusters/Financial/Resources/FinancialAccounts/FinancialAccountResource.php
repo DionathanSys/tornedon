@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class FinancialAccountResource extends Resource
 {
@@ -23,7 +24,9 @@ class FinancialAccountResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingLibrary;
 
-    protected static ?string $cluster = FinancialCluster::class;
+    // protected static ?string $cluster = FinancialCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Conta Financeira';
 

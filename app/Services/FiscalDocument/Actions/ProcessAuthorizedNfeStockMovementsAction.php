@@ -8,7 +8,6 @@ use App\Models\FiscalDocument;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
-use App\Services\Product\ProductUnitConversionService;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
@@ -183,7 +182,11 @@ class ProcessAuthorizedNfeStockMovementsAction
                 'product_id'         => $item->product_id,
                 'company_id'         => $requisition->company_id,
                 'operational_unit'   => $item->unit_of_measure ?? $item->product?->unit?->value,
-                'quantity'           => (float) $item->quantity,
+                'operational_quantity' => (float) $item->quantity,
+                'base_unit'         => $item->product?->unit?->value,
+                'base_quantity'     => $item->resolvedBaseQuantity(),
+                'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
+                'quantity'           => $item->resolvedBaseQuantity(),
                 'unit_price'         => (float) ($item->unit_price ?? 0),
                 'source_type'        => 'requisition_item',
                 'source_id'          => $item->id,
@@ -196,7 +199,11 @@ class ProcessAuthorizedNfeStockMovementsAction
 
                 $release = $stockMovementService->create(array_merge($baseData, [
                     'type' => Type::RESERVATION_RELEASE->value,
-                    'operational_unit' => $item->product?->unit?->value,
+                    'operational_unit' => $item->unit_of_measure ?? $item->product?->unit?->value,
+                    'operational_quantity' => (float) $item->quantity,
+                    'base_unit' => $item->product?->unit?->value,
+                    'base_quantity' => $releaseQuantity,
+                    'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
                     'quantity' => $releaseQuantity,
                     'reason' => 'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
                 ]), $userId);
@@ -329,14 +336,6 @@ class ProcessAuthorizedNfeStockMovementsAction
 
     private function resolveItemBaseQuantity(RequisitionItem $item): float
     {
-        $product = $item->product;
-
-        if (!$product) {
-            return (float) $item->quantity;
-        }
-
-        return app(ProductUnitConversionService::class)
-            ->convertToBase($product, (string) ($item->unit_of_measure ?? $product->unit?->value), (float) $item->quantity)
-            ->baseQuantity;
+        return $item->resolvedBaseQuantity();
     }
 }

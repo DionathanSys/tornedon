@@ -65,6 +65,7 @@ class DirectDeliveryDestinationHandler
 
             if ($requisitionItem) {
                 $requisitionItemService->update($requisitionItem, [
+                    'unit_of_measure' => $item->unit_of_measure,
                     'quantity' => $item->quantity_approved,
                 ], $userId);
             }

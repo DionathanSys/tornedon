@@ -3,6 +3,8 @@
 namespace App\Services\QuoteItem\Validators;
 
 use App\Enum\Quote\Destination;
+use App\Models\Product;
+use App\Services\Product\ProductUnitConversionService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -79,7 +81,7 @@ class QuoteItemValidator
             'status'            => 'required|string|max:50',
         ]);
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        return self::validateAllowedUnit($data, $rules);
     }
 
     /**
@@ -100,6 +102,37 @@ class QuoteItemValidator
             'status'            => 'sometimes|required|string|max:50',
         ]);
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        return self::validateAllowedUnit($data, $rules);
+    }
+
+    private static function validateAllowedUnit(array $data, array $rules): array
+    {
+        $validator = Validator::make($data, $rules, self::messages());
+
+        $validator->after(function ($validator) use ($data): void {
+            $productId = (int) ($data['product_id'] ?? 0);
+            $unit = $data['unit_of_measure'] ?? null;
+
+            if ($productId < 1 || !$unit) {
+                return;
+            }
+
+            $product = Product::query()
+                ->with('alternativeUnitConversions')
+                ->find($productId);
+
+            if (!$product) {
+                return;
+            }
+
+            if (!app(ProductUnitConversionService::class)->isAllowedUnit($product, (string) $unit)) {
+                $validator->errors()->add(
+                    'unit_of_measure',
+                    'A unidade selecionada não está cadastrada para este produto.'
+                );
+            }
+        });
+
+        return $validator->validate();
     }
 }

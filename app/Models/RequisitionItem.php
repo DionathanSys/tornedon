@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Services\Product\ProductUnitConversionService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -85,6 +86,18 @@ class RequisitionItem extends Model
 
     public function resolvedBaseQuantity(): float
     {
-        return (float) ($this->quantity_in_base_unit ?? $this->quantity ?? 0);
+        if ($this->quantity_in_base_unit !== null) {
+            return (float) $this->quantity_in_base_unit;
+        }
+
+        $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+
+        if ($product) {
+            return app(ProductUnitConversionService::class)
+                ->convertToBase($product, (string) ($this->unit_of_measure ?? $product->unit?->value), (float) ($this->quantity ?? 0))
+                ->baseQuantity;
+        }
+
+        return (float) ($this->quantity ?? 0);
     }
 }

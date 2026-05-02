@@ -21,7 +21,9 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Livewire\CreateErrorTicketAction;
+use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -78,6 +80,19 @@ class AdminPanelProvider extends PanelProvider
                 fn() => \Livewire\Livewire::mount('create-error-ticket-action')
             )
             ->resourceCreatePageRedirect('edit')
-            ->databaseNotifications();
+            ->databaseNotifications()
+            // ->navigationGroups([
+            //     NavigationGroup::make()
+            //         ->label('Parceiros')
+            //         ->collapsed(),
+            // ])
+            ->navigationGroups([
+                'Parceiros',
+                'Estoque',
+                'Configurações',
+                'Vendas',
+                'Financeiro',
+            ])
+        ;
     }
 }

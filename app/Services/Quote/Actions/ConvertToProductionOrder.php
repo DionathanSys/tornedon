@@ -6,9 +6,11 @@ use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
 use App\Enum\Quote\Status as QuoteStatus;
+use App\Models\Product;
 use App\Models\ProductionOrder;
 use App\Models\ProductionOrderItem;
 use App\Models\Quote;
+use App\Services\Product\ProductUnitConversionService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -69,16 +71,21 @@ class ConvertToProductionOrder
 
             $totalEstimatedHours = 0.0;
             foreach ($quote->items as $index => $quoteItem) {
+                $baseSnapshot = $this->resolveBaseSnapshot($quoteItem->product_id, (string) $quoteItem->unit_of_measure, (float) $quoteItem->quantity);
+
                 ProductionOrderItem::create([
                     'production_order_id'    => $productionOrder->id,
                     'quote_item_id'          => $quoteItem->id,
                     'product_id'             => $quoteItem->product_id,
                     'description'            => $quoteItem->resolveDescription(),
                     'quantity'               => $quoteItem->quantity,
+                    'quantity_in_base_unit'  => $baseSnapshot['quantity_in_base_unit'],
                     'unit_price'             => $quoteItem->unit_price,
                     'discount_percentage'    => $quoteItem->discount_percentage,
                     'discount_amount'        => $quoteItem->discount_amount,
+                    'quantity_approved_in_base_unit' => 0,
                     'unit_of_measure'        => $quoteItem->unit_of_measure,
+                    'conversion_factor_snapshot' => $baseSnapshot['conversion_factor_snapshot'],
                     'technical_specifications' => $quoteItem->technical_specifications,
                     'sequence'               => $quoteItem->sequence ?? ($index + 1),
                 ]);
@@ -126,6 +133,35 @@ class ConvertToProductionOrder
 
             return null;
         }
+    }
+
+    private function resolveBaseSnapshot(?int $productId, string $unit, float $quantity): array
+    {
+        if (!$productId) {
+            return [
+                'quantity_in_base_unit' => $quantity,
+                'conversion_factor_snapshot' => 1,
+            ];
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (!$product) {
+            return [
+                'quantity_in_base_unit' => $quantity,
+                'conversion_factor_snapshot' => 1,
+            ];
+        }
+
+        $conversion = app(ProductUnitConversionService::class)
+            ->convertToBase($product, $unit, $quantity);
+
+        return [
+            'quantity_in_base_unit' => round($conversion->baseQuantity, 8),
+            'conversion_factor_snapshot' => $conversion->factor,
+        ];
     }
 }
 

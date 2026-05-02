@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Product\ProductUnitConversionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,13 +14,16 @@ class ProductionOrderItem extends Model
         'product_id',
         'description',
         'quantity',
+        'quantity_in_base_unit',
         'unit_price',
         'discount_percentage',
         'discount_amount',
         'quantity_produced',
         'quantity_approved',
+        'quantity_approved_in_base_unit',
         'quantity_rejected',
         'unit_of_measure',
+        'conversion_factor_snapshot',
         'technical_specifications',
         'production_notes',
         'qc_notes',
@@ -30,12 +34,15 @@ class ProductionOrderItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:3',
+        'quantity_in_base_unit' => 'decimal:8',
         'unit_price' => 'decimal:4',
         'discount_percentage' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'quantity_produced' => 'decimal:3',
         'quantity_approved' => 'decimal:3',
+        'quantity_approved_in_base_unit' => 'decimal:8',
         'quantity_rejected' => 'decimal:3',
+        'conversion_factor_snapshot' => 'decimal:8',
         'technical_specifications' => 'array',
         'actual_production_hours' => 'decimal:2',
         'additional_info' => 'array',
@@ -98,5 +105,32 @@ class ProductionOrderItem extends Model
                 'A soma de peças aprovadas e rejeitadas não pode exceder a quantidade produzida.'
             );
         }
+    }
+
+    public function resolvedBaseQuantity(): float
+    {
+        return $this->resolveBaseQuantityFor('quantity_in_base_unit', 'quantity');
+    }
+
+    public function resolvedApprovedBaseQuantity(): float
+    {
+        return $this->resolveBaseQuantityFor('quantity_approved_in_base_unit', 'quantity_approved');
+    }
+
+    private function resolveBaseQuantityFor(string $baseField, string $quantityField): float
+    {
+        if ($this->{$baseField} !== null) {
+            return (float) $this->{$baseField};
+        }
+
+        $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+
+        if ($product) {
+            return app(ProductUnitConversionService::class)
+                ->convertToBase($product, (string) ($this->unit_of_measure ?? $product->unit?->value), (float) ($this->{$quantityField} ?? 0))
+                ->baseQuantity;
+        }
+
+        return (float) ($this->{$quantityField} ?? 0);
     }
 }

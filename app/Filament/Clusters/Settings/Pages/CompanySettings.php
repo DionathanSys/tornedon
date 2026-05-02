@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use UnitEnum;
 
 class CompanySettings extends Page implements Forms\Contracts\HasForms
 {
@@ -25,7 +26,9 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
 
     protected string $view = 'filament.clusters.settings.pages.company-settings';
 
-    protected static ?string $cluster = SettingsCluster::class;
+    // protected static ?string $cluster = SettingsCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Identidade da Empresa';
 

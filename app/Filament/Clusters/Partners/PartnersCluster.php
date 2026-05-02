@@ -14,4 +14,6 @@ class PartnersCluster extends Cluster
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::End;
 
     protected static ?string $navigationLabel = 'Parceiros';
+    
+    protected static bool $shouldRegisterSubNavigation = false;
 }

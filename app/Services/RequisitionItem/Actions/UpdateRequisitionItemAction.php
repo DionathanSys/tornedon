@@ -38,7 +38,9 @@ class UpdateRequisitionItemAction
 
         // Captura os valores atuais antes da atualização (necessário para o evento)
         $oldProductId = (int) $this->requisitionItem->product_id;
+        $oldUnitOfMeasure = (string) ($this->requisitionItem->unit_of_measure ?? '');
         $oldQuantity  = (float) $this->requisitionItem->quantity;
+        $oldBaseQuantity = $this->requisitionItem->resolvedBaseQuantity();
         $oldUnitPrice = (float) $this->requisitionItem->unit_price;
 
         // Validação de saldo disponível no estoque
@@ -71,7 +73,9 @@ class UpdateRequisitionItemAction
             RequisitionItemUpdated::dispatch(
                 $this->requisitionItem,
                 $oldProductId,
+                $oldUnitOfMeasure,
                 $oldQuantity,
+                $oldBaseQuantity,
                 $oldUnitPrice,
                 $this->updatedBy,
             );

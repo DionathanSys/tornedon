@@ -8,7 +8,6 @@ use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\Audit\AuditRecorder;
-use App\Services\Product\ProductUnitConversionService;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
@@ -202,7 +201,11 @@ class CloseRequisitionAction
                 'company_id'       => $requisition->company_id,
                 'type'             => Type::RESERVATION->value,
                 'operational_unit' => $item->unit_of_measure ?? $item->product?->unit?->value,
-                'quantity'         => (float) $item->quantity,
+                'operational_quantity' => (float) $item->quantity,
+                'base_unit'        => $item->product?->unit?->value,
+                'base_quantity'    => $item->resolvedBaseQuantity(),
+                'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
+                'quantity'         => $item->resolvedBaseQuantity(),
                 'unit_price'       => (float) ($item->unit_price ?? 0),
                 'reason'           => 'Reserva recriada por re-encerramento - requisicao #' . $requisition->number,
                 'source_type'      => 'requisition',
@@ -301,14 +304,6 @@ class CloseRequisitionAction
 
     private function resolveItemBaseQuantity(RequisitionItem $item): float
     {
-        $product = $item->product;
-
-        if (!$product) {
-            return (float) $item->quantity;
-        }
-
-        return app(ProductUnitConversionService::class)
-            ->convertToBase($product, (string) ($item->unit_of_measure ?? $product->unit?->value), (float) $item->quantity)
-            ->baseQuantity;
+        return $item->resolvedBaseQuantity();
     }
 }

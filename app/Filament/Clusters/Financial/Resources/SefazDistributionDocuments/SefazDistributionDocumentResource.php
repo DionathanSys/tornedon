@@ -13,6 +13,7 @@ use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use UnitEnum;
 use Illuminate\Database\Eloquent\Builder;
 
 class SefazDistributionDocumentResource extends Resource
@@ -21,7 +22,9 @@ class SefazDistributionDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-inbox-arrow-down';
 
-    protected static ?string $cluster = FinancialCluster::class;
+    // protected static ?string $cluster = FinancialCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'DF-e detectado';
 

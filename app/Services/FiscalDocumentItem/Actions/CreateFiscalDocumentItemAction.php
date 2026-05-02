@@ -7,6 +7,7 @@ use App\Enum\Product\Origin;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\Product;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -50,6 +51,7 @@ class CreateFiscalDocumentItemAction
             }
 
             $validated = $this->ensureProductCode($validated);
+            $validated = $this->applyTaxableConversion($validated);
             $validated = $this->normalizeForPersistence($validated);
             $validated = $this->assignItemNumberIfMissing($validated);
             $validated['created_by'] = $this->createdBy;
@@ -181,5 +183,33 @@ class CreateFiscalDocumentItemAction
         throw ValidationException::withMessages([
             'product_code' => 'O codigo do produto e obrigatorio.',
         ]);
+    }
+
+    private function applyTaxableConversion(array $data): array
+    {
+        $productId = (int) ($data['product_id'] ?? 0);
+
+        if ($productId < 1 || empty($data['unit_of_measure']) || ! isset($data['quantity'], $data['total_price'])) {
+            return $data;
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (! $product) {
+            return $data;
+        }
+
+        $conversion = app(ProductUnitConversionService::class)
+            ->convertToBase($product, (string) $data['unit_of_measure'], (float) $data['quantity']);
+
+        $data['taxable_unit'] = $conversion->baseUnit;
+        $data['taxable_quantity'] = round($conversion->baseQuantity, 4);
+        $data['taxable_unit_price'] = $conversion->baseQuantity > 0
+            ? round((float) $data['total_price'] / $conversion->baseQuantity, 4)
+            : (float) ($data['unit_price'] ?? 0);
+
+        return $data;
     }
 }

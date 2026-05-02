@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ServiceOrderResource extends Resource
 {
@@ -21,7 +22,9 @@ class ServiceOrderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
-    protected static ?string $cluster = SalesCluster::class;
+    // protected static ?string $cluster = SalesCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
 
     protected static ?string $modelLabel = 'Ordem de Serviço';
 

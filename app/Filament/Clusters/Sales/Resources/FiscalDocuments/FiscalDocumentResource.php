@@ -17,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class FiscalDocumentResource extends Resource
 {
@@ -24,7 +25,9 @@ class FiscalDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::DocumentText;
 
-    protected static ?string $cluster = SalesCluster::class;
+    // protected static ?string $cluster = SalesCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
 
     protected static ?string $modelLabel = 'Documento Fiscal';
 

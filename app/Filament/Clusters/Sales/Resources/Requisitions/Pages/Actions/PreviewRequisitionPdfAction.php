@@ -32,6 +32,7 @@ final class PreviewRequisitionPdfAction
                     '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
                 );
             })
+            ->modalSubmitAction(false)
             ->modalWidth('6xl');
     }
 }

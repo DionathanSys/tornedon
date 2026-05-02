@@ -21,14 +21,16 @@ class HandleStockReservationUpdated
         $newProduct = $item->product;
 
         $productChanged = $event->oldProductId !== $item->product_id;
-        $quantityDelta  = (float) $item->quantity - $event->oldQuantity;
+        $quantityDelta  = $item->resolvedBaseQuantity() - $event->oldBaseQuantity;
 
         // Se o produto mudou → libera reserva do produto antigo e reserva no novo
         if ($productChanged) {
             $this->releaseOldProductReservation(
                 item:         $item,
                 oldProductId: $event->oldProductId,
+                oldUnitOfMeasure: $event->oldUnitOfMeasure,
                 quantity:     $event->oldQuantity,
+                baseQuantity: $event->oldBaseQuantity,
                 updatedBy:    $event->updatedBy,
             );
 
@@ -44,7 +46,11 @@ class HandleStockReservationUpdated
                         'company_id'       => $newStock->company_id,
                         'type'             => Type::RESERVATION->value,
                         'operational_unit' => $item->unit_of_measure ?? $newProduct->unit?->value,
-                        'quantity'         => (float) $item->quantity,
+                        'operational_quantity' => (float) $item->quantity,
+                        'base_unit'        => $newProduct->unit?->value,
+                        'base_quantity'    => $item->resolvedBaseQuantity(),
+                        'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
+                        'quantity'         => $item->resolvedBaseQuantity(),
                         'unit_price'       => (float) ($item->unit_price ?? 0),
                         'reason'           => 'Reserva por alteração de produto no item de requisição',
                         'source_type'      => 'requisition_item',
@@ -98,7 +104,11 @@ class HandleStockReservationUpdated
             'product_id'       => $newProduct->id,
             'company_id'       => $stock->company_id,
             'type'             => $movementType->value,
-            'operational_unit' => $item->unit_of_measure ?? $newProduct->unit?->value,
+            'operational_unit' => $newProduct->unit?->value,
+            'operational_quantity' => abs($quantityDelta),
+            'base_unit'        => $newProduct->unit?->value,
+            'base_quantity'    => abs($quantityDelta),
+            'conversion_factor_snapshot' => 1,
             'quantity'         => abs($quantityDelta),
             'unit_price'       => (float) ($item->unit_price ?? 0),
             'reason'           => 'Ajuste de reserva por atualização de quantidade no item de requisição',
@@ -119,7 +129,9 @@ class HandleStockReservationUpdated
     private function releaseOldProductReservation(
         RequisitionItem $item,
         int $oldProductId,
+        string $oldUnitOfMeasure,
         float $quantity,
+        float $baseQuantity,
         int $updatedBy,
     ): void {
         $oldStock = ProductStock::where('product_id', $oldProductId)->first();
@@ -133,8 +145,12 @@ class HandleStockReservationUpdated
             'product_id'       => $oldProductId,
             'company_id'       => $oldStock->company_id,
             'type'             => Type::RESERVATION_RELEASE->value,
-            'operational_unit' => $item->unit_of_measure ?? $oldStock->product?->unit?->value,
-            'quantity'         => $quantity,
+            'operational_unit' => $oldUnitOfMeasure ?: ($oldStock->product?->unit?->value),
+            'operational_quantity' => $quantity,
+            'base_unit'        => $oldStock->product?->unit?->value,
+            'base_quantity'    => $baseQuantity,
+            'conversion_factor_snapshot' => $quantity > 0 ? round($baseQuantity / $quantity, 8) : 1,
+            'quantity'         => $baseQuantity,
             'unit_price'       => (float) ($oldStock->last_sale_price ?? 0),
             'reason'           => 'Liberação de reserva por troca de produto no item de requisição',
             'source_type'      => 'requisition_item',

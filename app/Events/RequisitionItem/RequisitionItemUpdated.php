@@ -13,7 +13,9 @@ class RequisitionItemUpdated
     public function __construct(
         public readonly RequisitionItem $item,
         public readonly int             $oldProductId,
+        public readonly string          $oldUnitOfMeasure,
         public readonly float           $oldQuantity,
+        public readonly float           $oldBaseQuantity,
         public readonly float           $oldUnitPrice,
         public readonly int             $updatedBy,
     ) {}

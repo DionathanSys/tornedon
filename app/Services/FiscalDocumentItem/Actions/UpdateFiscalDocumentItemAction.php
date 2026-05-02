@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocumentItem\Actions;
 use App\Models\FiscalDocumentItem;
 use App\Models\Product;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
+use App\Services\Product\ProductUnitConversionService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +38,7 @@ class UpdateFiscalDocumentItemAction
 
             unset($validated['fiscal_document_id']);
             $validated = $this->ensureProductCode($validated);
+            $validated = $this->applyTaxableConversion($validated);
             $validated = $this->normalizeForPersistence($validated);
             $validated['updated_by'] = $this->updatedBy;
 
@@ -163,5 +165,37 @@ class UpdateFiscalDocumentItemAction
         throw ValidationException::withMessages([
             'product_code' => 'O codigo do produto e obrigatorio.',
         ]);
+    }
+
+    private function applyTaxableConversion(array $data): array
+    {
+        $productId = (int) ($data['product_id'] ?? $this->fiscalDocumentItem->product_id);
+        $unit = $data['unit_of_measure'] ?? $this->fiscalDocumentItem->unit_of_measure;
+        $quantity = (float) ($data['quantity'] ?? $this->fiscalDocumentItem->quantity ?? 0);
+        $totalPrice = (float) ($data['total_price'] ?? $this->fiscalDocumentItem->total_price ?? 0);
+        $unitPrice = (float) ($data['unit_price'] ?? $this->fiscalDocumentItem->unit_price ?? 0);
+
+        if ($productId < 1 || empty($unit) || $quantity <= 0) {
+            return $data;
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (! $product) {
+            return $data;
+        }
+
+        $conversion = app(ProductUnitConversionService::class)
+            ->convertToBase($product, (string) $unit, $quantity);
+
+        $data['taxable_unit'] = $conversion->baseUnit;
+        $data['taxable_quantity'] = round($conversion->baseQuantity, 4);
+        $data['taxable_unit_price'] = $conversion->baseQuantity > 0
+            ? round($totalPrice / $conversion->baseQuantity, 4)
+            : $unitPrice;
+
+        return $data;
     }
 }

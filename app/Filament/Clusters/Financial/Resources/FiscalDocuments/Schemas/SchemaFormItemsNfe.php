@@ -3,9 +3,12 @@
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Schemas;
 
 use App\Domain\DTO\FiscalDocument\FiscalDocumentItemSourceDTO;
+use App\Enum\Product\Unit;
 use App\Enum\Product\Origin;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProduct;
+use App\Models\Product;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -15,6 +18,7 @@ use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Facades\Log;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -42,8 +46,17 @@ class SchemaFormItemsNfe
                         ->saved(),
                     Hidden::make('product_stock_id')
                         ->live(),
-                    TextInput::make('unit_of_measure')
+                    Select::make('unit_of_measure')
                         ->label('UN')
+                        ->options(fn(Get $get): array => self::availableUnits((int) $get('product_id')))
+                        ->native(false)
+                        ->required()
+                        ->live()
+                        ->helperText(fn(Get $get): ?string => self::conversionInfo(
+                            (int) $get('product_id'),
+                            $get('unit_of_measure'),
+                            self::parseNumber($get('quantity')),
+                        ))
                         ->saved(true)
                         ->columnSpan(1),
                     TextInput::make('description')
@@ -145,5 +158,72 @@ class SchemaFormItemsNfe
         $set('ncm_code',         $dto->ncmCode);
         $set('cest_code',        $dto->cestCode);
         $set('barcode',          $dto->barcode);
+    }
+
+    private static function availableUnits(int $productId): array
+    {
+        if ($productId < 1) {
+            return [];
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (! $product) {
+            return [];
+        }
+
+        $units = app(ProductUnitConversionService::class)->getAvailableUnits($product);
+        $labels = Unit::toSelectArray();
+        $options = [];
+
+        foreach ($units as $unit) {
+            $options[$unit] = $labels[$unit] ?? $unit;
+        }
+
+        return $options;
+    }
+
+    private static function conversionInfo(int $productId, mixed $unit, float $quantity): ?string
+    {
+        if ($productId < 1 || ! $unit || $quantity <= 0) {
+            return null;
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (! $product) {
+            return null;
+        }
+
+        try {
+            $conversion = app(ProductUnitConversionService::class)
+                ->convertToBase($product, (string) $unit, $quantity);
+
+            return sprintf(
+                '%s | Tributável/estoque: %s %s',
+                $conversion->displayRule,
+                number_format($conversion->baseQuantity, 4, ',', '.'),
+                $conversion->baseUnit,
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private static function parseNumber(mixed $value): float
+    {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        return (float) str_replace(',', '.', str_replace('.', '', (string) $value));
     }
 }

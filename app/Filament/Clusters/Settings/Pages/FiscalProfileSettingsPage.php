@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 {
@@ -27,7 +28,9 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 
     protected string $view = 'filament.clusters.settings.pages.fiscal-profile-settings';
 
-    protected static ?string $cluster = SettingsCluster::class;
+    // protected static ?string $cluster = SettingsCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Perfil Fiscal';
 

@@ -11,6 +11,7 @@ use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class EmailDispatchResource extends Resource
 {
@@ -18,7 +19,9 @@ class EmailDispatchResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-envelope';
 
-    protected static ?string $cluster = SettingsCluster::class;
+    // protected static ?string $cluster = SettingsCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
 
     protected static ?string $modelLabel = 'Envio de E-mail';
 

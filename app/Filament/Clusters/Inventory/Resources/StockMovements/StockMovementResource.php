@@ -12,6 +12,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
+use UnitEnum;
 
 class StockMovementResource extends Resource
 {
@@ -19,7 +20,9 @@ class StockMovementResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowsRightLeft;
 
-    protected static ?string $cluster = InventoryCluster::class;
+    // protected static ?string $cluster = InventoryCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Estoque';
 
     protected static ?string $modelLabel = 'Movimentação de Estoque';
 

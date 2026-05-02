@@ -104,11 +104,11 @@ class GenerateRequisitionFromProductionAction
 
         // Cria itens da requisição
         foreach ($approvedItems as $item) {
-            $requisitionItem = $requisitionItemService->create([
-                'requisition_id'      => $requisition->id,
-                'product_id'          => $item->product_id,
-                'unit_of_measure'     => $item->unit_of_measure,
-                'quantity'            => $item->quantity_approved,
+                $requisitionItem = $requisitionItemService->create([
+                    'requisition_id'      => $requisition->id,
+                    'product_id'          => $item->product_id,
+                    'unit_of_measure'     => $item->unit_of_measure,
+                    'quantity'            => $item->quantity_approved,
                 'unit_price'          => 0,
                 'discount_percentage' => 0,
                 'discount_amount'     => 0,
@@ -166,6 +166,7 @@ class GenerateRequisitionFromProductionAction
 
             if ($requisitionItem) {
                 $requisitionItemService->update($requisitionItem, [
+                    'unit_of_measure' => $item->unit_of_measure,
                     'quantity' => $item->quantity_approved,
                 ], $this->userId);
             } else {

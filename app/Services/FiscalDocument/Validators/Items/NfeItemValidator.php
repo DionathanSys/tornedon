@@ -3,6 +3,8 @@
 namespace App\Services\FiscalDocument\Validators\Items;
 
 use App\Enum\Product\Origin;
+use App\Models\Product;
+use App\Services\Product\ProductUnitConversionService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -187,7 +189,7 @@ class NfeItemValidator
      */
     public static function validateCreate(array $data): array
     {
-        return Validator::make($data, self::createRules(), self::createMessages())->validate();
+        return self::validateAllowedUnit($data, self::createRules(), self::createMessages());
     }
 
     /**
@@ -218,6 +220,37 @@ class NfeItemValidator
      */
     public static function validateUpdate(array $data): array
     {
-        return Validator::make($data, self::updateRules(), self::createMessages())->validate();
+        return self::validateAllowedUnit($data, self::updateRules(), self::createMessages());
+    }
+
+    private static function validateAllowedUnit(array $data, array $rules, array $messages): array
+    {
+        $validator = Validator::make($data, $rules, $messages);
+
+        $validator->after(function ($validator) use ($data): void {
+            $productId = (int) ($data['product_id'] ?? 0);
+            $unit = $data['unit_of_measure'] ?? null;
+
+            if ($productId < 1 || ! $unit) {
+                return;
+            }
+
+            $product = Product::query()
+                ->with('alternativeUnitConversions')
+                ->find($productId);
+
+            if (! $product) {
+                return;
+            }
+
+            if (! app(ProductUnitConversionService::class)->isAllowedUnit($product, (string) $unit)) {
+                $validator->errors()->add(
+                    'unit_of_measure',
+                    'A unidade selecionada não está cadastrada para este produto.'
+                );
+            }
+        });
+
+        return $validator->validate();
     }
 }

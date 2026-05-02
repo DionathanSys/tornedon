@@ -27,6 +27,17 @@ class PrepareStockMovementDataAction
             ? $product->unit->value
             : (string) $product->unit;
 
+        if ($this->hasPrecomputedBaseSnapshot($data)) {
+            $data['operational_unit'] = mb_strtoupper(trim((string) $data['operational_unit']));
+            $data['operational_quantity'] = round((float) $data['operational_quantity'], 3);
+            $data['base_unit'] = $baseUnit;
+            $data['base_quantity'] = round((float) $data['base_quantity'], 3);
+            $data['conversion_factor_snapshot'] = (float) $data['conversion_factor_snapshot'];
+            $data['quantity'] = $data['base_quantity'];
+
+            return $data;
+        }
+
         $operationalUnit = mb_strtoupper(trim((string) ($data['operational_unit'] ?? $baseUnit)));
         $operationalQuantity = (float) ($data['operational_quantity'] ?? $data['quantity'] ?? 0);
 
@@ -63,5 +74,18 @@ class PrepareStockMovementDataAction
             ->find($productStockId);
 
         return $stock?->product;
+    }
+
+    private function hasPrecomputedBaseSnapshot(array $data): bool
+    {
+        return isset(
+            $data['operational_unit'],
+            $data['operational_quantity'],
+            $data['base_quantity'],
+            $data['conversion_factor_snapshot'],
+        )
+            && (float) $data['operational_quantity'] > 0
+            && (float) $data['base_quantity'] > 0
+            && (float) $data['conversion_factor_snapshot'] > 0;
     }
 }

@@ -17,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AccountPayableResource extends Resource
 {
@@ -24,7 +25,9 @@ class AccountPayableResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowTrendingDown;
 
-    protected static ?string $cluster = FinancialCluster::class;
+    // protected static ?string $cluster = FinancialCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Conta à Pagar';
 

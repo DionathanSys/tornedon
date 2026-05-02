@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ProductionOrderResource extends Resource
 {
@@ -22,7 +23,9 @@ class ProductionOrderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Cog;
 
-    protected static ?string $cluster = ManufacturingCluster::class;
+    // protected static ?string $cluster = ManufacturingCluster::class;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
 
     protected static ?string $modelLabel = 'Ordem de Produção';
 
