@@ -60,6 +60,7 @@ class UpdateRequisitionItemAction
 
         try {
             $validated = RequisitionItemValidator::validateUpdate($data);
+            $validated = $this->applyBaseQuantitySnapshot($validated);
 
             $validated['updated_by'] = $this->updatedBy;
 
@@ -215,5 +216,32 @@ class UpdateRequisitionItemAction
         }
 
         return null;
+    }
+
+    private function applyBaseQuantitySnapshot(array $validated): array
+    {
+        $productId = (int) ($validated['product_id'] ?? $this->requisitionItem->product_id);
+
+        if ($productId < 1) {
+            return $validated;
+        }
+
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($productId);
+
+        if (!$product) {
+            return $validated;
+        }
+
+        $unit = (string) ($validated['unit_of_measure'] ?? $this->requisitionItem->unit_of_measure ?? $product->unit?->value);
+        $quantity = (float) ($validated['quantity'] ?? $this->requisitionItem->quantity ?? 0);
+
+        $conversion = app(ProductUnitConversionService::class)->convertToBase($product, $unit, $quantity);
+
+        $validated['quantity_in_base_unit'] = round($conversion->baseQuantity, 8);
+        $validated['conversion_factor_snapshot'] = $conversion->factor;
+
+        return $validated;
     }
 }

@@ -219,7 +219,6 @@ class ProductForm
                             ]),
                         Tab::make('Conversões')
                             ->icon(Heroicon::AdjustmentsHorizontal)
-                            ->visibleOn('edit')
                             ->columnSpanFull()
                             ->schema([
                                 Repeater::make('alternative_unit_conversions')

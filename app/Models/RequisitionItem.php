@@ -15,6 +15,8 @@ class RequisitionItem extends Model
         'product_id',
         'unit_of_measure',
         'quantity',
+        'quantity_in_base_unit',
+        'conversion_factor_snapshot',
         'unit_price',
         'unit_cost',
         'discount_percentage',
@@ -30,6 +32,8 @@ class RequisitionItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:3',
+        'quantity_in_base_unit' => 'decimal:8',
+        'conversion_factor_snapshot' => 'decimal:8',
         'unit_price' => MoneyCast::class,
         'gross_amount' => MoneyCast::class,
         'total_amount' => MoneyCast::class,
@@ -77,5 +81,10 @@ class RequisitionItem extends Model
                 2
             ),
         );
+    }
+
+    public function resolvedBaseQuantity(): float
+    {
+        return (float) ($this->quantity_in_base_unit ?? $this->quantity ?? 0);
     }
 }

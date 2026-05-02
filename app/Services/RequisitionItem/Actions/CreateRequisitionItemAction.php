@@ -60,6 +60,7 @@ class CreateRequisitionItemAction
 
         try {
             $validated = RequisitionItemValidator::validateCreate($data);
+            $validated = $this->applyBaseQuantitySnapshot($validated);
 
             $validated['created_by'] = $this->createdBy;
             $validated['stock_consumed'] = false;
@@ -175,5 +176,27 @@ class CreateRequisitionItemAction
         }
 
         return null;
+    }
+
+    private function applyBaseQuantitySnapshot(array $validated): array
+    {
+        $product = Product::query()
+            ->with('alternativeUnitConversions')
+            ->find($validated['product_id'] ?? null);
+
+        if (!$product) {
+            return $validated;
+        }
+
+        $conversion = app(ProductUnitConversionService::class)->convertToBase(
+            $product,
+            (string) ($validated['unit_of_measure'] ?? $product->unit?->value),
+            (float) ($validated['quantity'] ?? 0),
+        );
+
+        $validated['quantity_in_base_unit'] = round($conversion->baseQuantity, 8);
+        $validated['conversion_factor_snapshot'] = $conversion->factor;
+
+        return $validated;
     }
 }

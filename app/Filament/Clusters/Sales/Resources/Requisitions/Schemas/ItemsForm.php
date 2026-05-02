@@ -3,11 +3,15 @@
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\Schemas;
 
 use App\Domain\DTO\Requisition\RequisitionItemDTO;
+use App\Enum\Product\Unit;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
+use App\Models\ProductStock;
 use App\Services\Product\ProductSalePriceService;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\ProductStock\ProductStockService;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
@@ -39,8 +43,17 @@ class ItemsForm
                         Hidden::make('product_stock_id'),
                         Hidden::make('product_id')
                             ->saved(),
-                        TextInput::make('unit_of_measure')
+                        Select::make('unit_of_measure')
                             ->label('UN')
+                            ->options(fn(Get $get): array => self::availableUnits((int) $get('product_stock_id')))
+                            ->native(false)
+                            ->required()
+                            ->live()
+                            ->helperText(fn(Get $get): ?string => self::unitHelperText(
+                                (int) $get('product_stock_id'),
+                                $get('unit_of_measure'),
+                                self::parseNumeric($get('quantity')),
+                            ))
                             ->saved(true)
                             ->columnSpan(1),
                         TextInput::make('description')
@@ -112,5 +125,83 @@ class ItemsForm
         $set('total_price',      $dto->price ? number_format($dto->price, 2, ',', '.') : null);
         $set('commission_percentage', 0);
         $set('commission_amount',     0);
+    }
+
+    private static function availableUnits(int $productStockId): array
+    {
+        if ($productStockId < 1) {
+            return [];
+        }
+
+        $stock = ProductStock::query()
+            ->with('product.alternativeUnitConversions')
+            ->find($productStockId);
+
+        if (!$stock?->product) {
+            return [];
+        }
+
+        $units = app(ProductUnitConversionService::class)->getAvailableUnits($stock->product);
+        $labels = Unit::toSelectArray();
+
+        $options = [];
+
+        foreach ($units as $unit) {
+            $options[$unit] = $labels[$unit] ?? $unit;
+        }
+
+        return $options;
+    }
+
+    private static function unitHelperText(int $productStockId, mixed $unit, float $quantity): ?string
+    {
+        if ($productStockId < 1) {
+            return null;
+        }
+
+        $stock = ProductStock::query()
+            ->with('product.alternativeUnitConversions')
+            ->find($productStockId);
+
+        if (!$stock?->product) {
+            return null;
+        }
+
+        $parts = [
+            'Disponível: ' . number_format((float) $stock->quantity_available, 3, ',', '.') . ' ' . self::baseUnitLabel($stock),
+        ];
+
+        if ($unit && $quantity > 0) {
+            try {
+                $conversion = app(ProductUnitConversionService::class)
+                    ->convertToBase($stock->product, (string) $unit, $quantity);
+
+                $parts[] = $conversion->displayRule;
+                $parts[] = 'Esta operação consumirá ' . number_format($conversion->baseQuantity, 3, ',', '.') . ' ' . $conversion->baseUnit;
+            } catch (\Throwable) {
+                // A validação trata unidade inválida; o helper apenas omite a conversão.
+            }
+        }
+
+        return implode(' | ', $parts);
+    }
+
+    private static function baseUnitLabel(ProductStock $stock): string
+    {
+        return $stock->product?->unit?->value
+            ?? (string) ($stock->product?->unit ?? Unit::UN->value);
+    }
+
+    private static function parseNumeric(mixed $value): float
+    {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        return (float) str_replace(',', '.', str_replace('.', '', (string) $value));
     }
 }

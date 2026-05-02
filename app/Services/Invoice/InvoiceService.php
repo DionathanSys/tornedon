@@ -9,6 +9,7 @@ use App\Enum\Invoice\Status;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
+use App\Models\RequisitionItem;
 use App\Models\ServiceOrderItem;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
@@ -18,6 +19,7 @@ use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
+use App\Services\Product\ProductUnitConversionService;
 use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Collection;
@@ -354,25 +356,7 @@ class InvoiceService
                 } else {
                     foreach ($invoice->requisitions as $requisition) {
                         foreach ($requisition->items as $reqItem) {
-                            $product = $reqItem->product;
-                            $productTax = $product?->tax;
-
-                            $items[] = [
-                                'fiscal_document_id' => $fiscalDocument->id,
-                                'product_id'         => $reqItem->product_id,
-                                'product_code'       => $product?->product_code,
-                                'product_origin'     => $productTax?->product_origin?->value,
-                                'barcode'            => $product?->barcode,
-                                'description'        => $product?->name,
-                                'ncm_code'           => $productTax?->ncm_code,
-                                'cest_code'          => $productTax?->cest_code,
-                                'unit_of_measure'    => $reqItem->unit_of_measure ?? $product?->unit?->value,
-                                'quantity'           => (float) $reqItem->quantity,
-                                'unit_price'         => (float) $reqItem->unit_price,
-                                'total_price'        => FiscalItemAmounts::grossTotal($reqItem->quantity, $reqItem->unit_price),
-                                'discount_amount'    => round((float) ($reqItem->discount_amount ?? 0), 2),
-                                'included_in_total'  => true,
-                            ];
+                            $items[] = $this->buildProductFiscalItemFromRequisition($fiscalDocument->id, $reqItem);
                         }
                     }
                 }
@@ -551,6 +535,48 @@ class InvoiceService
 
             return null;
         }
+    }
+
+    private function buildProductFiscalItemFromRequisition(int $fiscalDocumentId, RequisitionItem $reqItem): array
+    {
+        $product = $reqItem->product;
+        $productTax = $product?->tax;
+        $unitOfMeasure = $reqItem->unit_of_measure ?? $product?->unit?->value;
+        $quantity = (float) $reqItem->quantity;
+        $unitPrice = (float) $reqItem->unit_price;
+        $totalPrice = FiscalItemAmounts::grossTotal($reqItem->quantity, $reqItem->unit_price);
+
+        $item = [
+            'fiscal_document_id' => $fiscalDocumentId,
+            'product_id'         => $reqItem->product_id,
+            'product_code'       => $product?->product_code,
+            'product_origin'     => $productTax?->product_origin?->value,
+            'barcode'            => $product?->barcode,
+            'description'        => $product?->name,
+            'ncm_code'           => $productTax?->ncm_code,
+            'cest_code'          => $productTax?->cest_code,
+            'unit_of_measure'    => $unitOfMeasure,
+            'quantity'           => $quantity,
+            'unit_price'         => $unitPrice,
+            'total_price'        => $totalPrice,
+            'discount_amount'    => round((float) ($reqItem->discount_amount ?? 0), 2),
+            'included_in_total'  => true,
+        ];
+
+        if ($product && $unitOfMeasure) {
+            $baseConversion = app(ProductUnitConversionService::class)
+                ->convertToBase($product, (string) $unitOfMeasure, $quantity);
+
+            if ($baseConversion->operationalUnit !== $baseConversion->baseUnit) {
+                $item['taxable_unit'] = $baseConversion->baseUnit;
+                $item['taxable_quantity'] = round($baseConversion->baseQuantity, 4);
+                $item['taxable_unit_price'] = $baseConversion->baseQuantity > 0
+                    ? round($totalPrice / $baseConversion->baseQuantity, 4)
+                    : $unitPrice;
+            }
+        }
+
+        return $item;
     }
 
     private function syncInvoiceStatusAfterFiscalDocumentGeneration(Invoice $invoice, int $userId): void

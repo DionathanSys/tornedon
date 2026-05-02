@@ -107,6 +107,83 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertSame(15.0, (float) $item->discount_amount);
     }
 
+    public function test_it_generates_taxable_fields_in_base_unit_when_requisition_item_uses_alternative_unit(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-NFE-ALT-001',
+            'name' => 'Produto NF-e Alternativo',
+            'unit' => Unit::JG->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        $product->alternativeUnitConversions()->create([
+            'unit' => Unit::PC->value,
+            'conversion_factor' => 0.125,
+        ]);
+
+        ProductTax::query()->create([
+            'product_id' => $product->id,
+            'product_origin' => Origin::NACIONAL->value,
+            'ncm_code' => '84733049',
+            'cest_code' => '1234567',
+            'created_by' => $user->id,
+        ]);
+
+        $requisition = Requisition::query()->create([
+            'number' => 'REQ-ALT-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'sale_date' => now()->toDateString(),
+            'status' => RequisitionStatus::OPEN->value,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+        ]);
+
+        RequisitionItem::query()->create([
+            'requisition_id' => $requisition->id,
+            'product_id' => $product->id,
+            'unit_of_measure' => Unit::PC->value,
+            'quantity' => 16,
+            'unit_price' => 5,
+            'discount_amount' => 0,
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(InvoiceService::class);
+        $document = $service->createFiscalDocument($invoice->fresh(), [
+            'document_type' => DocumentModel::NFE->value,
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => true,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+        ], $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+
+        $item = $document->items()->first();
+
+        $this->assertNotNull($item);
+        $this->assertSame(Unit::PC->value, $item->unit_of_measure);
+        $this->assertEquals(16.0, (float) $item->quantity);
+        $this->assertSame(Unit::JG->value, $item->taxable_unit);
+        $this->assertEquals(2.0, (float) $item->taxable_quantity);
+        $this->assertEquals(40.0, (float) $item->taxable_unit_price);
+    }
+
     public function test_it_consolidates_service_order_discounts_into_single_nfse_item(): void
     {
         $user = User::factory()->create();
