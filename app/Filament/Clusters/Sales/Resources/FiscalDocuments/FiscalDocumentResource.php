@@ -8,10 +8,8 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocume
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\ListFiscalDocuments;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\FiscalDocumentForm;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Tables\FiscalDocumentsTable;
-use App\Filament\Clusters\Sales\SalesCluster;
 use App\Models\FiscalDocument;
 use BackedEnum;
-use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -25,13 +23,13 @@ class FiscalDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::DocumentText;
 
-    // protected static ?string $cluster = SalesCluster::class;
+    protected static ?string $slug = 'nf-saida';
 
     protected static string | UnitEnum | null $navigationGroup = 'Vendas';
 
-    protected static ?string $modelLabel = 'Documento Fiscal';
+    protected static ?string $modelLabel = 'Nota de Saída';
 
-    protected static ?string $pluralModelLabel = 'Documentos Fiscais';
+    protected static ?string $pluralModelLabel = 'Notas de Saída';
 
     protected static ?int $navigationSort = 5;
 

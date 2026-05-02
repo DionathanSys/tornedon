@@ -3,7 +3,6 @@
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments;
 
 use App\Enum\FiscalDocument\OperationType;
-use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\CreateFiscalDocument;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\ListFiscalDocuments;
@@ -15,8 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use UnitEnum;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class FiscalDocumentResource extends Resource
 {
@@ -24,10 +23,10 @@ class FiscalDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
-    // protected static ?string $cluster = FinancialCluster::class;
-
     protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
+    protected static ?string $slug = 'nf-entrada';
+    
     protected static ?string $modelLabel = 'Nota de Entrada';
 
     protected static ?string $pluralModelLabel = 'Notas de Entrada';
@@ -35,6 +34,8 @@ class FiscalDocumentResource extends Resource
     protected static ?string $navigationLabel = 'Notas de Entrada';
 
     protected static ?int $navigationSort = 9;
+
+
 
     /**
      * Restringe o resource apenas a notas de entrada (operation_type = ENTRADA).

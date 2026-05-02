@@ -43,11 +43,13 @@ class FiscalDocumentsTable
                     ->badge()
                     ->formatStateUsing(fn(Status $state): string => $state->description())
                     ->color(fn(Status $state): string => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('issued_at')
                     ->label('Data Emissão')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('movement_at')
                     ->label('Data Entrada')
                     ->date('d/m/Y')
@@ -61,7 +63,8 @@ class FiscalDocumentsTable
                 IconColumn::make('confirmed')
                     ->label('Confirmada')
                     ->boolean()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('confirmed_at')
                     ->label('Confirmado em')
                     ->dateTime('d/m/Y H:i')
