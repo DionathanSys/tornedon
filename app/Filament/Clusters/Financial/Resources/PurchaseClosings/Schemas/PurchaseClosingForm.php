@@ -64,6 +64,7 @@ class PurchaseClosingForm
                             ->displayFormat('d/m/Y')
                             ->live()
                             ->afterStateUpdated(fn (Set $set) => $set('documents', []))
+                            ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 3]),
                         DatePicker::make('end_date')
                             ->label('Período Final')
@@ -75,7 +76,7 @@ class PurchaseClosingForm
                         Textarea::make('notes')
                             ->label('Observações')
                             ->rows(3)
-                            ->columnSpan(['md' => 4, 'lg' => 6]),
+                            ->columnSpanFull(),
                     ]),
                 Section::make('Notas do Fechamento')
                     ->description('Selecione as notas confirmadas do fornecedor dentro do período e informe o desconto aplicado em cada uma.')
@@ -98,6 +99,7 @@ class PurchaseClosingForm
                                 Select::make('fiscal_document_id')
                                     ->label('Nota Fiscal')
                                     ->required()
+                                    ->preload()
                                     ->searchable()
                                     ->native(false)
                                     ->live()
@@ -111,6 +113,7 @@ class PurchaseClosingForm
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                                 Placeholder::make('document_amount_preview')
                                     ->label('Valor da Nota')
+                                    ->columnStart(1)
                                     ->content(fn (Get $get): string => static::documentAmountFormatted($get('fiscal_document_id')))
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                                 Money::make('discount_amount')
