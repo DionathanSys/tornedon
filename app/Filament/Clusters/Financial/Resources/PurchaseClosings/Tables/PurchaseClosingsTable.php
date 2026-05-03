@@ -4,10 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\PurchaseClosings\Tables;
 
 use App\Enum\PurchaseClosing\Status;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
-use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
-use Filament\Support\Enums\Size;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -72,13 +69,6 @@ class PurchaseClosingsTable
             ->recordActions([
                 EditAction::make()
                     ->iconButton(),
-            ])
-            ->toolbarActions([
-                CreateAction::make()
-                    ->label('Fechamento de Compra')
-                    ->color('gray')
-                    ->icon(Heroicon::Plus)
-                    ->size(Size::Small),
             ]);
     }
 }

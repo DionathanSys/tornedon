@@ -10,6 +10,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Schemas\FiscalDocu
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Tables\FiscalDocumentsTable;
 use App\Models\FiscalDocument;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -43,6 +44,7 @@ class FiscalDocumentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->where('company_id', Filament::getTenant()->id)
             ->where('operation_type', OperationType::ENTRADA->value);
     }
 

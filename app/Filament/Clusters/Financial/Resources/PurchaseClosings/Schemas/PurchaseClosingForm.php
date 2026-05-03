@@ -9,11 +9,11 @@ use App\Models\PurchaseClosing;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -107,14 +107,14 @@ class PurchaseClosingForm
                                     ->options(fn (Get $get, ?PurchaseClosing $record): array => static::eligibleDocumentOptions($get, $record))
                                     ->helperText(fn (Get $get, ?PurchaseClosing $record): string => static::documentsHelperText($get, $record))
                                     ->columnSpan(['md' => 2, 'lg' => 6]),
-                                Placeholder::make('issued_at_preview')
+                                TextEntry::make('issued_at_preview')
                                     ->label('Emissão')
-                                    ->content(fn (Get $get): string => static::documentIssuedAt($get('fiscal_document_id')))
+                                    ->state(fn (Get $get): string => static::documentIssuedAt($get('fiscal_document_id')))
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
-                                Placeholder::make('document_amount_preview')
+                                TextEntry::make('document_amount_preview')
                                     ->label('Valor da Nota')
                                     ->columnStart(1)
-                                    ->content(fn (Get $get): string => static::documentAmountFormatted($get('fiscal_document_id')))
+                                    ->state(fn (Get $get): string => static::documentAmountFormatted($get('fiscal_document_id')))
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                                 Money::make('discount_amount')
                                     ->label('Desconto')
@@ -122,9 +122,9 @@ class PurchaseClosingForm
                                     ->required()
                                     ->live()
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
-                                Placeholder::make('net_amount_preview')
+                                TextEntry::make('net_amount_preview')
                                     ->label('Líquido')
-                                    ->content(fn (Get $get): string => static::documentNetAmountFormatted($get('fiscal_document_id'), $get('discount_amount')))
+                                    ->state(fn (Get $get): string => static::documentNetAmountFormatted($get('fiscal_document_id'), $get('discount_amount')))
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                             ])
                             ->columns([
@@ -141,15 +141,15 @@ class PurchaseClosingForm
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        Placeholder::make('gross_amount_preview')
+                        TextEntry::make('gross_amount_preview')
                             ->label('Valor Bruto')
-                            ->content(fn (Get $get): string => static::formatMoney(static::totals($get)['gross'])),
-                        Placeholder::make('discount_amount_preview_total')
+                            ->state(fn (Get $get): string => static::formatMoney(static::totals($get)['gross'])),
+                        TextEntry::make('discount_amount_preview_total')
                             ->label('Descontos')
-                            ->content(fn (Get $get): string => static::formatMoney(static::totals($get)['discount'])),
-                        Placeholder::make('net_amount_preview_total')
+                            ->state(fn (Get $get): string => static::formatMoney(static::totals($get)['discount'])),
+                        TextEntry::make('net_amount_preview_total')
                             ->label('Valor Líquido')
-                            ->content(fn (Get $get): string => static::formatMoney(static::totals($get)['net'])),
+                            ->state(fn (Get $get): string => static::formatMoney(static::totals($get)['net'])),
                     ]),
                 Hidden::make('company_id'),
             ]);
