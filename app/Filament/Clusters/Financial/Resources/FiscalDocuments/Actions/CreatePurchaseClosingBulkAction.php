@@ -110,12 +110,12 @@ final class CreatePurchaseClosingBulkAction
 
                 $service = app(PurchaseClosingService::class);
                 $closing = $service->create([
-                    'company_id' => $first->company_id,
-                    'supplier_id' => $first->customer_id,
-                    'start_date' => $issuedDates->first(),
-                    'end_date' => $issuedDates->last(),
-                    'reference' => $data['reference'] ?? null,
-                    'notes' => $data['notes'] ?? null,
+                    'company_id'    => $first->company_id,
+                    'supplier_id'   => $first->customer_id,
+                    'start_date'    => $issuedDates->first(),
+                    'end_date'      => $issuedDates->last(),
+                    'reference'     => $data['reference'] ?? null,
+                    'notes'         => $data['notes'] ?? null,
                     'documents' => collect($data['documents'] ?? [])
                         ->map(fn (array $document): array => [
                             'fiscal_document_id' => (int) $document['fiscal_document_id'],

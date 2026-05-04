@@ -58,6 +58,7 @@ class SchemaFormItemsNfe
                             self::parseNumber($get('quantity')),
                         ))
                         ->saved(true)
+                        ->placeholder('UN...')
                         ->columnSpan(1),
                     TextInput::make('description')
                         ->label('Descrição')
