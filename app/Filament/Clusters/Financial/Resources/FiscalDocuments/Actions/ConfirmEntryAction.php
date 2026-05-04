@@ -4,8 +4,10 @@ namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions;
 
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\CompanyCreditCard;
 use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
 use Carbon\Carbon;
@@ -29,7 +31,7 @@ final class ConfirmEntryAction
             ->color('success')
             ->modalWidth('lg')
             ->modalHeading('Confirmar Nota de Entrada')
-            ->modalDescription('Confirme a entrada para gerar as movimentações de estoque. A conta a pagar pode ser gerada agora ou em um fechamento posterior.')
+            ->modalDescription('Confirme a entrada para gerar as movimentações de estoque. O financeiro pode ser gerado agora como conta a pagar ou como lançamento de cartão corporativo.')
             ->visible(fn(FiscalDocument $record): bool => ! $record->confirmed)
             ->schema(fn(FiscalDocument $record): array => self::buildFormSchema($record))
             ->action(function (Action $action, FiscalDocument $record, array $data): void {
@@ -55,16 +57,26 @@ final class ConfirmEntryAction
                             'payables' => 0,
                             'errors' => [],
                         ];
+                        $cardResult = [
+                            'transactions' => 0,
+                            'errors' => [],
+                        ];
 
                         if ((bool) ($data['generate_account_payable_now'] ?? false)) {
-                            $payableProcessor = app(GenerateFiscalEntryPayableAction::class);
-                            $payableResult = $payableProcessor->execute($record, $data, $userId);
+                            if (($data['payment_method'] ?? null) === PaymentMethod::CREDIT_CARD->value) {
+                                $cardProcessor = app(GenerateFiscalEntryCardTransactionAction::class);
+                                $cardResult = $cardProcessor->execute($record, $data, $userId);
+                            } else {
+                                $payableProcessor = app(GenerateFiscalEntryPayableAction::class);
+                                $payableResult = $payableProcessor->execute($record, $data, $userId);
+                            }
                         }
 
                         $result = [
                             'stock_movements' => $stockResult['stock_movements'],
                             'payables' => $payableResult['payables'],
-                            'errors' => [...$stockResult['errors'], ...$payableResult['errors']],
+                            'card_transactions' => $cardResult['transactions'],
+                            'errors' => [...$stockResult['errors'], ...$payableResult['errors'], ...$cardResult['errors']],
                         ];
 
                         // Marca a nota como confirmada
@@ -79,6 +91,7 @@ final class ConfirmEntryAction
                             'fiscal_document_id' => $record->id,
                             'stock_movements'    => $result['stock_movements'],
                             'payables'           => $result['payables'],
+                            'card_transactions'  => $result['card_transactions'],
                             'errors'             => $result['errors'],
                         ]);
 
@@ -86,9 +99,14 @@ final class ConfirmEntryAction
                             $warningMsg = 'Nota confirmada com alertas: ' . implode('; ', $result['errors']);
                             notify::warning(message: $warningMsg);
                         } else {
-                            $msg = $result['payables'] > 0
-                                ? "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['payables']} conta(s) a pagar geradas."
-                                : "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque processadas. Nenhuma conta a pagar foi gerada.";
+                            if ($result['card_transactions'] > 0) {
+                                $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['card_transactions']} lançamento(s) no cartão corporativo gerados.";
+                            } elseif ($result['payables'] > 0) {
+                                $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['payables']} conta(s) a pagar geradas.";
+                            } else {
+                                $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque processadas. Nenhum lançamento financeiro foi gerado.";
+                            }
+
                             notify::success($msg);
                         }
                     });
@@ -124,8 +142,27 @@ final class ConfirmEntryAction
                 ->label('Método de Pagamento')
                 ->options(PaymentMethod::toSelectArray())
                 ->native(false)
+                ->live()
                 ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
+                ->columnSpanFull(),
+
+            Select::make('company_credit_card_id')
+                ->label('Cartão Corporativo')
+                ->options(fn () => CompanyCreditCard::query()
+                    ->where('company_id', $record->company_id)
+                    ->where('active', true)
+                    ->orderBy('name')
+                    ->pluck('name', 'id')
+                    ->toArray())
+                ->native(false)
+                ->searchable()
+                ->preload()
+                ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
+                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
+                ->helperText('Será usado para registrar as transações e compor a fatura do cartão.')
                 ->columnSpanFull(),
 
             Select::make('payment_condition')
@@ -149,10 +186,23 @@ final class ConfirmEntryAction
             DatePicker::make('due_date')
                 ->label('Primeiro Vencimento')
                 ->displayFormat('d/m/Y')
-                ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
+                ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) !== PaymentMethod::CREDIT_CARD->value)
                 ->helperText('Data base para o primeiro vencimento. As demais parcelas serão calculadas a partir desta data.')
                 ->default(now()->format('Y-m-d'))
-                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
+                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) !== PaymentMethod::CREDIT_CARD->value)
+                ->columnSpanFull(),
+
+            DatePicker::make('card_transaction_date')
+                ->label('Data da Compra no Cartão')
+                ->displayFormat('d/m/Y')
+                ->default($record->movement_at?->format('Y-m-d') ?? $record->issued_at?->format('Y-m-d') ?? now()->format('Y-m-d'))
+                ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
+                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
+                ->helperText('Usada para definir competência e fatura do cartão corporativo.')
                 ->columnSpanFull(),
 
             TextInput::make('description')

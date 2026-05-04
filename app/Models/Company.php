@@ -70,6 +70,26 @@ class Company extends Model
         return $this->hasMany(SefazItemMapping::class);
     }
 
+    public function cardPaymentProfiles(): HasMany
+    {
+        return $this->hasMany(CardPaymentProfile::class);
+    }
+
+    public function companyCreditCards(): HasMany
+    {
+        return $this->hasMany(CompanyCreditCard::class);
+    }
+
+    public function companyCardTransactions(): HasMany
+    {
+        return $this->hasMany(CompanyCardTransaction::class);
+    }
+
+    public function companyCardStatements(): HasMany
+    {
+        return $this->hasMany(CompanyCardStatement::class);
+    }
+
     public function serviceProvisionLocation(): Attribute
     {
         return Attribute::make(

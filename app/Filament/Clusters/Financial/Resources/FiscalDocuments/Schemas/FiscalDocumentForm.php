@@ -71,7 +71,7 @@ class FiscalDocumentForm
                             ->label('Data Emissão')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->disabled(fn(?FiscalDocument $record): bool => self::importedReadOnly($record))
-                            ->formatStateUsing(fn(?Carbon $state) => $state?->format('d/m/Y'))
+                            ->displayFormat('DD/MM/YYYY')
                             ->required()
                             ->default(now()),
 

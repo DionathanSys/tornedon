@@ -5,6 +5,7 @@ namespace App\Services\AccountReceivable\Validators;
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\CardPaymentProfile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +25,16 @@ class AccountReceivableValidator
             'paid' => 'nullable|boolean',
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
+            'card_payment_profile_id' => 'nullable|integer|exists:card_payment_profiles,id',
+            'gross_amount' => 'nullable|numeric|min:0',
+            'card_fee_percent_snapshot' => 'nullable|numeric|min:0',
+            'card_fee_fixed_snapshot' => 'nullable|numeric|min:0',
+            'card_fee_amount' => 'nullable|numeric|min:0',
+            'net_amount' => 'nullable|numeric|min:0',
+            'payment_date' => 'nullable|date',
+            'settlement_days_snapshot' => 'nullable|integer|min:0',
+            'expected_settlement_date' => 'nullable|date',
+            'card_rule_snapshot' => 'nullable|array',
             'installment_count' => 'nullable|integer|min:1|max:24',
             'installment_due_mode' => ['nullable', Rule::in([
                 ...array_keys(PaymentCondition::installmentIntervalOptions()),
@@ -68,7 +79,7 @@ class AccountReceivableValidator
             'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
         ]);
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        return self::makeValidator($data, $rules)->validate();
     }
 
     /**
@@ -85,6 +96,49 @@ class AccountReceivableValidator
             'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
         ]);
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        return self::makeValidator($data, $rules)->validate();
+    }
+
+    private static function makeValidator(array $data, array $rules)
+    {
+        $validator = Validator::make($data, $rules, self::messages());
+
+        $validator->after(function ($validator) use ($data): void {
+            $paymentMethod = $data['payment_method'] ?? null;
+
+            if ($paymentMethod !== PaymentMethod::CREDIT_CARD->value) {
+                return;
+            }
+
+            if (blank($data['card_payment_profile_id'] ?? null)) {
+                $validator->errors()->add('card_payment_profile_id', 'O perfil de cartao e obrigatorio para recebimentos em cartao de credito.');
+            }
+
+            if (blank($data['payment_date'] ?? null)) {
+                $validator->errors()->add('payment_date', 'A data do pagamento e obrigatoria para recebimentos em cartao de credito.');
+            }
+
+            $companyId = (int) ($data['company_id'] ?? 0);
+            $profileId = (int) ($data['card_payment_profile_id'] ?? 0);
+
+            if ($companyId <= 0 || $profileId <= 0) {
+                return;
+            }
+
+            $profile = CardPaymentProfile::query()
+                ->where('company_id', $companyId)
+                ->find($profileId);
+
+            if (! $profile) {
+                $validator->errors()->add('card_payment_profile_id', 'Perfil de cartao nao encontrado para a empresa informada.');
+                return;
+            }
+
+            if (! $profile->active) {
+                $validator->errors()->add('card_payment_profile_id', 'O perfil de cartao selecionado esta inativo.');
+            }
+        });
+
+        return $validator;
     }
 }

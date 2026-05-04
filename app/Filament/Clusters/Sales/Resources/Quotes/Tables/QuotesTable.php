@@ -49,7 +49,7 @@ class QuotesTable
                     ->summarize(
                         Summarizer::make()
                             ->label('Total')
-                            ->money('BRL', 100)
+                            ->money('BRL')
                             ->using(fn (Builder $query): float => self::resolveSummaryTotal($query))
                     )
                     ->alignEnd(),

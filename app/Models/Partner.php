@@ -77,6 +77,16 @@ class Partner extends Model
         return $this->hasMany(SefazItemMapping::class);
     }
 
+    public function issuedCompanyCreditCards(): HasMany
+    {
+        return $this->hasMany(CompanyCreditCard::class, 'issuer_partner_id');
+    }
+
+    public function companyCardTransactionsAsVendor(): HasMany
+    {
+        return $this->hasMany(CompanyCardTransaction::class, 'vendor_id');
+    }
+
 
 
 }

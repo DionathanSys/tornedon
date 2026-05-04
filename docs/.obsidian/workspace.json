@@ -67,8 +67,7 @@
               "title": "plano-cartoes-financeiro"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -125,7 +124,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -141,7 +141,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Projeto/Análise de Feature.md",
+                "file": "Tasks App Gestor.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -151,7 +151,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Links inversos para Análise de Feature"
+              "title": "Links inversos para Tasks App Gestor"
             }
           },
           {
@@ -231,8 +231,9 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "f93f8f0db4bd31a9",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
+    "Plan/Remover campos json de fiscal documents.md",
     "Tasks App Gestor.md",
     "Plan/plano-cartoes-financeiro.md",
     "DATABASE-BACKUP.md",
@@ -258,7 +259,6 @@
     "Projeto/Reestruturação Fiscal.md",
     "Projeto/Plano de evolução NFSe intercambiável por cidade.md",
     "Projeto/Análise de Feature.md",
-    "WEBHOOK-FUNCIONAMENTO.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

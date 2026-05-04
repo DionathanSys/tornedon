@@ -66,6 +66,11 @@ class FinancialAccount extends Model
         return $this->hasMany(BankStatementImport::class);
     }
 
+    public function companyCreditCardsAsDefault(): HasMany
+    {
+        return $this->hasMany(CompanyCreditCard::class, 'default_financial_account_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

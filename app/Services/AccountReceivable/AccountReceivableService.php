@@ -3,9 +3,11 @@
 namespace App\Services\AccountReceivable;
 
 use App\Enum\AccountReceivable\Status;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
+use App\Models\CardPaymentProfile;
 use App\Services\AccountReceivable\Actions\CreateAccountReceivableAction;
 use App\Services\AccountReceivable\Actions\DeleteAccountReceivableAction;
 use App\Services\AccountReceivable\Actions\Installment\CreateAccountReceivableInstallmentAction;
@@ -17,6 +19,7 @@ use App\Services\AccountReceivable\Actions\UpdateAccountReceivableAction;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
+use App\Services\Financial\CardReceivableCalculatorService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentSchedule;
@@ -33,6 +36,7 @@ class AccountReceivableService
     public function __construct(
         private readonly FinancialClassificationService $classificationService = new FinancialClassificationService(),
         private readonly CashMovementService $cashMovementService = new CashMovementService(),
+        private readonly CardReceivableCalculatorService $cardReceivableCalculatorService = new CardReceivableCalculatorService(),
     ) {}
 
     public function create(array $data, int $createdBy): ?AccountReceivable
@@ -45,6 +49,8 @@ class AccountReceivableService
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
+
+                $data = $this->applyCardRulesForCreate($data);
 
                 $installments = $this->buildInstallmentsData($data, $installmentCount, $scheduleConfig);
                 $action = new CreateAccountReceivableAction($createdBy);
@@ -145,6 +151,7 @@ class AccountReceivableService
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountReceivable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
+                $data = $this->applyCardRulesForUpdate($accountReceivable, $data);
 
                 $action = new UpdateAccountReceivableAction($updatedBy, $accountReceivable);
                 $updated = $action->execute($data);
@@ -831,5 +838,146 @@ class AccountReceivableService
                 ?? InstallmentDescription::fallbackForReceivable($accountReceivable, $installmentData['sequence_number'] ?? null),
             'notes' => $installmentData['notes'] ?? $installmentData['description'] ?? null,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function applyCardRulesForCreate(array $data): array
+    {
+        $paymentMethod = (string) ($data['payment_method'] ?? '');
+        $dueAmount = round((float) ($data['due_amount'] ?? 0), 2);
+
+        if ($paymentMethod !== PaymentMethod::CREDIT_CARD->value) {
+            return [
+                ...$data,
+                'card_payment_profile_id' => null,
+                'gross_amount' => $dueAmount,
+                'card_fee_percent_snapshot' => null,
+                'card_fee_fixed_snapshot' => null,
+                'card_fee_amount' => 0,
+                'net_amount' => $dueAmount,
+                'payment_date' => $data['payment_date'] ?? null,
+                'settlement_days_snapshot' => null,
+                'expected_settlement_date' => null,
+                'card_rule_snapshot' => null,
+            ];
+        }
+
+        $profile = $this->resolveCardProfile(
+            (int) ($data['company_id'] ?? 0),
+            (int) ($data['card_payment_profile_id'] ?? 0)
+        );
+
+        $paymentDate = (string) ($data['payment_date'] ?? '');
+
+        if ($paymentDate === '') {
+            throw ValidationException::withMessages([
+                'payment_date' => ['A data do pagamento e obrigatoria para recebimentos em cartao de credito.'],
+            ]);
+        }
+
+        $calculation = $this->cardReceivableCalculatorService->calculateFromProfile(
+            $profile,
+            (float) ($data['gross_amount'] ?? $dueAmount),
+            $paymentDate,
+        );
+
+        return [
+            ...$data,
+            'due_amount' => $calculation->grossAmount,
+            'gross_amount' => $calculation->grossAmount,
+            'card_fee_percent_snapshot' => $calculation->feePercent,
+            'card_fee_fixed_snapshot' => $calculation->feeFixed,
+            'card_fee_amount' => $calculation->feeAmount,
+            'net_amount' => $calculation->netAmount,
+            'settlement_days_snapshot' => $calculation->settlementDays,
+            'expected_settlement_date' => $calculation->expectedSettlementDate,
+            'card_rule_snapshot' => $calculation->snapshot,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function applyCardRulesForUpdate(AccountReceivable $accountReceivable, array $data): array
+    {
+        $currentMethod = $accountReceivable->payment_method?->value;
+        $nextMethod = (string) ($data['payment_method'] ?? $currentMethod ?? '');
+
+        if ($nextMethod !== PaymentMethod::CREDIT_CARD->value) {
+            $gross = round((float) ($data['due_amount'] ?? $accountReceivable->due_amount), 2);
+
+            return [
+                ...$data,
+                'card_payment_profile_id' => null,
+                'gross_amount' => $gross,
+                'card_fee_percent_snapshot' => null,
+                'card_fee_fixed_snapshot' => null,
+                'card_fee_amount' => 0,
+                'net_amount' => $gross,
+                'settlement_days_snapshot' => null,
+                'expected_settlement_date' => null,
+                'card_rule_snapshot' => null,
+            ];
+        }
+
+        $profileId = (int) ($data['card_payment_profile_id'] ?? $accountReceivable->card_payment_profile_id ?? 0);
+        $profile = $this->resolveCardProfile((int) $accountReceivable->company_id, $profileId);
+
+        $paymentDate = (string) ($data['payment_date'] ?? $accountReceivable->payment_date?->toDateString() ?? '');
+
+        if ($paymentDate === '') {
+            throw ValidationException::withMessages([
+                'payment_date' => ['A data do pagamento e obrigatoria para recebimentos em cartao de credito.'],
+            ]);
+        }
+
+        $grossAmount = (float) ($data['gross_amount'] ?? $data['due_amount'] ?? $accountReceivable->gross_amount ?? $accountReceivable->due_amount);
+        $calculation = $this->cardReceivableCalculatorService->calculateFromProfile($profile, $grossAmount, $paymentDate);
+
+        return [
+            ...$data,
+            'card_payment_profile_id' => $profile->id,
+            'payment_date' => $paymentDate,
+            'due_amount' => $calculation->grossAmount,
+            'gross_amount' => $calculation->grossAmount,
+            'card_fee_percent_snapshot' => $calculation->feePercent,
+            'card_fee_fixed_snapshot' => $calculation->feeFixed,
+            'card_fee_amount' => $calculation->feeAmount,
+            'net_amount' => $calculation->netAmount,
+            'settlement_days_snapshot' => $calculation->settlementDays,
+            'expected_settlement_date' => $calculation->expectedSettlementDate,
+            'card_rule_snapshot' => $calculation->snapshot,
+        ];
+    }
+
+    private function resolveCardProfile(int $companyId, int $profileId): CardPaymentProfile
+    {
+        if ($companyId <= 0 || $profileId <= 0) {
+            throw ValidationException::withMessages([
+                'card_payment_profile_id' => ['Perfil de cartao invalido para o recebimento em cartao.'],
+            ]);
+        }
+
+        $profile = CardPaymentProfile::query()
+            ->where('company_id', $companyId)
+            ->find($profileId);
+
+        if (! $profile) {
+            throw ValidationException::withMessages([
+                'card_payment_profile_id' => ['Perfil de cartao nao encontrado para a empresa informada.'],
+            ]);
+        }
+
+        if (! $profile->active) {
+            throw ValidationException::withMessages([
+                'card_payment_profile_id' => ['O perfil de cartao selecionado esta inativo.'],
+            ]);
+        }
+
+        return $profile;
     }
 }

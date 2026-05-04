@@ -87,4 +87,9 @@ class AccountPayable extends Model
     {
         return $this->hasOne(PurchaseClosing::class);
     }
+
+    public function companyCardStatements(): HasMany
+    {
+        return $this->hasMany(CompanyCardStatement::class);
+    }
 }

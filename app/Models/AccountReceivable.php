@@ -28,6 +28,16 @@ class AccountReceivable extends Model
         'paid',
         'type',
         'payment_method',
+        'card_payment_profile_id',
+        'gross_amount',
+        'card_fee_percent_snapshot',
+        'card_fee_fixed_snapshot',
+        'card_fee_amount',
+        'net_amount',
+        'payment_date',
+        'settlement_days_snapshot',
+        'expected_settlement_date',
+        'card_rule_snapshot',
     ];
 
     protected $casts = [
@@ -35,8 +45,17 @@ class AccountReceivable extends Model
         'payment_method' => PaymentMethod::class,
         'due_date' => 'date',
         'paid_date' => 'date',
+        'payment_date' => 'date',
+        'expected_settlement_date' => 'date',
         'due_amount' => MoneyCast::class,
         'paid_amount' => MoneyCast::class,
+        'gross_amount' => MoneyCast::class,
+        'card_fee_percent_snapshot' => 'float',
+        'card_fee_fixed_snapshot' => MoneyCast::class,
+        'card_fee_amount' => MoneyCast::class,
+        'net_amount' => MoneyCast::class,
+        'settlement_days_snapshot' => 'integer',
+        'card_rule_snapshot' => 'array',
         'paid' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -64,6 +83,11 @@ class AccountReceivable extends Model
     public function fiscalDocument(): BelongsTo
     {
         return $this->belongsTo(FiscalDocument::class);
+    }
+
+    public function cardPaymentProfile(): BelongsTo
+    {
+        return $this->belongsTo(CardPaymentProfile::class);
     }
 
     public function installments(): HasMany
