@@ -103,4 +103,35 @@ class FiscalDocumentServiceCreateTest extends TestCase
         $this->assertNull($document->nfe_status);
         $this->assertSame(OperationType::SAIDA, $document->operation_type);
     }
+
+    public function test_it_defaults_nfse_model_to_municipal_when_creating_entry_nfse_without_model(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::create([
+            'name' => 'Empresa NFS-e Entrada',
+            'document_number' => '52345678000155',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+        $customer = Partner::create([
+            'name' => 'Fornecedor NFS-e',
+            'document_type' => 'CNPJ',
+            'document_number' => '62345678000144',
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(FiscalDocumentService::class);
+        $document = $service->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'document_type' => DocumentModel::NFSE->value,
+            'operation_type' => OperationType::ENTRADA->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+        ], $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+        $this->assertSame(NfseModel::MUNICIPAL->value, $document->nfse_model);
+        $this->assertSame(OperationType::ENTRADA, $document->operation_type);
+    }
 }

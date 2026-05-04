@@ -3,7 +3,9 @@
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
+use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationType;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Notification\NotifyService as notify;
@@ -32,6 +34,10 @@ class CreateFiscalDocument extends CreateRecord
         ];
         $data['is_final_consumer']        ??= false;
         $data['buyer_presence_indicator'] ??= BuyerPresenceIndicator::OUTROS->value;
+
+        if (($data['document_type'] ?? null) === DocumentModel::NFSE->value) {
+            $data['nfse_model'] ??= NfseModel::MUNICIPAL->value;
+        }
 
         return $data;
     }

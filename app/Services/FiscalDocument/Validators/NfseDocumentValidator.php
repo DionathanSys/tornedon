@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Validators;
 
 use App\Enum\FiscalDocument\NfseModel;
+use App\Enum\FiscalDocument\OperationType;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -19,6 +20,7 @@ class NfseDocumentValidator
     {
         return [
             'nfse_model'  => ['required', Rule::enum(NfseModel::class)],
+            'operation_type' => ['sometimes', Rule::enum(OperationType::class)],
             'customer_id' => 'required|integer|exists:partners,id',
             'company_id'  => 'required|integer|exists:companies,id',
             'issued_at'   => 'nullable|date',
@@ -29,6 +31,7 @@ class NfseDocumentValidator
     {
         return [
             'nfse_model'  => ['sometimes', 'required', Rule::enum(NfseModel::class)],
+            'operation_type' => ['sometimes', Rule::enum(OperationType::class)],
             'customer_id' => 'sometimes|required|integer|exists:partners,id',
             'company_id'  => 'sometimes|required|integer|exists:companies,id',
             'issued_at'   => 'sometimes|required|date',

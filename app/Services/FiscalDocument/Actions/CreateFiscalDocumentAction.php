@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument\Actions;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationType;
 use App\Models\FiscalDocument;
 use App\Services\Audit\AuditRecorder;
@@ -24,6 +25,8 @@ class CreateFiscalDocumentAction
     public function execute(array $data): ?FiscalDocument
     {
         try {
+            $data = $this->normalizeDataBeforeValidation($data);
+
             Log::debug('Iniciando criação de documento fiscal', [
                 'metodo'  => __METHOD__ . '@' . __LINE__,
                 'user_id' => $this->createdBy,
@@ -94,6 +97,22 @@ class CreateFiscalDocumentAction
 
             return null;
         }
+    }
+
+    private function normalizeDataBeforeValidation(array $data): array
+    {
+        $documentType = $data['document_type'] ?? null;
+        $operationType = $data['operation_type'] ?? null;
+
+        if (
+            $documentType === DocumentModel::NFSE->value
+            && $operationType === OperationType::ENTRADA->value
+            && empty($data['nfse_model'])
+        ) {
+            $data['nfse_model'] = NfseModel::MUNICIPAL->value;
+        }
+
+        return $data;
     }
 
     private function applyInitialFiscalStatus(array $validated): array
