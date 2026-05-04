@@ -13,12 +13,15 @@ return new class extends Migration
             $table->foreignId('company_id')
                 ->constrained('companies')
                 ->cascadeOnDelete();
-            $table->foreignId('company_card_statement_id')
-                ->constrained('company_card_statements')
+            $table->unsignedBigInteger('company_card_statement_id');
+            $table->foreign('company_card_statement_id', 'ccs_payments_statement_id_foreign')
+                ->references('id')
+                ->on('company_card_statements')
                 ->cascadeOnDelete();
-            $table->foreignId('account_payable_installment_payment_id')
-                ->nullable()
-                ->constrained('account_payable_installment_payments')
+            $table->unsignedBigInteger('account_payable_installment_payment_id')->nullable();
+            $table->foreign('account_payable_installment_payment_id', 'ccs_payments_installment_payment_id_foreign')
+                ->references('id')
+                ->on('account_payable_installment_payments')
                 ->nullOnDelete();
             $table->date('payment_date');
             $table->decimal('amount', 15, 4);
