@@ -9,12 +9,15 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
+use App\Models\CardPaymentProfile;
 use App\Models\FinancialCategory;
 use App\Enum\Payment\Condition as PaymentCondition;
+use App\Services\Financial\CardReceivableCalculatorService;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -168,7 +171,40 @@ class AccountReceivableForm
                             ->columnSpan(['md' => 2, 'lg' => 3])
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
-                            ->searchable(),
+                            ->searchable()
+                            ->live(),
+                        Select::make('card_payment_profile_id')
+                            ->label('Perfil de Cartao')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->live(),
+                        DatePicker::make('payment_date')
+                            ->label('Data da Venda no Cartao')
+                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->live(),
+                        Placeholder::make('card_fee_preview')
+                            ->label('Taxa calculada')
+                            ->content(fn (callable $get): string => static::buildCardFeePreview($get))
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
+                        Placeholder::make('card_net_preview')
+                            ->label('Liquido previsto')
+                            ->content(fn (callable $get): string => static::buildCardNetPreview($get))
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
+                        Placeholder::make('card_settlement_preview')
+                            ->label('Previsao de recebimento')
+                            ->content(fn (callable $get): string => static::buildCardSettlementPreview($get))
+                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
                         Select::make('financial_category_id')
                             ->label('Categoria Financeira')
                             ->columnSpan(['md' => 2, 'lg' => 4])
@@ -201,5 +237,86 @@ class AccountReceivableForm
                     ->visibleOn([Operation::Edit]),
                 Hidden::make('company_id'),
             ]);
+    }
+
+    private static function buildCardFeePreview(callable $get): string
+    {
+        $preview = static::resolveCardCalculationPreview($get);
+
+        if ($preview === null) {
+            return '-';
+        }
+
+        return 'R$ ' . number_format((float) $preview->feeAmount, 2, ',', '.');
+    }
+
+    private static function buildCardNetPreview(callable $get): string
+    {
+        $preview = static::resolveCardCalculationPreview($get);
+
+        if ($preview === null) {
+            return '-';
+        }
+
+        return 'R$ ' . number_format((float) $preview->netAmount, 2, ',', '.');
+    }
+
+    private static function buildCardSettlementPreview(callable $get): string
+    {
+        $preview = static::resolveCardCalculationPreview($get);
+
+        if ($preview === null) {
+            return '-';
+        }
+
+        return $preview->expectedSettlementDate;
+    }
+
+    private static function resolveCardCalculationPreview(callable $get): ?\App\Domain\DTO\Financial\CardReceivableCalculationDTO
+    {
+        $profileId = (int) ($get('card_payment_profile_id') ?? 0);
+
+        if ($profileId <= 0) {
+            return null;
+        }
+
+        $profile = CardPaymentProfile::query()->find($profileId);
+
+        if (! $profile) {
+            return null;
+        }
+
+        $grossAmount = static::normalizeMoneyValue($get('due_amount') ?? $get('gross_amount'));
+
+        if ($grossAmount <= 0) {
+            return null;
+        }
+
+        $paymentDate = (string) ($get('payment_date') ?? $get('due_date') ?? '');
+
+        if ($paymentDate === '') {
+            return null;
+        }
+
+        return app(CardReceivableCalculatorService::class)->calculateFromProfile(
+            $profile,
+            $grossAmount,
+            $paymentDate,
+        );
+    }
+
+    private static function normalizeMoneyValue(mixed $value): float
+    {
+        if (is_numeric($value)) {
+            return round((float) $value, 2);
+        }
+
+        if (! is_string($value) || $value === '') {
+            return 0;
+        }
+
+        $normalized = str_replace(['.', ','], ['', '.'], $value);
+
+        return round((float) $normalized, 2);
     }
 }

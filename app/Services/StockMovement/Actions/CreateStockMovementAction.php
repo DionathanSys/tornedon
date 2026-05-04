@@ -6,6 +6,7 @@ use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Services\StockMovement\Validators\StockMovementValidator;
 use App\Traits\HandlesActionResponse;
+use InvalidArgumentException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -89,6 +90,17 @@ class CreateStockMovementAction
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        } catch (InvalidArgumentException $e) {
+            $this->setError($e->getMessage(), [], 422);
+
+            Log::warning('CreateStockMovementAction: Falha de regra de negócio ao criar movimentação', [
+                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'message'    => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'exception'  => $e->getMessage(),
             ]);
 
             return null;

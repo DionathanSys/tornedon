@@ -18,6 +18,8 @@ class GenerateFiscalEntryCardTransactionAction
      *     payment_condition: string,
      *     card_transaction_date?: ?string,
      *     description?: ?string,
+     *     category_id?: int|string|null,
+     *     cost_center_id?: int|string|null,
      * } $paymentData
      * @return array{transactions: int, errors: string[]}
      */
@@ -53,6 +55,8 @@ class GenerateFiscalEntryCardTransactionAction
                 'amount' => $totalAmount,
                 'installments' => $installments,
                 'source_description' => sprintf('NF %s', $document->document_number ?? $document->id),
+                'category_id' => isset($paymentData['category_id']) ? (int) $paymentData['category_id'] : null,
+                'cost_center_id' => isset($paymentData['cost_center_id']) ? (int) $paymentData['cost_center_id'] : null,
             ],
             $userId,
         );

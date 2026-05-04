@@ -7,6 +7,7 @@ use App\Models\CompanyCreditCard;
 use App\Models\FiscalDocument;
 use App\Models\FinancialCategory;
 use App\Models\Partner;
+use App\Models\PurchaseClosingFiscalDocument;
 use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
@@ -91,6 +92,16 @@ class CompanyCardTransactionService
 
                 $validated = $this->validateTransactionPayload($payload, requireSource: true);
                 $installments = (int) ($validated['installments'] ?? 1);
+
+                $existsInPurchaseClosing = PurchaseClosingFiscalDocument::query()
+                    ->where('fiscal_document_id', (int) $document->id)
+                    ->exists();
+
+                if ($existsInPurchaseClosing) {
+                    throw ValidationException::withMessages([
+                        'source_id' => ['Este documento fiscal já está vinculado a um fechamento de compras e não pode ser lançado no cartão corporativo.'],
+                    ]);
+                }
 
                 $alreadyExists = CompanyCardTransaction::query()
                     ->where('company_id', (int) $document->company_id)

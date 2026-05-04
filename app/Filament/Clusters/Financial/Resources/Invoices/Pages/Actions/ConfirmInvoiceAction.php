@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
+use App\Models\CardPaymentProfile;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
@@ -49,7 +50,30 @@ final class ConfirmInvoiceAction
                     ->options(Method::toSelectArray())
                     ->default(fn (Invoice $record): ?string => $record->payment_method?->value)
                     ->native(false)
+                    ->live()
                     ->required(),
+
+                Select::make('card_payment_profile_id')
+                    ->label('Perfil de Recebimento no Cartão')
+                    ->options(fn (): array => CardPaymentProfile::query()
+                        ->where('company_id', Filament::getTenant()?->id)
+                        ->where('active', true)
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->toArray())
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                    ->helperText('Define as taxas e o prazo D+X aplicados no contas a receber.'),
+
+                DatePicker::make('payment_date')
+                    ->label('Data da Venda/Pagamento no Cartão')
+                    ->default(fn (Invoice $record): ?string => $record->invoice_date?->toDateString() ?? now()->toDateString())
+                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                    ->helperText('Usada para calcular a previsão de liquidação do cartão.'),
 
                 Select::make('payment_condition')
                     ->label('Condição de Pagamento')

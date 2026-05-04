@@ -89,7 +89,7 @@ class CompanyCardStatementPaymentService
                     'notes' => $extra['notes'] ?? null,
                 ]);
 
-                $updatedStatement = $this->syncStatus($statement);
+                $updatedStatement = $this->syncStatus($statement, isset($extra['user_id']) ? (int) $extra['user_id'] : null);
                 $audit = app(AuditRecorder::class);
                 $audit->recordModelEvent(
                     $updatedStatement,
@@ -119,8 +119,9 @@ class CompanyCardStatementPaymentService
         }
     }
 
-    public function syncStatus(CompanyCardStatement $statement): CompanyCardStatement
+    public function syncStatus(CompanyCardStatement $statement, ?int $userId = null): CompanyCardStatement
     {
+        $before = app(AuditRecorder::class)->snapshot($statement->fresh());
         $updated = $this->statementService->recalculateTotals($statement->fresh());
 
         if ((float) $updated->balance_total <= 0 && (float) $updated->paid_total > 0) {
@@ -130,6 +131,17 @@ class CompanyCardStatementPaymentService
             ]);
         }
 
-        return $updated->fresh();
+        $updated = $updated->fresh();
+        $audit = app(AuditRecorder::class);
+        $audit->recordModelEvent(
+            $updated,
+            'company_card_statement.status_synced',
+            'Status da fatura de cartao corporativo sincronizado',
+            $before,
+            $audit->snapshot($updated),
+            $userId,
+        );
+
+        return $updated;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services\PurchaseClosing;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\PurchaseClosing\Status;
 use App\Models\AccountPayable;
+use App\Models\CompanyCardTransaction;
 use App\Models\FiscalDocument;
 use App\Models\PurchaseClosing;
 use App\Models\PurchaseClosingFiscalDocument;
@@ -368,6 +369,18 @@ class PurchaseClosingService
             if ($existingLink) {
                 throw ValidationException::withMessages([
                     'documents' => ["A nota #{$document->document_number} já pertence a outro fechamento."],
+                ]);
+            }
+
+            $hasCardTransaction = CompanyCardTransaction::query()
+                ->where('company_id', (int) $validated['company_id'])
+                ->where('source_type', 'fiscal_document')
+                ->where('source_id', (int) $document->id)
+                ->exists();
+
+            if ($hasCardTransaction) {
+                throw ValidationException::withMessages([
+                    'documents' => ["A nota #{$document->document_number} já foi lançada no cartão corporativo e não pode compor fechamento de fornecedor."],
                 ]);
             }
 

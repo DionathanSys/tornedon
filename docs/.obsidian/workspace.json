@@ -67,7 +67,8 @@
               "title": "plano-cartoes-financeiro"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -231,10 +232,10 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "9e3acf14be100817",
+  "active": "f93f8f0db4bd31a9",
   "lastOpenFiles": [
-    "Plan/Remover campos json de fiscal documents.md",
     "Tasks App Gestor.md",
+    "Plan/Remover campos json de fiscal documents.md",
     "Plan/plano-cartoes-financeiro.md",
     "DATABASE-BACKUP.md",
     "Outros/stock-movement-examples.md",

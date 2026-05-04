@@ -6,12 +6,14 @@ use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\CompanyCreditCard;
 use App\Models\FiscalDocument;
+use App\Models\FinancialCategory;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -211,6 +213,23 @@ final class ConfirmEntryAction
                 ->helperText("Valor total da nota: {$totalFormatted}")
                 ->maxLength(255)
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
+                ->columnSpanFull(),
+
+            Select::make('category_id')
+                ->label('Categoria Financeira')
+                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
+                ->searchable()
+                ->preload()
+                ->native(false)
+                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
+                ->columnSpanFull(),
+
+            TextInput::make('cost_center_id')
+                ->label('Centro de Custo (ID)')
+                ->numeric()
+                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
+                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
                 ->columnSpanFull(),
         ];
     }

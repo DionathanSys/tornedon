@@ -107,7 +107,8 @@ class ConfirmInvoiceAction
 
             $createdReceivables = $this->createAccountReceivables(
                 $paymentMethod,
-                $paymentCondition
+                $paymentCondition,
+                $data,
             );
 
             if ($createdReceivables === null) {
@@ -329,7 +330,8 @@ class ConfirmInvoiceAction
      */
     private function createAccountReceivables(
         PaymentMethod $paymentMethod,
-        PaymentCondition $paymentCondition
+        PaymentCondition $paymentCondition,
+        array $data,
     ): ?array {
         $installments = $this->buildInstallments($paymentCondition);
 
@@ -338,6 +340,24 @@ class ConfirmInvoiceAction
         }
 
         $service = app(AccountReceivableService::class);
+
+        if (
+            $paymentMethod === PaymentMethod::CREDIT_CARD
+            && blank($data['card_payment_profile_id'] ?? null)
+        ) {
+            $this->setError('Selecione o perfil de recebimento para confirmar a fatura em cartão de crédito.');
+
+            return null;
+        }
+
+        if (
+            $paymentMethod === PaymentMethod::CREDIT_CARD
+            && blank($data['payment_date'] ?? null)
+        ) {
+            $this->setError('Informe a data da venda/pagamento para confirmar a fatura em cartão de crédito.');
+
+            return null;
+        }
 
         $accountReceivable = $service->create([
             'customer_id'        => $this->invoice->customer_id,
@@ -356,6 +376,12 @@ class ConfirmInvoiceAction
             ),
             'paid'               => false,
             'payment_method'     => $paymentMethod->value,
+            'card_payment_profile_id' => $paymentMethod === PaymentMethod::CREDIT_CARD
+                ? (int) ($data['card_payment_profile_id'] ?? 0)
+                : null,
+            'payment_date' => $paymentMethod === PaymentMethod::CREDIT_CARD
+                ? (string) ($data['payment_date'] ?? $this->invoice->invoice_date?->toDateString() ?? now()->toDateString())
+                : null,
             'installment_count'  => count($installments),
             'installment_due_mode' => 'interval_30_days',
         ], $this->confirmedBy);

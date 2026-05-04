@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\StockMovement\Type as MovementType;
 use App\Models\FiscalDocument;
 use App\Models\ProductStock;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 
@@ -63,12 +64,28 @@ class ProcessFiscalEntryStockAction
                 continue;
             }
 
+            $operationalUnit = (string) ($item->taxable_unit ?: ($item->unit_of_measure ?? $product->unit?->value));
+
+            if (! app(ProductUnitConversionService::class)->isAllowedUnit($product, $operationalUnit)) {
+                $result['errors'][] = "Produto {$product->product_code} com unidade {$operationalUnit} não cadastrada. Movimentação ignorada.";
+
+                Log::warning('ProcessFiscalEntryStockAction: Unidade não cadastrada para o produto', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'product_id' => $item->product_id,
+                    'product_code' => $product->product_code,
+                    'operational_unit' => $operationalUnit,
+                    'fiscal_document_id' => $document->id,
+                ]);
+
+                continue;
+            }
+
             $movement = $this->stockMovementService->create([
                 'product_stock_id' => $stock->id,
                 'product_id' => $item->product_id,
                 'company_id' => $document->company_id,
                 'type' => MovementType::ENTRY->value,
-                'operational_unit' => $item->taxable_unit ?: ($item->unit_of_measure ?? $product->unit?->value),
+                'operational_unit' => $operationalUnit,
                 'quantity' => (float) ($item->taxable_quantity ?? $item->quantity),
                 'unit_price' => (float) $item->unit_price,
                 'reason' => "Nota de Entrada #{$document->document_number} - Produto: {$product->product_code}",

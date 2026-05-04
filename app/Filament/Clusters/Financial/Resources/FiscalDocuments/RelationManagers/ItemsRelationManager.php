@@ -161,10 +161,12 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse && ! $this->importedReadOnly()),
+                    // ->visible(fn () => ! $isNfse && ! $this->importedReadOnly())
+                    ,
                 DeleteItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse && ! $this->importedReadOnly()),
+                    // ->visible(fn () => ! $isNfse && ! $this->importedReadOnly())
+                    ,
 
                 // NFS-e actions
                 EditNfseItemAction::make()

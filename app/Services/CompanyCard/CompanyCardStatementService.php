@@ -102,6 +102,20 @@ class CompanyCardStatementService
                 $this->attachEligibleTransactions($statement);
                 $statement = $this->recalculateTotals($statement);
 
+                $audit = app(AuditRecorder::class);
+                $audit->recordModelEvent(
+                    $statement,
+                    'company_card_statement.generated',
+                    'Fatura de cartao corporativo gerada/atualizada',
+                    null,
+                    $audit->snapshot($statement),
+                    auth()->id(),
+                    null,
+                    [
+                        'was_recently_created' => $statement->wasRecentlyCreated,
+                    ],
+                );
+
                 $this->setSuccess('Fatura do cartão gerada/atualizada com sucesso.');
 
                 return $statement;

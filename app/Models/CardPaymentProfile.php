@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -37,5 +38,20 @@ class CardPaymentProfile extends Model
     public function accountReceivables(): HasMany
     {
         return $this->hasMany(AccountReceivable::class);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('active', true);
+    }
+
+    public static function optionsForCompany(int $companyId): array
+    {
+        return static::query()
+            ->where('company_id', $companyId)
+            ->active()
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
     }
 }
