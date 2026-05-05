@@ -19,19 +19,17 @@ class ReserveNfeNumberAction
 {
     use HandlesActionResponse;
 
-    public function execute(FiscalDocument $fiscalDocument, string $serie, string $operationNature): bool
+    public function execute(FiscalDocument $fiscalDocument, string $serie): bool
     {
         try {
             $result = NfeSequence::nextNumber(
                 $fiscalDocument->company_id,
-                $serie,
-                $operationNature
+                $serie
             );
 
             $fiscalDocument->update([
                 'document_number'  => (string) $result['number'],
                 'document_series'  => $serie,
-                'operation_nature' => $operationNature,
                 'nfe_sequence_id'  => $result['sequence_id'],
             ]);
 
@@ -39,7 +37,6 @@ class ReserveNfeNumberAction
                 'fiscal_document_id' => $fiscalDocument->id,
                 'number'             => $result['number'],
                 'serie'              => $serie,
-                'operation_nature'   => $operationNature,
                 'sequence_id'        => $result['sequence_id'],
             ]);
 

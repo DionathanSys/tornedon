@@ -48,16 +48,14 @@ class NfeSequence extends Model
      * com o mesmo número). O registro é criado automaticamente se não existir.
      *
      * @param int    $companyId
-     * @param string $serie           Série da NF-e (ex: "1")
-     * @param string $operationNature Natureza da operação (ex: "VENDA DENTRO DO ESTADO")
+     * @param string $serie Série da NF-e (ex: "1")
      * @return array{number: int, sequence_id: int}
      */
-    public static function nextNumber(int $companyId, string $serie, string $operationNature): array
+    public static function nextNumber(int $companyId, string $serie): array
     {
-        $sequence = DB::transaction(function () use ($companyId, $serie, $operationNature) {
+        $sequence = DB::transaction(function () use ($companyId, $serie) {
             $seq = self::where('company_id', $companyId)
                 ->where('serie', $serie)
-                ->where('operation_nature', $operationNature)
                 ->lockForUpdate()
                 ->first();
 
@@ -65,7 +63,7 @@ class NfeSequence extends Model
                 $seq = self::create([
                     'company_id'       => $companyId,
                     'serie'            => $serie,
-                    'operation_nature' => $operationNature,
+                    'operation_nature' => '',
                     'last_number'      => 0,
                 ]);
             }
@@ -91,11 +89,10 @@ class NfeSequence extends Model
      *
      * Útil para preview: mostra ao usuário o número correto sem consumir a sequência.
      */
-    public static function peekNextNumber(int $companyId, string $serie, string $operationNature): int
+    public static function peekNextNumber(int $companyId, string $serie): int
     {
         $seq = self::where('company_id', $companyId)
             ->where('serie', $serie)
-            ->where('operation_nature', $operationNature)
             ->first();
 
         $currentLastNumber = (int) ($seq->last_number ?? 0);
@@ -109,12 +106,11 @@ class NfeSequence extends Model
      *
      * @return array{number: int, sequence_id: int}
      */
-    public static function confirmNumber(int $companyId, string $serie, string $operationNature, int $number): array
+    public static function confirmNumber(int $companyId, string $serie, int $number): array
     {
-        $sequence = DB::transaction(function () use ($companyId, $serie, $operationNature, $number) {
+        $sequence = DB::transaction(function () use ($companyId, $serie, $number) {
             $seq = self::where('company_id', $companyId)
                 ->where('serie', $serie)
-                ->where('operation_nature', $operationNature)
                 ->lockForUpdate()
                 ->first();
 
@@ -122,7 +118,7 @@ class NfeSequence extends Model
                 $seq = self::create([
                     'company_id' => $companyId,
                     'serie' => $serie,
-                    'operation_nature' => $operationNature,
+                    'operation_nature' => '',
                     'last_number' => 0,
                 ]);
             }

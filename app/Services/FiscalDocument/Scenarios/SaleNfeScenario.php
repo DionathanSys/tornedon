@@ -49,13 +49,7 @@ class SaleNfeScenario implements FiscalEmissionScenarioInterface
 
     public function resolveCandidateNumber(FiscalDocument $document, string $series): ?int
     {
-        $operationNature = $this->resolveOperationNature($document);
-
-        if (! is_string($operationNature) || trim($operationNature) === '') {
-            return null;
-        }
-
-        return NfeSequence::peekNextNumber((int) $document->company_id, $series, $operationNature);
+        return NfeSequence::peekNextNumber((int) $document->company_id, $series);
     }
 
     public function buildQueueGroupKey(FiscalDocument $document, string $series, int $environment): string

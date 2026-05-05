@@ -74,7 +74,7 @@ class ReserveNfeNumberActionTest extends TestCase
 
         $action = new ReserveNfeNumberAction();
 
-        $this->assertFalse($action->execute($documentToReserve, '1', OperationNature::DEVOLUCAO_COMPRA->value));
+        $this->assertFalse($action->execute($documentToReserve, '1'));
 
         $documentToReserve->refresh();
 
@@ -140,7 +140,7 @@ class ReserveNfeNumberActionTest extends TestCase
 
         $action = new ReserveNfeNumberAction();
 
-        $this->assertTrue($action->execute($documentToReserve, '1', OperationNature::DEVOLUCAO_COMPRA->value));
+        $this->assertTrue($action->execute($documentToReserve, '1'));
 
         $documentToReserve->refresh();
 
@@ -191,10 +191,71 @@ class ReserveNfeNumberActionTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Divergência na sequência NF-e');
 
-        NfeSequence::peekNextNumber(
-            $company->id,
-            '1',
-            OperationNature::VENDA_DENTRO_ESTADO->value
-        );
+        NfeSequence::peekNextNumber($company->id, '1');
+    }
+
+    public function test_it_shares_the_same_sequence_across_different_operation_natures_in_same_series(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Serie Compartilhada',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Serie Compartilhada',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        NfeSequence::query()->create([
+            'company_id' => $company->id,
+            'serie' => '1',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'last_number' => 1,
+        ]);
+
+        FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => '1',
+            'document_series' => '1',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'created_by' => $user->id,
+        ]);
+
+        $returnDocument = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => null,
+            'document_series' => null,
+            'operation_nature' => OperationNature::DEVOLUCAO_COMPRA->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'created_by' => $user->id,
+        ]);
+
+        $action = new ReserveNfeNumberAction();
+
+        $this->assertTrue($action->execute($returnDocument, '1'));
+
+        $returnDocument->refresh();
+
+        $this->assertSame('2', $returnDocument->document_number);
+        $this->assertSame('1', $returnDocument->document_series);
+        $this->assertSame(1, NfeSequence::query()->count());
+        $this->assertSame(2, NfeSequence::query()->whereKey($returnDocument->nfe_sequence_id)->value('last_number'));
     }
 }

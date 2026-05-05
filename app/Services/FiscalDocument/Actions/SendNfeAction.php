@@ -88,7 +88,7 @@ class SendNfeAction
             $currentNumber = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->document_number ?? ''));
 
             if ($currentNumber < 1) {
-                $this->assignNumberForAttempt($fiscalDocument, $serie, $operationNature);
+                $this->assignNumberForAttempt($fiscalDocument, $serie);
                 $fiscalDocument->refresh();
             }
 
@@ -135,7 +135,6 @@ class SendNfeAction
                 $confirmed = NfeSequence::confirmNumber(
                     (int) $fiscalDocument->company_id,
                     (string) $fiscalDocument->document_series,
-                    (string) $operationNature,
                     (int) $fiscalDocument->document_number,
                 );
 
@@ -242,18 +241,16 @@ class SendNfeAction
         }
     }
 
-    private function assignNumberForAttempt(FiscalDocument $fiscalDocument, string $serie, string $operationNature): void
+    private function assignNumberForAttempt(FiscalDocument $fiscalDocument, string $serie): void
     {
         $number = NfeSequence::peekNextNumber(
             (int) $fiscalDocument->company_id,
             $serie,
-            $operationNature,
         );
 
         $fiscalDocument->update([
             'document_number' => (string) $number,
             'document_series' => $serie,
-            'operation_nature' => $operationNature,
         ]);
     }
 
