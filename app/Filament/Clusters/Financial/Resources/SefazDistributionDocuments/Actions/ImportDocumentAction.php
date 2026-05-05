@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Actions;
 
 use App\Enum\SefazDistributionDocument\ImportStatus;
+use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDistributionDocumentResource;
 use App\Models\SefazDistributionDocument;
 use App\Services\Fiscal\Sefaz\SefazDistributionFiscalDocumentImportService;
 use Filament\Actions\Action;
@@ -29,6 +30,7 @@ class ImportDocumentAction
                     ->body("DF-e importado para a nota de entrada #{$fiscalDocument->id}.")
                     ->success()
                     ->send();
-            });
+            })
+            ->successRedirectUrl(fn($record) => SefazDistributionDocumentResource::getUrl('view', $record->id));
     }
 }

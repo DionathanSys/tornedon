@@ -128,7 +128,6 @@ class ViewSefazDistributionDocument extends ViewRecord
                             Select::make('xml_product_origin')
                                 ->label('Origem do produto (padrão)')
                                 ->options(Origin::toSelectArray())
-                                ->default(Origin::NACIONAL->value)
                                 ->native(false)
                                 ->columnSpan(1),
                             TextInput::make('manufacturer_code')
