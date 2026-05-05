@@ -28,27 +28,20 @@ final class ConfirmEntryAction
     public static function make(): Action
     {
         return Action::make('confirmEntry')
-            ->label('Confirmar Entrada')
+            ->label('Confirmar')
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('success')
             ->modalWidth('lg')
-            ->modalHeading('Confirmar Nota de Entrada')
+            ->modalHeading('Confirmar Documento Fiscal')
             ->modalDescription('Confirme a entrada para gerar as movimentações de estoque. O financeiro pode ser gerado agora como conta a pagar ou como lançamento de cartão corporativo.')
             ->visible(fn(FiscalDocument $record): bool => ! $record->confirmed)
             ->schema(fn(FiscalDocument $record): array => self::buildFormSchema($record))
             ->action(function (Action $action, FiscalDocument $record, array $data): void {
                 // Bloqueia reprocessamento
                 if ($record->accountPayables()->exists() || $record->confirmed) {
-                    notify::error(message: 'Esta nota já foi confirmada e processada. Nenhuma alteração foi realizada.');
+                    notify::error(title: 'Falha ao confirmar', message: 'Este documento fiscal já gerou movimentações financeiras.');
                     return;
                 }
-
-                Log::debug('ConfirmEntryAction: Iniciando processamento da nota de entrada', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'fiscal_document_id' => $record->id,
-                    'data'               => $data,
-                    'user_id'            => Auth::id(),
-                ]);
 
                 try {
                     DB::transaction(function () use ($record, $data) {

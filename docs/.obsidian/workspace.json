@@ -59,12 +59,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Plan/plano-cartoes-financeiro.md",
+                "file": "manual-devolucao-parcial-nota-compra.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "plano-cartoes-financeiro"
+              "title": "manual-devolucao-parcial-nota-compra"
             }
           }
         ],
@@ -125,8 +125,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -234,9 +233,12 @@
   },
   "active": "f93f8f0db4bd31a9",
   "lastOpenFiles": [
+    "instrucao-api-nfs-nacional.md",
+    "manual-devolucao-parcial-nota-compra.md",
     "Tasks App Gestor.md",
-    "Plan/Remover campos json de fiscal documents.md",
     "Plan/plano-cartoes-financeiro.md",
+    "Migração Gamma Eletrônica.md",
+    "Plan/Remover campos json de fiscal documents.md",
     "DATABASE-BACKUP.md",
     "Outros/stock-movement-examples.md",
     "Plano Fechamento Fatura Fornecedores.md",
@@ -257,9 +259,6 @@
     "Magna Gestão/Tarefas.md",
     "relatorios/2026-04-20-nfe-devolucao-alteracoes.md",
     "regras-negocio/partner-creation.md",
-    "Projeto/Reestruturação Fiscal.md",
-    "Projeto/Plano de evolução NFSe intercambiável por cidade.md",
-    "Projeto/Análise de Feature.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

@@ -29,9 +29,9 @@ class ProcessFiscalEntryStockAction
 
         foreach ($document->items as $item) {
             if (! $item->product_id) {
-                Log::debug('ProcessFiscalEntryStockAction: Item sem produto', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
-                    'item' => $item,
+                Log::warning('ProcessFiscalEntryStockAction: Item sem produto', [
+                    'metodo'    => __METHOD__ . '@' . __LINE__,
+                    'item'      => $item,
                 ]);
 
                 continue;
@@ -39,9 +39,9 @@ class ProcessFiscalEntryStockAction
 
             $product = $item->product;
             if (! $product || ! $product->has_stock_control) {
-                Log::debug('ProcessFiscalEntryStockAction: Produto sem controle de estoque', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
-                    'product' => $product,
+                Log::info('ProcessFiscalEntryStockAction: Produto sem controle de estoque', [
+                    'metodo'    => __METHOD__ . '@' . __LINE__,
+                    'product'   => $product,
                 ]);
 
                 continue;
