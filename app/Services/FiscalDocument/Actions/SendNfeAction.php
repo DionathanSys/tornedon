@@ -82,6 +82,17 @@ class SendNfeAction
                 return false;
             }
 
+            if ($fiscalDocument->isNfeRejected()) {
+                $resolveRejectedNumberAction = new ResolveRejectedNfeNumberAction();
+
+                if (! $resolveRejectedNumberAction->execute($fiscalDocument, $serie, $this->userId)) {
+                    $this->setError($resolveRejectedNumberAction->getMessage(), $resolveRejectedNumberAction->getErrors());
+                    return false;
+                }
+
+                $fiscalDocument->refresh();
+            }
+
             // ------------------------------------------------------------------
             // 1. Atribuir número somente no momento do envio real
             // ------------------------------------------------------------------

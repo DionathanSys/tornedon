@@ -47,7 +47,7 @@ class PrintNfePreviewAction
             if (empty($fiscalDocument->document_number) || (int) $fiscalDocument->document_number < 1) {
                 $configService = app(NfeConfigService::class);
                 $serie         = $fiscalDocument->document_series
-                                 ?? $configService->resolveSerie($fiscalDocument->company_id);
+                    ?? $configService->resolveSerie($fiscalDocument->company_id);
                 $previewNumber = NfeSequence::peekNextNumber(
                     $fiscalDocument->company_id,
                     $serie
@@ -105,7 +105,6 @@ class PrintNfePreviewAction
                 'pdf' => $resp->pdf ?? null,
                 'xml' => $resp->xml ?? null,
             ];
-
         } catch (\Exception $e) {
             $msgErro = 'Erro ao gerar preview da NF-e: ' . $e->getMessage();
             $this->setError($msgErro);
