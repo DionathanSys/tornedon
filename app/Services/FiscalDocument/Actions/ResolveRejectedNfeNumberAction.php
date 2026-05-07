@@ -106,7 +106,7 @@ class ResolveRejectedNfeNumberAction
                 'company_id' => $fiscalDocument->company_id,
             ]);
 
-            $this->setSuccess('NF-e rejeitada recebeu novo número para reenvio.');
+            $this->setSuccess();
             return true;
         } catch (\Throwable $e) {
             $this->setError('Erro ao resolver número da NF-e rejeitada: ' . $e->getMessage());

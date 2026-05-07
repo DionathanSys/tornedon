@@ -19,6 +19,7 @@ use App\Models\FiscalDocumentItem;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\Product;
+use App\Models\ProductTax;
 use App\Models\User;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\Fiscal\NfseConfigService;
@@ -77,6 +78,22 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         $this->assertArrayHasKey('tax_data.purchase_return_origin.document_key', $service->getErrors());
     }
 
+    public function test_nfe_preflight_requires_ncm_in_product_tax_record(): void
+    {
+        [, $document] = $this->createReadyNfeDocument(withProductTaxNcm: false);
+
+        $config = Mockery::mock(NfeConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $this->app->instance(NfeConfigService::class, $config);
+
+        $service = app(FiscalEmissionPreflightService::class);
+        $result = $service->validateForQueue($document);
+
+        $this->assertNull($result);
+        $this->assertArrayHasKey('items.0.product.ncm_code', $service->getErrors());
+    }
+
     public function test_nfse_municipal_preflight_requires_service_code_and_nbs(): void
     {
         [, $document] = $this->createReadyNfseDocument(withServiceDefaults: false, withItemTaxCodes: false);
@@ -120,6 +137,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         ?User $user = null,
         OperationNature $operationNature = OperationNature::VENDA_DENTRO_ESTADO,
         IssuePurpose $issuePurpose = IssuePurpose::NORMAL,
+        bool $withProductTaxNcm = true,
     ): array {
         $user ??= User::factory()->create();
 
@@ -160,6 +178,13 @@ class FiscalEmissionPreflightServiceTest extends TestCase
             'unit' => 'UN',
             'sale_price_value' => 100,
             'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        ProductTax::query()->create([
+            'product_id' => $product->id,
+            'product_origin' => '0',
+            'ncm_code' => $withProductTaxNcm ? '84733049' : null,
             'created_by' => $user->id,
         ]);
 

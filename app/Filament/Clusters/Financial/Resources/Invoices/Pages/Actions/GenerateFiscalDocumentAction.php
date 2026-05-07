@@ -12,6 +12,7 @@ use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\VolumeSpecies;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
@@ -207,7 +208,7 @@ final class GenerateFiscalDocumentAction
                         ])->columns(2),
                 ];
             })
-            ->action(function (Invoice $record, array $data) use ($documentType, $isNfse): void {
+            ->action(function (Invoice $record, array $data, EditInvoice $livewire) use ($documentType, $isNfse): void {
                 if ($record->fiscalDocuments()->where('document_type', $documentType->value)->exists()) {
                     notify::warning('Já existe um documento deste tipo para esta fatura.');
                     return;
@@ -294,7 +295,10 @@ final class GenerateFiscalDocumentAction
 
                 if (($data['open_document_after_confirm'] ?? false) === true) {
                     redirect(FiscalDocumentResource::getUrl('edit', ['record' => $fiscalDocument]));
+                    return;
                 }
+
+                $livewire->refreshInvoiceState();
             });
     }
 }

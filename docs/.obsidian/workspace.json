@@ -67,8 +67,7 @@
               "title": "manual-devolucao-parcial-nota-compra"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -231,13 +230,13 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "90ca2be9453c4171",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
+    "plano-cartoes-financeiro.md",
     "manual-devolucao-parcial-nota-compra.md",
     "Sem título.md",
     "instrucao-api-nfs-nacional.md",
     "Tasks App Gestor.md",
-    "plano-cartoes-financeiro.md",
     "Migração Gamma Eletrônica.md",
     "Plan/Remover campos json de fiscal documents.md",
     "DATABASE-BACKUP.md",

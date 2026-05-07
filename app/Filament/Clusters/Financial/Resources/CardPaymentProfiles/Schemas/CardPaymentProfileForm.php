@@ -50,7 +50,7 @@ class CardPaymentProfileForm
                             ->columnSpan(['md' => 1, 'lg' => 3]),
                         Money::make('fee_fixed')
                             ->label('Taxa fixa')
-                            ->default(0)
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 1, 'lg' => 3]),
                         TextInput::make('settlement_days')
                             ->label('Prazo de liquidacao (dias)')
@@ -62,6 +62,7 @@ class CardPaymentProfileForm
                             ->columnSpan(['md' => 1, 'lg' => 4]),
                         Toggle::make('active')
                             ->label('Ativo')
+                            ->inline(false)
                             ->default(true)
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                     ]),

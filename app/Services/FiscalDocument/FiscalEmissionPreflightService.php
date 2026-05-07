@@ -39,7 +39,7 @@ class FiscalEmissionPreflightService
             'company.fiscalProfile',
             'customer.address',
             'customer.contacts',
-            'items.product',
+            'items.product.tax',
             'items.service',
             'fiscalProfile',
         ]);
@@ -371,6 +371,10 @@ class FiscalEmissionPreflightService
 
             if (blank($item->ncm_code)) {
                 $itemErrors["{$prefix}.ncm_code"][] = 'NCM obrigatório.';
+            }
+
+            if ($item->product_id && blank($item->product?->tax?->ncm_code)) {
+                $itemErrors["{$prefix}.product.ncm_code"][] = 'NCM obrigatório no cadastro do produto.';
             }
 
             if (blank($cfop)) {

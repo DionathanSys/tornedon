@@ -181,7 +181,14 @@ class SendNfeAction
                 dispatch(new \App\Jobs\ConsultNfeJob($fiscalDocument->id, $this->userId))
                     ->delay(now()->addSeconds(60));
 
-                $this->setSuccess('NF-e enviada e em processamento na SEFAZ.');
+                Log::info('SendNfeAction: NF-e enviada com sucesso, aguardando processamento', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'chave'              => $resp->chave,
+                    'codigo_resposta'    => $resp->codigo ?? null,
+                    'ambiente'           => $ambiente,
+                ]);
+
+                $this->setSuccess();
                 return true;
             }
 

@@ -23,6 +23,7 @@ class AccountReceivablesRelationManager extends RelationManager
     protected static string|BackedEnum|null $icon = Heroicon::ArrowTrendingUp;
 
     #[On('invoice-confirmed')]
+    #[On('invoice-account-receivables-refresh')]
     public function refreshAccountReceivables(): void
     {
         $this->resetTable();

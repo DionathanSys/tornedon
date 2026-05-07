@@ -51,7 +51,7 @@ class CardPaymentProfileResource extends Resource
     {
         return [
             'index' => ListCardPaymentProfiles::route('/'),
-            'create' => CreateCardPaymentProfile::route('/create'),
+            // 'create' => CreateCardPaymentProfile::route('/create'),
             'edit' => EditCardPaymentProfile::route('/{record}/edit'),
         ];
     }

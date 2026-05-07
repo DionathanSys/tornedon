@@ -17,7 +17,9 @@ use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
 use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
+use App\Services\Invoice\Actions\GenerateInvoiceAccountReceivablesAction;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
+use App\Services\Invoice\Actions\ReturnInvoiceToPendingAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
 use App\Services\Product\ProductUnitConversionService;
 use App\Support\Fiscal\FiscalItemAmounts;
@@ -261,6 +263,91 @@ class InvoiceService
                 'trace'      => $e->getTraceAsString(),
                 'data'       => $data,
                 'user_id'    => $confirmedBy,
+            ]);
+
+            return null;
+        }
+    }
+
+    public function returnToPending(Invoice $invoice, int $userId): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($invoice, $userId) {
+                $action = new ReturnInvoiceToPendingAction($invoice, $userId);
+                $result = $action->execute();
+
+                if ($action->hasError() || ! $result) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    return false;
+                }
+
+                $this->setSuccess('Fatura retornada para pendente com sucesso.');
+
+                return true;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao retornar fatura para pendente');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $userId,
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, mixed>|null
+     */
+    public function generateAccountReceivables(Invoice $invoice, array $data, int $userId): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($invoice, $data, $userId) {
+                $action = new GenerateInvoiceAccountReceivablesAction($invoice, $userId);
+                $result = $action->execute($data);
+
+                if ($action->hasError() || $result === null) {
+                    $this->setError(
+                        $action->getMessage(),
+                        $action->getErrors(),
+                        422,
+                        $action->getErrorCode()
+                    );
+
+                    return null;
+                }
+
+                $this->setSuccess('Contas a receber geradas com sucesso.', $result);
+
+                return $result;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar contas a receber da fatura');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'invoice_id' => $invoice->id,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $userId,
             ]);
 
             return null;

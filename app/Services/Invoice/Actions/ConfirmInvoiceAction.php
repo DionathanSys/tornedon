@@ -13,6 +13,7 @@ use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
+use App\Models\CardPaymentProfile;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Services\Audit\AuditRecorder;
@@ -333,7 +334,7 @@ class ConfirmInvoiceAction
         PaymentCondition $paymentCondition,
         array $data,
     ): ?array {
-        $installments = $this->buildInstallments($paymentCondition);
+        $installments = $this->buildInstallments($paymentMethod, $paymentCondition, $data);
 
         if ($installments === []) {
             return null;
@@ -487,7 +488,7 @@ class ConfirmInvoiceAction
     /**
      * @return array<int, array<string, int|float|string>>
      */
-    private function buildInstallments(PaymentCondition $condition): array
+    private function buildInstallments(PaymentMethod $paymentMethod, PaymentCondition $condition, array $data): array
     {
         $netValue = round((float) $this->invoice->netValue, 2);
 
@@ -501,6 +502,17 @@ class ConfirmInvoiceAction
         $baseCents = intdiv($totalCents, $installmentsCount);
         $remainder = $totalCents - ($baseCents * $installmentsCount);
         $baseDate = Carbon::parse($this->invoice->invoice_date ?? now()->toDateString());
+        $cardPaymentDate = $paymentMethod === PaymentMethod::CREDIT_CARD
+            ? Carbon::parse((string) ($data['payment_date'] ?? $this->invoice->invoice_date?->toDateString() ?? now()->toDateString()))
+            : null;
+        $cardPaymentProfile = $paymentMethod === PaymentMethod::CREDIT_CARD
+            ? $this->resolveCardProfile((int) ($data['card_payment_profile_id'] ?? 0))
+            : null;
+
+        if ($paymentMethod === PaymentMethod::CREDIT_CARD && $cardPaymentProfile === null) {
+            return [];
+        }
+
         $installments = [];
 
         for ($i = 1; $i <= $installmentsCount; $i++) {
@@ -508,7 +520,14 @@ class ConfirmInvoiceAction
 
             $installments[] = [
                 'sequence_number'    => str_pad((string) $i, 2, '0', STR_PAD_LEFT),
-                'due_date'           => $this->resolveDueDate($condition, $baseDate, $i)->toDateString(),
+                'due_date'           => $this->resolveDueDate(
+                    $paymentMethod,
+                    $condition,
+                    $baseDate,
+                    $i,
+                    $cardPaymentDate,
+                    $cardPaymentProfile,
+                )->toDateString(),
                 'due_amount'         => round($amountCents / 100, 2),
                 'installment_number' => $i,
                 'installments_count' => $installmentsCount,
@@ -525,8 +544,23 @@ class ConfirmInvoiceAction
         return $installments;
     }
 
-    private function resolveDueDate(PaymentCondition $condition, Carbon $baseDate, int $installmentNumber): Carbon
+    private function resolveDueDate(
+        PaymentMethod $paymentMethod,
+        PaymentCondition $condition,
+        Carbon $baseDate,
+        int $installmentNumber,
+        ?Carbon $cardPaymentDate,
+        ?CardPaymentProfile $cardPaymentProfile,
+    ): Carbon
     {
+        if ($paymentMethod === PaymentMethod::CREDIT_CARD && $cardPaymentDate && $cardPaymentProfile) {
+            $firstDueDate = $cardPaymentDate->copy()->addDays((int) $cardPaymentProfile->settlement_days);
+
+            return $installmentNumber === 1
+                ? $firstDueDate
+                : $firstDueDate->copy()->addDays(30 * ($installmentNumber - 1));
+        }
+
         if ($condition->isCash() || $condition === PaymentCondition::CUSTOM) {
             return $baseDate->copy();
         }
@@ -541,5 +575,27 @@ class ConfirmInvoiceAction
         }
 
         return $baseDate->copy();
+    }
+
+    private function resolveCardProfile(int $profileId): ?CardPaymentProfile
+    {
+        if ($profileId <= 0) {
+            $this->setError('Selecione o perfil de recebimento para confirmar a fatura em cartao de credito.');
+
+            return null;
+        }
+
+        $profile = CardPaymentProfile::query()
+            ->where('company_id', $this->invoice->company_id)
+            ->where('active', true)
+            ->find($profileId);
+
+        if (! $profile) {
+            $this->setError('Perfil de cartao invalido para a empresa da fatura.');
+
+            return null;
+        }
+
+        return $profile;
     }
 }

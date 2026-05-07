@@ -7,10 +7,12 @@ use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ConfirmInvoiceAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateAccountReceivablesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReturnInvoiceToPendingAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedFiscalDocumentsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedProductionOrdersAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedRequisitionsAction;
@@ -84,6 +86,16 @@ class EditInvoice extends EditRecord
             ])->buttonGroup(),
             ActionGroup::make([
                 ConfirmInvoiceAction::make()
+                    ->size(Size::Small),
+                ReturnInvoiceToPendingAction::make()
+                    ->size(Size::Small),
+                GenerateFiscalDocumentAction::make(DocumentModel::NFE)
+                    ->visible(fn (): bool => $this->record->confirmed && ! $this->record->canceled)
+                    ->size(Size::Small),
+                GenerateFiscalDocumentAction::make(DocumentModel::NFSE)
+                    ->visible(fn (): bool => $this->record->confirmed && ! $this->record->canceled)
+                    ->size(Size::Small),
+                GenerateAccountReceivablesAction::make()
                     ->size(Size::Small),
                 PreviewInvoicePdfAction::make()
                     ->hiddenLabel()

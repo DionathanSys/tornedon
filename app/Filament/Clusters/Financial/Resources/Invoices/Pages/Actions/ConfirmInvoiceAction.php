@@ -88,7 +88,8 @@ final class ConfirmInvoiceAction
                             $set('mark_as_received', true);
                         }
                     })
-                    ->required(),
+                    ->required()
+                    ->helperText('Em cartao, a condicao controla parcelamento comercial; o primeiro vencimento seguira o prazo D+X do perfil da operadora.'),
 
                 Checkbox::make('mark_as_received')
                     ->label('Marcar valores da fatura como já recebidos')
