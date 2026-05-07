@@ -46,6 +46,7 @@ final class GenerateFiscalDocumentAction
             ->modalHeading($isNfse ? 'Gerar NFS-e' : 'Gerar NF-e')
             ->modalDescription('Um documento fiscal será criado a partir dos itens desta fatura. Preencha os dados obrigatórios abaixo.')
             ->modalSubmitActionLabel('Gerar')
+            ->visible(fn (Invoice $record): bool => self::canGenerateDocument($record, $documentType))
             ->disabled(fn (Invoice $record): bool => $record->fiscalDocuments()->where('document_type', $documentType->value)->exists())
             ->schema(function (Invoice $record) use ($documentType, $isNfse): array {
                 $invoiceService = app(InvoiceService::class);
@@ -300,5 +301,25 @@ final class GenerateFiscalDocumentAction
 
                 $livewire->refreshInvoiceState();
             });
+    }
+
+    private static function canGenerateDocument(Invoice $record, DocumentModel $documentType): bool
+    {
+        if ($record->canceled || ! $record->confirmed) {
+            return false;
+        }
+
+        if ($record->fiscalDocuments()->where('document_type', $documentType->value)->exists()) {
+            return false;
+        }
+
+        $record->loadMissing(['requisitions.items', 'serviceOrders.items']);
+
+        return match ($documentType) {
+            DocumentModel::NFE => $record->requisitions
+                ->contains(fn ($requisition): bool => $requisition->items->isNotEmpty()),
+            DocumentModel::NFSE => $record->serviceOrders
+                ->contains(fn ($serviceOrder): bool => $serviceOrder->items->isNotEmpty()),
+        };
     }
 }

@@ -21,6 +21,8 @@ class PrintNfePreviewAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            $previewDocument = clone $fiscalDocument;
+
             Log::debug('PrintNfePreviewAction: gerando preview de NF-e', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'document_number'    => $fiscalDocument->document_number,
@@ -30,7 +32,7 @@ class PrintNfePreviewAction
 
             // Se o documento ainda não tem número reservado, usa peek para
             // mostrar no preview o próximo número real sem consumir a sequência.
-            $rawNature = $fiscalDocument->operation_nature;
+            $rawNature = $previewDocument->operation_nature;
             $natureValue = $rawNature instanceof \App\Enum\FiscalDocument\OperationNature
                 ? $rawNature->value
                 : $rawNature;
@@ -44,23 +46,23 @@ class PrintNfePreviewAction
                 return null;
             }
 
-            if (empty($fiscalDocument->document_number) || (int) $fiscalDocument->document_number < 1) {
+            if (empty($previewDocument->document_number) || (int) $previewDocument->document_number < 1) {
                 $configService = app(NfeConfigService::class);
-                $serie         = $fiscalDocument->document_series
-                    ?? $configService->resolveSerie($fiscalDocument->company_id);
+                $serie         = $previewDocument->document_series
+                    ?? $configService->resolveSerie($previewDocument->company_id);
                 $previewNumber = NfeSequence::peekNextNumber(
-                    $fiscalDocument->company_id,
+                    $previewDocument->company_id,
                     $serie
                 );
 
                 // Atribui temporariamente (sem persistir) para o BuildNfePayloadAction
-                $fiscalDocument->document_number = (string) $previewNumber;
-                $fiscalDocument->document_series = $serie;
+                $previewDocument->document_number = (string) $previewNumber;
+                $previewDocument->document_series = $serie;
             }
 
             // Monta o payload igual ao de envio real
             $buildAction = new BuildNfePayloadAction();
-            $payload     = $buildAction->execute($fiscalDocument);
+            $payload     = $buildAction->execute($previewDocument);
 
             if ($payload === null) {
                 $this->setError($buildAction->getMessage());
@@ -68,7 +70,7 @@ class PrintNfePreviewAction
             }
 
             $configService = app(NfeConfigService::class);
-            $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($fiscalDocument->company_id));
+            $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($previewDocument->company_id));
 
             $resp = $sdk->preview($payload);
 
@@ -86,7 +88,7 @@ class PrintNfePreviewAction
 
             Log::info('PrintNfePreviewAction: preview gerado com sucesso', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'document_number'    => $fiscalDocument->document_number,
+                'document_number'    => $previewDocument->document_number,
                 'pdf_gerado'         => ! empty($resp->pdf ?? null),
                 'xml_gerado'         => ! empty($resp->xml ?? null),
             ]);
@@ -95,7 +97,7 @@ class PrintNfePreviewAction
 
             Log::debug('PrintNfePreviewAction: preview gerado com sucesso', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'document_number'    => $fiscalDocument->document_number,
+                'document_number'    => $previewDocument->document_number,
                 'resp'               => $resp,
                 'pdf_gerado'         => ! empty($resp->pdf ?? null),
                 'xml_gerado'         => ! empty($resp->xml ?? null),
