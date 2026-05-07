@@ -18,7 +18,6 @@ use App\Models\FiscalDocumentItem;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\Product;
-use App\Models\ProductTax;
 use App\Models\User;
 
 trait BuildsNfePreviewDocuments
@@ -27,7 +26,7 @@ trait BuildsNfePreviewDocuments
         ?Company $company = null,
         ?Partner $customer = null,
         ?User $user = null,
-        bool $withProductTaxNcm = true,
+        bool $withItemNcm = true,
         bool $withCustomerAddress = true,
     ): array {
         $user ??= User::factory()->create();
@@ -101,13 +100,6 @@ trait BuildsNfePreviewDocuments
             'created_by' => $user->id,
         ]);
 
-        ProductTax::query()->create([
-            'product_id' => $product->id,
-            'product_origin' => '0',
-            'ncm_code' => $withProductTaxNcm ? '84733049' : null,
-            'created_by' => $user->id,
-        ]);
-
         $document = FiscalDocument::query()->create([
             'customer_id' => $customer->id,
             'company_id' => $company->id,
@@ -135,7 +127,7 @@ trait BuildsNfePreviewDocuments
             'description' => $product->name,
             'item_number' => 1,
             'product_origin' => '0',
-            'ncm_code' => '84733049',
+            'ncm_code' => $withItemNcm ? '84733049' : null,
             'cfop_code' => '5102',
             'quantity' => 1,
             'unit_of_measure' => 'UN',

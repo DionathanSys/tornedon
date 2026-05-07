@@ -20,7 +20,6 @@ use App\Models\FiscalProfile;
 use App\Models\NfeSequence;
 use App\Models\Partner;
 use App\Models\Product;
-use App\Models\ProductTax;
 use App\Models\User;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
@@ -64,29 +63,6 @@ class QueuedNfeEmissionFlowTest extends TestCase
         $this->assertSame("nfe:{$document->company_id}:1:2", $document->emission_group_key);
 
         Bus::assertDispatched(ProcessQueuedNfeEmissionJob::class);
-    }
-
-    public function test_emitir_blocks_document_without_ncm_in_product_tax_record(): void
-    {
-        Bus::fake();
-
-        [$user, $document] = $this->createReadyDocument(withProductTaxNcm: false);
-
-        $config = Mockery::mock(NfeConfigService::class);
-        $config->shouldReceive('resolveAmbiente')->andReturn(2);
-        $config->shouldReceive('resolveSerie')->andReturn('1');
-        $this->app->instance(NfeConfigService::class, $config);
-
-        $service = app(NfeDocumentService::class);
-        $result = $service->emitir($document, $user->id);
-
-        $this->assertFalse($result);
-        $this->assertArrayHasKey('items.0.product.ncm_code', $service->getErrors());
-
-        $document->refresh();
-
-        $this->assertSame(NfeStatus::PENDING, $document->nfe_status);
-        Bus::assertNotDispatched(ProcessQueuedNfeEmissionJob::class);
     }
 
     public function test_queue_job_reuses_number_when_first_document_fails_before_api_acceptance(): void
@@ -165,7 +141,7 @@ class QueuedNfeEmissionFlowTest extends TestCase
         $this->assertSame(1, $sequence->last_number);
     }
 
-    private function createReadyDocument(?Company $company = null, ?Partner $customer = null, ?User $user = null, bool $withProductTaxNcm = true): array
+    private function createReadyDocument(?Company $company = null, ?Partner $customer = null, ?User $user = null): array
     {
         $user ??= User::factory()->create();
 
@@ -239,7 +215,7 @@ class QueuedNfeEmissionFlowTest extends TestCase
         ProductTax::query()->create([
             'product_id' => $product->id,
             'product_origin' => '0',
-            'ncm_code' => $withProductTaxNcm ? '84733049' : null,
+            'ncm_code' => '84733049',
             'created_by' => $user->id,
         ]);
 

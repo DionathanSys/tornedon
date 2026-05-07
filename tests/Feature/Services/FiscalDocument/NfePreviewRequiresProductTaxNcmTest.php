@@ -21,9 +21,9 @@ class NfePreviewRequiresProductTaxNcmTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_preview_should_block_document_without_ncm_in_product_tax_record(): void
+    public function test_preview_should_block_document_without_ncm_in_item(): void
     {
-        [$user, $document] = $this->createReadyPreviewDocument(withProductTaxNcm: false);
+        [$user, $document] = $this->createReadyPreviewDocument(withItemNcm: false);
 
         $config = Mockery::mock(NfeConfigService::class);
         $config->shouldReceive('resolveSerie')->andReturn('1');
