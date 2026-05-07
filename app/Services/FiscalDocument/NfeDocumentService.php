@@ -218,6 +218,21 @@ class NfeDocumentService
         $this->resetResponse();
 
         try {
+            $preflightService = app(\App\Services\FiscalDocument\FiscalEmissionPreflightService::class);
+            $preflight = $preflightService->validateForSend($doc);
+
+            if ($preflight === null || $preflightService->hasError()) {
+                $this->setError($preflightService->getMessage(), $preflightService->getErrors());
+                $this->persistActionError($doc, 'preview', $this->getMessageUser(), [
+                    'erros' => $preflightService->getErrors(),
+                ]);
+                Log::warning('NfeDocumentService::preview - preflight invalido', [
+                    'fiscal_document_id' => $doc->id,
+                    'erros' => $preflightService->getErrors(),
+                ]);
+                return null;
+            }
+
             $action = new PrintNfePreviewAction();
             $result = $action->execute($doc);
 
