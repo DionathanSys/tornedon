@@ -33,6 +33,8 @@ class FiscalProfile extends Model
         'iss_withheld_default',
         'allow_unconditional_discount_nfse',
         'nfse_special_tax_regime',
+        'nfse_nacional_regime_apuracao',
+        'nfse_nacional_cst_default',
         'default_service_code',
         'service_cnae_code',
         'default_nbs_code',

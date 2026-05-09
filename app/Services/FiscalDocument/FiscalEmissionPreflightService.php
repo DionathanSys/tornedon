@@ -280,6 +280,13 @@ class FiscalEmissionPreflightService
             if (strlen($nbsCode) !== 9) {
                 $errors['items.0.nbs_code'][] = 'A NFS-e nacional exige código NBS com 9 dígitos.';
             }
+
+            // Block export (UF = EX) in V1
+            $customerAddress = $document->customer?->address?->first();
+            $customerUf = strtoupper(trim((string) ($customerAddress?->state ?? '')));
+            if ($customerUf === 'EX') {
+                $errors['customer.address.state'][] = 'A NFS-e Nacional V1 não suporta emissão para exterior (UF = EX).';
+            }
         }
     }
 

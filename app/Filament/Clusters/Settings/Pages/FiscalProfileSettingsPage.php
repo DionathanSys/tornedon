@@ -112,6 +112,10 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'default_municipal_tax_code' => $profile?->default_municipal_tax_code,
             'default_service_city_code' => $profile?->default_service_city_code,
             'default_nfse_additional_information' => $profile?->default_nfse_additional_information,
+
+            // NFS-e Nacional
+            'nfse_nacional_regime_apuracao' => $profile?->nfse_nacional_regime_apuracao,
+            'nfse_nacional_cst_default' => $profile?->nfse_nacional_cst_default,
         ]);
     }
 
@@ -461,6 +465,32 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2])
                     ->collapsible()
                     ->collapsed(),
+
+                // NFS-e Nacional
+                \Filament\Schemas\Components\Section::make('NFS-e Nacional')
+                    ->description('Configurações específicas para emissão de NFS-e no modelo Nacional (DPS). Estes campos só são utilizados quando o modelo de NFS-e da empresa está definido como "Nacional".')
+                    ->icon('heroicon-o-globe-alt')
+                    ->schema([
+                        Forms\Components\Select::make('nfse_nacional_regime_apuracao')
+                            ->label('Regime de Apuração')
+                            ->options([
+                                '1' => '1 - Competência',
+                                '2' => '2 - Caixa',
+                            ])
+                            ->native(false)
+                            ->helperText('Define como os tributos da NFS-e Nacional serão apurados. Se não informado, será omitido do payload.')
+                            ->columnSpan(['md' => 1]),
+
+                        Forms\Components\TextInput::make('nfse_nacional_cst_default')
+                            ->label('CST Padrão (Tributos Nacionais)')
+                            ->maxLength(10)
+                            ->placeholder('Ex: 00, 01, 06')
+                            ->helperText('Código de Situação Tributária padrão para PIS/COFINS/INSS/IR/CSLL na NFS-e Nacional. Se omitido, será usado "00".')
+                            ->columnSpan(['md' => 1]),
+                    ])
+                    ->columns(['md' => 2])
+                    ->collapsible()
+                    ->collapsed(),
             ])
             ->statePath('data');
     }
@@ -550,6 +580,10 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
             'default_municipal_tax_code' => $data['default_municipal_tax_code'] ?? null,
             'default_service_city_code' => $data['default_service_city_code'] ?? null,
             'default_nfse_additional_information' => $data['default_nfse_additional_information'] ?? null,
+
+            // NFS-e Nacional
+            'nfse_nacional_regime_apuracao' => $data['nfse_nacional_regime_apuracao'] ?? null,
+            'nfse_nacional_cst_default' => $data['nfse_nacional_cst_default'] ?? null,
         ]);
 
         Notification::make()
