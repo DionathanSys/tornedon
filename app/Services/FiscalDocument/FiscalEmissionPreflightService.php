@@ -231,6 +231,8 @@ class FiscalEmissionPreflightService
             return;
         }
 
+        $itemAttributes = $item->getAttributes();
+
         if (blank($item->description)) {
             $errors['items.0.description'][] = 'A discriminação do serviço é obrigatória.';
         }
@@ -248,12 +250,23 @@ class FiscalEmissionPreflightService
         }
 
         $serviceCode = $this->normalizeNfseServiceCode(
-            $item->municipal_tax_code
-            ?? $item->service?->municipal_tax_code
-            ?? $item->service_code
-            ?? $item->service?->service_code
-            ?? $profile?->default_municipal_tax_code
-            ?? $profile?->default_service_code
+            $nfseModel === 'nacional'
+                ? (
+                    $itemAttributes['service_code'] ?? null
+                    ?? $item->service?->service_code
+                    ?? $profile?->default_service_code
+                    ?? $item->municipal_tax_code
+                    ?? $item->service?->municipal_tax_code
+                    ?? $profile?->default_municipal_tax_code
+                )
+                : (
+                    $item->municipal_tax_code
+                    ?? $item->service?->municipal_tax_code
+                    ?? $item->service_code
+                    ?? $item->service?->service_code
+                    ?? $profile?->default_municipal_tax_code
+                    ?? $profile?->default_service_code
+                )
         );
 
         if ($serviceCode === '') {

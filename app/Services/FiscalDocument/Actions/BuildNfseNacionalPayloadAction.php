@@ -327,6 +327,7 @@ class BuildNfseNacionalPayloadAction
 
         // Primeiro item como referência de código/discriminação
         $firstItem = $items->first();
+        $firstItemAttributes = $firstItem->getAttributes();
         $taxData   = $firstItem->tax_data ?? [];
 
         $valorServicosTotal = $items->sum(fn ($i) => round((float) $i->total_price, 2));
@@ -334,13 +335,14 @@ class BuildNfseNacionalPayloadAction
             ->filter()
             ->implode("\n");
 
+        // No layout nacional, `codigo` deve refletir o código nacional do serviço.
         $serviceCode = $this->normalizeServiceCode(
-            $firstItem->municipal_tax_code
-                ?? $firstItem->service?->municipal_tax_code
-                ?? $firstItem->service_code
+            $firstItemAttributes['service_code'] ?? null
                 ?? $firstItem->service?->service_code
-                ?? $profile?->default_municipal_tax_code
                 ?? $profile?->default_service_code
+                ?? $firstItem->municipal_tax_code
+                ?? $firstItem->service?->municipal_tax_code
+                ?? $profile?->default_municipal_tax_code
         );
 
         $nbsCode = $this->normalizeNbsCode(
@@ -386,22 +388,6 @@ class BuildNfseNacionalPayloadAction
             'codigo_nbs'     => $nbsCode,
             'valor_servicos' => round($valorServicosTotal, 2),
         ];
-
-        // código de tributação municipal
-        $ctm = $firstItem->service?->municipal_tax_code
-            ?? $firstItem->municipal_tax_code
-            ?? $profile?->default_municipal_tax_code
-            ?? $profile?->default_service_code
-            ?? null;
-        if (! $ctm) {
-            $ctm = $firstItem->service_code
-                ?? $firstItem->service?->service_code
-                ?? $profile?->default_service_code
-                ?? null;
-        }
-        if ($ctm) {
-            $servico['codigo_tributacao_municipio'] = null;//$ctm;
-        }
 
         // Município de prestação
         $companyAddress = $company->address ?? [];

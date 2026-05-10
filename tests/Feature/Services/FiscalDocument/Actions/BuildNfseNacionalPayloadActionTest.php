@@ -17,6 +17,7 @@ use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
+use App\Models\Service;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\BuildNfseNacionalPayloadAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,6 +65,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertArrayHasKey('codigo_nbs', $servico);
         $this->assertSame(100.0, $servico['valor_servicos']);
         $this->assertArrayHasKey('discriminacao', $servico);
+        $this->assertArrayNotHasKey('codigo_tributacao_municipio', $servico);
 
         // Tributos municipais
         $tribMun = $servico['tributos_municipais'];
@@ -149,6 +151,33 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
 
         $this->assertNotNull($payload);
         $this->assertSame(10.0, $payload['servico']['valor_desconto_incondicionado']);
+    }
+
+    public function test_nacional_prefers_service_code_over_municipal_tax_code(): void
+    {
+        $document = $this->createReadyDocument();
+        $service = Service::query()->create([
+            'company_id' => $document->company_id,
+            'service_code' => '01.02',
+            'municipal_tax_code' => '405',
+            'name' => 'Servico nacional',
+            'price' => 100,
+            'is_active' => true,
+            'created_by' => $document->created_by,
+        ]);
+
+        $document->items()->update([
+            'service_id' => $service->id,
+            'municipal_tax_code' => '405',
+        ]);
+        $document->unsetRelation('items');
+
+        $action = new BuildNfseNacionalPayloadAction();
+        $payload = $action->build($document);
+
+        $this->assertNotNull($payload);
+        $this->assertSame('010200', $payload['servico']['codigo']);
+        $this->assertArrayNotHasKey('codigo_tributacao_municipio', $payload['servico']);
     }
 
     // ------------------------------------------------------------------
