@@ -405,7 +405,7 @@ class EditFiscalDocument extends EditRecord
         if ($currentError !== null) {
             $content .= '<div class="rounded-lg border border-danger-200 bg-danger-50 p-4 dark:border-danger-800 dark:bg-danger-950/30">'
                 . '<p class="text-sm font-medium text-danger-700 dark:text-danger-300">Erro atual</p>'
-                . '<pre class="mt-2 whitespace-pre-wrap font-sans text-sm text-danger-700 dark:text-danger-200">' . e($currentError) . '</pre>'
+                . '<pre class="mt-2 max-w-full overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm text-danger-700 dark:text-danger-200">' . e($currentError) . '</pre>'
                 . '</div>';
         }
 
@@ -430,7 +430,11 @@ class EditFiscalDocument extends EditRecord
 
         $message = $latestError['mensagem'] ?? null;
 
-        return is_string($message) && trim($message) !== '' ? $message : null;
+        if (! is_string($message) || trim($message) === '') {
+            return null;
+        }
+
+        return preg_replace('/<br\s*\/?\>/i', PHP_EOL, $message);
     }
 
     private function buildAdditionalPurchaseInformation(array $data): ?string
