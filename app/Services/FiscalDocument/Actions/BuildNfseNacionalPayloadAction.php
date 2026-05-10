@@ -400,7 +400,7 @@ class BuildNfseNacionalPayloadAction
                 ?? null;
         }
         if ($ctm) {
-            $servico['codigo_tributacao_municipio'] = $ctm;
+            $servico['codigo_tributacao_municipio'] = 405;//$ctm;
         }
 
         // Município de prestação
@@ -536,7 +536,7 @@ class BuildNfseNacionalPayloadAction
         }
 
         // Pad to at least 4 digits, then ensure 6 digits
-        // $padded = str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_RIGHT);
+        $padded = str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_RIGHT);
 
         return $padded;
     }
