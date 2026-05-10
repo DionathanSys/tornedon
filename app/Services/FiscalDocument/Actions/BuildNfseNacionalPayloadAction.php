@@ -400,7 +400,7 @@ class BuildNfseNacionalPayloadAction
                 ?? null;
         }
         if ($ctm) {
-            $servico['codigo_tributacao_municipio'] = 405;//$ctm;
+            // $servico['codigo_tributacao_municipio'] = 405;//$ctm;
         }
 
         // Município de prestação
