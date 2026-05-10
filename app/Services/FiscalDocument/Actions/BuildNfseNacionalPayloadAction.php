@@ -536,7 +536,7 @@ class BuildNfseNacionalPayloadAction
         }
 
         // Pad to at least 4 digits, then ensure 6 digits
-        $padded = str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_RIGHT);
+        // $padded = str_pad(substr($digits, 0, 6), 6, '0', STR_PAD_RIGHT);
 
         return $padded;
     }
