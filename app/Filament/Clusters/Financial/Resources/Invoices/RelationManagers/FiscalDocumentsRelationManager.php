@@ -45,7 +45,7 @@ class FiscalDocumentsRelationManager extends RelationManager
         return $this->getOwnerRecord()
             ->fiscalDocuments()
             ->get()
-            ->contains(fn ($document): bool => $document->isNfeInProcessing() || $document->isNfseInProcessing());
+            ->contains(fn ($document): bool => $document->isNfeQueued() || $document->isNfeInProcessing() || $document->isNfseQueued() || $document->isNfseInProcessing());
     }
 
     public function table(Table $table): Table

@@ -79,8 +79,8 @@ class EditFiscalDocument extends EditRecord
         $record = $this->getRecord();
 
         return $record->isNfse()
-            ? $record->isNfseInProcessing()
-            : $record->isNfeInProcessing();
+            ? $record->isNfseQueued() || $record->isNfseInProcessing()
+            : $record->isNfeQueued() || $record->isNfeInProcessing();
     }
 
     public function refreshFiscalDocumentState(): void
