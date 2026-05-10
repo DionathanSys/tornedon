@@ -10,6 +10,7 @@ use App\Models\FiscalDocument;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -185,6 +186,21 @@ class NfeWebhookController extends Controller
         ]);
 
         if ($status === 'autorizado') {
+            if ($doc->fresh()->isPurchaseReturn()) {
+                $purchaseReturnAction = app(ProcessAuthorizedPurchaseReturnAction::class);
+                $purchaseReturnAction->execute($doc->fresh(), (int) ($doc->updated_by ?? $doc->created_by ?? 1));
+
+                if ($purchaseReturnAction->hasError()) {
+                    Log::warning('NfeWebhookController: falha ao processar devolucao apos autorizacao', [
+                        'fiscal_document_id' => $doc->id,
+                        'message' => $purchaseReturnAction->getMessage(),
+                        'errors' => $purchaseReturnAction->getErrors(),
+                    ]);
+                }
+
+                return;
+            }
+
             $stockMovementAction = app(ProcessAuthorizedNfeStockMovementsAction::class);
             $stockProcessed = $stockMovementAction->execute($doc->fresh(['invoice.requisitions.items.product']));
 

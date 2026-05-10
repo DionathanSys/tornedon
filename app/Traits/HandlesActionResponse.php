@@ -14,6 +14,9 @@ trait HandlesActionResponse
     public function setSuccess(): void
     {
         $this->success = true;
+        $this->message = null;
+        $this->errors = [];
+        $this->errorCode = null;
     }
 
     public function setError(string|null $message = null, array $errors = [], ?string $errorCode = null): void
@@ -47,5 +50,13 @@ trait HandlesActionResponse
     public function getErrorCode(): ?string
     {
         return $this->errorCode;
+    }
+
+    protected function resetResponse(): void
+    {
+        $this->success = false;
+        $this->message = null;
+        $this->errors = [];
+        $this->errorCode = null;
     }
 }

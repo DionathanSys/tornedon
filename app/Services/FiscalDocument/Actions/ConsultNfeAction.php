@@ -134,6 +134,25 @@ class ConsultNfeAction
             }
 
             if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
+                if ($fiscalDocument->fresh()->isPurchaseReturn()) {
+                    $purchaseReturnAction = app(ProcessAuthorizedPurchaseReturnAction::class);
+                    $purchaseReturnAction->execute(
+                        $fiscalDocument->fresh(),
+                        (int) ($fiscalDocument->updated_by ?? $fiscalDocument->created_by ?? 1)
+                    );
+
+                    if ($purchaseReturnAction->hasError()) {
+                        Log::warning('ConsultNfeAction: falha ao processar devolucao apos autorizacao', [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'message' => $purchaseReturnAction->getMessage(),
+                            'errors' => $purchaseReturnAction->getErrors(),
+                        ]);
+                    }
+
+                    $this->setSuccess();
+                    return true;
+                }
+
                 $stockMovementAction = app(ProcessAuthorizedNfeStockMovementsAction::class);
                 if (! $stockMovementAction->execute($fiscalDocument->fresh(['invoice.requisitions.items.product']))) {
                     Log::warning('ConsultNfeAction: falha ao processar movimentações de estoque após autorização', [

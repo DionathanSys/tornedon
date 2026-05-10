@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages;
 
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Actions\ConfigurePurchaseReturnSettlementAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\FiscalDocumentService;
@@ -91,6 +92,7 @@ class EditFiscalDocument extends EditRecord
     {
         return [
             ActionGroup::make([
+                ConfigurePurchaseReturnSettlementAction::make(),
                 Action::make('emitir')
                     ->label('Emitir NF-e')
                     ->icon(Heroicon::PaperAirplane)

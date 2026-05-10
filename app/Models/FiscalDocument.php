@@ -57,6 +57,7 @@ class FiscalDocument extends Model
         'freight_data',
         'payment_data',
         'tax_data',
+        'return_financial_data',
         'pending',
         'confirmed',
         'canceled',
@@ -101,6 +102,7 @@ class FiscalDocument extends Model
         'freight_data' => 'array',
         'payment_data' => 'array',
         'tax_data' => 'array',
+        'return_financial_data' => 'array',
         'pending' => 'boolean',
         'confirmed' => 'boolean',
         'canceled' => 'boolean',
@@ -115,6 +117,8 @@ class FiscalDocument extends Model
         'emission_attempted_at' => 'datetime',
         'nfse_status'     => NfeStatus::class,
         'nfse_payload'    => 'array',
+        'return_financial_processed_at' => 'datetime',
+        'return_stock_processed_at' => 'datetime',
         'created_at'      => 'datetime',
         'updated_at'      => 'datetime',
     ];
@@ -203,6 +207,11 @@ class FiscalDocument extends Model
     public function fiscalProfile(): BelongsTo
     {
         return $this->belongsTo(FiscalProfile::class);
+    }
+
+    public function purchaseReturnCredits(): HasMany
+    {
+        return $this->hasMany(PurchaseReturnCredit::class, 'return_fiscal_document_id');
     }
 
     /* ==============================
@@ -304,6 +313,29 @@ class FiscalDocument extends Model
     public function isImportedFromDfe(): bool
     {
         return (bool) data_get($this->logs, 'imported_from_dfe', false);
+    }
+
+    public function isPurchaseReturn(): bool
+    {
+        return $this->isNfe()
+            && $this->issue_purpose === IssuePurpose::DEVOLUCAO
+            && $this->operation_nature === OperationNature::DEVOLUCAO_COMPRA;
+    }
+
+    public function hasReturnFinancialConfiguration(): bool
+    {
+        return is_array($this->return_financial_data)
+            && filled(data_get($this->return_financial_data, 'mode'));
+    }
+
+    public function hasProcessedReturnFinancial(): bool
+    {
+        return $this->return_financial_processed_at !== null;
+    }
+
+    public function hasProcessedReturnStock(): bool
+    {
+        return $this->return_stock_processed_at !== null;
     }
 
     public function blocksNfseResubmission(): bool

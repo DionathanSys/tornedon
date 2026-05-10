@@ -87,6 +87,11 @@ class Partner extends Model
         return $this->hasMany(CompanyCardTransaction::class, 'vendor_id');
     }
 
+    public function purchaseReturnCredits(): HasMany
+    {
+        return $this->hasMany(PurchaseReturnCredit::class);
+    }
+
 
 
 }
