@@ -81,6 +81,7 @@ class ConfigurePurchaseReturnSettlementAction
                 }
 
                 notify::success('Configuração salva e devolução processada com sucesso.');
-            });
+            })
+            ->modalSubmitActionLabel('Salvar');
     }
 }

@@ -144,8 +144,11 @@ class EditFiscalDocument extends EditRecord
                         $data    = $service->preview($record, Auth::id());
 
                         if (! $data || ! $data['pdf']) {
-                            return new HtmlString(
-                                '<p class="text-red-500">' . ($service->getMessage() ?: 'Não foi possível gerar o preview.') . '</p>'
+                            $record->refresh();
+
+                            return $this->buildPreviewErrorModalContent(
+                                $service->getMessage() ?: 'Não foi possível gerar o preview.',
+                                $record
                             );
                         }
 
@@ -240,8 +243,11 @@ class EditFiscalDocument extends EditRecord
                         $data    = $service->preview($record, Auth::id());
 
                         if (! $data || ! $data['pdf']) {
-                            return new HtmlString(
-                                '<p class="text-red-500">' . ($service->getMessage() ?: 'Não foi possível gerar o preview.') . '</p>'
+                            $record->refresh();
+
+                            return $this->buildPreviewErrorModalContent(
+                                $service->getMessage() ?: 'Não foi possível gerar o preview.',
+                                $record
                             );
                         }
 
@@ -387,6 +393,44 @@ class EditFiscalDocument extends EditRecord
     {
         $this->getRecord()->refresh();
         $this->refreshFormData(self::REALTIME_REFRESH_STATE_PATHS);
+    }
+
+    private function buildPreviewErrorModalContent(string $fallbackMessage, FiscalDocument $record): HtmlString
+    {
+        $currentError = $this->getLatestPersistedErrorMessage($record);
+
+        $content = '<div class="space-y-4">'
+            . '<p class="text-sm text-danger-600">' . e($fallbackMessage) . '</p>';
+
+        if ($currentError !== null) {
+            $content .= '<div class="rounded-lg border border-danger-200 bg-danger-50 p-4 dark:border-danger-800 dark:bg-danger-950/30">'
+                . '<p class="text-sm font-medium text-danger-700 dark:text-danger-300">Erro atual</p>'
+                . '<pre class="mt-2 whitespace-pre-wrap font-sans text-sm text-danger-700 dark:text-danger-200">' . e($currentError) . '</pre>'
+                . '</div>';
+        }
+
+        $content .= '</div>';
+
+        return new HtmlString($content);
+    }
+
+    private function getLatestPersistedErrorMessage(FiscalDocument $record): ?string
+    {
+        $errors = $record->errors_messages;
+
+        if (! is_array($errors) || $errors === []) {
+            return null;
+        }
+
+        $latestError = end($errors);
+
+        if (! is_array($latestError)) {
+            return null;
+        }
+
+        $message = $latestError['mensagem'] ?? null;
+
+        return is_string($message) && trim($message) !== '' ? $message : null;
     }
 
     private function buildAdditionalPurchaseInformation(array $data): ?string
