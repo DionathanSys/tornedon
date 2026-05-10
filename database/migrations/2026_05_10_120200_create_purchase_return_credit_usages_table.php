@@ -40,10 +40,8 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestamps();
 
-            $table->index([
-                'purchase_return_credit_id',
-                'used_at'
-            ]);
+            $table->index('purchase_return_credit_id', 'prcu_credit_idx');
+            $table->index('used_at', 'prcu_used_at_idx');
         });
     }
 
