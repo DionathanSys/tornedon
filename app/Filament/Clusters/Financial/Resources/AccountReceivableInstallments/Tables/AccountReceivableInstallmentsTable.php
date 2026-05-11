@@ -60,7 +60,7 @@ class AccountReceivableInstallmentsTable
                     ->label('Valor Atual')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Sum::make('due_amount')->money('BRL'))
+                    ->summarize(Sum::make('due_amount')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_amount')
                     ->label('Valor Recebido')
@@ -101,6 +101,7 @@ class AccountReceivableInstallmentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('due_date', 'asc')
+            ->persistFiltersInSession()
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
