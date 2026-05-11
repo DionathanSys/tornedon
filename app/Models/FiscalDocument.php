@@ -171,12 +171,17 @@ class FiscalDocument extends Model
     protected function itemsTotal(): Attribute
     {
         return Attribute::make(
-            get: fn (): float => round((float) (
-                $this->attributes['items_total']
-                ?? ($this->relationLoaded('items')
-                    ? $this->items->sum(fn (FiscalDocumentItem $item): float => (float) $item->total_price)
-                    : $this->items()->sum('total_price'))
-            ), 2),
+            get: function (): float {
+                if (array_key_exists('items_total', $this->attributes)) {
+                    return round((float) $this->attributes['items_total'] / 100, 2);
+                }
+
+                if ($this->relationLoaded('items')) {
+                    return round($this->items->sum(fn (FiscalDocumentItem $item): float => (float) $item->total_price), 2);
+                }
+
+                return round((float) $this->items()->sum('total_price') / 100, 2);
+            },
         );
     }
 
