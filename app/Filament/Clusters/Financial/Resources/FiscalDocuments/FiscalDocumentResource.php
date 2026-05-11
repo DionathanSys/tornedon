@@ -8,6 +8,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDo
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\ListFiscalDocuments;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Schemas\FiscalDocumentForm;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Tables\FiscalDocumentsTable;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Widgets\FiscalDocumentsStatsOverview;
 use App\Models\FiscalDocument;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -65,6 +66,13 @@ class FiscalDocumentResource extends Resource
             'index'  => ListFiscalDocuments::route('/'),
             'create' => CreateFiscalDocument::route('/create'),
             'edit'   => EditFiscalDocument::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            FiscalDocumentsStatsOverview::class,
         ];
     }
 }
