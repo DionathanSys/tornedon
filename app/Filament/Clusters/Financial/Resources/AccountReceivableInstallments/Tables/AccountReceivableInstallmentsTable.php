@@ -11,6 +11,7 @@ use App\Models\AccountReceivableInstallment;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
@@ -59,6 +60,7 @@ class AccountReceivableInstallmentsTable
                     ->label('Valor Atual')
                     ->money('BRL')
                     ->sortable()
+                    ->summarize(Sum::make('due_amount')->money('BRL'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_amount')
                     ->label('Valor Recebido')
