@@ -66,6 +66,7 @@ class AccountReceivableInstallmentsTable
                     ->label('Valor Recebido')
                     ->money('BRL')
                     ->sortable()
+                    ->summarize(Sum::make('received_amount')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
