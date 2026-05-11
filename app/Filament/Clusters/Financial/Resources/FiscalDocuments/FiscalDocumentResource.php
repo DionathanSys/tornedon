@@ -44,6 +44,7 @@ class FiscalDocumentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withSum('items as items_total', 'total_price')
             ->where('company_id', Filament::getTenant()->id)
             ->where('operation_type', OperationType::ENTRADA->value);
     }

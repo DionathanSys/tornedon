@@ -11,6 +11,7 @@ use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Models\Concerns\HasAttachments;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -165,6 +166,18 @@ class FiscalDocument extends Model
     public function items(): HasMany
     {
         return $this->hasMany(FiscalDocumentItem::class);
+    }
+
+    protected function itemsTotal(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => round((float) (
+                $this->attributes['items_total']
+                ?? ($this->relationLoaded('items')
+                    ? $this->items->sum(fn (FiscalDocumentItem $item): float => (float) $item->total_price)
+                    : $this->items()->sum('total_price'))
+            ), 2),
+        );
     }
 
     public function remittanceAssets(): HasMany

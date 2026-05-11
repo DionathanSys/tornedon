@@ -57,6 +57,11 @@ class FiscalDocumentsTable
                     ->date('d/m/Y')
                     ->sortable()
                     ->toggleable(),
+                TextColumn::make('items_total')
+                    ->label('Total Itens')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('document_key')
                     ->label('Chave')
                     ->searchable()
