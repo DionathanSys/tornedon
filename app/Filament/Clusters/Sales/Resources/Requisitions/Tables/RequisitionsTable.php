@@ -84,6 +84,11 @@ class RequisitionsTable
                     ->state(fn(Requisition $record): float => (float) $record->total_amount)
                     ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(),
+                TextColumn::make('observations')
+                    ->label('Observações')
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->limit(50)
+                    ->placeholder('-'),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
