@@ -12,6 +12,7 @@ use App\Models\AccountPayableInstallment;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
@@ -60,21 +61,25 @@ class AccountPayableInstallmentsTable
                     ->label('Valor Original')
                     ->money('BRL')
                     ->sortable()
+                    ->summarize(Sum::make('original_amount')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('due_amount')
                     ->label('Valor Atual')
                     ->money('BRL')
                     ->sortable()
+                    ->summarize(Sum::make('due_amount')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('paid_amount')
                     ->label('Valor Pago')
                     ->money('BRL')
                     ->sortable()
+                    ->summarize(Sum::make('paid_amount')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
                     ->money('BRL')
                     ->sortable()
+                    ->summarize(Sum::make('balance_amount')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('interest_amount')
                     ->label('Juros')
