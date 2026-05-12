@@ -13,6 +13,7 @@ class FiscalRule extends Model
         'tax_regime',
         'is_interestadual',
         'product_origin',
+        'is_custom_manufacturing',
         'has_st',
         'ncm_prefix',
         'recipient_type',
@@ -38,6 +39,7 @@ class FiscalRule extends Model
 
     protected $casts = [
         'is_interestadual' => 'boolean',
+        'is_custom_manufacturing' => 'boolean',
         'has_st' => 'boolean',
         'is_final_consumer' => 'boolean',
         'is_active' => 'boolean',

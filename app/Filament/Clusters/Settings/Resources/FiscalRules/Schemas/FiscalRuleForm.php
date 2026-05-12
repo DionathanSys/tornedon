@@ -105,6 +105,15 @@ class FiscalRuleForm
                             ->searchable()
                             ->placeholder('Qualquer origem')
                             ->columnSpan(['md' => 1, 'lg' => 4]),
+                        Select::make('is_custom_manufacturing')
+                            ->label('Fabricação Própria?')
+                            ->options([
+                                1 => 'Sim',
+                                0 => 'Não',
+                            ])
+                            ->required()
+                            ->native(false)
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
                         Select::make('has_st')
                             ->label('Produto com ST?')
                             ->options([
@@ -231,7 +240,7 @@ class FiscalRuleForm
             ]);
     }
 
-    private static function isSimplesRegime(string|null $regime): bool
+    private static function isSimplesRegime(?string $regime): bool
     {
         return in_array($regime, [TaxRegime::MEI->value, TaxRegime::SIMPLES_NACIONAL->value], true);
     }

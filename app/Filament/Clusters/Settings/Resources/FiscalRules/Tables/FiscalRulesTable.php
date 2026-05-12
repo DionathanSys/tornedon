@@ -54,6 +54,10 @@ class FiscalRulesTable
                     ->label('Prefixo NCM')
                     ->searchable()
                     ->toggleable(),
+                IconColumn::make('is_custom_manufacturing')
+                    ->label('Fab. Própria')
+                    ->boolean()
+                    ->toggleable(),
                 IconColumn::make('has_st')
                     ->label('ST')
                     ->boolean()

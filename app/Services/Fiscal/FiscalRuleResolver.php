@@ -12,8 +12,7 @@ class FiscalRuleResolver
 {
     public function __construct(
         private readonly ResolveCfopAction $resolveCfopAction
-    ) {
-    }
+    ) {}
 
     /**
      * Resolve a regra fiscal mais adequada para o contexto atual.
@@ -42,9 +41,9 @@ class FiscalRuleResolver
 
             Log::info('FiscalRuleResolver: Candidata', [
                 'rule_id' => $rule->id,
-                'context'   => $context,
+                'context' => $context,
             ]);
-            
+
             // Validade temporal
             if ($rule->valid_from !== null && $rule->valid_from->toDateString() > $now) {
                 return false;
@@ -58,6 +57,12 @@ class FiscalRuleResolver
                 return false;
             }
 
+            if ($rule->is_custom_manufacturing !== null) {
+                if ($rule->is_custom_manufacturing !== $context->isCustomManufacturing) {
+                    return false;
+                }
+            }
+
             if ($rule->has_st !== null) {
                 if ($rule->has_st !== $context->productHasSt) {
                     return false;
@@ -65,7 +70,7 @@ class FiscalRuleResolver
             }
 
             if ($rule->ncm_prefix !== null) {
-                if ($context->productNcm === null || !str_starts_with($context->productNcm, $rule->ncm_prefix)) {
+                if ($context->productNcm === null || ! str_starts_with($context->productNcm, $rule->ncm_prefix)) {
                     return false;
                 }
             }
@@ -90,7 +95,7 @@ class FiscalRuleResolver
         }
 
         Log::info('FiscalRuleResolver: Candidata', [
-            'candidates'   => $candidates,
+            'candidates' => $candidates,
         ]);
 
         // 3. Pontuar cada regra
@@ -105,6 +110,9 @@ class FiscalRuleResolver
             if ($rule->product_origin !== null) {
                 $score += 2;
             }
+            if ($rule->is_custom_manufacturing !== null) {
+                $score += 2;
+            }
             if ($rule->recipient_type !== null) {
                 $score += 2;
             }
@@ -114,6 +122,7 @@ class FiscalRuleResolver
             if ($rule->is_interestadual !== null) {
                 $score += 1;
             }
+
             return ['rule' => $rule, 'score' => $score];
         });
 
@@ -125,6 +134,7 @@ class FiscalRuleResolver
             if ($a['rule']->priority !== $b['rule']->priority) {
                 return $b['rule']->priority <=> $a['rule']->priority;
             }
+
             return $b['rule']->id <=> $a['rule']->id;
         })->first();
 
@@ -132,7 +142,7 @@ class FiscalRuleResolver
 
         Log::debug('FiscalRuleResolver: Regra encontrada', [
             'rule_id' => $rule->id,
-            'score'   => $winner['score']
+            'score' => $winner['score'],
         ]);
 
         return $rule;
