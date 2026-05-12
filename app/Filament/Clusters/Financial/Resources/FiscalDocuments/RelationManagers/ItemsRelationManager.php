@@ -161,7 +161,8 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canEdit()),
+                    // ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canEdit())
+                    ,
                 DeleteItemAction::make()
                     ->iconButton()
                     ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canDelete()),
