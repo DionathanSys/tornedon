@@ -356,6 +356,16 @@ class FiscalDocument extends Model
         return $this->return_stock_processed_at !== null;
     }
 
+    public function canEditItems(): bool
+    {
+        return ! $this->confirmed && ! $this->canceled;
+    }
+
+    public function canDeleteItems(): bool
+    {
+        return $this->canEditItems();
+    }
+
     public function blocksNfseResubmission(): bool
     {
         return in_array($this->nfse_status, [

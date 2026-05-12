@@ -105,7 +105,7 @@ class ProcessPurchaseReturnFinancialImpactAction
             return $result;
         }
 
-        $this->setSuccess('Impacto financeiro da devolução processado com sucesso.');
+        $this->setSuccess();
 
         return $result;
     }

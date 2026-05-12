@@ -22,9 +22,9 @@ class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
 
-    private function importedReadOnly(): bool
+    private function canCreateItem(): bool
     {
-        return $this->getOwnerRecord()->isImportedFromDfe();
+        return $this->getOwnerRecord()->canEditItems();
     }
 
     public function form(Schema $schema): Schema
@@ -79,7 +79,7 @@ class ItemsRelationManager extends RelationManager
                 // Common columns
                 TextColumn::make('description')
                     ->label('Descrição')
-                    ->description(fn (FiscalDocumentItem $item) => Str::upper($item->additional_information))
+                    ->description(fn(FiscalDocumentItem $item) => Str::upper($item->additional_information))
                     ->searchable()
                     ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: ! $isNfse),
@@ -161,35 +161,34 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    // ->visible(fn () => ! $isNfse && ! $this->importedReadOnly())
-                    ,
+                    ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canEdit()),
                 DeleteItemAction::make()
                     ->iconButton()
-                    // ->visible(fn () => ! $isNfse && ! $this->importedReadOnly())
-                    ,
+                    ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canDelete()),
 
                 // NFS-e actions
                 EditNfseItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => $isNfse && ! $this->importedReadOnly()),
+                    ->visible(fn(FiscalDocumentItem $record): bool => $isNfse && $record->canEdit()),
                 DeleteItemAction::make('deleteNfseItem')
                     ->iconButton()
-                    ->visible(fn () => $isNfse && ! $this->importedReadOnly()),
+                    ->visible(fn(FiscalDocumentItem $record): bool => $isNfse && $record->canDelete()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                ])->visible(fn () => ! $this->importedReadOnly()),
+                ])->visible(fn() => $this->canCreateItem()),
                 // NF-e create
                 CreateItemAction::make()
-                    ->visible(fn () => ! $isNfse && ! $this->importedReadOnly()),
+                    ->visible(fn(): bool => ! $isNfse && $this->canCreateItem()),
                 // NFS-e create
                 CreateNfseItemAction::make()
-                    ->visible(fn () => $isNfse && ! $this->importedReadOnly()),
+                    ->visible(fn(): bool => $isNfse && $this->canCreateItem()),
             ])
-            ->emptyStateDescription($isNfse
-                ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'
-                : 'Adicione itens à nota de entrada para que sejam exibidos aqui.'
+            ->emptyStateDescription(
+                $isNfse
+                    ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'
+                    : 'Adicione itens à nota de entrada para que sejam exibidos aqui.'
             );
     }
 }

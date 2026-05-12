@@ -195,4 +195,14 @@ class FiscalDocumentItem extends Model
 
         return $value !== null ? (string) $value : null;
     }
+
+    public function canEdit(): bool
+    {
+        return $this->fiscalDocument?->canEditItems() ?? false;
+    }
+
+    public function canDelete(): bool
+    {
+        return $this->fiscalDocument?->canDeleteItems() ?? false;
+    }
 }

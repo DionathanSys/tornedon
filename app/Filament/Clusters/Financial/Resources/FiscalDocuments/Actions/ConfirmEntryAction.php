@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions;
 
+use App\Enum\FiscalDocument\Status;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\CompanyCreditCard;
@@ -76,9 +77,12 @@ final class ConfirmEntryAction
 
                         // Marca a nota como confirmada
                         $record->update([
+                            'status'       => Status::CONFIRMED->value,
+                            'pending'      => false,
                             'confirmed'    => true,
                             'confirmed_at' => now(),
                             'confirmed_by' => $userId,
+                            'updated_by'   => $userId,
                         ]);
 
                         Log::info('ConfirmEntryAction: Processamento concluído', [

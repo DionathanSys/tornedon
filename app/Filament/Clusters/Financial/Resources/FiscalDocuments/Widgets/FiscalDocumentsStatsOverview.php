@@ -7,10 +7,13 @@ use App\Models\FiscalDocumentItem;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Override;
 
 class FiscalDocumentsStatsOverview extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
+
+    protected static bool $isDiscovered = false;
 
     protected function getTablePage(): string
     {

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Tables;
 
+use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\CreatePurchaseClosingBulkAction;
@@ -17,6 +19,8 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +62,7 @@ class FiscalDocumentsTable
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('items_total')
-                    ->label('Total Itens')
+                    ->label('Valor Total')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(),
@@ -85,6 +89,20 @@ class FiscalDocumentsTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('document_type')
+                    ->label('Tipo de Documento')
+                    ->options(DocumentModel::toSelectArray()),
+                SelectFilter::make('nfe_status')
+                    ->label('Status NF-e')
+                    ->options(NfeStatus::toSelectArray()),
+                SelectFilter::make('nfse_status')
+                    ->label('Status NFS-e')
+                    ->options(NfeStatus::toSelectArray()),
+                Filter::make('confirmed')
+                    ->label('Confirmado')
+                    ->toggle(),
             ])
             ->recordActions([
                 ActionGroup::make([
