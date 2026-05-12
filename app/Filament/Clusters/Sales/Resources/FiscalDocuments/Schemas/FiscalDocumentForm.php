@@ -72,7 +72,6 @@ class FiscalDocumentForm
                                             ->label('Modelo NFS-e')
                                             ->options(NfseModel::toSelectArray())
                                             ->disabledOn('edit')
-                                            ->required()
                                             ->native(false)
                                             ->columnSpan(['md' => 1, 'lg' => 3]),
                                         TextEntry::make('emission_requested_at')
