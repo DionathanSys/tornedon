@@ -8,11 +8,13 @@ use App\Enum\FiscalDocument\FreightModality;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\ConfirmEntryAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Notification\NotifyService as notify;
 use Filament\Actions\Action;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +30,14 @@ class EditFiscalDocument extends EditRecord
             ActionGroup::make([
                 ConfirmEntryAction::make(),
                 GeneratePurchaseReturnAction::make(),
+                Action::make('viewLinkedReturnFiscalDocument')
+                    ->label('Ver nota vinculada')
+                    ->icon(Heroicon::ArrowTopRightOnSquare)
+                    ->color('gray')
+                    ->visible(fn($record): bool => $record->linkedReturnFiscalDocument() !== null)
+                    ->url(fn($record): ?string => ($linkedRecord = $record->linkedReturnFiscalDocument())
+                        ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $linkedRecord])
+                        : null),
                 DeleteAction::make()
                     ->using(function (Model $record): bool {
                         Log::debug('EditFiscalDocument: Iniciando exclusão de nota de entrada', [

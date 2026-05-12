@@ -232,6 +232,36 @@ class FiscalDocument extends Model
         return $this->hasMany(PurchaseReturnCredit::class, 'return_fiscal_document_id');
     }
 
+    public function returnFiscalDocuments(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'fiscal_document_item_origins',
+            'origin_fiscal_document_id',
+            'return_fiscal_document_id'
+        )->distinct();
+    }
+
+    public function originFiscalDocuments(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'fiscal_document_item_origins',
+            'return_fiscal_document_id',
+            'origin_fiscal_document_id'
+        )->distinct();
+    }
+
+    public function linkedReturnFiscalDocument(): ?self
+    {
+        return $this->returnFiscalDocuments()->first();
+    }
+
+    public function linkedOriginFiscalDocument(): ?self
+    {
+        return $this->originFiscalDocuments()->first();
+    }
+
     /* ==============================
      |  Helpers
      |==============================*/

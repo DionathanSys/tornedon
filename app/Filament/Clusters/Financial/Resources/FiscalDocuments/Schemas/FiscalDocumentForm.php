@@ -7,8 +7,10 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\FiscalDocument;
 use Filament\Actions\Action;
@@ -106,6 +108,22 @@ class FiscalDocumentForm
                     ->compact()
                     ->visibleOn('edit')
                     ->schema([
+                        TextEntry::make('linked_return_fiscal_document_id')
+                            ->label('NF de devolução vinculada')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->state(fn(FiscalDocument $record): ?string => $record->linkedReturnFiscalDocument()?->document_number)
+                            ->placeholder('-')
+                            ->url(fn(FiscalDocument $record): ?string => ($linkedRecord = $record->linkedReturnFiscalDocument())
+                                ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $linkedRecord])
+                                : null, true),
+                        TextEntry::make('linked_origin_fiscal_document_id')
+                            ->label('NF de origem vinculada')
+                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->state(fn(FiscalDocument $record): ?string => $record->linkedOriginFiscalDocument()?->document_number)
+                            ->placeholder('-')
+                            ->url(fn(FiscalDocument $record): ?string => ($linkedRecord = $record->linkedOriginFiscalDocument())
+                                ? FiscalDocumentResource::getUrl('edit', ['record' => $linkedRecord])
+                                : null, true),
                         TextEntry::make('confirmed_at')
                             ->label('Confirmada em')
                             ->columnSpan(['md' => 2, 'lg' => 3])
