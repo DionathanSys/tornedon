@@ -16,12 +16,38 @@ use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class FiscalDocumentsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                return $query
+                    ->select([
+                        'id',
+                        'customer_id',
+                        'company_id',
+                        'status',
+                        'document_type',
+                        'document_key',
+                        'document_number',
+                        'document_series',
+                        'operation_type',
+                        'operation_nature',
+                        'issued_at',
+                        'pending',
+                        'confirmed_at',
+                        'created_at',
+                        'nfe_status',
+                        'nfse_status',
+                        'nfe_protocolo',
+                        'rps_number',
+                        'rps_series',
+                    ])
+                    ->with(['customer:id,name']);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('document_type')
                     ->label('Tipo')
