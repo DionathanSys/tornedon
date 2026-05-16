@@ -187,6 +187,7 @@ class Requisition extends Model
         }
 
         $totals = $this->items()
+            ->toBase()
             ->selectRaw('
                 COALESCE(SUM(gross_amount), 0) as gross_amount,
                 COALESCE(SUM(discount_amount), 0) as discount_amount,

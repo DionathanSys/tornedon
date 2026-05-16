@@ -130,6 +130,105 @@ class CommercialAmountPersistenceTest extends TestCase
         $this->assertStoredMoney($requisition, 'total_amount', 85.0);
     }
 
+    public function test_service_order_resolves_services_total_amount_from_aggregate_query(): void
+    {
+        [$user, $company, $customer] = $this->makeBaseContext();
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'OS-AMOUNT-AGG-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::OPEN->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $service = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-AMOUNT-AGG-001',
+            'name' => 'Servico agregado',
+            'price' => 4.58,
+            'tax_rate' => 5,
+            'nbs_code' => '123456789',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        ServiceOrderItem::query()->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $service->id,
+            'quantity' => 1,
+            'unit_price' => 4.58,
+            'discount_amount' => 0,
+            'created_by' => $user->id,
+        ]);
+
+        $serviceOrder = ServiceOrder::query()->findOrFail($serviceOrder->id);
+
+        $this->assertSame(4.58, (float) $serviceOrder->services_total_amount);
+        $this->assertSame(4.58, (float) $serviceOrder->grand_total_amount);
+    }
+
+    public function test_service_order_resolves_requisition_total_amount_with_or_without_loaded_relation(): void
+    {
+        [$user, $company, $customer] = $this->makeBaseContext();
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'OS-AMOUNT-AGG-002',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::OPEN->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $requisition = Requisition::query()->create([
+            'number' => 'REQ-AMOUNT-AGG-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'service_order_id' => $serviceOrder->id,
+            'sale_date' => now()->toDateString(),
+            'status' => RequisitionStatus::OPEN->value,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-AMOUNT-AGG-001',
+            'name' => 'Produto agregado',
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
+            'sale_price_value' => 4.58,
+            'is_active' => true,
+        ]);
+
+        RequisitionItem::query()->create([
+            'requisition_id' => $requisition->id,
+            'product_id' => $product->id,
+            'unit_of_measure' => Unit::UN->value,
+            'quantity' => 1,
+            'unit_price' => 4.58,
+            'discount_amount' => 0,
+            'created_by' => $user->id,
+        ]);
+
+        $serviceOrderWithoutRelation = ServiceOrder::query()->findOrFail($serviceOrder->id);
+        $serviceOrderWithRelation = ServiceOrder::query()->with('requisition')->findOrFail($serviceOrder->id);
+
+        $this->assertSame(4.58, (float) $serviceOrderWithoutRelation->requisition_total_amount);
+        $this->assertSame(4.58, (float) $serviceOrderWithoutRelation->grand_total_amount);
+        $this->assertSame(4.58, (float) $serviceOrderWithRelation->requisition_total_amount);
+        $this->assertSame(4.58, (float) $serviceOrderWithRelation->grand_total_amount);
+    }
+
     public function test_quote_persists_gross_discount_and_total_amounts(): void
     {
         [$user, $company, $customer] = $this->makeBaseContext();

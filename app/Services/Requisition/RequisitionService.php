@@ -18,6 +18,7 @@ use App\Services\Requisition\Actions\DeleteRequisitionAction;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
+use App\Services\Requisition\RequisitionStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
@@ -640,10 +641,9 @@ class RequisitionService
     {
         $stockMovementService = app(StockMovementService::class);
         $productStockService  = app(ProductStockService::class);
+        $stockService = app(RequisitionStockService::class);
 
-        $items = $requisition->items()
-            ->whereNull('stock_consumed_at')
-            ->get();
+        $items = $stockService->pendingItems($requisition);
 
         if ($items->isEmpty()) {
             Log::info('RequisitionService: Nenhum item pendente de saída de estoque', [
@@ -660,10 +660,7 @@ class RequisitionService
             $product = $item->product;
 
             if (! $product || ! $product->has_stock_control) {
-                $item->update([
-                    'stock_consumed'    => true,
-                    'stock_consumed_at' => now(),
-                ]);
+                $stockService->markItemAsConsumed($item);
                 continue;
             }
 
@@ -719,10 +716,7 @@ class RequisitionService
                 );
             }
 
-            $item->update([
-                'stock_consumed'    => true,
-                'stock_consumed_at' => now(),
-            ]);
+            $stockService->markItemAsConsumed($item);
 
             Log::info('RequisitionService: Saída de estoque processada', [
                 'product_id'     => $item->product_id,
@@ -733,7 +727,7 @@ class RequisitionService
             ]);
         }
 
-        $requisition->update(['stock_consumed' => true]);
+        $stockService->syncConsumptionFlags($requisition);
     }
 
     private function attachRecordsToInvoice(Collection $records, Invoice $invoice, int $userId): void

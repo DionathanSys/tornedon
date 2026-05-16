@@ -5,6 +5,7 @@ namespace App\Services\Requisition\Actions;
 use App\Enum\StockMovement\Type;
 use App\Models\Requisition;
 use App\Services\ProductStock\ProductStockService;
+use App\Services\Requisition\RequisitionStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
@@ -30,11 +31,9 @@ class ReleaseRequisitionReservationAction
         try {
             $productStockService  = app(ProductStockService::class);
             $stockMovementService = app(StockMovementService::class);
+            $stockService = app(RequisitionStockService::class);
 
-            $items = $requisition->items()
-                ->whereNull('stock_consumed_at')
-                ->with('product')
-                ->get();
+            $items = $stockService->pendingItems($requisition, withProduct: true);
 
             if ($items->isEmpty()) {
                 Log::info('ReleaseRequisitionReservationAction: Nenhum item pendente de liberação', [

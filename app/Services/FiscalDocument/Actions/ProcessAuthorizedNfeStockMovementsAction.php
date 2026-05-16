@@ -9,6 +9,7 @@ use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\ProductStock\ProductStockService;
+use App\Services\Requisition\RequisitionStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\DB;
@@ -123,11 +124,9 @@ class ProcessAuthorizedNfeStockMovementsAction
 
         $stockMovementService = app(StockMovementService::class);
         $productStockService = app(ProductStockService::class);
+        $stockService = app(RequisitionStockService::class);
 
-        $items = $requisition->items()
-            ->whereNull('stock_consumed_at')
-            ->with('product')
-            ->get();
+        $items = $stockService->pendingItems($requisition, withProduct: true);
 
         Log::info('ProcessAuthorizedNfeStockMovementsAction: itens', [
             'metodo'            => __METHOD__ . '@' . __LINE__,    
@@ -151,7 +150,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                     'requisition_id'    => $requisition->id,
                     'item'              => $item,
                 ]);
-                $this->markItemAsConsumed($item);
+                $stockService->markItemAsConsumed($item);
                 continue;
             }
 
@@ -161,7 +160,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                     'requisition_id'    => $requisition->id,
                     'item'              => $item,
                 ]);
-                $this->markItemAsConsumed($item);
+                $stockService->markItemAsConsumed($item);
                 continue;
             }
 
@@ -193,7 +192,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                 'observations'       => $item->observations,
             ];
 
-            $releaseQuantity = $this->resolveReservedQuantity($requisition, $item);
+            $releaseQuantity = $stockService->resolveReservedQuantity($requisition, $item);
 
             if ($releaseQuantity > 0.0001) {
 
@@ -230,17 +229,14 @@ class ProcessAuthorizedNfeStockMovementsAction
                 return;
             }
 
-            $this->markItemAsConsumed($item);
+            $stockService->markItemAsConsumed($item);
         }
+
+        $stockService->syncConsumptionFlags($requisition);
 
         $hasPendingItems = $requisition->items()
             ->whereNull('stock_consumed_at')
             ->exists();
-
-        $requisition->update([
-            'stock_consumed' => ! $hasPendingItems,
-            'stock_reserved' => $hasPendingItems ? $requisition->stock_reserved : false,
-        ]);
 
         Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
             'metodo' => __METHOD__ . '@' . __LINE__,    
@@ -251,50 +247,6 @@ class ProcessAuthorizedNfeStockMovementsAction
         ]);
     }
 
-    private function resolveReservedQuantity(Requisition $requisition, RequisitionItem $item): float
-    {
-        $itemReservedQuantity = (float) StockMovement::query()
-            ->where('source_type', 'requisition_item')
-            ->where('source_id', $item->id)
-            ->whereIn('type', [
-                Type::RESERVATION->value,
-                Type::RESERVATION_RELEASE->value,
-            ])
-            ->get(['type', 'quantity', 'base_quantity'])
-            ->sum(function (StockMovement $movement): float {
-                $quantity = $movement->resolvedBaseQuantity();
-
-                return $movement->type === Type::RESERVATION->value
-                    ? $quantity
-                    : -$quantity;
-            });
-
-        $requestedBaseQuantity = $this->resolveItemBaseQuantity($item);
-
-        if ($itemReservedQuantity > 0.0001) {
-            return min($itemReservedQuantity, $requestedBaseQuantity);
-        }
-
-        $reservedQuantity = (float) StockMovement::query()
-            ->where('source_type', 'requisition')
-            ->where('source_id', $requisition->id)
-            ->where('product_id', $item->product_id)
-            ->whereIn('type', [
-                Type::RESERVATION->value,
-                Type::RESERVATION_RELEASE->value,
-            ])
-            ->get(['type', 'quantity', 'base_quantity'])
-            ->sum(function (StockMovement $movement): float {
-                $quantity = $movement->resolvedBaseQuantity();
-
-                return $movement->type === Type::RESERVATION->value
-                    ? $quantity
-                    : -$quantity;
-            });
-
-        return min(max($reservedQuantity, 0), $requestedBaseQuantity);
-    }
-
     private function hasItemExit(RequisitionItem $item): bool
     {
         return StockMovement::query()
@@ -302,21 +254,6 @@ class ProcessAuthorizedNfeStockMovementsAction
             ->where('source_id', $item->id)
             ->where('type', Type::EXIT->value)
             ->exists();
-    }
-
-    private function markItemAsConsumed(RequisitionItem $item): void
-    {
-        Log::debug('ProcessAuthorizedNfeStockMovementsAction: marcando item como consumido', [
-            'metodo' => __METHOD__ . '@' . __LINE__,    
-            'requisition_id' => $item->requisition_id,
-            'item_id' => $item->id,
-            'key'                => 'TEST:BAIXA_ESTOQUE',
-        ]);
-
-        $item->update([
-            'stock_consumed' => true,
-            'stock_consumed_at' => now(),
-        ]);
     }
 
     private function resolveUserId(FiscalDocument $fiscalDocument, ?int $fallbackUserId = null): int

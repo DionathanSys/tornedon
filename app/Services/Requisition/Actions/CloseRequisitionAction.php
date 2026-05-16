@@ -9,6 +9,7 @@ use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\Audit\AuditRecorder;
 use App\Services\ProductStock\ProductStockService;
+use App\Services\Requisition\RequisitionStockService;
 use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -20,7 +21,8 @@ class CloseRequisitionAction
     use HandlesActionResponse;
 
     public function __construct(
-        private int $userId
+        private int $userId,
+        private ?RequisitionStockService $stockService = null,
     ) {}
 
     public function execute(Requisition $requisition): ?Requisition
@@ -49,11 +51,8 @@ class CloseRequisitionAction
 
             return DB::transaction(function () use ($requisition, $audit, $before) {
                 $productStockService = app(ProductStockService::class);
-                $items = $requisition
-                    ->items()
-                    ->whereNull('stock_consumed_at')
-                    ->with('product')
-                    ->get();
+                $stockService = $this->stockService ?? app(RequisitionStockService::class);
+                $items = $stockService->pendingItems($requisition, withProduct: true);
 
                 foreach ($items as $item) {
                     Log::debug('CloseRequisitionAction: Item', [
@@ -252,7 +251,8 @@ class CloseRequisitionAction
 
         $requestedQuantity = $this->resolveItemBaseQuantity($item);
         $availableQuantity = (float) $stock->quantity_available;
-        $reservedForItem = $this->resolveItemReservedQuantity($requisition, $item);
+        $reservedForItem = ($this->stockService ?? app(RequisitionStockService::class))
+            ->resolveReservedQuantity($requisition, $item);
         $effectiveAvailable = $availableQuantity + $reservedForItem;
 
         Log::debug('CloseRequisitionAction: Effective availability resolved for close', [
@@ -267,50 +267,6 @@ class CloseRequisitionAction
         ]);
 
         return $effectiveAvailable >= $requestedQuantity;
-    }
-
-    private function resolveItemReservedQuantity(Requisition $requisition, RequisitionItem $item): float
-    {
-        $itemReservedQuantity = (float) StockMovement::query()
-            ->where('source_type', 'requisition_item')
-            ->where('source_id', $item->id)
-            ->whereIn('type', [
-                Type::RESERVATION->value,
-                Type::RESERVATION_RELEASE->value,
-            ])
-            ->get(['type', 'quantity', 'base_quantity'])
-            ->sum(function (StockMovement $movement): float {
-                $quantity = $movement->resolvedBaseQuantity();
-
-                return $movement->type === Type::RESERVATION
-                    ? $quantity
-                    : -$quantity;
-            });
-
-        $requestedBaseQuantity = $this->resolveItemBaseQuantity($item);
-
-        if ($itemReservedQuantity > 0.0001) {
-            return min($itemReservedQuantity, $requestedBaseQuantity);
-        }
-
-        $reservedQuantity = (float) StockMovement::query()
-            ->where('source_type', 'requisition')
-            ->where('source_id', $requisition->id)
-            ->where('product_id', $item->product_id)
-            ->whereIn('type', [
-                Type::RESERVATION->value,
-                Type::RESERVATION_RELEASE->value,
-            ])
-            ->get(['type', 'quantity', 'base_quantity'])
-            ->sum(function (StockMovement $movement): float {
-                $quantity = $movement->resolvedBaseQuantity();
-
-                return $movement->type === Type::RESERVATION
-                    ? $quantity
-                    : -$quantity;
-            });
-
-        return min(max($reservedQuantity, 0), $requestedBaseQuantity);
     }
 
     private function resolveItemBaseQuantity(RequisitionItem $item): float

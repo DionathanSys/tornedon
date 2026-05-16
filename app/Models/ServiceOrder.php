@@ -276,6 +276,7 @@ class ServiceOrder extends Model
         }
 
         $totals = $this->items()
+            ->toBase()
             ->selectRaw('
                 COALESCE(SUM(gross_amount), 0) as gross_amount,
                 COALESCE(SUM(discount_amount), 0) as discount_amount,
@@ -319,6 +320,7 @@ class ServiceOrder extends Model
 
         $totals = RequisitionItem::query()
             ->whereHas('requisition', fn ($query) => $query->where('service_order_id', $this->getKey()))
+            ->toBase()
             ->selectRaw('
                 COALESCE(SUM(gross_amount), 0) as gross_amount,
                 COALESCE(SUM(discount_amount), 0) as discount_amount,
