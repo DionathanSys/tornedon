@@ -123,6 +123,7 @@ class RequisitionsTable
                     UnlinkServiceOrderAction::make(),
                     EditAction::make(),
                     DeleteAction::make()
+                        ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->items()->where('stock_consumed', true)->exists())
                         ->using(function (Model $record): bool {
                             $service = app(RequisitionService::class);
                             $result = $service->delete($record);

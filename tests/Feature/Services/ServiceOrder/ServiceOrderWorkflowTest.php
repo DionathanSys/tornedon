@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
 use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
 use App\Services\ServiceOrder\InvoiceServiceOrderWorkflow;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -96,13 +97,44 @@ class ServiceOrderWorkflowTest extends TestCase
         $this->assertSame($serviceOrder->fresh()->invoice_id, $requisition->fresh()->invoice_id);
     }
 
-    private function makeLinkedDocuments(): array
+    public function test_invoice_workflow_invoices_multiple_service_orders_and_linked_requisitions_in_same_invoice(): void
     {
-        [$user, $company, $customer] = $this->makeBaseContext();
+        [$user, $firstServiceOrder, $firstRequisition] = $this->makeLinkedDocuments('001');
+        [$ignoredUser, $secondServiceOrder, $secondRequisition] = $this->makeLinkedDocuments(
+            '002',
+            $user,
+            $firstServiceOrder->company,
+            $firstServiceOrder->customer,
+        );
+
+        $firstServiceOrder->update(['status' => State::CLOSED]);
+        $secondServiceOrder->update(['status' => State::CLOSED]);
+
+        $workflow = app(InvoiceServiceOrderWorkflow::class);
+        $result = $workflow->execute(new Collection([
+            $firstServiceOrder->fresh(),
+            $secondServiceOrder->fresh(),
+        ]), $user->id);
+
+        $this->assertTrue($result, $workflow->getMessage());
+        $this->assertNotNull($workflow->invoice());
+        $this->assertSame($firstServiceOrder->fresh()->invoice_id, $secondServiceOrder->fresh()->invoice_id);
+        $this->assertSame($firstRequisition->fresh()->invoice_id, $secondRequisition->fresh()->invoice_id);
+        $this->assertSame($firstServiceOrder->fresh()->invoice_id, $firstRequisition->fresh()->invoice_id);
+    }
+
+    private function makeLinkedDocuments(
+        string $suffix = '001',
+        ?User $user = null,
+        ?Company $company = null,
+        ?Partner $customer = null,
+    ): array
+    {
+        [$user, $company, $customer] = $this->makeBaseContext($user, $suffix, $company, $customer);
 
         $service = Service::query()->create([
             'company_id' => $company->id,
-            'service_code' => 'SRV-WF-001',
+            'service_code' => 'SRV-WF-' . $suffix,
             'name' => 'Servico Workflow',
             'price' => 100,
             'min_sale_price' => 100,
@@ -117,7 +149,7 @@ class ServiceOrderWorkflowTest extends TestCase
 
         $product = Product::query()->create([
             'company_id' => $company->id,
-            'product_code' => 'PRD-WF-001',
+            'product_code' => 'PRD-WF-' . $suffix,
             'name' => 'Produto Workflow',
             'unit' => Unit::UN,
             'origin_sale_price' => OriginSalePrice::FREE,
@@ -128,7 +160,7 @@ class ServiceOrderWorkflowTest extends TestCase
         ]);
 
         $serviceOrder = ServiceOrder::query()->create([
-            'number' => 'OS-WF-001',
+            'number' => 'OS-WF-' . $suffix,
             'customer_id' => $customer->id,
             'company_id' => $company->id,
             'order_date' => now()->toDateString(),
@@ -152,7 +184,7 @@ class ServiceOrderWorkflowTest extends TestCase
         ]);
 
         $requisition = Requisition::query()->create([
-            'number' => 'REQ-WF-001',
+            'number' => 'REQ-WF-' . $suffix,
             'customer_id' => $customer->id,
             'company_id' => $company->id,
             'service_order_id' => $serviceOrder->id,
@@ -179,21 +211,26 @@ class ServiceOrderWorkflowTest extends TestCase
         return [$user, $serviceOrder, $requisition];
     }
 
-    private function makeBaseContext(): array
+    private function makeBaseContext(
+        ?User $user = null,
+        string $suffix = '001',
+        ?Company $company = null,
+        ?Partner $customer = null,
+    ): array
     {
-        $user = User::factory()->create();
+        $user ??= User::factory()->create();
 
-        $company = Company::query()->create([
-            'name' => 'Empresa Workflow',
-            'document_number' => '55443322000111',
+        $company ??= Company::query()->create([
+            'name' => 'Empresa Workflow ' . $suffix,
+            'document_number' => '55443322' . str_pad($suffix, 6, '0', STR_PAD_LEFT),
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
             'created_by' => $user->id,
         ]);
 
-        $customer = Partner::query()->create([
-            'name' => 'Cliente Workflow',
+        $customer ??= Partner::query()->create([
+            'name' => 'Cliente Workflow ' . $suffix,
             'document_type' => 'CPF',
-            'document_number' => '99988877766',
+            'document_number' => str_pad($suffix, 11, '9', STR_PAD_LEFT),
             'created_by' => $user->id,
         ]);
 

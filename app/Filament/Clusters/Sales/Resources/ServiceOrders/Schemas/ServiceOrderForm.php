@@ -167,25 +167,116 @@ class ServiceOrderForm
                                             ]),
 
                                     ]),
+                                Section::make('Anotações')
+                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
+                                    ->collapsible()
+                                    ->secondary()
+                                    ->collapsed()
+                                    ->columnSpanFull()
+                                    ->contained(false)
+                                    ->schema([
+                                        Textarea::make('customer_observations')
+                                            ->label('Observações do Cliente')
+                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->rows(3)
+                                            ->autocomplete(false),
+                                        Textarea::make('items_received')
+                                            ->label('Itens Recebidos ')
+                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->rows(3),
+                                        Textarea::make('technician_observations')
+                                            ->label('Observações do Técnico')
+                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->rows(3)
+                                            ->autocomplete(false),
+                                        Textarea::make('solution')
+                                            ->label('Solução Aplicada')
+                                            ->columnSpan(['md' => 4, 'lg' => 12])
+                                            ->rows(4)
+                                            ->autocomplete(false),
+                                    ]),
                                 Section::make('Atendimento')
                                     ->columns(['md' => 6, 'lg' => 12])
                                     ->collapsible()
+                                    ->secondary()
                                     ->collapsed()
+                                    ->contained(false)
                                     ->columnSpanFull()
                                     ->schema([
-                                        SelectPartner::make('technician_id', 'technician')
+                                        Group::make([
+                                            Money::make('value_km')
+                                                ->label('Valor do KM')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
+                                                    'travel_value',
+                                                    ServiceOrderTravelData::format(
+                                                        ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
+                                                    )
+                                                ))
+                                                ->default(fn() => CompanyPreference::get('default_value_km', default: 3.50))
+                                                ->formatStateUsing(fn($state) => ServiceOrderTravelData::format(
+                                                    filled($state) ? $state : CompanyPreference::get('default_value_km', default: 3.50)
+                                                ))
+                                                ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
+                                            Money::make('distance_km')
+                                                ->label('Distância em KM')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
+                                                    'travel_value',
+                                                    ServiceOrderTravelData::format(
+                                                        ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
+                                                    )
+                                                ))
+                                                ->suffix('km')
+                                                ->prefix(null)
+                                                ->default(0)
+                                                ->formatStateUsing(fn($state) => ServiceOrderTravelData::format($state))
+                                                ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
+                                            Money::make('travel_value')
+                                                ->label('Valor de Deslocamento')
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->default(0),
+                                        ])->columns(['md' => 3])->columnSpan(['md' => 3, 'lg' => 6]),
+                                        Group::make([
+                                            Select::make('payment_method')
+                                                ->label('Forma de Pagamento')
+                                                ->options(PaymentMethod::toSelectArray())
+                                                ->native(false)
+                                                ->searchable()
+                                                ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                                    Filament::getTenant()->id,
+                                                    null,
+                                                )['payment_method']),
+                                            Select::make('payment_condition')
+                                                ->label('Condição de Pagamento')
+                                                ->options(PaymentCondition::toGroupedSelectArray())
+                                                ->native(false)
+                                                ->searchable()
+                                                ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                                    Filament::getTenant()->id,
+                                                    null,
+                                                )['payment_condition']),
+                                        ])
+                                            ->columns(['md' => 2])
+                                            ->columnSpan(['md' => 3, 'lg' => 6]),
+                                        DiscountAmountField::make('service_order')
+                                            ->saved(false)
+                                            ->visible(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        SelectPartner::make('technician_id', 'technician', ['document_number' => false])
                                             ->label('Técnico')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                        SelectPartner::make('salesperson_id', 'salesperson')
+                                        SelectPartner::make('salesperson_id', 'salesperson', ['document_number' => false])
                                             ->label('Vendedor')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn() => Filament::getTenant()->service_provision_location)
@@ -209,116 +300,6 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->visibleOn([Operation::Edit]),
 
-                            ]),
-                        Tab::make('Observações')
-                            ->icon(Heroicon::ChatBubbleBottomCenterText)
-                            ->schema([
-                                Section::make('Anotações')
-                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
-                                    ->columnSpanFull()
-                                    ->contained(false)
-                                    ->schema([
-                                        Textarea::make('customer_observations')
-                                            ->label('Observações do Cliente')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3)
-                                            ->autocomplete(false),
-                                        Textarea::make('items_received')
-                                            ->label('Itens Recebidos ')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3),
-                                        TextInput::make('technician_observations')
-                                            ->label('Observações do Técnico')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->datalist(fn() => [
-                                                'Checar disponibilidade de peças',
-                                                'Entrar em contato com o cliente para alinhamento',
-                                                'Agendar visita técnica',
-                                                'Aguardar chegada de peças',
-                                                'Realizar manutenção preventiva',
-                                                'Realizar manutenção corretiva',
-                                                'Realizar testes de funcionamento',
-                                                'Fornecer orientações de uso ao cliente',
-                                            ])
-                                            ->autocomplete(false),
-                                        Textarea::make('solution')
-                                            ->label('Solução Aplicada')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(4)
-                                            ->autocomplete(false)
-                                            ->helperText('Descreva os procedimentos realizados e a solução aplicada'),
-                                    ]),
-                            ]),
-                        Tab::make('Valores')
-                            ->icon(Heroicon::CurrencyDollar)
-                            ->schema([
-                                Section::make('Valores')
-                                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
-                                    ->columnSpanFull()
-                                    ->contained(false)
-                                    ->schema([
-                                        Money::make('value_km')
-                                            ->label('Valor do KM')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
-                                                'travel_value',
-                                                ServiceOrderTravelData::format(
-                                                    ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
-                                                )
-                                            ))
-                                            ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
-                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format(
-                                                filled($state) ? $state : CompanyPreference::get('default_value_km', default: 3.5)
-                                            ))
-                                            ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
-                                        Money::make('distance_km')
-                                            ->label('Distância em KM')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
-                                                'travel_value',
-                                                ServiceOrderTravelData::format(
-                                                    ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
-                                                )
-                                            ))
-                                            ->suffix('km')
-                                            ->prefix(null)
-                                            ->default(0)
-                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format($state))
-                                            ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
-                                        Money::make('travel_value')
-                                            ->label('Valor de Deslocamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
-                                            ->default(0),
-                                        Select::make('payment_method')
-                                            ->label('Forma de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->columnStart(1)
-                                            ->options(PaymentMethod::toSelectArray())
-                                            ->native(false)
-                                            ->searchable()
-                                            ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
-                                                Filament::getTenant()->id,
-                                                null,
-                                            )['payment_method']),
-                                        Select::make('payment_condition')
-                                            ->label('Condição de Pagamento')
-                                            ->columnSpan(['md' => 2, 'lg' => 4])
-                                            ->options(PaymentCondition::toGroupedSelectArray())
-                                            ->native(false)
-                                            ->searchable()
-                                            ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
-                                                Filament::getTenant()->id,
-                                                null,
-                                            )['payment_condition']),
-                                        DiscountAmountField::make('service_order')
-                                            ->saved(false)
-                                            ->visible(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
-                                    ]),
                             ]),
                         Tab::make('Aprovação')
                             ->icon(Heroicon::CheckCircle)
@@ -410,56 +391,6 @@ class ServiceOrderForm
                                         ])
                                             ->key('attachments-relation-manager')
                                             ->columnSpanFull(),
-                                    ]),
-                            ]),
-                        Tab::make('Outros')
-                            ->icon(Heroicon::EllipsisHorizontalCircle)
-                            ->schema([
-                                Section::make('Informações Adicionais')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
-                                    ->columnSpanFull()
-                                    ->contained(false)
-                                    ->schema([
-                                        Repeater::make('additional_info')
-                                            ->label('Informações Adicionais')
-                                            ->columnSpanFull()
-                                            ->defaultItems(0)
-                                            ->addActionLabel('Adicionar informação')
-                                            ->reorderable()
-                                            ->collapsible()
-                                            ->itemLabel(function (array $state): ?string {
-                                                $label = filled($state['type'] ?? null) ? (string) $state['type'] : null;
-                                                $observation = $state['observation'] ?? null;
-
-                                                return $label
-                                                    ? (filled($observation) ? "{$label}: {$observation}" : $label)
-                                                    : ($observation ?: 'Informação adicional');
-                                            })
-                                            ->formatStateUsing(fn($state) => static::normalizeAdditionalInfoState($state))
-                                            ->dehydrateStateUsing(fn($state) => static::normalizeAdditionalInfoState($state))
-                                            ->columns(['md' => 4, 'lg' => 12])
-                                            ->schema([
-                                                TextInput::make('type')
-                                                    ->label('Padrão')
-                                                    ->columnSpan(['md' => 2, 'lg' => 4])
-                                                    ->datalist([
-                                                        'Terminal de direção com folga',
-                                                        'Rolamento de roda com folga',
-                                                        'Embuchamento do eixo com folga',
-                                                        'Mola dianteira substituída',
-                                                        'Pneus com desgaste irregular'
-                                                    ])
-                                                    ->required(),
-                                                TextInput::make('observation')
-                                                    ->label('Observação')
-                                                    ->columnSpan(['md' => 2, 'lg' => 8])
-                                                    ->maxLength(255)
-                                                    ->placeholder('Detalhes ou observação personalizável'),
-                                            ]),
                                     ]),
                             ]),
                     ]),

@@ -104,7 +104,9 @@ class ProductsRelationManager extends RelationManager
                         $requisition = $serviceOrder->requisition;
 
                         return $requisition !== null
-                            && $requisition->status === Status::OPEN;
+                            && $requisition->status === Status::OPEN
+                            && blank($requisition->invoice_id)
+                            && ! $requisition->items()->where('stock_consumed', true)->exists();
                     })
                     ->action(function (): void {
                         /** @var ServiceOrder $serviceOrder */

@@ -6,9 +6,8 @@ use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
-use App\Services\ServiceOrder\ServiceOrderService;
+use App\Services\ServiceOrder\InvoiceServiceOrderWorkflow;
 use Filament\Actions\BulkAction;
-use Filament\Forms\Components\Checkbox;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +26,7 @@ final class BulkInvoiceServiceOrderAction
             ->modalDescription('Tem certeza que deseja faturar as ordens de serviço selecionadas? Será criada uma única fatura agrupando todos os registros.')
             ->modalSubmitActionLabel('Sim, faturar')
             ->deselectRecordsAfterCompletion()
-            ->action(function (Collection $records, array $data): void {
+            ->action(function (Collection $records): void {
                 // Validação: mesmo cliente
                 $customerIds = $records->pluck('customer_id')->unique();
 
@@ -62,24 +61,26 @@ final class BulkInvoiceServiceOrderAction
                     return;
                 }
 
-                $service = app(ServiceOrderService::class);
-                $invoice = $service->invoice($records, Auth::id());
+                $workflow = app(InvoiceServiceOrderWorkflow::class);
+                $result = $workflow->execute($records, Auth::id());
 
-                if ($service->hasError() || ! $invoice) {
+                if (! $result || ! $workflow->invoice()) {
                     Log::error('BulkInvoiceServiceOrderAction: Erro ao faturar OS em lote', [
                         'metodo'            => __METHOD__ . '@' . __LINE__,
                         'service_order_ids' => $records->pluck('id')->all(),
-                        'error_code'        => $service->getErrorCode(),
-                        'message'           => $service->getMessage(),
+                        'error_code'        => $workflow->getErrorCode(),
+                        'message'           => $workflow->getMessage(),
                     ]);
 
                     notify::error(
-                        message: $service->getMessageUser(),
-                        errorCode: $service->getErrorCode()
+                        message: $workflow->getMessageUser(),
+                        errorCode: $workflow->getErrorCode()
                     );
 
                     return;
                 }
+
+                $invoice = $workflow->invoice();
 
                 Log::info('BulkInvoiceServiceOrderAction: OS(s) faturada(s) com sucesso', [
                     'metodo'            => __METHOD__ . '@' . __LINE__,

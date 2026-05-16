@@ -29,8 +29,12 @@ class ServiceOrder extends Model
     protected static function booted(): void
     {
         static::deleting(function (self $serviceOrder): void {
-            if ($serviceOrder->invoice_id || $serviceOrder->status === State::INVOICED) {
-                throw new \RuntimeException('Não é possível excluir ordem de serviço que já foi faturada.');
+            if ($serviceOrder->invoice_id) {
+                throw new \RuntimeException('Não é possível excluir ordem de serviço que está vinculada a uma fatura.');
+            }
+
+            if ($serviceOrder->requisition()->exists()) {
+                throw new \RuntimeException('Não é possível excluir ordem de serviço que possui requisição vinculada.');
             }
 
             $serviceOrder->attachments()->get()->each->delete();

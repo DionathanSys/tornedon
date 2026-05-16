@@ -126,6 +126,7 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->icon(Heroicon::Trash)
                     ->hiddenLabel()
+                    ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->items()->where('stock_consumed', true)->exists())
                     ->using(function (Model $record): bool {
 
                         $service = app(RequisitionService::class);

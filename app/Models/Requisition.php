@@ -20,8 +20,12 @@ class Requisition extends Model
     protected static function booted(): void
     {
         static::deleting(function (self $requisition): void {
-            if ($requisition->invoice_id || $requisition->status === Status::INVOICED) {
-                throw new \RuntimeException('Não é possível excluir requisição que já gerou fatura.');
+            if ($requisition->invoice_id) {
+                throw new \RuntimeException('Não é possível excluir requisição que está vinculada a uma fatura.');
+            }
+
+            if ($requisition->items()->where('stock_consumed', true)->exists()) {
+                throw new \RuntimeException('Não é possível excluir requisição que possui itens com estoque consumido.');
             }
         });
     }

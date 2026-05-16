@@ -8,6 +8,7 @@ use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Services\Requisition\RequisitionService;
 use App\Traits\HandlesServiceResponse;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,22 +23,35 @@ class InvoiceServiceOrderWorkflow
         private readonly RequisitionService $requisitionService,
     ) {}
 
-    public function execute(ServiceOrder $serviceOrder, int $userId): bool
+    /**
+     * @param  ServiceOrder|Collection<int, ServiceOrder>  $serviceOrders
+     */
+    public function execute(ServiceOrder|Collection $serviceOrders, int $userId): bool
     {
         $this->resetResponse();
         $this->invoice = null;
 
+        $serviceOrders = $serviceOrders instanceof ServiceOrder
+            ? new Collection([$serviceOrders])
+            : $serviceOrders;
+
         try {
-            return DB::transaction(function () use ($serviceOrder, $userId): bool {
-                $linkedRequisition = $serviceOrder->requisition()->first();
+            return DB::transaction(function () use ($serviceOrders, $userId): bool {
+                $linkedRequisitions = new Collection();
 
-                Log::debug('InvoiceServiceOrderWorkflow: iniciando faturamento sincronizado', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
-                    'service_order_id' => $serviceOrder->id,
-                    'linked_requisition_id' => $linkedRequisition?->id,
-                ]);
+                foreach ($serviceOrders as $serviceOrder) {
+                    $linkedRequisition = $serviceOrder->requisition()->first();
 
-                if ($linkedRequisition instanceof Requisition) {
+                    Log::debug('InvoiceServiceOrderWorkflow: iniciando faturamento sincronizado', [
+                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'service_order_id' => $serviceOrder->id,
+                        'linked_requisition_id' => $linkedRequisition?->id,
+                    ]);
+
+                    if (! $linkedRequisition instanceof Requisition) {
+                        continue;
+                    }
+
                     if ($linkedRequisition->status === RequisitionStatus::OPEN) {
                         $closedRequisition = $this->requisitionService->close($linkedRequisition->fresh(), $userId, false);
 
@@ -59,16 +73,18 @@ class InvoiceServiceOrderWorkflow
 
                         return false;
                     }
+
+                    $linkedRequisitions->push($linkedRequisition->fresh());
                 }
 
-                $invoice = $this->serviceOrderService->invoice($serviceOrder->fresh(), $userId);
+                $invoice = $this->serviceOrderService->invoice($serviceOrders->fresh(), $userId);
 
                 if ($this->serviceOrderService->hasError() || ! $invoice) {
                     return $this->propagateError($this->serviceOrderService);
                 }
 
-                if ($linkedRequisition instanceof Requisition) {
-                    $invoice = $this->requisitionService->invoiceIntoExisting($linkedRequisition->fresh(), $userId, $invoice);
+                if ($linkedRequisitions->isNotEmpty()) {
+                    $invoice = $this->requisitionService->invoiceIntoExisting($linkedRequisitions->fresh(), $userId, $invoice);
 
                     if ($this->requisitionService->hasError() || ! $invoice) {
                         return $this->propagateError($this->requisitionService);
@@ -87,7 +103,7 @@ class InvoiceServiceOrderWorkflow
 
             Log::error('InvoiceServiceOrderWorkflow: erro ao faturar fluxo sincronizado', [
                 'metodo' => __METHOD__ . '@' . __LINE__,
-                'service_order_id' => $serviceOrder->id,
+                'service_order_ids' => $serviceOrders->pluck('id')->all(),
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

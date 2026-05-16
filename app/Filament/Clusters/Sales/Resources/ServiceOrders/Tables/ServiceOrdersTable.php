@@ -17,6 +17,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewSer
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
+use App\Services\Partner\PartnerService;
 use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -160,9 +161,16 @@ class ServiceOrdersTable
             ->filters([
                 SelectFilter::make('customer_id')
                     ->label('Cliente')
-                    ->relationship('customer', 'name')
                     ->searchable()
                     ->preload()
+                    ->getSearchResultsUsing(
+                        fn(string $search): array => (new PartnerService)
+                            ->searchForSelect($search, Filament::getTenant()->id, 'customer', 20, ['document_number' => false])
+                    )
+                    ->getOptionLabelUsing(
+                        fn($value): ?string => (new PartnerService)
+                            ->getLabelForSelect((int) $value, ['document_number' => false])
+                    )
                     ->native(false),
                 SelectFilter::make('equipment_id')
                     ->label('Equipamento')
@@ -217,6 +225,7 @@ class ServiceOrdersTable
                     DeleteAction::make()
                         ->hiddenLabel()
                         ->icon(Heroicon::Trash)
+                        ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
                         ->using(function (Model $record): bool {
                             Log::debug('EditServiceOrder: Iniciando exclusão de ordem de serviço', [
                                 'metodo' => __METHOD__ . '@' . __LINE__,

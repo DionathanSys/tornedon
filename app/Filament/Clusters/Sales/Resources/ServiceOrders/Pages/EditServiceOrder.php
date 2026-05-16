@@ -82,6 +82,7 @@ class EditServiceOrder extends EditRecord
                 DeleteAction::make()
                     ->hiddenLabel()
                     ->icon(Heroicon::Trash)
+                    ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
                     ->using(function (Model $record): bool {
 
                         $service = app(ServiceOrderService::class);

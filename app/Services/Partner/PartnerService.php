@@ -199,7 +199,7 @@ class PartnerService
      * @param int    $companyId  Restringe à empresa atual
      * @param int    $limit   Máximo de resultados (padrão 20)
      */
-    public function searchForSelect(string $search, int $companyId, string $type, int $limit = 20): array
+    public function searchForSelect(string $search, int $companyId, string $type, int $limit = 20, array $options = []): array
     {
         Log::debug('Buscando parceiros para select', [
             'metodo'     => __METHOD__ . '@' . __LINE__,
@@ -223,7 +223,7 @@ class PartnerService
             ->limit($limit)
             ->get()
             ->mapWithKeys(fn(Partner $partner) => [
-                $partner->id => self::formatSelectLabel($partner),
+                $partner->id => self::formatSelectLabel($partner, $options),
             ])
             ->toArray();
     }
