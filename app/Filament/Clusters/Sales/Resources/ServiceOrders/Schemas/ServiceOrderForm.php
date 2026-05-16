@@ -173,7 +173,6 @@ class ServiceOrderForm
                                     ->secondary()
                                     ->collapsed()
                                     ->columnSpanFull()
-                                    ->contained(false)
                                     ->schema([
                                         Textarea::make('customer_observations')
                                             ->label('Observações do Cliente')
@@ -200,7 +199,6 @@ class ServiceOrderForm
                                     ->collapsible()
                                     ->secondary()
                                     ->collapsed()
-                                    ->contained(false)
                                     ->columnSpanFull()
                                     ->schema([
                                         Group::make([
