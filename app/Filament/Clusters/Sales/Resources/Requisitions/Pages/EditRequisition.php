@@ -9,6 +9,7 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadReq
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\InvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ReopenRequisitionAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\UnlinkServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ViewInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Notification\NotifyService as notify;
@@ -17,8 +18,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\RestoreAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Colors\Color;
@@ -92,6 +91,7 @@ class EditRequisition extends EditRecord
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
                     ->color(Color::Green)
+                    ->hidden(fn ($record): bool => $record->service_order_id)
                     ->tooltip('Fechar requisição'),
                 PreviewRequisitionPdfAction::make()
                     ->size(Size::Small)
@@ -110,7 +110,11 @@ class EditRequisition extends EditRecord
                     ->tooltip('Reabrir requisição'),
                 InvoiceRequisitionAction::make()
                     ->size(Size::Small)
+                    ->hidden(fn ($record): bool => $record->service_order_id)
                     ->tooltip('Gerar Fatura'),
+                UnlinkServiceOrderAction::make()
+                    ->size(Size::Small)
+                    ->tooltip('Desvincular ordem de serviço'),
                 ViewInvoiceRequisitionAction::make()
                     ->size(Size::Small)
                     ->tooltip('Visualizar Fatura'),
@@ -123,10 +127,6 @@ class EditRequisition extends EditRecord
                     ->icon(Heroicon::Trash)
                     ->hiddenLabel()
                     ->using(function (Model $record): bool {
-                        Log::debug('EditRequisition: Iniciando soft delete de requisição', [
-                            'metodo'         => __METHOD__ . '@' . __LINE__,
-                            'requisition_id' => $record->id,
-                        ]);
 
                         $service = app(RequisitionService::class);
                         $result = $service->delete($record);
@@ -147,72 +147,6 @@ class EditRequisition extends EditRecord
                         }
 
                         Log::info('EditRequisition: Requisição deletada com sucesso', [
-                            'metodo'         => __METHOD__ . '@' . __LINE__,
-                            'requisition_id' => $record->id,
-                        ]);
-
-                        return $result;
-                    }),
-                ForceDeleteAction::make()
-                    ->size(Size::Small)
-                    ->using(function (Model $record): bool {
-                        Log::debug('EditRequisition: Iniciando force delete de requisição', [
-                            'metodo'         => __METHOD__ . '@' . __LINE__,
-                            'requisition_id' => $record->id,
-                        ]);
-
-                        $service = app(RequisitionService::class);
-                        $result = $service->forceDelete($record);
-
-                        if ($service->hasError()) {
-                            Log::error('EditRequisition: Erro ao force delete requisição', [
-                                'metodo'         => __METHOD__ . '@' . __LINE__,
-                                'error_code'     => $service->getErrorCode(),
-                                'message'        => $service->getMessage(),
-                                'requisition_id' => $record->id,
-                            ]);
-
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
-                            return false;
-                        }
-
-                        Log::info('EditRequisition: Requisição force deleted com sucesso', [
-                            'metodo'         => __METHOD__ . '@' . __LINE__,
-                            'requisition_id' => $record->id,
-                        ]);
-
-                        return $result;
-                    }),
-                RestoreAction::make()
-                    ->size(Size::Small)
-                    ->using(function (Model $record): bool {
-                        Log::debug('EditRequisition: Iniciando restore de requisição', [
-                            'metodo'         => __METHOD__ . '@' . __LINE__,
-                            'requisition_id' => $record->id,
-                        ]);
-
-                        $service = app(RequisitionService::class);
-                        $result = $service->restore($record);
-
-                        if ($service->hasError()) {
-                            Log::error('EditRequisition: Erro ao restore requisição', [
-                                'metodo'         => __METHOD__ . '@' . __LINE__,
-                                'error_code'     => $service->getErrorCode(),
-                                'message'        => $service->getMessage(),
-                                'requisition_id' => $record->id,
-                            ]);
-
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
-                            return false;
-                        }
-
-                        Log::info('EditRequisition: Requisição restored com sucesso', [
                             'metodo'         => __METHOD__ . '@' . __LINE__,
                             'requisition_id' => $record->id,
                         ]);

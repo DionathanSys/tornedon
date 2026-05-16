@@ -12,18 +12,15 @@ class ServiceOrderPdfDataFormatter
      */
     public function format(ServiceOrder $serviceOrder): array
     {
-        $itemsTotal = round(
-            (float) $serviceOrder->items->sum(fn ($item) => (float) $item->total_amount),
-            2
-        );
-        $travelValue = (float) $serviceOrder->travel_value;
         $requisition = $serviceOrder->requisition;
-        $productsTotal = round((float) ($requisition?->total_amount ?? 0), 2);
+        $itemsTotal = round((float) $serviceOrder->services_total_amount, 2);
+        $travelValue = (float) $serviceOrder->travel_value;
+        $productsTotal = round((float) $serviceOrder->requisition_total_amount, 2);
         $discountTotal = round(
             (float) $serviceOrder->discount_amount + (float) ($requisition?->discount_amount ?? 0),
             2
         );
-        $grandTotal = round((float) $serviceOrder->total_amount + $productsTotal, 2);
+        $grandTotal = round((float) $serviceOrder->grand_total_amount, 2);
 
         $additionalInfoLabels = [
             'accessories' => 'Acessorios entregues',

@@ -7,6 +7,7 @@ use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\BulkInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\UnlinkServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\Requisition;
 use App\Services\Requisition\RequisitionService;
@@ -119,6 +120,7 @@ class RequisitionsTable
                 ActionGroup::make([
                     PreviewRequisitionPdfAction::make(),
                     DownloadRequisitionPdfAction::make(),
+                    UnlinkServiceOrderAction::make(),
                     EditAction::make(),
                     DeleteAction::make()
                         ->using(function (Model $record): bool {

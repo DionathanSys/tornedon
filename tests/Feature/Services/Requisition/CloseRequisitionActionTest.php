@@ -41,6 +41,18 @@ class CloseRequisitionActionTest extends TestCase
             'created_by' => $user->id,
         ]);
 
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'has_stock_control' => false,
+            'name' => 'Produto Requisicao',
+            'product_code' => 'PRD-REQ-0001',
+            'unit' => Unit::UN,
+            'origin_sale_price' => OriginSalePrice::FREE,
+            'sale_price_value' => 10,
+            'is_active' => true,
+        ]);
+
         $requisition = Requisition::query()->create([
             'number' => 'REQ-00023',
             'customer_id' => $customer->id,
@@ -48,6 +60,17 @@ class CloseRequisitionActionTest extends TestCase
             'sale_date' => '2026-04-22',
             'status' => Status::OPEN,
             'stock_reserved' => true,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        RequisitionItem::query()->create([
+            'requisition_id' => $requisition->id,
+            'product_id' => $product->id,
+            'unit_of_measure' => Unit::UN->value,
+            'quantity' => 1,
+            'unit_price' => 10,
             'stock_consumed' => false,
             'created_by' => $user->id,
             'updated_by' => $user->id,
@@ -72,6 +95,44 @@ class CloseRequisitionActionTest extends TestCase
                 ->where('auditable_id', $requisition->id)
                 ->count()
         );
+    }
+
+    public function test_it_does_not_close_requisition_without_items(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Sem Itens',
+            'document_number' => '12312312300011',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Sem Itens',
+            'document_type' => 'CPF',
+            'document_number' => '12312312399',
+            'created_by' => $user->id,
+        ]);
+
+        $requisition = Requisition::query()->create([
+            'number' => 'REQ-00022',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'sale_date' => '2026-04-22',
+            'status' => Status::OPEN,
+            'stock_reserved' => false,
+            'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $action = new CloseRequisitionAction($user->id);
+        $result = $action->execute($requisition);
+
+        $this->assertNull($result);
+        $this->assertSame('Não é possível encerrar requisição sem itens.', $action->getMessage());
+        $this->assertSame(Status::OPEN, $requisition->fresh()->status);
     }
 
     public function test_it_closes_requisition_when_the_only_available_stock_is_reserved_by_its_own_item(): void

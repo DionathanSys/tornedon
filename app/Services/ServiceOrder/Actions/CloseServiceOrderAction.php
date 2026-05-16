@@ -20,14 +20,19 @@ class CloseServiceOrderAction
     public function execute(ServiceOrder $order): ?ServiceOrder
     {
         try {
+            if (! $order->items()->exists()) {
+                $this->setError('Não é possível encerrar ordem de serviço sem itens.');
+
+                Log::warning('CloseServiceOrderAction: ordem sem itens', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'service_order_id' => $order->id,
+                ]);
+
+                return null;
+            }
+
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($order);
-
-            Log::debug('CloseServiceOrderAction: Encerrando ordem de serviço', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
-                'service_order_id' => $order->id,
-                'user_id'          => $this->userId,
-            ]);
 
             $order->state()->close($order, $this->userId);
 

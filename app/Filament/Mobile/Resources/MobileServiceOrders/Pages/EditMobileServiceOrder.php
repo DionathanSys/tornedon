@@ -21,8 +21,6 @@ use App\Services\ServiceOrder\ServiceOrderService;
 use App\Support\ServiceOrderTravelData;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -81,7 +79,7 @@ class EditMobileServiceOrder extends EditRecord
                     ->hiddenLabel()
                     ->icon(Heroicon::Trash)
                     ->using(function (Model $record): bool {
-                        Log::debug('EditServiceOrder: Iniciando soft delete de ordem de serviço', [
+                        Log::debug('EditServiceOrder: Iniciando exclusão de ordem de serviço', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
                             'service_order_id' => $record->id,
                         ]);
@@ -105,72 +103,6 @@ class EditMobileServiceOrder extends EditRecord
                         }
 
                         Log::info('EditServiceOrder: Ordem de serviço deletada com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
-                            'service_order_id' => $record->id,
-                        ]);
-
-                        return $result;
-                    }),
-                ForceDeleteAction::make()
-                    ->size(Size::ExtraSmall)
-                    ->using(function (Model $record): bool {
-                        Log::debug('EditServiceOrder: Iniciando force delete de ordem de serviço', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
-                            'service_order_id' => $record->id,
-                        ]);
-
-                        $service = app(ServiceOrderService::class);
-                        $result = $service->forceDelete($record);
-
-                        if ($service->hasError()) {
-                            Log::error('EditServiceOrder: Erro ao force delete ordem de serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
-                                'error_code' => $service->getErrorCode(),
-                                'message' => $service->getMessage(),
-                                'service_order_id' => $record->id,
-                            ]);
-
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
-                            return false;
-                        }
-
-                        Log::info('EditServiceOrder: Ordem de serviço force deleted com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
-                            'service_order_id' => $record->id,
-                        ]);
-
-                        return $result;
-                    }),
-                RestoreAction::make()
-                    ->size(Size::ExtraSmall)
-                    ->using(function (Model $record): bool {
-                        Log::debug('EditServiceOrder: Iniciando restore de ordem de serviço', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
-                            'service_order_id' => $record->id,
-                        ]);
-
-                        $service = app(ServiceOrderService::class);
-                        $result = $service->restore($record);
-
-                        if ($service->hasError()) {
-                            Log::error('EditServiceOrder: Erro ao restore ordem de serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
-                                'error_code' => $service->getErrorCode(),
-                                'message' => $service->getMessage(),
-                                'service_order_id' => $record->id,
-                            ]);
-
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode()
-                            );
-                            return false;
-                        }
-
-                        Log::info('EditServiceOrder: Ordem de serviço restored com sucesso', [
                             'metodo' => __METHOD__ . '@' . __LINE__,
                             'service_order_id' => $record->id,
                         ]);

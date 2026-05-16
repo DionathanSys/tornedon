@@ -104,21 +104,21 @@ class ServiceOrdersTable
                     ->limit(25)
                     ->toggleable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('gross_amount')
-                    ->label('Valor Bruto')
-                    ->state(fn (ServiceOrder $record): float => (float) $record->gross_amount)
+                TextColumn::make('services_total_amount')
+                    ->label('Total Serviços')
+                    ->state(fn (ServiceOrder $record): float => (float) $record->services_total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('discount_amount')
-                    ->label('Desc. (R$)')
-                    ->state(fn (ServiceOrder $record): float => (float) $record->discount_amount)
+                TextColumn::make('requisition_total_amount')
+                    ->label('Total Produtos')
+                    ->state(fn (ServiceOrder $record): float => (float) $record->requisition_total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('total_amount')
-                    ->label('Valor Líquido')
-                    ->state(fn (ServiceOrder $record): float => (float) $record->total_amount)
+                TextColumn::make('grand_total_amount')
+                    ->label('Total Geral')
+                    ->state(fn (ServiceOrder $record): float => (float) $record->grand_total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -218,7 +218,7 @@ class ServiceOrdersTable
                         ->hiddenLabel()
                         ->icon(Heroicon::Trash)
                         ->using(function (Model $record): bool {
-                            Log::debug('EditServiceOrder: Iniciando soft delete de ordem de serviço', [
+                            Log::debug('EditServiceOrder: Iniciando exclusão de ordem de serviço', [
                                 'metodo' => __METHOD__ . '@' . __LINE__,
                                 'service_order_id' => $record->id,
                             ]);

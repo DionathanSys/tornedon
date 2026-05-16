@@ -2,6 +2,7 @@
 
 namespace App\Services\Requisition;
 
+use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\Requisition\Status;
 use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
@@ -16,7 +17,6 @@ use App\Services\Requisition\Actions\CreateRequisitionAction;
 use App\Services\Requisition\Actions\DeleteRequisitionAction;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
-use App\Services\Requisition\Actions\RestoreRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
 use App\Services\StockMovement\StockMovementService;
 use App\Support\Email\DocumentNotificationDecisionContext;
@@ -259,7 +259,7 @@ class RequisitionService
     }
 
     /**
-     * Exclui (soft delete) uma requisição.
+     * Exclui definitivamente uma requisição.
      */
     public function delete(Requisition $requisition): bool
     {
@@ -315,112 +315,64 @@ class RequisitionService
     }
 
     /**
-     * Exclui permanentemente uma requisição (force delete).
+     * Desvincula a requisição da ordem de serviço associada.
      */
-    public function forceDelete(Requisition $requisition): bool
+    public function unlinkServiceOrder(Requisition $requisition, int $updatedBy): ?Requisition
     {
         $this->resetResponse();
 
-        try {
-            return DB::transaction(function () use ($requisition) {
-                $action = new DeleteRequisitionAction($requisition);
-                $result = $action->forceDelete();
+        $serviceOrder = $requisition->serviceOrder;
 
-                if ($action->hasError()) {
-                    $this->setError(
-                        $action->getMessage(),
-                        $action->getErrors(),
-                        422,
-                        $action->getErrorCode()
-                    );
+        if ($serviceOrder === null) {
+            $this->setError('A requisição não possui ordem de serviço vinculada.');
 
-                    Log::error($this->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
-                        'requisition_id' => $requisition->id,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
-                    ]);
-
-                    return false;
-                }
-
-                $this->setSuccess('Requisição excluída permanentemente com sucesso');
-
-                Log::info('Requisição excluída permanentemente com sucesso via service', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
-                    'requisition_id' => $requisition->id,
-                    'number'         => $requisition->number,
-                ]);
-
-                return $result;
-            });
-        } catch (\Exception $e) {
-            $this->setError('Erro ao excluir permanentemente requisição');
-
-            Log::error('Erro ao excluir permanentemente requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
-                'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'message'        => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
-            ]);
-
-            return false;
+            return null;
         }
-    }
 
-    /**
-     * Restaura uma requisição excluída (soft delete).
-     */
-    public function restore(Requisition $requisition): bool
-    {
-        $this->resetResponse();
+        if ($requisition->status !== Status::OPEN) {
+            $this->setError('Só é possível desvincular requisições abertas.');
+
+            return null;
+        }
+
+        if ($serviceOrder->status !== ServiceOrderState::OPEN) {
+            $this->setError('Só é possível desvincular quando a ordem de serviço vinculada estiver aberta.');
+
+            return null;
+        }
 
         try {
-            return DB::transaction(function () use ($requisition) {
-                $action = new RestoreRequisitionAction($requisition);
-                $result = $action->execute();
-
-                if ($action->hasError()) {
-                    $this->setError(
-                        $action->getMessage(),
-                        $action->getErrors(),
-                        422,
-                        $action->getErrorCode()
-                    );
-
-                    Log::error($this->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
-                        'requisition_id' => $requisition->id,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
-                    ]);
-
-                    return false;
-                }
-
-                $this->setSuccess('Requisição restaurada com sucesso');
-
-                Log::info('Requisição restaurada com sucesso via service', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+            return DB::transaction(function () use ($requisition, $updatedBy): Requisition {
+                Log::info('RequisitionService: desvinculando ordem de serviço da requisição', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
                     'requisition_id' => $requisition->id,
-                    'number'         => $requisition->number,
+                    'service_order_id' => $requisition->service_order_id,
+                    'user_id' => $updatedBy,
                 ]);
 
-                return $result;
+                $requisition->update([
+                    'service_order_id' => null,
+                    'updated_by' => $updatedBy,
+                ]);
+
+                $this->setSuccess('Requisição desvinculada da ordem de serviço com sucesso');
+
+                return $requisition->fresh();
             });
         } catch (\Exception $e) {
-            $this->setError('Erro ao restaurar requisição');
+            $this->setError('Erro ao desvincular requisição da ordem de serviço.');
 
-            Log::error('Erro ao restaurar requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+            Log::error('RequisitionService: erro ao desvincular ordem de serviço da requisição', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
                 'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'message'        => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'service_order_id' => $requisition->service_order_id,
+                'user_id' => $updatedBy,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return false;
+            return null;
         }
     }
 

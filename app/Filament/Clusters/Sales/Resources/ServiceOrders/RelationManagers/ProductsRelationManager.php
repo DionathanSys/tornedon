@@ -2,15 +2,21 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers;
 
+use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\CreateProductAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\DeleteProductAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Actions\EditProductAction;
 use App\Models\ServiceOrder;
+use App\Notification\NotifyService as notify;
+use App\Services\Requisition\RequisitionService;
+use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
 
 class ProductsRelationManager extends RelationManager
@@ -84,6 +90,51 @@ class ProductsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->headerActions([
+                Action::make('delete-linked-requisition')
+                    ->label('Excluir Requisição')
+                    ->icon(Heroicon::Trash)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Excluir requisição vinculada')
+                    ->modalDescription('Tem certeza que deseja excluir a requisição vinculada a esta ordem de serviço?')
+                    ->modalSubmitActionLabel('Sim, excluir')
+                    ->visible(function (): bool {
+                        /** @var ServiceOrder $serviceOrder */
+                        $serviceOrder = $this->getOwnerRecord();
+                        $requisition = $serviceOrder->requisition;
+
+                        return $requisition !== null
+                            && $requisition->status === Status::OPEN;
+                    })
+                    ->action(function (): void {
+                        /** @var ServiceOrder $serviceOrder */
+                        $serviceOrder = $this->getOwnerRecord();
+                        $requisition = $serviceOrder->requisition;
+
+                        if ($requisition === null) {
+                            return;
+                        }
+
+                        Log::debug('ProductsRelationManager: excluindo requisição vinculada', [
+                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'service_order_id' => $serviceOrder->id,
+                            'requisition_id' => $requisition->id,
+                        ]);
+
+                        $service = app(RequisitionService::class);
+                        $result = $service->delete($requisition);
+
+                        if (! $result || $service->hasError()) {
+                            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
+                            return;
+                        }
+
+                        notify::success(message: 'Requisição vinculada excluída com sucesso.');
+
+                        $this->dispatch('refresh-page');
+                        $this->dispatch('refresh-products');
+                    }),
             ])
             ->recordActions([
                 EditProductAction::make(),

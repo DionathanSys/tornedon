@@ -26,6 +26,17 @@ class CloseRequisitionAction
     public function execute(Requisition $requisition): ?Requisition
     {
         try {
+            if (! $requisition->items()->exists()) {
+                $this->setError('Não é possível encerrar requisição sem itens.');
+
+                Log::warning('CloseRequisitionAction: requisição sem itens', [
+                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'requisition_id' => $requisition->id,
+                ]);
+
+                return null;
+            }
+
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($requisition);
 

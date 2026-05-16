@@ -193,6 +193,7 @@ class ServiceOrderForm
                                             ->helperText('Cidade - UF')
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                     ]),
+
                                 ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
                                     'ownerRecord' => $record,
                                     'pageClass' => EditServiceOrder::class,
@@ -207,6 +208,7 @@ class ServiceOrderForm
                                     ->key('products-relation-manager')
                                     ->columnSpanFull()
                                     ->visibleOn([Operation::Edit]),
+
                             ]),
                         Tab::make('Observações')
                             ->icon(Heroicon::ChatBubbleBottomCenterText)

@@ -24,6 +24,7 @@ class ServiceOrder extends Model
     use HasAttachments;
 
     private ?array $resolvedItemsAmounts = null;
+    private ?array $resolvedRequisitionAmounts = null;
 
     protected static function booted(): void
     {
@@ -107,6 +108,9 @@ class ServiceOrder extends Model
         'gross_amount',
         'discount_amount',
         'total_amount',
+        'requisition_total_amount',
+        'services_total_amount',
+        'grand_total_amount',
     ];
 
     public function state(): ServiceOrderState
@@ -221,6 +225,27 @@ class ServiceOrder extends Model
         );
     }
 
+    protected function requisitionTotalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => $this->resolveRequisitionAmount('total_amount'),
+        );
+    }
+
+    protected function servicesTotalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => $this->resolveItemsAmount('total_amount', includeTravelValue: true),
+        );
+    }
+
+    protected function grandTotalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => round($this->services_total_amount + $this->requisition_total_amount, 2),
+        );
+    }
+
     private function resolveItemsAmount(string $column, bool $includeTravelValue = false): float
     {
         $itemsAmount = $this->resolveItemsAmounts()[$column] ?? 0.0;
@@ -255,9 +280,52 @@ class ServiceOrder extends Model
             ->first();
 
         return $this->resolvedItemsAmounts = [
-            'gross_amount'      => round((float) ($totals->gross_amount ?? 0), 2),
-            'discount_amount'   => round((float) ($totals->discount_amount ?? 0), 2),
-            'total_amount'      => round((float) ($totals->total_amount ?? 0), 2),
+            'gross_amount'      => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
+            'discount_amount'   => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
+            'total_amount'      => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
+        ];
+    }
+
+    private function resolveRequisitionAmount(string $column): float
+    {
+        return round($this->resolveRequisitionAmounts()[$column] ?? 0.0, 2);
+    }
+
+    private function resolveRequisitionAmounts(): array
+    {
+        if ($this->resolvedRequisitionAmounts !== null) {
+            return $this->resolvedRequisitionAmounts;
+        }
+
+        if ($this->relationLoaded('requisition')) {
+            if ($this->requisition === null) {
+                return $this->resolvedRequisitionAmounts = [
+                    'gross_amount' => 0.0,
+                    'discount_amount' => 0.0,
+                    'total_amount' => 0.0,
+                ];
+            }
+
+            return $this->resolvedRequisitionAmounts = [
+                'gross_amount' => round((float) $this->requisition->gross_amount, 2),
+                'discount_amount' => round((float) $this->requisition->discount_amount, 2),
+                'total_amount' => round((float) $this->requisition->total_amount, 2),
+            ];
+        }
+
+        $totals = RequisitionItem::query()
+            ->whereHas('requisition', fn ($query) => $query->where('service_order_id', $this->getKey()))
+            ->selectRaw('
+                COALESCE(SUM(gross_amount), 0) as gross_amount,
+                COALESCE(SUM(discount_amount), 0) as discount_amount,
+                COALESCE(SUM(total_amount), 0) as total_amount
+            ')
+            ->first();
+
+        return $this->resolvedRequisitionAmounts = [
+            'gross_amount' => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
+            'discount_amount' => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
+            'total_amount' => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
         ];
     }
 }

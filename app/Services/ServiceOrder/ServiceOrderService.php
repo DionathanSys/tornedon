@@ -13,7 +13,6 @@ use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
 use App\Services\ServiceOrder\Actions\DeleteServiceOrderAction;
 use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use App\Services\ServiceOrder\Actions\ReopenServiceOrderAction;
-use App\Services\ServiceOrder\Actions\RestoreServiceOrderAction;
 use App\Services\ServiceOrder\Actions\UpdateServiceOrderAction;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
@@ -336,7 +335,7 @@ class ServiceOrderService
     }
 
     /**
-     * Exclui (soft delete) uma ordem de serviço.
+     * Exclui definitivamente uma ordem de serviço.
      */
     public function delete(ServiceOrder $serviceOrder): bool
     {
@@ -380,116 +379,6 @@ class ServiceOrderService
             $this->setError('Erro ao excluir ordem de serviço');
 
             Log::error('Erro ao excluir ordem de serviço via service', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'error_code'        => $this->getErrorCode(),
-                'message'           => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Exclui permanentemente uma ordem de serviço (force delete).
-     */
-    public function forceDelete(ServiceOrder $serviceOrder): bool
-    {
-        $this->resetResponse();
-
-        try {
-            return DB::transaction(function () use ($serviceOrder) {
-                $action = new DeleteServiceOrderAction($serviceOrder);
-                $result = $action->forceDelete();
-
-                if ($action->hasError()) {
-                    $this->setError(
-                        $action->getMessage(),
-                        $action->getErrors(),
-                        422,
-                        $action->getErrorCode()
-                    );
-
-                    Log::error($this->getMessage(), [
-                        'metodo'            => __METHOD__ . '@' . __LINE__,
-                        'service_order_id'  => $serviceOrder->id,
-                        'message'           => $this->getMessage(),
-                        'error_code'        => $this->getErrorCode(),
-                    ]);
-
-                    return false;
-                }
-
-                $this->setSuccess('Ordem de serviço excluída permanentemente com sucesso');
-
-                Log::info('Ordem de serviço excluída permanentemente com sucesso via service', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'number'            => $serviceOrder->number,
-                ]);
-
-                return $result;
-            });
-        } catch (\Exception $e) {
-            $this->setError('Erro ao excluir permanentemente ordem de serviço');
-
-            Log::error('Erro ao excluir permanentemente ordem de serviço via service', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'error_code'        => $this->getErrorCode(),
-                'message'           => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Restaura uma ordem de serviço excluída (soft delete).
-     */
-    public function restore(ServiceOrder $serviceOrder): bool
-    {
-        $this->resetResponse();
-
-        try {
-            return DB::transaction(function () use ($serviceOrder) {
-                $action = new RestoreServiceOrderAction($serviceOrder);
-                $result = $action->execute();
-
-                if ($action->hasError()) {
-                    $this->setError(
-                        $action->getMessage(),
-                        $action->getErrors(),
-                        422,
-                        $action->getErrorCode()
-                    );
-
-                    Log::error($this->getMessage(), [
-                        'metodo'            => __METHOD__ . '@' . __LINE__,
-                        'service_order_id'  => $serviceOrder->id,
-                        'message'           => $this->getMessage(),
-                        'error_code'        => $this->getErrorCode(),
-                    ]);
-
-                    return false;
-                }
-
-                $this->setSuccess('Ordem de serviço restaurada com sucesso');
-
-                Log::info('Ordem de serviço restaurada com sucesso via service', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'number'            => $serviceOrder->number,
-                ]);
-
-                return $result;
-            });
-        } catch (\Exception $e) {
-            $this->setError('Erro ao restaurar ordem de serviço');
-
-            Log::error('Erro ao restaurar ordem de serviço via service', [
                 'metodo'            => __METHOD__ . '@' . __LINE__,
                 'service_order_id'  => $serviceOrder->id,
                 'error_code'        => $this->getErrorCode(),
