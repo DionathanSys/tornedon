@@ -88,8 +88,8 @@ class ServiceOrderPdfDataFormatter
         $additionalInfoText = $this->buildAdditionalInfoText($serviceOrder->additional_info ?? [], $additionalInfoLabels);
 
         return [
-            'title' => 'Ordem de Serviço #' . $serviceOrder->number,
-            'status' => $serviceOrder->status?->description() ?? '-',
+            'title' => '#' . $serviceOrder->number . ' - ' . $serviceOrder->status?->description(),
+            // 'status' => $serviceOrder->status?->description() ?? '-',
             'order_date' => $this->formatDate($serviceOrder->order_date),
             'completion_date' => $this->formatDate($serviceOrder->completion_date),
             'header_lines' => $headerLines,
