@@ -4,6 +4,7 @@ namespace App\Services\Requisition;
 
 use App\Enum\StockMovement\Type;
 use App\Models\Requisition;
+use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\ProductStock\ProductStockService;
 use App\Traits\HandlesServiceResponse;
@@ -49,10 +50,10 @@ class RequisitionStockWorkflow
                 $requisition,
                 $item,
                 $userId,
-                'Reserva recriada por re-encerramento - requisicao #' . $requisition->number,
+                'Reserva recriada por re-encerramento - requisição #' . $requisition->number,
             );
 
-            Log::info('RequisitionStockWorkflow: Reserva recriada apos reabertura', [
+            Log::info('RequisitionStockWorkflow: Reserva recriada após reabertura', [
                 'product_id' => $item->product_id,
                 'quantity' => $item->quantity,
                 'movement_id' => $movement->id,
@@ -61,6 +62,11 @@ class RequisitionStockWorkflow
         }
 
         return true;
+    }
+
+    public function pendingItems(Requisition $requisition, bool $withProduct = false)
+    {
+        return $this->stockService->pendingItems($requisition, $withProduct);
     }
 
     public function releaseReservations(Requisition $requisition, int $userId): bool
@@ -200,6 +206,55 @@ class RequisitionStockWorkflow
         ]);
 
         return $effectiveAvailable >= $requestedQuantity;
+    }
+
+    public function consumeAuthorizedFiscalItem(Requisition $requisition, RequisitionItem $item, int $userId): void
+    {
+        if (! $item->product_id) {
+            $this->stockService->markItemAsConsumed($item);
+            return;
+        }
+
+        if (! $item->product?->has_stock_control) {
+            $this->stockService->markItemAsConsumed($item);
+            return;
+        }
+
+        $productStock = $this->stockService->findProductStock($requisition, $item);
+
+        if (! $productStock) {
+            throw new \RuntimeException('Estoque não encontrado para o produto #' . $item->product_id);
+        }
+
+        $releaseQuantity = $this->stockService->resolveReservedQuantity($requisition, $item);
+
+        if ($releaseQuantity > 0.0001) {
+            $this->stockService->createReservationRelease(
+                $requisition,
+                $item,
+                $userId,
+                'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
+                $releaseQuantity,
+                'requisition_item',
+                $item->id,
+            );
+        }
+
+        $this->stockService->createExit(
+            $requisition,
+            $item,
+            $userId,
+            'Saída por NF-e autorizada - requisição #' . $requisition->number,
+            'requisition_item',
+            $item->id,
+        );
+
+        $this->stockService->markItemAsConsumed($item);
+    }
+
+    public function syncFlags(Requisition $requisition): void
+    {
+        $this->stockService->syncConsumptionFlags($requisition);
     }
 
     private function shouldRecreateReservations(Requisition $requisition): bool

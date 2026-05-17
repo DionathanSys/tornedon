@@ -17,6 +17,7 @@ use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Support\HtmlString;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -75,11 +76,11 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => view('pwa.meta')
+                fn () => new HtmlString(view('pwa.meta')->render())
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn () => view('filament.partials.body-end')
+                fn () => new HtmlString(view('filament.partials.body-end')->render())
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications()

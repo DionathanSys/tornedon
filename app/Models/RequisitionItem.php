@@ -10,6 +10,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RequisitionItem extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (self $item): void {
+            if (($item->stock_consumed ?? false) === false) {
+                $item->stock_consumed_at = null;
+            }
+        });
+    }
+
 
     protected $fillable = [
         'requisition_id',

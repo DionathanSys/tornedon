@@ -47,13 +47,17 @@ class ServiceOrderPdfDataFormatter
         $responsibles = collect([
             [
                 'label' => 'Equipamento',
-                'value' => $serviceOrder->equipment?->identifier,
-                'secondary_value' => $serviceOrder->equipment?->name,
+                'value' => $serviceOrder->equipment?->identifier ?? $serviceOrder->equipment?->name,
+                'secondary_value' => filled($serviceOrder->equipment?->identifier)
+                    ? $serviceOrder->equipment?->name
+                    : null,
             ],
             ['label' => 'Tecnico', 'value' => $serviceOrder->technician?->name],
             ['label' => 'Supervisor', 'value' => $serviceOrder->supervisor?->name],
             ['label' => 'Vendedor', 'value' => $serviceOrder->salesperson?->name],
-        ])->filter(fn (array $field) => filled($field['value']))->values()->all();
+        ])->filter(fn (array $field) => filled($field['value']) || filled($field['secondary_value'] ?? null))
+            ->values()
+            ->all();
 
         $equipmentLines = $this->buildEquipmentLines($serviceOrder->equipment);
 

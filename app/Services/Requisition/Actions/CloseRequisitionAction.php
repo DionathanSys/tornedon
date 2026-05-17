@@ -46,8 +46,7 @@ class CloseRequisitionAction
 
             return DB::transaction(function () use ($requisition, $audit, $before) {
                 $stockWorkflow = $this->stockWorkflow ?? app(RequisitionStockWorkflow::class);
-                $items = app(\App\Services\Requisition\RequisitionStockService::class)
-                    ->pendingItems($requisition, withProduct: true);
+                $items = $stockWorkflow->pendingItems($requisition, withProduct: true);
 
                 foreach ($items as $item) {
                     Log::debug('CloseRequisitionAction: Item', [
@@ -73,7 +72,7 @@ class CloseRequisitionAction
                 }
 
                 if (! $stockWorkflow->recreateReservationsIfNeeded($requisition, $this->userId)) {
-                    $this->setError($stockWorkflow->getMessage(), $stockWorkflow->getErrors(), $stockWorkflow->getStatus(), $stockWorkflow->getErrorCode());
+                    $this->setError($stockWorkflow->getMessage(), $stockWorkflow->getErrors(),$stockWorkflow->getErrorCode());
 
                     return null;
                 }

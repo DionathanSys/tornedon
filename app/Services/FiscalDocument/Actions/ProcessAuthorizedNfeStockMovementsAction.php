@@ -8,7 +8,7 @@ use App\Models\FiscalDocument;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
-use App\Services\Requisition\RequisitionStockService;
+use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -120,9 +120,9 @@ class ProcessAuthorizedNfeStockMovementsAction
             'key'                => 'TEST:BAIXA_ESTOQUE',
         ]);
 
-        $stockService = app(RequisitionStockService::class);
+        $stockWorkflow = app(RequisitionStockWorkflow::class);
 
-        $items = $stockService->pendingItems($requisition, withProduct: true);
+        $items = $stockWorkflow->pendingItems($requisition, withProduct: true);
 
         Log::info('ProcessAuthorizedNfeStockMovementsAction: itens', [
             'metodo'            => __METHOD__ . '@' . __LINE__,    
@@ -146,7 +146,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                     'requisition_id'    => $requisition->id,
                     'item'              => $item,
                 ]);
-                $stockService->markItemAsConsumed($item);
+                $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
                 continue;
             }
 
@@ -156,52 +156,14 @@ class ProcessAuthorizedNfeStockMovementsAction
                     'requisition_id'    => $requisition->id,
                     'item'              => $item,
                 ]);
-                $stockService->markItemAsConsumed($item);
+                $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
                 continue;
-            }
-
-            $productStock = $stockService->findProductStock($requisition, $item);
-
-            if (! $productStock) {
-                Log::debug('ProcessAuthorizedNfeStockMovementsAction: estoque não encontrado', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,    
-                    'requisition_id'    => $requisition->id,
-                    'item'              => $item,
-                ]);
-                $this->setError('Estoque não encontrado para o produto #' . $item->product_id);
-                return;
-            }
-
-            $releaseQuantity = $stockService->resolveReservedQuantity($requisition, $item);
-
-            if ($releaseQuantity > 0.0001) {
-                try {
-                    $stockService->createReservationRelease(
-                        $requisition,
-                        $item,
-                        $userId,
-                        'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
-                        $releaseQuantity,
-                        'requisition_item',
-                        $item->id,
-                    );
-                } catch (\RuntimeException $e) {
-                    $this->setError($e->getMessage());
-                    return;
-                }
             }
 
             try {
                 $exit = $this->hasItemExit($item)
                     ? true
-                    : $stockService->createExit(
-                        $requisition,
-                        $item,
-                        $userId,
-                        'Saída por NF-e autorizada - requisição #' . $requisition->number,
-                        'requisition_item',
-                        $item->id,
-                    );
+                    : $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
             } catch (\RuntimeException $e) {
                 $this->setError($e->getMessage());
                 return;
@@ -214,10 +176,9 @@ class ProcessAuthorizedNfeStockMovementsAction
                 return;
             }
 
-            $stockService->markItemAsConsumed($item);
         }
 
-        $stockService->syncConsumptionFlags($requisition);
+        $stockWorkflow->syncFlags($requisition);
 
         $hasPendingItems = $requisition->items()
             ->whereNull('stock_consumed_at')

@@ -85,6 +85,26 @@ class RequisitionItemPersistenceTest extends TestCase
         $this->assertEquals(0.125, (float) $updated->conversion_factor_snapshot);
     }
 
+    public function test_it_clears_stock_consumed_at_when_stock_consumed_is_false(): void
+    {
+        [$user, $product, $requisition] = $this->makeContext();
+
+        $item = RequisitionItem::query()->create([
+            'requisition_id' => $requisition->id,
+            'product_id' => $product->id,
+            'unit_of_measure' => Unit::JG->value,
+            'quantity' => 1,
+            'quantity_in_base_unit' => 1,
+            'conversion_factor_snapshot' => 1,
+            'unit_price' => 10,
+            'stock_consumed' => false,
+            'stock_consumed_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        $this->assertNull($item->fresh()->stock_consumed_at);
+    }
+
     private function makeContext(): array
     {
         $user = User::factory()->create();
