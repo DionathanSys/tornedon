@@ -21,10 +21,9 @@ class RequisitionPdfDataFormatter
 
         $responsibles = collect([
             ['label' => 'OS vinculada', 'value' => $requisition->serviceOrder?->number],
-            ['label' => 'Equipamento', 'value' => $requisition->equipment?->name],
+            ['label' => 'Equipamento', 'value' => $requisition->equipment?->identifier],
             ['label' => 'Vendedor', 'value' => $requisition->salesperson?->name],
             ['label' => 'Data de Entrega', 'value' => $this->formatDate($requisition->delivery_date)],
-            ['label' => 'Endereco de Entrega', 'value' => $requisition->delivery_address],
         ])->filter(fn (array $field) => filled($field['value']) && $field['value'] !== '-')
             ->values()
             ->all();
@@ -57,7 +56,7 @@ class RequisitionPdfDataFormatter
         }
 
         return [
-            'title' => 'Requisição #' . $requisition->number,
+            'title' => '#' . $requisition->number,
             'status' => $requisition->status?->description() ?? '-',
             'sale_date' => $this->formatDate($requisition->sale_date),
             'header_lines' => $headerLines,

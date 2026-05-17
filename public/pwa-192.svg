@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Tornedon">
+  <rect width="192" height="192" rx="40" fill="#18181b"/>
+  <rect x="24" y="24" width="144" height="144" rx="28" fill="#27272a"/>
+  <path d="M54 64h84v16H104v48H88V80H54z" fill="#fff"/>
+</svg>

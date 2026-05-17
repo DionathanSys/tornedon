@@ -24,6 +24,7 @@ use App\Livewire\CreateErrorTicketAction;
 use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -73,8 +74,12 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->renderHook(
-                'panels::body.end',
-                fn() => \Livewire\Livewire::mount('create-error-ticket-action')
+                PanelsRenderHook::HEAD_END,
+                fn () => view('pwa.meta')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.partials.body-end')
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications()
