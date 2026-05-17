@@ -20,6 +20,8 @@ use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
 use App\Services\Requisition\RequisitionStockService;
 use App\Services\Requisition\RequisitionStockWorkflow;
+use App\Services\Shared\CommercialItemDiscountService;
+use App\Services\Shared\CommercialInvoiceValidationService;
 use App\Services\StockMovement\StockMovementService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
@@ -447,26 +449,17 @@ class RequisitionService
 
         $records = $records instanceof Requisition ? new Collection([$records]) : $records;
 
-        // Validação: mesmo cliente
-        $customerIds = $records->pluck('customer_id')->unique();
-        if ($customerIds->count() > 1) {
-            $this->setError('Todos os registros selecionados devem pertencer ao mesmo cliente.');
-            return null;
-        }
+        $validationError = app(CommercialInvoiceValidationService::class)->validateForNewInvoice(
+            $records,
+            'Todos os registros selecionados devem pertencer ao mesmo cliente.',
+            'Apenas requisições com status "Encerrada" podem ser faturadas.',
+            fn (Requisition $record): bool => $record->status === Status::CLOSED,
+            fn (Requisition $record): string => "A requisição #{$record->number} não possui itens.",
+        );
 
-        // Validação: todas encerradas
-        $notClosed = $records->filter(fn (Requisition $req) => $req->status !== Status::CLOSED);
-        if ($notClosed->isNotEmpty()) {
-            $this->setError('Apenas requisições com status "Encerrada" podem ser faturadas.');
+        if ($validationError !== null) {
+            $this->setError($validationError);
             return null;
-        }
-
-        // Validação: todas devem possuir itens
-        foreach ($records as $record) {
-            if ($record->items()->count() === 0) {
-                $this->setError("A requisição #{$record->number} não possui itens.");
-                return null;
-            }
         }
 
         try {
@@ -543,38 +536,20 @@ class RequisitionService
 
         $records = $records instanceof Requisition ? new Collection([$records]) : $records;
 
-        if ($records->isEmpty()) {
-            $this->setError('Nenhuma requisição informada para faturamento.');
+        $validationError = app(CommercialInvoiceValidationService::class)->validateForExistingInvoice(
+            $records,
+            $invoice,
+            'A requisição deve pertencer ao mesmo cliente da fatura da ordem de serviço.',
+            'A requisição deve pertencer à mesma empresa da fatura da ordem de serviço.',
+            'Apenas requisições com status "Encerrada" podem ser faturadas na mesma fatura da ordem de serviço.',
+            fn (Requisition $record): bool => $record->status === Status::CLOSED,
+            fn (Requisition $record): string => "A requisição #{$record->number} já está vinculada a outra fatura.",
+            fn (Requisition $record): string => "A requisição #{$record->number} não possui itens.",
+        );
+
+        if ($validationError !== null) {
+            $this->setError($validationError);
             return null;
-        }
-
-        $customerIds = $records->pluck('customer_id')->push($invoice->customer_id)->unique();
-        if ($customerIds->count() > 1) {
-            $this->setError('A requisição deve pertencer ao mesmo cliente da fatura da ordem de serviço.');
-            return null;
-        }
-
-        if ((int) $invoice->company_id !== (int) $records->first()->company_id) {
-            $this->setError('A requisição deve pertencer à mesma empresa da fatura da ordem de serviço.');
-            return null;
-        }
-
-        $notClosed = $records->filter(fn (Requisition $req) => $req->status !== Status::CLOSED);
-        if ($notClosed->isNotEmpty()) {
-            $this->setError('Apenas requisições com status "Encerrada" podem ser faturadas na mesma fatura da ordem de serviço.');
-            return null;
-        }
-
-        foreach ($records as $record) {
-            if ($record->invoice_id !== null) {
-                $this->setError("A requisição #{$record->number} já está vinculada a outra fatura.");
-                return null;
-            }
-
-            if ($record->items()->count() === 0) {
-                $this->setError("A requisição #{$record->number} não possui itens.");
-                return null;
-            }
         }
 
         try {
@@ -772,62 +747,21 @@ class RequisitionService
 
         try {
             return DB::transaction(function () use ($requisition, $discountAmount): bool {
-                // Recarrega itens para garantir dados atualizados
                 $requisition->load('items');
-
                 $items = $requisition->items;
+                $result = app(CommercialItemDiscountService::class)->apply(
+                    $items,
+                    $discountAmount,
+                    'Esta requisição não possui itens.'
+                );
 
-                if ($items->isEmpty()) {
-                    $this->setError('Esta requisição não possui itens.');
-                    return false;
-                }
-
-                // Calcula o valor total dos itens
-                $totalItemsValue = $items->sum(function ($item) {
-                    return (float) $item->quantity * (float) $item->unit_price;
-                });
-
-                // Valida se o desconto não é maior que o total dos itens
-                if ($discountAmount > $totalItemsValue) {
-                    $this->setError('O desconto não pode ser maior que o valor total dos itens (R$ ' . number_format($totalItemsValue, 2, ',', '.') . ').');
-                    return false;
-                }
-
-                // Calcula o desconto por item
-                $itemCount = $items->count();
-                $discountPerItem = round($discountAmount / $itemCount, 2);
-                $remainingDiscount = $discountAmount;
-
-                foreach ($items as $index => $item) {
-                    // Para o último item, usa o desconto restante para evitar arredondamentos
-                    $currentDiscount = $index === $itemCount - 1 ? $remainingDiscount : $discountPerItem;
-
-                    // Incrementa o desconto existente
-                    $newDiscountAmount = (float) $item->discount_amount + $currentDiscount;
-
-                    // Calcula o subtotal (quantity * unit_price)
-                    $subtotal = (float) $item->quantity * (float) $item->unit_price;
-
-                    // Calcula o percentual de desconto
-                    $discountPercentage = $subtotal > 0
-                        ? round(($newDiscountAmount / $subtotal) * 100, 2)
-                        : 0;
-
-                    // Atualiza o item
-                    $item->update([
-                        'discount_amount'       => $newDiscountAmount,
-                        'discount_percentage'   => $discountPercentage,
-                    ]);
-
-                    $remainingDiscount -= $currentDiscount;
-
+                foreach ($items as $item) {
                     Log::debug('Desconto aplicado ao item de requisição', [
                         'metodo'                    => __METHOD__ . '@' . __LINE__,
                         'requisition_item_id'       => $item->id,
                         'requisition_id'            => $requisition->id,
-                        'discount_amount_applied'   => $currentDiscount,
-                        'new_discount_amount'       => $newDiscountAmount,
-                        'discount_percentage'       => $discountPercentage,
+                        'new_discount_amount'       => (float) $item->discount_amount,
+                        'discount_percentage'       => (float) $item->discount_percentage,
                     ]);
                 }
 
@@ -837,7 +771,7 @@ class RequisitionService
                     'metodo'         => __METHOD__ . '@' . __LINE__,
                     'requisition_id' => $requisition->id,
                     'total_discount' => $discountAmount,
-                    'item_count'     => $itemCount,
+                    'item_count'     => $result['item_count'],
                 ]);
 
                 return true;
@@ -869,22 +803,14 @@ class RequisitionService
 
         try {
             return DB::transaction(function () use ($requisition): bool {
-                // Recarrega itens para garantir dados atualizados
                 $requisition->load('items');
-
                 $items = $requisition->items;
-
-                if ($items->isEmpty()) {
-                    $this->setError('Esta requisição não possui itens.');
-                    return false;
-                }
+                $itemCount = app(CommercialItemDiscountService::class)->clear(
+                    $items,
+                    'Esta requisição não possui itens.'
+                );
 
                 foreach ($items as $item) {
-                    $item->update([
-                        'discount_amount'       => 0,
-                        'discount_percentage'   => 0,
-                    ]);
-
                     Log::debug('Desconto removido do item de requisição', [
                         'metodo'              => __METHOD__ . '@' . __LINE__,
                         'requisition_item_id' => $item->id,
@@ -897,7 +823,7 @@ class RequisitionService
                 Log::info('Descontos removidos com sucesso da requisição', [
                     'metodo'         => __METHOD__ . '@' . __LINE__,
                     'requisition_id' => $requisition->id,
-                    'item_count'     => $items->count(),
+                    'item_count'     => $itemCount,
                 ]);
 
                 return true;

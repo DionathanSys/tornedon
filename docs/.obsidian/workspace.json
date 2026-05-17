@@ -95,8 +95,7 @@
               "title": "SPRINTS-ARQUITETURA-E-REFATORACAO"
             }
           }
-        ],
-        "currentTab": 5
+        ]
       }
     ],
     "direction": "vertical"
@@ -259,10 +258,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "cf455f36420879df",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
-    "Plano refatoração.md",
+    "Plan/Remover campos json de fiscal documents.md",
     "SPRINTS-ARQUITETURA-E-REFATORACAO.md",
+    "Plano refatoração.md",
     "Sem título 2.md",
     "Tasks App Gestor.md",
     "Notas diárias/2026.05.13.md",
@@ -273,7 +273,6 @@
     "Sem título.md",
     "instrucao-api-nfs-nacional.md",
     "Migração Gamma Eletrônica.md",
-    "Plan/Remover campos json de fiscal documents.md",
     "DATABASE-BACKUP.md",
     "Outros/stock-movement-examples.md",
     "Plano Fechamento Fatura Fornecedores.md",

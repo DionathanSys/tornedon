@@ -14,6 +14,8 @@ use App\Services\ServiceOrder\Actions\DeleteServiceOrderAction;
 use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use App\Services\ServiceOrder\Actions\ReopenServiceOrderAction;
 use App\Services\ServiceOrder\Actions\UpdateServiceOrderAction;
+use App\Services\Shared\CommercialItemDiscountService;
+use App\Services\Shared\CommercialInvoiceValidationService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -459,26 +461,17 @@ class ServiceOrderService
 
         $records = $records instanceof ServiceOrder ? new Collection([$records]) : $records;
 
-        // Validação: mesmo cliente
-        $customerIds = $records->pluck('customer_id')->unique();
-        if ($customerIds->count() > 1) {
-            $this->setError('Todos os registros selecionados devem pertencer ao mesmo cliente.');
-            return null;
-        }
+        $validationError = app(CommercialInvoiceValidationService::class)->validateForNewInvoice(
+            $records,
+            'Todos os registros selecionados devem pertencer ao mesmo cliente.',
+            'Apenas ordens de serviço com status "Encerrada" podem ser faturadas.',
+            fn (ServiceOrder $record): bool => $record->status === State::CLOSED,
+            fn (ServiceOrder $record): string => "A OS #{$record->number} não possui itens.",
+        );
 
-        // Validação: todas encerradas
-        $notClosed = $records->filter(fn (ServiceOrder $so) => $so->status !== State::CLOSED);
-        if ($notClosed->isNotEmpty()) {
-            $this->setError('Apenas ordens de serviço com status "Encerrada" podem ser faturadas.');
+        if ($validationError !== null) {
+            $this->setError($validationError);
             return null;
-        }
-
-        // Validação: todas devem possuir itens
-        foreach ($records as $record) {
-            if ($record->items()->count() === 0) {
-                $this->setError("A OS #{$record->number} não possui itens.");
-                return null;
-            }
         }
 
         try {
@@ -671,62 +664,21 @@ class ServiceOrderService
 
         try {
             return DB::transaction(function () use ($serviceOrder, $discountAmount): bool {
-                // Recarrega itens para garantir dados atualizados
                 $serviceOrder->load('items');
-
                 $items = $serviceOrder->items;
+                $result = app(CommercialItemDiscountService::class)->apply(
+                    $items,
+                    $discountAmount,
+                    'Esta ordem de serviço não possui itens.'
+                );
 
-                if ($items->isEmpty()) {
-                    $this->setError('Esta ordem de serviço não possui itens.');
-                    return false;
-                }
-
-                // Calcula o valor total dos itens
-                $totalItemsValue = $items->sum(function ($item) {
-                    return (float) $item->quantity * (float) $item->unit_price;
-                });
-
-                // Valida se o desconto não é maior que o total dos itens
-                if ($discountAmount > $totalItemsValue) {
-                    $this->setError('O desconto não pode ser maior que o valor total dos itens (R$ ' . number_format($totalItemsValue, 2, ',', '.') . ').');
-                    return false;
-                }
-
-                // Calcula o desconto por item
-                $itemCount = $items->count();
-                $discountPerItem = round($discountAmount / $itemCount, 2);
-                $remainingDiscount = $discountAmount;
-
-                foreach ($items as $index => $item) {
-                    // Para o último item, usa o desconto restante para evitar arredondamentos
-                    $currentDiscount = $index === $itemCount - 1 ? $remainingDiscount : $discountPerItem;
-
-                    // Incrementa o desconto existente
-                    $newDiscountAmount = (float) $item->discount_amount + $currentDiscount;
-
-                    // Calcula o subtotal (quantity * unit_price)
-                    $subtotal = (float) $item->quantity * (float) $item->unit_price;
-
-                    // Calcula o percentual de desconto
-                    $discountPercentage = $subtotal > 0
-                        ? round(($newDiscountAmount / $subtotal) * 100, 2)
-                        : 0;
-
-                    // Atualiza o item
-                    $item->update([
-                        'discount_amount'       => $newDiscountAmount,
-                        'discount_percentage'   => $discountPercentage,
-                    ]);
-
-                    $remainingDiscount -= $currentDiscount;
-
+                foreach ($items as $item) {
                     Log::debug('Desconto aplicado ao item de ordem de serviço', [
                         'metodo'                    => __METHOD__ . '@' . __LINE__,
                         'service_order_item_id'     => $item->id,
                         'service_order_id'          => $serviceOrder->id,
-                        'discount_amount_applied'   => $currentDiscount,
-                        'new_discount_amount'       => $newDiscountAmount,
-                        'discount_percentage'       => $discountPercentage,
+                        'new_discount_amount'       => (float) $item->discount_amount,
+                        'discount_percentage'       => (float) $item->discount_percentage,
                     ]);
                 }
 
@@ -736,7 +688,7 @@ class ServiceOrderService
                     'metodo'            => __METHOD__ . '@' . __LINE__,
                     'service_order_id'  => $serviceOrder->id,
                     'total_discount'    => $discountAmount,
-                    'item_count'        => $itemCount,
+                    'item_count'        => $result['item_count'],
                 ]);
 
                 return true;
@@ -768,22 +720,14 @@ class ServiceOrderService
 
         try {
             return DB::transaction(function () use ($serviceOrder): bool {
-                // Recarrega itens para garantir dados atualizados
                 $serviceOrder->load('items');
-
                 $items = $serviceOrder->items;
-
-                if ($items->isEmpty()) {
-                    $this->setError('Esta ordem de serviço não possui itens.');
-                    return false;
-                }
+                $itemCount = app(CommercialItemDiscountService::class)->clear(
+                    $items,
+                    'Esta ordem de serviço não possui itens.'
+                );
 
                 foreach ($items as $item) {
-                    $item->update([
-                        'discount_amount'       => 0,
-                        'discount_percentage'   => 0,
-                    ]);
-
                     Log::debug('Desconto removido do item de ordem de serviço', [
                         'metodo'                => __METHOD__ . '@' . __LINE__,
                         'service_order_item_id' => $item->id,
@@ -796,7 +740,7 @@ class ServiceOrderService
                 Log::info('Descontos removidos com sucesso da ordem de serviço', [
                     'metodo'            => __METHOD__ . '@' . __LINE__,
                     'service_order_id'  => $serviceOrder->id,
-                    'item_count'        => $items->count(),
+                    'item_count'        => $itemCount,
                 ]);
 
                 return true;

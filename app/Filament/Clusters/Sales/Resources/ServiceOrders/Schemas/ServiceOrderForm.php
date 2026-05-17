@@ -264,17 +264,19 @@ class ServiceOrderForm
                                             ->visible(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         SelectPartner::make('technician_id', 'technician', ['document_number' => false])
                                             ->label('Técnico')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->placeholder('Técnico')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         SelectPartner::make('salesperson_id', 'salesperson', ['document_number' => false])
                                             ->label('Vendedor')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->placeholder('Vendedor')
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
-                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn() => Filament::getTenant()->service_provision_location)
