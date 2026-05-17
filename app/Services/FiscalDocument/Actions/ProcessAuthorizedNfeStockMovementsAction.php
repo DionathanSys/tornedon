@@ -8,9 +8,7 @@ use App\Models\FiscalDocument;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
-use App\Services\ProductStock\ProductStockService;
 use App\Services\Requisition\RequisitionStockService;
-use App\Services\StockMovement\StockMovementService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -122,8 +120,6 @@ class ProcessAuthorizedNfeStockMovementsAction
             'key'                => 'TEST:BAIXA_ESTOQUE',
         ]);
 
-        $stockMovementService = app(StockMovementService::class);
-        $productStockService = app(ProductStockService::class);
         $stockService = app(RequisitionStockService::class);
 
         $items = $stockService->pendingItems($requisition, withProduct: true);
@@ -164,7 +160,7 @@ class ProcessAuthorizedNfeStockMovementsAction
                 continue;
             }
 
-            $productStock = $productStockService->findByProductId($item->product_id, $requisition->company_id);
+            $productStock = $stockService->findProductStock($requisition, $item);
 
             if (! $productStock) {
                 Log::debug('ProcessAuthorizedNfeStockMovementsAction: estoque não encontrado', [
@@ -176,55 +172,44 @@ class ProcessAuthorizedNfeStockMovementsAction
                 return;
             }
 
-            $baseData = [
-                'product_stock_id'   => $productStock->id,
-                'product_id'         => $item->product_id,
-                'company_id'         => $requisition->company_id,
-                'operational_unit'   => $item->unit_of_measure ?? $item->product?->unit?->value,
-                'operational_quantity' => (float) $item->quantity,
-                'base_unit'         => $item->product?->unit?->value,
-                'base_quantity'     => $item->resolvedBaseQuantity(),
-                'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
-                'quantity'           => $item->resolvedBaseQuantity(),
-                'unit_price'         => (float) ($item->unit_price ?? 0),
-                'source_type'        => 'requisition_item',
-                'source_id'          => $item->id,
-                'observations'       => $item->observations,
-            ];
-
             $releaseQuantity = $stockService->resolveReservedQuantity($requisition, $item);
 
             if ($releaseQuantity > 0.0001) {
-
-                $release = $stockMovementService->create(array_merge($baseData, [
-                    'type' => Type::RESERVATION_RELEASE->value,
-                    'operational_unit' => $item->unit_of_measure ?? $item->product?->unit?->value,
-                    'operational_quantity' => (float) $item->quantity,
-                    'base_unit' => $item->product?->unit?->value,
-                    'base_quantity' => $releaseQuantity,
-                    'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
-                    'quantity' => $releaseQuantity,
-                    'reason' => 'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
-                ]), $userId);
-
-                if (! $release) {
-                    $this->setError(
-                        'Falha ao liberar reserva do produto #' . $item->product_id . ': ' . $stockMovementService->getMessage()
+                try {
+                    $stockService->createReservationRelease(
+                        $requisition,
+                        $item,
+                        $userId,
+                        'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
+                        $releaseQuantity,
+                        'requisition_item',
+                        $item->id,
                     );
+                } catch (\RuntimeException $e) {
+                    $this->setError($e->getMessage());
                     return;
                 }
             }
 
-            $exit = $this->hasItemExit($item)
-                ? true
-                : $stockMovementService->create(array_merge($baseData, [
-                    'type' => Type::EXIT->value,
-                    'reason' => 'Saída por NF-e autorizada - requisição #' . $requisition->number,
-                ]), $userId);
+            try {
+                $exit = $this->hasItemExit($item)
+                    ? true
+                    : $stockService->createExit(
+                        $requisition,
+                        $item,
+                        $userId,
+                        'Saída por NF-e autorizada - requisição #' . $requisition->number,
+                        'requisition_item',
+                        $item->id,
+                    );
+            } catch (\RuntimeException $e) {
+                $this->setError($e->getMessage());
+                return;
+            }
 
             if (! $exit) {
                 $this->setError(
-                    'Falha ao registrar saída do produto #' . $item->product_id . ': ' . $stockMovementService->getMessage()
+                    'Falha ao registrar saída do produto #' . $item->product_id
                 );
                 return;
             }

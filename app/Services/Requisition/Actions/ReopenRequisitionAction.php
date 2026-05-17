@@ -5,6 +5,7 @@ namespace App\Services\Requisition\Actions;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -32,9 +33,9 @@ class ReopenRequisitionAction
 
             DB::transaction(function () use ($requisition) {
                 // Libera eventuais reservas de estoque antes de reabrir
-                $releaseAction = new ReleaseRequisitionReservationAction($this->userId);
-                if (! $releaseAction->execute($requisition)) {
-                    throw new \Exception($releaseAction->getMessage());
+                $stockWorkflow = app(RequisitionStockWorkflow::class);
+                if (! $stockWorkflow->releaseReservations($requisition, $this->userId)) {
+                    throw new \Exception($stockWorkflow->getMessage());
                 }
 
                 $requisition->state()->reopen($requisition, $this->userId);

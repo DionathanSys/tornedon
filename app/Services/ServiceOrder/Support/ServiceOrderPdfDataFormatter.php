@@ -37,11 +37,19 @@ class ServiceOrderPdfDataFormatter
 
         $headerLines = [
             ['label' => 'Empresa', 'value' => $serviceOrder->company?->name ?? '-', 'class' => 'muted'],
-            ['label' => 'Cliente', 'value' => $serviceOrder->customer?->name ?? '-'],
+            [
+                'label' => 'Cliente',
+                'value' => $serviceOrder->customer?->name ?? '-',
+                'secondary_value' => $serviceOrder->customer?->document_number,
+            ],
         ];
 
         $responsibles = collect([
-            ['label' => 'Equipamento', 'value' => $serviceOrder->equipment?->identifier],
+            [
+                'label' => 'Equipamento',
+                'value' => $serviceOrder->equipment?->identifier,
+                'secondary_value' => $serviceOrder->equipment?->name,
+            ],
             ['label' => 'Tecnico', 'value' => $serviceOrder->technician?->name],
             ['label' => 'Supervisor', 'value' => $serviceOrder->supervisor?->name],
             ['label' => 'Vendedor', 'value' => $serviceOrder->salesperson?->name],

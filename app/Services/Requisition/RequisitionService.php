@@ -19,6 +19,7 @@ use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
 use App\Services\Requisition\RequisitionStockService;
+use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Services\StockMovement\StockMovementService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
@@ -639,95 +640,11 @@ class RequisitionService
      */
     private function processStockExits(Requisition $requisition, int $userId): void
     {
-        $stockMovementService = app(StockMovementService::class);
-        $productStockService  = app(ProductStockService::class);
-        $stockService = app(RequisitionStockService::class);
+        $workflow = app(RequisitionStockWorkflow::class);
 
-        $items = $stockService->pendingItems($requisition);
-
-        if ($items->isEmpty()) {
-            Log::info('RequisitionService: Nenhum item pendente de saída de estoque', [
-                'requisition_id' => $requisition->id,
-            ]);
-            return;
+        if (! $workflow->processStockExits($requisition, $userId)) {
+            throw new \RuntimeException($workflow->getMessage());
         }
-
-        foreach ($items as $item) {
-            if (! $item->product_id) {
-                continue;
-            }
-
-            $product = $item->product;
-
-            if (! $product || ! $product->has_stock_control) {
-                $stockService->markItemAsConsumed($item);
-                continue;
-            }
-
-            $productStock = $productStockService->findByProductId(
-                $item->product_id,
-                $requisition->company_id
-            );
-
-            if (! $productStock) {
-                Log::warning('RequisitionService: ProductStock não encontrado', [
-                    'product_id'     => $item->product_id,
-                    'requisition_id' => $requisition->id,
-                    'item_id'        => $item->id,
-                ]);
-                throw new \Exception(
-                    'Estoque não encontrado para o produto #' . $item->product_id
-                );
-            }
-
-            $baseData = [
-                'product_stock_id' => $productStock->id,
-                'product_id'       => $item->product_id,
-                'company_id'       => $requisition->company_id,
-                'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
-                'quantity'         => (float) $item->quantity,
-                'unit_price'       => (float) ($item->unit_price ?? 0),
-                'source_type'      => 'requisition',
-                'source_id'        => $requisition->id,
-                'observations'     => $item->observations,
-            ];
-
-            $exit = $stockMovementService->create(array_merge($baseData, [
-                'type'   => Type::EXIT->value,
-                'reason' => 'Saída por faturamento — requisição #' . $requisition->number,
-            ]), $userId);
-
-            if (! $exit) {
-                throw new \Exception(
-                    'Falha ao criar saída de estoque para produto #' . $item->product_id
-                    . ': ' . $stockMovementService->getMessage()
-                );
-            }
-
-            $release = $stockMovementService->create(array_merge($baseData, [
-                'type'   => Type::RESERVATION_RELEASE->value,
-                'reason' => 'Liberação de reserva por faturamento — requisição #' . $requisition->number,
-            ]), $userId);
-
-            if (! $release) {
-                throw new \Exception(
-                    'Falha ao liberar reserva de estoque para produto #' . $item->product_id
-                    . ': ' . $stockMovementService->getMessage()
-                );
-            }
-
-            $stockService->markItemAsConsumed($item);
-
-            Log::info('RequisitionService: Saída de estoque processada', [
-                'product_id'     => $item->product_id,
-                'quantity'       => $item->quantity,
-                'exit_id'        => $exit->id,
-                'release_id'     => $release->id,
-                'requisition_id' => $requisition->id,
-            ]);
-        }
-
-        $stockService->syncConsumptionFlags($requisition);
     }
 
     private function attachRecordsToInvoice(Collection $records, Invoice $invoice, int $userId): void

@@ -5,6 +5,7 @@ namespace App\Services\Requisition\Actions;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -34,9 +35,9 @@ class CancelRequisitionAction
                 $requisition->state()->cancel($requisition, $this->userId);
 
                 // Libera eventuais reservas de estoque criadas ao encerrar a requisição
-                $releaseAction = new ReleaseRequisitionReservationAction($this->userId);
-                if (! $releaseAction->execute($requisition)) {
-                    throw new \Exception($releaseAction->getMessage());
+                $stockWorkflow = app(RequisitionStockWorkflow::class);
+                if (! $stockWorkflow->releaseReservations($requisition, $this->userId)) {
+                    throw new \Exception($stockWorkflow->getMessage());
                 }
 
                 $requisition->refresh();

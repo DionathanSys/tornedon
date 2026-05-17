@@ -2,15 +2,10 @@
 
 namespace App\Services\Requisition\Actions;
 
-use App\Enum\StockMovement\Type;
 use App\Exceptions\DomainValidationException;
 use App\Models\Requisition;
-use App\Models\RequisitionItem;
-use App\Models\StockMovement;
 use App\Services\Audit\AuditRecorder;
-use App\Services\ProductStock\ProductStockService;
-use App\Services\Requisition\RequisitionStockService;
-use App\Services\StockMovement\StockMovementService;
+use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +17,7 @@ class CloseRequisitionAction
 
     public function __construct(
         private int $userId,
-        private ?RequisitionStockService $stockService = null,
+        private ?RequisitionStockWorkflow $stockWorkflow = null,
     ) {}
 
     public function execute(Requisition $requisition): ?Requisition
@@ -50,9 +45,9 @@ class CloseRequisitionAction
             ]);
 
             return DB::transaction(function () use ($requisition, $audit, $before) {
-                $productStockService = app(ProductStockService::class);
-                $stockService = $this->stockService ?? app(RequisitionStockService::class);
-                $items = $stockService->pendingItems($requisition, withProduct: true);
+                $stockWorkflow = $this->stockWorkflow ?? app(RequisitionStockWorkflow::class);
+                $items = app(\App\Services\Requisition\RequisitionStockService::class)
+                    ->pendingItems($requisition, withProduct: true);
 
                 foreach ($items as $item) {
                     Log::debug('CloseRequisitionAction: Item', [
@@ -67,7 +62,7 @@ class CloseRequisitionAction
                         continue;
                     }
 
-                    if (! $this->hasSufficientStockForClose($requisition, $item, $productStockService)) {
+                    if (! $stockWorkflow->hasSufficientStockForClose($requisition, $item)) {
                         $this->setError(sprintf(
                             'Saldo insuficiente para "%s". Verifique o estoque antes de encerrar.',
                             $item->product->name ?? "Produto #{$item->product_id}"
@@ -77,13 +72,18 @@ class CloseRequisitionAction
                     }
                 }
 
-                if ($this->shouldRecreateReservations($requisition)) {
+                if (! $stockWorkflow->recreateReservationsIfNeeded($requisition, $this->userId)) {
+                    $this->setError($stockWorkflow->getMessage(), $stockWorkflow->getErrors(), $stockWorkflow->getStatus(), $stockWorkflow->getErrorCode());
+
+                    return null;
+                }
+
+                if ($items->isNotEmpty()) {
                     Log::debug('CloseRequisitionAction: Recreating reservations', [
                         'metodo'         => __METHOD__ . '@' . __LINE__,
                         'requisition_id' => $requisition->id,
                         'user_id'        => $this->userId,
                     ]);
-                    $this->recreateReservations($requisition, $items);
                 }
 
                 $requisition->state()->close($requisition, $this->userId);
@@ -140,137 +140,5 @@ class CloseRequisitionAction
 
             return null;
         }
-    }
-
-    /**
-     * Recria movimentos RESERVATION apenas quando a requisicao foi reaberta
-     * e ainda existe liberacao pendente para recompor.
-     */
-    private function shouldRecreateReservations(Requisition $requisition): bool
-    {
-        $netReleasedQuantity = (float) StockMovement::query()
-            ->where('source_type', 'requisition')
-            ->where('source_id', $requisition->id)
-            ->whereIn('type', [
-                Type::RESERVATION_RELEASE->value,
-                Type::RESERVATION->value,
-            ])
-            ->get(['type', 'quantity', 'base_quantity'])
-            ->sum(function (StockMovement $movement): float {
-                $quantity = $movement->resolvedBaseQuantity();
-
-                return $movement->type === Type::RESERVATION_RELEASE
-                    ? $quantity
-                    : -$quantity;
-            });
-
-        Log::debug('CloseRequisitionAction: Net released quantity', [
-            'metodo'         => __METHOD__ . '@' . __LINE__,
-            'requisition_id' => $requisition->id,
-            'net_released_quantity' => $netReleasedQuantity,
-        ]);
-
-        $shouldRecreate = $netReleasedQuantity > 0.0001;
-
-        if (! $shouldRecreate && $requisition->stock_reserved === false) {
-            Log::warning('CloseRequisitionAction: Flag indicava reabertura, mas nao ha liberacao pendente; recriacao ignorada', [
-                'requisition_id'        => $requisition->id,
-                'stock_reserved'        => $requisition->stock_reserved,
-                'net_released_quantity' => $netReleasedQuantity,
-            ]);
-        }
-
-        return $shouldRecreate;
-    }
-
-    private function recreateReservations(Requisition $requisition, $items): void
-    {
-        $stockMovementService = app(StockMovementService::class);
-        $productStockService = app(ProductStockService::class);
-
-        foreach ($items as $item) {
-            if (! $item->product_id || ! $item->product?->has_stock_control) {
-                continue;
-            }
-
-            $stock = $productStockService->findByProductId($item->product_id, $requisition->company_id);
-
-            if (! $stock) {
-                Log::warning('CloseRequisitionAction: ProductStock nao encontrado ao recriar reserva', [
-                    'product_id'     => $item->product_id,
-                    'item_id'        => $item->id,
-                    'requisition_id' => $requisition->id,
-                ]);
-
-                continue;
-            }
-
-            $movement = $stockMovementService->create([
-                'product_stock_id' => $stock->id,
-                'product_id'       => $item->product_id,
-                'company_id'       => $requisition->company_id,
-                'type'             => Type::RESERVATION->value,
-                'operational_unit' => $item->unit_of_measure ?? $item->product?->unit?->value,
-                'operational_quantity' => (float) $item->quantity,
-                'base_unit'        => $item->product?->unit?->value,
-                'base_quantity'    => $item->resolvedBaseQuantity(),
-                'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
-                'quantity'         => $item->resolvedBaseQuantity(),
-                'unit_price'       => (float) ($item->unit_price ?? 0),
-                'reason'           => 'Reserva recriada por re-encerramento - requisicao #' . $requisition->number,
-                'source_type'      => 'requisition',
-                'source_id'        => $requisition->id,
-            ], $this->userId);
-
-            if (! $movement) {
-                throw new \Exception(
-                    'Falha ao recriar reserva de estoque para produto #' . $item->product_id
-                    . ': ' . $stockMovementService->getMessage()
-                );
-            }
-
-            Log::info('CloseRequisitionAction: Reserva recriada apos reabertura', [
-                'product_id'     => $item->product_id,
-                'quantity'       => $item->quantity,
-                'movement_id'    => $movement->id,
-                'requisition_id' => $requisition->id,
-            ]);
-        }
-    }
-
-    private function hasSufficientStockForClose(
-        Requisition $requisition,
-        RequisitionItem $item,
-        ProductStockService $productStockService,
-    ): bool {
-        $stock = $productStockService->findByProductId($item->product_id, $requisition->company_id);
-
-        if (! $stock || $stock->allow_negative) {
-            return true;
-        }
-
-        $requestedQuantity = $this->resolveItemBaseQuantity($item);
-        $availableQuantity = (float) $stock->quantity_available;
-        $reservedForItem = ($this->stockService ?? app(RequisitionStockService::class))
-            ->resolveReservedQuantity($requisition, $item);
-        $effectiveAvailable = $availableQuantity + $reservedForItem;
-
-        Log::debug('CloseRequisitionAction: Effective availability resolved for close', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'requisition_id' => $requisition->id,
-            'item_id' => $item->id,
-            'product_id' => $item->product_id,
-            'requested_quantity' => $requestedQuantity,
-            'quantity_available' => $availableQuantity,
-            'reserved_for_item' => $reservedForItem,
-            'effective_available' => $effectiveAvailable,
-        ]);
-
-        return $effectiveAvailable >= $requestedQuantity;
-    }
-
-    private function resolveItemBaseQuantity(RequisitionItem $item): float
-    {
-        return $item->resolvedBaseQuantity();
     }
 }

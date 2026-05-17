@@ -107,6 +107,14 @@
             line-height: 1.25;
         }
 
+        .header-meta-secondary {
+            margin-top: 2px;
+            color: #6b7280;
+            font-size: 9px;
+            font-style: italic;
+            line-height: 1.2;
+        }
+
         .meta-grid,
         .summary-table {
             width: 100%;
@@ -246,6 +254,9 @@
                                             <div class="header-meta-card">
                                                 <div class="header-meta-label">{{ $line['label'] }}</div>
                                                 <div class="header-meta-value {{ $line['class'] ?? '' }}">{{ $line['value'] }}</div>
+                                                @if (filled($line['secondary_value'] ?? null))
+                                                    <div class="header-meta-secondary">{{ $line['secondary_value'] }}</div>
+                                                @endif
                                             </div>
                                         </td>
                                     @endforeach

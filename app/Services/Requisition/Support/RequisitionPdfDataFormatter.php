@@ -14,14 +14,22 @@ class RequisitionPdfDataFormatter
     {
         $headerLines = [
             ['label' => 'Empresa', 'value' => $requisition->company?->name ?? '-', 'class' => 'muted'],
-            ['label' => 'Cliente', 'value' => $requisition->customer?->name ?? '-'],
+            [
+                'label' => 'Cliente',
+                'value' => $requisition->customer?->name ?? '-',
+                'secondary_value' => $requisition->customer?->document_number,
+            ],
             // ['label' => 'Forma de Pagamento', 'value' => $requisition->payment_method?->description() ?? '-'],
             // ['label' => 'Condicao de Pagamento', 'value' => $requisition->payment_condition?->description() ?? '-'],
         ];
 
         $responsibles = collect([
             ['label' => 'OS vinculada', 'value' => $requisition->serviceOrder?->number],
-            ['label' => 'Equipamento', 'value' => $requisition->equipment?->identifier],
+            [
+                'label' => 'Equipamento',
+                'value' => $requisition->equipment?->identifier,
+                'secondary_value' => $requisition->equipment?->name,
+            ],
             ['label' => 'Vendedor', 'value' => $requisition->salesperson?->name],
             ['label' => 'Data de Entrega', 'value' => $this->formatDate($requisition->delivery_date)],
         ])->filter(fn (array $field) => filled($field['value']) && $field['value'] !== '-')
