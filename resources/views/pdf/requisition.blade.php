@@ -16,25 +16,8 @@
         }
 
         .page-header {
-            border: 1px solid #cfd7df;
-            margin-bottom: 14px;
-        }
-
-        .page-header-bar {
-            background: #17385b;
-            color: #ffffff;
-            padding: 10px 12px;
-        }
-
-        .page-header-title {
-            font-size: 18px;
-            font-weight: bold;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .page-header-body {
-            padding: 8px 10px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
         }
 
         .header-layout {
@@ -47,29 +30,81 @@
             padding: 0;
         }
 
-        .header-meta-cell {
-            padding-right: 14px;
+        .header-main-cell {
+            padding-right: 10px;
         }
 
         .header-logo-cell {
-            width: 100px;
+            width: 68px;
+            text-align: right;
         }
 
         .company-logo-wrap {
-            width: 100px;
-            height: 96px;
-            border: 1px solid #d1d5db;
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
             background: #ffffff;
             text-align: center;
-            padding: 2px;
+            padding: 0;
             overflow: hidden;
+            display: inline-block;
         }
 
         .company-logo {
-            width: 96px;
-            height: 88px;
+            width: 58px;
+            height: 58px;
             display: block;
             margin: 0 auto;
+        }
+
+        .header-kicker {
+            margin-bottom: 2px;
+            color: #6b7280;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .page-header-title {
+            margin: 0;
+            color: #111827;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .header-meta-grid {
+            margin-top: 8px;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+        }
+
+        .header-meta-grid td {
+            width: 50%;
+            padding: 0 8px 0 0;
+            vertical-align: top;
+        }
+
+        .header-meta-card {
+            min-height: 28px;
+            padding: 2px 0;
+        }
+
+        .header-meta-label {
+            margin-bottom: 1px;
+            color: #6b7280;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .header-meta-value {
+            color: #111827;
+            font-size: 10px;
+            font-weight: bold;
+            line-height: 1.25;
         }
 
         .meta-grid,
@@ -189,44 +224,48 @@
 
 <body>
     <div class="page-header">
-        <div class="page-header-bar">
-            <div class="page-header-title">{{ $pdfData['title'] }} - {{ $pdfData['status'] }}</div>
-        </div>
-        <div class="page-header-body">
-            <table class="header-layout">
-                <tr>
-                    <td class="header-meta-cell">
-                        <table class="meta-grid">
-                            <tbody>
-                                @foreach ($pdfData['header_lines'] as $line)
-                                    <tr>
-                                        <td class="meta-label">{{ $line['label'] }}</td>
-                                        <td class="{{ $line['class'] ?? '' }}">{{ $line['value'] }}</td>
-                                    </tr>
-                                @endforeach
+        <table class="header-layout">
+            <tr>
+                <td class="header-main-cell">
+                    <div class="header-kicker">Requisicao</div>
+                    <div class="page-header-title">{{ $pdfData['title'] }}</div>
+
+                    @php
+                        $headerDetails = array_merge(
+                            $pdfData['header_lines'],
+                            [['label' => 'Data da Venda', 'value' => $pdfData['sale_date']]],
+                            $pdfData['responsibles']
+                        );
+                    @endphp
+                    <table class="header-meta-grid">
+                        <tbody>
+                            @foreach (array_chunk($headerDetails, 2) as $row)
                                 <tr>
-                                    <td class="meta-label">Data da Venda</td>
-                                    <td>{{ $pdfData['sale_date'] }}</td>
+                                    @foreach ($row as $line)
+                                        <td>
+                                            <div class="header-meta-card">
+                                                <div class="header-meta-label">{{ $line['label'] }}</div>
+                                                <div class="header-meta-value {{ $line['class'] ?? '' }}">{{ $line['value'] }}</div>
+                                            </div>
+                                        </td>
+                                    @endforeach
+                                    @if (count($row) === 1)
+                                        <td></td>
+                                    @endif
                                 </tr>
-                                @foreach ($pdfData['responsibles'] as $field)
-                                    <tr>
-                                        <td class="meta-label">{{ $field['label'] }}</td>
-                                        <td>{{ $field['value'] }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </td>
-                    <td class="header-logo-cell">
+                            @endforeach
+                        </tbody>
+                    </table>
+                </td>
+                <td class="header-logo-cell">
+                    @if (filled($pdfData['company_logo']))
                         <div class="company-logo-wrap">
-                            @if (filled($pdfData['company_logo']))
-                                <img src="{{ $pdfData['company_logo'] }}" alt="Logo {{ $pdfData['company_name'] }}" class="company-logo">
-                            @endif
+                            <img src="{{ $pdfData['company_logo'] }}" alt="Logo {{ $pdfData['company_name'] }}" class="company-logo">
                         </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+                    @endif
+                </td>
+            </tr>
+        </table>
     </div>
 
     @if (! empty($pdfData['equipment_lines']))

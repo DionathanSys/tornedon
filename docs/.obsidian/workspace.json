@@ -87,12 +87,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Plano refatoração.md",
+                "file": "SPRINTS-ARQUITETURA-E-REFATORACAO.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Plano refatoração"
+              "title": "SPRINTS-ARQUITETURA-E-REFATORACAO"
             }
           }
         ],
@@ -261,8 +261,8 @@
   },
   "active": "cf455f36420879df",
   "lastOpenFiles": [
-    "SPRINTS-ARQUITETURA-E-REFATORACAO.md",
     "Plano refatoração.md",
+    "SPRINTS-ARQUITETURA-E-REFATORACAO.md",
     "Sem título 2.md",
     "Tasks App Gestor.md",
     "Notas diárias/2026.05.13.md",
