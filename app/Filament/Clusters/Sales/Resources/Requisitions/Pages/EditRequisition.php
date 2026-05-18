@@ -91,7 +91,7 @@ class EditRequisition extends EditRecord
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
                     ->color(Color::Green)
-                    ->hidden(fn ($record): bool => $record->service_order_id)
+                    ->hidden(fn ($record): bool => (bool) $record->service_order_id)
                     ->tooltip('Fechar requisição'),
                 PreviewRequisitionPdfAction::make()
                     ->size(Size::Small)
@@ -110,7 +110,7 @@ class EditRequisition extends EditRecord
                     ->tooltip('Reabrir requisição'),
                 InvoiceRequisitionAction::make()
                     ->size(Size::Small)
-                    ->hidden(fn ($record): bool => $record->service_order_id)
+                    ->hidden(fn ($record): bool => (bool) $record->service_order_id)
                     ->tooltip('Gerar Fatura'),
                 UnlinkServiceOrderAction::make()
                     ->size(Size::Small)
