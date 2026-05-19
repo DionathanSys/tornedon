@@ -9,6 +9,7 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Enum\Product\Unit;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
@@ -359,9 +360,11 @@ class FiscalDocumentForm
                                                     ->numeric()
                                                     ->inputMode('numeric')
                                                     ->columnSpan(['md' => 1, 'lg' => 2]),
-                                                TextInput::make('especie')
+                                                Select::make('especie')
                                                     ->label('Espécie')
-                                                    ->maxLength(60)
+                                                    ->options(Unit::toSelectArray())
+                                                    ->searchable()
+                                                    ->native(false)
                                                     ->columnSpan(['md' => 2, 'lg' => 2]),
                                                 TextInput::make('marca')
                                                     ->label('Marca')
