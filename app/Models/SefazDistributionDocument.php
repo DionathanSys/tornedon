@@ -7,6 +7,7 @@ use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class SefazDistributionDocument extends Model
@@ -97,5 +98,11 @@ class SefazDistributionDocument extends Model
     public function auditEntries(): MorphMany
     {
         return $this->morphMany(AuditEntry::class, 'auditable');
+    }
+
+    public function companyPartner(): HasOne
+    {
+        return $this->hasOne(CompanyPartner::class, 'partner_id', 'partner_id')
+            ->where('company_partner.company_id', $this->company_id);
     }
 }

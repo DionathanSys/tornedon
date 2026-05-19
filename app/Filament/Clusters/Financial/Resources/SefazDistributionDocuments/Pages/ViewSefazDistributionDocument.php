@@ -48,6 +48,12 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ->size(Size::Small)
                     ->icon(Heroicon::Plus)
                     ->modalWidth('4xl')
+                    ->extraModalFooterActions(fn (Action $action): array => [
+                        $action->makeModalSubmitAction('createAnother', arguments: ['another' => true])
+                            ->label('Criar e próximo')
+                            ->color('secondary'),
+                    ])
+                    ->modalSubmitAction(fn (Action $action) => $action->label('Criar'))
                     ->visible(fn(): bool => ! empty(($this->record->items_json ?? [])))
                     ->schema(fn(Schema $schema) => $schema
                         ->columns(4)
@@ -73,25 +79,9 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 })
                                 ->live()
                                 ->afterStateUpdated(function ($state, callable $set): void {
-                                    $item = collect($this->record->items_json ?? [])->values()->get((int) $state);
-                                    if (! is_array($item)) {
-                                        return;
+                                    foreach ($this->getCreateProductFormDataFromItemIndex((int) $state) as $field => $value) {
+                                        $set($field, $value);
                                     }
-
-                                    $set('name', (string) ($item['description'] ?? ''));
-                                    $set('description', (string) ('' ?? ''));
-                                    $set('manufacturer_code', (string) ($item['product_code'] ?? ''));
-                                    $set('barcode', (string) ($item['ean'] ?? ''));
-                                    $set('xml_ncm', (string) ($item['ncm'] ?? ''));
-                                    $set('xml_cest', (string) ($item['cest'] ?? $item['cest_code'] ?? ''));
-                                    $set('xml_product_origin', Origin::NACIONAL->value);
-                                    $set('xml_unit', (string) ($item['unit'] ?? ''));
-                                    $set('xml_quantity', (string) ($item['quantity'] ?? ''));
-                                    $set('xml_unit_value', (string) ($item['unit_value'] ?? ''));
-                                    $set('xml_total_value', (string) ($item['total_value'] ?? ''));
-
-                                    $unit = mb_strtoupper(trim((string) ($item['unit'] ?? 'UN')));
-                                    $set('unit', Unit::tryFrom($unit)?->value ?? Unit::UN->value);
                                 }),
                             TextInput::make('name')
                                 ->label('Nome')
@@ -173,7 +163,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->inline(false)
                                 ->default(true),
                         ]))
-                    ->action(function (array $data): void {
+                    ->action(function (array $data, array $arguments, Action $action): void {
                         $items = collect($this->record->items_json ?? [])->values();
                         $index = (int) ($data['item_index'] ?? -1);
                         $item = $items->get($index);
@@ -252,7 +242,17 @@ class ViewSefazDistributionDocument extends ViewRecord
                             ->body('Produto ' . $product->name . ' vinculado ao item selecionado do DF-e.')
                             ->send();
 
+                        $this->record = $this->record->fresh();
                         $this->dispatch('sefaz-distribution-document-items-refresh');
+
+                        if ($arguments['another'] ?? false) {
+                            $nextIndex = $index + 1;
+
+                            if ($items->has($nextIndex)) {
+                                $action->fillForm($this->getCreateProductFormDataFromItemIndex($nextIndex));
+                                $action->halt();
+                            }
+                        }
                     }),
                 Action::make('back')
                     ->label('Voltar')
@@ -260,6 +260,36 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ->size(Size::Small)
                     ->url(SefazDistributionDocumentResource::getUrl()),
             ])->label('Ações')->button()
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getCreateProductFormDataFromItemIndex(int $itemIndex): array
+    {
+        $item = collect($this->record->items_json ?? [])->values()->get($itemIndex);
+
+        if (! is_array($item)) {
+            return [];
+        }
+
+        $unit = mb_strtoupper(trim((string) ($item['unit'] ?? 'UN')));
+
+        return [
+            'item_index' => $itemIndex,
+            'name' => (string) ($item['description'] ?? ''),
+            'description' => '',
+            'manufacturer_code' => (string) ($item['product_code'] ?? ''),
+            'barcode' => (string) ($item['ean'] ?? ''),
+            'xml_ncm' => (string) ($item['ncm'] ?? ''),
+            'xml_cest' => (string) ($item['cest'] ?? $item['cest_code'] ?? ''),
+            'xml_product_origin' => Origin::NACIONAL->value,
+            'xml_unit' => (string) ($item['unit'] ?? ''),
+            'xml_quantity' => (string) ($item['quantity'] ?? ''),
+            'xml_unit_value' => (string) ($item['unit_value'] ?? ''),
+            'xml_total_value' => (string) ($item['total_value'] ?? ''),
+            'unit' => Unit::tryFrom($unit)?->value ?? Unit::UN->value,
         ];
     }
 }

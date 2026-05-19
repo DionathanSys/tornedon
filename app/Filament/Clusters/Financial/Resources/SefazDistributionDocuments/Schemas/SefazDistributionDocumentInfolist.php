@@ -5,7 +5,9 @@ namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\S
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Models\SefazDistributionDocument;
+use Filament\Actions\Action;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -25,6 +27,17 @@ class SefazDistributionDocumentInfolist
                     ->schema([
                         TextEntry::make('issuer_name')
                             ->label('Emitente')
+                            ->afterContent(Action::make('open_partner')
+                                ->hiddenLabel()
+                                ->icon('heroicon-o-arrow-top-right-on-square')
+                                ->tooltip('Acessar cadastro do parceiro')
+                                ->visible(fn (SefazDistributionDocument $record): bool => $record->companyPartner !== null)
+                                ->url(fn (SefazDistributionDocument $record): ?string => $record->companyPartner
+                                    ? CompanyPartnerResource::getUrl('edit', ['record' => $record->companyPartner->id])
+                                    : null
+                                )
+                                ->openUrlInNewTab()
+                            )
                             ->columnSpan(2),
                         TextEntry::make('document_key')
                             ->label('Chave')
