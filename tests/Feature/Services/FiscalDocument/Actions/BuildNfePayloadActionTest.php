@@ -9,10 +9,12 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
-use App\Models\FiscalProfile;
+use App\Models\Address;
 use App\Models\Company;
+use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\Product;
 use App\Models\User;
@@ -449,6 +451,155 @@ class BuildNfePayloadActionTest extends TestCase
         $this->assertSame(85.0, (float) data_get($payload, 'itens.0.imposto.icms.valor_base_calculo'));
         $this->assertSame(85.0, (float) data_get($payload, 'itens.0.imposto.pis.valor_base_calculo'));
         $this->assertSame(85.0, (float) data_get($payload, 'itens.0.imposto.cofins.valor_base_calculo'));
+    }
+
+    public function test_it_normalizes_freight_data_before_sending_payload(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Frete',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Frete',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $carrier = Partner::query()->create([
+            'name' => 'Transportadora Exemplo',
+            'document_type' => 'CNPJ',
+            'document_number' => '12345678000199',
+            'state_tax_id' => '123456789',
+            'created_by' => $user->id,
+        ]);
+
+        $companyPartner = CompanyPartner::query()->create([
+            'partner_id' => $carrier->id,
+            'company_id' => $company->id,
+            'type' => ['supplier'],
+            'is_active' => true,
+        ]);
+
+        Address::query()->create([
+            'company_partner_id' => $companyPartner->id,
+            'street' => 'Rua do Frete, 100',
+            'number' => '100',
+            'neighborhood' => 'Centro',
+            'city' => 'Sao Paulo',
+            'state' => 'SP',
+            'country' => 'BRASIL',
+            'postal_code' => '01001000',
+            'city_code' => '3550308',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => '110',
+            'document_series' => '1',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => false,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::FOB_DESTINATARIO->value,
+                'transportador' => [
+                    'id' => $carrier->id,
+                ],
+                'icms_retido' => [
+                    'valor_servico' => '150.00',
+                    'base_calculo_retencao_icms' => '150.00',
+                    'aliquota_retencao' => '12.00',
+                    'valor_icms_retido' => '18.00',
+                    'cfop' => '5353',
+                    'codigo_municipio_ocorrencia_fato_gerador' => '3550308',
+                ],
+                'veiculo' => [
+                    'placa' => 'ABC1D23',
+                    'uf' => 'SP',
+                    'rntc' => '12345678',
+                ],
+                'identificacao_vagao' => 'VAG-01',
+                'identificacao_balsa' => 'BALSA-01',
+                'volumes' => [
+                    [
+                        'quantidade' => '2',
+                        'especie' => 'CAIXA',
+                        'marca' => 'PADRAO',
+                        'numero' => '10',
+                        'peso_liquido' => '5.5',
+                        'peso_bruto' => '6.1',
+                        'lacres' => [
+                            ['numero' => 'LACRE-1'],
+                            ['numero' => ''],
+                        ],
+                    ],
+                    [],
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-FRT-001',
+            'name' => 'Produto Frete',
+            'unit' => \App\Enum\Product\Unit::UN->value,
+            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        FiscalDocumentItem::query()->create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+            'cfop_code' => '5102',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'included_in_total' => true,
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => ['situacao_tributaria' => '00'],
+                    'pis' => ['situacao_tributaria' => '01'],
+                    'cofins' => ['situacao_tributaria' => '01'],
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $payload = app(BuildNfePayloadAction::class)->execute($document->fresh('items.product', 'customer.address', 'company'));
+
+        $this->assertNotNull($payload);
+        $this->assertSame(FreightModality::FOB_DESTINATARIO->value, data_get($payload, 'frete.modalidade_frete'));
+        $this->assertSame('12345678000199', data_get($payload, 'frete.transportador.cnpj'));
+        $this->assertNull(data_get($payload, 'frete.transportador.cpf'));
+        $this->assertSame('Transportadora Exemplo', data_get($payload, 'frete.transportador.nome'));
+        $this->assertSame('150.00', data_get($payload, 'frete.icms_retido.valor_servico'));
+        $this->assertSame('ABC1D23', data_get($payload, 'frete.veiculo.placa'));
+        $this->assertSame('VAG-01', data_get($payload, 'frete.identificacao_vagao'));
+        $this->assertCount(1, data_get($payload, 'frete.volumes'));
+        $this->assertCount(1, data_get($payload, 'frete.volumes.0.lacres'));
+        $this->assertSame('LACRE-1', data_get($payload, 'frete.volumes.0.lacres.0.numero'));
     }
 
     public function test_it_blocks_cst_for_simples_nacional_emitter(): void

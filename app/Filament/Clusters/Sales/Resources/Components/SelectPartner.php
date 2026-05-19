@@ -23,17 +23,17 @@ class SelectPartner
             ->required()
             ->columnSpan(['md' => 2, 'lg' => 8])
             ->getSearchResultsUsing(
-                fn(string $search): array => (new PartnerService())
+                fn (string $search): array => (new PartnerService)
                     ->searchForSelect($search, Filament::getTenant()->id, $type, 20, $options)
             )
             ->getOptionLabelUsing(
-                fn($value): ?string => (new PartnerService())
+                fn ($value): ?string => (new PartnerService)
                     ->getLabelForSelect((int) $value, $options)
             );
 
-        // if ($type !== 'customer') {
-        //     return $select;
-        // }
+        if ($type !== 'customer') {
+            return $select;
+        }
 
         return $select
             ->createOptionForm(QuickCreateCustomerPartnerForm::schema())
