@@ -5,9 +5,11 @@ namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\S
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
+use App\Models\SefazDistributionDocument;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
@@ -143,29 +145,11 @@ class SefazDistributionDocumentInfolist
                 Section::make('Itens detectados')
                     ->columnSpanFull()
                     ->schema([
-                        RepeatableEntry::make('items_json')
-                            ->hiddenLabel()
-                            ->columnSpanFull()
-                            ->table([
-                                TableColumn::make('Linha'),
-                                TableColumn::make('Código'),
-                                TableColumn::make('Descrição'),
-                                TableColumn::make('Produto'),
-                                TableColumn::make('Quantidade'),
-                                TableColumn::make('Valor'),
-                            ])
-                            ->schema([
-                                TextEntry::make('line'),
-                                TextEntry::make('product_code'),
-                                TextEntry::make('description')
-                                    ->wrap(),
-                                TextEntry::make('product_name')
-                                    ->placeholder('Não vinculado'),
-                                TextEntry::make('quantity'),
-                                TextEntry::make('total_value')
-                                    ->money('BRL', locale: 'pt_BR'),
-                            ])
-                            ,
+                        Livewire::make(\App\Livewire\SefazDistributionDocumentItemsTable::class, fn (SefazDistributionDocument $record): array => [
+                            'documentId' => $record->id,
+                        ])
+                            ->key('sefaz-distribution-document-items-table')
+                            ->columnSpanFull(),
                     ])
 
                     ->collapsed(fn($record): bool => empty($record->items_json)),

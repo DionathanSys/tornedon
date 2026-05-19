@@ -22,7 +22,6 @@ final class SefazDistributionDocumentRecordActions
             ReactivateDocumentAction::make(),
             LinkSupplierAction::make(),
             CreateSupplierAction::make(),
-            LinkItemsAction::make(),
             OpenFiscalDocumentAction::make(),
         ];
     }
