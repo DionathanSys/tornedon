@@ -128,6 +128,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                             Select::make('xml_product_origin')
                                 ->label('Origem do produto (padrão)')
                                 ->options(Origin::toSelectArray())
+                                ->default(null)
                                 ->native(false)
                                 ->columnSpan(1),
                             TextInput::make('manufacturer_code')
@@ -251,6 +252,8 @@ class ViewSefazDistributionDocument extends ViewRecord
                             ->success()
                             ->body('Produto ' . $product->name . ' vinculado ao item selecionado do DF-e.')
                             ->send();
+
+                        $this->dispatch('sefaz-distribution-document-items-refresh');
                     }),
                 Action::make('back')
                     ->label('Voltar')

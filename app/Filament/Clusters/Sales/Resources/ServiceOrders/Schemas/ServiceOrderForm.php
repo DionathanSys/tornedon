@@ -213,7 +213,7 @@ class ServiceOrderForm
                                                 ))
                                                 ->default(fn() => CompanyPreference::get('default_value_km', default: 3.50))
                                                 ->formatStateUsing(fn($state) => ServiceOrderTravelData::format(
-                                                    filled($state) ? $state : CompanyPreference::get('default_value_km', default: 3.50)
+                                                    filled($state) ? number_format($state, 2, ',', '.') : number_format(CompanyPreference::get('default_value_km', default: 3.50), 2, ',', '.')
                                                 ))
                                                 ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
                                             Money::make('distance_km')

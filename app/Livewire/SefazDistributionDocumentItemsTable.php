@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 
 class SefazDistributionDocumentItemsTable extends TableComponent
 {
@@ -26,16 +27,14 @@ class SefazDistributionDocumentItemsTable extends TableComponent
 
     public function mount(int $documentId): void
     {
-        $document = $this->getDocument();
+        $this->refreshProductOptions();
+    }
 
-        $this->productOptions = Product::query()
-            ->where('company_id', $document->company_id)
-            ->orderBy('name')
-            ->get()
-            ->mapWithKeys(fn (Product $product): array => [
-                $product->id => trim(($product->product_code ? "[{$product->product_code}] " : '') . $product->name),
-            ])
-            ->all();
+    #[On('sefaz-distribution-document-items-refresh')]
+    public function refreshItemsTable(): void
+    {
+        $this->refreshProductOptions();
+        $this->resetTable();
     }
 
     public function table(Table $table): Table
@@ -67,7 +66,8 @@ class SefazDistributionDocumentItemsTable extends TableComponent
             ])
             ->recordActions([
                 Action::make('link')
-                    ->label(fn (array $record): string => $record['product_id'] ? 'Alterar vínculo' : 'Vincular')
+                    ->iconButton()
+                    ->tooltip(fn (array $record): string => $record['product_id'] ? 'Alterar vínculo' : 'Vincular')
                     ->icon('heroicon-o-link')
                     ->schema([
                         Select::make('product_id')
@@ -87,7 +87,8 @@ class SefazDistributionDocumentItemsTable extends TableComponent
                         );
                     }),
                 Action::make('unlink')
-                    ->label('Remover vínculo')
+                    ->iconButton()
+                    ->tooltip('Remover vínculo')
                     ->icon('heroicon-o-x-mark')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -109,6 +110,20 @@ class SefazDistributionDocumentItemsTable extends TableComponent
     protected function getDocument(): SefazDistributionDocument
     {
         return SefazDistributionDocument::query()->findOrFail($this->documentId);
+    }
+
+    protected function refreshProductOptions(): void
+    {
+        $document = $this->getDocument();
+
+        $this->productOptions = Product::query()
+            ->where('company_id', $document->company_id)
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(fn (Product $product): array => [
+                $product->id => trim(($product->product_code ? "[{$product->product_code}] " : '') . $product->name),
+            ])
+            ->all();
     }
 
     /**
