@@ -62,7 +62,7 @@ class MobilePanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn () => new HtmlString(view('filament.partials.body-end')->render())
+                fn () => new HtmlString(view('filament.mobile.body-end')->render())
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications();
