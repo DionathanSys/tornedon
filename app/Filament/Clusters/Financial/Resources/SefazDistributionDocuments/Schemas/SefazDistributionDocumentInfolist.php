@@ -27,7 +27,7 @@ class SefazDistributionDocumentInfolist
                     ->schema([
                         TextEntry::make('issuer_name')
                             ->label('Emitente')
-                            ->afterContent(Action::make('open_partner')
+                            ->beforeContent(Action::make('open_partner')
                                 ->hiddenLabel()
                                 ->icon('heroicon-o-arrow-top-right-on-square')
                                 ->tooltip('Acessar cadastro do parceiro')
