@@ -84,7 +84,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                     $set('barcode', (string) ($item['ean'] ?? ''));
                                     $set('xml_ncm', (string) ($item['ncm'] ?? ''));
                                     $set('xml_cest', (string) ($item['cest'] ?? $item['cest_code'] ?? ''));
-                                    $set('xml_product_origin', Origin::NACIONAL->description());
+                                    $set('xml_product_origin', Origin::NACIONAL->value);
                                     $set('xml_unit', (string) ($item['unit'] ?? ''));
                                     $set('xml_quantity', (string) ($item['quantity'] ?? ''));
                                     $set('xml_unit_value', (string) ($item['unit_value'] ?? ''));
@@ -128,7 +128,6 @@ class ViewSefazDistributionDocument extends ViewRecord
                             Select::make('xml_product_origin')
                                 ->label('Origem do produto (padrão)')
                                 ->options(Origin::toSelectArray())
-                                ->default(null)
                                 ->native(false)
                                 ->columnSpan(1),
                             TextInput::make('manufacturer_code')
@@ -205,7 +204,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                             'has_stock_control' => (bool) ($data['has_stock_control'] ?? false),
                             'is_active' => (bool) ($data['is_active'] ?? true),
                             'tax' => array_filter([
-                                'product_origin' => Origin::NACIONAL->value,
+                                'product_origin' => (string) ($data['xml_product_origin'] ?? Origin::NACIONAL->value),
                                 'ncm_code' => (string) ($item['ncm'] ?? $item['ncm_code'] ?? ''),
                                 'cest_code' => (string) ($item['cest'] ?? $item['cest_code'] ?? ''),
                             ], fn($value): bool => $value !== ''),
