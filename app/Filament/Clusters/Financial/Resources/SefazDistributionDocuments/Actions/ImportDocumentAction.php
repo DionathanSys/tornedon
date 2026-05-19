@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDi
 use App\Models\SefazDistributionDocument;
 use App\Services\Fiscal\Sefaz\SefazDistributionFiscalDocumentImportService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
@@ -31,6 +32,9 @@ class ImportDocumentAction
                     ->success()
                     ->send();
             })
-            ->successRedirectUrl(fn($record) => SefazDistributionDocumentResource::getUrl('view', $record->id));
+            ->successRedirectUrl(fn (SefazDistributionDocument $record): string => SefazDistributionDocumentResource::getUrl('view', [
+                'record' => $record,
+                'tenant' => Filament::getTenant(),
+            ]));
     }
 }

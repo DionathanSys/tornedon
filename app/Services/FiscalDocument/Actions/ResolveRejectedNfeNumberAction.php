@@ -92,7 +92,7 @@ class ResolveRejectedNfeNumberAction
                         ->actions([
                             Action::make('open_nfe_invalidation')
                                 ->label('Abrir inutilização')
-                                ->url(NfeInvalidationRequestsPage::getUrl(parameters: ['record' => $request->id])),
+                                ->url(NfeInvalidationRequestsPage::getUrl(parameters: ['request' => $request->id])),
                         ])
                         ->sendToDatabase([$recipient, User::query()->find(1)]);
                 }
