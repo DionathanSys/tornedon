@@ -18,7 +18,7 @@ class ViewBankStatementImport extends ViewRecord
             ImportOfxAction::make(),
             Action::make('back_to_list')
                 ->label('Voltar')
-                ->url(route('filament.admin.financial.resources.bank-statement-imports.index', [
+                ->url(BankStatementImportResource::getUrl('index', [
                     'tenant' => Filament::getTenant(),
                 ])),
         ];

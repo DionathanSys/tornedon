@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Pages;
 
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\ImportOfxAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Filament\Clusters\Financial\Resources\CashMovements\CashMovementResource;
 use Filament\Facades\Filament;
 use Filament\Actions\Action;
@@ -19,7 +20,7 @@ class ListCashMovements extends ListRecords
             Action::make('view_ofx_imports')
                 ->label('Importações OFX')
                 ->icon('heroicon-o-document-duplicate')
-                ->url(route('filament.admin.financial.resources.bank-statement-imports.index', [
+                ->url(BankStatementImportResource::getUrl('index', [
                     'tenant' => Filament::getTenant(),
                 ])),
         ];

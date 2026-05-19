@@ -58,7 +58,7 @@ class MobilePanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => new HtmlString(view('pwa.meta')->render())
+                fn () => new HtmlString(view('filament.mobile.head')->render())
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,

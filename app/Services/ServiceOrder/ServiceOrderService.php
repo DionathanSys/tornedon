@@ -2,11 +2,9 @@
 
 namespace App\Services\ServiceOrder;
 
-use App\Enum\ServiceOrder\State;
-use App\Exceptions\DomainValidationException;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderSequence;
-use App\Services\Invoice\InvoiceService;
+use App\Services\ServiceOrder\ServiceOrderBillingService;
 use App\Services\ServiceOrder\Actions\CancelServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
@@ -15,12 +13,10 @@ use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use App\Services\ServiceOrder\Actions\ReopenServiceOrderAction;
 use App\Services\ServiceOrder\Actions\UpdateServiceOrderAction;
 use App\Services\Shared\CommercialItemDiscountService;
-use App\Services\Shared\CommercialInvoiceValidationService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -458,93 +454,21 @@ class ServiceOrderService
     public function invoice(ServiceOrder|Collection $records, int $userId): ?\App\Models\Invoice
     {
         $this->resetResponse();
+        $billing = app(ServiceOrderBillingService::class);
+        $invoice = $billing->invoice($records, $userId);
 
-        $records = $records instanceof ServiceOrder ? new Collection([$records]) : $records;
-
-        $validationError = app(CommercialInvoiceValidationService::class)->validateForNewInvoice(
-            $records,
-            'Todos os registros selecionados devem pertencer ao mesmo cliente.',
-            'Apenas ordens de serviço com status "Encerrada" podem ser faturadas.',
-            fn (ServiceOrder $record): bool => $record->status === State::CLOSED,
-            fn (ServiceOrder $record): string => "A OS #{$record->number} não possui itens.",
-        );
-
-        if ($validationError !== null) {
-            $this->setError($validationError);
-            return null;
+        if ($invoice === null) {
+            $this->setError(
+                $billing->getMessage(),
+                $billing->getErrors(),
+                $billing->getStatus(),
+                $billing->getErrorCode(),
+            );
+        } else {
+            $this->setSuccess($billing->getMessage(), $billing->getData(), $billing->getStatus());
         }
 
-        try {
-            return DB::transaction(function () use ($records, $userId): \App\Models\Invoice {
-                $first = $records->first();
-
-                // 1. Cria Invoice via InvoiceService
-                $invoiceService = app(InvoiceService::class);
-                $invoice = $invoiceService->create([
-                    'customer_id' => $first->customer_id,
-                    'company_id' => $first->company_id,
-                    'invoice_date' => now()->toDateString(),
-                    'payment_method' => $first->payment_method?->value,
-                    'payment_condition' => $first->payment_condition?->value,
-                ], $userId);
-
-                if ($invoiceService->hasError() || ! $invoice) {
-                    $this->setError(
-                        'Falha ao criar fatura: ' . $invoiceService->getMessage(),
-                        $invoiceService->getErrors(),
-                    );
-                    throw new \RuntimeException($this->getMessage());
-                }
-
-                // 2. Transição de estado e vínculo com a invoice para cada OS
-                foreach ($records as $record) {
-                    $record->state()->invoice($record, $userId, $invoice->id);
-                }
-
-                Log::info('ServiceOrderService: OS(s) faturada(s) com sucesso', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_ids' => $records->pluck('id')->all(),
-                    'invoice_id'        => $invoice->id,
-                ]);
-
-                $this->setSuccess('Ordem(ns) de serviço faturada(s) com sucesso');
-                return $invoice;
-            });
-        } catch (DomainValidationException $e) {
-            $this->setError('Transição inválida', $e->errors);
-
-            Log::warning('ServiceOrderService: Transição inválida ao faturar OS', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_ids' => $records->pluck('id')->all(),
-                'errors'            => $e->errors,
-            ]);
-
-            return null;
-        } catch (QueryException $e) {
-            $this->setError('Erro ao faturar OS no banco de dados');
-
-            Log::error('ServiceOrderService: QueryException ao faturar OS', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_ids' => $records->pluck('id')->all(),
-                'exception'         => $e->getMessage(),
-            ]);
-
-            return null;
-        } catch (\Exception $e) {
-            if (! $this->hasError()) {
-                $this->setError('Erro ao faturar ordem de serviço');
-            }
-
-            Log::error('ServiceOrderService: Erro ao faturar OS', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_ids' => $records->pluck('id')->all(),
-                'error_code'        => $this->getErrorCode(),
-                'exception'         => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
-            ]);
-
-            return null;
-        }
+        return $invoice;
     }
 
     /**
