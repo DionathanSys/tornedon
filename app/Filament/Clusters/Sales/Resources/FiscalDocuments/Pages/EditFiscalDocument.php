@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Actions\ConfigurePurchaseReturnSettlementAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\FiscalDocument;
+use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
@@ -20,7 +21,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Notification\NotifyService as notify;
 
 class EditFiscalDocument extends EditRecord
 {
@@ -100,7 +100,7 @@ class EditFiscalDocument extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Emitir Nota Fiscal Eletrônica')
                     ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
+                    ->visible(fn (FiscalDocument $record) => $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->emitir($record, Auth::id());
@@ -108,18 +108,19 @@ class EditFiscalDocument extends EditRecord
 
                         if ($service->isSuccess()) {
                             notify::success('NF-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
+
                             return;
                         }
 
                         notify::error($service->getMessage());
                     })
-                    ->successRedirectUrl(fn(FiscalDocument $record) => FiscalDocumentResource::getUrl('edit', ['record' => $record])),
+                    ->successRedirectUrl(fn (FiscalDocument $record) => FiscalDocumentResource::getUrl('edit', ['record' => $record])),
 
                 Action::make('consultar')
                     ->label('Consultar SEFAZ')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => ($record->isNfe() && $record->isNfeInProcessing()) || Auth::user()->is_admin)
+                    ->visible(fn (FiscalDocument $record) => ($record->isNfe() && $record->isNfeInProcessing()) || Auth::user()->is_admin)
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -127,6 +128,7 @@ class EditFiscalDocument extends EditRecord
 
                         if ($service->isSuccess()) {
                             notify::success('Consulta da NF-e realizada. O retorno mais recente da SEFAZ já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.');
+
                             return;
                         }
 
@@ -137,11 +139,11 @@ class EditFiscalDocument extends EditRecord
                     ->label('Preview')
                     ->icon(Heroicon::Eye)
                     ->color('gray')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && ! $record->isNfeAuthorized())
+                    ->visible(fn (FiscalDocument $record) => $record->isNfe() && ! $record->isNfeAuthorized())
                     ->modalHeading('Preview da NF-e')
                     ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
                         $service = app(NfeDocumentService::class);
-                        $data    = $service->preview($record, Auth::id());
+                        $data = $service->preview($record, Auth::id());
 
                         if (! $data || ! $data['pdf']) {
                             $record->refresh();
@@ -153,7 +155,7 @@ class EditFiscalDocument extends EditRecord
                         }
 
                         return new HtmlString(
-                            '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
+                            '<iframe src="data:application/pdf;base64,'.$data['pdf'].'" width="100%" height="600px" style="border:none;"></iframe>'
                         );
                     })
                     ->modalSubmitActionLabel('Emitir')
@@ -165,32 +167,68 @@ class EditFiscalDocument extends EditRecord
 
                         if ($service->isSuccess()) {
                             notify::success('NF-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
+
                             return;
                         }
 
                         notify::error($service->getMessage());
                     })
-                    ->after(fn() => $this->refreshFormData(['errors_messages'])),
+                    ->after(fn () => $this->refreshFormData(['errors_messages'])),
 
                 Action::make('danfe')
                     ->label('Download DANFE')
                     ->icon(Heroicon::ArrowDownTray)
                     ->color('success')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
+                    ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
                     ->action(function (FiscalDocument $record): StreamedResponse {
                         $service = app(NfeDocumentService::class);
-                        $pdf     = $service->danfe($record, Auth::id());
+                        $pdf = $service->danfe($record, Auth::id());
 
                         if (! $pdf) {
                             notify::error($service->getMessage());
-                            return response()->streamDownload(fn() => null, 'danfe.pdf');
+
+                            return response()->streamDownload(fn () => null, 'danfe.pdf');
                         }
 
-                        $filename = 'DANFE-' . ($record->document_number ?? $record->id) . '.pdf';
+                        $filename = 'DANFE-'.($record->document_number ?? $record->id).'.pdf';
 
                         return response()->streamDownload(function () use ($pdf) {
                             echo base64_decode($pdf);
                         }, $filename, ['Content-Type' => 'application/pdf']);
+                    }),
+
+                Action::make('cancelar_nfe')
+                    ->label('Cancelar NF-e')
+                    ->icon(Heroicon::XCircle)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar NF-e')
+                    ->modalDescription('Esta ação não pode ser desfeita. A NF-e será cancelada na SEFAZ.')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
+                    ->schema([
+                        Textarea::make('justificativa')
+                            ->label('Justificativa do Cancelamento')
+                            ->required()
+                            ->minLength(15)
+                            ->maxLength(255)
+                            ->rows(4),
+                    ])
+                    ->action(function (FiscalDocument $record, array $data): void {
+                        $service = app(NfeDocumentService::class);
+                        $service->cancelar(
+                            $record,
+                            $data['justificativa'],
+                            Auth::id()
+                        );
+                        $this->syncFiscalDocumentState();
+
+                        if ($service->isSuccess()) {
+                            notify::success($service->getMessage());
+
+                            return;
+                        }
+
+                        notify::error($service->getMessage());
                     }),
 
                 Action::make('emitir_nfse')
@@ -200,7 +238,7 @@ class EditFiscalDocument extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Emitir Nota Fiscal de Serviço')
                     ->modalDescription('O envio é assíncrono. Após confirmação, a NFS-e será processada em segundo plano.')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && ! $record->isNfseQueued() && (! $record->isNfseSent() || $record->isNfseRejected()))
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && ! $record->isNfseQueued() && (! $record->isNfseSent() || $record->isNfseRejected()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->emitir($record, Auth::id());
@@ -208,6 +246,7 @@ class EditFiscalDocument extends EditRecord
 
                         if ($service->isSuccess()) {
                             notify::success('NFS-e enfileirada para emissão. A nota será enviada automaticamente quando chegar sua vez na fila da empresa/série.');
+
                             return;
                         }
 
@@ -218,7 +257,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar NFS-e')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && $record->isNfseInProcessing())
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseInProcessing())
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfseDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -226,6 +265,7 @@ class EditFiscalDocument extends EditRecord
 
                         if ($service->isSuccess()) {
                             notify::success('Consulta da NFS-e realizada. O retorno mais recente da prefeitura já foi refletido no formulário. Se a nota continuar em processamento, a página seguirá atualizando automaticamente.');
+
                             return;
                         }
 
@@ -236,11 +276,11 @@ class EditFiscalDocument extends EditRecord
                     ->label('Preview')
                     ->icon(Heroicon::Eye)
                     ->color('gray')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse())
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse())
                     ->modalHeading('Preview da NFS-e')
                     ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
                         $service = app(NfseDocumentService::class);
-                        $data    = $service->preview($record, Auth::id());
+                        $data = $service->preview($record, Auth::id());
 
                         if (! $data || ! $data['pdf']) {
                             $record->refresh();
@@ -252,7 +292,7 @@ class EditFiscalDocument extends EditRecord
                         }
 
                         return new HtmlString(
-                            '<iframe src="data:application/pdf;base64,' . $data['pdf'] . '" width="100%" height="600px" style="border:none;"></iframe>'
+                            '<iframe src="data:application/pdf;base64,'.$data['pdf'].'" width="100%" height="600px" style="border:none;"></iframe>'
                         );
                     })
                     ->modalSubmitAction(false)
@@ -262,17 +302,18 @@ class EditFiscalDocument extends EditRecord
                     ->label('Download PDF')
                     ->icon(Heroicon::ArrowDownTray)
                     ->color('success')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
                     ->action(function (FiscalDocument $record): StreamedResponse {
                         $service = app(NfseDocumentService::class);
-                        $pdf     = $service->pdf($record, Auth::id());
+                        $pdf = $service->pdf($record, Auth::id());
 
                         if (! $pdf) {
                             Notification::make()->title($service->getMessage())->danger()->send();
-                            return response()->streamDownload(fn() => null, 'nfse.pdf');
+
+                            return response()->streamDownload(fn () => null, 'nfse.pdf');
                         }
 
-                        $filename = 'NFSE-' . ($record->document_number ?? $record->id) . '.pdf';
+                        $filename = 'NFSE-'.($record->document_number ?? $record->id).'.pdf';
 
                         return response()->streamDownload(function () use ($pdf) {
                             echo base64_decode($pdf);
@@ -286,7 +327,7 @@ class EditFiscalDocument extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Cancelar NFS-e')
                     ->modalDescription('Esta ação não pode ser desfeita. A NFS-e será cancelada na prefeitura.')
-                    ->visible(fn(FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
                     ->schema([
                         Select::make('codigo_cancelamento')
                             ->label('Código do Cancelamento')
@@ -314,6 +355,7 @@ class EditFiscalDocument extends EditRecord
 
                         if ($service->isSuccess()) {
                             Notification::make()->title($service->getMessage())->success()->send();
+
                             return;
                         }
 
@@ -336,7 +378,7 @@ class EditFiscalDocument extends EditRecord
                         }
 
                         $service = app(FiscalDocumentService::class);
-                        $result  = $service->delete($record);
+                        $result = $service->delete($record);
 
                         if ($service->hasError() || ! $result) {
                             Notification::make()
@@ -400,13 +442,13 @@ class EditFiscalDocument extends EditRecord
         $currentError = $this->getLatestPersistedErrorMessage($record);
 
         $content = '<div class="space-y-4">'
-            . '<p class="text-sm text-danger-600">' . e($fallbackMessage) . '</p>';
+            .'<p class="text-sm text-danger-600">'.e($fallbackMessage).'</p>';
 
         if ($currentError !== null) {
             $content .= '<div class="rounded-lg border border-danger-200 bg-danger-50 p-4 dark:border-danger-800 dark:bg-danger-950/30">'
-                . '<p class="text-sm font-medium text-danger-700 dark:text-danger-300">Erro atual</p>'
-                . '<pre class="mt-2 max-w-full overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm text-danger-700 dark:text-danger-200">' . e($currentError) . '</pre>'
-                . '</div>';
+                .'<p class="text-sm font-medium text-danger-700 dark:text-danger-300">Erro atual</p>'
+                .'<pre class="mt-2 max-w-full overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm text-danger-700 dark:text-danger-200">'.e($currentError).'</pre>'
+                .'</div>';
         }
 
         $content .= '</div>';
@@ -440,12 +482,12 @@ class EditFiscalDocument extends EditRecord
     private function buildAdditionalPurchaseInformation(array $data): ?string
     {
         $payload = [
-            'nota_empenho'  => trim((string) ($data['additional_purchase_information_nota_empenho'] ?? '')),
-            'pedido'        => trim((string) ($data['additional_purchase_information_pedido'] ?? '')),
-            'contrato'      => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
+            'nota_empenho' => trim((string) ($data['additional_purchase_information_nota_empenho'] ?? '')),
+            'pedido' => trim((string) ($data['additional_purchase_information_pedido'] ?? '')),
+            'contrato' => trim((string) ($data['additional_purchase_information_contrato'] ?? '')),
         ];
 
-        $payload = array_filter($payload, fn(string $value): bool => $value !== '');
+        $payload = array_filter($payload, fn (string $value): bool => $value !== '');
 
         if ($payload === []) {
             return null;
