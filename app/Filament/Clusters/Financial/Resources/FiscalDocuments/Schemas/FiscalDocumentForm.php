@@ -66,14 +66,14 @@ class FiscalDocumentForm
                             ->required(),
                         DatePicker::make('issued_at')
                             ->label('Data Emissão')
-                            ->columnSpan(['md' => 1])
+                            ->columnSpan(['md' => 2])
                             ->disabled(fn(?FiscalDocument $record): bool => self::importedReadOnly($record))
                             ->displayFormat('DD/MM/YYYY')
                             ->required()
                             ->default(now()),
                         Select::make('operation_nature')
                             ->label('Natureza da Operação')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(OperationNature::toSelectArray())
                             ->default(OperationNature::VENDA_DENTRO_ESTADO->value)
                             ->searchable()

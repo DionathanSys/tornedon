@@ -25,17 +25,21 @@ class ItemsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('service.service_code')
                     ->label('Código')
-                    ->width('1%'),
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('service.name')
-                    ->label('Serviço'),
+                    ->label('Serviço')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('quantity')
                     ->label('Quantidade')
-                    ->width('1%'),
+                    ->width('1%')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('unit_price')
                     ->label('Valor Unitário')
                     ->width('1%')
                     ->money('BRL', true)
-                    ->visibleFrom('lg'),
+                    // ->visibleFrom('lg')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('gross_amount')
                     ->label('Valor Bruto')
                     ->state(fn ($record): float => round(((float) ($record->quantity ?? 0)) * ((float) ($record->unit_price ?? 0)), 2))
@@ -46,12 +50,14 @@ class ItemsRelationManager extends RelationManager
                             ->label('Bruto')
                             ->using(fn ($query): float => (float) $query->sum(DB::raw('quantity * unit_price')))
                             ->money('BRL', 100)
-                    ),
+                    )
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
                     ->label('Valor Líquido')
                     ->width('1%')
                     ->money('BRL', true)
-                    ->summarize(Sum::make('total_amount')->label('Líquido')->money('BRL', 100)),
+                    ->summarize(Sum::make('total_amount')->label('Líquido')->money('BRL', 100))
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_percentage')
                     ->label('Des. (%)')
                     ->width('1%')
