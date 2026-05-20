@@ -8,15 +8,18 @@ use App\Enum\Product\Unit;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Enum\StockMovement\Type as StockMovementType;
 use App\Enum\Tax\IssExigibility;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\Service;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderItem;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Requisition\RequisitionService;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -80,6 +83,8 @@ class CommercialDocumentDeletionTest extends TestCase
     {
         [$user, $company, $customer] = $this->makeBaseContext();
 
+        $this->actingAs($user);
+
         $requisition = Requisition::query()->create([
             'number' => 'REQ-DELETE-001',
             'customer_id' => $customer->id,
@@ -99,7 +104,18 @@ class CommercialDocumentDeletionTest extends TestCase
             'unit' => Unit::UN,
             'origin_sale_price' => OriginSalePrice::FREE,
             'sale_price_value' => 100,
+            'has_stock_control' => true,
             'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $stock = ProductStock::query()->create([
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'quantity_total' => 10,
+            'quantity_reserved' => 1,
+            'is_active' => true,
+            'allow_negative' => false,
             'created_by' => $user->id,
         ]);
 
@@ -108,9 +124,30 @@ class CommercialDocumentDeletionTest extends TestCase
             'product_id' => $product->id,
             'unit_of_measure' => 'UN',
             'quantity' => 1,
+            'quantity_in_base_unit' => 1,
+            'conversion_factor_snapshot' => 1,
             'unit_price' => 100,
             'discount_amount' => 0,
             'stock_consumed' => false,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        StockMovement::query()->create([
+            'product_stock_id' => $stock->id,
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'type' => StockMovementType::RESERVATION->value,
+            'operational_unit' => 'UN',
+            'operational_quantity' => 1,
+            'base_unit' => 'UN',
+            'base_quantity' => 1,
+            'conversion_factor_snapshot' => 1,
+            'quantity' => 1,
+            'unit_price' => 100,
+            'reason' => 'Reserva inicial',
+            'source_type' => 'requisition_item',
+            'source_id' => $item->id,
             'created_by' => $user->id,
             'updated_by' => $user->id,
         ]);
@@ -121,6 +158,12 @@ class CommercialDocumentDeletionTest extends TestCase
         $this->assertFalse($requisitionService->hasError());
         $this->assertDatabaseMissing('requisition_items', ['id' => $item->id]);
         $this->assertDatabaseMissing('requisitions', ['id' => $requisition->id]);
+        $this->assertDatabaseHas('stock_movements', [
+            'source_type' => 'requisition_item',
+            'source_id' => $item->id,
+            'type' => StockMovementType::RESERVATION_RELEASE->value,
+        ]);
+        $this->assertSame(0.0, (float) $stock->fresh()->quantity_reserved);
     }
 
     public function test_it_blocks_requisition_deletion_when_it_has_consumed_items(): void

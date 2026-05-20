@@ -15,6 +15,9 @@ use App\Models\FiscalDocument;
 use App\Models\Product;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
+use App\Notification\NotifyService as notify;
+use App\Services\StockMovement\StockMovementService;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
@@ -116,7 +119,7 @@ class StockMovementsTable
                     ->label('Produto')
                     ->searchable()
                     ->preload()
-                    ->getSearchResultsUsing(fn (string $search): array => Product::query()
+                    ->getSearchResultsUsing(fn(string $search): array => Product::query()
                         ->where('company_id', Filament::getTenant()->id)
                         ->where(function (Builder $query) use ($search): void {
                             $query->where('product_code', 'like', "%{$search}%")
@@ -126,11 +129,12 @@ class StockMovementsTable
                         ->limit(50)
                         ->pluck('product_code', 'id')
                         ->all())
-                    ->getOptionLabelUsing(fn ($value): ?string => Product::query()
+                    ->getOptionLabelUsing(fn($value): ?string => Product::query()
                         ->where('company_id', Filament::getTenant()->id)
                         ->whereKey($value)
-                        ->value('product_code'))
-                        
+                        ->get()
+                        ->map(fn(Product $product): string => trim("[{$product->product_code}] {$product->name}"))
+                        ->first())
                     ->native(false),
 
             ])
@@ -147,6 +151,27 @@ class StockMovementsTable
                     CheckProductStockBulkAction::make(),
                     FixProductStockBulkAction::make(),
                 ])->label('Estoque'),
+            ])
+            ->recordActions([
+                DeleteAction::make('delete-stock-movement')
+                    ->iconButton()
+                    ->requiresConfirmation()
+                    ->visible(fn(): bool => (bool) Auth::user()?->is_admin)
+                    ->using(function (StockMovement $record): bool {
+                        $service = app(StockMovementService::class);
+                        $result = $service->delete($record);
+
+                        if ($service->hasError()) {
+                            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
+                            return false;
+                        }
+
+                        notify::success(message: $service->getMessageUser());
+
+                        return $result;
+                    })
+                    ->successNotification(null),
             ])
             ->defaultSort('created_at', 'desc')
             ->reorderableColumns()

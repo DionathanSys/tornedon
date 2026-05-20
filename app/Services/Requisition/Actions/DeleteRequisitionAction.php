@@ -2,10 +2,12 @@
 
 namespace App\Services\Requisition\Actions;
 
+use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Models\Requisition;
 use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class DeleteRequisitionAction
@@ -26,6 +28,8 @@ class DeleteRequisitionAction
             if (! $this->validateCanDelete()) {
                 return false;
             }
+
+            $this->releaseItemReservations();
 
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($this->requisition);
@@ -106,5 +110,17 @@ class DeleteRequisitionAction
         }
 
         return true;
+    }
+
+    private function releaseItemReservations(): void
+    {
+        $deletedBy = Auth::id() ?? 0;
+
+        $this->requisition->items()
+            ->with('product')
+            ->get()
+            ->each(function ($item) use ($deletedBy): void {
+                RequisitionItemDeleted::dispatch($item, $deletedBy);
+            });
     }
 }
