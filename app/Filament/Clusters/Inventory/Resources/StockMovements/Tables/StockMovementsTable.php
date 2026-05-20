@@ -42,7 +42,7 @@ class StockMovementsTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('product.code')
+                TextColumn::make('product.product_code')
                     ->label('Código')
                     ->searchable()
                     ->sortable(),
@@ -129,7 +129,7 @@ class StockMovementsTable
                     ->getOptionLabelUsing(fn ($value): ?string => Product::query()
                         ->where('company_id', Filament::getTenant()->id)
                         ->whereKey($value)
-                        ->value('product_code'))
+                        ->value(['product_code', 'name']))
                     ->native(false),
 
             ])
