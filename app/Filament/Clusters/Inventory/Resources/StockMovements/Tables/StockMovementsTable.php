@@ -111,6 +111,15 @@ class StockMovementsTable
                     ->options(collect(Type::cases())->mapWithKeys(fn($type) => [$type->value => $type->label()])->toArray()),
                 DateRangeFilter::make('created_at')
                     ->label('Período de Movimentação'),
+                SelectFilter::make('product.code')
+                    ->label('Código do Produto')
+                    ->searchable()
+                    ->options(fn() => StockMovement::query()
+                        ->where('company_id', Filament::getTenant()->id)
+                        ->with('product')
+                        ->get()
+                        ->pluck('product.code', 'product.code')
+                        ->toArray()),
             ])
             ->groups([
                 Group::make('product.name')
