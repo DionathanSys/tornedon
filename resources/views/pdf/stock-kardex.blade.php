@@ -111,14 +111,14 @@
             <tr>
                 <th>Saldo Inicial</th>
                 <th>Reservado Inicial</th>
-                <th>Disponivel Inicial</th>
+                <th>Disponível Inicial</th>
                 <th>Entradas</th>
-                <th>Saidas</th>
+                <th>Saídas</th>
                 <th>Reservas</th>
-                <th>Liberacoes</th>
+                <th>Liberações</th>
                 <th>Saldo Final</th>
                 <th>Reservado Final</th>
-                <th>Disponivel Final</th>
+                <th>Disponível Final</th>
             </tr>
             <tr>
                 <td class="text-right">{{ $pdfData['opening']['stock_balance'] }}</td>
@@ -136,23 +136,22 @@
     </div>
 
     <div class="section">
-        <div class="section-title">Movimentacoes</div>
+        <div class="section-title">Movimentações</div>
         <table class="kardex-table">
             <tr>
                 <th>Data</th>
                 <th>Tipo</th>
-                <th>Referencia</th>
-                <th>Motivo</th>
-                <th>Usuario</th>
+                <th>Referência</th>
+                <th>Usuário</th>
                 <th>Qtde. Oper.</th>
                 <th>Qtde. Base</th>
                 <th>Entrada</th>
-                <th>Saida</th>
+                <th>Saída</th>
                 <th>Reserva</th>
-                <th>Liberacao</th>
+                <th>Liberação</th>
                 <th>Saldo</th>
                 <th>Reservado</th>
-                <th>Disponivel</th>
+                <th>Disponível</th>
                 <th>Custo Un.</th>
                 <th>Custo Total</th>
             </tr>
@@ -161,7 +160,6 @@
                     <td>{{ $row['date'] }}</td>
                     <td>{{ $row['type'] }}</td>
                     <td>{{ $row['reference'] }}</td>
-                    <td>{{ $row['reason'] }}</td>
                     <td>{{ $row['user'] }}</td>
                     <td class="text-right">{{ $row['operational_quantity'] }} {{ $row['operational_unit'] }}</td>
                     <td class="text-right">{{ $row['base_quantity'] }} {{ $row['base_unit'] }}</td>
@@ -177,7 +175,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="16" class="text-center">Nenhuma movimentacao encontrada para o periodo informado.</td>
+                    <td colspan="15" class="text-center">Nenhuma movimentação encontrada para o período informado.</td>
                 </tr>
             @endforelse
         </table>

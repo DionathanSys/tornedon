@@ -29,6 +29,21 @@ enum Type: string
         };
     }
 
+    public function abbreviation(): string
+    {
+        return match ($this) {
+            self::ENTRY               => 'ENT',
+            self::EXIT                => 'SAI',
+            self::ADJUSTMENT          => 'AJU',
+            self::TRANSFER            => 'TRA',
+            self::RETURN              => 'DEV',
+            self::CONSUMPTION         => 'CON',
+            self::LOSS                => 'PER',
+            self::RESERVATION         => 'RES',
+            self::RESERVATION_RELEASE => 'LIB',
+        };
+    }
+
     public function color(): string
     {
         return match ($this) {

@@ -16,7 +16,7 @@ final class DeleteItemAction
     use AuthorizesRequisitionItemActions;
     public static function make(): DeleteAction
     {
-        return DeleteAction::make()
+        return DeleteAction::make('delete-requisition-item')
             ->visible(fn (RelationManager $livewire): bool => self::canDeleteItem($livewire->getOwnerRecord()))
             ->requiresConfirmation()
             ->modalHeading('Excluir Item')

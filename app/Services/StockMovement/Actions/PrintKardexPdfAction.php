@@ -31,7 +31,7 @@ class PrintKardexPdfAction
             ])->setPaper('a4', 'landscape')->output();
 
             if ($pdfBinary === '') {
-                $this->setError('Nao foi possivel gerar o PDF do kardex.');
+                $this->setError('Não foi possível gerar o PDF do kardex.');
 
                 return null;
             }

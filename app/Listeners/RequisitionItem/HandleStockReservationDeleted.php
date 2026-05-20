@@ -5,6 +5,7 @@ namespace App\Listeners\RequisitionItem;
 use App\Enum\StockMovement\Type;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Models\ProductStock;
+use App\Models\StockMovement;
 use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 
@@ -36,17 +37,56 @@ class HandleStockReservationDeleted
             return;
         }
 
+        $releaseBaseQuantity = (float) StockMovement::query()
+            ->where('source_type', 'requisition_item')
+            ->where('source_id', $item->id)
+            ->whereIn('type', [
+                Type::RESERVATION->value,
+                Type::RESERVATION_RELEASE->value,
+            ])
+            ->get(['type', 'quantity', 'base_quantity'])
+            ->sum(function (StockMovement $movement): float {
+                $quantity = $movement->resolvedBaseQuantity();
+
+                return $movement->type === Type::RESERVATION
+                    ? $quantity
+                    : -$quantity;
+            });
+
+        $releaseBaseQuantity = min($releaseBaseQuantity, $item->resolvedBaseQuantity());
+
+        if ($releaseBaseQuantity <= 0.0001) {
+            Log::info('HandleStockReservationDeleted: Nenhuma reserva pendente para liberar', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'product_id' => $product->id,
+                'item_id' => $item->id,
+            ]);
+
+            return;
+        }
+
+        $conversionFactor = (float) ($item->conversion_factor_snapshot ?? 0);
+
+        if ($conversionFactor <= 0) {
+            $itemBaseQuantity = $item->resolvedBaseQuantity();
+            $conversionFactor = $itemBaseQuantity > 0.0001
+                ? $itemBaseQuantity / max((float) $item->quantity, 0.0001)
+                : 1;
+        }
+
+        $releaseOperationalQuantity = round($releaseBaseQuantity / max($conversionFactor, 0.0001), 3);
+
         $movement = $this->stockMovementService->create([
             'product_stock_id' => $stock->id,
             'product_id'       => $product->id,
             'company_id'       => $stock->company_id,
             'type'             => Type::RESERVATION_RELEASE->value,
             'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
-            'operational_quantity' => (float) $item->quantity,
+            'operational_quantity' => $releaseOperationalQuantity,
             'base_unit'        => $product->unit?->value,
-            'base_quantity'    => $item->resolvedBaseQuantity(),
-            'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
-            'quantity'         => $item->resolvedBaseQuantity(),
+            'base_quantity'    => $releaseBaseQuantity,
+            'conversion_factor_snapshot' => $conversionFactor,
+            'quantity'         => $releaseBaseQuantity,
             'unit_price'       => (float) ($item->unit_price ?? 0),
             'reason'           => 'Liberação de reserva por exclusão de item de requisição',
             'source_type'      => 'requisition_item',

@@ -62,7 +62,7 @@ final class DownloadKardexPdfAction
                     ->first();
 
                 if (! $product) {
-                    notify::error('Produto nao encontrado para gerar o kardex.');
+                    notify::error('Produto não encontrado para gerar o kardex.');
 
                     return response()->streamDownload(fn () => null, 'kardex.pdf');
                 }
@@ -73,7 +73,7 @@ final class DownloadKardexPdfAction
                 ]);
 
                 if (! $pdf) {
-                    notify::error('Nao foi possivel gerar o PDF do kardex.');
+                    notify::error('Não foi possível gerar o PDF do kardex.');
 
                     return response()->streamDownload(fn () => null, 'kardex.pdf');
                 }

@@ -27,11 +27,13 @@ class KardexPdfDataFormatter
             ->where('company_id', $companyId)
             ->where('product_id', $product->id);
 
-        $openingMovements = (clone $baseQuery)
-            ->when($startDate, fn ($query) => $query->where('created_at', '<', $startDate))
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
+        $openingMovements = $startDate
+            ? (clone $baseQuery)
+                ->where('created_at', '<', $startDate)
+                ->orderBy('created_at')
+                ->orderBy('id')
+                ->get()
+            : collect();
 
         $openingBalances = $this->calculateBalances($openingMovements);
 
@@ -76,8 +78,7 @@ class KardexPdfDataFormatter
 
             return [
                 'date' => $movement->created_at?->format('d/m/Y H:i') ?? '-',
-                'type' => $movement->type->label(),
-                'reason' => $movement->reason ?: '-',
+                'type' => $movement->type->abbreviation(),
                 'reference' => $this->formatReference($movement),
                 'user' => $movement->createdBy?->name ?? '-',
                 'operational_quantity' => $this->formatQuantity($movement->resolvedOperationalQuantity()),
