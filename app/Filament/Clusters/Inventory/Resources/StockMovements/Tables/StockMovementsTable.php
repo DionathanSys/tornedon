@@ -20,6 +20,7 @@ use Filament\Support\Enums\Size;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +39,11 @@ class StockMovementsTable
                 TextColumn::make('created_at')
                     ->label('Data')
                     ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('product.code')
+                    ->label('Código')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('product.name')
                     ->label('Produto')
@@ -105,6 +111,11 @@ class StockMovementsTable
                     ->options(collect(Type::cases())->mapWithKeys(fn($type) => [$type->value => $type->label()])->toArray()),
                 DateRangeFilter::make('created_at')
                     ->label('Período de Movimentação'),
+            ])
+            ->groups([
+                Group::make('product.name')
+                    ->label('Produto')
+                    ->collapsable(),
             ])
             ->toolbarActions([
                 CreateStockMovementFromModalAction::make()
