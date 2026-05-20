@@ -2,9 +2,9 @@
 
 namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Pages;
 
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Pages\Actions\DownloadKardexPdfAction;
 use App\Filament\Clusters\Inventory\Resources\StockMovements\StockMovementResource;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Support\Icons\Heroicon;
 
 class ListStockMovements extends ListRecords
 {
@@ -13,7 +13,7 @@ class ListStockMovements extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            //
+            DownloadKardexPdfAction::make(),
         ];
     }
 }
