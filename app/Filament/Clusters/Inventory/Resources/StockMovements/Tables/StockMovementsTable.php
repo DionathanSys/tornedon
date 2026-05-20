@@ -12,6 +12,7 @@ use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\CheckP
 use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\FixProductStockBulkAction;
 use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\CreateStockMovementFromModalAction;
 use App\Models\FiscalDocument;
+use App\Models\Product;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use Filament\Actions\BulkActionGroup;
@@ -113,9 +114,23 @@ class StockMovementsTable
                     ->label('Período de Movimentação'),
                 SelectFilter::make('product_id')
                     ->label('Produto')
-                    ->relationship('product', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->getSearchResultsUsing(fn (string $search): array => Product::query()
+                        ->where('company_id', Filament::getTenant()->id)
+                        ->where(function (Builder $query) use ($search): void {
+                            $query->where('product_code', 'like', "%{$search}%")
+                                ->orWhere('name', 'like', "%{$search}%");
+                        })
+                        ->orderBy('product_code')
+                        ->limit(50)
+                        ->pluck('product_code', 'id')
+                        ->all())
+                    ->getOptionLabelUsing(fn ($value): ?string => Product::query()
+                        ->where('company_id', Filament::getTenant()->id)
+                        ->whereKey($value)
+                        ->value('product_code'))
+                    ->native(false),
 
             ])
             ->groups([
