@@ -129,7 +129,8 @@ class StockMovementsTable
                     ->getOptionLabelUsing(fn ($value): ?string => Product::query()
                         ->where('company_id', Filament::getTenant()->id)
                         ->whereKey($value)
-                        ->value(['product_code', 'name']))
+                        ->value('product_code'))
+                        
                     ->native(false),
 
             ])
