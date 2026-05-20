@@ -115,7 +115,7 @@ class StockMovementsTable
             ->groups([
                 Group::make('product.name')
                     ->label('Produto')
-                    ->collapsable(),
+                    ->collapsible(),
             ])
             ->toolbarActions([
                 CreateStockMovementFromModalAction::make()
