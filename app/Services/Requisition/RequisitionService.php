@@ -2,6 +2,7 @@
 
 namespace App\Services\Requisition;
 
+use App\Enum\Requisition\Status;
 use App\Models\Invoice;
 use App\Models\Requisition;
 use App\Models\RequisitionSequence;
