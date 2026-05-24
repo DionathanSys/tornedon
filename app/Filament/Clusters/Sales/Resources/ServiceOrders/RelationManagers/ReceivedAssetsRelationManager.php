@@ -82,7 +82,7 @@ class ReceivedAssetsRelationManager extends RelationManager
                         ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $linkedRecord])
                         : null, true),
             ])
-            ->defaultSort('id')
+            ->defaultSort('remittance_assets.id')
             ->headerActions([])
             ->recordActions([])
             ->toolbarActions([])
