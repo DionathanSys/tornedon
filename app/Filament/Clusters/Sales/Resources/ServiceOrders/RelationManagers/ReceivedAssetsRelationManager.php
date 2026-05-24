@@ -26,8 +26,32 @@ class ReceivedAssetsRelationManager extends RelationManager
         return $table
             ->heading('Ativos recebidos pela nota de remessa')
             ->columns([
-                TextColumn::make('fiscalDocument.document_number')
+                TextColumn::make('remittance_origin_document')
                     ->label('NF Remessa')
+                    ->state(function (RemittanceAsset $record): string {
+                        $originDocument = $record->fiscalDocument;
+
+                        if ($originDocument === null) {
+                            return '-';
+                        }
+
+                        $number = $originDocument->document_number;
+                        $series = $originDocument->document_series;
+
+                        if (filled($number) && filled($series)) {
+                            return sprintf('%s / Série %s', $number, $series);
+                        }
+
+                        if (filled($number)) {
+                            return (string) $number;
+                        }
+
+                        if (filled($originDocument->document_key)) {
+                            return 'Chave ' . $originDocument->document_key;
+                        }
+
+                        return 'Documento #' . $originDocument->id;
+                    })
                     ->placeholder('-')
                     ->url(fn (RemittanceAsset $record): ?string => $record->fiscalDocument
                         ? FinancialFiscalDocumentResource::getUrl('edit', ['record' => $record->fiscalDocument])
