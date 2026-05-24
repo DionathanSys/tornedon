@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\A
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\Actions\EditItemAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\Actions\EditNfseItemAction;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\Actions\ManageRemittanceAssetAction;
 use App\Models\FiscalDocumentItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -79,10 +80,27 @@ class ItemsRelationManager extends RelationManager
                 // Common columns
                 TextColumn::make('description')
                     ->label('Descrição')
-                    ->description(fn(FiscalDocumentItem $item) => Str::upper($item->additional_information))
+                    ->description(fn (FiscalDocumentItem $item) => Str::upper($item->additional_information))
                     ->searchable()
                     ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: ! $isNfse),
+
+                IconColumn::make('has_remittance_asset')
+                    ->label('Pronto OS')
+                    ->boolean()
+                    ->state(fn (FiscalDocumentItem $record): bool => $record->remittanceAsset !== null)
+                    ->visible(! $isNfse),
+
+                TextColumn::make('remittanceAsset.equipment.name')
+                    ->label('Equipamento')
+                    ->visible(! $isNfse)
+                    ->searchable()
+                    ->limit(30),
+
+                TextColumn::make('remittanceAsset.serial_number')
+                    ->label('Serie recebida')
+                    ->visible(! $isNfse)
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('unit_of_measure')
                     ->label('Un.')
@@ -161,30 +179,33 @@ class ItemsRelationManager extends RelationManager
                 // NF-e actions
                 EditItemAction::make()
                     ->iconButton()
-                    // ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canEdit())
-                    ,
+                // ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canEdit())
+                ,
+                ManageRemittanceAssetAction::make()
+                    ->iconButton()
+                    ->visible(fn (FiscalDocumentItem $record): bool => ! $isNfse),
                 DeleteItemAction::make()
                     ->iconButton()
-                    ->visible(fn(FiscalDocumentItem $record): bool => ! $isNfse && $record->canDelete()),
+                    ->visible(fn (FiscalDocumentItem $record): bool => ! $isNfse && $record->canDelete()),
 
                 // NFS-e actions
                 EditNfseItemAction::make()
                     ->iconButton()
-                    ->visible(fn(FiscalDocumentItem $record): bool => $isNfse && $record->canEdit()),
+                    ->visible(fn (FiscalDocumentItem $record): bool => $isNfse && $record->canEdit()),
                 DeleteItemAction::make('deleteNfseItem')
                     ->iconButton()
-                    ->visible(fn(FiscalDocumentItem $record): bool => $isNfse && $record->canDelete()),
+                    ->visible(fn (FiscalDocumentItem $record): bool => $isNfse && $record->canDelete()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                ])->visible(fn() => $this->canCreateItem()),
+                ])->visible(fn () => $this->canCreateItem()),
                 // NF-e create
                 CreateItemAction::make()
-                    ->visible(fn(): bool => ! $isNfse && $this->canCreateItem()),
+                    ->visible(fn (): bool => ! $isNfse && $this->canCreateItem()),
                 // NFS-e create
                 CreateNfseItemAction::make()
-                    ->visible(fn(): bool => $isNfse && $this->canCreateItem()),
+                    ->visible(fn (): bool => $isNfse && $this->canCreateItem()),
             ])
             ->emptyStateDescription(
                 $isNfse

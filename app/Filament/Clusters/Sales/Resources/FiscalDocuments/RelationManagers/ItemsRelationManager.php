@@ -55,13 +55,13 @@ class ItemsRelationManager extends RelationManager
                     ->label('NCM')
                     ->searchable()
                     ->visible(! $isNfse)
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('cfop_code')
                     ->label('CFOP')
                     ->searchable()
                     ->visible(! $isNfse)
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 // NFS-e columns
                 TextColumn::make('service.name')

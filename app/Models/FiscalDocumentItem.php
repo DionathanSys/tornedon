@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FiscalDocumentItem extends Model
 {
@@ -96,6 +97,11 @@ class FiscalDocumentItem extends Model
     public function remittanceAssets(): HasMany
     {
         return $this->hasMany(RemittanceAsset::class);
+    }
+
+    public function remittanceAsset(): HasOne
+    {
+        return $this->hasOne(RemittanceAsset::class)->latestOfMany();
     }
 
     public function originLinks(): HasMany

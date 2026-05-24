@@ -3,19 +3,20 @@
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages;
 
 use App\Enum\ServiceOrder\State;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\GenerateRepairReturnFiscalDocumentAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\SignServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
-use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\CompanyPreference;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -63,6 +64,17 @@ class EditServiceOrder extends EditRecord
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
                     ->hiddenLabel(),
+                GenerateRepairReturnFiscalDocumentAction::make()
+                    ->hiddenLabel(),
+                Action::make('view-linked-return-fiscal-document')
+                    ->tooltip('Abrir nota de retorno')
+                    ->label('Abrir Nota de Retorno')
+                    ->icon(Heroicon::DocumentText)
+                    ->visible(fn (): bool => $this->record->linkedReturnFiscalDocument() !== null)
+                    ->url(fn (): ?string => ($linkedRecord = $this->record->linkedReturnFiscalDocument())
+                        ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $linkedRecord])
+                        : null)
+                    ->openUrlInNewTab(),
                 CloseServiceOrderAction::make()
                     ->color('gray')
                     ->hiddenLabel(),
@@ -90,7 +102,7 @@ class EditServiceOrder extends EditRecord
 
                         if ($service->hasError()) {
                             Log::error('EditServiceOrder: Erro ao deletar ordem de serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'error_code' => $service->getErrorCode(),
                                 'message' => $service->getMessage(),
                                 'service_order_id' => $record->id,
@@ -100,17 +112,18 @@ class EditServiceOrder extends EditRecord
                                 message: $service->getMessageUser(),
                                 errorCode: $service->getErrorCode()
                             );
+
                             return false;
                         }
 
                         Log::info('EditServiceOrder: Ordem de serviço deletada com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_order_id' => $record->id,
                         ]);
 
                         return $result;
                     }),
-            ])->button()
+            ])->button(),
         ];
     }
 
@@ -128,7 +141,7 @@ class EditServiceOrder extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         Log::debug('EditServiceOrder: Mutando dados antes de salvar', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_order_id' => $this->record->id,
             'data' => $data,
         ]);
@@ -165,7 +178,7 @@ class EditServiceOrder extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         Log::debug('EditServiceOrder: Iniciando atualização de ordem de serviço', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_order_id' => $record->id,
             'data' => $data,
         ]);
@@ -175,7 +188,7 @@ class EditServiceOrder extends EditRecord
 
         if ($service->hasError() || $updatedServiceOrder === null) {
             Log::error($service->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $service->getErrorCode(),
                 'message' => $service->getMessage(),
                 'errors' => $service->getErrors(),
@@ -191,7 +204,7 @@ class EditServiceOrder extends EditRecord
         }
 
         Log::info('EditServiceOrder: Ordem de serviço atualizada com sucesso', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_order_id' => $updatedServiceOrder->id,
         ]);
 
@@ -211,6 +224,7 @@ class EditServiceOrder extends EditRecord
                 message: 'Informe um valor de desconto maior que zero.',
                 errorCode: 'DISCOUNT_INVALID'
             );
+
             return;
         }
 
@@ -222,9 +236,10 @@ class EditServiceOrder extends EditRecord
 
         if ($discountAmount > $totalItemsValue) {
             notify::warning(
-                message: 'O desconto não pode ser maior que o valor total dos itens (R$ ' . number_format($totalItemsValue, 2, ',', '.') . ').',
+                message: 'O desconto não pode ser maior que o valor total dos itens (R$ '.number_format($totalItemsValue, 2, ',', '.').').',
                 errorCode: 'DISCOUNT_EXCEEDS_ITEMS'
             );
+
             return;
         }
 
@@ -233,7 +248,7 @@ class EditServiceOrder extends EditRecord
 
         if (! $result) {
             Log::error('EditServiceOrder: Erro ao aplicar desconto', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $service->getMessage(),
                 'service_order_id' => $record->id,
             ]);
@@ -242,11 +257,12 @@ class EditServiceOrder extends EditRecord
                 message: $service->getMessageUser(),
                 errorCode: $service->getErrorCode()
             );
+
             return;
         }
 
         Log::info('EditServiceOrder: Desconto aplicado com sucesso', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_order_id' => $record->id,
             'discount_amount' => $discountAmount,
         ]);
@@ -270,7 +286,7 @@ class EditServiceOrder extends EditRecord
 
         if (! $result) {
             Log::error('EditServiceOrder: Erro ao remover descontos', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $service->getMessage(),
                 'service_order_id' => $record->id,
             ]);
@@ -279,11 +295,12 @@ class EditServiceOrder extends EditRecord
                 message: $service->getMessageUser(),
                 errorCode: $service->getErrorCode()
             );
+
             return;
         }
 
         Log::info('EditServiceOrder: Descontos removidos com sucesso', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_order_id' => $record->id,
         ]);
 
@@ -293,7 +310,6 @@ class EditServiceOrder extends EditRecord
 
         redirect($this->getResource()::getUrl('edit', ['record' => $record]));
     }
-
 
     protected function getUpdatedNotificationTitle(): ?string
     {

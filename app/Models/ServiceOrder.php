@@ -7,23 +7,23 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Models\Concerns\HasAttachments;
 use App\Services\ServiceOrder\StateResolver;
 use App\Services\ServiceOrder\States\ServiceOrderState;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\Concerns\HasAttachments;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ServiceOrder extends Model
 {
     use HasAttachments;
 
     private ?array $resolvedItemsAmounts = null;
+
     private ?array $resolvedRequisitionAmounts = null;
 
     protected static function booted(): void
@@ -84,28 +84,28 @@ class ServiceOrder extends Model
     ];
 
     protected $casts = [
-        'order_date'            => 'date',
-        'scheduled_date'        => 'date',
-        'limit_date'            => 'date',
-        'completion_date'       => 'date',
-        'status'                => State::class,
-        'priority'              => Priority::class,
-        'type'                  => Type::class,
-        'payment_method'        => PaymentMethod::class,
-        'payment_condition'     => PaymentCondition::class,
-        'estimated_hours'       => 'decimal:2',
-        'actual_hours'          => 'decimal:2',
-        'value_km'              => 'decimal:2',
-        'distance_km'           => 'decimal:2',
-        'travel_value'          => 'decimal:2',
-        'warranty_expires_at'   => 'date',
-        'requires_approval'     => 'boolean',
-        'approved_by_customer'  => 'boolean',
-        'approved_at'           => 'datetime',
-        'customer_signed_at'     => 'datetime',
-        'customer_rating'       => 'decimal:1',
-        'items_received'        => 'string',
-        'additional_info'       => 'array',
+        'order_date' => 'date',
+        'scheduled_date' => 'date',
+        'limit_date' => 'date',
+        'completion_date' => 'date',
+        'status' => State::class,
+        'priority' => Priority::class,
+        'type' => Type::class,
+        'payment_method' => PaymentMethod::class,
+        'payment_condition' => PaymentCondition::class,
+        'estimated_hours' => 'decimal:2',
+        'actual_hours' => 'decimal:2',
+        'value_km' => 'decimal:2',
+        'distance_km' => 'decimal:2',
+        'travel_value' => 'decimal:2',
+        'warranty_expires_at' => 'date',
+        'requires_approval' => 'boolean',
+        'approved_by_customer' => 'boolean',
+        'approved_at' => 'datetime',
+        'customer_signed_at' => 'datetime',
+        'customer_rating' => 'decimal:1',
+        'items_received' => 'string',
+        'additional_info' => 'array',
     ];
 
     protected $appends = [
@@ -208,6 +208,25 @@ class ServiceOrder extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function linkedReturnFiscalDocuments()
+    {
+        return FiscalDocument::query()
+            ->select('fiscal_documents.*')
+            ->join('fiscal_document_item_origins', 'fiscal_documents.id', '=', 'fiscal_document_item_origins.return_fiscal_document_id')
+            ->join('remittance_assets', function ($join): void {
+                $join->on('remittance_assets.fiscal_document_id', '=', 'fiscal_document_item_origins.origin_fiscal_document_id')
+                    ->on('remittance_assets.fiscal_document_item_id', '=', 'fiscal_document_item_origins.origin_fiscal_document_item_id');
+            })
+            ->join('service_order_received_assets', 'service_order_received_assets.remittance_asset_id', '=', 'remittance_assets.id')
+            ->where('service_order_received_assets.service_order_id', $this->id)
+            ->distinct();
+    }
+
+    public function linkedReturnFiscalDocument(): ?FiscalDocument
+    {
+        return $this->linkedReturnFiscalDocuments()->first();
+    }
+
     protected function grossAmount(): Attribute
     {
         return Attribute::make(
@@ -269,9 +288,9 @@ class ServiceOrder extends Model
 
         if ($this->relationLoaded('items')) {
             return $this->resolvedItemsAmounts = [
-                'gross_amount'      => round((float) $this->items->sum('gross_amount'), 2),
-                'discount_amount'   => round((float) $this->items->sum('discount_amount'), 2),
-                'total_amount'      => round((float) $this->items->sum('total_amount'), 2),
+                'gross_amount' => round((float) $this->items->sum('gross_amount'), 2),
+                'discount_amount' => round((float) $this->items->sum('discount_amount'), 2),
+                'total_amount' => round((float) $this->items->sum('total_amount'), 2),
             ];
         }
 
@@ -285,9 +304,9 @@ class ServiceOrder extends Model
             ->first();
 
         return $this->resolvedItemsAmounts = [
-            'gross_amount'      => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
-            'discount_amount'   => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
-            'total_amount'      => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
+            'gross_amount' => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
+            'discount_amount' => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
+            'total_amount' => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
         ];
     }
 

@@ -81,8 +81,7 @@ class SchemaFormItemsNfe
                 ->schema([
                     Select::make('product_origin')
                         ->label('Origem')
-                        ->options(Origin::toSelectArray())  
-                        ->required()
+                        ->options(Origin::toSelectArray())
                         ->columnSpan(['md' => 4, 'lg' => 8])
                         ->native(false),
                     TextInput::make('ncm_code')
