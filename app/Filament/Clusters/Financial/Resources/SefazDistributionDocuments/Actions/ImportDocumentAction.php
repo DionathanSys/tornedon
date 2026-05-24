@@ -32,14 +32,9 @@ class ImportDocumentAction
                     ->body("DF-e importado para a nota de entrada #{$fiscalDocument->id}.")
                     ->success()
                     ->send();
-
-                redirect(FiscalDocumentResource::getUrl('edit', [
-                    'record' => $fiscalDocument,
-                    'tenant' => Filament::getTenant(),
-                ]));
             })
-            ->successRedirectUrl(fn (SefazDistributionDocument $record): string => SefazDistributionDocumentResource::getUrl('view', [
-                'record' => $record,
+            ->successRedirectUrl(fn(SefazDistributionDocument $record): string => FiscalDocumentResource::getUrl('edit', [
+                'record' => $record->fiscal_document_id,
                 'tenant' => Filament::getTenant(),
             ]));
     }
