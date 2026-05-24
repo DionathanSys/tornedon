@@ -77,6 +77,22 @@ class GenerateRepairReturnFiscalDocumentActionTest extends TestCase
         $component->assertRedirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
     }
 
+    public function test_edit_service_order_page_renders_remittance_tab_with_operational_data(): void
+    {
+        [$user, $company, $serviceOrder] = $this->createScenario();
+
+        $this->actingAs($user);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($company);
+
+        Livewire::test(EditServiceOrder::class, ['record' => (string) $serviceOrder->getRouteKey()])
+            ->assertSee('Remessa')
+            ->assertSee('Itens vinculados')
+            ->assertSee('Ativos recebidos pela nota de remessa')
+            ->assertSee('Notebook Panasonic Toughbook')
+            ->assertSee('7001');
+    }
+
     private function createScenario(): array
     {
         $user = User::factory()->create();

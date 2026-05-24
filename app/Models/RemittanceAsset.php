@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -73,5 +74,22 @@ class RemittanceAsset extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function linkedReturnFiscalDocument(): ?FiscalDocument
+    {
+        return FiscalDocument::query()
+            ->select('fiscal_documents.*')
+            ->join('fiscal_document_item_origins', 'fiscal_documents.id', '=', 'fiscal_document_item_origins.return_fiscal_document_id')
+            ->where('fiscal_document_item_origins.origin_fiscal_document_id', $this->fiscal_document_id)
+            ->where('fiscal_document_item_origins.origin_fiscal_document_item_id', $this->fiscal_document_item_id)
+            ->first();
+    }
+
+    protected function pendingQuantity(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => max(0, round((float) $this->received_quantity - (float) $this->returned_quantity, 4)),
+        );
     }
 }
