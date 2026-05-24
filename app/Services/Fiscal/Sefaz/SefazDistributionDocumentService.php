@@ -24,8 +24,7 @@ class SefazDistributionDocumentService
         private readonly SefazDfeStorageService $storageService,
         private readonly AuditRecorder $auditRecorder,
         private readonly SefazItemMappingService $itemMappingService,
-    ) {
-    }
+    ) {}
 
     public function persistFromDistribution(
         Company $company,
@@ -223,8 +222,7 @@ class SefazDistributionDocumentService
         string $message,
         int $attemptNumber = 1,
         bool $retryAllowed = false,
-    ): void
-    {
+    ): void {
         $document->forceFill([
             'status' => $document->full_xml_available ? Status::FULL_XML_AVAILABLE : Status::ERROR,
             'manifestation_status' => ManifestationStatus::FAILED,
@@ -486,6 +484,8 @@ class SefazDistributionDocumentService
             'last_action_at' => now(),
         ])->save();
 
+        $this->itemMappingService->syncMappings($document->fresh(), $document->items_json ?? [], $actorUserId);
+
         $this->recordAuditEvent(
             $document->fresh(),
             event: 'sefaz_distribution.reprocessed',
@@ -606,19 +606,21 @@ class SefazDistributionDocumentService
                     return $item;
                 }
 
-                $mappedProductId = $this->itemMappingService->findMappedProductId(
+                $mapping = $this->itemMappingService->findMapping(
                     $companyId,
                     $partnerId,
                     $item['product_code'] ?? null,
                 );
 
-                if ($mappedProductId === null) {
+                if (! $mapping) {
                     return $item;
                 }
 
+                $mappedProductId = $mapping->product_id;
                 $partnerProduct = \App\Models\Product::query()->find($mappedProductId);
                 $item['product_id'] = $mappedProductId;
                 $item['product_name'] = $partnerProduct?->name;
+                $item['product_unit'] = $mapping->product_unit;
 
                 return $item;
             })

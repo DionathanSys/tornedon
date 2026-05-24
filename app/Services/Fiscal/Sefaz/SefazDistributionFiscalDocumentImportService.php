@@ -4,7 +4,6 @@ namespace App\Services\Fiscal\Sefaz;
 
 use App\Enum\Audit\AuditSource;
 use App\Enum\FiscalDocument\DocumentModel;
-use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Models\FiscalDocument;
@@ -22,8 +21,7 @@ class SefazDistributionFiscalDocumentImportService
         private readonly SefazDistributionDocumentService $distributionDocumentService,
         private readonly AuditRecorder $auditRecorder,
         private readonly SefazItemMappingService $itemMappingService,
-    ) {
-    }
+    ) {}
 
     public function import(SefazDistributionDocument $distributionDocument, ?int $actorUserId = null): FiscalDocument
     {
@@ -219,13 +217,17 @@ class SefazDistributionFiscalDocumentImportService
             ->map(function (array $item) use ($distributionDocument, $mappedItems): array {
                 $mapped = $mappedItems->get((string) ($item['line'] ?? '')) ?? [];
                 $productId = $mapped['product_id'] ?? null;
+                $mappedUnit = $mapped['product_unit'] ?? null;
 
                 if ($productId === null) {
-                    $productId = $this->itemMappingService->findMappedProductId(
+                    $mapping = $this->itemMappingService->findMapping(
                         $distributionDocument->company_id,
                         $distributionDocument->partner_id,
                         $item['product_code'] ?? null,
                     );
+
+                    $productId = $mapping?->product_id;
+                    $mappedUnit ??= $mapping?->product_unit;
                 }
 
                 if ($productId === null) {
@@ -243,8 +245,8 @@ class SefazDistributionFiscalDocumentImportService
                     'barcode' => $item['barcode'] ?? null,
                     'cfop_code' => $item['cfop_code'] ?? null,
                     'quantity' => $item['quantity'] ?? null,
-                    'unit_of_measure' => $item['unit_of_measure'] ?? null,
-                    'taxable_unit' => $item['taxable_unit'] ?? null,
+                    'unit_of_measure' => $mappedUnit ?: ($item['unit_of_measure'] ?? null),
+                    'taxable_unit' => $mappedUnit ?: ($item['taxable_unit'] ?? null),
                     'taxable_quantity' => $item['taxable_quantity'] ?? null,
                     'taxable_unit_price' => $item['taxable_unit_price'] ?? null,
                     'unit_price' => $item['unit_price'] ?? null,
@@ -270,11 +272,11 @@ class SefazDistributionFiscalDocumentImportService
     private function assertAllItemsAreMapped(array $items): void
     {
         $unmappedItems = collect($items)
-            ->filter(fn(array $item): bool => empty($item['product_id']))
+            ->filter(fn (array $item): bool => empty($item['product_id']))
             ->map(function (array $item): string {
                 $parts = array_filter([
-                    isset($item['item_number']) ? 'item ' . $item['item_number'] : null,
-                    ! empty($item['product_code']) ? 'cod. ' . $item['product_code'] : null,
+                    isset($item['item_number']) ? 'item '.$item['item_number'] : null,
+                    ! empty($item['product_code']) ? 'cod. '.$item['product_code'] : null,
                     ! empty($item['description']) ? $item['description'] : null,
                 ]);
 
@@ -288,7 +290,7 @@ class SefazDistributionFiscalDocumentImportService
 
         throw new \RuntimeException(
             'Nao e possivel importar o DF-e sem vincular todos os itens a produtos internos. Itens pendentes: '
-            . $unmappedItems->implode('; ')
+            .$unmappedItems->implode('; ')
         );
     }
 

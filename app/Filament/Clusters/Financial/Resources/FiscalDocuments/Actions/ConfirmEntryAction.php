@@ -6,8 +6,8 @@ use App\Enum\FiscalDocument\Status;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\CompanyCreditCard;
-use App\Models\FiscalDocument;
 use App\Models\FinancialCategory;
+use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
@@ -23,6 +23,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 final class ConfirmEntryAction
 {
@@ -35,12 +36,13 @@ final class ConfirmEntryAction
             ->modalWidth('lg')
             ->modalHeading('Confirmar Documento Fiscal')
             ->modalDescription('Confirme a entrada para gerar as movimentações de estoque. O financeiro pode ser gerado agora como conta a pagar ou como lançamento de cartão corporativo.')
-            ->visible(fn(FiscalDocument $record): bool => ! $record->confirmed)
-            ->schema(fn(FiscalDocument $record): array => self::buildFormSchema($record))
+            ->visible(fn (FiscalDocument $record): bool => ! $record->confirmed)
+            ->schema(fn (FiscalDocument $record): array => self::buildFormSchema($record))
             ->action(function (Action $action, FiscalDocument $record, array $data): void {
                 // Bloqueia reprocessamento
                 if ($record->accountPayables()->exists() || $record->confirmed) {
                     notify::error(title: 'Falha ao confirmar', message: 'Este documento fiscal já gerou movimentações financeiras.');
+
                     return;
                 }
 
@@ -75,49 +77,48 @@ final class ConfirmEntryAction
                             'errors' => [...$stockResult['errors'], ...$payableResult['errors'], ...$cardResult['errors']],
                         ];
 
+                        if (! empty($result['errors'])) {
+                            throw new RuntimeException(implode('; ', $result['errors']));
+                        }
+
                         // Marca a nota como confirmada
                         $record->update([
-                            'status'       => Status::CONFIRMED->value,
-                            'pending'      => false,
-                            'confirmed'    => true,
+                            'status' => Status::CONFIRMED->value,
+                            'pending' => false,
+                            'confirmed' => true,
                             'confirmed_at' => now(),
                             'confirmed_by' => $userId,
-                            'updated_by'   => $userId,
+                            'updated_by' => $userId,
                         ]);
 
                         Log::info('ConfirmEntryAction: Processamento concluído', [
-                            'metodo'             => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'fiscal_document_id' => $record->id,
-                            'stock_movements'    => $result['stock_movements'],
-                            'payables'           => $result['payables'],
-                            'card_transactions'  => $result['card_transactions'],
-                            'errors'             => $result['errors'],
+                            'stock_movements' => $result['stock_movements'],
+                            'payables' => $result['payables'],
+                            'card_transactions' => $result['card_transactions'],
+                            'errors' => $result['errors'],
                         ]);
 
-                        if (! empty($result['errors'])) {
-                            $warningMsg = 'Nota confirmada com alertas: ' . implode('; ', $result['errors']);
-                            notify::warning(message: $warningMsg);
+                        if ($result['card_transactions'] > 0) {
+                            $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['card_transactions']} lançamento(s) no cartão corporativo gerados.";
+                        } elseif ($result['payables'] > 0) {
+                            $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['payables']} conta(s) a pagar geradas.";
                         } else {
-                            if ($result['card_transactions'] > 0) {
-                                $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['card_transactions']} lançamento(s) no cartão corporativo gerados.";
-                            } elseif ($result['payables'] > 0) {
-                                $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['payables']} conta(s) a pagar geradas.";
-                            } else {
-                                $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque processadas. Nenhum lançamento financeiro foi gerado.";
-                            }
-
-                            notify::success($msg);
+                            $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque processadas. Nenhum lançamento financeiro foi gerado.";
                         }
+
+                        notify::success($msg);
                     });
                 } catch (\Exception $e) {
                     Log::error('ConfirmEntryAction: Erro ao processar nota de entrada', [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'fiscal_document_id' => $record->id,
-                        'exception'          => $e->getMessage(),
-                        'trace'              => $e->getTraceAsString(),
+                        'exception' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
                     ]);
 
-                    notify::error(message: 'Erro ao confirmar nota: ' . $e->getMessage());
+                    notify::error(message: 'Erro ao confirmar nota: '.$e->getMessage());
                     $action->halt();
                 }
             });
@@ -127,8 +128,8 @@ final class ConfirmEntryAction
     {
         // Pré-calcula o total da nota a partir dos itens
         $record->loadMissing('items');
-        $totalAmount = $record->items->sum(fn($i) => (float) $i->total_price);
-        $totalFormatted = 'R$ ' . number_format($totalAmount, 2, ',', '.');
+        $totalAmount = $record->items->sum(fn ($i) => (float) $i->total_price);
+        $totalFormatted = 'R$ '.number_format($totalAmount, 2, ',', '.');
 
         return [
             Toggle::make('generate_account_payable_now')
@@ -175,8 +176,8 @@ final class ConfirmEntryAction
                         return;
                     }
                     $condition = Condition::from($state);
-                    $baseDate  = $record->issued_at ?? now();
-                    $days      = $condition->days();
+                    $baseDate = $record->issued_at ?? now();
+                    $days = $condition->days();
                     $set('due_date', Carbon::parse($baseDate)->addDays($days)->format('Y-m-d'));
                 })
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))

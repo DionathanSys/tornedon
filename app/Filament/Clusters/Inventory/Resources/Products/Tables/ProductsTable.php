@@ -72,7 +72,8 @@ class ProductsTable
                     ->badge()
                     ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
                     ->color(fn($state) => $state ? 'success' : 'danger')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')

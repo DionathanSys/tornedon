@@ -8,6 +8,7 @@ use App\Enum\SefazDistributionDocument\Status;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\Product;
+use App\Models\ProductAlternativeUnit;
 use App\Models\SefazDistributionDocument;
 use App\Models\User;
 use App\Services\Fiscal\Sefaz\SefazDistributionFiscalDocumentImportService;
@@ -34,8 +35,13 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
             'is_active' => true,
             'created_by' => $user->id,
         ]);
+        ProductAlternativeUnit::query()->create([
+            'product_id' => $product->id,
+            'unit' => 'CX',
+            'conversion_factor' => 12,
+        ]);
 
-        $xmlPath = 'sefaz/distribution/company-' . $company->id . '/35260412345678000199550010000003211000000321/full/test.xml';
+        $xmlPath = 'sefaz/distribution/company-'.$company->id.'/35260412345678000199550010000003211000000321/full/test.xml';
         Storage::disk('local')->put($xmlPath, $this->fullXml());
 
         $distributionDocument = SefazDistributionDocument::query()->create([
@@ -58,6 +64,8 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
                     'line' => 1,
                     'product_code' => 'P001',
                     'description' => 'Produto Teste',
+                    'product_id' => $product->id,
+                    'product_unit' => 'CX',
                 ],
             ],
             'import_ready_at' => now(),
@@ -87,6 +95,8 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
             'product_code' => 'P001',
             'description' => 'Produto Teste',
             'cfop_code' => '1102',
+            'unit_of_measure' => 'CX',
+            'taxable_unit' => 'CX',
         ]);
 
         $distributionDocument->refresh();
@@ -116,7 +126,7 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
         $user = User::factory()->create();
         $company = $this->createCompany($user);
 
-        $xmlPath = 'sefaz/distribution/company-' . $company->id . '/35260412345678000199550010000003211000000321/full/test.xml';
+        $xmlPath = 'sefaz/distribution/company-'.$company->id.'/35260412345678000199550010000003211000000321/full/test.xml';
         Storage::disk('local')->put($xmlPath, $this->fullXml());
 
         $existingFiscalDocument = FiscalDocument::query()->create([
@@ -172,7 +182,7 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
         $user = User::factory()->create();
         $company = $this->createCompany($user);
 
-        $xmlPath = 'sefaz/distribution/company-' . $company->id . '/35260412345678000199550010000003211000000321/full/test-unmapped.xml';
+        $xmlPath = 'sefaz/distribution/company-'.$company->id.'/35260412345678000199550010000003211000000321/full/test-unmapped.xml';
         Storage::disk('local')->put($xmlPath, $this->fullXml());
 
         $distributionDocument = SefazDistributionDocument::query()->create([
@@ -219,10 +229,10 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
     private function createCompany(User $user): Company
     {
         return Company::query()->create([
-            'name' => 'Empresa Importacao ' . Str::uuid(),
+            'name' => 'Empresa Importacao '.Str::uuid(),
             'document_number' => '22345678000188',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
-            'email' => Str::uuid() . '@example.com',
+            'email' => Str::uuid().'@example.com',
             'certificate' => 'certificados/teste.pfx',
             'is_active' => true,
             'created_by' => $user->id,
@@ -237,7 +247,7 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
 
     private function fullXml(): string
     {
-        return <<<XML
+        return <<<'XML'
 <procNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
   <NFe>
     <infNFe Id="NFe35260412345678000199550010000003211000000321" versao="4.00">

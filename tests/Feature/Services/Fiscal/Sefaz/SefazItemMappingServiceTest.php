@@ -6,6 +6,7 @@ use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
 use App\Models\Company;
 use App\Models\Product;
+use App\Models\ProductAlternativeUnit;
 use App\Models\SefazDistributionDocument;
 use App\Models\User;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
@@ -33,6 +34,11 @@ class SefazItemMappingServiceTest extends TestCase
             'is_active' => true,
             'created_by' => $user->id,
         ]);
+        ProductAlternativeUnit::query()->create([
+            'product_id' => $product->id,
+            'unit' => 'CX',
+            'conversion_factor' => 12,
+        ]);
 
         $documentService = app(SefazDistributionDocumentService::class);
         $partner = $documentService->resolveOrCreatePartner($company, '12345678000199', 'Fornecedor Mapeado');
@@ -54,6 +60,7 @@ class SefazItemMappingServiceTest extends TestCase
                     'description' => 'Item XML 01',
                     'product_id' => $product->id,
                     'product_name' => $product->name,
+                    'product_unit' => 'CX',
                 ],
             ],
             'import_ready_at' => now(),
@@ -66,6 +73,7 @@ class SefazItemMappingServiceTest extends TestCase
             'company_id' => $company->id,
             'partner_id' => $partner->id,
             'product_id' => $product->id,
+            'product_unit' => 'CX',
             'xml_item_code' => 'ITEM-XML-01',
         ]);
     }
@@ -83,6 +91,11 @@ class SefazItemMappingServiceTest extends TestCase
             'unit' => 'UN',
             'is_active' => true,
             'created_by' => $user->id,
+        ]);
+        ProductAlternativeUnit::query()->create([
+            'product_id' => $product->id,
+            'unit' => 'CX',
+            'conversion_factor' => 12,
         ]);
 
         $documentService = app(SefazDistributionDocumentService::class);
@@ -105,6 +118,7 @@ class SefazItemMappingServiceTest extends TestCase
                     'description' => 'Item XML 01',
                     'product_id' => $product->id,
                     'product_name' => $product->name,
+                    'product_unit' => 'CX',
                 ],
             ],
             'import_ready_at' => now(),
@@ -129,15 +143,16 @@ class SefazItemMappingServiceTest extends TestCase
         $this->assertSame($partner->id, $result->partner_id);
         $this->assertSame($product->id, data_get($result->items_json, '0.product_id'));
         $this->assertSame($product->name, data_get($result->items_json, '0.product_name'));
+        $this->assertSame('CX', data_get($result->items_json, '0.product_unit'));
     }
 
     private function createCompany(User $user): Company
     {
         return Company::query()->create([
-            'name' => 'Empresa Mapping ' . Str::uuid(),
+            'name' => 'Empresa Mapping '.Str::uuid(),
             'document_number' => '22345678000188',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
-            'email' => Str::uuid() . '@example.com',
+            'email' => Str::uuid().'@example.com',
             'certificate' => 'certificados/teste.pfx',
             'is_active' => true,
             'created_by' => $user->id,
@@ -146,7 +161,7 @@ class SefazItemMappingServiceTest extends TestCase
 
     private function fullXml(): string
     {
-        return <<<XML
+        return <<<'XML'
 <procNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
   <NFe>
     <infNFe Id="NFe35260412345678000199550010000003211000000321" versao="4.00">

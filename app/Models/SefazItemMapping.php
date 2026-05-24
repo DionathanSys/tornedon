@@ -11,6 +11,7 @@ class SefazItemMapping extends Model
         'company_id',
         'partner_id',
         'product_id',
+        'product_unit',
         'xml_item_code',
         'xml_barcode',
         'xml_description',

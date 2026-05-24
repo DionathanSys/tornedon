@@ -2,12 +2,13 @@
 
 namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Pages;
 
-use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Origin;
+use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
 use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Actions\SefazDistributionDocumentRecordActions;
 use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDistributionDocumentResource;
 use App\Filament\Clusters\Inventory\Resources\Products\ProductResource;
+use App\Models\Category;
 use App\Models\Product;
 use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use App\Services\Product\ProductService;
@@ -39,7 +40,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ->label('Cad. Produto')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
-                    ->url(fn(): string => ProductResource::getUrl('create', [
+                    ->url(fn (): string => ProductResource::getUrl('create', [
                         'tenant' => Filament::getTenant(),
                     ]))
                     ->openUrlInNewTab(),
@@ -54,8 +55,8 @@ class ViewSefazDistributionDocument extends ViewRecord
                             ->color('secondary'),
                     ])
                     ->modalSubmitAction(fn (Action $action) => $action->label('Criar'))
-                    ->visible(fn(): bool => ! empty(($this->record->items_json ?? [])))
-                    ->schema(fn(Schema $schema) => $schema
+                    ->visible(fn (): bool => ! empty(($this->record->items_json ?? [])))
+                    ->schema(fn (Schema $schema) => $schema
                         ->columns(4)
                         ->components([
                             Select::make('item_index')
@@ -71,7 +72,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                             $line = $item['line'] ?? ($index + 1);
                                             $code = trim((string) ($item['product_code'] ?? ''));
                                             $description = trim((string) ($item['description'] ?? 'Sem descrição'));
-                                            $label = 'Linha ' . $line . ' - ' . ($code !== '' ? '[' . $code . '] ' : '') . $description;
+                                            $label = 'Linha '.$line.' - '.($code !== '' ? '['.$code.'] ' : '').$description;
 
                                             return [$index => mb_substr($label, 0, 180)];
                                         })
@@ -93,6 +94,18 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->rows(2)
                                 ->columnSpanFull()
                                 ->maxLength(500),
+                            Select::make('category_id')
+                                ->label('Categoria')
+                                ->native(false)
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(2)
+                                ->options(fn (): array => Category::query()
+                                    ->where('company_id', $this->record->company_id)
+                                    ->where('is_active', true)
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->all()),
                             Select::make('unit')
                                 ->label('Unidade')
                                 ->required()
@@ -138,7 +151,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->default(0),
                             Money::make('min_sale_price')
                                 ->label('Preço mínimo de venda')
-                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1),
                             Select::make('origin_sale_price')
                                 ->label('Origem do preço de venda')
@@ -148,9 +161,9 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 ->live(),
                             Money::make('sale_price_value')
                                 ->label('Valor de venda fixo')
-                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                 ->columnSpan(1)
-                                ->visible(fn(callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
+                                ->visible(fn (callable $get): bool => (string) $get('origin_sale_price') === OriginSalePrice::FIXED->value),
                             Toggle::make('has_stock_control')
                                 ->label('Controla estoque?')
                                 ->columnSpan(1)
@@ -183,6 +196,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                         $productPayload = [
                             'name' => (string) ($data['name'] ?? ''),
                             'description' => (string) ($data['description'] ?? ''),
+                            'category_id' => $data['category_id'] ? (int) $data['category_id'] : null,
                             'company_id' => (int) $this->record->company_id,
                             'unit' => (string) ($data['unit'] ?? Unit::UN->value),
                             'manufacturer_code' => (string) ($data['manufacturer_code'] ?? ''),
@@ -197,12 +211,12 @@ class ViewSefazDistributionDocument extends ViewRecord
                                 'product_origin' => (string) ($data['xml_product_origin'] ?? Origin::NACIONAL->value),
                                 'ncm_code' => (string) ($item['ncm'] ?? $item['ncm_code'] ?? ''),
                                 'cest_code' => (string) ($item['cest'] ?? $item['cest_code'] ?? ''),
-                            ], fn($value): bool => $value !== ''),
+                            ], fn ($value): bool => $value !== ''),
                             'external_reference_codes' => array_filter([
                                 'xml_product_code' => (string) ($item['product_code'] ?? ''),
                                 'xml_ncm' => (string) ($item['ncm'] ?? ''),
                                 'xml_cfop' => (string) ($item['cfop'] ?? ''),
-                            ], fn($value): bool => $value !== ''),
+                            ], fn ($value): bool => $value !== ''),
                         ];
 
                         $product = $productService->create($productPayload, (int) Auth::id());
@@ -225,6 +239,7 @@ class ViewSefazDistributionDocument extends ViewRecord
 
                                 $currentItem['product_id'] = $product->id;
                                 $currentItem['product_name'] = $product->name;
+                                $currentItem['product_unit'] = $product->unit?->value ?? (string) $product->unit;
 
                                 return $currentItem;
                             })
@@ -239,7 +254,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                         Notification::make()
                             ->title('Produto cadastrado e vinculado')
                             ->success()
-                            ->body('Produto ' . $product->name . ' vinculado ao item selecionado do DF-e.')
+                            ->body('Produto '.$product->name.' vinculado ao item selecionado do DF-e.')
                             ->send();
 
                         $this->record = $this->record->fresh();
@@ -259,7 +274,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->size(Size::Small)
                     ->url(SefazDistributionDocumentResource::getUrl()),
-            ])->label('Ações')->button()
+            ])->label('Ações')->button(),
         ];
     }
 
