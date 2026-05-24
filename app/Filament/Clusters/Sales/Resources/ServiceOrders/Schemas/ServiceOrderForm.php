@@ -389,11 +389,60 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                         TextEntry::make('remittance_origin_document')
                                             ->label('NF de remessa')
-                                            ->state(fn (ServiceOrder $record): string => $record->remittanceAssets()->first()?->fiscalDocument?->document_number ?? '-')
+                                            ->state(function (ServiceOrder $record): string {
+                                                $originDocument = $record->remittanceAssets()
+                                                    ->with('fiscalDocument')
+                                                    ->first()
+                                                    ?->fiscalDocument;
+
+                                                if ($originDocument === null) {
+                                                    return '-';
+                                                }
+
+                                                $number = $originDocument->document_number;
+                                                $series = $originDocument->document_series;
+
+                                                if (filled($number) && filled($series)) {
+                                                    return sprintf('%s / Série %s', $number, $series);
+                                                }
+
+                                                if (filled($number)) {
+                                                    return (string) $number;
+                                                }
+
+                                                if (filled($originDocument->document_key)) {
+                                                    return 'Chave ' . $originDocument->document_key;
+                                                }
+
+                                                return 'Documento #' . $originDocument->id;
+                                            })
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                         TextEntry::make('remittance_return_document')
                                             ->label('NF de retorno')
-                                            ->state(fn (ServiceOrder $record): string => $record->linkedReturnFiscalDocument()?->document_number ?? '-')
+                                            ->state(function (ServiceOrder $record): string {
+                                                $returnDocument = $record->linkedReturnFiscalDocument();
+
+                                                if ($returnDocument === null) {
+                                                    return '-';
+                                                }
+
+                                                $number = $returnDocument->document_number;
+                                                $series = $returnDocument->document_series;
+
+                                                if (filled($number) && filled($series)) {
+                                                    return sprintf('%s / Série %s', $number, $series);
+                                                }
+
+                                                if (filled($number)) {
+                                                    return (string) $number;
+                                                }
+
+                                                if (filled($returnDocument->document_key)) {
+                                                    return 'Chave ' . $returnDocument->document_key;
+                                                }
+
+                                                return 'Documento #' . $returnDocument->id;
+                                            })
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                     ]),
                                 Section::make('Ativos recebidos')
