@@ -10,6 +10,8 @@ use App\Enum\Financial\FinancialAccountType;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
+use App\Models\AccountPayable;
+use App\Models\AccountPayableInstallment;
 use App\Models\CompanyCreditCard;
 use App\Models\Company;
 use App\Models\FiscalDocument;
@@ -91,6 +93,80 @@ class ProcessFiscalEntryActionTest extends TestCase
         $this->assertCount(0, $result['errors']);
         $this->assertDatabaseCount('account_payables', 1);
         $this->assertDatabaseCount('account_payable_installments', 1);
+    }
+
+    public function test_generate_fiscal_entry_payable_creates_single_account_with_multiple_installments(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::create([
+            'name' => 'Empresa Entrada Parcelada',
+            'document_number' => '12345678000179',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $supplier = Partner::create([
+            'name' => 'Fornecedor Parcelado',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000157',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::create([
+            'customer_id' => $supplier->id,
+            'company_id' => $company->id,
+            'status' => FiscalDocumentStatus::CONFIRMED->value,
+            'issued_at' => '2026-04-08',
+            'movement_at' => '2026-04-08',
+            'document_type' => DocumentModel::NFE->value,
+            'operation_type' => OperationType::ENTRADA->value,
+            'document_number' => 'NF-ENT-102',
+            'document_series' => '1',
+            'created_by' => $user->id,
+        ]);
+
+        FiscalDocumentItem::create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => null,
+            'product_code' => 'SRV-001',
+            'description' => 'Servico parcelado',
+            'item_number' => 1,
+            'product_origin' => null,
+            'ncm_code' => null,
+            'cfop_code' => null,
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 200,
+            'total_price' => 200,
+            'included_in_total' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $result = app(GenerateFiscalEntryPayableAction::class)->execute($document, [
+            'payment_method' => Method::PIX->value,
+            'payment_condition' => Condition::DAYS_30_60->value,
+            'due_date' => '2026-05-08',
+            'description' => 'NF parcelada teste',
+        ], $user->id);
+
+        $resultJson = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $this->assertSame(1, $result['payables'], $resultJson ?: 'Sem retorno serializavel.');
+        $this->assertCount(0, $result['errors']);
+        $this->assertDatabaseCount('account_payables', 1);
+        $this->assertDatabaseCount('account_payable_installments', 2);
+
+        $accountPayable = AccountPayable::query()->with('installments')->sole();
+
+        $this->assertEquals(200.0, (float) $accountPayable->due_amount);
+
+        $installments = $accountPayable->installments->sortBy('sequence_number')->values();
+
+        $this->assertCount(2, $installments);
+        $this->assertSame(['01', '02'], $installments->pluck('sequence_number')->all());
+        $this->assertSame(['2026-05-08', '2026-06-07'], $installments->map(fn (AccountPayableInstallment $installment): string => $installment->due_date->toDateString())->all());
+        $this->assertSame([100.0, 100.0], $installments->map(fn (AccountPayableInstallment $installment): float => (float) $installment->due_amount)->all());
     }
 
     public function test_process_fiscal_entry_stock_uses_taxable_unit_and_quantity_when_available(): void
