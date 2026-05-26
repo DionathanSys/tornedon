@@ -14,6 +14,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
@@ -41,6 +42,7 @@ class EditFiscalDocument extends EditRecord
         'rps_series',
         'document_key',
         'errors_messages',
+        'nfe_payload',
     ];
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -229,6 +231,78 @@ class EditFiscalDocument extends EditRecord
                         }
 
                         notify::error($service->getMessage());
+                    }),
+
+                Action::make('corrigir_nfe')
+                    ->label('Carta de Correção')
+                    ->icon(Heroicon::PencilSquare)
+                    ->color('warning')
+                    ->modalHeading('Emitir Carta de Correção')
+                    ->modalDescription('Use este evento apenas para correções permitidas pela legislação da NF-e.')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
+                    ->schema([
+                        Textarea::make('justificativa')
+                            ->label('Correção')
+                            ->required()
+                            ->minLength(15)
+                            ->maxLength(1000)
+                            ->rows(5),
+                        TextInput::make('sequencial')
+                            ->label('Sequencial do Evento')
+                            ->helperText('Deixe em branco para a API controlar automaticamente. Preencha apenas se já houve carta de correção emitida fora da IntegraNotas.')
+                            ->numeric()
+                            ->minValue(1),
+                    ])
+                    ->action(function (FiscalDocument $record, array $data): void {
+                        $service = app(NfeDocumentService::class);
+                        $service->corrigir(
+                            $record,
+                            $data['justificativa'],
+                            filled($data['sequencial'] ?? null) ? (int) $data['sequencial'] : null,
+                            Auth::id()
+                        );
+                        $this->syncFiscalDocumentState();
+
+                        if ($service->isSuccess()) {
+                            notify::success($service->getMessage());
+
+                            return;
+                        }
+
+                        notify::error($service->getMessage());
+                    }),
+
+                Action::make('baixar_carta_correcao_nfe')
+                    ->label('Baixar Carta de Correção')
+                    ->icon(Heroicon::DocumentArrowDown)
+                    ->color('info')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfe() && $this->buildCorrectionOptions($record) !== [])
+                    ->schema([
+                        Select::make('correction_index')
+                            ->label('Carta de Correção')
+                            ->options(fn (FiscalDocument $record): array => $this->buildCorrectionOptions($record))
+                            ->required()
+                            ->native(false),
+                        Select::make('download_type')
+                            ->label('Arquivo')
+                            ->options([
+                                'pdf' => 'PDF',
+                                'xml' => 'XML',
+                            ])
+                            ->default('pdf')
+                            ->required()
+                            ->native(false),
+                    ])
+                    ->action(function (FiscalDocument $record, array $data): StreamedResponse {
+                        $correction = $this->getSelectedCorrection($record, (int) $data['correction_index']);
+
+                        if ($correction === null) {
+                            notify::error('Carta de correção não encontrada para download.');
+
+                            return response()->streamDownload(fn () => null, 'carta-correcao-nfe.txt');
+                        }
+
+                        return $this->downloadCorrectionFile($record, $correction, $data['download_type']);
                     }),
 
                 Action::make('emitir_nfse')
@@ -477,6 +551,76 @@ class EditFiscalDocument extends EditRecord
         }
 
         return preg_replace('/<br\s*\/?\>/i', PHP_EOL, $message);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildCorrectionOptions(FiscalDocument $record): array
+    {
+        $corrections = data_get($record->nfe_payload, 'correcoes', []);
+
+        if (! is_array($corrections)) {
+            return [];
+        }
+
+        $options = [];
+
+        foreach ($corrections as $index => $correction) {
+            if (! is_array($correction)) {
+                continue;
+            }
+
+            $number = $correction['sequencial'] ?? ((int) $index + 1);
+            $protocol = $correction['protocolo'] ?? null;
+
+            $label = 'CC-e '.$number;
+
+            if (filled($protocol)) {
+                $label .= ' - Prot. '.$protocol;
+            }
+
+            $options[(string) $index] = $label;
+        }
+
+        return $options;
+    }
+
+    private function getSelectedCorrection(FiscalDocument $record, int $index): ?array
+    {
+        $corrections = data_get($record->nfe_payload, 'correcoes', []);
+
+        if (! is_array($corrections)) {
+            return null;
+        }
+
+        $correction = $corrections[$index] ?? null;
+
+        return is_array($correction) ? $correction : null;
+    }
+
+    private function downloadCorrectionFile(FiscalDocument $record, array $correction, string $downloadType): StreamedResponse
+    {
+        $isXml = $downloadType === 'xml';
+        $contentBase64 = $isXml
+            ? ($correction['xml_base64'] ?? null)
+            : ($correction['pdf_base64'] ?? null);
+
+        if (! is_string($contentBase64) || trim($contentBase64) === '') {
+            notify::error('O arquivo da carta de correção selecionada não está disponível para download.');
+
+            return response()->streamDownload(fn () => null, $isXml ? 'carta-correcao-nfe.xml' : 'carta-correcao-nfe.pdf');
+        }
+
+        $number = $correction['sequencial'] ?? '1';
+        $documentNumber = $record->document_number ?? $record->id;
+        $filename = 'CCE-NFE-'.$documentNumber.'-'.$number.'.'.($isXml ? 'xml' : 'pdf');
+
+        return response()->streamDownload(function () use ($contentBase64) {
+            echo base64_decode($contentBase64);
+        }, $filename, [
+            'Content-Type' => $isXml ? 'application/xml' : 'application/pdf',
+        ]);
     }
 
     private function buildAdditionalPurchaseInformation(array $data): ?string

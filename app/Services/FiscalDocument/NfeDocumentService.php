@@ -7,6 +7,7 @@ use App\Jobs\ProcessQueuedNfeEmissionJob;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Actions\CancelNfeAction;
 use App\Services\FiscalDocument\Actions\ConsultNfeAction;
+use App\Services\FiscalDocument\Actions\CorrectNfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfeDanfeAction;
 use App\Services\FiscalDocument\Actions\PrintNfePreviewAction;
 use App\Services\FiscalDocument\Actions\SaveFiscalDocumentErrorAction;
@@ -323,6 +324,59 @@ class NfeDocumentService
             ]);
 
             Log::error('NfeDocumentService::cancelar', [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'fiscal_document_id' => $doc->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Emite uma carta de correção para uma NF-e autorizada (síncrono).
+     */
+    public function corrigir(
+        FiscalDocument $doc,
+        string $justificativa,
+        ?int $sequencial = null,
+        ?int $userId = null
+    ): bool {
+        $this->resetResponse();
+
+        try {
+            $action = new CorrectNfeAction;
+            $result = $action->execute($doc, $justificativa, $sequencial);
+
+            if (! $result || $action->hasError()) {
+                $this->setError($action->getMessage(), $action->getErrors());
+                $this->persistActionError($doc, 'corrigir', $this->getMessageUser(), [
+                    'erros' => $action->getErrors(),
+                    'contexto' => [
+                        'justificativa' => $justificativa,
+                        'sequencial' => $sequencial,
+                        'user_id' => $userId,
+                    ],
+                ]);
+
+                return false;
+            }
+
+            $this->setSuccess('Carta de correção emitida com sucesso.');
+
+            return true;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao emitir carta de correção da NF-e: '.$e->getMessage());
+            $this->persistActionError($doc, 'corrigir', $this->getMessageUser(), [
+                'contexto' => [
+                    'justificativa' => $justificativa,
+                    'sequencial' => $sequencial,
+                    'user_id' => $userId,
+                    'exception' => $e->getMessage(),
+                ],
+            ]);
+
+            Log::error('NfeDocumentService::corrigir', [
                 'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $doc->id,
                 'exception' => $e->getMessage(),
