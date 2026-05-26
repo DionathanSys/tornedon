@@ -496,6 +496,70 @@ class FiscalDocumentForm
                                             ->default([]),
                                     ]),
                             ]),
+
+                        Tab::make('Cartas de Correção')
+                            ->visible(fn (?FiscalDocument $record, $operation): bool => $operation === 'edit'
+                                && $record?->isNfe()
+                                && is_array(data_get($record?->nfe_payload, 'correcoes'))
+                                && data_get($record?->nfe_payload, 'correcoes') !== [])
+                            ->columnSpanFull()
+                            ->columns(['md' => 6, 'lg' => 12])
+                            ->schema([
+                                Section::make('Histórico de Cartas de Correção')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        Repeater::make('nfe_payload.correcoes')
+                                            ->label('Cartas emitidas')
+                                            ->columnSpanFull()
+                                            ->compact()
+                                            ->columns(['md' => 6, 'lg' => 12])
+                                            ->table([
+                                                TableColumn::make('Nº')
+                                                    ->width('80px'),
+                                                TableColumn::make('Protocolo')
+                                                    ->width('180px'),
+                                                TableColumn::make('Data/Hora')
+                                                    ->width('180px'),
+                                                TableColumn::make('Arquivos')
+                                                    ->width('120px'),
+                                            ])
+                                            ->schema([
+                                                TextInput::make('sequencial')
+                                                    ->label('Número da Carta')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->disabled(),
+                                                TextInput::make('protocolo')
+                                                    ->label('Protocolo')
+                                                    ->columnSpan(['md' => 2, 'lg' => 3])
+                                                    ->disabled(),
+                                                TextInput::make('data_hora_evento')
+                                                    ->label('Data/Hora do Evento')
+                                                    ->columnSpan(['md' => 2, 'lg' => 3])
+                                                    ->disabled(),
+                                                TextInput::make('arquivos')
+                                                    ->label('Arquivos')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn ($state, Get $get): string => sprintf(
+                                                        'PDF: %s | XML: %s',
+                                                        filled($get('pdf_base64')) ? 'sim' : 'nao',
+                                                        filled($get('xml_base64')) ? 'sim' : 'nao',
+                                                    ))
+                                                    ->disabled(),
+                                                Textarea::make('justificativa')
+                                                    ->label('Texto da Correção')
+                                                    ->rows(4)
+                                                    ->columnSpanFull()
+                                                    ->disabled(),
+                                            ])
+                                            ->addable(false)
+                                            ->deletable(false)
+                                            ->reorderable(false)
+                                            ->collapsed(false)
+                                            ->dehydrated(false)
+                                            ->default([]),
+                                    ]),
+                            ]),
                     ]),
             ]);
     }

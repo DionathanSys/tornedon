@@ -249,7 +249,7 @@ class EditFiscalDocument extends EditRecord
                             ->rows(5),
                         TextInput::make('sequencial')
                             ->label('Sequencial do Evento')
-                            ->helperText('Deixe em branco para a API controlar automaticamente. Preencha apenas se já houve carta de correção emitida fora da IntegraNotas.')
+                            ->helperText('Deixe em branco para a API controlar automaticamente. Preencha apenas se já houve carta de correção emitida fora do sistema.')
                             ->numeric()
                             ->minValue(1),
                     ])
