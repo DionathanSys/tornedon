@@ -61,6 +61,7 @@ final class RegisterInstallmentPaymentAction
                     Select::make('financial_account_id')
                         ->label('Conta Financeira')
                         ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                        ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
                         ->searchable()
                         ->preload()
                         ->native(false)

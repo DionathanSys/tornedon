@@ -19,6 +19,7 @@ class TransferCashMovementActionForm
             Select::make('source_financial_account_id')
                 ->label('Conta de origem')
                 ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
                 ->searchable()
                 ->preload()
                 ->native(false)

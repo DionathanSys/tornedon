@@ -78,6 +78,7 @@ class CompanyCardStatementsTable
 
                         if ($service->hasError() || ! $generated) {
                             notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                             return;
                         }
 
@@ -93,6 +94,7 @@ class CompanyCardStatementsTable
 
                         if ($service->hasError() || ! $closed) {
                             notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                             return;
                         }
 
@@ -104,7 +106,7 @@ class CompanyCardStatementsTable
                         $service = app(CompanyCardStatementService::class);
                         $updated = $service->recalculateTotals($record);
 
-                        notify::success("Fatura conciliada. Saldo atual: R$ " . number_format((float) $updated->balance_total, 2, ',', '.'));
+                        notify::success('Fatura conciliada. Saldo atual: R$ '.number_format((float) $updated->balance_total, 2, ',', '.'));
                     }),
                 Action::make('registrar_pagamento')
                     ->label('Registrar Pagamento')
@@ -132,7 +134,8 @@ class CompanyCardStatementsTable
                     ->fillForm(fn (CompanyCardStatement $record): array => [
                         'amount' => round((float) $record->balance_total, 2),
                         'payment_date' => now()->format('Y-m-d'),
-                        'financial_account_id' => $record->companyCreditCard?->default_financial_account_id,
+                        'financial_account_id' => $record->companyCreditCard?->default_financial_account_id
+                            ?? FinancialAccount::defaultIdForCompany(Filament::getTenant()->id),
                     ])
                     ->action(function (CompanyCardStatement $record, array $data): void {
                         $service = app(CompanyCardStatementPaymentService::class);
@@ -150,6 +153,7 @@ class CompanyCardStatementsTable
 
                         if ($service->hasError() || ! $payment) {
                             notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                             return;
                         }
 
@@ -183,6 +187,7 @@ class CompanyCardStatementsTable
 
                         if (! $card) {
                             notify::error(message: 'Cartão não encontrado.');
+
                             return;
                         }
 
@@ -191,6 +196,7 @@ class CompanyCardStatementsTable
 
                         if ($service->hasError() || ! $statement) {
                             notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                             return;
                         }
 

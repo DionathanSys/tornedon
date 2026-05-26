@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Financial\Resources\FinancialAccounts\Tables;
 
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -44,6 +43,11 @@ class FinancialAccountsTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('is_active')
                     ->label('Ativa')
+                    ->boolean()
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_default')
+                    ->label('Padrão')
                     ->boolean()
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),

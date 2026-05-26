@@ -60,7 +60,7 @@ class FinancialAccountForm
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         Money::make('opening_balance')
                             ->label('Saldo Inicial')
-                            ->formatStateUsing(fn ($state) => 'R$ ' . number_format($state, 2, ',', '.'))
+                            ->formatStateUsing(fn ($state) => 'R$ '.number_format($state, 2, ',', '.'))
                             ->default(0)
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         DatePicker::make('opened_at')
@@ -69,6 +69,11 @@ class FinancialAccountForm
                         Checkbox::make('is_active')
                             ->label('Ativa')
                             ->default(true)
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                        Checkbox::make('is_default')
+                            ->label('Conta padrão')
+                            ->helperText('Usada como seleção inicial nos lançamentos financeiros quando aplicável.')
+                            ->default(false)
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                     ]),
                 Hidden::make('company_id'),

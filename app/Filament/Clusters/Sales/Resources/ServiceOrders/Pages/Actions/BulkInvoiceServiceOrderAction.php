@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 
 use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\ServiceOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\InvoiceServiceOrderWorkflow;
@@ -92,6 +93,14 @@ final class BulkInvoiceServiceOrderAction
                     $records->count() . ' ordem(ns) de serviço faturada(s) com sucesso. Fatura #' . $invoice->invoice_number
                 );
             })
-            ->successRedirectUrl(fn($records) => InvoiceResource::getUrl('edit', ['record' => $records->first()->invoice_id]));
+            ->successRedirectUrl(function (Collection $records): string {
+                $record = $records->first()?->fresh();
+
+                if ($record?->invoice_id) {
+                    return InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]);
+                }
+
+                return ServiceOrderResource::getUrl();
+            });
     }
 }

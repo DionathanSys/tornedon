@@ -17,9 +17,9 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Callout;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -88,8 +88,8 @@ final class ConfirmInvoiceAction
                             $set('mark_as_received', true);
                         }
                     })
-                    ->required()
-                    ->helperText('Em cartao, a condicao controla parcelamento comercial; o primeiro vencimento seguira o prazo D+X do perfil da operadora.'),
+                    ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
+                    ->helperText('Em cartao, informe apenas se precisar parcelar comercialmente. O primeiro vencimento seguira o prazo D+X do perfil da operadora.'),
 
                 Checkbox::make('mark_as_received')
                     ->label('Marcar valores da fatura como já recebidos')
@@ -105,6 +105,7 @@ final class ConfirmInvoiceAction
                 Select::make('financial_account_id')
                     ->label('Conta Financeira para baixa')
                     ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()?->id ?? 0))
+                    ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()?->id ?? 0))
                     ->searchable()
                     ->preload()
                     ->native(false)
@@ -113,10 +114,10 @@ final class ConfirmInvoiceAction
             ])
             ->action(function (Action $action, Invoice $record, array $data, EditInvoice $livewire): void {
 
-                Log::info('ConfirmInvoiceAction UI: confirmando fatura - Invoice ID: ' . $record->id, [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                Log::info('ConfirmInvoiceAction UI: confirmando fatura - Invoice ID: '.$record->id, [
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $record->id,
-                    'data'       => $data,
+                    'data' => $data,
                 ]);
 
                 $service = app(InvoiceService::class);
@@ -124,11 +125,11 @@ final class ConfirmInvoiceAction
 
                 if ($service->hasError() || $result === null) {
                     Log::error('ConfirmInvoiceAction UI: erro ao confirmar fatura', [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $record->id,
-                        'message'    => $service->getMessage(),
+                        'message' => $service->getMessage(),
                         'error_code' => $service->getErrorCode(),
-                        'errors'     => $service->getErrors(),
+                        'errors' => $service->getErrors(),
                     ]);
 
                     notify::error(
@@ -137,6 +138,7 @@ final class ConfirmInvoiceAction
                     );
 
                     $action->halt();
+
                     return;
                 }
 
@@ -197,6 +199,7 @@ final class ConfirmInvoiceAction
 
             if ($emitted) {
                 $sent++;
+
                 continue;
             }
 
@@ -210,12 +213,12 @@ final class ConfirmInvoiceAction
             );
 
             Log::warning('ConfirmInvoiceAction UI: falha ao disparar emissão do documento fiscal', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'invoice_id'         => $record->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'invoice_id' => $record->id,
                 'fiscal_document_id' => $document->id,
-                'document_type'      => $document->document_type->value,
-                'message'            => $message,
-                'user_id'            => $userId,
+                'document_type' => $document->document_type->value,
+                'message' => $message,
+                'user_id' => $userId,
             ]);
         }
 
@@ -250,6 +253,6 @@ final class ConfirmInvoiceAction
             return 'Nenhum item elegível encontrado nesta fatura.';
         }
 
-        return implode(' e ', $types) . '.';
+        return implode(' e ', $types).'.';
     }
 }

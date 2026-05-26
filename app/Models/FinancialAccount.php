@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
-use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +25,7 @@ class FinancialAccount extends Model
         'opening_balance',
         'opened_at',
         'is_active',
+        'is_default',
         'created_by',
         'updated_by',
     ];
@@ -35,11 +35,27 @@ class FinancialAccount extends Model
         'opening_balance' => MoneyCast::class,
         'opened_at' => 'date',
         'is_active' => 'boolean',
+        'is_default' => 'boolean',
     ];
 
     protected $appends = [
         'current_balance',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function (self $account): void {
+            if (! $account->is_default) {
+                return;
+            }
+
+            static::query()
+                ->where('company_id', $account->company_id)
+                ->whereKeyNot($account->getKey())
+                ->where('is_default', true)
+                ->update(['is_default' => false]);
+        });
+    }
 
     public function company(): BelongsTo
     {
@@ -76,6 +92,11 @@ class FinancialAccount extends Model
         return $query->where('is_active', true);
     }
 
+    public function scopeDefault(Builder $query): Builder
+    {
+        return $query->where('is_default', true);
+    }
+
     public function getCurrentBalanceAttribute(): float
     {
         $movementBalance = (float) $this->cashMovements()
@@ -97,9 +118,20 @@ class FinancialAccount extends Model
         return static::query()
             ->where('company_id', $companyId)
             ->active()
+            ->orderByDesc('is_default')
             ->orderBy('name')
             ->get()
             ->mapWithKeys(fn (self $account) => [$account->id => $account->display_name])
             ->toArray();
+    }
+
+    public static function defaultIdForCompany(int $companyId): ?int
+    {
+        return static::query()
+            ->where('company_id', $companyId)
+            ->active()
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->value('id');
     }
 }

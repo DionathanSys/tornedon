@@ -64,8 +64,8 @@ final class GenerateAccountReceivablesAction
                     ->options(Condition::toGroupedSelectArray())
                     ->default(fn (Invoice $record): ?string => $record->payment_condition?->value)
                     ->native(false)
-                    ->required()
-                    ->helperText('Em cartao, a condicao controla parcelamento comercial; o primeiro vencimento usara o prazo da operadora.'),
+                    ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
+                    ->helperText('Em cartao, informe apenas se precisar parcelar comercialmente. O primeiro vencimento usara o prazo da operadora.'),
             ])
             ->action(function (Invoice $record, array $data, EditInvoice $livewire): void {
                 $service = app(InvoiceService::class);
@@ -73,7 +73,7 @@ final class GenerateAccountReceivablesAction
 
                 if ($service->hasError() || $result === null) {
                     Log::error('GenerateAccountReceivablesAction: erro ao gerar contas a receber', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $record->id,
                         'message' => $service->getMessage(),
                         'error_code' => $service->getErrorCode(),

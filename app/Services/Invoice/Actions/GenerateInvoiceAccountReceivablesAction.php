@@ -9,6 +9,7 @@ use App\Models\CardPaymentProfile;
 use App\Models\Invoice;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
+use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesActionResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +37,12 @@ class GenerateInvoiceAccountReceivablesAction
         }
 
         $paymentMethod = PaymentMethod::from((string) $data['payment_method']);
-        $paymentCondition = PaymentCondition::from((string) $data['payment_condition']);
+        $paymentCondition = $this->resolvePaymentCondition($paymentMethod, $data);
+
+        if ($paymentCondition === false) {
+            return null;
+        }
+
         $installments = $this->buildInstallments($paymentMethod, $paymentCondition, $data);
 
         if ($installments === []) {
@@ -48,7 +54,7 @@ class GenerateInvoiceAccountReceivablesAction
 
         $this->invoice->update([
             'payment_method' => $paymentMethod->value,
-            'payment_condition' => $paymentCondition->value,
+            'payment_condition' => $paymentCondition?->value,
             'updated_by' => $this->userId,
         ]);
 
@@ -77,7 +83,8 @@ class GenerateInvoiceAccountReceivablesAction
                 ? (string) ($data['payment_date'] ?? $this->invoice->invoice_date?->toDateString() ?? now()->toDateString())
                 : null,
             'installment_count' => count($installments),
-            'installment_due_mode' => 'interval_30_days',
+            'installment_due_mode' => InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
+            'installment_interval_days' => 30,
         ], $this->userId);
 
         if ($service->hasError() || $accountReceivable === null) {
@@ -104,12 +111,12 @@ class GenerateInvoiceAccountReceivablesAction
             [
                 'account_receivable_id' => $accountReceivable->id,
                 'payment_method' => $paymentMethod->value,
-                'payment_condition' => $paymentCondition->value,
+                'payment_condition' => $paymentCondition?->value,
             ],
         );
 
         Log::info('Contas a receber geradas manualmente para a fatura', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'invoice_id' => $this->invoice->id,
             'account_receivable_id' => $accountReceivable->id,
             'user_id' => $this->userId,
@@ -124,21 +131,25 @@ class GenerateInvoiceAccountReceivablesAction
     {
         if ($this->invoice->canceled || $this->invoice->status === InvoiceStatus::CANCELLED) {
             $this->setError('Nao e possivel gerar contas a receber para uma fatura cancelada.');
+
             return false;
         }
 
         if ($this->invoice->status !== InvoiceStatus::CONFIRMED || ! $this->invoice->confirmed) {
             $this->setError('As contas a receber isoladas so podem ser geradas para faturas confirmadas.');
+
             return false;
         }
 
         if ($this->invoice->accountReceivables->isNotEmpty()) {
             $this->setError('Esta fatura ja possui contas a receber vinculadas.');
+
             return false;
         }
 
         if (round((float) $this->invoice->netValue, 2) <= 0) {
             $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
+
             return false;
         }
 
@@ -149,11 +160,17 @@ class GenerateInvoiceAccountReceivablesAction
      * @param  array<string, mixed>  $data
      * @return array<int, array<string, int|float|string>>
      */
-    private function buildInstallments(PaymentMethod $paymentMethod, PaymentCondition $condition, array $data): array
+    private function buildInstallments(PaymentMethod $paymentMethod, ?PaymentCondition $condition, array $data): array
     {
         $netValue = round((float) $this->invoice->netValue, 2);
+        if ($paymentMethod !== PaymentMethod::CREDIT_CARD && $condition === null) {
+            $this->setError('Condicao de pagamento obrigatoria para gerar contas a receber da fatura.');
+
+            return [];
+        }
+
         $totalCents = (int) round($netValue * 100);
-        $installmentsCount = max(1, $condition->installments() ?: 1);
+        $installmentsCount = max(1, $condition?->installments() ?: 1);
         $baseCents = intdiv($totalCents, $installmentsCount);
         $remainder = $totalCents - ($baseCents * $installmentsCount);
         $baseDate = Carbon::parse($this->invoice->invoice_date ?? now()->toDateString());
@@ -182,7 +199,7 @@ class GenerateInvoiceAccountReceivablesAction
 
     private function resolveDueDate(
         PaymentMethod $paymentMethod,
-        PaymentCondition $condition,
+        ?PaymentCondition $condition,
         Carbon $baseDate,
         int $installmentNumber,
         ?Carbon $cardPaymentDate,
@@ -196,12 +213,17 @@ class GenerateInvoiceAccountReceivablesAction
                 : $firstDueDate->copy()->addDays(30 * ($installmentNumber - 1));
         }
 
+        if ($condition === null) {
+            return $baseDate->copy();
+        }
+
         if ($condition->isCash() || $condition === PaymentCondition::CUSTOM) {
             return $baseDate->copy();
         }
 
         if ($condition->installments() > 1) {
             $daysStep = max($condition->days(), 30);
+
             return $baseDate->copy()->addDays($daysStep * $installmentNumber);
         }
 
@@ -216,6 +238,7 @@ class GenerateInvoiceAccountReceivablesAction
     {
         if ($profileId <= 0) {
             $this->setError('Selecione o perfil de recebimento para gerar contas a receber em cartao de credito.');
+
             return null;
         }
 
@@ -226,9 +249,27 @@ class GenerateInvoiceAccountReceivablesAction
 
         if (! $profile) {
             $this->setError('Perfil de cartao invalido para a empresa da fatura.');
+
             return null;
         }
 
         return $profile;
+    }
+
+    private function resolvePaymentCondition(PaymentMethod $paymentMethod, array $data): PaymentCondition|false|null
+    {
+        $rawCondition = $data['payment_condition'] ?? null;
+
+        if (blank($rawCondition)) {
+            if ($paymentMethod === PaymentMethod::CREDIT_CARD) {
+                return null;
+            }
+
+            $this->setError('Condicao de pagamento obrigatoria para gerar contas a receber da fatura.');
+
+            return false;
+        }
+
+        return PaymentCondition::from((string) $rawCondition);
     }
 }

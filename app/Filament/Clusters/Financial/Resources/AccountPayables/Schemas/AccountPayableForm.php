@@ -3,14 +3,9 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas;
 
 use App\Enum\AccountPayable\Status;
-use App\Enum\Partner\Type;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\EditAccountPayable;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
-use App\Models\AccountPayable;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Support\Financial\InstallmentSchedule;
@@ -20,10 +15,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Operation;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class AccountPayableForm
@@ -82,7 +75,7 @@ class AccountPayableForm
                             ->native(false)
                             ->live()
                             ->visibleOn('create')
-                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
+                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
                             ->helperText('Defina o intervalo entre vencimentos usando as condições de prazo ou escolha um dia fixo do mês.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mês')
@@ -90,10 +83,10 @@ class AccountPayableForm
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(31)
-                            ->required(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->required(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->visibleOn('create')
-                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->helperText('Usado da 2ª parcela em diante. Se o mês não tiver esse dia, será usado o último dia do mês.'),
                         TextInput::make('installment_interval_days')
@@ -145,7 +138,7 @@ class AccountPayableForm
                             ->label(fn (callable $get): string => $get('amount_input_mode') === 'per_installment'
                                 ? 'Valor de Cada Parcela'
                                 : 'Valor Total da Conta')
-                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->required()
                             ->helperText(fn (callable $get): string => $get('amount_input_mode') === 'per_installment'
@@ -229,6 +222,7 @@ class AccountPayableForm
                             ->label('Conta Financeira do Pagamento Automatico')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
                             ->searchable()
                             ->preload()
                             ->native(false)
