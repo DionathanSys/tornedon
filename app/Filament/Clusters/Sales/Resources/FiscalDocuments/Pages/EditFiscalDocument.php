@@ -244,8 +244,13 @@ class EditFiscalDocument extends EditRecord
                         Textarea::make('justificativa')
                             ->label('Correção')
                             ->required()
+                            ->live()
                             ->minLength(15)
                             ->maxLength(1000)
+                            ->helperText(fn (callable $get): string => sprintf(
+                                'Mínimo de 15 caracteres. %d/1000 caracteres digitados.',
+                                mb_strlen((string) ($get('justificativa') ?? ''))
+                            ))
                             ->rows(5),
                         TextInput::make('sequencial')
                             ->label('Sequencial do Evento')

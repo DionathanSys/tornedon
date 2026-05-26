@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\ErrorTicketController;
-use App\Http\Controllers\EmailDispatchAttachmentController;
-use App\Http\Controllers\NfeWebhookController;
-use App\Http\Controllers\OrderAttachmentController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\EmailDispatchAttachmentController;
+use App\Http\Controllers\ErrorTicketController;
+use App\Http\Controllers\FiscalDocumentCorrectionLetterController;
+use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\PdfPreviewController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,7 +33,6 @@ Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispat
     ->name('email-dispatch.attachment')
     ->middleware('signed');
 
-
 Route::get('/attachments/{attachment:public_id}/download', [AttachmentController::class, 'download'])
     ->name('attachments.download')
     ->middleware(['web', 'auth']);
@@ -41,3 +40,7 @@ Route::get('/attachments/{attachment:public_id}/download', [AttachmentController
 Route::get('/pdf-preview/{token}', [PdfPreviewController::class, 'show'])
     ->name('pdf-preview.show')
     ->middleware(['web', 'auth', 'signed']);
+
+Route::get('/fiscal-documents/{fiscalDocument}/correction-letters/{sequencial}/{type}', [FiscalDocumentCorrectionLetterController::class, 'download'])
+    ->name('fiscal-documents.correction-letters.download')
+    ->middleware(['web', 'auth']);

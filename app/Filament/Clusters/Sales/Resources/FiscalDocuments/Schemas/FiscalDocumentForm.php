@@ -15,6 +15,7 @@ use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
 use App\Models\FiscalDocument;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -29,6 +30,7 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
+use Filament\Support\Icons\Heroicon;
 
 class FiscalDocumentForm
 {
@@ -521,8 +523,8 @@ class FiscalDocumentForm
                                                     ->width('180px'),
                                                 TableColumn::make('Data/Hora')
                                                     ->width('180px'),
-                                                TableColumn::make('Arquivos')
-                                                    ->width('120px'),
+                                                TableColumn::make('Downloads')
+                                                    ->width('160px'),
                                             ])
                                             ->schema([
                                                 TextInput::make('sequencial')
@@ -536,15 +538,31 @@ class FiscalDocumentForm
                                                 TextInput::make('data_hora_evento')
                                                     ->label('Data/Hora do Evento')
                                                     ->columnSpan(['md' => 2, 'lg' => 3])
+                                                    ->formatStateUsing(fn ($state): ?string => self::formatCorrectionEventDate($state))
                                                     ->disabled(),
-                                                TextInput::make('arquivos')
-                                                    ->label('Arquivos')
+                                                TextInput::make('pdf_status')
+                                                    ->label('PDF')
                                                     ->columnSpan(['md' => 1, 'lg' => 2])
-                                                    ->formatStateUsing(fn ($state, Get $get): string => sprintf(
-                                                        'PDF: %s | XML: %s',
-                                                        filled($get('pdf_base64')) ? 'sim' : 'nao',
-                                                        filled($get('xml_base64')) ? 'sim' : 'nao',
-                                                    ))
+                                                    ->formatStateUsing(fn ($state, Get $get): string => filled($get('pdf_base64')) ? 'Disponível' : 'Indisponível')
+                                                    ->suffixAction(
+                                                        Action::make('download_correction_pdf')
+                                                            ->icon(Heroicon::DocumentArrowDown)
+                                                            ->url(fn (Get $get, ?FiscalDocument $record): ?string => self::buildCorrectionDownloadUrl($record, $get, 'pdf'))
+                                                            ->openUrlInNewTab()
+                                                            ->hidden(fn (Get $get): bool => ! filled($get('pdf_base64')))
+                                                    )
+                                                    ->disabled(),
+                                                TextInput::make('xml_status')
+                                                    ->label('XML')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2])
+                                                    ->formatStateUsing(fn ($state, Get $get): string => filled($get('xml_base64')) ? 'Disponível' : 'Indisponível')
+                                                    ->suffixAction(
+                                                        Action::make('download_correction_xml')
+                                                            ->icon(Heroicon::DocumentArrowDown)
+                                                            ->url(fn (Get $get, ?FiscalDocument $record): ?string => self::buildCorrectionDownloadUrl($record, $get, 'xml'))
+                                                            ->openUrlInNewTab()
+                                                            ->hidden(fn (Get $get): bool => ! filled($get('xml_base64')))
+                                                    )
                                                     ->disabled(),
                                                 Textarea::make('justificativa')
                                                     ->label('Texto da Correção')
@@ -562,5 +580,37 @@ class FiscalDocumentForm
                             ]),
                     ]),
             ]);
+    }
+
+    private static function formatCorrectionEventDate(mixed $state): ?string
+    {
+        if (! is_string($state) || trim($state) === '') {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($state)->format('d/m/Y H:i:s');
+        } catch (\Throwable) {
+            return $state;
+        }
+    }
+
+    private static function buildCorrectionDownloadUrl(?FiscalDocument $record, Get $get, string $type): ?string
+    {
+        if (! $record instanceof FiscalDocument) {
+            return null;
+        }
+
+        $sequencial = $get('sequencial');
+
+        if (! filled($sequencial)) {
+            return null;
+        }
+
+        return route('fiscal-documents.correction-letters.download', [
+            'fiscalDocument' => $record,
+            'sequencial' => (int) $sequencial,
+            'type' => $type,
+        ]);
     }
 }
