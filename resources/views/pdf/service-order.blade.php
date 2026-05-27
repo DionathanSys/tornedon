@@ -241,6 +241,12 @@
             color: #6b7280;
         }
 
+        .signature-responsible {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #111827;
+        }
+
         .pdf-footer {
             position: fixed;
             bottom: 0;
@@ -420,9 +426,6 @@
     </div>
 
     <div class="signature-block">
-        @if (filled($pdfData['follow_up_responsible_name']))
-        <div class="signature-date">Responsável pelo acompanhamento: {{ $pdfData['follow_up_responsible_name'] }}</div>
-        @endif
         @if (filled($pdfData['customer_signature']))
         <img src="{{ $pdfData['customer_signature'] }}" alt="Assinatura do cliente" class="signature-image">
         <div class="signature-line">Assinatura do Cliente</div>
@@ -431,6 +434,9 @@
         @endif
         @else
         <div class="signature-line">Assinatura do Cliente</div>
+        @endif
+        @if (filled($pdfData['follow_up_responsible_name']))
+        <div class="signature-responsible">{{ $pdfData['follow_up_responsible_name'] }}</div>
         @endif
     </div>
 
