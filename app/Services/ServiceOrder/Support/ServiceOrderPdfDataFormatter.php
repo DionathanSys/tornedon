@@ -114,6 +114,7 @@ class ServiceOrderPdfDataFormatter
             'technician_observations' => $serviceOrder->technician_observations ?? null,
             'additional_info_text' => $additionalInfoText,
             'summary_lines' => $summaryLines,
+            'follow_up_responsible_name' => $serviceOrder->follow_up_responsible_name,
             'customer_signature' => $serviceOrder->customer_signature,
             'customer_signed_at' => $serviceOrder->customer_signed_at?->format('d/m/Y H:i'),
             'generated_at' => now()->format('d/m/Y H:i'),

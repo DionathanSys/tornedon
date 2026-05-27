@@ -65,6 +65,7 @@ class ServiceOrder extends Model
         'travel_value',
         'payment_method',
         'payment_condition',
+        'follow_up_responsible_name',
         'technician_id',
         'supervisor_id',
         'salesperson_id',

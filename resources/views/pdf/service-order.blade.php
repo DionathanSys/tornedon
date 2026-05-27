@@ -420,6 +420,9 @@
     </div>
 
     <div class="signature-block">
+        @if (filled($pdfData['follow_up_responsible_name']))
+        <div class="signature-date">Responsável pelo acompanhamento: {{ $pdfData['follow_up_responsible_name'] }}</div>
+        @endif
         @if (filled($pdfData['customer_signature']))
         <img src="{{ $pdfData['customer_signature'] }}" alt="Assinatura do cliente" class="signature-image">
         <div class="signature-line">Assinatura do Cliente</div>

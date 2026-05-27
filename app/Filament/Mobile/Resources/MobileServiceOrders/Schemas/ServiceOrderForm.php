@@ -179,6 +179,12 @@ class ServiceOrderForm
                                             ->columnSpanFull()
                                             ->required(false)
                                             ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        TextInput::make('follow_up_responsible_name')
+                                            ->label('Representante do cliente')
+                                            ->columnSpanFull()
+                                            ->maxLength(255)
+                                            ->autocomplete(false)
+                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
                                             ->columnSpanFull()

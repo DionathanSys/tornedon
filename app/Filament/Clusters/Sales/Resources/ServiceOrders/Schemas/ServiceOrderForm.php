@@ -272,9 +272,15 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->required(false)
                                             ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                        TextInput::make('follow_up_responsible_name')
+                                            ->label('Representante do cliente')
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
+                                            ->maxLength(255)
+                                            ->autocomplete(false)
+                                            ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
+                                            ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->maxLength(255)
                                             ->autocomplete(false)
                                             ->default(fn () => Filament::getTenant()->service_provision_location)
