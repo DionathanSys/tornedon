@@ -86,7 +86,6 @@ final class DuplicateServiceOrderAction
                                 'service_id'          => $item->service_id,
                                 'quantity'            => $item->quantity,
                                 'unit_price'          => $item->unit_price,
-                                'unit_cost'           => $item->unit_cost,
                                 'discount_percentage' => $item->discount_percentage,
                                 'discount_amount'     => $item->discount_amount,
                                 'observations'        => $item->observations,
