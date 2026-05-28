@@ -231,8 +231,6 @@ class FiscalEmissionPreflightService
             return;
         }
 
-        $itemAttributes = $item->getAttributes();
-
         if (blank($item->description)) {
             $errors['items.0.description'][] = 'A discriminação do serviço é obrigatória.';
         }
@@ -250,27 +248,13 @@ class FiscalEmissionPreflightService
         }
 
         $serviceCode = $this->normalizeNfseServiceCode(
-            $nfseModel === 'nacional'
-                ? (
-                    $itemAttributes['service_code'] ?? null
-                    ?? $item->service?->service_code
-                    ?? $profile?->default_service_code
-                    ?? $item->municipal_tax_code
-                    ?? $item->service?->municipal_tax_code
-                    ?? $profile?->default_municipal_tax_code
-                )
-                : (
-                    $item->municipal_tax_code
-                    ?? $item->service?->municipal_tax_code
-                    ?? $item->service_code
-                    ?? $item->service?->service_code
-                    ?? $profile?->default_municipal_tax_code
-                    ?? $profile?->default_service_code
-                )
+            $item->municipal_tax_code
+                ?? $item->service?->municipal_tax_code
+                ?? $profile?->default_municipal_tax_code
         );
 
         if ($serviceCode === '') {
-            $errors['items.0.service_code'][] = 'A NFS-e exige código de serviço válido.';
+            $errors['items.0.municipal_tax_code'][] = 'A NFS-e exige código de serviço válido.';
         }
 
         $nbsCode = $this->normalizeDigits($item->nbs_code ?? $item->service?->nbs_code ?? $profile?->default_nbs_code);
@@ -287,7 +271,7 @@ class FiscalEmissionPreflightService
 
         if ($nfseModel === 'nacional') {
             if ($serviceCode === '') {
-                $errors['items.0.service_code'][] = 'A NFS-e nacional exige código LC 116/2003 no formato esperado.';
+                $errors['items.0.municipal_tax_code'][] = 'A NFS-e nacional exige código LC 116/2003 no formato esperado.';
             }
 
             if (strlen($nbsCode) !== 9) {

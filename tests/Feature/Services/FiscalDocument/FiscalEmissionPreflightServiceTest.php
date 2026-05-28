@@ -78,7 +78,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         $this->assertArrayHasKey('tax_data.purchase_return_origin.document_key', $service->getErrors());
     }
 
-    public function test_nfse_municipal_preflight_requires_service_code_and_nbs(): void
+    public function test_nfse_municipal_preflight_requires_municipal_tax_code_and_nbs(): void
     {
         [, $document] = $this->createReadyNfseDocument(withServiceDefaults: false, withItemTaxCodes: false);
 
@@ -91,7 +91,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         $result = $service->validateForQueue($document);
 
         $this->assertNull($result);
-        $this->assertArrayHasKey('items.0.service_code', $service->getErrors());
+        $this->assertArrayHasKey('items.0.municipal_tax_code', $service->getErrors());
         $this->assertArrayHasKey('items.0.nbs_code', $service->getErrors());
     }
 

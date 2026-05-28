@@ -150,7 +150,6 @@ class BuildNfseMunicipalPayloadAction
                 $codigoServico = $this->normalizeServiceCode(
                     $item->municipal_tax_code
                     ?? $item->service?->municipal_tax_code
-                    ?? $profile?->default_service_code
                     ?? $profile?->default_municipal_tax_code
                 );
 
@@ -215,7 +214,6 @@ class BuildNfseMunicipalPayloadAction
 
                 $ctm = $item->service?->municipal_tax_code
                     ?? $item->municipal_tax_code
-                    ?? $profile?->default_service_code
                     ?? $profile?->default_municipal_tax_code
                     ?? null;
                 if ($ctm) {
@@ -279,7 +277,7 @@ class BuildNfseMunicipalPayloadAction
                 Log::warning('BuildNfseMunicipalPayloadAction: código de serviço vazio', [
                     'fiscal_document_id' => $fiscalDocument->id,
                     'erro'               => $msgErro,
-                    'service_code_attempts' => array_merge(
+                    'municipal_tax_code_attempts' => array_merge(
                         $fiscalDocument->items->pluck('municipal_tax_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service.municipal_tax_code')->filter()->values()->toArray(),
                     ),

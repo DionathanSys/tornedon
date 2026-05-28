@@ -153,7 +153,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame(10.0, $payload['servico']['valor_desconto_incondicionado']);
     }
 
-    public function test_nacional_prefers_service_code_over_municipal_tax_code(): void
+    public function test_nacional_uses_municipal_tax_code_even_when_internal_service_code_exists(): void
     {
         $document = $this->createReadyDocument();
         $service = Service::query()->create([
@@ -176,7 +176,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $payload = $action->build($document);
 
         $this->assertNotNull($payload);
-        $this->assertSame('010200', $payload['servico']['codigo']);
+        $this->assertSame('405000', $payload['servico']['codigo']);
         $this->assertArrayNotHasKey('codigo_tributacao_municipio', $payload['servico']);
     }
 
@@ -218,7 +218,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertNull($payload);
     }
 
-    public function test_fails_when_service_code_empty(): void
+    public function test_fails_when_municipal_tax_code_empty(): void
     {
         $document = $this->createReadyDocument();
         $document->items()->update(['municipal_tax_code' => null]);
@@ -226,7 +226,6 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
 
         $profile = FiscalProfile::where('company_id', $document->company_id)->first();
         $profile->update([
-            'default_service_code'       => null,
             'default_municipal_tax_code' => null,
         ]);
         $document->unsetRelation('fiscalProfile');

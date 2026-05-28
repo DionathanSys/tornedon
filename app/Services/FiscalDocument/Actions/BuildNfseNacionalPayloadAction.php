@@ -327,7 +327,6 @@ class BuildNfseNacionalPayloadAction
 
         // Primeiro item como referência de código/discriminação
         $firstItem = $items->first();
-        $firstItemAttributes = $firstItem->getAttributes();
         $taxData   = $firstItem->tax_data ?? [];
 
         $valorServicosTotal = $items->sum(fn ($i) => round((float) $i->total_price, 2));
@@ -335,15 +334,14 @@ class BuildNfseNacionalPayloadAction
             ->filter()
             ->implode("\n");
 
-        // No layout nacional, `codigo` deve refletir o código nacional do serviço.
+        // No layout nacional, `codigo` deve refletir o código fiscal configurado para o serviço.
         $serviceCode = $this->normalizeServiceCode(
-            $firstItemAttributes['service_code'] ?? null
-                ?? $firstItem->service?->service_code
-                ?? $profile?->default_service_code
-                ?? $firstItem->municipal_tax_code
+            $firstItem->municipal_tax_code
                 ?? $firstItem->service?->municipal_tax_code
                 ?? $profile?->default_municipal_tax_code
         );
+
+        $serviceCode = "14.05.01";
 
         $nbsCode = $this->normalizeNbsCode(
             $firstItem->nbs_code
