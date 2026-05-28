@@ -341,7 +341,7 @@ class BuildNfseNacionalPayloadAction
                 ?? $profile?->default_municipal_tax_code
         );
 
-        $serviceCode = "14.05.01";
+        $serviceCode = "140501";
 
         $nbsCode = $this->normalizeNbsCode(
             $firstItem->nbs_code
