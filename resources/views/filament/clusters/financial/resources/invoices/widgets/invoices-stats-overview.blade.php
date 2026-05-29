@@ -1,8 +1,8 @@
 <x-filament-widgets::widget>
-    <div class="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        <section class="relative overflow-hidden rounded-3xl border border-white/60 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 p-6 text-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.85)] ring-1 ring-black/5 dark:border-white/10">
-            <div class="absolute inset-y-0 right-0 w-2/5 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_58%)]"></div>
-            <div class="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
+    <div class="grid gap-4 2xl:grid-cols-3">
+        <section class="relative overflow-hidden rounded-3xl border border-white/60 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 p-6 text-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.85)] ring-1 ring-black/5 dark:border-white/10 2xl:col-span-2">
+            <div class="absolute inset-y-0 right-0 hidden w-2/5 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_58%)] lg:block"></div>
+            <div class="absolute -right-16 -top-16 hidden h-40 w-40 rounded-full bg-white/10 blur-3xl lg:block"></div>
 
             <div class="relative flex h-full flex-col gap-6">
                 <div class="flex items-start justify-between gap-4">
@@ -17,12 +17,13 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3 backdrop-blur-sm">
-                        <x-heroicon-o-banknotes class="h-7 w-7 text-zinc-50" />
+                    <div class="hidden rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-right backdrop-blur-sm sm:block">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300">Base atual</p>
+                        <p class="mt-1 text-sm text-zinc-100">Filtros da tabela</p>
                     </div>
                 </div>
 
-                <div class="grid gap-3 sm:grid-cols-3">
+                <div class="grid gap-3 md:grid-cols-3">
                     <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
                         <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-300">Faturas</p>
                         <p class="mt-2 text-2xl font-semibold">{{ number_format($summary['total_invoices'], 0, ',', '.') }}</p>
@@ -42,27 +43,33 @@
                     </div>
                 </div>
 
-                <div class="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4 backdrop-blur-sm">
-                    <div class="flex items-center justify-between gap-4 text-sm">
-                        <span class="text-zinc-300">Servicos</span>
-                        <span class="font-medium text-zinc-50">{{ $summary['services_total'] }}</span>
-                    </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400" style="width: {{ $summary['services_share_width'] }}"></div>
+                <div class="grid gap-4 lg:grid-cols-2">
+                    <div class="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4 backdrop-blur-sm">
+                        <div class="flex items-center justify-between gap-4 text-sm">
+                            <span class="text-zinc-300">Servicos</span>
+                            <span class="font-medium text-zinc-50">{{ $summary['services_total'] }}</span>
+                        </div>
+                        <div class="h-2 overflow-hidden rounded-full bg-white/10">
+                            <div class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400" style="width: {{ $summary['services_share_width'] }}"></div>
+                        </div>
+                        <p class="text-sm text-zinc-400">{{ $summary['services_share'] }} do valor liquido atual.</p>
                     </div>
 
-                    <div class="flex items-center justify-between gap-4 text-sm">
-                        <span class="text-zinc-300">Produtos</span>
-                        <span class="font-medium text-zinc-50">{{ $summary['products_total'] }}</span>
-                    </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div class="h-full rounded-full bg-gradient-to-r from-fuchsia-400 via-violet-400 to-purple-400" style="width: {{ $summary['products_share_width'] }}"></div>
+                    <div class="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4 backdrop-blur-sm">
+                        <div class="flex items-center justify-between gap-4 text-sm">
+                            <span class="text-zinc-300">Produtos</span>
+                            <span class="font-medium text-zinc-50">{{ $summary['products_total'] }}</span>
+                        </div>
+                        <div class="h-2 overflow-hidden rounded-full bg-white/10">
+                            <div class="h-full rounded-full bg-gradient-to-r from-fuchsia-400 via-violet-400 to-purple-400" style="width: {{ $summary['products_share_width'] }}"></div>
+                        </div>
+                        <p class="text-sm text-zinc-400">{{ $summary['products_share'] }} do valor liquido atual.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+        <section class="grid gap-4 md:grid-cols-3 2xl:grid-cols-1">
             @foreach ($statusCards as $card)
                 @php
                     $theme = match ($card['color']) {
@@ -79,7 +86,7 @@
                 @endphp
 
                 <article class="rounded-3xl border bg-gradient-to-br p-5 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.65)] {{ $theme }}">
-                    <div class="flex items-center justify-between gap-4">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p class="text-sm font-medium opacity-80">{{ $card['label'] }}</p>
                             <p class="mt-3 text-3xl font-semibold tracking-tight">{{ number_format($card['value'], 0, ',', '.') }}</p>
