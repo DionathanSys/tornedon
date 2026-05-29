@@ -68,6 +68,7 @@ final class ExportSelectedInvoicesAction
         $temporaryFile = tempnam(sys_get_temp_dir(), 'invoices-export-');
         $writer = app(Writer::class);
         $writer->openToFile($temporaryFile);
+        $totals = array_fill_keys(self::NUMERIC_COLUMNS, 0.0);
 
         $writer->addRow(new Row(array_map(
             fn (string $column): Cell => Cell::fromValue(self::getColumns()[$column]['label']),
@@ -81,6 +82,7 @@ final class ExportSelectedInvoicesAction
                 $value = self::resolveValue($record, $column);
 
                 if (in_array($column, self::NUMERIC_COLUMNS, true)) {
+                    $totals[$column] += (float) $value;
                     $cells[] = Cell::fromValue((float) $value, self::makeNumericStyle());
 
                     continue;
@@ -91,6 +93,20 @@ final class ExportSelectedInvoicesAction
 
             $writer->addRow(new Row($cells));
         }
+
+        $summaryCells = [];
+
+        foreach ($selectedColumns as $index => $column) {
+            if (in_array($column, self::NUMERIC_COLUMNS, true)) {
+                $summaryCells[] = Cell::fromValue($totals[$column], self::makeNumericStyle());
+
+                continue;
+            }
+
+            $summaryCells[] = Cell::fromValue($index === 0 ? 'Totais' : '');
+        }
+
+        $writer->addRow(new Row($summaryCells));
 
         $writer->close();
 
