@@ -25,7 +25,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
@@ -267,14 +267,14 @@ class ServiceOrdersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkInvoiceServiceOrderAction::make(),
-                    ExportAction::make('exportServiceOrders')
+                    ExportBulkAction::make('exportServiceOrders')
                         ->label('Exportar Excel')
                         ->icon(Heroicon::DocumentArrowDown)
-                        ->modalHeading('Exportar ordens de serviço')
+                        ->modalHeading('Exportar ordens de serviço selecionadas')
                         ->exporter(ServiceOrderExporter::class)
                         ->formats([ExportFormat::Xlsx])
                         ->columnMapping(true)
-                        ->columnMappingColumns(2)
+                        ->columnMappingColumns(4)
                         ->enableVisibleTableColumnsByDefault(),
                 ]),
                 CreateServiceOrderAction::make()
