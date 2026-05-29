@@ -8,9 +8,18 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
 use Illuminate\Database\Eloquent\Builder;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
 
 class ServiceOrderExporter extends Exporter
 {
+    private const NUMERIC_COLUMNS = [
+        'services_total_amount',
+        'requisition_total_amount',
+        'grand_total_amount',
+    ];
+
     protected static ?string $model = ServiceOrder::class;
 
     public static function getColumns(): array
@@ -91,6 +100,27 @@ class ServiceOrderExporter extends Exporter
     public function getFormats(): array
     {
         return [ExportFormat::Xlsx];
+    }
+
+    public function makeXlsxRow(array $values, ?Style $style = null): Row
+    {
+        $cells = [];
+        $columnNames = array_keys($this->columnMap);
+
+        foreach (array_values($values) as $index => $value) {
+            $columnName = $columnNames[$index] ?? null;
+
+            if (in_array($columnName, self::NUMERIC_COLUMNS, true)) {
+                $numericStyle = (clone ($style ?? new Style()))->setFormat('0.00');
+                $cells[] = Cell::fromValue((float) $value, $numericStyle);
+
+                continue;
+            }
+
+            $cells[] = Cell::fromValue($value, $style);
+        }
+
+        return new Row($cells, $style);
     }
 
     public static function getCompletedNotificationBody(Export $export): string
