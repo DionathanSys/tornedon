@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Tables;
 
 use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesPdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
@@ -135,6 +136,7 @@ class InvoicesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ExportSelectedInvoicesAction::make(),
+                    ExportSelectedInvoicesPdfAction::make(),
                 ]),
                 // CreateAction::make()
                 //     ->label('Fatura')

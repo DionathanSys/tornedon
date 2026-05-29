@@ -14,6 +14,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\Requisit
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
 use App\Filament\Clusters\Financial\Resources\Invoices\Tables\InvoicesTable;
+use App\Filament\Clusters\Financial\Resources\Invoices\Widgets\InvoicesStatsOverview;
 use App\Models\Invoice;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationGroup;
@@ -69,6 +70,13 @@ class InvoiceResource extends Resource
             'index' => ListInvoices::route('/'),
             'create' => CreateInvoice::route('/create'),
             'edit' => EditInvoice::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            InvoicesStatsOverview::class,
         ];
     }
 

@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ExportSelectedInvoicesAction
 {
-    private const NUMERIC_COLUMNS = [
+    public const NUMERIC_COLUMNS = [
         'gross_amount',
         'discount_amount',
         'net_value',
@@ -151,7 +151,7 @@ final class ExportSelectedInvoicesAction
         return array_values(array_intersect(array_keys(self::getColumns()), $selectedColumns));
     }
 
-    private static function getColumns(): array
+    public static function getColumns(): array
     {
         return [
             'invoice_number' => ['label' => 'Número', 'default' => true],
@@ -167,7 +167,7 @@ final class ExportSelectedInvoicesAction
         ];
     }
 
-    private static function resolveValue(Invoice $record, string $column): string|float
+    public static function resolveValue(Invoice $record, string $column): string|float
     {
         return match ($column) {
             'invoice_number' => (string) $record->invoice_number,
