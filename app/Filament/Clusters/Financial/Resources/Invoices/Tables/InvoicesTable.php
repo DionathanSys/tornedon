@@ -3,8 +3,8 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Tables;
 
 use App\Enum\Invoice\Status;
-use App\Filament\Exports\InvoiceExporter;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Models\Invoice;
@@ -15,8 +15,6 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportBulkAction;
-use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -136,15 +134,7 @@ class InvoicesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    ExportBulkAction::make('exportInvoices')
-                        ->label('Exportar Excel')
-                        ->icon(Heroicon::DocumentArrowDown)
-                        ->modalHeading('Exportar faturas selecionadas')
-                        ->exporter(InvoiceExporter::class)
-                        ->formats([ExportFormat::Xlsx])
-                        ->columnMapping(true)
-                        ->columnMappingColumns(2)
-                        ->enableVisibleTableColumnsByDefault(),
+                    ExportSelectedInvoicesAction::make(),
                 ]),
                 // CreateAction::make()
                 //     ->label('Fatura')
