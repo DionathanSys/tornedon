@@ -6,6 +6,7 @@ use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Exports\ServiceOrderExporter;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
@@ -24,6 +25,8 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -265,6 +268,15 @@ class ServiceOrdersTable
                 BulkActionGroup::make([
                     BulkInvoiceServiceOrderAction::make(),
                 ]),
+                ExportAction::make('exportServiceOrders')
+                    ->label('Exportar Excel')
+                    ->icon(Heroicon::DocumentArrowDown)
+                    ->modalHeading('Exportar ordens de serviço')
+                    ->exporter(ServiceOrderExporter::class)
+                    ->formats([ExportFormat::Xlsx])
+                    ->columnMapping(true)
+                    ->columnMappingColumns(2)
+                    ->enableVisibleTableColumnsByDefault(),
                 CreateServiceOrderAction::make()
                     ->label('Ordem Serviço')
                     ->hiddenLabel(false)
