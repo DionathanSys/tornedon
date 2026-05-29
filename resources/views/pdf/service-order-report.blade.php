@@ -109,7 +109,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="{{ count($report['columns']) }}" class="text-center">Nenhum registro selecionado para exportacao.</td>
+                <td colspan="{{ count($report['columns']) }}" class="text-center">Nenhum registro selecionado para exportação.</td>
             </tr>
         @endforelse
 

@@ -56,7 +56,7 @@ final class ExportSelectedServiceOrdersPdfAction
 
                 $pdfBinary = Pdf::loadView('pdf.service-order-report', [
                     'report' => [
-                        'title' => 'Relatorio de Ordens de Servico',
+                        'title' => 'Relatório de Ordens de Serviço',
                         'companyName' => Filament::getTenant()?->name ?? config('app.name'),
                         'generatedAt' => now()->format('d/m/Y H:i'),
                         'generatedBy' => auth()->user()?->name ?? 'Sistema',
@@ -64,7 +64,7 @@ final class ExportSelectedServiceOrdersPdfAction
                         'rows' => self::buildRows($records, $selectedColumns),
                         'summary' => self::buildSummary($records, $selectedColumns),
                     ],
-                ])->setPaper('a4', 'portrait')->output();
+                ])->setPaper('a4', 'landscape')->output();
 
                 $fileName = 'ordens-servico-' . now()->format('Y-m-d_H-i-s') . '.pdf';
 
