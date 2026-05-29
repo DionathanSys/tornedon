@@ -42,16 +42,13 @@ class ServiceOrderExporter extends Exporter
                 ->enabledByDefault(false),
             ExportColumn::make('services_total_amount')
                 ->label('Total Serviços')
-                ->state(fn (ServiceOrder $record): float => (float) $record->services_total_amount)
-                ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 2, ',', '.')),
+                ->state(fn (ServiceOrder $record): float => (float) $record->services_total_amount),
             ExportColumn::make('requisition_total_amount')
                 ->label('Total Produtos')
-                ->state(fn (ServiceOrder $record): float => (float) $record->requisition_total_amount)
-                ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 2, ',', '.')),
+                ->state(fn (ServiceOrder $record): float => (float) $record->requisition_total_amount),
             ExportColumn::make('grand_total_amount')
                 ->label('Total Geral')
-                ->state(fn (ServiceOrder $record): float => (float) $record->grand_total_amount)
-                ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 2, ',', '.')),
+                ->state(fn (ServiceOrder $record): float => (float) $record->grand_total_amount),
             ExportColumn::make('scheduled_date')
                 ->label('Dt. Agendada')
                 ->enabledByDefault(false)

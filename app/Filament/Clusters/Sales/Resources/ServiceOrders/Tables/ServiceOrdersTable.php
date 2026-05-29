@@ -110,20 +110,20 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('services_total_amount')
                     ->label('Total Serviços')
-                    ->state(fn (ServiceOrder $record): float => (float) $record->services_total_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn(ServiceOrder $record): float => (float) $record->services_total_amount)
+                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('requisition_total_amount')
                     ->label('Total Produtos')
-                    ->state(fn (ServiceOrder $record): float => (float) $record->requisition_total_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn(ServiceOrder $record): float => (float) $record->requisition_total_amount)
+                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('grand_total_amount')
                     ->label('Total Geral')
-                    ->state(fn (ServiceOrder $record): float => (float) $record->grand_total_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn(ServiceOrder $record): float => (float) $record->grand_total_amount)
+                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('scheduled_date')
@@ -228,7 +228,7 @@ class ServiceOrdersTable
                     DeleteAction::make()
                         ->hiddenLabel()
                         ->icon(Heroicon::Trash)
-                        ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
+                        ->visible(fn(Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
                         ->using(function (Model $record): bool {
                             Log::debug('EditServiceOrder: Iniciando exclusão de ordem de serviço', [
                                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -267,16 +267,16 @@ class ServiceOrdersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkInvoiceServiceOrderAction::make(),
+                    ExportAction::make('exportServiceOrders')
+                        ->label('Exportar Excel')
+                        ->icon(Heroicon::DocumentArrowDown)
+                        ->modalHeading('Exportar ordens de serviço')
+                        ->exporter(ServiceOrderExporter::class)
+                        ->formats([ExportFormat::Xlsx])
+                        ->columnMapping(true)
+                        ->columnMappingColumns(2)
+                        ->enableVisibleTableColumnsByDefault(),
                 ]),
-                ExportAction::make('exportServiceOrders')
-                    ->label('Exportar Excel')
-                    ->icon(Heroicon::DocumentArrowDown)
-                    ->modalHeading('Exportar ordens de serviço')
-                    ->exporter(ServiceOrderExporter::class)
-                    ->formats([ExportFormat::Xlsx])
-                    ->columnMapping(true)
-                    ->columnMappingColumns(2)
-                    ->enableVisibleTableColumnsByDefault(),
                 CreateServiceOrderAction::make()
                     ->label('Ordem Serviço')
                     ->hiddenLabel(false)
