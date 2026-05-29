@@ -20,6 +20,8 @@ class ServiceOrderExporter extends Exporter
         'grand_total_amount',
     ];
 
+    private const NUMERIC_FORMAT = '0,00';
+
     protected static ?string $model = ServiceOrder::class;
 
     public static function getColumns(): array
@@ -111,7 +113,7 @@ class ServiceOrderExporter extends Exporter
             $columnName = $columnNames[$index] ?? null;
 
             if (in_array($columnName, self::NUMERIC_COLUMNS, true)) {
-                $numericStyle = (clone ($style ?? new Style()))->setFormat('0.00');
+                $numericStyle = (clone ($style ?? new Style()))->setFormat(self::NUMERIC_FORMAT);
                 $cells[] = Cell::fromValue((float) $value, $numericStyle);
 
                 continue;
