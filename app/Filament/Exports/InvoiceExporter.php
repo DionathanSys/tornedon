@@ -20,7 +20,7 @@ class InvoiceExporter extends Exporter
         'net_value',
     ];
 
-    private const NUMERIC_FORMAT = '#,##0.00';
+    private const NUMERIC_FORMAT = '[$-416] #.##0,00';
 
     protected static ?string $model = Invoice::class;
 

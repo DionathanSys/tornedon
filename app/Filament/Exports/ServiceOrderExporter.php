@@ -20,7 +20,7 @@ class ServiceOrderExporter extends Exporter
         'grand_total_amount',
     ];
 
-    private const NUMERIC_FORMAT = '#,##0.00';
+    private const NUMERIC_FORMAT = '[$-416] #.##0,00';
 
     protected static ?string $model = ServiceOrder::class;
 
