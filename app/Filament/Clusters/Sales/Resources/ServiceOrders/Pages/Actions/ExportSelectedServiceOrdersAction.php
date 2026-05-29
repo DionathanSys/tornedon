@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ExportSelectedServiceOrdersAction
 {
-    private const NUMERIC_COLUMNS = [
+    public const NUMERIC_COLUMNS = [
         'services_total_amount',
         'requisition_total_amount',
         'grand_total_amount',
@@ -155,7 +155,7 @@ final class ExportSelectedServiceOrdersAction
         return array_values(array_intersect(array_keys(self::getColumns()), $selectedColumns));
     }
 
-    private static function getColumns(): array
+    public static function getColumns(): array
     {
         return [
             'number' => ['label' => 'Número', 'default' => true],
@@ -179,7 +179,7 @@ final class ExportSelectedServiceOrdersAction
         ];
     }
 
-    private static function resolveValue(ServiceOrder $record, string $column): string|float
+    public static function resolveValue(ServiceOrder $record, string $column): string|float
     {
         return match ($column) {
             'number' => (string) $record->number,
