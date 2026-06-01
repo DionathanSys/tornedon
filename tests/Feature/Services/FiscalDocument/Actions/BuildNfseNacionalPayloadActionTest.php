@@ -110,6 +110,24 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame('1', $payload['regime_apuracao']);
     }
 
+    public function test_includes_zeroed_tributos_totais_when_not_informed(): void
+    {
+        $document = $this->createReadyDocument();
+        $action   = new BuildNfseNacionalPayloadAction();
+        $payload  = $action->build($document);
+
+        $this->assertNotNull($payload);
+        $this->assertSame([
+            'percentual_tributos_federais' => 0.0,
+            'valor_tributos_federais' => 0.0,
+            'percentual_tributos_estaduais' => 0.0,
+            'valor_tributos_estaduais' => 0.0,
+            'percentual_tributos_municipais' => 5.0,
+            'valor_tributos_municipais' => 5.0,
+            'percentual_tributos_simples_nacional' => 0.0,
+        ], $payload['servico']['tributos_totais']);
+    }
+
     public function test_me_epp_includes_tributos_totais_from_tax_data_when_informed(): void
     {
         $document = $this->createReadyDocument(specialTaxRegime: '6');
@@ -221,14 +239,22 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame('4204202', $payload['servico']['endereco_local_prestacao']['codigo_municipio_prestacao']);
     }
 
-    public function test_me_epp_without_tributos_totais_data_does_not_generate_municipal_fallback(): void
+    public function test_me_epp_without_tributos_totais_data_generates_zeroed_totals(): void
     {
         $document = $this->createReadyDocument(specialTaxRegime: '6');
         $action   = new BuildNfseNacionalPayloadAction();
         $payload  = $action->build($document);
 
         $this->assertNotNull($payload);
-        $this->assertArrayNotHasKey('tributos_totais', $payload['servico']);
+        $this->assertSame([
+            'percentual_tributos_federais' => 0.0,
+            'valor_tributos_federais' => 0.0,
+            'percentual_tributos_estaduais' => 0.0,
+            'valor_tributos_estaduais' => 0.0,
+            'percentual_tributos_municipais' => 0.0,
+            'valor_tributos_municipais' => 0.0,
+            'percentual_tributos_simples_nacional' => 0.0,
+        ], $payload['servico']['tributos_totais']);
     }
 
     // ------------------------------------------------------------------

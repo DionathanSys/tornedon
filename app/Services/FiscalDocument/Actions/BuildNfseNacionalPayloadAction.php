@@ -469,10 +469,15 @@ class BuildNfseNacionalPayloadAction
             }
         }
 
-        if ($tributosTotais === [] && $aliquota > 0 && $specialTaxRegime !== '6') {
+        if ($tributosTotais === []) {
             $tributosTotais = [
-                'percentual_tributos_municipais' => round($aliquota, 2),
-                'valor_tributos_municipais'      => round($valorServicosTotal * $aliquota / 100, 2),
+                'percentual_tributos_federais' => 0.0,
+                'valor_tributos_federais' => 0.0,
+                'percentual_tributos_estaduais' => 0.0,
+                'valor_tributos_estaduais' => 0.0,
+                'percentual_tributos_municipais' => $specialTaxRegime === '6' ? 0.0 : round($aliquota, 2),
+                'valor_tributos_municipais' => $specialTaxRegime === '6' ? 0.0 : round($valorServicosTotal * $aliquota / 100, 2),
+                'percentual_tributos_simples_nacional' => 0.0,
             ];
         }
 
