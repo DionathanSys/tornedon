@@ -9,7 +9,6 @@ use App\Enum\FiscalDocument\Status;
 use App\Enum\FiscalDocument\IssuerType;
 use App\Enum\FiscalDocument\MunicipalTaxOperationType;
 use App\Enum\FiscalDocument\NationalWithholdingType;
-use App\Enum\FiscalDocument\RecipientType;
 use App\Models\Address;
 use App\Models\Company;
 use App\Models\CompanyPartner;
@@ -49,7 +48,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         // Tomador
         $tomador = $payload['tomador'];
         $this->assertSame('12345678000199', $tomador['cnpj']);
-        $this->assertSame(RecipientType::DOMESTIC->value, $tomador['tipo_destinatario']);
+        $this->assertArrayNotHasKey('tipo_destinatario', $tomador);
         $this->assertArrayNotHasKey('cpf', $tomador);
 
         // Endereço
@@ -66,11 +65,12 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame(100.0, $servico['valor_servicos']);
         $this->assertArrayHasKey('discriminacao', $servico);
         $this->assertArrayNotHasKey('codigo_tributacao_municipio', $servico);
+        $this->assertSame('4204202', $servico['endereco_local_prestacao']['codigo_municipio_prestacao']);
 
         // Tributos municipais
         $tribMun = $servico['tributos_municipais'];
         $this->assertSame(MunicipalTaxOperationType::TAXABLE_IN_MUNICIPALITY->value, $tribMun['tipo_operacao']);
-        $this->assertFalse($tribMun['iss_retido']);
+        $this->assertArrayNotHasKey('responsavel_retencao', $tribMun);
 
         // Tributos nacionais
         $tribNac = $servico['tributos_nacionais'];

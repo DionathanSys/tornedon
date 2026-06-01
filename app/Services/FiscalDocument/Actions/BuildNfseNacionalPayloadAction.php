@@ -5,7 +5,6 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\FiscalDocument\IssuerType;
 use App\Enum\FiscalDocument\MunicipalTaxOperationType;
 use App\Enum\FiscalDocument\NationalWithholdingType;
-use App\Enum\FiscalDocument\RecipientType;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Contracts\NfsePayloadBuilder;
 use App\Services\FiscalDocument\Validators\NfseNacionalV1Validator;
@@ -16,12 +15,12 @@ use Illuminate\Support\Facades\Log;
  * Monta o payload NFS-e no formato nacional (DPS/NFS-e Nacional) — V1.
  *
  * Estrutura: regime_apuracao, regime_tributacao, data_emissao, numero, serie,
- * tipo_emitente, tomador, servico { codigo, discriminacao, codigo_nbs,
- * valor_servicos, tributos_municipais, tributos_nacionais }.
+ * tipo_emitente, tomador, servico { endereco_local_prestacao, codigo,
+ * discriminacao, codigo_nbs, valor_servicos, tributos_municipais,
+ * tributos_nacionais }.
  *
  * V1 constraints:
  * - tipo_emitente = '1' (prestador)
- * - tomador.tipo_destinatario = '0' (nacional)
  * - servico.tributos_municipais.tipo_operacao = '1'
  * - servico.tributos_nacionais.tipo_retencao = '2' (não retido)
  * - sem exportação (uf ≠ EX)
@@ -226,8 +225,7 @@ class BuildNfseNacionalPayloadAction
         }
 
         $tomador = [
-            'razao_social'      => $customer->name,
-            'tipo_destinatario' => RecipientType::DOMESTIC->value,
+            'razao_social' => $customer->name,
         ];
 
         $docNumber = preg_replace('/\D/', '', $customer->document_number ?? '');
@@ -341,8 +339,6 @@ class BuildNfseNacionalPayloadAction
                 ?? $profile?->default_municipal_tax_code
         );
 
-        $serviceCode = "140501";
-
         $nbsCode = $this->normalizeNbsCode(
             $firstItem->nbs_code
                 ?? $firstItem->service?->nbs_code
@@ -387,12 +383,15 @@ class BuildNfseNacionalPayloadAction
             'valor_servicos' => round($valorServicosTotal, 2),
         ];
 
-        // Município de prestação
+        // Endereço/local de prestação
         $companyAddress = $company->address ?? [];
         $municipioPrestador = $companyAddress['city_code'] ?? null;
         $municipioPrestacao = $address?->city_code ?? $municipioPrestador;
+
         if ($municipioPrestacao) {
-            $servico['codigo_municipio_prestacao'] = $municipioPrestacao;
+            $servico['endereco_local_prestacao'] = [
+                'codigo_municipio_prestacao' => preg_replace('/\D/', '', (string) $municipioPrestacao),
+            ];
         }
 
         // Valor recebido
@@ -412,11 +411,15 @@ class BuildNfseNacionalPayloadAction
 
         $tributosMunicipais = [
             'tipo_operacao' => MunicipalTaxOperationType::TAXABLE_IN_MUNICIPALITY->value,
-            'iss_retido'    => $issRetido,
         ];
 
+        if ($issRetido) {
+            $tributosMunicipais['responsavel_retencao'] = '1';
+        }
+
         if ($aliquota > 0) {
-            $tributosMunicipais['valor_aliquota'] = round($aliquota, 2);
+            $tributosMunicipais['aliquota_iss'] = round($aliquota, 2);
+            $tributosMunicipais['valor_base_calculo_iss'] = round($valorServicosTotal, 2);
         }
 
         $servico['tributos_municipais'] = $tributosMunicipais;

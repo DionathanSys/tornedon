@@ -356,11 +356,21 @@ class NfseNacionalV1ValidatorTest extends TestCase
     public function test_aliquota_iss_over_100_fails(): void
     {
         $payload = $this->validPayload();
-        $payload['servico']['tributos_municipais']['valor_aliquota'] = 101;
+        $payload['servico']['tributos_municipais']['aliquota_iss'] = 101;
 
         $errors = $this->validator->validate($payload);
 
         $this->assertArrayHasKey('servico.tributos_municipais.aliquota_iss', $errors);
+    }
+
+    public function test_invalid_codigo_municipio_prestacao_fails(): void
+    {
+        $payload = $this->validPayload();
+        $payload['servico']['endereco_local_prestacao']['codigo_municipio_prestacao'] = '123';
+
+        $errors = $this->validator->validate($payload);
+
+        $this->assertArrayHasKey('servico.endereco_local_prestacao.codigo_municipio_prestacao', $errors);
     }
 
     public function test_missing_cst_tributos_nacionais_fails(): void
@@ -438,9 +448,12 @@ class NfseNacionalV1ValidatorTest extends TestCase
                 'discriminacao'  => 'Prestação de serviço conforme contrato.',
                 'codigo_nbs'     => '123456789',
                 'valor_servicos' => 100.0,
+                'endereco_local_prestacao' => [
+                    'codigo_municipio_prestacao' => '3550308',
+                ],
                 'tributos_municipais' => [
                     'tipo_operacao' => '1',
-                    'iss_retido'    => false,
+                    'aliquota_iss'  => 5.0,
                 ],
                 'tributos_nacionais' => [
                     'cst'           => '06',

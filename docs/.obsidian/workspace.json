@@ -24,23 +24,51 @@
             }
           },
           {
-            "id": "05d3207a4698f61f",
+            "id": "1e2c702d5c5223cf",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Plan/Remover campos json de fiscal documents.md",
+                "file": "Task Magna Gestor.md",
                 "mode": "source",
                 "source": false
               },
-              "pinned": true,
               "icon": "lucide-file",
-              "title": "Remover campos json de fiscal documents"
+              "title": "Task Magna Gestor"
+            }
+          },
+          {
+            "id": "792ec55bffc5b9e9",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "Drawing 2026-05-30 23.07.25.excalidraw"
             }
           }
         ],
         "currentTab": 1
+      },
+      {
+        "id": "a75d8e22277cd043",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5ff241ee0671f5a8",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "Drawing 2026-05-30 23.07.25.excalidraw"
+            }
+          }
+        ]
       }
     ],
     "direction": "vertical"
@@ -97,7 +125,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -113,7 +142,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Tasks App Gestor.md",
+                "file": "Task Magna Gestor.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -123,7 +152,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Links inversos para Tasks App Gestor"
+              "title": "Links inversos para Task Magna Gestor"
             }
           },
           {
@@ -203,19 +232,23 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "05d3207a4698f61f",
+  "active": "1e2c702d5c5223cf",
   "lastOpenFiles": [
+    "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",
+    "Task Magna Gestor.md",
+    "Tasks App Gestor.md",
+    "deploy-script.md",
     "TESTES-MANUAIS-FLUXOS-PRINCIPAIS.md",
+    "manual-vendas-faturamento-emissao-nota.md",
+    "Plan/Remover campos json de fiscal documents.md",
     "manual-lancamento-nota-entrada.md",
     "manual-cadastro-produtos-conversoes.md",
     "SPRINTS-ARQUITETURA-E-REFATORACAO.md",
     "Sem título 2.md",
     "manual-devolucao-parcial-nota-compra.md",
     "DATABASE-BACKUP.md",
-    "Tasks App Gestor.md",
     "Excalidraw/Drawing 2026-05-18 10.23.57.excalidraw.md",
     "PRANCHA04.pdf",
-    "Plan/Remover campos json de fiscal documents.md",
     "Notas diárias/2026.05.18.md",
     "Plano refatoração.md",
     "Notas diárias/2026.05.13.md",
@@ -228,10 +261,6 @@
     "Outros/stock-movement-examples.md",
     "Plano Fechamento Fatura Fornecedores.md",
     "Outros/stock-movement-control.md",
-    "Outros/service-order-authorization.md",
-    "Outros/QUOTE-EVENTS-IMPLEMENTATION.md",
-    "Outros/README-STOCK-MOVEMENTS.md",
-    "Outros/product-service-pattern.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

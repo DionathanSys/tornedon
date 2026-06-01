@@ -162,7 +162,7 @@ class NfseNacionalV1Validator
             }
         }
 
-        // tipo_destinatario — must be '0' in V1 (national)
+        // tipo_destinatario — optional, but when present must be '0' (national)
         $tipoDestinatario = $tomador['tipo_destinatario'] ?? null;
         if ($tipoDestinatario !== null && $tipoDestinatario !== '0') {
             $this->addError('tomador.tipo_destinatario', 'A V1 suporta apenas tipo_destinatario = 0 (nacional).');
@@ -299,6 +299,22 @@ class NfseNacionalV1Validator
 
         // tributos_nacionais
         $this->validateTributosNacionais($servico['tributos_nacionais'] ?? []);
+
+        $this->validateEnderecoLocalPrestacao($servico['endereco_local_prestacao'] ?? []);
+    }
+
+    private function validateEnderecoLocalPrestacao(array $endereco): void
+    {
+        if (empty($endereco)) {
+            return;
+        }
+
+        $codigoMunicipioPrestacao = $endereco['codigo_municipio_prestacao'] ?? null;
+        if ($codigoMunicipioPrestacao !== null && is_string($codigoMunicipioPrestacao) && trim($codigoMunicipioPrestacao) !== '') {
+            if (! preg_match('/^\d{7}$/', $codigoMunicipioPrestacao)) {
+                $this->addError('servico.endereco_local_prestacao.codigo_municipio_prestacao', 'O código do município de prestação deve conter exatamente 7 dígitos.');
+            }
+        }
     }
 
     private function validateTributosMunicipais(array $tributos): void
@@ -314,12 +330,17 @@ class NfseNacionalV1Validator
         }
 
         // aliquota_iss — 0-100 when present (percentage, not decimal)
-        $aliquotaIss = $tributos['valor_aliquota'] ?? $tributos['aliquota_iss'] ?? null;
+        $aliquotaIss = $tributos['aliquota_iss'] ?? $tributos['valor_aliquota'] ?? null;
         if ($aliquotaIss !== null && is_numeric($aliquotaIss)) {
             $aliquota = (float) $aliquotaIss;
             if ($aliquota < 0 || $aliquota > 100) {
                 $this->addError('servico.tributos_municipais.aliquota_iss', 'A alíquota do ISS deve estar entre 0 e 100 (percentual).');
             }
+        }
+
+        $valorBaseCalculoIss = $tributos['valor_base_calculo_iss'] ?? null;
+        if ($valorBaseCalculoIss !== null && is_numeric($valorBaseCalculoIss) && (float) $valorBaseCalculoIss < 0) {
+            $this->addError('servico.tributos_municipais.valor_base_calculo_iss', 'A base de cálculo do ISS não pode ser negativa.');
         }
     }
 
