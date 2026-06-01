@@ -394,9 +394,6 @@ class BuildNfseNacionalPayloadAction
             ];
         }
 
-        // Valor recebido
-        $servico['valor_recebido'] = round($valorServicosTotal, 2);
-
         // Descontos
         $descontoIncondicionado = $items->sum(fn ($i) => round((float) ($i->discount_amount ?? 0), 2));
         if (round($descontoIncondicionado, 2) > 0) {

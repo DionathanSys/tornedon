@@ -65,6 +65,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame(100.0, $servico['valor_servicos']);
         $this->assertArrayHasKey('discriminacao', $servico);
         $this->assertArrayNotHasKey('codigo_tributacao_municipio', $servico);
+        $this->assertArrayNotHasKey('valor_recebido', $servico);
         $this->assertSame('4204202', $servico['endereco_local_prestacao']['codigo_municipio_prestacao']);
 
         // Tributos municipais
