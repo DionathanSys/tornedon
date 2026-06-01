@@ -385,8 +385,10 @@ class BuildNfseNacionalPayloadAction
 
         // Endereço/local de prestação
         $companyAddress = $company->address ?? [];
-        $municipioPrestador = $companyAddress['city_code'] ?? null;
-        $municipioPrestacao = $address?->city_code ?? $municipioPrestador;
+        $municipioPrestador = $profile?->default_service_city_code
+            ?? $companyAddress['city_code']
+            ?? null;
+        $municipioPrestacao = $municipioPrestador;
 
         if ($municipioPrestacao) {
             $servico['endereco_local_prestacao'] = [
@@ -450,11 +452,32 @@ class BuildNfseNacionalPayloadAction
         // ------------------------------------------------------------------
         // Tributos totais
         // ------------------------------------------------------------------
-        if ($aliquota > 0) {
-            $servico['tributos_totais'] = [
+        $specialTaxRegime = trim((string) ($profile?->nfse_special_tax_regime ?? ''));
+        $tributosTotais = [];
+
+        foreach ([
+            'percentual_tributos_federais',
+            'valor_tributos_federais',
+            'percentual_tributos_estaduais',
+            'valor_tributos_estaduais',
+            'percentual_tributos_municipais',
+            'valor_tributos_municipais',
+            'percentual_tributos_simples_nacional',
+        ] as $field) {
+            if (isset($taxData[$field]) && is_numeric($taxData[$field]) && (float) $taxData[$field] >= 0) {
+                $tributosTotais[$field] = round((float) $taxData[$field], 2);
+            }
+        }
+
+        if ($tributosTotais === [] && $aliquota > 0 && $specialTaxRegime !== '6') {
+            $tributosTotais = [
                 'percentual_tributos_municipais' => round($aliquota, 2),
                 'valor_tributos_municipais'      => round($valorServicosTotal * $aliquota / 100, 2),
             ];
+        }
+
+        if ($tributosTotais !== []) {
+            $servico['tributos_totais'] = $tributosTotais;
         }
 
         return $servico;

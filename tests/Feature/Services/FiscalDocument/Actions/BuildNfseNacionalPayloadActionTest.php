@@ -110,6 +110,23 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame('1', $payload['regime_apuracao']);
     }
 
+    public function test_me_epp_includes_tributos_totais_from_tax_data_when_informed(): void
+    {
+        $document = $this->createReadyDocument(specialTaxRegime: '6');
+        $document->items()->update([
+            'tax_data' => [
+                'percentual_tributos_simples_nacional' => 6.5,
+            ],
+        ]);
+        $document->unsetRelation('items');
+
+        $action   = new BuildNfseNacionalPayloadAction();
+        $payload  = $action->build($document);
+
+        $this->assertNotNull($payload);
+        $this->assertSame(6.5, $payload['servico']['tributos_totais']['percentual_tributos_simples_nacional']);
+    }
+
     public function test_omits_null_values_from_payload(): void
     {
         $document = $this->createReadyDocument();
@@ -179,6 +196,39 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertNotNull($payload);
         $this->assertSame('405000', $payload['servico']['codigo']);
         $this->assertArrayNotHasKey('codigo_tributacao_municipio', $payload['servico']);
+    }
+
+    public function test_nacional_uses_service_city_code_for_local_prestacao_instead_of_customer_city(): void
+    {
+        $document = $this->createReadyDocument();
+
+        $companyPartner = CompanyPartner::where('company_id', $document->company_id)
+            ->where('partner_id', $document->customer_id)
+            ->first();
+
+        Address::where('company_partner_id', $companyPartner->id)->update([
+            'city' => 'Salto',
+            'state' => 'SP',
+            'city_code' => '3545209',
+        ]);
+
+        $document->unsetRelation('customer');
+
+        $action = new BuildNfseNacionalPayloadAction();
+        $payload = $action->build($document);
+
+        $this->assertNotNull($payload);
+        $this->assertSame('4204202', $payload['servico']['endereco_local_prestacao']['codigo_municipio_prestacao']);
+    }
+
+    public function test_me_epp_without_tributos_totais_data_does_not_generate_municipal_fallback(): void
+    {
+        $document = $this->createReadyDocument(specialTaxRegime: '6');
+        $action   = new BuildNfseNacionalPayloadAction();
+        $payload  = $action->build($document);
+
+        $this->assertNotNull($payload);
+        $this->assertArrayNotHasKey('tributos_totais', $payload['servico']);
     }
 
     // ------------------------------------------------------------------
@@ -290,6 +340,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         string $customerState = 'SC',
         ?string $cstDefault = null,
         ?string $regimeApuracao = null,
+        ?string $specialTaxRegime = null,
         float $discountAmount = 0,
     ): FiscalDocument {
         $user = User::factory()->create();
@@ -313,6 +364,7 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
             'default_nbs_code'              => '123456789',
             'default_service_city_code'     => '4204202',
             'iss_rate_default'              => 5,
+            'nfse_special_tax_regime'       => $specialTaxRegime,
             'nfse_nacional_cst_default'     => $cstDefault,
             'nfse_nacional_regime_apuracao' => $regimeApuracao,
             'is_active'                     => true,

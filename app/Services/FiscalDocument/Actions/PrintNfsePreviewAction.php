@@ -54,6 +54,8 @@ class PrintNfsePreviewAction
                 return null;
             }
 
+            unset($payload['servico']['valor_recebido']);
+
             $configService = app(NfseConfigService::class);
             $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($fiscalDocument->company_id));
 

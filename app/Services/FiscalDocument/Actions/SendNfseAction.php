@@ -91,6 +91,8 @@ class SendNfseAction
                 return false;
             }
 
+            unset($payload['servico']['valor_recebido']);
+
             // ------------------------------------------------------------------
             // 3. Enviar via SDK
             // ------------------------------------------------------------------
