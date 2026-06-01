@@ -115,6 +115,29 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         $this->assertSame(1, $result->candidateNumber);
     }
 
+    public function test_nfse_national_preflight_requires_regime_apuracao_for_simples_nacional_me_epp(): void
+    {
+        [, $document] = $this->createReadyNfseDocument(
+            model: NfseModel::NACIONAL,
+            fiscalProfileOverrides: [
+                'tax_regime' => 'simples_nacional',
+                'nfse_special_tax_regime' => '6',
+                'nfse_nacional_regime_apuracao' => null,
+            ],
+        );
+
+        $config = Mockery::mock(NfseConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $this->app->instance(NfseConfigService::class, $config);
+
+        $service = app(FiscalEmissionPreflightService::class);
+        $result = $service->validateForQueue($document);
+
+        $this->assertNull($result);
+        $this->assertArrayHasKey('fiscal_profile.nfse_nacional_regime_apuracao', $service->getErrors());
+    }
+
     private function createReadyNfeDocument(
         ?Company $company = null,
         ?Partner $customer = null,
@@ -216,6 +239,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         NfseModel $model = NfseModel::MUNICIPAL,
         bool $withServiceDefaults = true,
         bool $withItemTaxCodes = true,
+        array $fiscalProfileOverrides = [],
     ): array {
         $user ??= User::factory()->create();
 
@@ -228,7 +252,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
 
         FiscalProfile::query()->updateOrCreate(
             ['company_id' => $company->id],
-            [
+            array_replace([
                 'tax_regime' => 'simples_nacional',
                 'default_service_code' => $withServiceDefaults ? '01.01' : null,
                 'default_municipal_tax_code' => $withServiceDefaults ? '01.01' : null,
@@ -237,7 +261,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
                 'iss_rate_default' => 5,
                 'is_active' => true,
                 'created_by' => $user->id,
-            ],
+            ], $fiscalProfileOverrides),
         );
 
         $customer ??= Partner::query()->create([

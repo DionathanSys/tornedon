@@ -474,11 +474,12 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
                         Forms\Components\Select::make('nfse_nacional_regime_apuracao')
                             ->label('Regime de Apuração')
                             ->options([
-                                '1' => '1 - Competência',
-                                '2' => '2 - Caixa',
+                                '1' => '1 - Tributos federais e municipais pelo SN',
+                                '2' => '2 - Tributos federais pelo SN e ISSQN por fora do SN',
+                                '3' => '3 - Tributos federais e municipais por fora do SN',
                             ])
                             ->native(false)
-                            ->helperText('Define como os tributos da NFS-e Nacional serão apurados. Se não informado, será omitido do payload.')
+                            ->helperText('Campo exigido na NFS-e Nacional para emitentes do Simples Nacional ME/EPP. Use as opções oficiais retornadas pela API/governo.')
                             ->columnSpan(['md' => 1]),
 
                         Forms\Components\TextInput::make('nfse_nacional_cst_default')

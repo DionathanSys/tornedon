@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Domain\DTO\Fiscal\FiscalEmissionPreflightResult;
 use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\Tax\TaxRegime;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Services\Fiscal\NfeConfigService;
@@ -283,6 +284,17 @@ class FiscalEmissionPreflightService
             $customerUf = strtoupper(trim((string) ($customerAddress?->state ?? '')));
             if ($customerUf === 'EX') {
                 $errors['customer.address.state'][] = 'A NFS-e Nacional V1 não suporta emissão para exterior (UF = EX).';
+            }
+
+            $taxRegime = $profile?->tax_regime instanceof TaxRegime
+                ? $profile->tax_regime
+                : TaxRegime::tryFrom((string) $profile?->tax_regime);
+
+            $specialTaxRegime = trim((string) ($profile?->nfse_special_tax_regime ?? ''));
+            $nationalAssessmentRegime = trim((string) ($profile?->nfse_nacional_regime_apuracao ?? ''));
+
+            if ($taxRegime === TaxRegime::SIMPLES_NACIONAL && $specialTaxRegime === '6' && $nationalAssessmentRegime === '') {
+                $errors['fiscal_profile.nfse_nacional_regime_apuracao'][] = 'A NFS-e nacional exige o regime de apuração para emitente Simples Nacional ME/EPP.';
             }
         }
     }
