@@ -10,15 +10,16 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Carbon;
 use UnitEnum;
 
 class MobileServiceOrdersDashboard extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar-square';
 
-    protected static ?string $navigationLabel = 'OS Hoje';
+    protected static ?string $navigationLabel = 'Dashboard OS';
 
-    protected static ?string $title = 'Dashboard de Ordens do Dia';
+    protected static ?string $title = 'Dashboard de Ordens de Serviço';
 
     protected static string|UnitEnum|null $navigationGroup = null;
 
@@ -32,31 +33,23 @@ class MobileServiceOrdersDashboard extends Page
 
     public array $orders = [];
 
+    public string $selectedDate = '';
+
     public function mount(): void
     {
-        $tenant = Filament::getTenant();
+        $this->selectedDate = today()->toDateString();
+        $this->loadDashboardData();
+    }
 
-        if (! $tenant) {
-            $this->stats = $this->emptyStats();
-            $this->orders = [];
+    public function updatedSelectedDate(): void
+    {
+        $this->selectedDate = $this->resolveSelectedDate()->toDateString();
+        $this->loadDashboardData();
+    }
 
-            return;
-        }
-
-        $orders = ServiceOrder::query()
-            ->where('company_id', $tenant->getKey())
-            ->whereDate('order_date', today())
-            ->with([
-                'customer:id,name',
-                'technician:id,name',
-                'items',
-                'requisition.items',
-            ])
-            ->orderByDesc('created_at')
-            ->get();
-
-        $this->stats = $this->buildStats($orders);
-        $this->orders = $this->buildOrders($orders);
+    public function getSelectedDateLabel(): string
+    {
+        return $this->resolveSelectedDate()->translatedFormat('d/m/Y');
     }
 
     protected function getHeaderActions(): array
@@ -69,6 +62,35 @@ class MobileServiceOrdersDashboard extends Page
                     'tenant' => Filament::getTenant(),
                 ])),
         ];
+    }
+
+    private function loadDashboardData(): void
+    {
+        $tenant = Filament::getTenant();
+
+        if (! $tenant) {
+            $this->stats = $this->emptyStats();
+            $this->orders = [];
+
+            return;
+        }
+
+        $selectedDate = $this->resolveSelectedDate();
+
+        $orders = ServiceOrder::query()
+            ->where('company_id', $tenant->getKey())
+            ->whereDate('order_date', $selectedDate)
+            ->with([
+                'customer:id,name',
+                'technician:id,name',
+                'items',
+                'requisition.items',
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $this->stats = $this->buildStats($orders);
+        $this->orders = $this->buildOrders($orders);
     }
 
     /**
@@ -85,27 +107,27 @@ class MobileServiceOrdersDashboard extends Page
 
         return [
             'count' => [
-                'label' => 'Ordens do dia',
+                'label' => 'Ordens na data',
                 'value' => number_format($count, 0, ',', '.'),
-                'description' => 'OS criadas com data de hoje',
+                'description' => 'OS com data de ordem igual ao filtro',
                 'color' => 'text-zinc-900',
             ],
             'total' => [
                 'label' => 'Valor total',
                 'value' => $this->formatMoney($total),
-                'description' => 'Soma do total geral das OS',
+                'description' => 'Soma do total geral das OS filtradas',
                 'color' => 'text-emerald-700',
             ],
             'average_ticket' => [
                 'label' => 'Ticket médio',
                 'value' => $this->formatMoney($count > 0 ? round($total / $count, 2) : 0),
-                'description' => 'Valor total dividido pela quantidade',
+                'description' => 'Valor total dividido pela quantidade filtrada',
                 'color' => 'text-sky-700',
             ],
             'pending' => [
-                'label' => 'Pendentes do dia',
+                'label' => 'Pendentes na data',
                 'value' => number_format($pending, 0, ',', '.'),
-                'description' => 'OS de hoje ainda abertas',
+                'description' => 'OS filtradas que ainda estao abertas',
                 'color' => 'text-amber-700',
             ],
         ];
@@ -141,30 +163,39 @@ class MobileServiceOrdersDashboard extends Page
     {
         return [
             'count' => [
-                'label' => 'Ordens do dia',
+                'label' => 'Ordens na data',
                 'value' => '0',
-                'description' => 'OS criadas com data de hoje',
+                'description' => 'OS com data de ordem igual ao filtro',
                 'color' => 'text-zinc-900',
             ],
             'total' => [
                 'label' => 'Valor total',
                 'value' => $this->formatMoney(0),
-                'description' => 'Soma do total geral das OS',
+                'description' => 'Soma do total geral das OS filtradas',
                 'color' => 'text-emerald-700',
             ],
             'average_ticket' => [
                 'label' => 'Ticket médio',
                 'value' => $this->formatMoney(0),
-                'description' => 'Valor total dividido pela quantidade',
+                'description' => 'Valor total dividido pela quantidade filtrada',
                 'color' => 'text-sky-700',
             ],
             'pending' => [
-                'label' => 'Pendentes do dia',
+                'label' => 'Pendentes na data',
                 'value' => '0',
-                'description' => 'OS de hoje ainda abertas',
+                'description' => 'OS filtradas que ainda estao abertas',
                 'color' => 'text-amber-700',
             ],
         ];
+    }
+
+    private function resolveSelectedDate(): Carbon
+    {
+        try {
+            return Carbon::parse($this->selectedDate)->startOfDay();
+        } catch (\Throwable) {
+            return today()->startOfDay();
+        }
     }
 
     private function formatMoney(float $amount): string

@@ -56,8 +56,8 @@ class MobileServiceOrdersDashboardTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Dashboard de Ordens do Dia')
-            ->assertSee('Ordens de hoje');
+            ->assertSee('Dashboard de Ordens de Serviço')
+            ->assertSee('Ordens encontradas');
     }
 
     public function test_mobile_dashboard_shows_only_todays_orders_for_current_tenant(): void
@@ -99,9 +99,9 @@ class MobileServiceOrdersDashboardTest extends TestCase
             ->assertSee('OS-HOJE-A')
             ->assertDontSee('OS-ONTEM-A')
             ->assertDontSee('OS-HOJE-B')
-            ->assertSee('Ordens do dia')
+            ->assertSee('Ordens na data')
             ->assertSee('1')
-            ->assertSee('Pendentes do dia');
+            ->assertSee('Pendentes na data');
     }
 
     public function test_mobile_dashboard_uses_grand_total_amount_instead_of_total_amount(): void
@@ -129,9 +129,42 @@ class MobileServiceOrdersDashboardTest extends TestCase
         $this->createAuthenticatedTenant();
 
         Livewire::test(MobileServiceOrdersDashboard::class)
-            ->assertSee('Nenhuma ordem de serviço foi criada para hoje.')
+            ->assertSee('Nenhuma ordem de servico foi encontrada para a data selecionada.')
             ->assertSee('R$ 0,00')
             ->assertSee('Ticket médio');
+    }
+
+    public function test_mobile_dashboard_allows_changing_the_selected_date(): void
+    {
+        [$user, $company] = $this->createAuthenticatedTenant();
+
+        $this->createServiceOrderForDashboard(
+            user: $user,
+            company: $company,
+            number: 'OS-01-06',
+            orderDate: Carbon::parse('2026-06-01'),
+            totalAmount: 80,
+            requisitionAmount: 0,
+            status: State::OPEN,
+        );
+
+        $this->createServiceOrderForDashboard(
+            user: $user,
+            company: $company,
+            number: 'OS-02-06',
+            orderDate: Carbon::parse('2026-06-02'),
+            totalAmount: 100,
+            requisitionAmount: 0,
+            status: State::OPEN,
+        );
+
+        Livewire::test(MobileServiceOrdersDashboard::class)
+            ->assertSee('OS-02-06')
+            ->assertDontSee('OS-01-06')
+            ->set('selectedDate', '2026-06-01')
+            ->assertSee('OS-01-06')
+            ->assertDontSee('OS-02-06')
+            ->assertSee('01/06/2026');
     }
 
     /**
