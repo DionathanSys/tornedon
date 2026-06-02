@@ -41,16 +41,18 @@
                     Nenhuma ordem de servico foi encontrada para a data selecionada.
                 </div>
             @else
-                <div class="divide-y divide-zinc-100">
+                <div class="space-y-3 p-3">
                     @foreach ($this->orders as $order)
                         <a
                             href="{{ $order['edit_url'] }}"
-                            class="block px-4 py-4 transition hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                            class="block rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-4 shadow-sm transition hover:border-zinc-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-300"
                         >
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-sm font-semibold text-zinc-900">{{ $order['number'] }}</span>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="inline-flex rounded-lg bg-white px-2.5 py-1 text-sm font-semibold text-zinc-900 shadow-sm">
+                                            {{ $order['number'] }}
+                                        </span>
                                         <span @class([
                                             'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium',
                                             'bg-sky-100 text-sky-700' => $order['status_color'] === 'info',
@@ -62,13 +64,17 @@
                                             {{ $order['status'] }}
                                         </span>
                                     </div>
-                                    <p class="mt-1 truncate text-sm text-zinc-700">{{ $order['customer'] }}</p>
-                                    <p class="mt-1 text-xs text-zinc-500">{{ $order['technician'] }}</p>
+                                    <div class="mt-3 space-y-1">
+                                        <p class="truncate text-sm font-medium text-zinc-800">{{ $order['customer'] }}</p>
+                                        <p class="text-xs text-zinc-500">{{ $order['technician'] }}</p>
+                                    </div>
                                 </div>
 
-                                <div class="text-left sm:text-right">
-                                    <p class="text-sm font-semibold text-zinc-900">{{ $order['total'] }}</p>
-                                    <p class="mt-1 text-xs text-zinc-500">{{ $order['order_date'] }}</p>
+                                <div class="border-t border-zinc-200 pt-3 text-left sm:min-w-32 sm:border-t-0 sm:border-l sm:border-zinc-200 sm:pl-4 sm:pt-0 sm:text-right">
+                                    <p class="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Total</p>
+                                    <p class="mt-1 text-sm font-semibold text-zinc-900">{{ $order['total'] }}</p>
+                                    <p class="mt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">Data</p>
+                                    <p class="mt-1 text-xs text-zinc-600">{{ $order['order_date'] }}</p>
                                 </div>
                             </div>
                         </a>
