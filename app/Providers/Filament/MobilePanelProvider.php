@@ -42,6 +42,10 @@ class MobilePanelProvider extends PanelProvider
                 in: app_path('Filament/Mobile/Resources'),
                 for: 'App\\Filament\\Mobile\\Resources',
             )
+            ->discoverPages(
+                in: app_path('Filament/Mobile/Pages'),
+                for: 'App\\Filament\\Mobile\\Pages',
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
