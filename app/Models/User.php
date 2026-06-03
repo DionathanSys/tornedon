@@ -28,6 +28,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         'name',
         'email',
         'password',
+        'is_active',
         'is_admin',
     ];
 
@@ -52,12 +53,18 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_active' => 'boolean',
+            'is_admin' => 'boolean',
             'password' => 'hashed',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
+        if ($panel->getId() === 'management') {
+            return (bool) $this->is_admin;
+        }
+
         return true;
     }
 
@@ -96,5 +103,4 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
         return $this->can('view_audit_logs');
     }
-
 }

@@ -47,33 +47,31 @@
                             href="{{ $order['edit_url'] }}"
                             class="block rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-4 shadow-sm transition hover:border-zinc-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-300"
                         >
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="min-w-0">
-                                    <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 space-y-4">
+                                    <div class="flex flex-wrap items-center gap-3">
                                         <span class="inline-flex rounded-lg bg-white px-2.5 py-1 text-sm font-semibold text-zinc-900 shadow-sm">
                                             {{ $order['number'] }}
                                         </span>
                                         <span @class([
-                                            'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium',
-                                            'bg-sky-100 text-sky-700' => $order['status_color'] === 'info',
-                                            'bg-emerald-100 text-emerald-700' => $order['status_color'] === 'success',
-                                            'bg-amber-100 text-amber-700' => $order['status_color'] === 'warning',
-                                            'bg-rose-100 text-rose-700' => $order['status_color'] === 'danger',
-                                            'bg-zinc-100 text-zinc-700' => ! in_array($order['status_color'], ['info', 'success', 'warning', 'danger'], true),
+                                            'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold',
+                                            'border-sky-200 bg-sky-100 text-sky-700' => $order['status_color'] === 'info',
+                                            'border-emerald-200 bg-emerald-100 text-emerald-700' => $order['status_color'] === 'success',
+                                            'border-amber-200 bg-amber-100 text-amber-700' => $order['status_color'] === 'warning',
+                                            'border-rose-200 bg-rose-100 text-rose-700' => $order['status_color'] === 'danger',
+                                            'border-zinc-200 bg-zinc-100 text-zinc-700' => ! in_array($order['status_color'], ['info', 'success', 'warning', 'danger'], true),
                                         ])>
                                             {{ $order['status'] }}
                                         </span>
                                     </div>
-                                    <div class="mt-3 space-y-1">
-                                        <p class="truncate text-sm font-medium text-zinc-800">{{ $order['customer'] }}</p>
-                                        <p class="text-xs text-zinc-500">{{ $order['technician'] }}</p>
-                                    </div>
+
+                                    <p class="truncate text-base font-medium leading-6 text-zinc-800">{{ $order['customer'] }}</p>
                                 </div>
 
-                                <div class="border-t border-zinc-200 pt-3 text-left sm:min-w-32 sm:border-t-0 sm:border-l sm:border-zinc-200 sm:pl-4 sm:pt-0 sm:text-right">
+                                <div class="border-t border-zinc-200 pt-4 text-left sm:min-w-32 sm:border-t-0 sm:border-l sm:border-zinc-200 sm:pl-5 sm:pt-0 sm:text-right">
                                     <p class="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Total</p>
                                     <p class="mt-1 text-sm font-semibold text-zinc-900">{{ $order['total'] }}</p>
-                                    <p class="mt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">Data</p>
+                                    <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-zinc-500">Data</p>
                                     <p class="mt-1 text-xs text-zinc-600">{{ $order['order_date'] }}</p>
                                 </div>
                             </div>
