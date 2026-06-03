@@ -39,7 +39,7 @@ final class FiscalDocumentRecordActions
                     if ($service->isSuccess()) {
                         notify::success($service->getMessage());
                     } else {
-                        notify::error($service->getMessage());
+                        notify::error('Falha durante processamento', $service->getMessageUser() ?: $service->getMessage());
                     }
                 }),
 
@@ -89,7 +89,7 @@ final class FiscalDocumentRecordActions
                         return;
                     }
 
-                    notify::error($service->getMessage());
+                    notify::error('Falha durante processamento', $service->getMessageUser() ?: $service->getMessage());
                 })
                 ->modalSubmitActionLabel('Emitir')
                 ->modalWidth('6xl'),
@@ -104,7 +104,7 @@ final class FiscalDocumentRecordActions
                     $pdf = $service->danfe($record, Auth::id());
 
                     if (! $pdf) {
-                        notify::error($service->getMessage());
+                        notify::error('Falha durante processamento', $service->getMessageUser() ?: $service->getMessage());
 
                         return response()->streamDownload(fn () => null, 'danfe.pdf');
                     }

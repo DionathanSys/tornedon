@@ -80,6 +80,13 @@ class NfseDocumentService
                         'scenario_code' => $preflight?->scenarioCode,
                     ],
                 ]);
+                Log::warning('NfseDocumentService::emitir - preflight invalido', [
+                    'fiscal_document_id' => $doc->id,
+                    'message' => $this->getMessageUser(),
+                    'errors' => $preflightService->getErrors(),
+                    'user_id' => $userId,
+                ]);
+
                 return false;
             }
 

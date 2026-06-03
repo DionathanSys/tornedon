@@ -6,6 +6,7 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Actions\ConfigurePurch
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\Actions\ReconcileNfseRpsSequenceAction;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
@@ -114,7 +115,7 @@ class EditFiscalDocument extends EditRecord
                             return;
                         }
 
-                        notify::error($service->getMessage());
+                        notify::error('Falha durante processamento', $service->getMessageUser() ?: $service->getMessage());
                     })
                     ->successRedirectUrl(fn (FiscalDocument $record) => FiscalDocumentResource::getUrl('edit', ['record' => $record])),
 
@@ -134,7 +135,7 @@ class EditFiscalDocument extends EditRecord
                             return;
                         }
 
-                        notify::error($service->getMessage());
+                        notify::error('Falha durante processamento', $service->getMessageUser() ?: $service->getMessage());
                     }),
 
                 Action::make('preview')
@@ -173,7 +174,7 @@ class EditFiscalDocument extends EditRecord
                             return;
                         }
 
-                        notify::error($service->getMessage());
+                        notify::error('Falha durante processamento', $service->getMessageUser() ?: $service->getMessage());
                     })
                     ->after(fn () => $this->refreshFormData(['errors_messages'])),
 
@@ -349,6 +350,49 @@ class EditFiscalDocument extends EditRecord
                         }
 
                         notify::error($service->getMessage());
+                    }),
+
+                Action::make('reconciliar_rps_nfse')
+                    ->label('Conciliar RPS')
+                    ->icon(Heroicon::WrenchScrewdriver)
+                    ->color('warning')
+                    ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfsePendingReconciliation())
+                    ->modalHeading('Conciliar RPS da NFS-e')
+                    ->modalDescription('Registre o motivo da conciliação. Se desejar, limpe o RPS atual do documento para permitir novo envio com outro número.')
+                    ->schema([
+                        Textarea::make('reason')
+                            ->label('Justificativa')
+                            ->required()
+                            ->minLength(15)
+                            ->rows(4),
+                        Select::make('resolution')
+                            ->label('Destino do documento')
+                            ->options([
+                                'keep' => 'Manter em conciliação com o RPS atual',
+                                'clear' => 'Limpar RPS do documento para novo envio',
+                            ])
+                            ->default('clear')
+                            ->required()
+                            ->native(false),
+                    ])
+                    ->action(function (FiscalDocument $record, array $data): void {
+                        $action = app(ReconcileNfseRpsSequenceAction::class);
+
+                        $action->execute(
+                            $record,
+                            (string) $data['reason'],
+                            ($data['resolution'] ?? 'clear') === 'clear'
+                        );
+
+                        $this->syncFiscalDocumentState();
+
+                        if ($action->isSuccess()) {
+                            notify::success('Conciliação de RPS registrada com sucesso.');
+
+                            return;
+                        }
+
+                        notify::error($action->getMessage() ?: 'Não foi possível conciliar o RPS da NFS-e.');
                     }),
 
                 Action::make('preview_nfse')

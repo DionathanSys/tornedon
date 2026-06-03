@@ -87,6 +87,12 @@ class NfeDocumentService
                         'scenario_code' => $preflight?->scenarioCode,
                     ],
                 ]);
+                Log::warning('NfeDocumentService::emitir - preflight invalido', [
+                    'fiscal_document_id' => $doc->id,
+                    'message' => $this->getMessageUser(),
+                    'errors' => $preflightService->getErrors(),
+                    'user_id' => $userId,
+                ]);
 
                 return false;
             }
