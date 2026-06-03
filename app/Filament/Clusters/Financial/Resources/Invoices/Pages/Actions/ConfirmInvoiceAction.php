@@ -170,7 +170,7 @@ final class ConfirmInvoiceAction
                                     })
                                     ->rows(4)
                                     ->helperText('Máximo de 2000 caracteres. Se a descrição automática ultrapassar esse limite, ela será cortada.')
-                                    ->live(onBlur: true, debounce: 300)
+                                    ->live(onBlur: true)
                                     ->afterStateUpdated(function (?string $state, callable $set): void {
                                         $set('nfse_item_description', mb_substr(trim((string) $state), 0, 2000));
                                     })
@@ -181,7 +181,12 @@ final class ConfirmInvoiceAction
                                     ->label('Informações adicionais do item da NFS-e')
                                     ->default(fn (Invoice $record): string => app(InvoiceService::class)->buildNfseItemAdditionalInformation($record))
                                     ->rows(3)
-                                    ->maxLength(500),
+                                    ->helperText('Máximo de 2000 caracteres. Se a descrição automática ultrapassar esse limite, ela será cortada.')
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (?string $state, callable $set): void {
+                                        $set('nfse_additional_information', mb_substr(trim((string) $state), 0, 2000));
+                                    })
+                                    ->maxLength(2000),
                             ]),
                     ]),
             ])
