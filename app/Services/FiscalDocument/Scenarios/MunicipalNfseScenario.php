@@ -60,17 +60,14 @@ class MunicipalNfseScenario implements FiscalEmissionScenarioInterface
             (int) $document->company_id,
             $series,
             $environment,
-            NfseModel::MUNICIPAL->value,
         ]);
     }
 
-    public function validate(FiscalDocument $document, array &$errors): void
-    {
-    }
+    public function validate(FiscalDocument $document, array &$errors): void {}
 
     public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
     {
-        return new \App\Domain\DTO\Fiscal\ScenarioContext();
+        return new \App\Domain\DTO\Fiscal\ScenarioContext;
     }
 
     private function resolveModel(FiscalDocument $document): string

@@ -129,7 +129,11 @@ final class GenerateFiscalDocumentAction
                                 ->label('Descrição do item da NFS-e')
                                 ->default($defaultDescription)
                                 ->rows(4)
-                                ->live()
+                                ->helperText('Máximo de 2000 caracteres. Se a descrição automática ultrapassar esse limite, ela será cortada.')
+                                ->live(debounce: 300)
+                                ->afterStateUpdated(function (?string $state, callable $set): void {
+                                    $set('nfse_item_description', mb_substr(trim((string) $state), 0, 2000));
+                                })
                                 ->maxLength(2000)
                                 ->required(),
 

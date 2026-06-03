@@ -55,7 +55,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
 
         $this->assertSame(NfeStatus::QUEUED, $document->nfse_status);
         $this->assertNotNull($document->emission_requested_at);
-        $this->assertSame("nfse:{$document->company_id}:1:2:municipal", $document->emission_group_key);
+        $this->assertSame("nfse:{$document->company_id}:1:2", $document->emission_group_key);
 
         Bus::assertDispatched(ProcessQueuedNfseEmissionJob::class);
     }
@@ -69,7 +69,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
 
         $firstDocument->update([
             'nfse_status' => NfeStatus::QUEUED->value,
-            'emission_group_key' => "nfse:{$firstDocument->company_id}:1:2:municipal",
+            'emission_group_key' => "nfse:{$firstDocument->company_id}:1:2",
             'emission_requested_at' => now()->subMinute(),
         ]);
         $firstDocument->items()->first()?->update([
@@ -78,7 +78,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
 
         $secondDocument->update([
             'nfse_status' => NfeStatus::QUEUED->value,
-            'emission_group_key' => "nfse:{$secondDocument->company_id}:1:2:municipal",
+            'emission_group_key' => "nfse:{$secondDocument->company_id}:1:2",
             'emission_requested_at' => now(),
         ]);
 
@@ -106,7 +106,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
                 'chave' => 'NFSE-KEY-0001',
             ]);
 
-        $job = new ProcessQueuedNfseEmissionJob("nfse:{$firstDocument->company_id}:1:2:municipal");
+        $job = new ProcessQueuedNfseEmissionJob("nfse:{$firstDocument->company_id}:1:2");
         $job->handle();
 
         $firstDocument->refresh();
@@ -127,6 +127,121 @@ class QueuedNfseEmissionFlowTest extends TestCase
 
         $this->assertNotNull($sequence);
         $this->assertSame(1, $sequence->last_number);
+    }
+
+    public function test_queue_job_keeps_same_rps_number_after_immediate_api_rejection(): void
+    {
+        Bus::fake();
+
+        [$user, $document] = $this->createReadyDocument();
+
+        $document->update([
+            'nfse_status' => NfeStatus::QUEUED->value,
+            'emission_group_key' => "nfse:{$document->company_id}:1:2",
+            'emission_requested_at' => now(),
+        ]);
+
+        $config = Mockery::mock(NfseConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('buildSdkParams')->andReturn([
+            'token' => 'fake-token',
+            'ambiente' => 2,
+            'options' => [],
+        ]);
+        $this->app->instance(NfseConfigService::class, $config);
+
+        $sdk = Mockery::mock('overload:CloudDfe\SdkPHP\Nfse');
+        $sdk->shouldReceive('cria')
+            ->once()
+            ->andReturn((object) [
+                'sucesso' => false,
+                'codigo' => 5001,
+                'mensagem' => 'Erro de validação',
+                'erros' => [],
+            ]);
+
+        $job = new ProcessQueuedNfseEmissionJob("nfse:{$document->company_id}:1:2");
+        $job->handle();
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::PENDING, $document->nfse_status);
+        $this->assertSame('1', $document->rps_number);
+        $this->assertSame('1', $document->rps_series);
+        $this->assertSame(1, NfseSequence::query()->whereKey($document->nfse_sequence_id)->value('last_number'));
+    }
+
+    public function test_queue_job_marks_document_for_reconciliation_on_ambiguous_api_failure(): void
+    {
+        Bus::fake();
+
+        [$user, $document] = $this->createReadyDocument();
+
+        $document->update([
+            'nfse_status' => NfeStatus::QUEUED->value,
+            'emission_group_key' => "nfse:{$document->company_id}:1:2",
+            'emission_requested_at' => now(),
+        ]);
+
+        $config = Mockery::mock(NfseConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('buildSdkParams')->andReturn([
+            'token' => 'fake-token',
+            'ambiente' => 2,
+            'options' => [],
+        ]);
+        $this->app->instance(NfseConfigService::class, $config);
+
+        $sdk = Mockery::mock('overload:CloudDfe\SdkPHP\Nfse');
+        $sdk->shouldReceive('cria')
+            ->once()
+            ->andThrow(new \RuntimeException('timeout'));
+
+        $job = new ProcessQueuedNfseEmissionJob("nfse:{$document->company_id}:1:2");
+        $job->handle();
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::RPS_RECONCILIATION_PENDING, $document->nfse_status);
+        $this->assertSame('1', $document->rps_number);
+        $this->assertSame('1', $document->rps_series);
+        $this->assertNotEmpty($document->errors_messages);
+    }
+
+    public function test_send_nfse_blocks_retry_when_document_rps_is_not_current_last_number(): void
+    {
+        [$user, $document] = $this->createReadyDocument();
+
+        $sequence = NfseSequence::query()->create([
+            'company_id' => $document->company_id,
+            'serie' => '1',
+            'last_number' => 2,
+        ]);
+
+        $document->update([
+            'rps_number' => '1',
+            'rps_series' => '1',
+            'nfse_sequence_id' => $sequence->id,
+            'nfse_status' => NfeStatus::PENDING->value,
+        ]);
+
+        $config = Mockery::mock(NfseConfigService::class);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $this->app->instance(NfseConfigService::class, $config);
+
+        $action = new \App\Services\FiscalDocument\Actions\SendNfseAction($user->id);
+
+        $result = $action->execute($document->fresh(), '1', 'municipal_nfse');
+
+        $this->assertFalse($result);
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::RPS_RECONCILIATION_PENDING, $document->nfse_status);
+        $this->assertSame('1', $document->rps_number);
+        $this->assertNotEmpty($document->errors_messages);
     }
 
     private function createReadyDocument(?Company $company = null, ?Partner $customer = null, ?User $user = null): array

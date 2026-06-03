@@ -79,6 +79,38 @@ class NfeWebhookControllerTest extends TestCase
         ]);
     }
 
+    public function test_webhook_marks_nfse_reconciliation_when_rejected_document_is_not_highest_rps(): void
+    {
+        $document = $this->createFiscalDocument(DocumentModel::NFSE);
+        \App\Models\NfseSequence::query()->create([
+            'company_id' => $document->company_id,
+            'serie' => '1',
+            'last_number' => 2,
+        ]);
+        $document->update([
+            'status' => Status::CONFIRMED->value,
+            'nfse_status' => NfeStatus::IN_PROCESSING->value,
+            'document_key' => 'WEBHOOK-NFSE-REJECTED-RECON',
+            'rps_number' => '1',
+            'rps_series' => '1',
+        ]);
+
+        $response = $this->postJson(route('webhook.nfe'), [
+            'chave' => 'WEBHOOK-NFSE-REJECTED-RECON',
+            'status' => 'rejeitada',
+            'codigo' => '999',
+            'mensagem' => 'Documento rejeitado',
+        ]);
+
+        $response->assertOk();
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::RPS_RECONCILIATION_PENDING, $document->nfse_status);
+        $this->assertSame(Status::PENDING, $document->status);
+        $this->assertSame('webhook', $document->errors_messages[0]['origem'] ?? null);
+    }
+
     public function test_webhook_marks_authorized_document_and_records_audit_entry(): void
     {
         $document = $this->createFiscalDocument(DocumentModel::NFE);

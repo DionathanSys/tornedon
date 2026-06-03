@@ -7,11 +7,12 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Models\NfseSequence;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
-use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
+use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -38,7 +39,7 @@ class NfeWebhookController extends Controller
             $payload = $request->all();
 
             Log::info('NfeWebhookController: payload recebido', [
-                'chave'  => $payload['chave'] ?? null,
+                'chave' => $payload['chave'] ?? null,
                 'origem' => $payload['origem'] ?? null,
                 'payload' => $payload,
             ]);
@@ -48,6 +49,7 @@ class NfeWebhookController extends Controller
             // ------------------------------------------------------------------
             if (($payload['origem'] ?? null) === 'TESTE') {
                 Log::info('NfeWebhookController: notificação de teste recebida');
+
                 return response()->json(['ok' => true]);
             }
 
@@ -55,6 +57,7 @@ class NfeWebhookController extends Controller
 
             if (! $chave) {
                 Log::warning('NfeWebhookController: payload sem chave', ['payload' => $payload]);
+
                 return response()->json(['ok' => true]); // HTTP 200 sempre
             }
 
@@ -65,6 +68,7 @@ class NfeWebhookController extends Controller
 
             if (! $doc) {
                 Log::warning('NfeWebhookController: documento não encontrado', ['chave' => $chave]);
+
                 return response()->json(['ok' => true]);
             }
 
@@ -75,8 +79,9 @@ class NfeWebhookController extends Controller
             if ($secret && ($payload['signature'] ?? null) !== $secret) {
                 Log::warning('NfeWebhookController: assinatura inválida', [
                     'company_id' => $doc->company_id,
-                    'chave'      => $chave,
+                    'chave' => $chave,
                 ]);
+
                 return response()->json(['ok' => true]);
             }
 
@@ -88,9 +93,9 @@ class NfeWebhookController extends Controller
         } catch (\Exception $e) {
             // Nunca retornar erro HTTP — IntegraNotas não reagenda em 2xx
             Log::error('NfeWebhookController: exceção ao processar webhook', [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'exception' => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
 
@@ -105,19 +110,19 @@ class NfeWebhookController extends Controller
         // Detecta o tipo de documento para atualizar os campos corretos
         $isNfse = $doc->document_type === DocumentModel::NFSE;
 
-        $statusField    = $isNfse ? 'nfse_status'    : 'nfe_status';
-        $protocoloField = $isNfse ? 'nfse_protocol'  : 'nfe_protocolo';
-        $logPrefix      = $isNfse ? 'NFS-e'           : 'NF-e';
+        $statusField = $isNfse ? 'nfse_status' : 'nfe_status';
+        $protocoloField = $isNfse ? 'nfse_protocol' : 'nfe_protocolo';
+        $logPrefix = $isNfse ? 'NFS-e' : 'NF-e';
 
         $status = $this->normalizeStatus($payload['status'] ?? null); // 'autorizado' | 'cancelado' | null (rejeitado)
 
         $updates = [];
 
         if ($status === 'autorizado') {
-            $updates[$statusField]    = NfeStatus::AUTHORIZED->value;
+            $updates[$statusField] = NfeStatus::AUTHORIZED->value;
             $updates[$protocoloField] = $payload['protocolo'] ?? null;
-            $updates['status']        = Status::CONFIRMED->value;
-            $updates['confirmed_at']  = now();
+            $updates['status'] = Status::CONFIRMED->value;
+            $updates['confirmed_at'] = now();
 
             if (! empty($payload['numero'])) {
                 $updates['document_number'] = $payload['numero'];
@@ -128,12 +133,12 @@ class NfeWebhookController extends Controller
 
             Log::info("NfeWebhookController: {$logPrefix} autorizada via webhook", [
                 'fiscal_document_id' => $doc->id,
-                'protocolo'          => $payload['protocolo'] ?? null,
+                'protocolo' => $payload['protocolo'] ?? null,
             ]);
 
         } elseif ($status === 'cancelado') {
-            $updates[$statusField]  = NfeStatus::CANCELED->value;
-            $updates['status']      = Status::CANCELLED->value;
+            $updates[$statusField] = NfeStatus::CANCELED->value;
+            $updates['status'] = Status::CANCELLED->value;
             $updates['canceled_at'] = now();
 
             Log::info("NfeWebhookController: {$logPrefix} cancelada via webhook", [
@@ -142,21 +147,33 @@ class NfeWebhookController extends Controller
 
         } else {
             // Rejeição
-            $updates[$statusField] = NfeStatus::REJECTED->value;
-            $updates['status']     = Status::PENDING->value;
+            $updates[$statusField] = $isNfse && ! NfseSequence::canReuseNumber($doc)
+                ? NfeStatus::RPS_RECONCILIATION_PENDING->value
+                : NfeStatus::REJECTED->value;
+            $updates['status'] = Status::PENDING->value;
 
-            $errors   = $doc->errors_messages ?? [];
+            $errors = $doc->errors_messages ?? [];
             $errors[] = [
-                'at'       => now()->toDateTimeString(),
-                'origem'   => 'webhook',
-                'codigo'   => $payload['codigo'] ?? null,
-                'mensagem' => $payload['mensagem'] ?? "Rejeitada",
+                'at' => now()->toDateTimeString(),
+                'origem' => 'webhook',
+                'codigo' => $payload['codigo'] ?? null,
+                'mensagem' => $payload['mensagem'] ?? 'Rejeitada',
             ];
+
+            if ($isNfse && $updates[$statusField] === NfeStatus::RPS_RECONCILIATION_PENDING->value) {
+                $errors[] = [
+                    'at' => now()->toDateTimeString(),
+                    'origem' => 'webhook',
+                    'codigo' => 'rps_reconciliation',
+                    'mensagem' => 'NFS-e rejeitada após aceite, mas o RPS não é mais o maior da série. Conciliação necessária antes de novo envio.',
+                ];
+            }
+
             $updates['errors_messages'] = $errors;
 
             Log::warning("NfeWebhookController: {$logPrefix} rejeitada via webhook", [
                 'fiscal_document_id' => $doc->id,
-                'mensagem'           => $payload['mensagem'] ?? null,
+                'mensagem' => $payload['mensagem'] ?? null,
             ]);
         }
 
@@ -181,8 +198,8 @@ class NfeWebhookController extends Controller
 
         Log::info('NfeWebhookController: status atualizado', [
             'fiscal_document_id' => $doc->id,
-            'status'             => $status,
-            'key'                => 'TEST:BAIXA_ESTOQUE',
+            'status' => $status,
+            'key' => 'TEST:BAIXA_ESTOQUE',
         ]);
 
         if ($status === 'autorizado') {
@@ -207,11 +224,11 @@ class NfeWebhookController extends Controller
             if (! $stockProcessed) {
                 Log::warning('NfeWebhookController: falha ao processar movimentações de estoque após autorização', [
                     'fiscal_document_id' => $doc->id,
-                    'invoice_id'         => $doc->invoice_id,
-                    'message'            => $stockMovementAction->getMessage(),
-                    'error_code'         => $stockMovementAction->getErrorCode(),
-                    'errors'             => $stockMovementAction->getErrors(),
-                    'key'                => 'TEST:BAIXA_ESTOQUE',
+                    'invoice_id' => $doc->invoice_id,
+                    'message' => $stockMovementAction->getMessage(),
+                    'error_code' => $stockMovementAction->getErrorCode(),
+                    'errors' => $stockMovementAction->getErrors(),
+                    'key' => 'TEST:BAIXA_ESTOQUE',
                 ]);
             }
 
@@ -221,10 +238,10 @@ class NfeWebhookController extends Controller
             if (! $ok) {
                 Log::warning('NfeWebhookController: falha ao gerar contas a receber após autorização', [
                     'fiscal_document_id' => $doc->id,
-                    'invoice_id'         => $doc->invoice_id,
-                    'message'            => $generationService->getMessage(),
-                    'error_code'         => $generationService->getErrorCode(),
-                    'errors'             => $generationService->getErrors(),
+                    'invoice_id' => $doc->invoice_id,
+                    'message' => $generationService->getMessage(),
+                    'error_code' => $generationService->getErrorCode(),
+                    'errors' => $generationService->getErrors(),
                 ]);
             }
 

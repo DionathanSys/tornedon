@@ -59,10 +59,17 @@ class FiscalDocumentRejectionFlowTest extends TestCase
     public function test_consult_nfse_marks_rejected_document_as_pending_for_retry(): void
     {
         $document = $this->createFiscalDocument(DocumentModel::NFSE);
+        \App\Models\NfseSequence::query()->create([
+            'company_id' => $document->company_id,
+            'serie' => '1',
+            'last_number' => 1,
+        ]);
         $document->update([
             'status' => Status::CONFIRMED->value,
             'nfse_status' => NfeStatus::IN_PROCESSING->value,
             'document_key' => 'NFSE-KEY-001',
+            'rps_number' => '1',
+            'rps_series' => '1',
         ]);
 
         $sdkMock = Mockery::mock('overload:CloudDfe\SdkPHP\Nfse');
@@ -83,6 +90,44 @@ class FiscalDocumentRejectionFlowTest extends TestCase
         $document->refresh();
 
         $this->assertSame(NfeStatus::REJECTED, $document->nfse_status);
+        $this->assertSame(Status::PENDING, $document->status);
+        $this->assertNotEmpty($document->errors_messages);
+    }
+
+    public function test_consult_nfse_marks_reconciliation_when_rejected_document_is_not_highest_rps(): void
+    {
+        $document = $this->createFiscalDocument(DocumentModel::NFSE);
+        \App\Models\NfseSequence::query()->create([
+            'company_id' => $document->company_id,
+            'serie' => '1',
+            'last_number' => 2,
+        ]);
+        $document->update([
+            'status' => Status::CONFIRMED->value,
+            'nfse_status' => NfeStatus::IN_PROCESSING->value,
+            'document_key' => 'NFSE-KEY-002',
+            'rps_number' => '1',
+            'rps_series' => '1',
+        ]);
+
+        $sdkMock = Mockery::mock('overload:CloudDfe\SdkPHP\Nfse');
+        $sdkMock->shouldReceive('consulta')
+            ->once()
+            ->andReturn((object) [
+                'sucesso' => false,
+                'codigo' => 4002,
+                'mensagem' => 'NFS-e rejeitada pela prefeitura',
+                'erros' => [],
+            ]);
+
+        $action = app(ConsultNfseAction::class);
+        $result = $action->execute($document->fresh());
+
+        $this->assertFalse($result);
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::RPS_RECONCILIATION_PENDING, $document->nfse_status);
         $this->assertSame(Status::PENDING, $document->status);
         $this->assertNotEmpty($document->errors_messages);
     }

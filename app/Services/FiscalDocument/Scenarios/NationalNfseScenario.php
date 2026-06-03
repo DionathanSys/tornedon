@@ -34,7 +34,6 @@ class NationalNfseScenario extends MunicipalNfseScenario
             (int) $document->company_id,
             $series,
             $environment,
-            NfseModel::NACIONAL->value,
         ]);
     }
 

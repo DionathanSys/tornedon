@@ -39,14 +39,89 @@ final class ConfirmInvoiceAction
             ->modalDescription('Ao confirmar, o sistema irá gerar automaticamente os documentos fiscais necessários e as contas a receber. Opcionalmente, você pode disparar a emissão dos documentos logo após a confirmação e registrar o recebimento imediato da fatura.')
             ->visible(fn (Invoice $record): bool => ! $record->confirmed && ! $record->canceled)
             ->schema([
-                Callout::make('Documentos que serão gerados')
-                    ->description(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record))
-                    ->info(),
-
                 Tabs::make('fiscal_document_settings')
-                    ->label('Dados dos documentos fiscais')
+                    ->label('Confirmação')
                     ->columnSpanFull()
                     ->tabs([
+                        Tab::make('Geral')
+                            ->schema([
+                                Callout::make('Documentos que serão gerados')
+                                    ->description(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record))
+                                    ->info(),
+
+                                Checkbox::make('emit_fiscal_documents')
+                                    ->label('Disparar emissão dos documentos fiscais gerados')
+                                    ->helperText('Quando marcado, a NF-e e/ou NFS-e criada será enviada imediatamente para processamento.')
+                                    ->default(false),
+
+                                Select::make('payment_method')
+                                    ->label('Forma de Pagamento')
+                                    ->options(Method::toSelectArray())
+                                    ->default(fn (Invoice $record): ?string => $record->payment_method?->value)
+                                    ->native(false)
+                                    ->live()
+                                    ->required(),
+
+                                Select::make('card_payment_profile_id')
+                                    ->label('Perfil de Recebimento no Cartão')
+                                    ->options(fn (): array => CardPaymentProfile::query()
+                                        ->where('company_id', Filament::getTenant()?->id)
+                                        ->where('active', true)
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->toArray())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                                    ->helperText('Define as taxas e o prazo D+X aplicados no contas a receber.'),
+
+                                DatePicker::make('payment_date')
+                                    ->label('Data da Venda/Pagamento no Cartão')
+                                    ->default(fn (Invoice $record): ?string => $record->invoice_date?->toDateString() ?? now()->toDateString())
+                                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
+                                    ->helperText('Usada para calcular a previsão de liquidação do cartão.'),
+
+                                Select::make('payment_condition')
+                                    ->label('Condição de Pagamento')
+                                    ->options(Condition::toGroupedSelectArray())
+                                    ->default(fn (Invoice $record): ?string => $record->payment_condition?->value)
+                                    ->native(false)
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        $condition = Condition::tryFrom((string) $state);
+
+                                        if ($condition?->isCash()) {
+                                            $set('mark_as_received', true);
+                                        }
+                                    })
+                                    ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
+                                    ->helperText('Em cartao, informe apenas se precisar parcelar comercialmente. O primeiro vencimento seguira o prazo D+X do perfil da operadora.'),
+
+                                Checkbox::make('mark_as_received')
+                                    ->label('Marcar valores da fatura como já recebidos')
+                                    ->helperText('Quando marcado, os pagamentos das parcelas do contas a receber serão registrados automaticamente ao confirmar a fatura.')
+                                    ->default(fn (Invoice $record): bool => $record->payment_condition?->isCash() ?? false),
+
+                                DatePicker::make('received_at')
+                                    ->label('Data do recebimento')
+                                    ->default(now())
+                                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
+                                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
+
+                                Select::make('financial_account_id')
+                                    ->label('Conta Financeira para baixa')
+                                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()?->id ?? 0))
+                                    ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()?->id ?? 0))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
+                                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
+                            ]),
+
                         Tab::make('NF-e')
                             ->visible(fn (Invoice $record): bool => self::hasProductItems($record))
                             ->schema([
@@ -94,6 +169,11 @@ final class ConfirmInvoiceAction
                                         );
                                     })
                                     ->rows(4)
+                                    ->helperText('Máximo de 2000 caracteres. Se a descrição automática ultrapassar esse limite, ela será cortada.')
+                                    ->live(debounce: 300)
+                                    ->afterStateUpdated(function (?string $state, callable $set): void {
+                                        $set('nfse_item_description', mb_substr(trim((string) $state), 0, 2000));
+                                    })
                                     ->maxLength(2000)
                                     ->required(),
 
@@ -103,80 +183,7 @@ final class ConfirmInvoiceAction
                                     ->rows(3)
                                     ->maxLength(500),
                             ]),
-                    ])
-                    ->visible(fn (Invoice $record): bool => self::hasProductItems($record) || self::hasServiceItems($record)),
-
-                Checkbox::make('emit_fiscal_documents')
-                    ->label('Disparar emissão dos documentos fiscais gerados')
-                    ->helperText('Quando marcado, a NF-e e/ou NFS-e criada será enviada imediatamente para processamento.')
-                    ->default(false),
-
-                Select::make('payment_method')
-                    ->label('Forma de Pagamento')
-                    ->options(Method::toSelectArray())
-                    ->default(fn (Invoice $record): ?string => $record->payment_method?->value)
-                    ->native(false)
-                    ->live()
-                    ->required(),
-
-                Select::make('card_payment_profile_id')
-                    ->label('Perfil de Recebimento no Cartão')
-                    ->options(fn (): array => CardPaymentProfile::query()
-                        ->where('company_id', Filament::getTenant()?->id)
-                        ->where('active', true)
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->toArray())
-                    ->searchable()
-                    ->preload()
-                    ->native(false)
-                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
-                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
-                    ->helperText('Define as taxas e o prazo D+X aplicados no contas a receber.'),
-
-                DatePicker::make('payment_date')
-                    ->label('Data da Venda/Pagamento no Cartão')
-                    ->default(fn (Invoice $record): ?string => $record->invoice_date?->toDateString() ?? now()->toDateString())
-                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
-                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
-                    ->helperText('Usada para calcular a previsão de liquidação do cartão.'),
-
-                Select::make('payment_condition')
-                    ->label('Condição de Pagamento')
-                    ->options(Condition::toGroupedSelectArray())
-                    ->default(fn (Invoice $record): ?string => $record->payment_condition?->value)
-                    ->native(false)
-                    ->live()
-                    ->afterStateUpdated(function (Set $set, ?string $state): void {
-                        $condition = Condition::tryFrom((string) $state);
-
-                        if ($condition?->isCash()) {
-                            $set('mark_as_received', true);
-                        }
-                    })
-                    ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
-                    ->helperText('Em cartao, informe apenas se precisar parcelar comercialmente. O primeiro vencimento seguira o prazo D+X do perfil da operadora.'),
-
-                Checkbox::make('mark_as_received')
-                    ->label('Marcar valores da fatura como já recebidos')
-                    ->helperText('Quando marcado, os pagamentos das parcelas do contas a receber serão registrados automaticamente ao confirmar a fatura.')
-                    ->default(fn (Invoice $record): bool => $record->payment_condition?->isCash() ?? false),
-
-                DatePicker::make('received_at')
-                    ->label('Data do recebimento')
-                    ->default(now())
-                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
-                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
-
-                Select::make('financial_account_id')
-                    ->label('Conta Financeira para baixa')
-                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()?->id ?? 0))
-                    ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()?->id ?? 0))
-                    ->searchable()
-                    ->preload()
-                    ->native(false)
-                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
-                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
+                    ]),
             ])
             ->action(function (Action $action, Invoice $record, array $data, EditInvoice $livewire): void {
 

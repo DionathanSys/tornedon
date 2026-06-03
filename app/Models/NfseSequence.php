@@ -57,20 +57,24 @@ class NfseSequence extends Model
 
             if (! $seq) {
                 $seq = self::create([
-                    'company_id'  => $companyId,
-                    'serie'       => $serie,
+                    'company_id' => $companyId,
+                    'serie' => $serie,
                     'last_number' => 0,
                 ]);
             }
 
-            $seq->increment('last_number');
-            $seq->refresh();
+            self::ensureSequenceIsSynchronized($companyId, $serie, (int) $seq->last_number);
+            $nextNumber = (int) $seq->last_number + 1;
+
+            $seq->forceFill([
+                'last_number' => $nextNumber,
+            ])->save();
 
             return $seq;
         });
 
         return [
-            'number'      => $sequence->last_number,
+            'number' => $sequence->last_number,
             'sequence_id' => $sequence->id,
         ];
     }
@@ -124,6 +128,73 @@ class NfseSequence extends Model
             'number' => $number,
             'sequence_id' => $sequence->id,
         ];
+    }
+
+    public static function releaseLastNumberIfAvailable(int $companyId, string $serie, int $number, ?int $documentId = null): bool
+    {
+        return DB::transaction(function () use ($companyId, $serie, $number, $documentId) {
+            $seq = self::where('company_id', $companyId)
+                ->where('serie', $serie)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $seq || (int) $seq->last_number !== $number) {
+                return false;
+            }
+
+            $highestOtherNumber = FiscalDocument::query()
+                ->where('company_id', $companyId)
+                ->where('rps_series', $serie)
+                ->where('document_type', DocumentModel::NFSE->value)
+                ->whereNotNull('rps_number')
+                ->when($documentId !== null, fn ($query) => $query->whereKeyNot($documentId))
+                ->pluck('rps_number')
+                ->map(fn ($usedNumber) => (int) preg_replace('/\D/', '', (string) $usedNumber))
+                ->filter(fn (int $usedNumber) => $usedNumber > 0)
+                ->max();
+
+            if ((int) ($highestOtherNumber ?? 0) >= $number) {
+                return false;
+            }
+
+            $seq->forceFill([
+                'last_number' => max(0, $number - 1),
+            ])->save();
+
+            return true;
+        });
+    }
+
+    public static function isCurrentLastNumber(int $companyId, string $serie, int $number): bool
+    {
+        $seq = self::query()
+            ->where('company_id', $companyId)
+            ->where('serie', $serie)
+            ->first();
+
+        if (! $seq) {
+            return false;
+        }
+
+        return (int) $seq->last_number === $number;
+    }
+
+    public static function highestUsedNumber(int $companyId, string $serie): int
+    {
+        return (int) (self::usedRpsNumbers($companyId, $serie)->max() ?? 0);
+    }
+
+    public static function canReuseNumber(FiscalDocument $fiscalDocument): bool
+    {
+        $number = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->rps_number ?? ''));
+        $serie = trim((string) ($fiscalDocument->rps_series ?? ''));
+
+        if ($number < 1 || $serie === '') {
+            return false;
+        }
+
+        return self::highestUsedNumber((int) $fiscalDocument->company_id, $serie) === $number
+            && self::isCurrentLastNumber((int) $fiscalDocument->company_id, $serie, $number);
     }
 
     private static function usedRpsNumbers(int $companyId, string $serie): Collection

@@ -4,7 +4,6 @@ namespace App\Services\FiscalDocument;
 
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Domain\DTO\Fiscal\FiscalEmissionPreflightResult;
-use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\Tax\TaxRegime;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
@@ -49,11 +48,13 @@ class FiscalEmissionPreflightService
 
         if ($scenario === null) {
             $this->setError('Não foi possível resolver o cenário fiscal do documento.');
+
             return null;
         }
 
         if (! $this->canProceedInCurrentStatus($document, $allowQueuedStatus)) {
             $this->setError('Documento fiscal não pode seguir para emissão no estado atual.');
+
             return null;
         }
 
@@ -83,6 +84,7 @@ class FiscalEmissionPreflightService
 
         if ($errors !== []) {
             $this->setError('Documento fiscal inválido para emissão.', $errors);
+
             return null;
         }
 
@@ -124,6 +126,7 @@ class FiscalEmissionPreflightService
         if ($document->isNfse()) {
             return ! $document->isNfseInProcessing()
                 && ! $document->isNfseAuthorized()
+                && ! $document->isNfsePendingReconciliation()
                 && ! $document->isNfseCanceled()
                 && ($allowQueuedStatus || ! $document->isNfseQueued());
         }
@@ -185,7 +188,7 @@ class FiscalEmissionPreflightService
                 if ($issuerUf !== '' && $recipientUf !== '') {
                     FiscalProfileValidator::validateCfopCompatibility($normalizedItems, $issuerUf, $recipientUf);
                 }
-                
+
                 FiscalProfileValidator::validateCfopCstCoherence($normalizedItems);
             } catch (ValidationException $e) {
                 $errors = array_merge_recursive($errors, $e->errors());
@@ -219,6 +222,7 @@ class FiscalEmissionPreflightService
 
         if ($items->isEmpty()) {
             $errors['items'][] = 'A NFS-e deve conter pelo menos um item de serviço.';
+
             return;
         }
 
@@ -306,6 +310,7 @@ class FiscalEmissionPreflightService
     {
         if ($document->customer === null) {
             $errors['customer_id'][] = $document->isNfse() ? 'Tomador do serviço não encontrado.' : 'Destinatário não encontrado.';
+
             return;
         }
 
@@ -327,17 +332,18 @@ class FiscalEmissionPreflightService
             $errors['customer.address'][] = $document->isNfse()
                 ? 'Tomador deve possuir endereço cadastrado.'
                 : 'Destinatário deve possuir endereço cadastrado.';
+
             return;
         }
 
         foreach ([
-            'street'       => 'logradouro',
-            'number'       => 'número',
+            'street' => 'logradouro',
+            'number' => 'número',
             'neighborhood' => 'bairro',
-            'city'         => 'município',
-            'state'        => 'UF',
-            'postal_code'  => 'CEP',
-            'city_code'    => 'código do município',
+            'city' => 'município',
+            'state' => 'UF',
+            'postal_code' => 'CEP',
+            'city_code' => 'código do município',
         ] as $field => $label) {
             if (blank($address->{$field} ?? null)) {
                 $errors["customer.address.{$field}"][] = "Endereço sem {$label}.";
@@ -355,6 +361,7 @@ class FiscalEmissionPreflightService
 
         if ($items->isEmpty()) {
             $errors['items'][] = 'A NF-e deve conter pelo menos um item.';
+
             return [];
         }
 

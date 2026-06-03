@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\AttachmentType;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\IssuePurpose;
@@ -10,6 +9,7 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Enums\AttachmentType;
 use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -91,12 +91,12 @@ class FiscalDocument extends Model
     ];
 
     protected $casts = [
-        'status'                    => Status::class,
-        'document_type'             => DocumentModel::class,
-        'operation_nature'          => OperationNature::class,
-        'operation_type'            => OperationType::class,
-        'issue_purpose'             => IssuePurpose::class,
-        'buyer_presence_indicator'  => BuyerPresenceIndicator::class,
+        'status' => Status::class,
+        'document_type' => DocumentModel::class,
+        'operation_nature' => OperationNature::class,
+        'operation_type' => OperationType::class,
+        'issue_purpose' => IssuePurpose::class,
+        'buyer_presence_indicator' => BuyerPresenceIndicator::class,
         'issued_at' => 'date',
         'movement_at' => 'date',
         'is_final_consumer' => 'boolean',
@@ -110,18 +110,18 @@ class FiscalDocument extends Model
         'confirmed_at' => 'datetime',
         'canceled_at' => 'datetime',
         'errors_messages' => 'array',
-        'logs'            => 'array',
-        'nfe_status'      => NfeStatus::class,
-        'nfe_payload'     => 'array',
-        'nfe_ambiente'    => 'integer',
+        'logs' => 'array',
+        'nfe_status' => NfeStatus::class,
+        'nfe_payload' => 'array',
+        'nfe_ambiente' => 'integer',
         'emission_requested_at' => 'datetime',
         'emission_attempted_at' => 'datetime',
-        'nfse_status'     => NfeStatus::class,
-        'nfse_payload'    => 'array',
+        'nfse_status' => NfeStatus::class,
+        'nfse_payload' => 'array',
         'return_financial_processed_at' => 'datetime',
         'return_stock_processed_at' => 'datetime',
-        'created_at'      => 'datetime',
-        'updated_at'      => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /* ==============================
@@ -342,6 +342,11 @@ class FiscalDocument extends Model
         return $this->nfse_status === NfeStatus::AUTHORIZED;
     }
 
+    public function isNfsePendingReconciliation(): bool
+    {
+        return $this->nfse_status === NfeStatus::RPS_RECONCILIATION_PENDING;
+    }
+
     public function isNfseRejected(): bool
     {
         return $this->nfse_status === NfeStatus::REJECTED;
@@ -402,6 +407,7 @@ class FiscalDocument extends Model
             NfeStatus::QUEUED,
             NfeStatus::IN_PROCESSING,
             NfeStatus::AUTHORIZED,
+            NfeStatus::RPS_RECONCILIATION_PENDING,
             NfeStatus::CANCELED,
         ], true);
     }
