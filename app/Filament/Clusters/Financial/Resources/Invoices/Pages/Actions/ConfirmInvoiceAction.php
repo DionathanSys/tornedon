@@ -17,7 +17,10 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
@@ -39,6 +42,69 @@ final class ConfirmInvoiceAction
                 Callout::make('Documentos que serão gerados')
                     ->description(fn (Invoice $record): string => self::resolveDocumentTypesDescription($record))
                     ->info(),
+
+                Tabs::make('fiscal_document_settings')
+                    ->label('Dados dos documentos fiscais')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Tab::make('NF-e')
+                            ->visible(fn (Invoice $record): bool => self::hasProductItems($record))
+                            ->schema([
+                                Callout::make('Dados da NF-e')
+                                    ->description('A NF-e será gerada automaticamente para os itens de produto da fatura, usando as regras fiscais cadastradas.')
+                                    ->info(),
+                            ]),
+
+                        Tab::make('NFS-e')
+                            ->visible(fn (Invoice $record): bool => self::hasServiceItems($record))
+                            ->schema([
+                                Select::make('nfse_service_id')
+                                    ->label('Serviço do item da NFS-e')
+                                    ->options(fn (Invoice $record): array => app(InvoiceService::class)->getNfseServiceOptions($record))
+                                    ->default(function (Invoice $record): ?int {
+                                        $serviceOptions = app(InvoiceService::class)->getNfseServiceOptions($record);
+
+                                        return count($serviceOptions) === 1 ? (int) array_key_first($serviceOptions) : null;
+                                    })
+                                    ->native(false)
+                                    ->searchable()
+                                    ->live()
+                                    ->required(fn (Invoice $record): bool => count(app(InvoiceService::class)->getNfseServiceOptions($record)) > 1)
+                                    ->visible(fn (Invoice $record): bool => count(app(InvoiceService::class)->getNfseServiceOptions($record)) > 1)
+                                    ->helperText('Quando houver mais de um serviço nas OS, escolha o serviço usado como base fiscal. A descrição pode ser ajustada abaixo.')
+                                    ->afterStateUpdated(function ($state, callable $set, Invoice $record): void {
+                                        $set(
+                                            'nfse_item_description',
+                                            app(InvoiceService::class)->buildNfseItemDescription(
+                                                $record,
+                                                selectedServiceId: filled($state) ? (int) $state : null
+                                            )
+                                        );
+                                    }),
+
+                                Textarea::make('nfse_item_description')
+                                    ->label('Descrição do item da NFS-e')
+                                    ->default(function (Invoice $record): string {
+                                        $serviceOptions = app(InvoiceService::class)->getNfseServiceOptions($record);
+                                        $defaultServiceId = count($serviceOptions) === 1 ? (int) array_key_first($serviceOptions) : null;
+
+                                        return app(InvoiceService::class)->buildNfseItemDescription(
+                                            $record,
+                                            selectedServiceId: $defaultServiceId
+                                        );
+                                    })
+                                    ->rows(4)
+                                    ->maxLength(2000)
+                                    ->required(),
+
+                                Textarea::make('nfse_additional_information')
+                                    ->label('Informações adicionais do item da NFS-e')
+                                    ->default(fn (Invoice $record): string => app(InvoiceService::class)->buildNfseItemAdditionalInformation($record))
+                                    ->rows(3)
+                                    ->maxLength(500),
+                            ]),
+                    ])
+                    ->visible(fn (Invoice $record): bool => self::hasProductItems($record) || self::hasServiceItems($record)),
 
                 Checkbox::make('emit_fiscal_documents')
                     ->label('Disparar emissão dos documentos fiscais gerados')
@@ -229,23 +295,31 @@ final class ConfirmInvoiceAction
         ];
     }
 
+    private static function hasProductItems(Invoice $record): bool
+    {
+        $record->loadMissing('requisitions.items');
+
+        return $record->requisitions
+            ->contains(fn ($requisition): bool => $requisition->items->isNotEmpty());
+    }
+
+    private static function hasServiceItems(Invoice $record): bool
+    {
+        $record->loadMissing('serviceOrders.items');
+
+        return $record->serviceOrders
+            ->contains(fn ($serviceOrder): bool => $serviceOrder->items->isNotEmpty());
+    }
+
     private static function resolveDocumentTypesDescription(Invoice $record): string
     {
-        $record->loadMissing(['requisitions.items', 'serviceOrders.items']);
-
         $types = [];
 
-        $hasProducts = $record->requisitions
-            ->contains(fn ($requisition): bool => $requisition->items->isNotEmpty());
-
-        $hasServices = $record->serviceOrders
-            ->contains(fn ($serviceOrder): bool => $serviceOrder->items->isNotEmpty());
-
-        if ($hasProducts) {
+        if (self::hasProductItems($record)) {
             $types[] = 'NF-e para itens de produto';
         }
 
-        if ($hasServices) {
+        if (self::hasServiceItems($record)) {
             $types[] = 'NFS-e para itens de serviço';
         }
 

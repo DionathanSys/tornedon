@@ -6,7 +6,6 @@ use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
-use App\Enum\FiscalDocument\NfseDescriptionMode;
 use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
@@ -27,7 +26,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -50,8 +48,16 @@ final class GenerateFiscalDocumentAction
             ->disabled(fn (Invoice $record): bool => $record->fiscalDocuments()->where('document_type', $documentType->value)->exists())
             ->schema(function (Invoice $record) use ($documentType, $isNfse): array {
                 $invoiceService = app(InvoiceService::class);
+                $serviceOptions = $isNfse ? $invoiceService->getNfseServiceOptions($record) : [];
+                $defaultServiceId = count($serviceOptions) === 1 ? (int) array_key_first($serviceOptions) : null;
                 $defaultDescription = $isNfse
-                    ? $invoiceService->buildNfseItemDescription($record, NfseDescriptionMode::AUTO->value)
+                    ? $invoiceService->buildNfseItemDescription(
+                        $record,
+                        selectedServiceId: $defaultServiceId
+                    )
+                    : null;
+                $defaultAdditionalInformation = $isNfse
+                    ? $invoiceService->buildNfseItemAdditionalInformation($record)
                     : null;
 
                 return [
@@ -99,14 +105,24 @@ final class GenerateFiscalDocumentAction
 
                     Section::make('Descrição da NFS-e')
                         ->schema([
-                            Select::make('nfse_description_mode')
-                                ->label('Regra da descrição automática')
-                                ->options(NfseDescriptionMode::toSelectArray())
-                                ->default(NfseDescriptionMode::AUTO->value)
+                            Select::make('nfse_service_id')
+                                ->label('Serviço do item da NFS-e')
+                                ->options($serviceOptions)
+                                ->default($defaultServiceId)
                                 ->native(false)
+                                ->searchable()
                                 ->live()
+                                ->required(count($serviceOptions) > 1)
+                                ->helperText('A descrição inicia com o nome do serviço selecionado, mas pode ser ajustada antes de gerar a NFS-e.')
+                                ->visible(count($serviceOptions) > 1)
                                 ->afterStateUpdated(function ($state, callable $set) use ($record, $invoiceService): void {
-                                    $set('nfse_item_description', $invoiceService->buildNfseItemDescription($record, (string) $state));
+                                    $set(
+                                        'nfse_item_description',
+                                        $invoiceService->buildNfseItemDescription(
+                                            $record,
+                                            selectedServiceId: filled($state) ? (int) $state : null
+                                        )
+                                    );
                                 }),
 
                             Textarea::make('nfse_item_description')
@@ -116,6 +132,12 @@ final class GenerateFiscalDocumentAction
                                 ->live()
                                 ->maxLength(2000)
                                 ->required(),
+
+                            Textarea::make('nfse_additional_information')
+                                ->label('Informações adicionais do item da NFS-e')
+                                ->default($defaultAdditionalInformation)
+                                ->rows(3)
+                                ->maxLength(500),
 
                         ])
                         ->columns(1)
@@ -220,8 +242,9 @@ final class GenerateFiscalDocumentAction
                         'document_type' => DocumentModel::NFSE->value,
                         'nfse_model' => $data['nfse_model'],
                         'issued_at' => $data['issued_at'],
+                        'nfse_service_id' => $data['nfse_service_id'] ?? null,
                         'nfse_item_description' => $data['nfse_item_description'] ?? null,
-                        'nfse_description_mode' => $data['nfse_description_mode'] ?? NfseDescriptionMode::AUTO->value,
+                        'nfse_additional_information' => $data['nfse_additional_information'] ?? null,
                     ];
                 } else {
                     $freightData = [
