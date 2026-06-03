@@ -57,7 +57,10 @@ class PrintNfsePreviewAction
             unset($payload['servico']['valor_recebido']);
 
             $configService = app(NfseConfigService::class);
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($fiscalDocument->company_id));
+            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams(
+                $fiscalDocument->company_id,
+                NfseConfigService::OPERATION_PREVIEW,
+            ));
 
             Log::debug('PrintNfsePreviewAction: enviando payload para geração do preview', [
                 'fiscal_document_id' => $fiscalDocument->id,

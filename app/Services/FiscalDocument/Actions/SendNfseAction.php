@@ -104,7 +104,10 @@ class SendNfseAction
             // 3. Enviar via SDK
             // ------------------------------------------------------------------
             $ambiente = $configService->resolveAmbiente($fiscalDocument->company_id);
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($fiscalDocument->company_id));
+            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams(
+                $fiscalDocument->company_id,
+                NfseConfigService::OPERATION_CREATE,
+            ));
 
             Log::info('SendNfseAction: enviando para API IntegraNotas', [
                 'fiscal_document_id' => $fiscalDocument->id,

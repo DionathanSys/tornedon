@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\Log;
  */
 class NfseConfigService
 {
+    public const API_VERSION_V1 = 1;
+    public const API_VERSION_V2 = 2;
+
+    public const OPERATION_CREATE = 'create';
+    public const OPERATION_PREVIEW = 'preview';
+    public const OPERATION_SUBSTITUTE = 'substitute';
+
     public function __construct(
         private NfeConfigService $nfeConfig,
     ) {}
@@ -44,9 +51,12 @@ class NfseConfigService
     /**
      * Monta o array de configuração para instanciar o SDK CloudDfe\SdkPHP\Nfse.
      */
-    public function buildSdkParams(int $companyId): array
+    public function buildSdkParams(int $companyId, ?string $operation = null): array
     {
-        return $this->nfeConfig->buildSdkParams($companyId);
+        return [
+            ...$this->nfeConfig->buildSdkParams($companyId),
+            'version' => $this->resolveApiVersionForOperation($operation),
+        ];
     }
 
     public function resolveWebhookSecret(int $companyId): ?string
@@ -63,5 +73,15 @@ class NfseConfigService
         $value = is_array($pref) ? ($pref['value'] ?? null) : $pref;
 
         return NfseModel::tryFrom((string) ($value ?? '')) ?? NfseModel::MUNICIPAL;
+    }
+
+    public function resolveApiVersionForOperation(?string $operation = null): int
+    {
+        return match ($operation) {
+            self::OPERATION_CREATE,
+            self::OPERATION_PREVIEW,
+            self::OPERATION_SUBSTITUTE => self::API_VERSION_V2,
+            default => self::API_VERSION_V1,
+        };
     }
 }
