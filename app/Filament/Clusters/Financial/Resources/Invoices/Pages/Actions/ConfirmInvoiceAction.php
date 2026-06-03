@@ -143,7 +143,7 @@ final class ConfirmInvoiceAction
                                     })
                                     ->native(false)
                                     ->searchable()
-                                    ->live(onBlur: true)
+                                    ->live()
                                     ->required(fn (Invoice $record): bool => count(app(InvoiceService::class)->getNfseServiceOptions($record)) > 1)
                                     ->visible(fn (Invoice $record): bool => count(app(InvoiceService::class)->getNfseServiceOptions($record)) > 1)
                                     ->helperText('Quando houver mais de um serviço nas OS, escolha o serviço usado como base fiscal. A descrição pode ser ajustada abaixo.')
@@ -170,7 +170,7 @@ final class ConfirmInvoiceAction
                                     })
                                     ->rows(4)
                                     ->helperText('Máximo de 2000 caracteres. Se a descrição automática ultrapassar esse limite, ela será cortada.')
-                                    ->live(debounce: 300)
+                                    ->live(onBlur: true, debounce: 300)
                                     ->afterStateUpdated(function (?string $state, callable $set): void {
                                         $set('nfse_item_description', mb_substr(trim((string) $state), 0, 2000));
                                     })

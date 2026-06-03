@@ -464,7 +464,22 @@ class EditFiscalDocument extends EditRecord
                         Textarea::make('motivo_cancelamento')
                             ->label('Motivo do Cancelamento')
                             ->required()
-                            ->maxLength(80)
+                            ->live()
+                            ->minLength(fn (FiscalDocument $record): int => $this->isNationalNfse($record) ? 15 : 1)
+                            ->maxLength(fn (FiscalDocument $record): int => $this->isNationalNfse($record) ? 255 : 80)
+                            ->helperText(function (FiscalDocument $record, callable $get): string {
+                                $maxLength = $this->isNationalNfse($record) ? 255 : 80;
+                                $minLength = $this->isNationalNfse($record) ? 15 : 1;
+                                $currentLength = mb_strlen((string) ($get('motivo_cancelamento') ?? ''));
+
+                                return sprintf(
+                                    'Informe entre %d e %d caracteres. %d/%d caracteres digitados.',
+                                    $minLength,
+                                    $maxLength,
+                                    $currentLength,
+                                    $maxLength,
+                                );
+                            })
                             ->rows(4),
                     ])
                     ->action(function (FiscalDocument $record, array $data): void {
@@ -552,6 +567,11 @@ class EditFiscalDocument extends EditRecord
         }
 
         return true;
+    }
+
+    private function isNationalNfse(FiscalDocument $record): bool
+    {
+        return ($record->nfse_model?->value ?? $record->nfse_model) === 'nacional';
     }
 
     private function syncFiscalDocumentState(): void
