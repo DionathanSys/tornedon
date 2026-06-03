@@ -6,7 +6,6 @@ use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
-use App\Enum\FiscalDocument\NfseDescriptionMode;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Invoice\Status as InvoiceStatus;
@@ -85,7 +84,7 @@ class ConfirmInvoiceAction
             foreach ($documentTypes as $documentType) {
                 $fiscalDocument = $invoiceService->createFiscalDocument(
                     $this->invoice,
-                    $this->buildFiscalData($documentType),
+                    $this->buildFiscalData($documentType, $data),
                     $this->confirmedBy
                 );
 
@@ -263,7 +262,7 @@ class ConfirmInvoiceAction
             ->contains(fn ($serviceOrder): bool => $serviceOrder->items->isNotEmpty());
     }
 
-    private function buildFiscalData(DocumentModel $documentType): array
+    private function buildFiscalData(DocumentModel $documentType, array $data): array
     {
         $issueDate = ($this->invoice->invoice_date ?? now())->toDateString();
 
@@ -272,15 +271,21 @@ class ConfirmInvoiceAction
             $nfseModel = app(NfseConfigService::class)
                 ->resolveNfseModeloPadrao((int) $this->invoice->company_id);
 
+            $selectedServiceId = isset($data['nfse_service_id']) ? (int) $data['nfse_service_id'] : null;
+            $description = trim((string) ($data['nfse_item_description'] ?? ''));
+            $additionalInformation = trim((string) ($data['nfse_additional_information'] ?? ''));
+
             return [
                 'document_type' => DocumentModel::NFSE->value,
                 'nfse_model' => $nfseModel->value,
                 'issued_at' => $issueDate,
-                'nfse_description_mode' => NfseDescriptionMode::AUTO->value,
-                'nfse_item_description' => $invoiceService->buildNfseItemDescription(
-                    $this->invoice,
-                    NfseDescriptionMode::AUTO->value
-                ),
+                'nfse_service_id' => $selectedServiceId,
+                'nfse_item_description' => $description !== ''
+                    ? $description
+                    : $invoiceService->buildNfseItemDescription($this->invoice, selectedServiceId: $selectedServiceId),
+                'nfse_additional_information' => $additionalInformation !== ''
+                    ? $additionalInformation
+                    : $invoiceService->buildNfseItemAdditionalInformation($this->invoice),
             ];
         }
 

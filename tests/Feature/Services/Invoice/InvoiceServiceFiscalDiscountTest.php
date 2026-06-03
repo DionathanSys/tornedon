@@ -11,6 +11,8 @@ use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Product\Origin;
+use App\Enum\Payment\Condition as PaymentCondition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
 use App\Enum\Requisition\Status as RequisitionStatus;
@@ -354,6 +356,263 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertSame(67.5, (float) $invoice->total_amount);
         $this->assertSame(7.5, (float) $invoice->discount_amount);
         $this->assertSame(67.5, (float) $invoice->net_value);
+    }
+
+    public function test_nfse_generation_allows_custom_description_and_additional_information(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-NAME-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $serviceModel = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-NAME-001',
+            'name' => 'Manutenção preventiva',
+            'price' => 200,
+            'tax_rate' => 5,
+            'nbs_code' => '123456789',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        ServiceOrderItem::query()->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $serviceModel->id,
+            'quantity' => 1,
+            'unit_price' => 200,
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(InvoiceService::class);
+        $document = $service->createFiscalDocument($invoice->fresh(), [
+            'document_type' => DocumentModel::NFSE->value,
+            'nfse_model' => NfseModel::MUNICIPAL->value,
+            'issued_at' => now()->toDateString(),
+            'nfse_item_description' => 'Descrição ajustada pelo usuário',
+            'nfse_additional_information' => 'Informação adicional ajustada',
+        ], $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+
+        $item = $document->items()->first();
+
+        $this->assertNotNull($item);
+        $this->assertSame($serviceModel->id, $item->service_id);
+        $this->assertSame('Descrição ajustada pelo usuário', $item->description);
+        $this->assertSame('Informação adicional ajustada', $item->additional_information);
+    }
+
+    public function test_nfse_generation_requires_service_choice_when_invoice_has_multiple_services(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-MULTI-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $firstService = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-MULTI-001',
+            'name' => 'Instalação',
+            'price' => 100,
+            'tax_rate' => 3,
+            'nbs_code' => '111111111',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        $secondService = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-MULTI-002',
+            'name' => 'Treinamento operacional',
+            'price' => 150,
+            'tax_rate' => 4,
+            'nbs_code' => '222222222',
+            'cnae_code' => '8599604',
+            'municipal_tax_code' => '08.02',
+            'is_active' => true,
+        ]);
+
+        foreach ([$firstService, $secondService] as $serviceModel) {
+            ServiceOrderItem::query()->create([
+                'service_order_id' => $serviceOrder->id,
+                'service_id' => $serviceModel->id,
+                'quantity' => 1,
+                'unit_price' => (float) $serviceModel->price,
+                'created_by' => $user->id,
+            ]);
+        }
+
+        $service = app(InvoiceService::class);
+        $document = $service->createFiscalDocument($invoice->fresh(), [
+            'document_type' => DocumentModel::NFSE->value,
+            'nfse_model' => NfseModel::MUNICIPAL->value,
+            'issued_at' => now()->toDateString(),
+        ], $user->id);
+
+        $this->assertNull($document);
+        $this->assertSame(
+            'A fatura possui mais de um serviço nas ordens de serviço. Selecione qual serviço deve ser usado na descrição do item da NFS-e.',
+            $service->getMessage()
+        );
+    }
+
+    public function test_nfse_generation_uses_selected_service_for_description_and_classification(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-SELECT-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $firstService = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-SELECT-001',
+            'name' => 'Diagnóstico técnico',
+            'price' => 100,
+            'tax_rate' => 3,
+            'nbs_code' => '111111111',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        $secondService = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-SELECT-002',
+            'name' => 'Comissionamento',
+            'price' => 150,
+            'tax_rate' => 4,
+            'nbs_code' => '222222222',
+            'cnae_code' => '8599604',
+            'municipal_tax_code' => '08.02',
+            'is_active' => true,
+        ]);
+
+        foreach ([$firstService, $secondService] as $serviceModel) {
+            ServiceOrderItem::query()->create([
+                'service_order_id' => $serviceOrder->id,
+                'service_id' => $serviceModel->id,
+                'quantity' => 1,
+                'unit_price' => (float) $serviceModel->price,
+                'created_by' => $user->id,
+            ]);
+        }
+
+        $service = app(InvoiceService::class);
+        $document = $service->createFiscalDocument($invoice->fresh(), [
+            'document_type' => DocumentModel::NFSE->value,
+            'nfse_model' => NfseModel::MUNICIPAL->value,
+            'issued_at' => now()->toDateString(),
+            'nfse_service_id' => $secondService->id,
+            'nfse_item_description' => 'Descrição de comissionamento ajustada',
+            'nfse_additional_information' => 'OS #SO-SELECT-001 validada pelo usuário',
+        ], $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+
+        $item = $document->items()->first();
+
+        $this->assertNotNull($item);
+        $this->assertSame($secondService->id, $item->service_id);
+        $this->assertSame('Descrição de comissionamento ajustada', $item->description);
+        $this->assertSame('OS #SO-SELECT-001 validada pelo usuário', $item->additional_information);
+        $this->assertSame('08.02', $item->municipal_tax_code);
+        $this->assertSame('222222222', $item->nbs_code);
+        $this->assertSame('8599604', $item->cnae_code);
+        $this->assertSame(4.0, (float) $item->iss_rate);
+    }
+
+    public function test_confirm_invoice_uses_nfse_description_and_additional_information_from_confirmation_data(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-CONFIRM-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+
+        $serviceModel = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-CONFIRM-001',
+            'name' => 'Serviço de confirmação',
+            'price' => 180,
+            'tax_rate' => 5,
+            'nbs_code' => '123456789',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+
+        ServiceOrderItem::query()->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $serviceModel->id,
+            'quantity' => 1,
+            'unit_price' => 180,
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(InvoiceService::class);
+        $result = $service->confirm($invoice->fresh(), [
+            'payment_method' => PaymentMethod::PIX->value,
+            'payment_condition' => PaymentCondition::CASH->value,
+            'nfse_item_description' => 'Descrição definida na confirmação',
+            'nfse_additional_information' => 'Informação adicional definida na confirmação',
+        ], $user->id);
+
+        $this->assertNotNull($result, $service->getMessage());
+
+        $document = $invoice->fresh()->fiscalDocuments()->where('document_type', DocumentModel::NFSE->value)->first();
+        $item = $document?->items()->first();
+
+        $this->assertNotNull($item);
+        $this->assertSame('Descrição definida na confirmação', $item->description);
+        $this->assertSame('Informação adicional definida na confirmação', $item->additional_information);
     }
 
     /**
