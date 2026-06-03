@@ -143,7 +143,7 @@ final class ConfirmInvoiceAction
                                     })
                                     ->native(false)
                                     ->searchable()
-                                    ->live()
+                                    ->live(onBlur: true)
                                     ->required(fn (Invoice $record): bool => count(app(InvoiceService::class)->getNfseServiceOptions($record)) > 1)
                                     ->visible(fn (Invoice $record): bool => count(app(InvoiceService::class)->getNfseServiceOptions($record)) > 1)
                                     ->helperText('Quando houver mais de um serviço nas OS, escolha o serviço usado como base fiscal. A descrição pode ser ajustada abaixo.')
