@@ -455,6 +455,38 @@ class FiscalDocumentForm
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])
                                     ->schema([
+                                        Section::make('Conciliação de RPS')
+                                            ->columnSpanFull()
+                                            ->columns(['md' => 6, 'lg' => 12])
+                                            ->visible(fn (?FiscalDocument $record): bool => self::latestRpsReconciliationEntry($record) !== null)
+                                            ->schema([
+                                                TextEntry::make('rps_reconciliation_reason')
+                                                    ->label('Justificativa registrada')
+                                                    ->state(fn (?FiscalDocument $record): string => (string) (self::latestRpsReconciliationEntry($record)['mensagem'] ?? 'N/D'))
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('rps_gap_justified')
+                                                    ->label('Lacuna justificada')
+                                                    ->state(fn (?FiscalDocument $record): string => self::rpsReconciliationFlag($record, 'gap_justification_required') ? 'Sim' : 'Não')
+                                                    ->badge()
+                                                    ->color(fn (?FiscalDocument $record): string => self::rpsReconciliationFlag($record, 'gap_justification_required') ? 'warning' : 'gray')
+                                                    ->columnSpan(['md' => 2, 'lg' => 3]),
+                                                TextEntry::make('rps_sequence_rewound')
+                                                    ->label('Sequência rebobinada')
+                                                    ->state(fn (?FiscalDocument $record): string => self::rpsReconciliationFlag($record, 'released_document_number') ? 'Sim' : 'Não')
+                                                    ->badge()
+                                                    ->color(fn (?FiscalDocument $record): string => self::rpsReconciliationFlag($record, 'released_document_number') ? 'success' : 'gray')
+                                                    ->columnSpan(['md' => 2, 'lg' => 3]),
+                                                TextEntry::make('rps_document_ready_for_retry')
+                                                    ->label('Documento pronto para novo envio')
+                                                    ->state(fn (?FiscalDocument $record): string => self::rpsReconciliationFlag($record, 'document_cleared_for_new_rps') || self::rpsReconciliationFlag($record, 'released_document_number') ? 'Sim' : 'Não')
+                                                    ->badge()
+                                                    ->color(fn (?FiscalDocument $record): string => self::rpsReconciliationFlag($record, 'document_cleared_for_new_rps') || self::rpsReconciliationFlag($record, 'released_document_number') ? 'success' : 'warning')
+                                                    ->columnSpan(['md' => 2, 'lg' => 3]),
+                                                TextEntry::make('rps_previous_number')
+                                                    ->label('RPS conciliado')
+                                                    ->state(fn (?FiscalDocument $record): string => self::formatRpsReconciliationNumber($record))
+                                                    ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            ]),
                                         Repeater::make('errors_messages')
                                             ->label('Erros')
                                             ->columnSpanFull()
@@ -593,6 +625,45 @@ class FiscalDocumentForm
         } catch (\Throwable) {
             return $state;
         }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function latestRpsReconciliationEntry(?FiscalDocument $record): ?array
+    {
+        if ($record === null || ! is_array($record->errors_messages)) {
+            return null;
+        }
+
+        $entries = array_values(array_filter(
+            $record->errors_messages,
+            fn ($entry): bool => is_array($entry) && (($entry['codigo'] ?? null) === 'rps_reconciliation')
+        ));
+
+        if ($entries === []) {
+            return null;
+        }
+
+        return end($entries) ?: null;
+    }
+
+    private static function rpsReconciliationFlag(?FiscalDocument $record, string $key): bool
+    {
+        return (bool) data_get(self::latestRpsReconciliationEntry($record), 'contexto.'.$key, false);
+    }
+
+    private static function formatRpsReconciliationNumber(?FiscalDocument $record): string
+    {
+        $entry = self::latestRpsReconciliationEntry($record);
+        $serie = data_get($entry, 'contexto.rps_series');
+        $number = data_get($entry, 'contexto.rps_number');
+
+        if (! is_scalar($serie) || ! is_scalar($number)) {
+            return 'N/D';
+        }
+
+        return (string) $serie.'/'.(string) $number;
     }
 
     private static function buildCorrectionDownloadUrl(?FiscalDocument $record, Get $get, string $type): ?string

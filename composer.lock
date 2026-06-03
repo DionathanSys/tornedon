@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3a3a6da1d0c2c956d50bd5c80a2a9b71",
+    "content-hash": "ba88fcc999d972804e5401ed4ce96166",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -694,16 +694,16 @@
         },
         {
             "name": "cloud-dfe/sdk-php",
-            "version": "v0.4.8",
+            "version": "v0.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cloud-dfe/sdk-php.git",
-                "reference": "35ba5747c9c4bd4cce6bbef13ca7ea72ffe30e33"
+                "reference": "fa038ef3832daddbebf3eaa0d1360e6e20957e88"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cloud-dfe/sdk-php/zipball/35ba5747c9c4bd4cce6bbef13ca7ea72ffe30e33",
-                "reference": "35ba5747c9c4bd4cce6bbef13ca7ea72ffe30e33",
+                "url": "https://api.github.com/repos/cloud-dfe/sdk-php/zipball/fa038ef3832daddbebf3eaa0d1360e6e20957e88",
+                "reference": "fa038ef3832daddbebf3eaa0d1360e6e20957e88",
                 "shasum": ""
             },
             "require": {
@@ -764,9 +764,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cloud-dfe/sdk-php/issues",
-                "source": "https://github.com/cloud-dfe/sdk-php/tree/v0.4.8"
+                "source": "https://github.com/cloud-dfe/sdk-php/tree/v0.5.0"
             },
-            "time": "2026-02-09T19:57:34+00:00"
+            "time": "2026-05-05T16:40:03+00:00"
         },
         {
             "name": "composer/semver",

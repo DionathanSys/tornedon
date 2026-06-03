@@ -110,25 +110,25 @@ class MobileServiceOrdersDashboard extends Page
                 'label' => 'Ordens na data',
                 'value' => number_format($count, 0, ',', '.'),
                 'description' => 'OS com data de ordem igual ao filtro',
-                'color' => 'text-zinc-900',
+                'color' => 'text-zinc-900 dark:text-zinc-100',
             ],
             'total' => [
                 'label' => 'Valor total',
                 'value' => $this->formatMoney($total),
                 'description' => 'Soma do total geral das OS filtradas',
-                'color' => 'text-emerald-700',
+                'color' => 'text-emerald-700 dark:text-emerald-300',
             ],
             'average_ticket' => [
                 'label' => 'Ticket médio',
                 'value' => $this->formatMoney($count > 0 ? round($total / $count, 2) : 0),
                 'description' => 'Valor total dividido pela quantidade filtrada',
-                'color' => 'text-sky-700',
+                'color' => 'text-sky-700 dark:text-sky-300',
             ],
             'pending' => [
                 'label' => 'Pendentes na data',
                 'value' => number_format($pending, 0, ',', '.'),
                 'description' => 'OS filtradas que ainda estao abertas',
-                'color' => 'text-amber-700',
+                'color' => 'text-amber-700 dark:text-amber-300',
             ],
         ];
     }
@@ -166,25 +166,25 @@ class MobileServiceOrdersDashboard extends Page
                 'label' => 'Ordens na data',
                 'value' => '0',
                 'description' => 'OS com data de ordem igual ao filtro',
-                'color' => 'text-zinc-900',
+                'color' => 'text-zinc-900 dark:text-zinc-100',
             ],
             'total' => [
                 'label' => 'Valor total',
                 'value' => $this->formatMoney(0),
                 'description' => 'Soma do total geral das OS filtradas',
-                'color' => 'text-emerald-700',
+                'color' => 'text-emerald-700 dark:text-emerald-300',
             ],
             'average_ticket' => [
                 'label' => 'Ticket médio',
                 'value' => $this->formatMoney(0),
                 'description' => 'Valor total dividido pela quantidade filtrada',
-                'color' => 'text-sky-700',
+                'color' => 'text-sky-700 dark:text-sky-300',
             ],
             'pending' => [
                 'label' => 'Pendentes na data',
                 'value' => '0',
                 'description' => 'OS filtradas que ainda estao abertas',
-                'color' => 'text-amber-700',
+                'color' => 'text-amber-700 dark:text-amber-300',
             ],
         ];
     }
