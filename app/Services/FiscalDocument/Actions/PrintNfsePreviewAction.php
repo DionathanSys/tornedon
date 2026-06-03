@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Gera uma pré-visualização (preview) da NFS-e sem enviá-la à API.
  *
- * Útil para conferência antes da emissão.
- * Retorna array com 'pdf' (base64) e 'xml' (base64).
+ * Útil para conferência antes da emissão e usa o mesmo builder do envio real.
+ * Na API v2 nacional, o preview retorna apenas o PDF em base64.
  */
 class PrintNfsePreviewAction
 {
@@ -66,7 +66,7 @@ class PrintNfsePreviewAction
                 'fiscal_document_id' => $fiscalDocument->id,
                 'payload'            => $payload,
             ]);
-            
+
             $resp = $sdk->preview($payload);
 
             if (! ($resp->sucesso ?? false)) {
@@ -81,18 +81,28 @@ class PrintNfsePreviewAction
                 return null;
             }
 
+            if (empty($resp->pdf)) {
+                $this->setError('A API não retornou o PDF do preview da NFS-e.');
+
+                Log::warning('PrintNfsePreviewAction: preview sem PDF na resposta', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'codigo'             => $resp->codigo ?? null,
+                    'resp'               => $resp,
+                ]);
+
+                return null;
+            }
+
             Log::info('PrintNfsePreviewAction: preview gerado com sucesso', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'rps_number'         => $fiscalDocument->rps_number,
                 'pdf_gerado'         => ! empty($resp->pdf ?? null),
-                'xml_gerado'         => ! empty($resp->xml ?? null),
             ]);
 
             $this->setSuccess('Preview gerado com sucesso.');
 
             return [
                 'pdf' => $resp->pdf ?? null,
-                'xml' => $resp->xml ?? null,
             ];
 
         } catch (\Exception $e) {

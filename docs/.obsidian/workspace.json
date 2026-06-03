@@ -49,25 +49,6 @@
               "title": "Drawing 2026-05-30 23.07.25.excalidraw"
             }
           }
-        ],
-        "currentTab": 1
-      },
-      {
-        "id": "a75d8e22277cd043",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "5ff241ee0671f5a8",
-            "type": "leaf",
-            "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "Drawing 2026-05-30 23.07.25.excalidraw"
-            }
-          }
         ]
       }
     ],
@@ -232,10 +213,10 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "1e2c702d5c5223cf",
+  "active": "9e3acf14be100817",
   "lastOpenFiles": [
-    "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",
     "Task Magna Gestor.md",
+    "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",
     "Tasks App Gestor.md",
     "deploy-script.md",
     "TESTES-MANUAIS-FLUXOS-PRINCIPAIS.md",

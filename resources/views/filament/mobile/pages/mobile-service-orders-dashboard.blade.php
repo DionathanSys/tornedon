@@ -43,7 +43,6 @@
                 </label>
             </div>
 
-            <p class="mobile-os-dashboard-muted mt-3 text-sm">Exibindo resultados para <span class="font-semibold text-zinc-900 dark:text-white">{{ $this->getSelectedDateLabel() }}</span>.</p>
         </section>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">

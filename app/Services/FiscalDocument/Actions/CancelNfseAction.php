@@ -2,6 +2,7 @@
 
 namespace App\Services\FiscalDocument\Actions;
 
+use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
@@ -28,10 +29,20 @@ class CancelNfseAction
             $before = $audit->snapshot($fiscalDocument);
             $codigoCancelamento = trim($codigoCancelamento);
             $motivoCancelamento = trim($motivoCancelamento);
+            $isNationalNfse = $this->resolveNfseModel($fiscalDocument) === NfseModel::NACIONAL->value;
 
             if (empty($fiscalDocument->document_key)) {
                 $this->setError('Chave de acesso não encontrada no documento fiscal.');
                 return false;
+            }
+
+            if ($isNationalNfse) {
+                $documentKey = preg_replace('/\D/', '', (string) $fiscalDocument->document_key);
+
+                if (strlen($documentKey) !== 44) {
+                    $this->setError('A chave de acesso da NFS-e nacional deve conter 44 dígitos.');
+                    return false;
+                }
             }
 
             if (! $fiscalDocument->isNfseAuthorized()) {
@@ -44,8 +55,11 @@ class CancelNfseAction
                 return false;
             }
 
-            if ($motivoCancelamento === '' || mb_strlen($motivoCancelamento) > 80) {
-                $this->setError('O motivo do cancelamento deve ter entre 1 e 80 caracteres.');
+            $minReasonLength = $isNationalNfse ? 15 : 1;
+            $maxReasonLength = $isNationalNfse ? 255 : 80;
+
+            if ($motivoCancelamento === '' || mb_strlen($motivoCancelamento) < $minReasonLength || mb_strlen($motivoCancelamento) > $maxReasonLength) {
+                $this->setError("O motivo do cancelamento deve ter entre {$minReasonLength} e {$maxReasonLength} caracteres.");
                 return false;
             }
 
@@ -118,5 +132,12 @@ class CancelNfseAction
 
             return false;
         }
+    }
+
+    private function resolveNfseModel(FiscalDocument $fiscalDocument): string
+    {
+        return $fiscalDocument->nfse_model instanceof NfseModel
+            ? $fiscalDocument->nfse_model->value
+            : trim((string) $fiscalDocument->nfse_model);
     }
 }

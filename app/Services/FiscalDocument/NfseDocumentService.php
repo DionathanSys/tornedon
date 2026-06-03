@@ -214,7 +214,7 @@ class NfseDocumentService
     }
 
     /**
-     * Gera preview da NFS-e (não envia à API). Retorna ['pdf'=>base64, 'xml'=>base64].
+     * Gera preview da NFS-e (não envia à API). Na API nacional v2 retorna ['pdf' => base64].
      */
     public function preview(FiscalDocument $doc, int $userId): ?array
     {
