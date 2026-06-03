@@ -109,25 +109,25 @@ class MobileServiceOrdersDashboard extends Page
             'count' => [
                 'label' => 'Ordens na data',
                 'value' => number_format($count, 0, ',', '.'),
-                'description' => 'OS com data de ordem igual ao filtro',
+                'description' => '',
                 'color' => 'text-zinc-900 dark:text-zinc-100',
             ],
             'total' => [
                 'label' => 'Valor total',
                 'value' => $this->formatMoney($total),
-                'description' => 'Soma do total geral das OS filtradas',
+                'description' => '',
                 'color' => 'text-emerald-700 dark:text-emerald-300',
             ],
             'average_ticket' => [
                 'label' => 'Ticket médio',
                 'value' => $this->formatMoney($count > 0 ? round($total / $count, 2) : 0),
-                'description' => 'Valor total dividido pela quantidade filtrada',
+                'description' => '',
                 'color' => 'text-sky-700 dark:text-sky-300',
             ],
             'pending' => [
                 'label' => 'Pendentes na data',
                 'value' => number_format($pending, 0, ',', '.'),
-                'description' => 'OS filtradas que ainda estao abertas',
+                'description' => 'OS com status Em aberto',
                 'color' => 'text-amber-700 dark:text-amber-300',
             ],
         ];

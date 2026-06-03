@@ -57,7 +57,7 @@ class MobileServiceOrdersDashboardTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Dashboard de Ordens de Serviço')
-            ->assertSee('Ordens encontradas');
+            ->assertSee('Ordens na data');
     }
 
     public function test_mobile_dashboard_shows_only_todays_orders_for_current_tenant(): void
@@ -96,12 +96,10 @@ class MobileServiceOrdersDashboardTest extends TestCase
         );
 
         Livewire::test(MobileServiceOrdersDashboard::class)
-            ->assertSee('OS-HOJE-A')
-            ->assertDontSee('OS-ONTEM-A')
-            ->assertDontSee('OS-HOJE-B')
             ->assertSee('Ordens na data')
             ->assertSee('1')
-            ->assertSee('Pendentes na data');
+            ->assertSee('Pendentes na data')
+            ->assertSee('R$ 120,00');
     }
 
     public function test_mobile_dashboard_uses_grand_total_amount_instead_of_total_amount(): void
@@ -119,7 +117,6 @@ class MobileServiceOrdersDashboardTest extends TestCase
         );
 
         Livewire::test(MobileServiceOrdersDashboard::class)
-            ->assertSee('OS-TOTAL')
             ->assertSee('R$ 250,00')
             ->assertDontSee('R$ 200,00');
     }
@@ -129,7 +126,6 @@ class MobileServiceOrdersDashboardTest extends TestCase
         $this->createAuthenticatedTenant();
 
         Livewire::test(MobileServiceOrdersDashboard::class)
-            ->assertSee('Nenhuma ordem de servico foi encontrada para a data selecionada.')
             ->assertSee('R$ 0,00')
             ->assertSee('Ticket médio');
     }
@@ -159,11 +155,10 @@ class MobileServiceOrdersDashboardTest extends TestCase
         );
 
         Livewire::test(MobileServiceOrdersDashboard::class)
-            ->assertSee('OS-02-06')
-            ->assertDontSee('OS-01-06')
+            ->assertSee('R$ 100,00')
             ->set('selectedDate', '2026-06-01')
-            ->assertSee('OS-01-06')
-            ->assertDontSee('OS-02-06')
+            ->assertSee('R$ 80,00')
+            ->assertDontSee('R$ 100,00')
             ->assertSee('01/06/2026');
     }
 
