@@ -7,7 +7,6 @@
                 </div>
 
                 <label class="block">
-                    <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Data</span>
                     <input
                         type="date"
                         wire:model.live="selectedDate"
