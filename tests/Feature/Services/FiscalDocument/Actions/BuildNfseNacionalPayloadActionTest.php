@@ -239,6 +239,49 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame('4204202', $payload['servico']['endereco_local_prestacao']['codigo_municipio_prestacao']);
     }
 
+    public function test_it_prefers_customer_address_from_document_company(): void
+    {
+        $document = $this->createReadyDocument();
+
+        $otherCompany = Company::query()->create([
+            'name' => 'Outra Empresa',
+            'document_number' => '11345678000155',
+            'address' => [
+                'city' => 'Chapeco',
+                'state' => 'SC',
+                'city_code' => '4204202',
+            ],
+            'created_by' => $document->created_by,
+        ]);
+
+        $otherCompanyPartner = CompanyPartner::query()->create([
+            'company_id' => $otherCompany->id,
+            'partner_id' => $document->customer_id,
+            'type' => ['customer'],
+            'is_active' => true,
+        ]);
+
+        Address::query()->create([
+            'company_partner_id' => $otherCompanyPartner->id,
+            'street' => 'Rua Antiga',
+            'number' => '947-E',
+            'neighborhood' => 'Centro',
+            'city' => 'Chapeco',
+            'state' => 'SC',
+            'postal_code' => '89800-000',
+            'city_code' => '4204202',
+            'created_by' => $document->created_by,
+        ]);
+
+        $document->unsetRelation('customer');
+
+        $action = new BuildNfseNacionalPayloadAction();
+        $payload = $action->build($document);
+
+        $this->assertNotNull($payload, $action->getMessage() ?? 'Payload returned null');
+        $this->assertSame('100', data_get($payload, 'tomador.endereco.numero'));
+    }
+
     public function test_me_epp_without_tributos_totais_data_generates_zeroed_totals(): void
     {
         $document = $this->createReadyDocument(specialTaxRegime: '6');

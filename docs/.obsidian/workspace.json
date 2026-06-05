@@ -48,8 +48,25 @@
               "icon": "excalidraw-icon",
               "title": "Drawing 2026-05-30 23.07.25.excalidraw"
             }
+          },
+          {
+            "id": "b83cdb2be748ea10",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Consultoria.md",
+                "mode": "source",
+                "source": false
+              },
+              "pinned": true,
+              "icon": "lucide-file",
+              "title": "Consultoria"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -213,11 +230,12 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "9e3acf14be100817",
+  "active": "1e2c702d5c5223cf",
   "lastOpenFiles": [
+    "Consultoria.md",
+    "Tasks App Gestor.md",
     "Task Magna Gestor.md",
     "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",
-    "Tasks App Gestor.md",
     "deploy-script.md",
     "TESTES-MANUAIS-FLUXOS-PRINCIPAIS.md",
     "manual-vendas-faturamento-emissao-nota.md",
@@ -241,7 +259,6 @@
     "Migração Gamma Eletrônica.md",
     "Outros/stock-movement-examples.md",
     "Plano Fechamento Fatura Fornecedores.md",
-    "Outros/stock-movement-control.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

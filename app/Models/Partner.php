@@ -72,6 +72,29 @@ class Partner extends Model
         return $this->belongsToMany(Company::class, 'company_partner', 'partner_id', 'company_id');
     }
 
+    public function resolveAddressForCompany(int|string|null $companyId = null): ?Address
+    {
+        if ($companyId !== null) {
+            $companyAddress = CompanyPartner::query()
+                ->where('partner_id', $this->getKey())
+                ->where('company_id', (int) $companyId)
+                ->first()
+                ?->addresses()
+                ->orderByDesc('id')
+                ->first();
+
+            if ($companyAddress !== null) {
+                return $companyAddress;
+            }
+        }
+
+        if ($this->relationLoaded('address')) {
+            return $this->address->sortByDesc('id')->first();
+        }
+
+        return $this->address()->orderByDesc('id')->first();
+    }
+
     public function sefazItemMappings(): HasMany
     {
         return $this->hasMany(SefazItemMapping::class);

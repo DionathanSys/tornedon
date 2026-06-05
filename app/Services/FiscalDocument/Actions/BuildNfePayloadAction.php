@@ -52,7 +52,7 @@ class BuildNfePayloadAction
 
             $company = $fiscalDocument->company;
             $customer = $fiscalDocument->customer;
-            $address = $customer->address->first();
+            $address = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
             $taxRegime = $company?->fiscalProfile()->first()?->tax_regime;
 
             $issuedAt = ($fiscalDocument->issued_at ?? now())->format('Y-m-d').'T00:00:00-03:00';

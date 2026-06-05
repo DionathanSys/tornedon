@@ -183,7 +183,7 @@ class FiscalEmissionPreflightService
                 FiscalProfileValidator::validateItemsTaxCompatibility((int) $document->company_id, $normalizedItems);
 
                 $issuerUf = (string) Arr::get($document->company->address ?? [], 'state', '');
-                $recipientUf = (string) ($document->customer->address?->first()?->state ?? '');
+                $recipientUf = (string) ($document->customer->resolveAddressForCompany($document->company_id)?->state ?? '');
 
                 if ($issuerUf !== '' && $recipientUf !== '') {
                     FiscalProfileValidator::validateCfopCompatibility($normalizedItems, $issuerUf, $recipientUf);
@@ -284,7 +284,7 @@ class FiscalEmissionPreflightService
             }
 
             // Block export (UF = EX) in V1
-            $customerAddress = $document->customer?->address?->first();
+            $customerAddress = $document->customer?->resolveAddressForCompany($document->company_id);
             $customerUf = strtoupper(trim((string) ($customerAddress?->state ?? '')));
             if ($customerUf === 'EX') {
                 $errors['customer.address.state'][] = 'A NFS-e Nacional V1 não suporta emissão para exterior (UF = EX).';
@@ -326,7 +326,7 @@ class FiscalEmissionPreflightService
             return;
         }
 
-        $address = $document->customer->address?->first();
+        $address = $document->customer->resolveAddressForCompany($document->company_id);
 
         if ($address === null) {
             $errors['customer.address'][] = $document->isNfse()
