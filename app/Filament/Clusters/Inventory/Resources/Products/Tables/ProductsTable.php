@@ -62,7 +62,7 @@ class ProductsTable
                     ->label('Unidade')
                     ->badge()
                     ->sortable(),
-                TextColumn::make('has_control_stock')
+                TextColumn::make('has_stock_control')
                     ->label('Controla Estoque?')
                     ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
                     ->badge()
