@@ -187,27 +187,16 @@ class CreateServiceOrderItemAction
     private function shouldApplyAutomaticDiscount(array $data): bool
     {
         $hasPercentage = array_key_exists('discount_percentage', $data)
-            && ! $this->isMissingOrZeroDiscountValue($data['discount_percentage']);
+            && ! $this->isMissingDiscountValue($data['discount_percentage']);
         $hasAmount = array_key_exists('discount_amount', $data)
-            && ! $this->isMissingOrZeroDiscountValue($data['discount_amount']);
+            && ! $this->isMissingDiscountValue($data['discount_amount']);
 
         return ! $hasPercentage && ! $hasAmount;
     }
 
-    private function isMissingOrZeroDiscountValue(mixed $value): bool
+    private function isMissingDiscountValue(mixed $value): bool
     {
-        if ($value === null || $value === '') {
-            return true;
-        }
-
-        if (is_numeric($value)) {
-            return (float) $value <= 0;
-        }
-
-        $normalized = str_replace('.', '', (string) $value);
-        $normalized = str_replace(',', '.', $normalized);
-
-        return (float) $normalized <= 0;
+        return $value === null || $value === '';
     }
 
     private function buildPricingAudit(array $data): array

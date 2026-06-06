@@ -264,7 +264,7 @@
         <table class="header-layout">
             <tr>
                 <td class="header-main-cell">
-                    <div class="header-kicker">Ordem de Servico</div>
+                    <div class="header-kicker">Ordem de Serviço</div>
                     <div class="page-header-title">{{ $pdfData['title'] }}</div>
 
                     @php
