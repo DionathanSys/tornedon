@@ -153,6 +153,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->suffix('%'),
                         Money::make('default_value_km')
                             ->label('Valor Padrão por KM')
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->default(3.5),
                         Forms\Components\TextInput::make('default_warranty_days')
                             ->label('Garantia Padrão (dias)')
