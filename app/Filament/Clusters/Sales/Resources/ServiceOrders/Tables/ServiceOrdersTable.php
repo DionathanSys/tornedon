@@ -7,6 +7,7 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseSelectedServiceOrdersAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
@@ -265,6 +266,7 @@ class ServiceOrdersTable
             ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CloseSelectedServiceOrdersAction::make(),
                     BulkInvoiceServiceOrderAction::make(),
                     ExportSelectedServiceOrdersAction::make(),
                     ExportSelectedServiceOrdersPdfAction::make(),
