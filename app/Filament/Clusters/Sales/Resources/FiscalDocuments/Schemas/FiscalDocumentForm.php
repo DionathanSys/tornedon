@@ -162,8 +162,9 @@ class FiscalDocumentForm
                                         Callout::make('Último erro registrado')
                                             ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
                                             ->danger()
-                                            ->columnSpanFull()
-                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit' && filled(self::getLatestPersistedErrorMessage($record))),
+                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit'
+                                                && self::shouldShowLatestErrorCallout($record)
+                                                && filled(self::getLatestPersistedErrorMessage($record))),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
@@ -261,8 +262,9 @@ class FiscalDocumentForm
                                         Callout::make('Último erro registrado')
                                             ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
                                             ->danger()
-                                            ->columnSpanFull()
-                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit' && filled(self::getLatestPersistedErrorMessage($record))),
+                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit'
+                                                && self::shouldShowLatestErrorCallout($record)
+                                                && filled(self::getLatestPersistedErrorMessage($record))),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
@@ -662,6 +664,19 @@ class FiscalDocumentForm
         }
 
         return preg_replace('/<br\s*\/?\>/i', PHP_EOL, $message);
+    }
+
+    private static function shouldShowLatestErrorCallout(?FiscalDocument $record): bool
+    {
+        if (! $record instanceof FiscalDocument) {
+            return false;
+        }
+
+        if ($record->isNfse()) {
+            return ! $record->isNfseAuthorized() && ! $record->isNfseCanceled();
+        }
+
+        return ! $record->isNfeAuthorized() && ! $record->isNfeCanceled();
     }
 
     private static function formatCorrectionEventDate(mixed $state): ?string
