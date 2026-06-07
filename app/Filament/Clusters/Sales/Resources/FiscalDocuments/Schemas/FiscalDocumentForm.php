@@ -159,16 +159,19 @@ class FiscalDocumentForm
                                             ->visible(fn ($state): bool => $state !== null)
                                             ->formatStateUsing(fn ($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
                                             ->url(fn ($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
-                                        Callout::make('Último erro registrado')
-                                            ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
-                                            ->danger()
-                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit'
-                                                && self::shouldShowLatestErrorCallout($record)
-                                                && filled(self::getLatestPersistedErrorMessage($record))),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
                                     ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),
+
+                                Callout::make('Último erro registrado')
+                                    ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
+                                    ->danger()
+                                    ->columnSpanFull()
+                                    ->visible(fn (?FiscalDocument $record, string $operation, Get $get): bool => $operation === 'edit'
+                                        && $get('document_type') === DocumentModel::NFSE->value
+                                        && self::shouldShowLatestErrorCallout($record)
+                                        && filled(self::getLatestPersistedErrorMessage($record))),
 
                                 Section::make('Dados da NF-e')
                                     ->columnSpanFull()
@@ -259,16 +262,19 @@ class FiscalDocumentForm
                                             ->inline(false)
                                             ->default(true)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-                                        Callout::make('Último erro registrado')
-                                            ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
-                                            ->danger()
-                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit'
-                                                && self::shouldShowLatestErrorCallout($record)
-                                                && filled(self::getLatestPersistedErrorMessage($record))),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
                                     ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
+
+                                Callout::make('Último erro registrado')
+                                    ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
+                                    ->danger()
+                                    ->columnSpanFull()
+                                    ->visible(fn (?FiscalDocument $record, string $operation, Get $get): bool => $operation === 'edit'
+                                        && $get('document_type') !== DocumentModel::NFSE->value
+                                        && self::shouldShowLatestErrorCallout($record)
+                                        && filled(self::getLatestPersistedErrorMessage($record))),
 
                                 Livewire::make(ItemsRelationManager::class, fn (FiscalDocument $record) => [
                                     'ownerRecord' => $record,
