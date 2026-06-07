@@ -30,6 +30,11 @@ class CompleteProduction
                 return false;
             }
 
+            if (! $productionOrder->items()->where('quantity_approved', '>', 0)->exists()) {
+                $this->setError('Informe ao menos uma quantidade aprovada antes de concluir a produção.');
+                return false;
+            }
+
             DB::beginTransaction();
 
             // Update production order status

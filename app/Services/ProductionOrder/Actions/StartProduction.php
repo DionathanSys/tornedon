@@ -27,6 +27,11 @@ class StartProduction
                 return false;
             }
 
+            if (! $productionOrder->items()->exists()) {
+                $this->setError('Adicione ao menos um item antes de iniciar a produção.');
+                return false;
+            }
+
             $productionOrder->update([
                 'status' => Status::IN_PROGRESS->value,
                 'started_at' => now(),

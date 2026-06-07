@@ -5,7 +5,6 @@ namespace App\Services\ProductionOrder;
 use App\Domain\Exceptions\ProductionOrder\InvalidStateTransitionException;
 use App\Models\ProductionOrder;
 use App\Models\Requisition;
-use App\Services\Invoice\InvoiceService;
 use App\Services\ProductionOrder\Actions\CancelProductionAction;
 use App\Services\ProductionOrder\Actions\CompleteProduction;
 use App\Services\ProductionOrder\Actions\CreateProductionOrder;
@@ -15,6 +14,7 @@ use App\Services\ProductionOrder\Actions\ReturnToProductionAction;
 use App\Services\ProductionOrder\Actions\SendToQcAction;
 use App\Services\ProductionOrder\Actions\StartProduction;
 use App\Services\ProductionOrder\Actions\UpdateProgress;
+use App\Services\Requisition\RequisitionService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -248,35 +248,64 @@ class ProductionOrderService
             return null;
         }
 
-        // Validação: todas devem possuir itens
         foreach ($records as $record) {
             if ($record->items()->count() === 0) {
                 $this->setError("A OP #{$record->production_order_number} não possui itens.");
+                return null;
+            }
+
+            if (! $record->requisition_id) {
+                $this->setError("A OP #{$record->production_order_number} precisa gerar requisição antes do faturamento.");
                 return null;
             }
         }
 
         try {
             return DB::transaction(function () use ($records, $userId): \App\Models\Invoice {
-                $first = $records->first();
+                $requisitionService = app(RequisitionService::class);
+                $requisitions = new \Illuminate\Database\Eloquent\Collection();
 
-                // 1. Cria Invoice via InvoiceService
-                $invoiceService = app(InvoiceService::class);
-                $invoice = $invoiceService->create([
-                    'customer_id'  => $first->customer_id,
-                    'company_id'   => $first->company_id,
-                    'invoice_date' => now()->toDateString(),
-                ], $userId);
+                foreach ($records as $record) {
+                    $requisition = $record->requisition()->with('items.product')->first();
 
-                if ($invoiceService->hasError() || ! $invoice) {
+                    if (! $requisition) {
+                        $this->setError("Requisição da OP #{$record->production_order_number} não encontrada.");
+                        throw new \RuntimeException($this->getMessage());
+                    }
+
+                    if ($requisition->status === \App\Enum\Requisition\Status::OPEN) {
+                        $closed = $requisitionService->close($requisition, $userId, false);
+
+                        if ($requisitionService->hasError() || ! $closed) {
+                            $this->setError(
+                                'Falha ao encerrar requisição da OP #' . $record->production_order_number . ': ' . $requisitionService->getMessage(),
+                                $requisitionService->getErrors(),
+                                422,
+                                $requisitionService->getErrorCode(),
+                            );
+
+                            throw new \RuntimeException($this->getMessage());
+                        }
+
+                        $requisition = $closed->fresh(['items.product']);
+                    }
+
+                    $requisitions->push($requisition);
+                }
+
+                $invoice = $requisitionService->invoice($requisitions, $userId);
+
+                if ($requisitionService->hasError() || ! $invoice) {
                     $this->setError(
-                        'Falha ao criar fatura: ' . $invoiceService->getMessage(),
-                        $invoiceService->getErrors(),
+                        'Falha ao faturar requisições vinculadas às OPs: ' . $requisitionService->getMessage(),
+                        $requisitionService->getErrors(),
+                        422,
+                        $requisitionService->getErrorCode(),
                     );
+
                     throw new \RuntimeException($this->getMessage());
                 }
 
-                // 2. Transição de estado e vínculo com a invoice para cada OP
                 foreach ($records as $record) {
                     $record->state()->invoice($invoice->id);
                 }

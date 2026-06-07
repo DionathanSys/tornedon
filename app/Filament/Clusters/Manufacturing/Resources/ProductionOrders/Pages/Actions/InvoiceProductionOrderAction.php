@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions;
 
 use App\Enum\ProductionOrder\Status;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Models\ProductionOrder;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductionOrder\ProductionOrderService;
@@ -40,9 +41,9 @@ final class InvoiceProductionOrderAction
                 ]);
 
                 $service = app(ProductionOrderService::class);
-                $result = $service->invoice($record, Auth::id());
+                $invoice = $service->invoice($record, Auth::id());
 
-                if ($service->hasError()) {
+                if ($service->hasError() || ! $invoice) {
                     Log::error('InvoiceProductionOrderAction (Filament): Erro ao faturar OP', [
                         'metodo'              => __METHOD__ . '@' . __LINE__,
                         'production_order_id' => $record->id,
@@ -64,6 +65,14 @@ final class InvoiceProductionOrderAction
                 ]);
 
                 notify::success('Ordem de produção faturada com sucesso.');
+            })
+            ->successNotification(null)
+            ->successRedirectUrl(function (ProductionOrder $record): ?string {
+                $record->refresh();
+
+                return $record->invoice_id
+                    ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id])
+                    : null;
             });
     }
 }

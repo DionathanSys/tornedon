@@ -95,6 +95,11 @@ class ProductionOrder extends Model
         return $this->belongsTo(Requisition::class);
     }
 
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(ProductionOrderItem::class);

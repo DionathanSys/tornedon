@@ -5,6 +5,8 @@ namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Tables;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\BulkInvoiceProductionOrderAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\DownloadProductionOrderPdfAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
@@ -32,6 +34,10 @@ class ProductionOrdersTable
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('quote.quote_number')
+                    ->label('Orçamento')
+                    ->placeholder('Sem orçamento')
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -60,7 +66,24 @@ class ProductionOrdersTable
                         'info' => DestinationType::STOCK->value,
                         'success' => DestinationType::DIRECT_DELIVERY->value,
                     ])
+                    ->formatStateUsing(fn (DestinationType $state): string => $state->description())
                     ->sortable(),
+                TextColumn::make('requisition.number')
+                    ->label('Requisição')
+                    ->placeholder('Pendente')
+                    ->url(fn ($record): ?string => $record->requisition_id
+                        ? RequisitionResource::getUrl('edit', ['record' => $record->requisition_id])
+                        : null)
+                    ->openUrlInNewTab()
+                    ->toggleable(),
+                TextColumn::make('invoice.invoice_number')
+                    ->label('Fatura')
+                    ->placeholder('Pendente')
+                    ->url(fn ($record): ?string => $record->invoice_id
+                        ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id])
+                        : null)
+                    ->openUrlInNewTab()
+                    ->toggleable(),
                 TextColumn::make('assignedOperator.name')
                     ->label('Operador')
                     ->searchable()

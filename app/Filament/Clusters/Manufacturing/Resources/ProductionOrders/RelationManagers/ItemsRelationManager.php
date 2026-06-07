@@ -2,17 +2,26 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\RelationManagers;
 
-use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
+use App\Models\Product;
+use App\Models\ProductionOrder;
+use App\Models\ProductionOrderItem;
+use App\Models\QuoteItem;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -24,43 +33,119 @@ class ItemsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                ModalSelectProductStock::make('product_id')
+                Hidden::make('quote_item_id'),
+                Select::make('product_id')
                     ->label('Produto')
-                    ->required(),
-                ItemValueGroup::make(),
+                    ->options(fn (): array => Product::query()
+                        ->where('company_id', $this->getOwnerRecord()->company_id)
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (Product $product): array => [
+                            $product->id => trim(($product->product_code ? $product->product_code . ' - ' : '') . $product->name),
+                        ])
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function ($state, Set $set): void {
+                        if (! $state) {
+                            return;
+                        }
+
+                        $product = Product::query()->find($state);
+
+                        if (! $product) {
+                            return;
+                        }
+
+                        $set('description', $product->name);
+                        $set('unit_of_measure', $product->unit?->value ?? 'UN');
+                    }),
                 Textarea::make('description')
+                    ->label('Descrição do item')
                     ->columnSpanFull(),
                 TextInput::make('quantity')
+                    ->label('Qtd. planejada')
                     ->required()
                     ->numeric()
+                    ->minValue(0.001)
                     ->default(1.0),
                 TextInput::make('quantity_produced')
+                    ->label('Qtd. produzida')
                     ->required()
                     ->numeric()
-                    ->default(0.0),
+                    ->minValue(0)
+                    ->default(0.0)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                        $planned = (float) ($get('quantity') ?? 0);
+                        $produced = max(0, (float) ($state ?? 0));
+
+                        if ($planned > 0 && $produced > $planned) {
+                            $produced = $planned;
+                            $set('quantity_produced', $produced);
+                        }
+
+                        $approved = min((float) ($get('quantity_approved') ?? 0), $produced);
+                        $rejected = min((float) ($get('quantity_rejected') ?? 0), max(0, $produced - $approved));
+
+                        $set('quantity_approved', $approved);
+                        $set('quantity_rejected', $rejected);
+                    }),
                 TextInput::make('quantity_approved')
+                    ->label('Qtd. aprovada')
                     ->required()
                     ->numeric()
-                    ->default(0.0),
+                    ->minValue(0)
+                    ->default(0.0)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                        $produced = (float) ($get('quantity_produced') ?? 0);
+                        $approved = max(0, min((float) ($state ?? 0), $produced));
+                        $rejected = max(0, min((float) ($get('quantity_rejected') ?? 0), $produced - $approved));
+
+                        $set('quantity_approved', $approved);
+                        $set('quantity_rejected', $rejected);
+                    }),
                 TextInput::make('quantity_rejected')
+                    ->label('Qtd. rejeitada')
                     ->required()
                     ->numeric()
-                    ->default(0.0),
+                    ->minValue(0)
+                    ->default(0.0)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                        $produced = (float) ($get('quantity_produced') ?? 0);
+                        $approved = (float) ($get('quantity_approved') ?? 0);
+                        $rejected = max(0, min((float) ($state ?? 0), max(0, $produced - $approved)));
+
+                        $set('quantity_rejected', $rejected);
+                    }),
                 TextInput::make('unit_of_measure')
+                    ->label('Unidade')
                     ->required()
                     ->default('UN'),
-                TextInput::make('technical_specifications'),
+                TextInput::make('technical_specifications')
+                    ->label('Especificações técnicas'),
                 Textarea::make('production_notes')
+                    ->label('Notas de produção')
                     ->columnSpanFull(),
                 Textarea::make('qc_notes')
+                    ->label('Notas de qualidade')
                     ->columnSpanFull(),
                 TextInput::make('actual_production_hours')
-                    ->numeric(),
+                    ->label('Horas efetivas')
+                    ->numeric()
+                    ->minValue(0),
                 TextInput::make('sequence')
+                    ->label('Sequência')
                     ->required()
                     ->numeric()
-                    ->default(0),
-                TextInput::make('additional_info'),
+                    ->default(fn (): int => ((int) $this->getOwnerRecord()->items()->max('sequence')) + 1),
+                TextInput::make('additional_info')
+                    ->label('Informações adicionais'),
             ]);
     }
 
@@ -95,6 +180,10 @@ class ItemsRelationManager extends RelationManager
                     ->label('Qtd. Rejeitada')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('approval_rate')
+                    ->label('Aprov. (%)')
+                    ->state(fn (ProductionOrderItem $record): float => round($record->getEfficiencyRate(), 2))
+                    ->numeric(2, ',', '.'),
                 TextColumn::make('unit_of_measure')
                     ->label('Unidade')
                     ->searchable(),
@@ -119,6 +208,73 @@ class ItemsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
+                Action::make('importQuoteItems')
+                    ->label('Importar do Orçamento')
+                    ->icon(Heroicon::ArrowDownTray)
+                    ->color('gray')
+                    ->visible(fn (): bool => filled($this->getOwnerRecord()->quote_id))
+                    ->requiresConfirmation()
+                    ->modalHeading('Importar itens do orçamento')
+                    ->modalDescription('Serão importados apenas os itens de produto ainda não vinculados a esta ordem de produção.')
+                    ->action(function (): void {
+                        /** @var ProductionOrder $productionOrder */
+                        $productionOrder = $this->getOwnerRecord()->loadMissing('quote.items.product');
+
+                        if (! $productionOrder->quote_id || ! $productionOrder->quote) {
+                            Notification::make()
+                                ->title('Selecione um orçamento na OP antes de importar itens.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $existingQuoteItemIds = $productionOrder->items()
+                            ->whereNotNull('quote_item_id')
+                            ->pluck('quote_item_id')
+                            ->all();
+
+                        $quoteItems = $productionOrder->quote->items
+                            ->filter(fn (QuoteItem $item): bool => $item->product_id !== null)
+                            ->reject(fn (QuoteItem $item): bool => in_array($item->id, $existingQuoteItemIds, true))
+                            ->sortBy('sequence')
+                            ->values();
+
+                        if ($quoteItems->isEmpty()) {
+                            Notification::make()
+                                ->title('Nenhum item novo do orçamento para importar.')
+                                ->info()
+                                ->send();
+
+                            return;
+                        }
+
+                        foreach ($quoteItems as $quoteItem) {
+                            ProductionOrderItem::query()->create([
+                                'production_order_id' => $productionOrder->id,
+                                'quote_item_id' => $quoteItem->id,
+                                'product_id' => $quoteItem->product_id,
+                                'description' => $quoteItem->resolveDescription(),
+                                'quantity' => $quoteItem->quantity,
+                                'unit_price' => $quoteItem->unit_price,
+                                'discount_percentage' => $quoteItem->discount_percentage,
+                                'discount_amount' => $quoteItem->discount_amount,
+                                'quantity_produced' => 0,
+                                'quantity_approved' => 0,
+                                'quantity_rejected' => 0,
+                                'unit_of_measure' => $quoteItem->unit_of_measure,
+                                'technical_specifications' => $quoteItem->technical_specifications,
+                                'sequence' => $quoteItem->sequence ?: (((int) $productionOrder->items()->max('sequence')) + 1),
+                            ]);
+                        }
+
+                        Notification::make()
+                            ->title($quoteItems->count() . ' item(ns) importado(s) do orçamento.')
+                            ->success()
+                            ->send();
+
+                        $this->getOwnerRecord()->refresh();
+                    }),
                 CreateAction::make(),
             ])
             ->recordActions([
@@ -129,6 +285,7 @@ class ItemsRelationManager extends RelationManager
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateDescription('Adicione itens manualmente ou importe os itens do orçamento vinculado.');
     }
 }

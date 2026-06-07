@@ -4,6 +4,9 @@ namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages;
 
 use App\Enum\ProductionOrder\Status;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
+use App\Models\ProductionOrder;
+use App\Models\ProductionOrderItem;
+use App\Models\QuoteItem;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductionOrder\ProductionOrderService;
 use Filament\Facades\Filament;
@@ -46,11 +49,50 @@ class CreateProductionOrder extends CreateRecord
             $this->halt();
         }
 
+        $this->importQuoteItems($productionOrder);
+
         return $productionOrder;
     }
 
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('edit', ['record' => $this->getRecord()]);
+    }
+
+    private function importQuoteItems(ProductionOrder $productionOrder): void
+    {
+        if (! $productionOrder->quote_id || $productionOrder->items()->exists()) {
+            return;
+        }
+
+        $productionOrder->loadMissing('quote.items.product');
+
+        $quoteItems = $productionOrder->quote?->items
+            ?->filter(fn (QuoteItem $item): bool => $item->product_id !== null)
+            ->sortBy('sequence')
+            ->values();
+
+        if (! $quoteItems || $quoteItems->isEmpty()) {
+            return;
+        }
+
+        foreach ($quoteItems as $quoteItem) {
+            ProductionOrderItem::query()->create([
+                'production_order_id' => $productionOrder->id,
+                'quote_item_id' => $quoteItem->id,
+                'product_id' => $quoteItem->product_id,
+                'description' => $quoteItem->resolveDescription(),
+                'quantity' => $quoteItem->quantity,
+                'unit_price' => $quoteItem->unit_price,
+                'discount_percentage' => $quoteItem->discount_percentage,
+                'discount_amount' => $quoteItem->discount_amount,
+                'quantity_produced' => 0,
+                'quantity_approved' => 0,
+                'quantity_rejected' => 0,
+                'unit_of_measure' => $quoteItem->unit_of_measure,
+                'technical_specifications' => $quoteItem->technical_specifications,
+                'sequence' => $quoteItem->sequence ?: (((int) $productionOrder->items()->max('sequence')) + 1),
+            ]);
+        }
     }
 }
