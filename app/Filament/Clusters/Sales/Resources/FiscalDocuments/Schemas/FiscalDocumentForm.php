@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -31,6 +32,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 
 class FiscalDocumentForm
 {
@@ -157,6 +159,11 @@ class FiscalDocumentForm
                                             ->visible(fn ($state): bool => $state !== null)
                                             ->formatStateUsing(fn ($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
                                             ->url(fn ($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
+                                        Callout::make('Último erro registrado')
+                                            ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
+                                            ->danger()
+                                            ->columnSpanFull()
+                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit' && filled(self::getLatestPersistedErrorMessage($record))),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
@@ -251,6 +258,11 @@ class FiscalDocumentForm
                                             ->inline(false)
                                             ->default(true)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        Callout::make('Último erro registrado')
+                                            ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
+                                            ->danger()
+                                            ->columnSpanFull()
+                                            ->visible(fn (?FiscalDocument $record, string $operation): bool => $operation === 'edit' && filled(self::getLatestPersistedErrorMessage($record))),
                                     ])
                                     ->columns(['md' => 2])
                                     ->collapsible()
@@ -612,6 +624,44 @@ class FiscalDocumentForm
                             ]),
                     ]),
             ]);
+    }
+
+    private static function buildLatestErrorCalloutDescription(?FiscalDocument $record): ?HtmlString
+    {
+        $message = self::getLatestPersistedErrorMessage($record);
+
+        if ($message === null) {
+            return null;
+        }
+
+        return new HtmlString(nl2br(e($message)));
+    }
+
+    private static function getLatestPersistedErrorMessage(?FiscalDocument $record): ?string
+    {
+        if (! $record instanceof FiscalDocument) {
+            return null;
+        }
+
+        $errors = $record->errors_messages;
+
+        if (! is_array($errors) || $errors === []) {
+            return null;
+        }
+
+        $latestError = end($errors);
+
+        if (! is_array($latestError)) {
+            return null;
+        }
+
+        $message = $latestError['mensagem'] ?? null;
+
+        if (! is_string($message) || trim($message) === '') {
+            return null;
+        }
+
+        return preg_replace('/<br\s*\/?\>/i', PHP_EOL, $message);
     }
 
     private static function formatCorrectionEventDate(mixed $state): ?string
