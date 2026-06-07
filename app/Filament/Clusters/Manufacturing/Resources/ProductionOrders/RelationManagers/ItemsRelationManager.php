@@ -4,15 +4,11 @@ namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Relatio
 
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
-use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -74,27 +70,40 @@ class ItemsRelationManager extends RelationManager
             ->recordTitleAttribute('product_id')
             ->columns([
                 TextColumn::make('quoteItem.id')
+                    ->label('Item Orçamento')
                     ->searchable(),
                 TextColumn::make('product.name')
+                    ->label('Produto')
                     ->searchable(),
+                TextColumn::make('description')
+                    ->label('Descrição')
+                    ->limit(50)
+                    ->toggleable(),
                 TextColumn::make('quantity')
+                    ->label('Qtd. Planejada')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('quantity_produced')
+                    ->label('Qtd. Produzida')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('quantity_approved')
+                    ->label('Qtd. Aprovada')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('quantity_rejected')
+                    ->label('Qtd. Rejeitada')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('unit_of_measure')
+                    ->label('Unidade')
                     ->searchable(),
                 TextColumn::make('actual_production_hours')
+                    ->label('Horas')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('sequence')
+                    ->label('Seq.')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')
@@ -111,16 +120,13 @@ class ItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make(),
-                AssociateAction::make(),
             ])
             ->recordActions([
                 EditAction::make(),
-                DissociateAction::make(),
                 DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DissociateBulkAction::make(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

@@ -5,7 +5,6 @@ namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Support\Icons\Heroicon;
 
 class ListProductionOrders extends ListRecords
 {
@@ -14,7 +13,8 @@ class ListProductionOrders extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            
+            CreateAction::make()
+                ->label('Ordem de Produção'),
         ];
     }
 }

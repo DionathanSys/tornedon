@@ -7,7 +7,6 @@ use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +20,6 @@ class EditProductionOrder extends EditRecord
             InvoiceProductionOrderAction::make(),
             PreviewProductionOrderPdfAction::make(),
             DownloadProductionOrderPdfAction::make(),
-            ViewAction::make(),
             DeleteAction::make(),
         ];
     }
@@ -35,6 +33,6 @@ class EditProductionOrder extends EditRecord
 
     protected function getRedirectUrl(): ?string
     {
-        return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
+        return $this->getResource()::getUrl('edit', ['record' => $this->getRecord()]);
     }
 }

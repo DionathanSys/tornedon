@@ -6,9 +6,10 @@ use App\Filament\Clusters\Manufacturing\ManufacturingCluster;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\CreateProductionOrder;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\EditProductionOrder;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\ListProductionOrders;
-use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\ViewProductionOrder;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Schemas\ProductionOrderForm;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Tables\ProductionOrdersTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\ProductionOrder;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -23,9 +24,9 @@ class ProductionOrderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Cog;
 
-    // protected static ?string $cluster = ManufacturingCluster::class;
+    protected static ?string $cluster = ManufacturingCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
+    protected static string | UnitEnum | null $navigationGroup = 'Manufatura';
 
     protected static ?string $modelLabel = 'Ordem de Produção';
 
@@ -43,12 +44,19 @@ class ProductionOrderResource extends Resource
         return ProductionOrdersTable::configure($table);
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            ItemsRelationManager::class,
+            AttachmentsRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListProductionOrders::route('/'),
             'create' => CreateProductionOrder::route('/create'),
-            'view' => ViewProductionOrder::route('/{record}'),
             'edit' => EditProductionOrder::route('/{record}/edit'),
         ];
     }

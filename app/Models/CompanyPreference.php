@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
@@ -27,16 +28,15 @@ class CompanyPreference extends Model
     /**
      * Busca uma preferência específica da empresa
      *
-     * @param string $key Chave da preferência
-     * @param int|null $companyId ID da empresa (null usa a empresa do tenant atual)
-     * @param mixed $default Valor padrão caso não encontre
-     * @return mixed
+     * @param  string  $key  Chave da preferência
+     * @param  int|null  $companyId  ID da empresa (null usa a empresa do tenant atual)
+     * @param  mixed  $default  Valor padrão caso não encontre
      */
     public static function get(string $key, ?int $companyId = null, mixed $default = null): mixed
     {
         $companyId = $companyId ?? self::getCurrentCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return $default;
         }
 
@@ -54,16 +54,15 @@ class CompanyPreference extends Model
     /**
      * Define uma preferência da empresa
      *
-     * @param string $key Chave da preferência
-     * @param mixed $value Valor da preferência
-     * @param int|null $companyId ID da empresa (null usa a empresa do tenant atual)
-     * @return CompanyPreference
+     * @param  string  $key  Chave da preferência
+     * @param  mixed  $value  Valor da preferência
+     * @param  int|null  $companyId  ID da empresa (null usa a empresa do tenant atual)
      */
     public static function set(string $key, mixed $value, ?int $companyId = null): CompanyPreference
     {
         $companyId = $companyId ?? self::getCurrentCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             throw new \RuntimeException('Company ID não pode ser nulo');
         }
 
@@ -84,15 +83,14 @@ class CompanyPreference extends Model
     /**
      * Remove uma preferência da empresa
      *
-     * @param string $key Chave da preferência
-     * @param int|null $companyId ID da empresa (null usa a empresa do tenant atual)
-     * @return bool
+     * @param  string  $key  Chave da preferência
+     * @param  int|null  $companyId  ID da empresa (null usa a empresa do tenant atual)
      */
     public static function remove(string $key, ?int $companyId = null): bool
     {
         $companyId = $companyId ?? self::getCurrentCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return false;
         }
 
@@ -107,16 +105,16 @@ class CompanyPreference extends Model
     /**
      * Busca múltiplas preferências de uma vez
      *
-     * @param array $keys Array de chaves
-     * @param int|null $companyId ID da empresa (null usa a empresa do tenant atual)
-     * @param array $defaults Valores padrão para cada chave
+     * @param  array  $keys  Array de chaves
+     * @param  int|null  $companyId  ID da empresa (null usa a empresa do tenant atual)
+     * @param  array  $defaults  Valores padrão para cada chave
      * @return array Array associativo [chave => valor]
      */
     public static function getMultiple(array $keys, ?int $companyId = null, array $defaults = []): array
     {
         $companyId = $companyId ?? self::getCurrentCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return $defaults;
         }
 
@@ -128,7 +126,7 @@ class CompanyPreference extends Model
 
         // Preencher com defaults para chaves não encontradas
         foreach ($keys as $key) {
-            if (!isset($preferences[$key])) {
+            if (! isset($preferences[$key])) {
                 $preferences[$key] = $defaults[$key] ?? null;
             }
         }
@@ -139,14 +137,14 @@ class CompanyPreference extends Model
     /**
      * Busca todas as preferências de uma empresa
      *
-     * @param int|null $companyId ID da empresa (null usa a empresa do tenant atual)
+     * @param  int|null  $companyId  ID da empresa (null usa a empresa do tenant atual)
      * @return array Array associativo [chave => valor]
      */
     public static function getAll(?int $companyId = null): array
     {
         $companyId = $companyId ?? self::getCurrentCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return [];
         }
 
@@ -159,14 +157,13 @@ class CompanyPreference extends Model
     /**
      * Limpa o cache de preferências de uma empresa
      *
-     * @param int|null $companyId ID da empresa (null usa a empresa do tenant atual)
-     * @return void
+     * @param  int|null  $companyId  ID da empresa (null usa a empresa do tenant atual)
      */
     public static function clearCache(?int $companyId = null): void
     {
         $companyId = $companyId ?? self::getCurrentCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return;
         }
 
@@ -181,14 +178,12 @@ class CompanyPreference extends Model
 
     /**
      * Obtém o ID da empresa atual (do contexto Filament/Tenant)
-     *
-     * @return int|null
      */
     protected static function getCurrentCompanyId(): ?int
     {
         // Tentar obter da tenant do Filament
         if (class_exists('\Filament\Facades\Filament')) {
-            $tenant = \Filament\Facades\Filament::getTenant();
+            $tenant = Filament::getTenant();
             if ($tenant) {
                 return $tenant->id;
             }
@@ -208,9 +203,6 @@ class CompanyPreference extends Model
 
     /**
      * Obtém o método de pagamento padrão da empresa
-     *
-     * @param int|null $companyId
-     * @return string|null
      */
     public static function getDefaultPaymentMethod(?int $companyId = null): ?string
     {
@@ -219,10 +211,6 @@ class CompanyPreference extends Model
 
     /**
      * Define o método de pagamento padrão da empresa
-     *
-     * @param string $method
-     * @param int|null $companyId
-     * @return CompanyPreference
      */
     public static function setDefaultPaymentMethod(string $method, ?int $companyId = null): CompanyPreference
     {
@@ -231,9 +219,6 @@ class CompanyPreference extends Model
 
     /**
      * Obtém a condição de pagamento padrão da empresa
-     *
-     * @param int|null $companyId
-     * @return string|null
      */
     public static function getDefaultPaymentCondition(?int $companyId = null): ?string
     {
@@ -242,21 +227,26 @@ class CompanyPreference extends Model
 
     /**
      * Define a condição de pagamento padrão da empresa
-     *
-     * @param string $condition
-     * @param int|null $companyId
-     * @return CompanyPreference
      */
     public static function setDefaultPaymentCondition(string $condition, ?int $companyId = null): CompanyPreference
     {
         return self::set('default_payment_condition', $condition, $companyId);
     }
 
+    public static function getDefaultReceivableFinancialCategoryId(?int $companyId = null): ?int
+    {
+        $value = self::get('default_receivable_financial_category_id', $companyId);
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    public static function setDefaultReceivableFinancialCategoryId(?int $categoryId, ?int $companyId = null): CompanyPreference
+    {
+        return self::set('default_receivable_financial_category_id', $categoryId, $companyId);
+    }
+
     /**
      * Obtém o prazo de validade padrão de orçamentos (em dias)
-     *
-     * @param int|null $companyId
-     * @return int|null
      */
     public static function getDefaultQuoteValidityDays(?int $companyId = null): ?int
     {
@@ -265,10 +255,6 @@ class CompanyPreference extends Model
 
     /**
      * Define o prazo de validade padrão de orçamentos
-     *
-     * @param int $days
-     * @param int|null $companyId
-     * @return CompanyPreference
      */
     public static function setDefaultQuoteValidityDays(int $days, ?int $companyId = null): CompanyPreference
     {
@@ -277,9 +263,6 @@ class CompanyPreference extends Model
 
     /**
      * Obtém a margem de lucro padrão (em percentual)
-     *
-     * @param int|null $companyId
-     * @return float|null
      */
     public static function getDefaultProfitMargin(?int $companyId = null): ?float
     {
@@ -288,10 +271,6 @@ class CompanyPreference extends Model
 
     /**
      * Define a margem de lucro padrão
-     *
-     * @param float $margin
-     * @param int|null $companyId
-     * @return CompanyPreference
      */
     public static function setDefaultProfitMargin(float $margin, ?int $companyId = null): CompanyPreference
     {
@@ -300,9 +279,6 @@ class CompanyPreference extends Model
 
     /**
      * Obtém as configurações de e-mail
-     *
-     * @param int|null $companyId
-     * @return array|null
      */
     public static function getEmailSettings(?int $companyId = null): ?array
     {
@@ -311,10 +287,6 @@ class CompanyPreference extends Model
 
     /**
      * Define as configurações de e-mail
-     *
-     * @param array $settings
-     * @param int|null $companyId
-     * @return CompanyPreference
      */
     public static function setEmailSettings(array $settings, ?int $companyId = null): CompanyPreference
     {
@@ -323,9 +295,6 @@ class CompanyPreference extends Model
 
     /**
      * Obtém configurações de notificação
-     *
-     * @param int|null $companyId
-     * @return array|null
      */
     public static function getNotificationSettings(?int $companyId = null): ?array
     {
@@ -334,14 +303,9 @@ class CompanyPreference extends Model
 
     /**
      * Define configurações de notificação
-     *
-     * @param array $settings
-     * @param int|null $companyId
-     * @return CompanyPreference
      */
     public static function setNotificationSettings(array $settings, ?int $companyId = null): CompanyPreference
     {
         return self::set('notification_settings', $settings, $companyId);
     }
-
 }

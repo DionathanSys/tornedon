@@ -2,25 +2,15 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Schemas;
 
-use App\Enum\Product\Unit;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
-use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\EditProductionOrder;
-use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\RelationManagers\ItemsRelationManager;
-use App\Filament\RelationManagers\AttachmentsRelationManager;
-use App\Models\ProductionOrder;
-use App\Models\ProductionOrderItem;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class ProductionOrderForm
@@ -111,28 +101,6 @@ class ProductionOrderForm
                             ->maxLength(1000),
                         Hidden::make('company_id')
                             ->default(fn() => Filament::getTenant()->id),
-                    ]),
-                Section::make('Itens da Produção')
-                    ->columnSpanFull()
-                    ->visibleOn('edit')
-                    ->schema([
-                        Livewire::make(ItemsRelationManager::class, fn(ProductionOrder $record) => [
-                            'ownerRecord' => $record,
-                            'pageClass' => EditProductionOrder::class,
-                        ])
-                            ->key('items-relation-manager')
-                            ->columnSpanFull(),
-                    ]),
-                Section::make('Anexos')
-                    ->columnSpanFull()
-                    ->visibleOn('edit')
-                    ->schema([
-                        Livewire::make(AttachmentsRelationManager::class, fn(ProductionOrder $record) => [
-                            'ownerRecord' => $record,
-                            'pageClass' => EditProductionOrder::class,
-                        ])
-                            ->key('attachments-relation-manager')
-                            ->columnSpanFull(),
                     ]),
             ]);
     }

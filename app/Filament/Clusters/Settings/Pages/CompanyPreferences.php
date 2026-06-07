@@ -7,12 +7,14 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\CompanyEmailPolicy;
 use App\Models\CompanyPreference;
+use App\Models\FinancialCategory;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use UnitEnum;
@@ -27,7 +29,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
     // protected static ?string $cluster = SettingsCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
+    protected static string|UnitEnum|null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Preferências';
 
@@ -42,6 +44,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         $companyId = Filament::getTenant()?->id;
         if (! $companyId) {
             $this->form->fill([]);
+
             return;
         }
 
@@ -54,6 +57,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         $this->form->fill([
             'default_payment_method' => CompanyPreference::getDefaultPaymentMethod($companyId),
             'default_payment_condition' => CompanyPreference::getDefaultPaymentCondition($companyId),
+            'default_receivable_financial_category_id' => CompanyPreference::getDefaultReceivableFinancialCategoryId($companyId),
             'default_quote_validity_days' => CompanyPreference::getDefaultQuoteValidityDays($companyId) ?? 30,
             'default_profit_margin' => CompanyPreference::getDefaultProfitMargin($companyId),
             'default_value_km' => CompanyPreference::get('default_value_km', $companyId, 3.5),
@@ -112,7 +116,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
     {
         return $schema
             ->schema([
-                \Filament\Schemas\Components\Section::make('Pagamento')
+                Section::make('Pagamento')
                     ->description('Configurações padrão para pagamentos')
                     ->icon('heroicon-o-credit-card')
                     ->schema([
@@ -130,11 +134,19 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->searchable()
                             ->placeholder('Selecione uma condição padrão')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
+                        Forms\Components\Select::make('default_receivable_financial_category_id')
+                            ->label('Categoria Financeira Padrão de Recebimento')
+                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
+                            ->native(false)
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Selecione uma categoria padrão')
+                            ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
-                    ->columns(['md' => 2, 'lg' => 2])
+                    ->columns(['md' => 2, 'lg' => 3])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Vendas e Orçamentos')
+                Section::make('Vendas e Orçamentos')
                     ->description('Configurações relacionadas a vendas e orçamentos')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
@@ -153,7 +165,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->suffix('%'),
                         Money::make('default_value_km')
                             ->label('Valor Padrão por KM')
-                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                             ->default(3.5),
                         Forms\Components\TextInput::make('default_warranty_days')
                             ->label('Garantia Padrão (dias)')
@@ -170,7 +182,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Notificações')
+                Section::make('Notificações')
                     ->description('Configure quais notificações internas deseja receber')
                     ->icon('heroicon-o-bell')
                     ->schema([
@@ -190,7 +202,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Políticas de E-mail por Documento')
+                Section::make('Políticas de E-mail por Documento')
                     ->description('Envio apenas no encerramento/confirmação: OS, REQ, OP, FAT e NF')
                     ->icon('heroicon-o-paper-airplane')
                     ->schema([
@@ -208,7 +220,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                     ->columns(1)
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('E-mail')
+                Section::make('E-mail')
                     ->description('Configurações corporativas gerais')
                     ->icon('heroicon-o-envelope')
                     ->schema([
@@ -282,6 +294,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                 ->body('Empresa não identificada.')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -293,6 +306,13 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             if (isset($data['default_payment_condition'])) {
                 CompanyPreference::setDefaultPaymentCondition($data['default_payment_condition'], $companyId);
             }
+
+            CompanyPreference::setDefaultReceivableFinancialCategoryId(
+                isset($data['default_receivable_financial_category_id']) && filled($data['default_receivable_financial_category_id'])
+                    ? (int) $data['default_receivable_financial_category_id']
+                    : null,
+                $companyId,
+            );
 
             if (isset($data['default_quote_validity_days'])) {
                 CompanyPreference::setDefaultQuoteValidityDays((int) $data['default_quote_validity_days'], $companyId);
@@ -337,7 +357,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         } catch (\Throwable $e) {
             Notification::make()
                 ->title('Erro ao salvar')
-                ->body('Ocorreu um erro ao salvar as preferências: ' . $e->getMessage())
+                ->body('Ocorreu um erro ao salvar as preferências: '.$e->getMessage())
                 ->danger()
                 ->send();
         }

@@ -3,36 +3,32 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Schemas;
 
 use App\Enum\Invoice\Status;
-use App\Enum\Payment\Condition as PaymentCondition;
-use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Models\CompanyPartner;
+use App\Models\CompanyPreference;
+use App\Models\FinancialCategory;
 use App\Models\Invoice;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
-use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class InvoiceForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(['sm' => 1, 'md' => 4, 'lg' => 12,])
+            ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
             ->components([
                 Section::make('Dados da Fatura')
-                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12,])
+                    ->columns(['sm' => 1, 'md' => 6, 'lg' => 12])
                     ->columnSpanFull()
                     ->schema([
                         Callout::make('Endereço do cliente inválido')
@@ -98,30 +94,48 @@ class InvoiceForm
                         TextEntry::make('invoice_date')
                             ->label('Data da Fatura')
                             ->columnSpan(['md' => 2])
-                            ->formatStateUsing(fn(?Invoice $record): string => $record->invoice_date->format('d/m/Y')),
+                            ->formatStateUsing(fn (?Invoice $record): string => $record->invoice_date->format('d/m/Y')),
                         TextEntry::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2])
-                            ->state(fn(Invoice $record): string => $record->payment_method?->description() ?? 'Não definida'),
+                            ->state(fn (Invoice $record): string => $record->payment_method?->description() ?? 'Não definida'),
                         TextEntry::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2])
-                            ->state(fn(Invoice $record): string => $record->payment_condition?->description() ?? 'Não definida'),
+                            ->state(fn (Invoice $record): string => $record->payment_condition?->description() ?? 'Não definida'),
+                        Select::make('financial_category_id')
+                            ->label('Categoria Financeira')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
+                            ->default(fn (): ?int => CompanyPreference::getDefaultReceivableFinancialCategoryId(Filament::getTenant()?->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visible(function (?Invoice $record, string $operation): bool {
+                                return $operation === 'create'
+                                    || ($record instanceof Invoice && $record->status === Status::PENDING);
+                            })
+                            ->helperText('Usada como padrão para as parcelas e movimentações financeiras do contas a receber desta fatura.'),
+                        TextEntry::make('financial_category_label')
+                            ->label('Categoria Financeira')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->state(fn (Invoice $record): string => $record->financialCategory?->full_name ?? 'Não definida')
+                            ->visible(fn (?Invoice $record, string $operation): bool => $operation === 'edit' && $record instanceof Invoice && $record->status !== Status::PENDING),
                         TextEntry::make('services_amount')
                             ->label('Valor de Serviços')
                             ->columnStart(1)
                             ->money('BRL')
-                            ->tooltip(fn(?Invoice $record): string => 'Total líquido das OS vinculadas.')
+                            ->tooltip(fn (?Invoice $record): string => 'Total líquido das OS vinculadas.')
                             ->columnSpan(['md' => 2]),
                         TextEntry::make('products_amount')
                             ->label('Valor de Produtos')
                             ->money('BRL')
-                            ->tooltip(fn(?Invoice $record): string => 'Total líquido das requisições vinculadas.')
+                            ->tooltip(fn (?Invoice $record): string => 'Total líquido das requisições vinculadas.')
                             ->columnSpan(['md' => 2]),
                         TextEntry::make('discount_amount')
                             ->label('Desconto')
                             ->money('BRL')
-                            ->tooltip(fn(?Invoice $record): string => 'Total de descontos da fatura.')
+                            ->tooltip(fn (?Invoice $record): string => 'Total de descontos da fatura.')
                             ->columnSpan(['md' => 2]),
                         TextEntry::make('total_amount')
                             ->label('Valor Total')
@@ -135,7 +149,7 @@ class InvoiceForm
                     ->visible(fn (?Invoice $record): bool => $record->fiscalDocuments()->exists())
                     ->contained(false)
                     ->schema([
-                        Livewire::make(FiscalDocumentsRelationManager::class, fn(Invoice $record) => [
+                        Livewire::make(FiscalDocumentsRelationManager::class, fn (Invoice $record) => [
                             'ownerRecord' => $record,
                             'pageClass' => EditInvoice::class,
                         ])

@@ -10,9 +10,9 @@ use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Invoice\Status as InvoiceStatus;
-use App\Enum\Product\Origin;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Enum\Product\Origin;
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
 use App\Enum\Requisition\Status as RequisitionStatus;
@@ -21,6 +21,7 @@ use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type as ServiceOrderType;
 use App\Enum\Tax\TaxRegime;
 use App\Models\Company;
+use App\Models\FinancialCategory;
 use App\Models\FiscalProfile;
 use App\Models\Invoice;
 use App\Models\Partner;
@@ -563,6 +564,13 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
     {
         $user = User::factory()->create();
         [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+        $category = FinancialCategory::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Recebiveis Confirmacao',
+            'is_active' => true,
+            'allow_receivable' => true,
+            'allow_cash_movement' => true,
+        ]);
 
         $serviceOrder = ServiceOrder::query()->create([
             'number' => 'SO-CONFIRM-001',
@@ -601,6 +609,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $result = $service->confirm($invoice->fresh(), [
             'payment_method' => PaymentMethod::PIX->value,
             'payment_condition' => PaymentCondition::CASH->value,
+            'financial_category_id' => $category->id,
             'nfse_item_description' => 'Descrição definida na confirmação',
             'nfse_additional_information' => 'Informação adicional definida na confirmação',
         ], $user->id);
@@ -613,6 +622,8 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame('Descrição definida na confirmação', $item->description);
         $this->assertSame('Informação adicional definida na confirmação', $item->additional_information);
+        $this->assertSame($category->id, $invoice->fresh()->financial_category_id);
+        $this->assertSame($category->id, $invoice->fresh()->installments()->first()?->financial_category_id);
     }
 
     /**
