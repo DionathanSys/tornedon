@@ -74,7 +74,7 @@ class EditFiscalDocument extends EditRecord
 
     public function getAutoRefreshInterval(): ?string
     {
-        return $this->isAutoRefreshEnabled() ? '15s' : null;
+        return $this->isAutoRefreshEnabled() ? '10s' : null;
     }
 
     public function isAutoRefreshEnabled(): bool
