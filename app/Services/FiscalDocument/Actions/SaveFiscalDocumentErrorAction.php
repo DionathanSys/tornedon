@@ -13,6 +13,8 @@ class SaveFiscalDocumentErrorAction
     public function execute(FiscalDocument $fiscalDocument, ?string $message, array $data = []): bool
     {
         try {
+            $fiscalDocument->refresh();
+
             $errors = $fiscalDocument->errors_messages ?? [];
 
             $baseMessage = $message ?? 'Erro desconhecido';
