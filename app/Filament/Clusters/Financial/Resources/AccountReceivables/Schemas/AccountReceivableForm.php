@@ -125,17 +125,17 @@ class AccountReceivableForm
                     ->schema([
                         DatePicker::make('due_date')
                             ->label('Data de Vencimento')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->required()
                             ->displayFormat('d/m/Y'),
                         Money::make('due_amount')
                             ->label('Valor à Receber')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->required(),
                         DatePicker::make('paid_date')
                             ->label('Data de Recebimento')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->displayFormat('d/m/Y')
                             ->nullable()
                             ->visibleOn('edit')
@@ -143,7 +143,7 @@ class AccountReceivableForm
                             ->helperText('A baixa é controlada através das parcelas do contas à receber.'),
                         Money::make('paid_amount')
                             ->label('Valor Recebido')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->default(0)
                             ->visibleOn('edit')
