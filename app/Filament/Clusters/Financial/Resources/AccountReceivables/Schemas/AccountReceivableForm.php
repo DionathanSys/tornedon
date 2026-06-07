@@ -21,6 +21,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -158,15 +159,19 @@ class AccountReceivableForm
                     ->collapsible()
                     ->persistCollapsed()
                     ->schema([
+                        Select::make('financial_category_id')
+                            ->label('Categoria Financeira')
+                            ->columnSpan(['md' => 2])
+                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
                         TextInput::make('document_number')
                             ->label('Nº Documento')
                             ->columnSpan(['md' => 2])
                             ->maxLength(50),
-                        TextInput::make('description')
-                            ->label('Descrição Base')
-                            ->columnSpan(['md' => 2, 'lg' => 5])
-                            ->maxLength(255)
-                            ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
                             ->columnSpan(['md' => 2])
@@ -176,7 +181,7 @@ class AccountReceivableForm
                             ->live(),
                         Select::make('card_payment_profile_id')
                             ->label('Perfil de Cartao')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->columnSpan(['md' => 2])
                             ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
                             ->searchable()
                             ->preload()
@@ -186,35 +191,33 @@ class AccountReceivableForm
                             ->live(),
                         DatePicker::make('payment_date')
                             ->label('Data da Venda no Cartao')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2,])
                             ->displayFormat('d/m/Y')
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->live(),
-                        Placeholder::make('card_fee_preview')
+                        TextEntry::make('card_fee_preview')
                             ->label('Taxa calculada')
-                            ->content(fn (callable $get): string => static::buildCardFeePreview($get))
+                            ->state(fn (callable $get): string => static::buildCardFeePreview($get))
                             ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnStart(1)
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
-                        Placeholder::make('card_net_preview')
+                        TextEntry::make('card_net_preview')
                             ->label('Liquido previsto')
-                            ->content(fn (callable $get): string => static::buildCardNetPreview($get))
+                            ->state(fn (callable $get): string => static::buildCardNetPreview($get))
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
-                        Placeholder::make('card_settlement_preview')
-                            ->label('Previsao de recebimento')
-                            ->content(fn (callable $get): string => static::buildCardSettlementPreview($get))
+                        TextEntry::make('card_settlement_preview')
+                            ->label('Previsão de recebimento')
+                            ->state(fn (callable $get): string => static::buildCardSettlementPreview($get))
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
-                        Select::make('financial_category_id')
-                            ->label('Categoria Financeira')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->visibleOn('create')
-                            ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
+                        TextInput::make('description')
+                            ->label('Descrição Base')
+                            ->columnSpan(['md' => 2, 'lg' => 5])
+                            ->columnStart(1)
+                            ->maxLength(255)
+                            ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
                         Toggle::make('paid')
                             ->label('Recebido')
                             ->inline(false)
