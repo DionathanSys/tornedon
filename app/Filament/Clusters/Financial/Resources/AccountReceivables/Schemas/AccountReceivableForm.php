@@ -217,6 +217,7 @@ class AccountReceivableForm
                             ->label('Descrição Base')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->autocomplete(false)
+                            ->visibleOn('create')
                             ->columnStart(1)
                             ->maxLength(255)
                             ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
