@@ -39,7 +39,7 @@ class AccountReceivableForm
                 'lg' => 12,
             ])
             ->components([
-                Section::make('Lancamento a Receber')
+                Section::make('Lançamento a Receber')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -170,6 +170,7 @@ class AccountReceivableForm
                             ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
                         TextInput::make('document_number')
                             ->label('Nº Documento')
+                            ->autocomplete(false)
                             ->columnSpan(['md' => 2])
                             ->maxLength(50),
                         Select::make('payment_method')
@@ -180,7 +181,7 @@ class AccountReceivableForm
                             ->searchable()
                             ->live(),
                         Select::make('card_payment_profile_id')
-                            ->label('Perfil de Cartao')
+                            ->label('Perfil de Cartão')
                             ->columnSpan(['md' => 2])
                             ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
                             ->searchable()
@@ -188,14 +189,14 @@ class AccountReceivableForm
                             ->native(false)
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->live(),
+                            ->live(onBlur: true),
                         DatePicker::make('payment_date')
-                            ->label('Data da Venda no Cartao')
+                            ->label('Data da Venda no Cartão')
                             ->columnSpan(['md' => 2,])
                             ->displayFormat('d/m/Y')
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->live(),
+                            ->live(onBlur: true),
                         TextEntry::make('card_fee_preview')
                             ->label('Taxa calculada')
                             ->state(fn (callable $get): string => static::buildCardFeePreview($get))
@@ -215,6 +216,7 @@ class AccountReceivableForm
                         TextInput::make('description')
                             ->label('Descrição Base')
                             ->columnSpan(['md' => 2, 'lg' => 5])
+                            ->autocomplete(false)
                             ->columnStart(1)
                             ->maxLength(255)
                             ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),

@@ -31,11 +31,11 @@ final class EditInstallmentAction
                     ->preload()
                     ->native(false),
                 Textarea::make('description')
-                    ->label('Descricao da Parcela')
+                    ->label('Descrição da Parcela')
                     ->rows(2)
                     ->maxLength(255),
                 Textarea::make('notes')
-                    ->label('Observacoes')
+                    ->label('Observações')
                     ->rows(3),
             ])
             ->fillForm(fn (AccountPayableInstallment $record): array => [
