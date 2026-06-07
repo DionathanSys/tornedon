@@ -52,14 +52,13 @@ class AccountReceivableForm
                             ->required(),
                         Select::make('invoice_id')
                             ->label('Fatura')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->columnSpan(['md' => 1])
                             ->relationship('invoice', 'invoice_number')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                            ->disabled()
+                            ->visibleOn('edit'),
                         TextInput::make('installment_count')
                             ->label('Qtd. Parcelas')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 1, 'lg' => 2])
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(24)
@@ -67,7 +66,7 @@ class AccountReceivableForm
                             ->required()
                             ->live()
                             ->visibleOn('create')
-                            ->helperText('Se maior que 1, serao geradas parcelas automaticas a partir do primeiro vencimento.'),
+                            ->helperText('Se maior que 1, serão geradas parcelas automaticas a partir do primeiro vencimento.'),
                         Select::make('installment_due_mode')
                             ->label('Intervalo das Parcelas')
                             ->columnSpan(['md' => 2, 'lg' => 3])
@@ -81,7 +80,7 @@ class AccountReceivableForm
                             ->live()
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
-                            ->helperText('Defina o intervalo entre vencimentos usando condicoes de prazo, dia fixo do mes ou intervalo personalizado.'),
+                            ->helperText('Defina o intervalo entre vencimentos usando condições de prazo, dia fixo do mês ou intervalo personalizado.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mes')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -93,7 +92,7 @@ class AccountReceivableForm
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
-                            ->helperText('Usado da 2a parcela em diante. Se o mes nao tiver esse dia, sera usado o ultimo dia do mes.'),
+                            ->helperText('Usado da 2ª parcela em diante. Se o mês nã tiver esse dia, será utilizado o ultimo dia do mês.'),
                         TextInput::make('installment_interval_days')
                             ->label('Intervalo em Dias')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -138,13 +137,15 @@ class AccountReceivableForm
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->displayFormat('d/m/Y')
                             ->nullable()
+                            ->visibleOn('edit')
                             ->disabled()
-                            ->helperText('A baixa e controlada nas parcelas da conta a receber.'),
+                            ->helperText('A baixa é controlada através das parcelas do contas à receber.'),
                         Money::make('paid_amount')
                             ->label('Valor Recebido')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->default(0)
+                            ->visibleOn('edit')
                             ->disabled(),
                     ]),
                 Section::make('Informações Adicionais')
@@ -159,16 +160,16 @@ class AccountReceivableForm
                     ->schema([
                         TextInput::make('document_number')
                             ->label('Nº Documento')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->maxLength(50),
                         TextInput::make('description')
-                            ->label('Descricao Base')
+                            ->label('Descrição Base')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->maxLength(255)
-                            ->helperText('Usada como sugestao para as parcelas quando nenhuma descricao individual for informada.'),
+                            ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->options(PaymentMethod::toSelectArray())
                             ->native(false)
                             ->searchable()
@@ -216,8 +217,10 @@ class AccountReceivableForm
                             ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
                         Toggle::make('paid')
                             ->label('Recebido')
+                            ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(false)
+                            ->visibleOn('edit')
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
                     ]),

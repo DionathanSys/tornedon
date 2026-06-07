@@ -84,7 +84,6 @@ class AdminPanelProvider extends PanelProvider
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications()
-            ->unsavedChangesAlerts()
             ->registerErrorNotification(
                 title: 'Ocorreu um erro',
                 body: 'Tente novamente mais tarde.',
