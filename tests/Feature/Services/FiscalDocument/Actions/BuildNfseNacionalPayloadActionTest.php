@@ -20,6 +20,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\BuildNfseNacionalPayloadAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class BuildNfseNacionalPayloadActionTest extends TestCase
@@ -168,15 +169,21 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         );
     }
 
-    public function test_it_uses_document_issued_at_instead_of_now(): void
+    public function test_it_uses_current_datetime_for_data_emissao(): void
     {
-        $document = $this->createReadyDocument();
+        Carbon::setTestNow('2026-06-07 14:35:22');
 
-        $action  = new BuildNfseNacionalPayloadAction();
-        $payload = $action->execute($document->fresh('items', 'company', 'customer', 'fiscalProfile'));
+        try {
+            $document = $this->createReadyDocument();
 
-        $this->assertNotNull($payload);
-        $this->assertStringStartsWith($document->issued_at->format('Y-m-d'), (string) data_get($payload, 'data_emissao'));
+            $action  = new BuildNfseNacionalPayloadAction();
+            $payload = $action->execute($document->fresh('items', 'company', 'customer', 'fiscalProfile'));
+
+            $this->assertNotNull($payload);
+            $this->assertSame(now()->format('Y-m-d\TH:i:sP'), (string) data_get($payload, 'data_emissao'));
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_includes_discount_when_present(): void

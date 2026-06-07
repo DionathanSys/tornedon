@@ -734,7 +734,7 @@ class FiscalDocumentForm
             return 'N/D';
         }
 
-        return (string) $serie.'/'.(string) $number;
+        return (string) 'Série: '.$serie.' / '.'RPS: '.(string) $number;
     }
 
     private static function buildCorrectionDownloadUrl(?FiscalDocument $record, Get $get, string $type): ?string

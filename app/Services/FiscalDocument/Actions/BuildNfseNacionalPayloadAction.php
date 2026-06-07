@@ -66,7 +66,7 @@ class BuildNfseNacionalPayloadAction
             $address  = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
             $profile  = $fiscalDocument->fiscalProfile ?? $company->fiscalProfile;
 
-            $issuedAt = ($fiscalDocument->issued_at ?? now())->format('Y-m-d\TH:i:sP');
+            $issuedAt = now()->format('Y-m-d\TH:i:sP');
 
             // ------------------------------------------------------------------
             // Tomador
