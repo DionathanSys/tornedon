@@ -3,6 +3,7 @@
 namespace App\Services\ProductionOrder;
 
 use App\Domain\Exceptions\ProductionOrder\InvalidStateTransitionException;
+use App\Enum\ProductionOrder\DestinationType;
 use App\Models\ProductionOrder;
 use App\Models\Requisition;
 use App\Services\ProductionOrder\Actions\CancelProductionAction;
@@ -118,6 +119,119 @@ class ProductionOrderService
 
         $this->setError($action->getMessage(), $action->getErrors());
         return false;
+    }
+
+    /**
+     * Finaliza a OP conforme o destino.
+     * - Estoque: conclui e registra apenas entrada de estoque.
+     * - Uso direto: conclui, gera requisição, encerra para reservar e opcionalmente fatura.
+     *
+     * @return array{requisition:?Requisition,invoice:?
+     * \App\Models\Invoice}
+     */
+    public function finalize(ProductionOrder $productionOrder, int $userId, bool $shouldInvoice = false): ?array
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($productionOrder, $userId, $shouldInvoice): ?array {
+                if (! $this->complete($productionOrder, $userId)) {
+                    throw new \RuntimeException($this->getMessage());
+                }
+
+                $productionOrder->refresh();
+
+                if ($productionOrder->destination_type === DestinationType::STOCK) {
+                    $result = [
+                        'requisition' => null,
+                        'invoice' => null,
+                    ];
+
+                    $this->setSuccess('Ordem de produção finalizada com entrada em estoque.', $result);
+
+                    return $result;
+                }
+
+                if (! $productionOrder->customer_id) {
+                    $this->setError('Defina o cliente antes de finalizar uma OP de uso direto.');
+                    throw new \RuntimeException($this->getMessage());
+                }
+
+                $requisition = $this->generateRequisition($productionOrder, $userId);
+
+                if ($this->hasError() || $requisition === null) {
+                    throw new \RuntimeException($this->getMessage());
+                }
+
+                $requisitionService = app(RequisitionService::class);
+
+                if ($requisition->status !== \App\Enum\Requisition\Status::CLOSED) {
+                    $requisition = $requisitionService->close($requisition, $userId, false);
+
+                    if ($requisitionService->hasError() || $requisition === null) {
+                        $this->setError(
+                            'Erro ao encerrar requisição da OP: ' . $requisitionService->getMessage(),
+                            $requisitionService->getErrors(),
+                            422,
+                            $requisitionService->getErrorCode(),
+                        );
+
+                        throw new \RuntimeException($this->getMessage());
+                    }
+                }
+
+                $invoice = null;
+
+                if ($shouldInvoice) {
+                    $invoice = $requisitionService->invoice($requisition, $userId);
+
+                    if ($requisitionService->hasError() || $invoice === null) {
+                        $this->setError(
+                            'Erro ao faturar requisição da OP: ' . $requisitionService->getMessage(),
+                            $requisitionService->getErrors(),
+                            422,
+                            $requisitionService->getErrorCode(),
+                        );
+
+                        throw new \RuntimeException($this->getMessage());
+                    }
+
+                    $productionOrder->refresh();
+                    $productionOrder->state()->invoice($invoice->id);
+                    $productionOrder->refresh();
+                }
+
+                $result = [
+                    'requisition' => $requisition,
+                    'invoice' => $invoice,
+                ];
+
+                $this->setSuccess(
+                    $shouldInvoice
+                        ? 'Ordem de produção finalizada, reservada e faturada com sucesso.'
+                        : 'Ordem de produção finalizada e reservada para venda com sucesso.',
+                    $result,
+                );
+
+                return $result;
+            });
+        } catch (\Exception $e) {
+            if (! $this->hasError()) {
+                $this->setError('Erro ao finalizar ordem de produção.');
+            }
+
+            Log::error('ProductionOrderService: Erro ao finalizar OP', [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'production_order_id' => $productionOrder->id,
+                'user_id' => $userId,
+                'should_invoice' => $shouldInvoice,
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
     }
 
     public function sendToQc(ProductionOrder $productionOrder, int $userId): bool

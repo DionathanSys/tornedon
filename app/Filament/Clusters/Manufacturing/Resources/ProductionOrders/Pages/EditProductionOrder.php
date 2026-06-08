@@ -9,12 +9,12 @@ use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
-use App\Models\Partner;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductionOrder\ProductionOrderService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -215,12 +215,19 @@ class EditProductionOrder extends EditRecord
                         $this->record->refresh();
                         notify::success('Ordem retornada para produção.');
                     }),
-                Action::make('completeProduction')
-                    ->label('Concluir Produção')
+                Action::make('finalizeProduction')
+                    ->label('Finalizar')
                     ->icon(Heroicon::CheckCircle)
                     ->color('success')
                     ->visible(fn (): bool => $this->record->status === Status::QC_CHECK)
-                    ->action(function (): void {
+                    ->schema([
+                        Checkbox::make('invoice_after_finalize')
+                            ->label('Faturar ao finalizar')
+                            ->visible(fn (): bool => $this->record->destination_type === \App\Enum\ProductionOrder\DestinationType::DIRECT_DELIVERY)
+                            ->helperText('Uso direto: gera a requisição, encerra para reservar e, se marcado, fatura e abre a fatura.')
+                            ->default(false),
+                    ])
+                    ->action(function (array $data): void {
                         if (! $this->record->items()->where('quantity_approved', '>', 0)->exists()) {
                             notify::warning('Informe ao menos uma quantidade aprovada antes de concluir a produção.');
 
@@ -228,65 +235,33 @@ class EditProductionOrder extends EditRecord
                         }
 
                         $service = app(ProductionOrderService::class);
+                        $result = $service->finalize(
+                            $this->record,
+                            Auth::id(),
+                            (bool) ($data['invoice_after_finalize'] ?? false),
+                        );
 
-                        if (! $service->complete($this->record, Auth::id())) {
-                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao concluir produção');
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Produção concluída com sucesso.');
-                    }),
-                Action::make('generateRequisition')
-                    ->label('Gerar Requisição')
-                    ->icon(Heroicon::ClipboardDocumentList)
-                    ->color('gray')
-                    ->visible(fn (): bool => $this->record->status === Status::COMPLETED && ! $this->record->requisition_id)
-                    ->schema([
-                        Select::make('customer_id')
-                            ->label('Cliente')
-                            ->visible(fn (): bool => blank($this->record->customer_id))
-                            ->options(fn (): array => Partner::query()
-                                ->whereHas('companies', function ($query): void {
-                                    $query->where('companies.id', $this->record->company_id)
-                                        ->whereJsonContains('company_partner.type', 'customer')
-                                        ->where('company_partner.is_active', true);
-                                })
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->all())
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (): bool => blank($this->record->customer_id)),
-                    ])
-                    ->action(function (array $data): void {
-                        if (blank($this->record->customer_id) && filled($data['customer_id'] ?? null)) {
-                            $this->record->update([
-                                'customer_id' => (int) $data['customer_id'],
-                                'updated_by' => Auth::id(),
-                            ]);
-                            $this->record->refresh();
-                        }
-
-                        if (blank($this->record->customer_id)) {
-                            notify::warning('Informe o cliente antes de gerar a requisição de venda.');
-
-                            return;
-                        }
-
-                        $service = app(ProductionOrderService::class);
-                        $requisition = $service->generateRequisition($this->record, Auth::id());
-
-                        if ($service->hasError() || ! $requisition) {
-                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao gerar requisição');
+                        if ($service->hasError() || $result === null) {
+                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao finalizar produção');
 
                             return;
                         }
 
                         $this->record->refresh();
-                        notify::success('Requisição gerada com sucesso.');
-                        $this->redirect(RequisitionResource::getUrl('edit', ['record' => $requisition]));
+                        $invoice = $result['invoice'] ?? null;
+
+                        if ($invoice) {
+                            notify::success('Produção finalizada e faturada com sucesso.');
+                            $this->redirect(InvoiceResource::getUrl('edit', ['record' => $invoice]));
+
+                            return;
+                        }
+
+                        notify::success(
+                            $this->record->destination_type === \App\Enum\ProductionOrder\DestinationType::DIRECT_DELIVERY
+                                ? 'Produção finalizada e reservada para venda com sucesso.'
+                                : 'Produção finalizada com entrada em estoque registrada.'
+                        );
                     }),
                 Action::make('viewRequisition')
                     ->label('Abrir Requisição')

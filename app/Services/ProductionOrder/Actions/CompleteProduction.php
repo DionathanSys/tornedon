@@ -2,7 +2,6 @@
 
 namespace App\Services\ProductionOrder\Actions;
 
-use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
 use App\Services\Audit\AuditRecorder;
@@ -52,18 +51,6 @@ class CompleteProduction
                 DB::rollBack();
                 $this->setError('Erro ao registrar entrada de produção no estoque');
                 return false;
-            }
-
-            // 2. Se destino é ENTREGA DIRETA, gera requisição automaticamente
-            if ($productionOrder->destination_type === DestinationType::DIRECT_DELIVERY) {
-                $requisitionAction = new GenerateRequisitionFromProductionAction($this->userId);
-                $requisition = $requisitionAction->execute($productionOrder->fresh());
-
-                if ($requisitionAction->hasError()) {
-                    DB::rollBack();
-                    $this->setError('Erro ao gerar requisição: ' . $requisitionAction->getMessage());
-                    return false;
-                }
             }
 
             DB::commit();
