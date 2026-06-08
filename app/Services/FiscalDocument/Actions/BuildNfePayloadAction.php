@@ -56,16 +56,11 @@ class BuildNfePayloadAction
             $address = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
             $taxRegime = $company?->fiscalProfile()->first()?->tax_regime;
 
-<<<<<<< HEAD
             $issuedAt = $this->resolveNfeTimestamp($fiscalDocument->issued_at ?? now())->format('Y-m-d\TH:i:sP');
             $movementAt = $this->resolveNfeTimestamp(
                 $fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now(),
                 Carbon::parse($issuedAt)
             )->format('Y-m-d\TH:i:sP');
-=======
-            $issuedAt = now()->format('Y-m-d\TH:i:sP');
-            $movementAt = ($fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now())->format('Y-m-d').'T00:00:00-03:00';
->>>>>>> 523c9d034f59c41362fa8d5382572f34c7015d39
 
             // ------------------------------------------------------------------
             // Monta destinatário
