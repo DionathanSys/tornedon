@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
+use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Tax\TaxRegime;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
@@ -55,11 +56,15 @@ class BuildNfePayloadAction
             $customer = $fiscalDocument->customer;
             $address = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
             $taxRegime = $company?->fiscalProfile()->first()?->tax_regime;
+            $operationType = $fiscalDocument->operation_type instanceof OperationType
+                ? $fiscalDocument->operation_type->value
+                : (string) ($fiscalDocument->operation_type ?? OperationType::SAIDA->value);
 
             $issuedAt = $this->resolveNfeTimestamp($fiscalDocument->issued_at ?? now())->format('Y-m-d\TH:i:sP');
-            $movementAt = $this->resolveNfeTimestamp(
+            $movementAt = $this->resolveMovementTimestamp(
                 $fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now(),
-                Carbon::parse($issuedAt)
+                Carbon::parse($issuedAt),
+                $operationType,
             )->format('Y-m-d\TH:i:sP');
 
             // ------------------------------------------------------------------
@@ -209,9 +214,7 @@ class BuildNfePayloadAction
                 'numero' => (int) $fiscalDocument->document_number,
                 'data_emissao' => $issuedAt,
                 'data_entrada_saida' => $movementAt,
-                'tipo_operacao' => $fiscalDocument->operation_type instanceof \App\Enum\FiscalDocument\OperationType
-                                                ? $fiscalDocument->operation_type->value
-                                                : ($fiscalDocument->operation_type ?? '1'),
+                'tipo_operacao' => $operationType,
                 'finalidade_emissao' => $fiscalDocument->issue_purpose instanceof \App\Enum\FiscalDocument\IssuePurpose
                                                 ? $fiscalDocument->issue_purpose->value
                                                 : ($fiscalDocument->issue_purpose ?? '1'),
@@ -359,6 +362,15 @@ class BuildNfePayloadAction
         }
 
         return $timestamp;
+    }
+
+    private function resolveMovementTimestamp(Carbon $date, Carbon $issuedAt, string $operationType): Carbon
+    {
+        if ($operationType === OperationType::SAIDA->value && $date->isStartOfDay()) {
+            return $issuedAt->copy();
+        }
+
+        return $this->resolveNfeTimestamp($date, $issuedAt);
     }
 
     private function normalizeFreightData(mixed $freightData, int|string|null $companyId = null): array
