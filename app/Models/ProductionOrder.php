@@ -8,9 +8,11 @@ use App\Enum\ProductionOrder\Status;
 use App\Services\ProductionOrder\ProductionOrderNumberGenerator;
 use App\Services\ProductionOrder\StateResolver;
 use App\Services\ProductionOrder\States\ProductionOrderState;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
@@ -40,7 +42,6 @@ class ProductionOrder extends Model
         'completed_at',
         'cancelled_at',
         'destination_type',
-        'requisition_id',
         'observations',
         'assigned_operator',
         'assigned_machine',
@@ -90,9 +91,9 @@ class ProductionOrder extends Model
         return $this->belongsTo(Partner::class, 'customer_id');
     }
 
-    public function requisition(): BelongsTo
+    public function requisition(): HasOne
     {
-        return $this->belongsTo(Requisition::class);
+        return $this->hasOne(Requisition::class);
     }
 
     public function invoice(): BelongsTo
@@ -178,5 +179,18 @@ class ProductionOrder extends Model
 
         $totalApproved = $this->items->sum('quantity_approved');
         return ($totalApproved / $totalProduced) * 100;
+    }
+
+    protected function requisitionId(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?int {
+                if ($this->relationLoaded('requisition')) {
+                    return $this->requisition?->id;
+                }
+
+                return $this->requisition()->value('id');
+            },
+        );
     }
 }

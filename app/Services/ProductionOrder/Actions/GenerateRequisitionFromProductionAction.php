@@ -41,7 +41,7 @@ class GenerateRequisitionFromProductionAction
             }
 
             // Se já possui requisição, atualiza
-            if ($productionOrder->requisition_id) {
+            if ($productionOrder->requisition()->exists()) {
                 $requisition = $this->updateExistingRequisition($productionOrder, $approvedItems);
 
                 if (! $requisition) {
@@ -129,11 +129,6 @@ class GenerateRequisitionFromProductionAction
             }
         }
 
-        // Vincula a requisição à ordem de produção (bidirecional)
-        $productionOrder->update([
-            'requisition_id' => $requisition->id,
-        ]);
-
         Log::info('GenerateRequisitionFromProductionAction: Requisição criada com sucesso', [
             'production_order_id' => $productionOrder->id,
             'requisition_id'      => $requisition->id,
@@ -153,7 +148,7 @@ class GenerateRequisitionFromProductionAction
 
             Log::warning('GenerateRequisitionFromProductionAction: Requisição vinculada não encontrada', [
                 'production_order_id' => $productionOrder->id,
-                'requisition_id'      => $productionOrder->requisition_id,
+                'requisition_id'      => $productionOrder->requisition()->value('id'),
             ]);
 
             return null;

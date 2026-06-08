@@ -254,7 +254,7 @@ class ProductionOrderService
                 return null;
             }
 
-            if (! $record->requisition_id) {
+            if (! $record->requisition()->exists()) {
                 $this->setError("A OP #{$record->production_order_number} precisa gerar requisição antes do faturamento.");
                 return null;
             }

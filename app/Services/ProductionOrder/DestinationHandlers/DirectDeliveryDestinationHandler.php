@@ -28,7 +28,7 @@ class DirectDeliveryDestinationHandler
             }
 
             // 2. Cria ou atualiza a requisição para entrega direta via services
-            if ($productionOrder->requisition_id) {
+            if ($productionOrder->requisition()->exists()) {
                 return $this->updateExistingRequisition($productionOrder, $userId);
             }
 
@@ -53,7 +53,7 @@ class DirectDeliveryDestinationHandler
         if (! $requisition) {
             Log::warning('DirectDeliveryDestinationHandler: Requisição vinculada não encontrada', [
                 'production_order_id' => $productionOrder->id,
-                'requisition_id'      => $productionOrder->requisition_id,
+                'requisition_id'      => $productionOrder->requisition()->value('id'),
             ]);
             return false;
         }
@@ -125,11 +125,6 @@ class DirectDeliveryDestinationHandler
                 return false;
             }
         }
-
-        // Vincula requisição à ordem de produção
-        $productionOrder->update([
-            'requisition_id' => $requisition->id,
-        ]);
 
         Log::info('DirectDeliveryDestinationHandler: Requisição criada para entrega direta', [
             'production_order_id' => $productionOrder->id,
