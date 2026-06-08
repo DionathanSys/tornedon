@@ -109,7 +109,8 @@ class GenerateRequisitionFromProductionAction
                     'product_id'          => $item->product_id,
                     'unit_of_measure'     => $item->unit_of_measure,
                     'quantity'            => $item->quantity_approved,
-                'unit_price'          => 0,
+                'unit_price'          => (float) ($item->unit_price ?? 0),
+                'unit_cost'           => (float) ($item->unit_cost ?? 0),
                 'discount_percentage' => 0,
                 'discount_amount'     => 0,
                 'observations'        => $item->description,
@@ -163,6 +164,8 @@ class GenerateRequisitionFromProductionAction
                 $requisitionItemService->update($requisitionItem, [
                     'unit_of_measure' => $item->unit_of_measure,
                     'quantity' => $item->quantity_approved,
+                    'unit_price' => (float) ($item->unit_price ?? 0),
+                    'unit_cost' => (float) ($item->unit_cost ?? 0),
                 ], $this->userId);
             } else {
                 $requisitionItemService->create([
@@ -170,7 +173,8 @@ class GenerateRequisitionFromProductionAction
                     'product_id'          => $item->product_id,
                     'unit_of_measure'     => $item->unit_of_measure,
                     'quantity'            => $item->quantity_approved,
-                    'unit_price'          => 0,
+                    'unit_price'          => (float) ($item->unit_price ?? 0),
+                    'unit_cost'           => (float) ($item->unit_cost ?? 0),
                     'discount_percentage' => 0,
                     'discount_amount'     => 0,
                     'observations'        => $item->description,

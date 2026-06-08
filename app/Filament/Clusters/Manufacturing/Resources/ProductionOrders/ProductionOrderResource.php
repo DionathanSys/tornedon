@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders;
 
-use App\Filament\Clusters\Manufacturing\ManufacturingCluster;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\CreateProductionOrder;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\EditProductionOrder;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\ListProductionOrders;
@@ -23,8 +22,6 @@ class ProductionOrderResource extends Resource
     protected static ?string $model = ProductionOrder::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Cog;
-
-    protected static ?string $cluster = ManufacturingCluster::class;
 
     protected static string | UnitEnum | null $navigationGroup = 'Vendas';
 

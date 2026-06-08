@@ -14,6 +14,7 @@ class ProductionOrderItem extends Model
             $product = $item->relationLoaded('product') ? $item->product : ($item->product_id ? $item->product()->first() : null);
 
             $item->unit_price ??= 0;
+            $item->unit_cost ??= 0;
             $item->discount_percentage ??= 0;
             $item->discount_amount ??= 0;
             $item->quantity_produced ??= 0;
@@ -56,6 +57,7 @@ class ProductionOrderItem extends Model
         'quantity',
         'quantity_in_base_unit',
         'unit_price',
+        'unit_cost',
         'discount_percentage',
         'discount_amount',
         'quantity_produced',
@@ -76,6 +78,7 @@ class ProductionOrderItem extends Model
         'quantity' => 'decimal:3',
         'quantity_in_base_unit' => 'decimal:8',
         'unit_price' => 'decimal:4',
+        'unit_cost' => 'decimal:4',
         'discount_percentage' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'quantity_produced' => 'decimal:3',

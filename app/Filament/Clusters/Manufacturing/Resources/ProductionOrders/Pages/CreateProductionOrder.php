@@ -84,6 +84,7 @@ class CreateProductionOrder extends CreateRecord
                 'description' => $quoteItem->resolveDescription(),
                 'quantity' => $quoteItem->quantity,
                 'unit_price' => $quoteItem->unit_price,
+                'unit_cost' => 0,
                 'discount_percentage' => $quoteItem->discount_percentage,
                 'discount_amount' => $quoteItem->discount_amount,
                 'quantity_produced' => 0,

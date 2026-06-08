@@ -113,12 +113,19 @@ class ItemsRelationManager extends RelationManager
                     ->columns(3)
                     ->schema([
                         TextInput::make('unit_price')
-                            ->label('Valor unitário estimado')
+                            ->label('Valor unitário de venda')
                             ->numeric()
                             ->minValue(0)
                             ->default(0)
                             ->step(0.0001)
-                            ->helperText('Opcional. Ajuda quando a OP ja nasce com referencia comercial do orçamento.'),
+                            ->helperText('Valor real da unidade que sera vendida/faturada.'),
+                        TextInput::make('unit_cost')
+                            ->label('Custo unitário')
+                            ->numeric()
+                            ->minValue(0)
+                            ->default(0)
+                            ->step(0.0001)
+                            ->helperText('Custo unitario usado na entrada de estoque.'),
                         TextInput::make('discount_percentage')
                             ->label('Desconto (%)')
                             ->numeric()
@@ -196,6 +203,14 @@ class ItemsRelationManager extends RelationManager
                     ->label('Horas')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('unit_price')
+                    ->label('Venda')
+                    ->money('BRL')
+                    ->toggleable(),
+                TextColumn::make('unit_cost')
+                    ->label('Custo')
+                    ->money('BRL')
+                    ->toggleable(),
                 TextColumn::make('sequence')
                     ->label('Seq.')
                     ->numeric()
@@ -262,6 +277,7 @@ class ItemsRelationManager extends RelationManager
                                 'description' => $quoteItem->resolveDescription(),
                                 'quantity' => $quoteItem->quantity,
                                 'unit_price' => $quoteItem->unit_price,
+                                'unit_cost' => 0,
                                 'discount_percentage' => $quoteItem->discount_percentage,
                                 'discount_amount' => $quoteItem->discount_amount,
                                 'quantity_produced' => 0,

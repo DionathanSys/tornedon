@@ -71,7 +71,7 @@ class StockDestinationHandler
                     'base_quantity'    => $item->resolvedApprovedBaseQuantity(),
                     'conversion_factor_snapshot' => (float) ($item->conversion_factor_snapshot ?? 1),
                     'quantity'         => $item->resolvedApprovedBaseQuantity(),
-                    'unit_price'       => 0,
+                    'unit_price'       => (float) ($item->unit_cost ?? 0),
                     'reason'           => 'Entrada de produção - OP #' . $productionOrder->production_order_number,
                     'source_type'      => 'production_order',
                     'source_id'        => $productionOrder->id,
