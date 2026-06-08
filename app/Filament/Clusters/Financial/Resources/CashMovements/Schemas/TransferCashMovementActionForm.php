@@ -47,12 +47,12 @@ class TransferCashMovementActionForm
                 ->prefix('R$')
                 ->required(),
             TextInput::make('description')
-                ->label('Descricao')
+                ->label('Descrição')
                 ->required()
                 ->maxLength(255)
                 ->columnSpanFull(),
             Textarea::make('notes')
-                ->label('Observacoes')
+                ->label('Observações')
                 ->rows(3)
                 ->columnSpanFull(),
         ];

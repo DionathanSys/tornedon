@@ -48,7 +48,7 @@ final class ReconcilePayableInstallmentAction
                         ->label('Desconto')
                         ->default(0),
                     Textarea::make('notes')
-                        ->label('Observacoes')
+                        ->label('ObserObservaçõesvacoes')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))

@@ -15,6 +15,7 @@ use App\Services\FiscalDocument\Resolvers\NfsePayloadBuilderResolver;
 use App\Services\FiscalDocument\Validators\FiscalProfileValidator;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class FiscalEmissionPreflightService
@@ -83,6 +84,7 @@ class FiscalEmissionPreflightService
         $scenario->validate($document, $errors);
 
         if ($errors !== []) {
+            Log::debug('Documento fiscal inválido para emissão.', ['errors' => $errors]);
             $this->setError('Documento fiscal inválido para emissão.', $errors);
 
             return null;

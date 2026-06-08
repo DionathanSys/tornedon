@@ -121,6 +121,38 @@ class MobileServiceOrdersDashboardTest extends TestCase
             ->assertDontSee('R$ 200,00');
     }
 
+    public function test_mobile_dashboard_ignores_cancelled_orders(): void
+    {
+        [$user, $company] = $this->createAuthenticatedTenant();
+
+        $this->createServiceOrderForDashboard(
+            user: $user,
+            company: $company,
+            number: 'OS-ABERTA',
+            orderDate: Carbon::today(),
+            totalAmount: 120,
+            requisitionAmount: 0,
+            status: State::OPEN,
+        );
+
+        $this->createServiceOrderForDashboard(
+            user: $user,
+            company: $company,
+            number: 'OS-CANCELADA',
+            orderDate: Carbon::today(),
+            totalAmount: 999,
+            requisitionAmount: 0,
+            status: State::CANCELLED,
+        );
+
+        Livewire::test(MobileServiceOrdersDashboard::class)
+            ->assertSee('Ordens na data')
+            ->assertSee('1')
+            ->assertSee('R$ 120,00')
+            ->assertDontSee('OS-CANCELADA')
+            ->assertDontSee('R$ 999,00');
+    }
+
     public function test_mobile_dashboard_renders_empty_state_with_zeroed_stats(): void
     {
         $this->createAuthenticatedTenant();

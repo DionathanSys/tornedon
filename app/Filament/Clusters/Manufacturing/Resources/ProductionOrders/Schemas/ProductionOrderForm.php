@@ -2,23 +2,16 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Schemas;
 
-use App\Enum\Product\Unit;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
-use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\EditProductionOrder;
-use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\RelationManagers\ItemsRelationManager;
-use App\Filament\RelationManagers\AttachmentsRelationManager;
-use App\Models\ProductionOrder;
-use App\Models\ProductionOrderItem;
+use App\Enum\Quote\Status as QuoteStatus;
+use App\Models\Quote;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -42,6 +35,54 @@ class ProductionOrderForm
                     ])
                     ->columnSpanFull()
                     ->schema([
+                        Select::make('quote_id')
+                            ->label('Orçamento de origem')
+                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->options(function (?\App\Models\ProductionOrder $record): array {
+                                return Quote::query()
+                                    ->where('company_id', Filament::getTenant()->id)
+                                    ->where('status', QuoteStatus::APPROVED->value)
+                                    ->where(function ($query) use ($record): void {
+                                        $query->whereDoesntHave('productionOrder');
+
+                                        if ($record?->quote_id) {
+                                            $query->orWhere('id', $record->quote_id);
+                                        }
+                                    })
+                                    ->orderByDesc('id')
+                                    ->get()
+                                    ->mapWithKeys(fn (Quote $quote): array => [
+                                        $quote->id => sprintf(
+                                            '#%s - %s',
+                                            $quote->quote_number ?? $quote->id,
+                                            $quote->customer?->name ?? 'Sem cliente'
+                                        ),
+                                    ])
+                                    ->all();
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->helperText('Se informado, os itens do orçamento podem ser importados para a OP.')
+                            ->afterStateUpdated(function ($state, callable $set): void {
+                                if (! $state) {
+                                    return;
+                                }
+
+                                $quote = Quote::query()->with('customer')->find($state);
+
+                                if (! $quote) {
+                                    return;
+                                }
+
+                                if ($quote->customer_id) {
+                                    $set('customer_id', $quote->customer_id);
+                                }
+
+                                if (filled($quote->observations)) {
+                                    $set('observations', $quote->observations);
+                                }
+                            }),
                         Select::make('customer_id')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -56,7 +97,8 @@ class ProductionOrderForm
                             })
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->helperText('Obrigatório para Uso Direto. Em produção para estoque, pode ser preenchido depois.')
+                            ->required(fn (Get $get): bool => $get('destination_type') === DestinationType::DIRECT_DELIVERY->value),
                         TextInput::make('production_order_number')
                             ->label('Número')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -85,8 +127,9 @@ class ProductionOrderForm
                             ->options(DestinationType::toSelectArray())
                             ->native(false)
                             ->default(DestinationType::STOCK->value)
+                            ->live()
                             ->required()
-                            ->helperText('Estoque: entrada automática. Entrega Direta: cria requisição'),
+                            ->helperText('Estoque: entra em estoque ao concluir. Uso Direto: entra em estoque e prepara a saída para venda.'),
                         Select::make('assigned_operator')
                             ->label('Operador')
                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -111,28 +154,6 @@ class ProductionOrderForm
                             ->maxLength(1000),
                         Hidden::make('company_id')
                             ->default(fn() => Filament::getTenant()->id),
-                    ]),
-                Section::make('Itens da Produção')
-                    ->columnSpanFull()
-                    ->visibleOn('edit')
-                    ->schema([
-                        Livewire::make(ItemsRelationManager::class, fn(ProductionOrder $record) => [
-                            'ownerRecord' => $record,
-                            'pageClass' => EditProductionOrder::class,
-                        ])
-                            ->key('items-relation-manager')
-                            ->columnSpanFull(),
-                    ]),
-                Section::make('Anexos')
-                    ->columnSpanFull()
-                    ->visibleOn('edit')
-                    ->schema([
-                        Livewire::make(AttachmentsRelationManager::class, fn(ProductionOrder $record) => [
-                            'ownerRecord' => $record,
-                            'pageClass' => EditProductionOrder::class,
-                        ])
-                            ->key('attachments-relation-manager')
-                            ->columnSpanFull(),
                     ]),
             ]);
     }

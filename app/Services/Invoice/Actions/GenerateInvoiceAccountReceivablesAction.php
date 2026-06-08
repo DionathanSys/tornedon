@@ -6,6 +6,7 @@ use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\CardPaymentProfile;
+use App\Models\CompanyPreference;
 use App\Models\Invoice;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
@@ -55,6 +56,7 @@ class GenerateInvoiceAccountReceivablesAction
         $this->invoice->update([
             'payment_method' => $paymentMethod->value,
             'payment_condition' => $paymentCondition?->value,
+            'financial_category_id' => $this->resolveFinancialCategoryId($data),
             'updated_by' => $this->userId,
         ]);
 
@@ -82,6 +84,7 @@ class GenerateInvoiceAccountReceivablesAction
             'payment_date' => $paymentMethod === PaymentMethod::CREDIT_CARD
                 ? (string) ($data['payment_date'] ?? $this->invoice->invoice_date?->toDateString() ?? now()->toDateString())
                 : null,
+            'financial_category_id' => $this->invoice->financial_category_id,
             'installment_count' => count($installments),
             'installment_due_mode' => InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
             'installment_interval_days' => 30,
@@ -271,5 +274,14 @@ class GenerateInvoiceAccountReceivablesAction
         }
 
         return PaymentCondition::from((string) $rawCondition);
+    }
+
+    private function resolveFinancialCategoryId(array $data): ?int
+    {
+        $categoryId = $data['financial_category_id']
+            ?? $this->invoice->financial_category_id
+            ?? CompanyPreference::getDefaultReceivableFinancialCategoryId($this->invoice->company_id);
+
+        return filled($categoryId) ? (int) $categoryId : null;
     }
 }

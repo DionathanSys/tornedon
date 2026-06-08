@@ -64,13 +64,13 @@ final class RegisterInstallmentPaymentAction
                         ->required()
                         ->columnSpan(1),
                     Textarea::make('description')
-                        ->label('Descricao do Movimento')
+                        ->label('Descrição do Movimento')
                         ->rows(2)
                         ->default(fn (AccountReceivableInstallment $record) => $record->description ?? $record->accountReceivable?->description)
                         ->maxLength(255)
                         ->columnSpanFull(),
                     Textarea::make('notes')
-                        ->label('Observacoes')
+                        ->label('Observações')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]))

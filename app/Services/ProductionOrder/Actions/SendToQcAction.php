@@ -27,6 +27,11 @@ class SendToQcAction
                 return false;
             }
 
+            if (! $productionOrder->items()->where('quantity_produced', '>', 0)->exists()) {
+                $this->setError('Registre quantidade produzida antes de enviar a ordem para o controle de qualidade.');
+                return false;
+            }
+
             $productionOrder->update([
                 'status'     => Status::QC_CHECK->value,
                 'updated_by' => $this->userId,

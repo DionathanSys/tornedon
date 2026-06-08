@@ -21,6 +21,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -38,7 +39,7 @@ class AccountReceivableForm
                 'lg' => 12,
             ])
             ->components([
-                Section::make('Lancamento a Receber')
+                Section::make('Lançamento a Receber')
                     ->columns([
                         'sm' => 1,
                         'md' => 4,
@@ -52,14 +53,13 @@ class AccountReceivableForm
                             ->required(),
                         Select::make('invoice_id')
                             ->label('Fatura')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->columnSpan(['md' => 1])
                             ->relationship('invoice', 'invoice_number')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                            ->disabled()
+                            ->visibleOn('edit'),
                         TextInput::make('installment_count')
                             ->label('Qtd. Parcelas')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 1, 'lg' => 2])
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(24)
@@ -67,7 +67,7 @@ class AccountReceivableForm
                             ->required()
                             ->live()
                             ->visibleOn('create')
-                            ->helperText('Se maior que 1, serao geradas parcelas automaticas a partir do primeiro vencimento.'),
+                            ->helperText('Se maior que 1, serão geradas parcelas automaticas a partir do primeiro vencimento.'),
                         Select::make('installment_due_mode')
                             ->label('Intervalo das Parcelas')
                             ->columnSpan(['md' => 2, 'lg' => 3])
@@ -81,7 +81,7 @@ class AccountReceivableForm
                             ->live()
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
-                            ->helperText('Defina o intervalo entre vencimentos usando condicoes de prazo, dia fixo do mes ou intervalo personalizado.'),
+                            ->helperText('Defina o intervalo entre vencimentos usando condições de prazo, dia fixo do mês ou intervalo personalizado.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mes')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -93,7 +93,7 @@ class AccountReceivableForm
                             ->visibleOn('create')
                             ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
-                            ->helperText('Usado da 2a parcela em diante. Se o mes nao tiver esse dia, sera usado o ultimo dia do mes.'),
+                            ->helperText('Usado da 2ª parcela em diante. Se o mês nã tiver esse dia, será utilizado o ultimo dia do mês.'),
                         TextInput::make('installment_interval_days')
                             ->label('Intervalo em Dias')
                             ->columnSpan(['md' => 1, 'lg' => 2])
@@ -125,26 +125,28 @@ class AccountReceivableForm
                     ->schema([
                         DatePicker::make('due_date')
                             ->label('Data de Vencimento')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->required()
                             ->displayFormat('d/m/Y'),
                         Money::make('due_amount')
                             ->label('Valor à Receber')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->required(),
                         DatePicker::make('paid_date')
                             ->label('Data de Recebimento')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->displayFormat('d/m/Y')
                             ->nullable()
+                            ->visibleOn('edit')
                             ->disabled()
-                            ->helperText('A baixa e controlada nas parcelas da conta a receber.'),
+                            ->helperText('A baixa é controlada através das parcelas do contas à receber.'),
                         Money::make('paid_amount')
                             ->label('Valor Recebido')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->columnSpan(['md' => 2])
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->default(0)
+                            ->visibleOn('edit')
                             ->disabled(),
                     ]),
                 Section::make('Informações Adicionais')
@@ -157,67 +159,74 @@ class AccountReceivableForm
                     ->collapsible()
                     ->persistCollapsed()
                     ->schema([
-                        TextInput::make('document_number')
-                            ->label('Nº Documento')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->maxLength(50),
-                        TextInput::make('description')
-                            ->label('Descricao Base')
-                            ->columnSpan(['md' => 2, 'lg' => 5])
-                            ->maxLength(255)
-                            ->helperText('Usada como sugestao para as parcelas quando nenhuma descricao individual for informada.'),
-                        Select::make('payment_method')
-                            ->label('Forma de Pagamento')
-                            ->columnSpan(['md' => 2, 'lg' => 3])
-                            ->options(PaymentMethod::toSelectArray())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-                        Select::make('card_payment_profile_id')
-                            ->label('Perfil de Cartao')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->live(),
-                        DatePicker::make('payment_date')
-                            ->label('Data da Venda no Cartao')
-                            ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->displayFormat('d/m/Y')
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->live(),
-                        Placeholder::make('card_fee_preview')
-                            ->label('Taxa calculada')
-                            ->content(fn (callable $get): string => static::buildCardFeePreview($get))
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
-                        Placeholder::make('card_net_preview')
-                            ->label('Liquido previsto')
-                            ->content(fn (callable $get): string => static::buildCardNetPreview($get))
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
-                        Placeholder::make('card_settlement_preview')
-                            ->label('Previsao de recebimento')
-                            ->content(fn (callable $get): string => static::buildCardSettlementPreview($get))
-                            ->columnSpan(['md' => 1, 'lg' => 3])
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
                         Select::make('financial_category_id')
                             ->label('Categoria Financeira')
-                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->columnSpan(['md' => 2])
                             ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
                             ->searchable()
                             ->preload()
                             ->native(false)
                             ->visibleOn('create')
                             ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
+                        TextInput::make('document_number')
+                            ->label('Nº Documento')
+                            ->autocomplete(false)
+                            ->columnSpan(['md' => 2])
+                            ->maxLength(50),
+                        Select::make('payment_method')
+                            ->label('Forma de Pagamento')
+                            ->columnSpan(['md' => 2])
+                            ->options(PaymentMethod::toSelectArray())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+                        Select::make('card_payment_profile_id')
+                            ->label('Perfil de Cartão')
+                            ->columnSpan(['md' => 2])
+                            ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->live(onBlur: true),
+                        DatePicker::make('payment_date')
+                            ->label('Data da Venda no Cartão')
+                            ->columnSpan(['md' => 2,])
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                            ->live(onBlur: true),
+                        TextEntry::make('card_fee_preview')
+                            ->label('Taxa calculada')
+                            ->state(fn (callable $get): string => static::buildCardFeePreview($get))
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnStart(1)
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
+                        TextEntry::make('card_net_preview')
+                            ->label('Liquido previsto')
+                            ->state(fn (callable $get): string => static::buildCardNetPreview($get))
+                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
+                        TextEntry::make('card_settlement_preview')
+                            ->label('Previsão de recebimento')
+                            ->state(fn (callable $get): string => static::buildCardSettlementPreview($get))
+                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
+                        TextInput::make('description')
+                            ->label('Descrição Base')
+                            ->columnSpan(['md' => 2, 'lg' => 5])
+                            ->autocomplete(false)
+                            ->visibleOn('create')
+                            ->columnStart(1)
+                            ->maxLength(255)
+                            ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
                         Toggle::make('paid')
                             ->label('Recebido')
+                            ->inline(false)
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(false)
+                            ->visibleOn('edit')
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
                     ]),

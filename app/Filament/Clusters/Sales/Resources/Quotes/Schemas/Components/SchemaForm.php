@@ -32,7 +32,7 @@ class SchemaForm
                 'enforceEffectiveMinSalePrice' => true,
             ]),
             Textarea::make('description')
-                ->label('Descricao')
+                ->label('Descrição')
                 ->columnSpanFull(),
         ];
     }

@@ -37,11 +37,11 @@ final class CreateManualMovementAction
                         ->default(fn (BankStatementLine $record) => $record->transaction_date)
                         ->required(),
                     TextInput::make('description')
-                        ->label('Descricao')
+                        ->label('Descrição')
                         ->default(fn (BankStatementLine $record) => $record->description)
                         ->required(),
                     Textarea::make('notes')
-                        ->label('Observacoes')
+                        ->label('Observações')
                         ->rows(3),
                 ]))
             ->action(function (BankStatementLine $record, array $data): void {

@@ -41,7 +41,7 @@ class GenerateRequisitionFromProductionAction
             }
 
             // Se já possui requisição, atualiza
-            if ($productionOrder->requisition_id) {
+            if ($productionOrder->requisition()->exists()) {
                 $requisition = $this->updateExistingRequisition($productionOrder, $approvedItems);
 
                 if (! $requisition) {
@@ -109,7 +109,8 @@ class GenerateRequisitionFromProductionAction
                     'product_id'          => $item->product_id,
                     'unit_of_measure'     => $item->unit_of_measure,
                     'quantity'            => $item->quantity_approved,
-                'unit_price'          => 0,
+                'unit_price'          => (float) ($item->unit_price ?? 0),
+                'unit_cost'           => (float) ($item->unit_cost ?? 0),
                 'discount_percentage' => 0,
                 'discount_amount'     => 0,
                 'observations'        => $item->description,
@@ -128,11 +129,6 @@ class GenerateRequisitionFromProductionAction
                 return null;
             }
         }
-
-        // Vincula a requisição à ordem de produção (bidirecional)
-        $productionOrder->update([
-            'requisition_id' => $requisition->id,
-        ]);
 
         Log::info('GenerateRequisitionFromProductionAction: Requisição criada com sucesso', [
             'production_order_id' => $productionOrder->id,
@@ -153,7 +149,7 @@ class GenerateRequisitionFromProductionAction
 
             Log::warning('GenerateRequisitionFromProductionAction: Requisição vinculada não encontrada', [
                 'production_order_id' => $productionOrder->id,
-                'requisition_id'      => $productionOrder->requisition_id,
+                'requisition_id'      => $productionOrder->requisition()->value('id'),
             ]);
 
             return null;
@@ -168,6 +164,8 @@ class GenerateRequisitionFromProductionAction
                 $requisitionItemService->update($requisitionItem, [
                     'unit_of_measure' => $item->unit_of_measure,
                     'quantity' => $item->quantity_approved,
+                    'unit_price' => (float) ($item->unit_price ?? 0),
+                    'unit_cost' => (float) ($item->unit_cost ?? 0),
                 ], $this->userId);
             } else {
                 $requisitionItemService->create([
@@ -175,7 +173,8 @@ class GenerateRequisitionFromProductionAction
                     'product_id'          => $item->product_id,
                     'unit_of_measure'     => $item->unit_of_measure,
                     'quantity'            => $item->quantity_approved,
-                    'unit_price'          => 0,
+                    'unit_price'          => (float) ($item->unit_price ?? 0),
+                    'unit_cost'           => (float) ($item->unit_cost ?? 0),
                     'discount_percentage' => 0,
                     'discount_amount'     => 0,
                     'observations'        => $item->description,

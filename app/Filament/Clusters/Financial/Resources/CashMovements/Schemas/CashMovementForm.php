@@ -89,12 +89,12 @@ class CashMovementForm
                             ->native(false)
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('description')
-                            ->label('Descricao')
+                            ->label('DescriDescriçãocao')
                             ->required()
                             ->maxLength(255)
                             ->columnSpan(['md' => 3, 'lg' => 6]),
                         Textarea::make('notes')
-                            ->label('Observacoes')
+                            ->label('Observações')
                             ->rows(3)
                             ->columnSpanFull(),
                         Hidden::make('company_id'),

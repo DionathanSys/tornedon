@@ -80,6 +80,7 @@ class MobileServiceOrdersDashboard extends Page
         $orders = ServiceOrder::query()
             ->where('company_id', $tenant->getKey())
             ->whereDate('order_date', $selectedDate)
+            ->where('status', '!=', State::CANCELLED->value)
             ->with([
                 'customer:id,name',
                 'technician:id,name',

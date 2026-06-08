@@ -15,7 +15,7 @@ class UpdateInvoiceAction
     use HandlesActionResponse;
 
     public function __construct(
-        private int     $updatedBy,
+        private int $updatedBy,
         private Invoice $invoice,
     ) {}
 
@@ -26,28 +26,30 @@ class UpdateInvoiceAction
             $before = $audit->snapshot($this->invoice);
 
             Log::debug('Iniciando atualização de fatura', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $this->invoice->id,
-                'user_id'    => $this->updatedBy,
-                'data'       => $data,
+                'user_id' => $this->updatedBy,
+                'data' => $data,
             ]);
 
             if ($this->invoice->discount_amount > $this->invoice->total_amount) {
                 $this->setError('O desconto não pode ser maior que o valor total da fatura');
 
                 Log::error($this->getMessage(), [
-                    'metodo'          => __METHOD__ . '@' . __LINE__,
-                    'message'         => $this->getMessage(),
-                    'error_code'      => $this->getErrorCode(),
-                    'invoice_id'      => $this->invoice->id,
-                    'data'            => $data,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'message' => $this->getMessage(),
+                    'error_code' => $this->getErrorCode(),
+                    'invoice_id' => $this->invoice->id,
+                    'data' => $data,
                     'discount_amount' => $this->invoice->discount_amount,
-                    'total_amount'    => $this->invoice->total_amount,
-                    'user_id'         => $this->updatedBy,
+                    'total_amount' => $this->invoice->total_amount,
+                    'user_id' => $this->updatedBy,
                 ]);
 
                 return null;
             }
+
+            $data['company_id'] = $this->invoice->company_id;
 
             $validated = InvoiceValidator::validateUpdate($data, $this->invoice->id);
 
@@ -67,24 +69,25 @@ class UpdateInvoiceAction
             );
 
             Log::info('Fatura atualizada com sucesso', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $this->invoice->id,
-                'user_id'    => $this->updatedBy,
+                'user_id' => $this->updatedBy,
             ]);
 
             $this->setSuccess();
+
             return $this->invoice;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
-                'errors'     => $e->errors(),
-                'data'       => $data,
-                'user_id'    => $this->updatedBy,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $this->updatedBy,
             ]);
 
             return null;
@@ -92,13 +95,13 @@ class UpdateInvoiceAction
             $this->setError('Erro ao atualizar fatura no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
-                'invoice_id'    => $this->invoice->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'invoice_id' => $this->invoice->id,
                 'error_message' => $e->getMessage(),
-                'data'          => $data,
-                'user_id'       => $this->updatedBy,
+                'data' => $data,
+                'user_id' => $this->updatedBy,
             ]);
 
             return null;
@@ -106,14 +109,14 @@ class UpdateInvoiceAction
             $this->setError('Erro inesperado ao atualizar fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
-                'invoice_id'    => $this->invoice->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'invoice_id' => $this->invoice->id,
                 'error_message' => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
-                'data'          => $data,
-                'user_id'       => $this->updatedBy,
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $this->updatedBy,
             ]);
 
             return null;

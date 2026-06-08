@@ -41,7 +41,13 @@ class NfeDocumentService
         }
 
         if ($doc->isNfeAuthorized()) {
-            $this->setError('Não é possível excluir uma NF-e autorizada. Cancele a NF-e antes da exclusão.');
+            $this->setError('Não é possível excluir uma NF-e autorizada.');
+
+            return false;
+        }
+
+        if ($doc->isNfeCanceled()) {
+            $this->setError('Não é possível excluir uma NF-e cancelada.');
 
             return false;
         }

@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -31,6 +32,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 
 class FiscalDocumentForm
 {
@@ -162,6 +164,15 @@ class FiscalDocumentForm
                                     ->collapsible()
                                     ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value),
 
+                                Callout::make('Último erro registrado')
+                                    ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
+                                    ->danger()
+                                    ->columnSpanFull()
+                                    ->visible(fn (?FiscalDocument $record, string $operation, Get $get): bool => $operation === 'edit'
+                                        && $get('document_type') === DocumentModel::NFSE->value
+                                        && self::shouldShowLatestErrorCallout($record)
+                                        && filled(self::getLatestPersistedErrorMessage($record))),
+
                                 Section::make('Dados da NF-e')
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])
@@ -255,6 +266,15 @@ class FiscalDocumentForm
                                     ->columns(['md' => 2])
                                     ->collapsible()
                                     ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
+
+                                Callout::make('Último erro registrado')
+                                    ->description(fn (?FiscalDocument $record): ?HtmlString => self::buildLatestErrorCalloutDescription($record))
+                                    ->danger()
+                                    ->columnSpanFull()
+                                    ->visible(fn (?FiscalDocument $record, string $operation, Get $get): bool => $operation === 'edit'
+                                        && $get('document_type') !== DocumentModel::NFSE->value
+                                        && self::shouldShowLatestErrorCallout($record)
+                                        && filled(self::getLatestPersistedErrorMessage($record))),
 
                                 Livewire::make(ItemsRelationManager::class, fn (FiscalDocument $record) => [
                                     'ownerRecord' => $record,
@@ -614,6 +634,57 @@ class FiscalDocumentForm
             ]);
     }
 
+    private static function buildLatestErrorCalloutDescription(?FiscalDocument $record): ?HtmlString
+    {
+        $message = self::getLatestPersistedErrorMessage($record);
+
+        if ($message === null) {
+            return null;
+        }
+
+        return new HtmlString(nl2br(e($message)));
+    }
+
+    private static function getLatestPersistedErrorMessage(?FiscalDocument $record): ?string
+    {
+        if (! $record instanceof FiscalDocument) {
+            return null;
+        }
+
+        $errors = $record->errors_messages;
+
+        if (! is_array($errors) || $errors === []) {
+            return null;
+        }
+
+        $latestError = end($errors);
+
+        if (! is_array($latestError)) {
+            return null;
+        }
+
+        $message = $latestError['mensagem'] ?? null;
+
+        if (! is_string($message) || trim($message) === '') {
+            return null;
+        }
+
+        return preg_replace('/<br\s*\/?\>/i', PHP_EOL, $message);
+    }
+
+    private static function shouldShowLatestErrorCallout(?FiscalDocument $record): bool
+    {
+        if (! $record instanceof FiscalDocument) {
+            return false;
+        }
+
+        if ($record->isNfse()) {
+            return ! $record->isNfseAuthorized() && ! $record->isNfseCanceled();
+        }
+
+        return ! $record->isNfeAuthorized() && ! $record->isNfeCanceled();
+    }
+
     private static function formatCorrectionEventDate(mixed $state): ?string
     {
         if (! is_string($state) || trim($state) === '') {
@@ -663,7 +734,7 @@ class FiscalDocumentForm
             return 'N/D';
         }
 
-        return (string) $serie.'/'.(string) $number;
+        return (string) 'Série: '.$serie.' / '.'RPS: '.(string) $number;
     }
 
     private static function buildCorrectionDownloadUrl(?FiscalDocument $record, Get $get, string $type): ?string

@@ -88,7 +88,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('notes')
-                    ->label('Observacoes')
+                    ->label('Observações')
                     ->limit(40)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),

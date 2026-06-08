@@ -21,6 +21,8 @@ class PrintNfsePreviewAction
     public function execute(FiscalDocument $fiscalDocument): ?array
     {
         try {
+            $previewDocument = clone $fiscalDocument;
+
             Log::debug('PrintNfsePreviewAction: gerando preview de NFS-e', [
                 'fiscal_document_id' => $fiscalDocument->id,
                 'rps_number'         => $fiscalDocument->rps_number,
@@ -30,24 +32,24 @@ class PrintNfsePreviewAction
 
             // Se o documento ainda não tem RPS reservado, usa peek para
             // mostrar no preview o próximo número real sem consumir a sequência.
-            if (empty($fiscalDocument->rps_number) || (int) $fiscalDocument->rps_number < 1) {
+            if (empty($previewDocument->rps_number) || (int) $previewDocument->rps_number < 1) {
                 $configService = app(NfseConfigService::class);
-                $serie          = $fiscalDocument->rps_series
-                                  ?? $configService->resolveSerie($fiscalDocument->company_id);
+                $serie          = $previewDocument->rps_series
+                                  ?? $configService->resolveSerie($previewDocument->company_id);
 
                 $previewNumber = NfseSequence::peekNextNumber(
-                    $fiscalDocument->company_id,
+                    $previewDocument->company_id,
                     $serie,
                 );
 
-                // Atribui temporariamente (sem persistir) para o BuildNfsePayloadAction
-                $fiscalDocument->rps_number  = (string) $previewNumber;
-                $fiscalDocument->rps_series  = $serie;
+                // Atribui temporariamente em uma copia do model para nao contaminar o registro persistido.
+                $previewDocument->rps_number  = (string) $previewNumber;
+                $previewDocument->rps_series  = $serie;
             }
 
             // Monta o payload igual ao de envio real
             $buildAction = new BuildNfsePayloadAction();
-            $payload     = $buildAction->execute($fiscalDocument);
+            $payload     = $buildAction->execute($previewDocument);
 
             if ($payload === null) {
                 $this->setError($buildAction->getMessage());
@@ -95,11 +97,11 @@ class PrintNfsePreviewAction
 
             Log::info('PrintNfsePreviewAction: preview gerado com sucesso', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'rps_number'         => $fiscalDocument->rps_number,
+                'rps_number'         => $previewDocument->rps_number,
                 'pdf_gerado'         => ! empty($resp->pdf ?? null),
             ]);
 
-            $this->setSuccess('Preview gerado com sucesso.');
+            $this->setSuccess();
 
             return [
                 'pdf' => $resp->pdf ?? null,

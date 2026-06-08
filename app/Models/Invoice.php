@@ -41,6 +41,7 @@ class Invoice extends Model
         'invoice_date',
         'payment_method',
         'payment_condition',
+        'financial_category_id',
         'status',
         'pending',
         'confirmed',
@@ -54,17 +55,18 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'status'             => Status::class,
-        'invoice_date'       => 'date',
-        'payment_method'     => PaymentMethod::class,
-        'payment_condition'  => PaymentCondition::class,
-        'pending'            => 'boolean',
-        'confirmed'          => 'boolean',
-        'canceled'           => 'boolean',
-        'confirmed_at'       => 'datetime',
-        'canceled_at'        => 'datetime',
-        'created_at'         => 'datetime',
-        'updated_at'         => 'datetime',
+        'status' => Status::class,
+        'invoice_date' => 'date',
+        'payment_method' => PaymentMethod::class,
+        'payment_condition' => PaymentCondition::class,
+        'financial_category_id' => 'integer',
+        'pending' => 'boolean',
+        'confirmed' => 'boolean',
+        'canceled' => 'boolean',
+        'confirmed_at' => 'datetime',
+        'canceled_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /* ==============================
@@ -104,6 +106,11 @@ class Invoice extends Model
     public function accountReceivables(): HasMany
     {
         return $this->hasMany(AccountReceivable::class);
+    }
+
+    public function financialCategory(): BelongsTo
+    {
+        return $this->belongsTo(FinancialCategory::class, 'financial_category_id');
     }
 
     public function installments(): HasManyThrough

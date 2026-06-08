@@ -5,20 +5,63 @@ namespace App\Services\Invoice\Validators;
 use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\FinancialCategory;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class InvoiceValidator
 {
-    private static function commonRules(): array
+    private static function commonRules(array $data): array
     {
         return [
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
+            'financial_category_id' => self::financialCategoryRule($data),
             'pending' => 'boolean',
             'confirmed' => 'boolean',
             'canceled' => 'boolean',
+        ];
+    }
+
+    private static function financialCategoryRule(array $data): array
+    {
+        $companyId = (int) ($data['company_id'] ?? 0);
+
+        return [
+            'nullable',
+            'integer',
+            function (string $attribute, mixed $value, \Closure $fail) use ($companyId): void {
+                if ($value === null || $value === '') {
+                    return;
+                }
+
+                $category = FinancialCategory::query()
+                    ->where('company_id', $companyId)
+                    ->find($value);
+
+                if (! $category) {
+                    $fail('Categoria financeira nao encontrada.');
+
+                    return;
+                }
+
+                if (! $category->is_active) {
+                    $fail('A categoria financeira selecionada esta inativa.');
+
+                    return;
+                }
+
+                if (! $category->isLeaf()) {
+                    $fail('Selecione uma subcategoria final para a classificacao financeira.');
+
+                    return;
+                }
+
+                if (! $category->allows('receivable')) {
+                    $fail('A categoria financeira selecionada nao pode ser usada em contas a receber.');
+                }
+            },
         ];
     }
 
@@ -48,7 +91,7 @@ class InvoiceValidator
      */
     public static function validateCreate(array $data): array
     {
-        $rules = array_merge(self::commonRules(), [
+        $rules = array_merge(self::commonRules($data), [
             'customer_id' => 'required|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
             'invoice_number' => [
@@ -70,7 +113,7 @@ class InvoiceValidator
      */
     public static function validateUpdate(array $data, int $invoiceId): array
     {
-        $rules = array_merge(self::commonRules(), [
+        $rules = array_merge(self::commonRules($data), [
             'invoice_date' => 'sometimes|date',
             'status' => ['sometimes', 'required', Rule::enum(Status::class)],
         ]);

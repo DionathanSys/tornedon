@@ -47,11 +47,11 @@ final class EditPaymentAction
                     ->native(false)
                     ->required(),
                 Textarea::make('description')
-                    ->label('Descricao do Movimento')
+                    ->label('Descrição do Movimento')
                     ->rows(2)
                     ->maxLength(255),
                 Textarea::make('notes')
-                    ->label('Observacoes')
+                    ->label('Observações')
                     ->rows(3),
             ])
             ->fillForm(fn (AccountPayableInstallmentPayment $record): array => [

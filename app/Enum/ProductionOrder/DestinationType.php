@@ -11,7 +11,7 @@ enum DestinationType: string
     {
         return match ($this) {
             self::STOCK => 'Estoque',
-            self::DIRECT_DELIVERY => 'Entrega Direta',
+            self::DIRECT_DELIVERY => 'Uso Direto',
         };
     }
 

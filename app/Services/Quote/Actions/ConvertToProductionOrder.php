@@ -81,6 +81,7 @@ class ConvertToProductionOrder
                     'quantity'               => $quoteItem->quantity,
                     'quantity_in_base_unit'  => $baseSnapshot['quantity_in_base_unit'],
                     'unit_price'             => $quoteItem->unit_price,
+                    'unit_cost'              => 0,
                     'discount_percentage'    => $quoteItem->discount_percentage,
                     'discount_amount'        => $quoteItem->discount_amount,
                     'quantity_approved_in_base_unit' => 0,
@@ -164,4 +165,3 @@ class ConvertToProductionOrder
         ];
     }
 }
-
