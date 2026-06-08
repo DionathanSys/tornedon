@@ -29,12 +29,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Task Magna Gestor.md",
+                "file": "TESTES-MANUAIS-FLUXOS-PRINCIPAIS.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Task Magna Gestor"
+              "title": "TESTES-MANUAIS-FLUXOS-PRINCIPAIS"
             }
           },
           {
@@ -123,8 +123,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -232,9 +231,9 @@
   },
   "active": "1e2c702d5c5223cf",
   "lastOpenFiles": [
+    "Task Magna Gestor.md",
     "Consultoria.md",
     "Tasks App Gestor.md",
-    "Task Magna Gestor.md",
     "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",
     "deploy-script.md",
     "TESTES-MANUAIS-FLUXOS-PRINCIPAIS.md",

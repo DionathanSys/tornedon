@@ -166,7 +166,10 @@ class SendNfseAction
                 return true;
             }
 
-            // Erros de validação dos dados
+            // Erros determinísticos de validação dos dados.
+            // Como a API rejeitou explicitamente o payload, o RPS não foi consumido
+            // e deve ser liberado (ou ao menos desvinculado do documento) para evitar
+            // travar a sequência na próxima tentativa.
             if (in_array($resp->codigo ?? null, [5001, 5002])) {
                 $errors = $fiscalDocument->errors_messages ?? [];
                 $baseMessage = $resp->mensagem ?? 'Erro de validação';
@@ -219,10 +222,7 @@ class SendNfseAction
                     'erros_detalhes' => (array) ($resp->erros ?? []),
                 ]);
 
-                $fiscalDocument->update([
-                    'status' => \App\Enum\FiscalDocument\Status::PENDING->value,
-                    'nfse_status' => NfeStatus::PENDING->value,
-                ]);
+                $this->reconcileDeterministicValidationFailure($fiscalDocument, $resp->mensagem ?? 'Erro de validação');
 
                 return false;
             }
@@ -342,6 +342,10 @@ class SendNfseAction
             return true;
         }
 
+        if (NfseSequence::synchronizeReservedNumberIfSafe($fiscalDocument)) {
+            return true;
+        }
+
         $this->markForReconciliation(
             $fiscalDocument,
             sprintf(
@@ -396,5 +400,20 @@ class SendNfseAction
     {
         $action = app(ReconcileNfseRpsSequenceAction::class);
         $action->execute($fiscalDocument->fresh(), $reason, false);
+    }
+
+    private function reconcileDeterministicValidationFailure(FiscalDocument $fiscalDocument, string $message): void
+    {
+        $action = app(ReconcileNfseRpsSequenceAction::class);
+        $action->execute(
+            $fiscalDocument->fresh(),
+            sprintf(
+                'Rejeição determinística da API ao enviar NFS-e. RPS %s/%s liberado para nova tentativa quando possível. Motivo: %s',
+                $fiscalDocument->rps_series,
+                $fiscalDocument->rps_number,
+                $message,
+            ),
+            true,
+        );
     }
 }

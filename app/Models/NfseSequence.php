@@ -197,6 +197,51 @@ class NfseSequence extends Model
             && self::isCurrentLastNumber((int) $fiscalDocument->company_id, $serie, $number);
     }
 
+    public static function synchronizeReservedNumberIfSafe(FiscalDocument $fiscalDocument): bool
+    {
+        $number = (int) preg_replace('/\D/', '', (string) ($fiscalDocument->rps_number ?? ''));
+        $serie = trim((string) ($fiscalDocument->rps_series ?? ''));
+        $companyId = (int) $fiscalDocument->company_id;
+
+        if ($number < 1 || $serie === '') {
+            return false;
+        }
+
+        return DB::transaction(function () use ($companyId, $serie, $number) {
+            $seq = self::query()
+                ->where('company_id', $companyId)
+                ->where('serie', $serie)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $seq) {
+                $seq = self::create([
+                    'company_id' => $companyId,
+                    'serie' => $serie,
+                    'last_number' => 0,
+                ]);
+            }
+
+            $currentLastNumber = (int) $seq->last_number;
+
+            if ($currentLastNumber >= $number) {
+                return $currentLastNumber === $number;
+            }
+
+            $highestUsedNumber = self::highestUsedNumber($companyId, $serie);
+
+            if ($highestUsedNumber !== $number) {
+                return false;
+            }
+
+            $seq->forceFill([
+                'last_number' => $number,
+            ])->save();
+
+            return true;
+        });
+    }
+
     private static function usedRpsNumbers(int $companyId, string $serie): Collection
     {
         return FiscalDocument::query()

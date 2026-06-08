@@ -9,6 +9,7 @@ use App\Models\FiscalDocument;
 use App\Models\Partner;
 use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -55,8 +56,11 @@ class BuildNfePayloadAction
             $address = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
             $taxRegime = $company?->fiscalProfile()->first()?->tax_regime;
 
-            $issuedAt = ($fiscalDocument->issued_at ?? now())->format('Y-m-d').'T00:00:00-03:00';
-            $movementAt = ($fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now())->format('Y-m-d').'T00:00:00-03:00';
+            $issuedAt = $this->resolveNfeTimestamp($fiscalDocument->issued_at ?? now())->format('Y-m-d\TH:i:sP');
+            $movementAt = $this->resolveNfeTimestamp(
+                $fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now(),
+                Carbon::parse($issuedAt)
+            )->format('Y-m-d\TH:i:sP');
 
             // ------------------------------------------------------------------
             // Monta destinatário
@@ -339,6 +343,22 @@ class BuildNfePayloadAction
             ->filter(fn (array $item) => $item['campo'] !== '' || $item['texto'] !== '')
             ->values()
             ->toArray();
+    }
+
+    private function resolveNfeTimestamp(Carbon $date, ?Carbon $minimum = null): Carbon
+    {
+        $timestamp = $date->copy();
+
+        if ($timestamp->isStartOfDay()) {
+            $now = now();
+            $timestamp->setTime($now->hour, $now->minute, $now->second);
+        }
+
+        if ($minimum !== null && $timestamp->lt($minimum)) {
+            return $minimum->copy();
+        }
+
+        return $timestamp;
     }
 
     private function normalizeFreightData(mixed $freightData, int|string|null $companyId = null): array

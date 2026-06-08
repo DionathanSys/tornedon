@@ -20,6 +20,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\BuildNfePayloadAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class BuildNfePayloadActionTest extends TestCase
@@ -196,6 +197,90 @@ class BuildNfePayloadActionTest extends TestCase
         $this->assertNotNull($payload);
         $this->assertSame('5202', $payload['itens'][0]['cfop']);
         $this->assertSame('00', $payload['itens'][0]['imposto']['icms']['situacao_tributaria']);
+    }
+
+    public function test_it_uses_a_valid_timestamp_for_emission_and_movement_dates(): void
+    {
+        Carbon::setTestNow('2026-06-08 09:29:04');
+
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Datas',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Datas',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => '2026-06-08',
+            'movement_at' => '2026-06-08',
+            'document_number' => '102',
+            'document_series' => '1',
+            'operation_nature' => OperationNature::DEVOLUCAO_COMPRA->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::DEVOLUCAO->value,
+            'is_final_consumer' => false,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-DAT-001',
+            'name' => 'Produto Datas',
+            'unit' => \App\Enum\Product\Unit::UN->value,
+            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        FiscalDocumentItem::query()->create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+            'cfop_code' => '5202',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'included_in_total' => true,
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => ['situacao_tributaria' => '00'],
+                    'pis' => ['situacao_tributaria' => '01'],
+                    'cofins' => ['situacao_tributaria' => '01'],
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $payload = app(BuildNfePayloadAction::class)->execute($document->fresh('items.product', 'customer.address', 'company'));
+
+        $this->assertNotNull($payload);
+        $this->assertSame('2026-06-08T09:29:04-03:00', $payload['data_emissao']);
+        $this->assertSame($payload['data_emissao'], $payload['data_entrada_saida']);
+
+        Carbon::setTestNow();
     }
 
     public function test_it_preserves_preview_number_set_in_memory_while_reloading_relations(): void

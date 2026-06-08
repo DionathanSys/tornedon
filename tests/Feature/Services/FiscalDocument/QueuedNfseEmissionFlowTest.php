@@ -129,7 +129,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $this->assertSame(1, $sequence->last_number);
     }
 
-    public function test_queue_job_keeps_same_rps_number_after_immediate_api_rejection(): void
+    public function test_queue_job_releases_rps_number_after_immediate_api_rejection(): void
     {
         Bus::fake();
 
@@ -167,9 +167,10 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $document->refresh();
 
         $this->assertSame(NfeStatus::PENDING, $document->nfse_status);
-        $this->assertSame('1', $document->rps_number);
-        $this->assertSame('1', $document->rps_series);
-        $this->assertSame(1, NfseSequence::query()->whereKey($document->nfse_sequence_id)->value('last_number'));
+        $this->assertNull($document->rps_number);
+        $this->assertNull($document->rps_series);
+        $this->assertNull($document->nfse_sequence_id);
+        $this->assertSame(0, (int) NfseSequence::query()->where('company_id', $document->company_id)->where('serie', '1')->value('last_number'));
     }
 
     public function test_queue_job_marks_document_for_reconciliation_on_ambiguous_api_failure(): void
@@ -242,6 +243,66 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $this->assertSame(NfeStatus::RPS_RECONCILIATION_PENDING, $document->nfse_status);
         $this->assertSame('1', $document->rps_number);
         $this->assertNotEmpty($document->errors_messages);
+    }
+
+    public function test_queue_job_synchronizes_legacy_sequence_when_reserved_rps_is_current_tail(): void
+    {
+        Bus::fake();
+
+        [$user, $document] = $this->createReadyDocument();
+
+        $sequence = NfseSequence::query()->create([
+            'company_id' => $document->company_id,
+            'serie' => '1',
+            'last_number' => 0,
+        ]);
+
+        $document->update([
+            'rps_number' => '1',
+            'rps_series' => '1',
+            'nfse_sequence_id' => $sequence->id,
+            'nfse_status' => NfeStatus::PENDING->value,
+            'emission_group_key' => "nfse:{$document->company_id}:1:2",
+            'emission_requested_at' => now(),
+        ]);
+
+        $config = Mockery::mock(NfseConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('buildSdkParams')->andReturn([
+            'token' => 'fake-token',
+            'ambiente' => 2,
+            'options' => [],
+        ]);
+        $this->app->instance(NfseConfigService::class, $config);
+
+        $audit = Mockery::mock(AuditRecorder::class);
+        $audit->shouldReceive('snapshot')->andReturn([]);
+        $audit->shouldReceive('recordModelEvent')->once();
+        $this->app->instance(AuditRecorder::class, $audit);
+
+        $sdk = Mockery::mock('overload:CloudDfe\SdkPHP\Nfse');
+        $sdk->shouldReceive('cria')
+            ->once()
+            ->andReturn((object) [
+                'sucesso' => true,
+                'codigo' => 5023,
+                'chave' => 'NFSE-LEGACY-KEY-0001',
+            ]);
+
+        $document->update([
+            'nfse_status' => NfeStatus::QUEUED->value,
+        ]);
+
+        $job = new ProcessQueuedNfseEmissionJob("nfse:{$document->company_id}:1:2");
+        $job->handle();
+
+        $document->refresh();
+        $sequence->refresh();
+
+        $this->assertSame(NfeStatus::IN_PROCESSING, $document->nfse_status);
+        $this->assertSame('1', $document->rps_number);
+        $this->assertSame(1, $sequence->last_number);
     }
 
     private function createReadyDocument(?Company $company = null, ?Partner $customer = null, ?User $user = null): array

@@ -50,6 +50,12 @@ class MunicipalNfseScenario implements FiscalEmissionScenarioInterface
 
     public function resolveCandidateNumber(FiscalDocument $document, string $series): ?int
     {
+        $reservedNumber = (int) preg_replace('/\D/', '', (string) ($document->rps_number ?? ''));
+
+        if ($reservedNumber > 0) {
+            return $reservedNumber;
+        }
+
         return NfseSequence::peekNextNumber((int) $document->company_id, $series);
     }
 
