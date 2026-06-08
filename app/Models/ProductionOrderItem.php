@@ -8,6 +8,46 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductionOrderItem extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (self $item): void {
+            $product = $item->relationLoaded('product') ? $item->product : ($item->product_id ? $item->product()->first() : null);
+
+            $item->unit_price ??= 0;
+            $item->discount_percentage ??= 0;
+            $item->discount_amount ??= 0;
+            $item->quantity_produced ??= 0;
+            $item->quantity_approved ??= 0;
+            $item->quantity_rejected ??= 0;
+            $item->unit_of_measure ??= $product?->unit?->value ?? 'UN';
+
+            if (blank($item->description)) {
+                $item->description = $product?->name;
+            }
+
+            $quantity = (float) ($item->quantity ?? 0);
+            $approvedQuantity = (float) ($item->quantity_approved ?? 0);
+
+            if ($product) {
+                $unit = (string) ($item->unit_of_measure ?? $product->unit?->value ?? 'UN');
+                $conversionService = app(ProductUnitConversionService::class);
+
+                $baseQuantity = $conversionService->convertToBase($product, $unit, $quantity);
+                $approvedBaseQuantity = $conversionService->convertToBase($product, $unit, $approvedQuantity);
+
+                $item->quantity_in_base_unit = round($baseQuantity->baseQuantity, 8);
+                $item->quantity_approved_in_base_unit = round($approvedBaseQuantity->baseQuantity, 8);
+                $item->conversion_factor_snapshot = $baseQuantity->factor;
+
+                return;
+            }
+
+            $item->quantity_in_base_unit ??= $quantity;
+            $item->quantity_approved_in_base_unit ??= $approvedQuantity;
+            $item->conversion_factor_snapshot ??= 1;
+        });
+    }
+
     protected $fillable = [
         'production_order_id',
         'quote_item_id',

@@ -26,7 +26,7 @@ class ProductionOrderResource extends Resource
 
     protected static ?string $cluster = ManufacturingCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Manufatura';
+    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
 
     protected static ?string $modelLabel = 'Ordem de Produção';
 

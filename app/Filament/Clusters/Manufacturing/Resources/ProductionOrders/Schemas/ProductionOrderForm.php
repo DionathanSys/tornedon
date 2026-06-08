@@ -46,7 +46,7 @@ class ProductionOrderForm
                                         $query->whereDoesntHave('productionOrder');
 
                                         if ($record?->quote_id) {
-                                            $query->orWhereKey($record->quote_id);
+                                            $query->orWhere('id', $record->quote_id);
                                         }
                                     })
                                     ->orderByDesc('id')

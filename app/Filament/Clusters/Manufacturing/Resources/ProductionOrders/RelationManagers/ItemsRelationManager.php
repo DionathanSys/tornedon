@@ -65,18 +65,21 @@ class ItemsRelationManager extends RelationManager
                     }),
                 Textarea::make('description')
                     ->label('Descrição do item')
+                    ->helperText('Use uma descrição de fabricação quando precisar detalhar além do nome do produto.')
                     ->columnSpanFull(),
                 TextInput::make('quantity')
                     ->label('Qtd. planejada')
                     ->required()
                     ->numeric()
                     ->minValue(0.001)
+                    ->helperText('Quantidade que deve ser produzida nesta OP.')
                     ->default(1.0),
                 TextInput::make('quantity_produced')
                     ->label('Qtd. produzida')
                     ->required()
                     ->numeric()
                     ->minValue(0)
+                    ->helperText('Quanto ja foi efetivamente produzido.')
                     ->default(0.0)
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Set $set, Get $get): void {
@@ -99,6 +102,7 @@ class ItemsRelationManager extends RelationManager
                     ->required()
                     ->numeric()
                     ->minValue(0)
+                    ->helperText('Quantidade liberada pela qualidade para venda/uso.')
                     ->default(0.0)
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Set $set, Get $get): void {
@@ -114,6 +118,7 @@ class ItemsRelationManager extends RelationManager
                     ->required()
                     ->numeric()
                     ->minValue(0)
+                    ->helperText('Perdas, refugos ou itens reprovados.')
                     ->default(0.0)
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Set $set, Get $get): void {
@@ -126,14 +131,37 @@ class ItemsRelationManager extends RelationManager
                 TextInput::make('unit_of_measure')
                     ->label('Unidade')
                     ->required()
+                    ->helperText('Unidade operacional usada no apontamento.')
                     ->default('UN'),
+                TextInput::make('unit_price')
+                    ->label('Valor unitário estimado')
+                    ->numeric()
+                    ->minValue(0)
+                    ->default(0)
+                    ->step(0.0001)
+                    ->helperText('Opcional. Ajuda quando a OP ja nasce com referencia comercial do orçamento.'),
+                TextInput::make('discount_percentage')
+                    ->label('Desconto (%)')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->default(0)
+                    ->step(0.01),
+                TextInput::make('discount_amount')
+                    ->label('Desconto (R$)')
+                    ->numeric()
+                    ->minValue(0)
+                    ->default(0)
+                    ->step(0.01),
                 TextInput::make('technical_specifications')
                     ->label('Especificações técnicas'),
                 Textarea::make('production_notes')
                     ->label('Notas de produção')
+                    ->helperText('Instruções, ocorrências ou observações do operador.')
                     ->columnSpanFull(),
                 Textarea::make('qc_notes')
                     ->label('Notas de qualidade')
+                    ->helperText('Motivos de reprovação ou observações da inspeção.')
                     ->columnSpanFull(),
                 TextInput::make('actual_production_hours')
                     ->label('Horas efetivas')
@@ -275,10 +303,14 @@ class ItemsRelationManager extends RelationManager
 
                         $this->getOwnerRecord()->refresh();
                     }),
-                CreateAction::make(),
+                CreateAction::make()
+                    ->label('Adicionar Item')
+                    ->modalHeading('Adicionar item da produção')
+                    ->modalSubmitActionLabel('Adicionar'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->label('Editar'),
                 DeleteAction::make(),
             ])
             ->toolbarActions([
