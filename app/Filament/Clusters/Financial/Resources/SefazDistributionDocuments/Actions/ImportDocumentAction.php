@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\A
 
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
-use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\SefazDistributionDocumentResource;
 use App\Models\SefazDistributionDocument;
 use App\Services\Fiscal\Sefaz\SefazDistributionFiscalDocumentImportService;
 use Filament\Actions\Action;
@@ -27,15 +26,20 @@ class ImportDocumentAction
             ->action(function (SefazDistributionDocument $record): void {
                 $fiscalDocument = app(SefazDistributionFiscalDocumentImportService::class)->import($record, Auth::id());
 
+                if (! $fiscalDocument) {
+                    return;
+                }
+
                 Notification::make()
                     ->title('Documento importado')
                     ->body("DF-e importado para a nota de entrada #{$fiscalDocument->id}.")
                     ->success()
                     ->send();
-            })
-            ->successRedirectUrl(fn(SefazDistributionDocument $record): string => FiscalDocumentResource::getUrl('edit', [
-                'record' => $record->fiscal_document_id,
-                'tenant' => Filament::getTenant(),
-            ]));
+
+                redirect(FiscalDocumentResource::getUrl('edit', [
+                    'record' => $fiscalDocument,
+                    'tenant' => Filament::getTenant(),
+                ]));
+            });
     }
 }
