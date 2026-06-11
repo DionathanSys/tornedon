@@ -33,6 +33,8 @@ final class FiscalDocumentRecordActions
                 ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
                 ->visible(fn (FiscalDocument $record) => $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
                 ->action(function (FiscalDocument $record): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $service->emitir($record, Auth::id());
 
@@ -49,6 +51,8 @@ final class FiscalDocumentRecordActions
                 ->color('warning')
                 ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeInProcessing())
                 ->action(function (FiscalDocument $record): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $service->consultar($record, Auth::id());
 
@@ -66,6 +70,8 @@ final class FiscalDocumentRecordActions
                 ->visible(fn (FiscalDocument $record) => $record->isNfe())
                 ->modalHeading('Preview da NF-e')
                 ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $data = $service->preview($record, Auth::id());
 
@@ -80,6 +86,8 @@ final class FiscalDocumentRecordActions
                     );
                 })
                 ->action(function (FiscalDocument $record): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $service->emitir($record, Auth::id());
 
@@ -100,6 +108,8 @@ final class FiscalDocumentRecordActions
                 ->color('success')
                 ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
                 ->action(function (FiscalDocument $record): StreamedResponse {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $pdf = $service->danfe($record, Auth::id());
 
@@ -133,6 +143,8 @@ final class FiscalDocumentRecordActions
                         ->rows(4),
                 ])
                 ->action(function (FiscalDocument $record, array $data): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $service->cancelar(
                         $record,
@@ -173,6 +185,8 @@ final class FiscalDocumentRecordActions
                         ->minValue(1),
                 ])
                 ->action(function (FiscalDocument $record, array $data): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfeDocumentService::class);
                     $service->corrigir(
                         $record,
@@ -210,6 +224,8 @@ final class FiscalDocumentRecordActions
                         ->native(false),
                 ])
                 ->action(function (FiscalDocument $record, array $data): StreamedResponse {
+                    $record = self::resolveFullRecord($record);
+
                     $correction = self::getSelectedCorrection($record, (int) $data['correction_index']);
 
                     if ($correction === null) {
@@ -230,6 +246,8 @@ final class FiscalDocumentRecordActions
                 ->modalDescription('O envio é assíncrono. Após confirmação, a NFS-e será processada em segundo plano.')
                 ->visible(fn (FiscalDocument $record) => $record->isNfse() && ! $record->isNfseQueued() && (! $record->isNfseSent() || $record->isNfseRejected()))
                 ->action(function (FiscalDocument $record): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfseDocumentService::class);
                     $service->emitir($record, Auth::id());
 
@@ -246,6 +264,8 @@ final class FiscalDocumentRecordActions
                 ->color('warning')
                 ->visible(fn (FiscalDocument $record) => $record->isNfse())
                 ->action(function (FiscalDocument $record): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfseDocumentService::class);
                     $service->consultar($record, Auth::id());
 
@@ -263,6 +283,8 @@ final class FiscalDocumentRecordActions
                 ->visible(fn (FiscalDocument $record) => $record->isNfse())
                 ->modalHeading('Preview da NFS-e')
                 ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfseDocumentService::class);
                     $data = $service->preview($record, Auth::id());
 
@@ -284,6 +306,8 @@ final class FiscalDocumentRecordActions
                 ->color('success')
                 ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfseAuthorized())
                 ->action(function (FiscalDocument $record): StreamedResponse {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfseDocumentService::class);
                     $pdf = $service->pdf($record, Auth::id());
 
@@ -340,6 +364,8 @@ final class FiscalDocumentRecordActions
                         ->rows(4),
                 ])
                 ->action(function (FiscalDocument $record, array $data): void {
+                    $record = self::resolveFullRecord($record);
+
                     $service = app(NfseDocumentService::class);
                     $service->cancelar(
                         $record,
@@ -366,6 +392,11 @@ final class FiscalDocumentRecordActions
     private static function isNationalNfse(FiscalDocument $record): bool
     {
         return ($record->nfse_model?->value ?? $record->nfse_model) === 'nacional';
+    }
+
+    private static function resolveFullRecord(FiscalDocument $record): FiscalDocument
+    {
+        return $record->fresh() ?? FiscalDocument::query()->findOrFail($record->getKey());
     }
 
     /**
