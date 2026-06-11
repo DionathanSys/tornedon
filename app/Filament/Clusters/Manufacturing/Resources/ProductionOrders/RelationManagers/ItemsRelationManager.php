@@ -40,6 +40,7 @@ class ItemsRelationManager extends RelationManager
                     ->default(fn (): int => ((int) $this->getOwnerRecord()->items()->max('sequence')) + 1),
                 Section::make('Item da Ordem')
                     ->columns(6)
+                    ->columnSpanFull()
                     ->schema([
                         Select::make('product_id')
                             ->label('Produto')
