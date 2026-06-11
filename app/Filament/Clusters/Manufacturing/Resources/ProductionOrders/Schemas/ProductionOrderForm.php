@@ -23,21 +23,21 @@ class ProductionOrderForm
         return $schema
             ->columns([
                 'sm' => 1,
-                'md' => 4,
-                'lg' => 8,
+                'md' => 6,
+                'lg' => 6,
             ])
             ->components([
                 Section::make('Dados da Ordem de Produção')
                     ->columns([
                         'sm' => 1,
-                        'md' => 4,
-                        'lg' => 8,
+                        'md' => 6,
+                        'lg' => 6,
                     ])
                     ->columnSpanFull()
                     ->schema([
                         Select::make('quote_id')
                             ->label('Orçamento de origem')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->columnSpan(['md' => 3, 'lg' => 3])
                             ->options(function (?\App\Models\ProductionOrder $record): array {
                                 return Quote::query()
                                     ->where('company_id', Filament::getTenant()->id)
@@ -85,7 +85,7 @@ class ProductionOrderForm
                             }),
                         Select::make('customer_id')
                             ->label('Cliente')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->columnSpan(['md' => 3, 'lg' => 3])
                             ->options(function () {
                                 return \App\Models\Partner::whereHas('companies', function ($query) {
                                     $query->where('companies.id', Filament::getTenant()->id)
@@ -101,57 +101,34 @@ class ProductionOrderForm
                             ->required(fn (Get $get): bool => $get('destination_type') === DestinationType::DIRECT_DELIVERY->value),
                         TextInput::make('production_order_number')
                             ->label('Número')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2])
                             ->visibleOn('edit')
                             ->columnStart(1)
                             ->disabled(),
                         Select::make('status')
                             ->label('Status')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(Status::toSelectArray())
                             ->native(false)
                             ->default(Status::QUEUED->value)
                             ->visibleOn('edit')
                             ->disabled(),
-
-                        Select::make('priority')
-                            ->label('Prioridade')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->options(Priority::toSelectArray())
-                            ->native(false)
-                            ->default(Priority::NORMAL->value)
-                            ->required(),
                         Select::make('destination_type')
                             ->label('Destino')
-                            ->columnSpan(['md' => 1, 'lg' => 2])
+                            ->columnSpan(['md' => 2, 'lg' => 2])
                             ->options(DestinationType::toSelectArray())
                             ->native(false)
                             ->default(DestinationType::STOCK->value)
                             ->live()
                             ->required()
                             ->helperText('Estoque: entra em estoque ao concluir. Uso Direto: entra em estoque e prepara a saída para venda.'),
-                        Select::make('assigned_operator')
-                            ->label('Operador')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->relationship(
-                                name: 'assignedOperator',
-                                titleAttribute: 'name',
-                            )
-                            ->searchable()
-                            ->visible(false)
-                            ->preload()
-                            ->nullable(),
-                        TextInput::make('assigned_machine')
-                            ->label('Máquina/Equipamento')
-                            ->columnSpan(['md' => 2, 'lg' => 2])
-                            ->maxLength(255)
-                            ->visible(false)
-                            ->nullable(),
                         Textarea::make('observations')
                             ->label('Observações')
-                            ->columnSpan(['md' => 4, 'lg' => 8])
+                            ->columnSpanFull()
                             ->rows(3)
                             ->maxLength(1000),
+                        Hidden::make('priority')
+                            ->default(Priority::NORMAL->value),
                         Hidden::make('company_id')
                             ->default(fn() => Filament::getTenant()->id),
                     ]),

@@ -15,11 +15,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Support\Icons\Heroicon;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
@@ -50,176 +45,12 @@ class EditProductionOrder extends EditRecord
                     ->icon(Heroicon::Bookmark),
             ])->buttonGroup(),
             ActionGroup::make([
-                Action::make('startProduction')
-                    ->label('Iniciar')
-                    ->icon(Heroicon::Play)
-                    ->color('primary')
-                    ->visible(fn (): bool => $this->record->status === Status::QUEUED)
-                    ->action(function (): void {
-                        if (! $this->record->items()->exists()) {
-                            notify::warning('Adicione pelo menos um item antes de iniciar a produção.');
-
-                            return;
-                        }
-
-                        $service = app(ProductionOrderService::class);
-
-                        if (! $service->start($this->record, Auth::id())) {
-                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao iniciar produção');
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Produção iniciada com sucesso.');
-                    }),
-                Action::make('updateProgress')
-                    ->label('Registrar Produção')
-                    ->icon(Heroicon::ClipboardDocumentCheck)
-                    ->color('info')
-                    ->visible(fn (): bool => $this->record->status === Status::IN_PROGRESS && $this->record->items()->exists())
-                    ->modalWidth('7xl')
-                    ->fillForm(fn (): array => [
-                        'items_progress' => $this->record->items()
-                            ->with('product')
-                            ->orderBy('sequence')
-                            ->get()
-                            ->map(fn ($item): array => [
-                                'item_id' => $item->id,
-                                'item_label' => $item->product?->name ?? $item->description ?? ('Item #' . $item->id),
-                                'planned_quantity' => (float) $item->quantity,
-                                'quantity_produced' => (float) $item->quantity_produced,
-                                'quantity_approved' => (float) $item->quantity_approved,
-                                'quantity_rejected' => (float) $item->quantity_rejected,
-                                'actual_production_hours' => (float) ($item->actual_production_hours ?? 0),
-                                'production_notes' => $item->production_notes,
-                            ])
-                            ->all(),
-                    ])
-                    ->schema([
-                        Repeater::make('items_progress')
-                            ->label('Itens da produção')
-                            ->addable(false)
-                            ->deletable(false)
-                            ->reorderable(false)
-                            ->columns(12)
-                            ->schema([
-                                Hidden::make('item_id'),
-                                TextInput::make('item_label')
-                                    ->label('Item')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->columnSpan(4),
-                                TextInput::make('planned_quantity')
-                                    ->label('Planejada')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->numeric()
-                                    ->columnSpan(2),
-                                TextInput::make('quantity_produced')
-                                    ->label('Produzida')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->required()
-                                    ->columnSpan(2),
-                                TextInput::make('quantity_approved')
-                                    ->label('Aprovada')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->required()
-                                    ->columnSpan(2),
-                                TextInput::make('quantity_rejected')
-                                    ->label('Rejeitada')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->required()
-                                    ->columnSpan(2),
-                                TextInput::make('actual_production_hours')
-                                    ->label('Horas')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->columnSpan(2),
-                                Textarea::make('production_notes')
-                                    ->label('Notas de produção')
-                                    ->rows(2)
-                                    ->columnSpan(10),
-                            ]),
-                    ])
-                    ->action(function (array $data): void {
-                        $itemsProgress = collect($data['items_progress'] ?? [])
-                            ->mapWithKeys(function (array $row): array {
-                                $produced = (float) ($row['quantity_produced'] ?? 0);
-                                $approved = min((float) ($row['quantity_approved'] ?? 0), $produced);
-                                $rejected = min((float) ($row['quantity_rejected'] ?? 0), max(0, $produced - $approved));
-
-                                return [
-                                    $row['item_id'] => [
-                                        'quantity_produced' => $produced,
-                                        'quantity_approved' => $approved,
-                                        'quantity_rejected' => $rejected,
-                                        'actual_production_hours' => (float) ($row['actual_production_hours'] ?? 0),
-                                        'production_notes' => $row['production_notes'] ?? null,
-                                    ],
-                                ];
-                            })
-                            ->all();
-
-                        $service = app(ProductionOrderService::class);
-
-                        if (! $service->updateProgress($this->record, $itemsProgress, Auth::id())) {
-                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao atualizar progresso');
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Progresso de produção atualizado com sucesso.');
-                    }),
-                Action::make('sendToQc')
-                    ->label('Enviar para Qualidade')
-                    ->icon(Heroicon::CheckBadge)
-                    ->color('warning')
-                    ->visible(fn (): bool => $this->record->status === Status::IN_PROGRESS)
-                    ->action(function (): void {
-                        if (! $this->record->items()->where('quantity_produced', '>', 0)->exists()) {
-                            notify::warning('Registre quantidade produzida antes de enviar para a qualidade.');
-
-                            return;
-                        }
-
-                        $service = app(ProductionOrderService::class);
-
-                        if (! $service->sendToQc($this->record, Auth::id())) {
-                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao enviar para qualidade');
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Ordem enviada para controle de qualidade.');
-                    }),
-                Action::make('returnToProduction')
-                    ->label('Retornar para Produção')
-                    ->icon(Heroicon::ArrowUturnLeft)
-                    ->color('gray')
-                    ->visible(fn (): bool => $this->record->status === Status::QC_CHECK)
-                    ->action(function (): void {
-                        $service = app(ProductionOrderService::class);
-
-                        if (! $service->returnToProduction($this->record, Auth::id())) {
-                            $this->notifyServiceError($service, 'EditProductionOrder: Erro ao retornar para produção');
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Ordem retornada para produção.');
-                    }),
-                Action::make('finalizeProduction')
-                    ->label('Finalizar')
+                Action::make('closeProductionOrder')
+                    ->label('Encerrar Ordem de Produção')
                     ->icon(Heroicon::CheckCircle)
                     ->color('success')
-                    ->visible(fn (): bool => $this->record->status === Status::QC_CHECK)
+                    ->visible(fn (): bool => in_array($this->record->status, [Status::QUEUED, Status::IN_PROGRESS, Status::QC_CHECK], true))
+                    ->requiresConfirmation()
                     ->schema([
                         Checkbox::make('invoice_after_finalize')
                             ->label('Faturar ao finalizar')
@@ -228,10 +59,30 @@ class EditProductionOrder extends EditRecord
                             ->default(false),
                     ])
                     ->action(function (array $data): void {
-                        if (! $this->record->items()->where('quantity_approved', '>', 0)->exists()) {
-                            notify::warning('Informe ao menos uma quantidade aprovada antes de concluir a produção.');
+                        if (! $this->record->items()->exists()) {
+                            notify::warning('Adicione pelo menos um item antes de encerrar a ordem.');
 
                             return;
+                        }
+
+                        $this->record->items()->get()->each(function ($item): void {
+                            $quantity = (float) $item->quantity;
+
+                            $item->update([
+                                'quantity_produced' => $quantity,
+                                'quantity_approved' => $quantity,
+                                'quantity_rejected' => 0,
+                            ]);
+                        });
+
+                        if ($this->record->status !== Status::QC_CHECK) {
+                            $this->record->update([
+                                'status' => Status::QC_CHECK->value,
+                                'started_at' => $this->record->started_at ?? now(),
+                                'updated_by' => Auth::id(),
+                            ]);
+
+                            $this->record->refresh();
                         }
 
                         $service = app(ProductionOrderService::class);

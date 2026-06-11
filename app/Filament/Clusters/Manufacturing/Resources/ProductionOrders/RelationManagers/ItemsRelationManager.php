@@ -17,7 +17,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
@@ -37,8 +36,10 @@ class ItemsRelationManager extends RelationManager
         return $schema
             ->components([
                 Hidden::make('quote_item_id'),
-                Section::make('Planejamento')
-                    ->columns(2)
+                Hidden::make('sequence')
+                    ->default(fn (): int => ((int) $this->getOwnerRecord()->items()->max('sequence')) + 1),
+                Section::make('Item da Ordem')
+                    ->columns(6)
                     ->schema([
                         Select::make('product_id')
                             ->label('Produto')
@@ -69,21 +70,15 @@ class ItemsRelationManager extends RelationManager
                                 $set('description', $product->name);
                                 $set('unit_of_measure', $product->unit?->value ?? 'UN');
                             }),
-                        TextInput::make('sequence')
-                            ->label('Sequência')
-                            ->required()
-                            ->numeric()
-                            ->default(fn (): int => ((int) $this->getOwnerRecord()->items()->max('sequence')) + 1),
-                        Textarea::make('description')
+                        TextInput::make('description')
                             ->label('Descrição do item')
-                            ->helperText('Use uma descrição de fabricação quando precisar detalhar além do nome do produto.')
-                            ->columnSpanFull(),
+                            ->columnSpan(['md' => 3, 'lg' => 3]),
                         TextInput::make('quantity')
-                            ->label('Qtd. planejada')
+                            ->label('Quantidade')
                             ->required()
                             ->numeric()
                             ->minValue(0.001)
-                            ->helperText('Quantidade que deve ser produzida nesta OP.')
+                            ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default(1.0),
                         Select::make('unit_of_measure')
                             ->label('Unidade')
@@ -103,21 +98,15 @@ class ItemsRelationManager extends RelationManager
                                     (float) ($get('quantity') ?? 0),
                                 ) ?: 'Unidade operacional usada no apontamento.';
                             })
+                            ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default('UN'),
-                        TextInput::make('technical_specifications')
-                            ->label('Especificações técnicas')
-                            ->columnSpanFull(),
-                    ]),
-                Section::make('Comercial')
-                    ->description('Campos opcionais para manter referência comercial do item.')
-                    ->columns(3)
-                    ->schema([
                         TextInput::make('unit_price')
                             ->label('Valor unitário de venda')
                             ->numeric()
                             ->minValue(0)
                             ->default(0)
                             ->step(0.0001)
+                            ->columnSpan(['md' => 1, 'lg' => 1])
                             ->helperText('Valor real da unidade que sera vendida/faturada.'),
                         TextInput::make('unit_cost')
                             ->label('Custo unitário')
@@ -125,38 +114,8 @@ class ItemsRelationManager extends RelationManager
                             ->minValue(0)
                             ->default(0)
                             ->step(0.0001)
+                            ->columnSpan(['md' => 1, 'lg' => 1])
                             ->helperText('Custo unitario usado na entrada de estoque.'),
-                        TextInput::make('discount_percentage')
-                            ->label('Desconto (%)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->default(0)
-                            ->step(0.01),
-                        TextInput::make('discount_amount')
-                            ->label('Desconto (R$)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->default(0)
-                            ->step(0.01),
-                    ]),
-                Section::make('Observações')
-                    ->columns(2)
-                    ->schema([
-                        Textarea::make('production_notes')
-                            ->label('Notas de produção')
-                            ->helperText('Instruções, ocorrências ou observações do operador.')
-                            ->columnSpanFull(),
-                        Textarea::make('qc_notes')
-                            ->label('Notas de qualidade')
-                            ->helperText('Motivos de reprovação ou observações da inspeção.')
-                            ->columnSpanFull(),
-                        TextInput::make('actual_production_hours')
-                            ->label('Horas efetivas')
-                            ->numeric()
-                            ->minValue(0),
-                        TextInput::make('additional_info')
-                            ->label('Informações adicionais'),
                     ]),
             ]);
     }
@@ -166,63 +125,28 @@ class ItemsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('product_id')
             ->columns([
-                TextColumn::make('quoteItem.id')
-                    ->label('Item Orçamento')
-                    ->searchable(),
                 TextColumn::make('product.name')
                     ->label('Produto')
                     ->searchable(),
                 TextColumn::make('description')
                     ->label('Descrição')
-                    ->limit(50)
+                    ->limit(40)
                     ->toggleable(),
                 TextColumn::make('quantity')
-                    ->label('Qtd. Planejada')
+                    ->label('Quantidade')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('quantity_produced')
-                    ->label('Qtd. Produzida')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('quantity_approved')
-                    ->label('Qtd. Aprovada')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('quantity_rejected')
-                    ->label('Qtd. Rejeitada')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('approval_rate')
-                    ->label('Aprov. (%)')
-                    ->state(fn (ProductionOrderItem $record): float => round($record->getEfficiencyRate(), 2))
-                    ->numeric(2, ',', '.'),
                 TextColumn::make('unit_of_measure')
                     ->label('Unidade')
                     ->searchable(),
-                TextColumn::make('actual_production_hours')
-                    ->label('Horas')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('unit_price')
                     ->label('Venda')
                     ->money('BRL')
-                    ->toggleable(),
+                    ->sortable(),
                 TextColumn::make('unit_cost')
                     ->label('Custo')
                     ->money('BRL')
-                    ->toggleable(),
-                TextColumn::make('sequence')
-                    ->label('Seq.')
-                    ->numeric()
                     ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
