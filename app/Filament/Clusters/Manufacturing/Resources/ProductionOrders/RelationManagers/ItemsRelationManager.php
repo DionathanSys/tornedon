@@ -26,6 +26,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -90,33 +91,19 @@ class ItemsRelationManager extends RelationManager
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->helperText(function (Get $get): ?string {
-                                return self::conversionInfo(
-                                    (int) ($get('product_id') ?? 0),
-                                    $get('unit_of_measure'),
-                                    (float) ($get('quantity') ?? 0),
-                                ) ?: 'Unidade operacional usada no apontamento.';
-                            })
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default('UN'),
                         TextInput::make('description')
                             ->label('Descrição do item')
                             ->columnSpanfull(),
-
-                        TextInput::make('unit_price')
+                        Money::make('unit_price')
                             ->label('Vlr. unitário')
-                            ->numeric()
-                            ->minValue(0)
-                            ->default(0)
-                            ->step(0.0001)
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 2])
                             ->helperText('Valor de venda.'),
-                        TextInput::make('unit_cost')
+                        Money::make('unit_cost')
                             ->label('Custo unitário')
-                            ->numeric()
-                            ->minValue(0)
-                            ->default(0)
-                            ->step(0.0001)
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->columnSpan(['md' => 2])
                             ->helperText('Custo unitário usado na entrada de estoque.'),
                     ]),
