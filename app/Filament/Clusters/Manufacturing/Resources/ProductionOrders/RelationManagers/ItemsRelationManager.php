@@ -37,19 +37,19 @@ class ItemsRelationManager extends RelationManager
             ->components([
                 Hidden::make('quote_item_id'),
                 Hidden::make('sequence')
-                    ->default(fn (): int => ((int) $this->getOwnerRecord()->items()->max('sequence')) + 1),
+                    ->default(fn(): int => ((int) $this->getOwnerRecord()->items()->max('sequence')) + 1),
                 Section::make('Item da Ordem')
                     ->columns(6)
                     ->columnSpanFull()
                     ->schema([
                         Select::make('product_id')
                             ->label('Produto')
-                            ->options(fn (): array => Product::query()
+                            ->options(fn(): array => Product::query()
                                 ->where('company_id', $this->getOwnerRecord()->company_id)
                                 ->where('is_active', true)
                                 ->orderBy('name')
                                 ->get()
-                                ->mapWithKeys(fn (Product $product): array => [
+                                ->mapWithKeys(fn(Product $product): array => [
                                     $product->id => trim(($product->product_code ? $product->product_code . ' - ' : '') . $product->name),
                                 ])
                                 ->all())
@@ -70,10 +70,8 @@ class ItemsRelationManager extends RelationManager
 
                                 $set('description', $product->name);
                                 $set('unit_of_measure', $product->unit?->value ?? 'UN');
-                            }),
-                        TextInput::make('description')
-                            ->label('Descrição do item')
-                            ->columnSpan(['md' => 3, 'lg' => 3]),
+                            })
+                            ->columnSpan(4),
                         TextInput::make('quantity')
                             ->label('Quantidade')
                             ->required()
@@ -101,22 +99,26 @@ class ItemsRelationManager extends RelationManager
                             })
                             ->columnSpan(['md' => 1, 'lg' => 1])
                             ->default('UN'),
+                        TextInput::make('description')
+                            ->label('Descrição do item')
+                            ->columnSpanfull(),
+
                         TextInput::make('unit_price')
-                            ->label('Valor unitário de venda')
+                            ->label('Vlr. unitário')
                             ->numeric()
                             ->minValue(0)
                             ->default(0)
                             ->step(0.0001)
-                            ->columnSpan(['md' => 1, 'lg' => 1])
-                            ->helperText('Valor real da unidade que sera vendida/faturada.'),
+                            ->columnSpan(['md' => 2])
+                            ->helperText('Valor de venda.'),
                         TextInput::make('unit_cost')
                             ->label('Custo unitário')
                             ->numeric()
                             ->minValue(0)
                             ->default(0)
                             ->step(0.0001)
-                            ->columnSpan(['md' => 1, 'lg' => 1])
-                            ->helperText('Custo unitario usado na entrada de estoque.'),
+                            ->columnSpan(['md' => 2])
+                            ->helperText('Custo unitário usado na entrada de estoque.'),
                     ]),
             ]);
     }
@@ -157,7 +159,7 @@ class ItemsRelationManager extends RelationManager
                     ->label('Importar do Orçamento')
                     ->icon(Heroicon::ArrowDownTray)
                     ->color('gray')
-                    ->visible(fn (): bool => filled($this->getOwnerRecord()->quote_id))
+                    ->visible(fn(): bool => filled($this->getOwnerRecord()->quote_id))
                     ->requiresConfirmation()
                     ->modalHeading('Importar itens do orçamento')
                     ->modalDescription('Serão importados apenas os itens de produto ainda não vinculados a esta ordem de produção.')
@@ -180,8 +182,8 @@ class ItemsRelationManager extends RelationManager
                             ->all();
 
                         $quoteItems = $productionOrder->quote->items
-                            ->filter(fn (QuoteItem $item): bool => $item->product_id !== null)
-                            ->reject(fn (QuoteItem $item): bool => in_array($item->id, $existingQuoteItemIds, true))
+                            ->filter(fn(QuoteItem $item): bool => $item->product_id !== null)
+                            ->reject(fn(QuoteItem $item): bool => in_array($item->id, $existingQuoteItemIds, true))
                             ->sortBy('sequence')
                             ->values();
 
