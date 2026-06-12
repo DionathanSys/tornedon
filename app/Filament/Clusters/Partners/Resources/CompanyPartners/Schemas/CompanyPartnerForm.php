@@ -101,6 +101,9 @@ class CompanyPartnerForm
                             ->label('Nome')
                             ->autocomplete(false)
                             ->maxLength(60)
+                            ->validationMessages([
+                                'max' => 'O nome do parceiro deve ter no máximo 60 caracteres.',
+                            ])
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->disabledOn('edit'),
                         TextInput::make('state_tax_id')
