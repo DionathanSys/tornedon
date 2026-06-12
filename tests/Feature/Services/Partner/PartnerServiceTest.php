@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Partner;
 
+use App\Models\Partner;
 use App\Models\User;
 use App\Services\Partner\PartnerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,6 +35,23 @@ class PartnerServiceTest extends TestCase
         $this->assertNotNull($secondPartner);
         $this->assertNotSame($firstPartner->id, $secondPartner->id);
         $this->assertDatabaseCount('partners', 2);
-        $this->assertSame(2, \App\Models\Partner::query()->where('name', 'Parceiro Repetido')->count());
+        $this->assertSame(2, Partner::query()->where('name', 'Parceiro Repetido')->count());
+    }
+
+    public function test_it_does_not_create_partner_with_name_longer_than_60_characters(): void
+    {
+        $user = User::factory()->create();
+        $service = app(PartnerService::class);
+
+        $partner = $service->createPartner($user->id, [
+            'name' => str_repeat('A', 61),
+            'document_type' => 'cpf',
+            'document_number' => '123.456.789-00',
+            'state_tax_indicator' => '9',
+        ]);
+
+        $this->assertNull($partner);
+        $this->assertTrue($service->hasError());
+        $this->assertSame(0, Partner::query()->count());
     }
 }

@@ -100,6 +100,7 @@ class CompanyPartnerForm
                         TextInput::make('name')
                             ->label('Nome')
                             ->autocomplete(false)
+                            ->maxLength(60)
                             ->columnSpan(['md' => 4, 'lg' => 8])
                             ->disabledOn('edit'),
                         TextInput::make('state_tax_id')

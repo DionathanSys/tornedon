@@ -18,7 +18,7 @@ class PartnerValidator
     public static function validate(array $data, ?int $partnerId = null): array
     {
         $rules = [
-            'name'                  => 'required|string|max:255',
+            'name'                  => 'required|string|max:60',
             'document_type'         => 'required|string|in:cnpj,cpf',
             'document_number'       => [
                 'required',
@@ -41,6 +41,7 @@ class PartnerValidator
         
         $messages = [
             'name.required'             => 'O nome do parceiro é obrigatório.',
+            'name.max'                  => 'O nome do parceiro deve ter no máximo 60 caracteres.',
             'document_type.in'          => 'O tipo de documento informado é inválido.',
             'document_type.required'    => 'O tipo de documento é obrigatório.',
             'document_number.required'  => 'O número do documento é obrigatório.',
