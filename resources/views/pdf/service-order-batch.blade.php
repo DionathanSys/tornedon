@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ $pdfData['title'] }}</title>
+    <title>Ordens de Serviço</title>
     @include('pdf.partials.document-styles')
     <style>
         @page {
@@ -13,6 +13,14 @@
         body {
             padding-bottom: 28px;
             color: #111827;
+        }
+
+        .service-order-page {
+            page-break-after: always;
+        }
+
+        .service-order-page:last-child {
+            page-break-after: auto;
         }
 
         .page-header {
@@ -260,7 +268,16 @@
 </head>
 
 <body>
-    @include('pdf.partials.service-order-document', ['record' => $record, 'pdfData' => $pdfData])
+    @foreach ($documents as $document)
+        <div class="service-order-page">
+            @php
+                $record = $document['record'];
+                $pdfData = $document['pdfData'];
+            @endphp
+
+            @include('pdf.partials.service-order-document', ['record' => $record, 'pdfData' => $pdfData])
+        </div>
+    @endforeach
 </body>
 
 </html>
