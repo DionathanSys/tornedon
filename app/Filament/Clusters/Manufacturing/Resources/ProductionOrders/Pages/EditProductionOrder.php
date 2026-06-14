@@ -2,10 +2,11 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages;
 
+use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
-use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\InvoiceProductionOrderAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\DownloadProductionOrderPdfAction;
+use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\InvoiceProductionOrderAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages\Actions\PreviewProductionOrderPdfAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
@@ -15,8 +16,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Checkbox;
-use Filament\Support\Icons\Heroicon;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -26,8 +27,8 @@ class EditProductionOrder extends EditRecord
 
     public function getSubheading(): ?string
     {
-        return 'OP # ' . ($this->record->production_order_number ?? $this->record->id)
-            . ' - ' . $this->record->status->description();
+        return 'OP # '.($this->record->production_order_number ?? $this->record->id)
+            .' - '.$this->record->status->description();
     }
 
     protected function getHeaderActions(): array
@@ -54,7 +55,7 @@ class EditProductionOrder extends EditRecord
                     ->schema([
                         Checkbox::make('invoice_after_finalize')
                             ->label('Faturar ao finalizar')
-                            ->visible(fn (): bool => $this->record->destination_type === \App\Enum\ProductionOrder\DestinationType::DIRECT_DELIVERY)
+                            ->visible(fn (): bool => $this->shouldShowInvoiceAfterFinalizeOption())
                             ->helperText('Uso direto: gera a requisição, encerra para reservar e, se marcado, fatura e abre a fatura.')
                             ->default(false),
                     ])
@@ -109,7 +110,7 @@ class EditProductionOrder extends EditRecord
                         }
 
                         notify::success(
-                            $this->record->destination_type === \App\Enum\ProductionOrder\DestinationType::DIRECT_DELIVERY
+                            $this->resolvedDestinationType() === DestinationType::DIRECT_DELIVERY
                                 ? 'Produção finalizada e reservada para venda com sucesso.'
                                 : 'Produção finalizada com entrada em estoque registrada.'
                         );
@@ -160,7 +161,10 @@ class EditProductionOrder extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['updated_by'] = Auth::id();
-        
+        $data['destination_type'] = filled($data['customer_id'] ?? null)
+            ? DestinationType::DIRECT_DELIVERY->value
+            : DestinationType::STOCK->value;
+
         return $data;
     }
 
@@ -169,10 +173,22 @@ class EditProductionOrder extends EditRecord
         return $this->getResource()::getUrl('edit', ['record' => $this->getRecord()]);
     }
 
+    private function shouldShowInvoiceAfterFinalizeOption(): bool
+    {
+        return $this->resolvedDestinationType() === DestinationType::DIRECT_DELIVERY;
+    }
+
+    private function resolvedDestinationType(): DestinationType
+    {
+        return filled($this->record->customer_id)
+            ? DestinationType::DIRECT_DELIVERY
+            : DestinationType::STOCK;
+    }
+
     private function notifyServiceError(ProductionOrderService $service, string $logMessage): void
     {
         Log::error($logMessage, [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'production_order_id' => $this->record->id,
             'error_code' => $service->getErrorCode(),
             'message' => $service->getMessage(),

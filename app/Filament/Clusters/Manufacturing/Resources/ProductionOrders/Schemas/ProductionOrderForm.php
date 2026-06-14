@@ -6,6 +6,8 @@ use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
 use App\Enum\Quote\Status as QuoteStatus;
+use App\Models\Partner;
+use App\Models\ProductionOrder;
 use App\Models\Quote;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
@@ -14,6 +16,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class ProductionOrderForm
@@ -38,7 +41,7 @@ class ProductionOrderForm
                         Select::make('quote_id')
                             ->label('Orçamento de origem')
                             ->columnSpan(['md' => 3, 'lg' => 3])
-                            ->options(function (?\App\Models\ProductionOrder $record): array {
+                            ->options(function (?ProductionOrder $record): array {
                                 return Quote::query()
                                     ->where('company_id', Filament::getTenant()->id)
                                     ->where('status', QuoteStatus::APPROVED->value)
@@ -64,7 +67,7 @@ class ProductionOrderForm
                             ->preload()
                             ->live()
                             ->helperText('Se informado, os itens do orçamento podem ser importados para a OP.')
-                            ->afterStateUpdated(function ($state, callable $set): void {
+                            ->afterStateUpdated(function ($state, Set $set): void {
                                 if (! $state) {
                                     return;
                                 }
@@ -75,9 +78,8 @@ class ProductionOrderForm
                                     return;
                                 }
 
-                                if ($quote->customer_id) {
-                                    $set('customer_id', $quote->customer_id);
-                                }
+                                $set('customer_id', $quote->customer_id);
+                                $set('destination_type', self::resolveDestinationType($quote->customer_id));
 
                                 if (filled($quote->observations)) {
                                     $set('observations', $quote->observations);
@@ -87,7 +89,7 @@ class ProductionOrderForm
                             ->label('Cliente')
                             ->columnSpan(['md' => 3, 'lg' => 3])
                             ->options(function () {
-                                return \App\Models\Partner::whereHas('companies', function ($query) {
+                                return Partner::whereHas('companies', function ($query) {
                                     $query->where('companies.id', Filament::getTenant()->id)
                                         ->whereJsonContains('company_partner.type', 'customer')
                                         ->where('company_partner.is_active', true);
@@ -97,7 +99,14 @@ class ProductionOrderForm
                             })
                             ->searchable()
                             ->preload()
-                            ->helperText('Obrigatório para Uso Direto. Em produção para estoque, pode ser preenchido depois.')
+                            ->live()
+                            ->afterStateHydrated(function ($state, Set $set): void {
+                                $set('destination_type', self::resolveDestinationType($state));
+                            })
+                            ->afterStateUpdated(function ($state, Set $set): void {
+                                $set('destination_type', self::resolveDestinationType($state));
+                            })
+                            ->helperText('Sem cliente, a OP fica como Estoque. Ao informar cliente, muda para Uso Direto.')
                             ->required(fn (Get $get): bool => $get('destination_type') === DestinationType::DIRECT_DELIVERY->value),
                         TextInput::make('production_order_number')
                             ->label('Número')
@@ -120,6 +129,8 @@ class ProductionOrderForm
                             ->native(false)
                             ->default(DestinationType::STOCK->value)
                             ->live()
+                            ->disabled()
+                            ->dehydrated()
                             ->required()
                             ->helperText('Estoque: entra em estoque ao concluir. Uso Direto: entra em estoque e prepara a saída para venda.'),
                         Textarea::make('observations')
@@ -130,8 +141,15 @@ class ProductionOrderForm
                         Hidden::make('priority')
                             ->default(Priority::NORMAL->value),
                         Hidden::make('company_id')
-                            ->default(fn() => Filament::getTenant()->id),
+                            ->default(fn () => Filament::getTenant()->id),
                     ]),
             ]);
+    }
+
+    private static function resolveDestinationType(mixed $customerId): string
+    {
+        return filled($customerId)
+            ? DestinationType::DIRECT_DELIVERY->value
+            : DestinationType::STOCK->value;
     }
 }
