@@ -103,6 +103,9 @@ class AccountPayablesTable
                     ->label('Conta à Pagar')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make(),
             ]);
     }
 }

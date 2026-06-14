@@ -93,6 +93,9 @@ class AccountReceivablesTable
                     ->label('Conta a Receber')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make(),
             ]);
     }
 }
