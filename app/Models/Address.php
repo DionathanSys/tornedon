@@ -51,6 +51,13 @@ class Address extends Model
         );
     }
 
+    protected function number(): Attribute
+    {
+        return Attribute::make(
+            set: fn(mixed $value): mixed => is_string($value) ? str_replace('-', '', $value) : $value,
+        );
+    }
+
     protected function insideState(): Attribute
     {
         $companyAddress = $this->companyPartner->address;
