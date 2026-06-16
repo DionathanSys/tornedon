@@ -12,7 +12,10 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -35,6 +38,26 @@ class CashMovementForm
                     ])
                     ->columnSpanFull()
                     ->schema([
+                        Toggle::make('is_manual_counterparty')
+                            ->label('Parceiro Avulso?')
+                            ->live()
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function (Toggle $component, ?bool $state, $record): void {
+                                if (! $record) {
+                                    return;
+                                }
+
+                                $component->state($record->counterparty_partner_id === null && filled($record->manual_counterparty_name));
+                            })
+                            ->afterStateUpdated(function (bool $state, Set $set): void {
+                                if ($state) {
+                                    $set('counterparty_partner_id', null);
+                                    return;
+                                }
+
+                                $set('manual_counterparty_name', null);
+                            })
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
                         Select::make('financial_account_id')
                             ->label('Conta Financeira')
                             ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
@@ -80,6 +103,12 @@ class CashMovementForm
                             ->options(fn (): array => app(PartnerService::class)
                                 ->searchForSelect('', Filament::getTenant()->id, 'all', 50))
                             ->native(false)
+                            ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                        TextInput::make('manual_counterparty_name')
+                            ->label('Nome da Contraparte')
+                            ->maxLength(255)
+                            ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         Select::make('counterparty_financial_account_id')
                             ->label('Conta Contraparte')

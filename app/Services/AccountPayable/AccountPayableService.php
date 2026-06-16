@@ -45,9 +45,15 @@ class AccountPayableService
                 $audit = app(AuditRecorder::class);
                 AccountPayableValidator::validateCreate([
                     ...$data,
+                    'supplier_id' => $this->normalizeCounterpartyId($data['supplier_id'] ?? null),
+                    'manual_counterparty_name' => $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null),
                     'sequence_number' => $data['sequence_number'] ?? '01',
                     'status' => $data['status'] ?? Status::PENDING->value,
                 ]);
+
+                $data['supplier_id'] = $this->normalizeCounterpartyId($data['supplier_id'] ?? null);
+                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
+                unset($data['is_manual_counterparty']);
 
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
@@ -217,6 +223,22 @@ class AccountPayableService
         return str_pad((string) $sequence, 2, '0', STR_PAD_LEFT);
     }
 
+    private function normalizeCounterpartyId(int|string|null $counterpartyId): ?int
+    {
+        if ($counterpartyId === null || $counterpartyId === '') {
+            return null;
+        }
+
+        return (int) $counterpartyId;
+    }
+
+    private function normalizeCounterpartyName(?string $counterpartyName): ?string
+    {
+        $counterpartyName = trim((string) $counterpartyName);
+
+        return $counterpartyName === '' ? null : $counterpartyName;
+    }
+
     private function recalculatePayableInstallment(AccountPayableInstallment $installment): void
     {
         $installment->loadMissing('payments', 'accountPayable');
@@ -289,6 +311,9 @@ class AccountPayableService
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountPayable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
+                $data['supplier_id'] = $this->normalizeCounterpartyId($data['supplier_id'] ?? null);
+                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
+                unset($data['is_manual_counterparty']);
 
                 $action = new UpdateAccountPayableAction($updatedBy, $accountPayable);
                 $updated = $action->execute($data);

@@ -25,6 +25,7 @@ class CashMovement extends Model
         'origin_type',
         'origin_id',
         'counterparty_partner_id',
+        'manual_counterparty_name',
         'counterparty_financial_account_id',
         'transfer_group_id',
         'notes',
@@ -243,6 +244,7 @@ class CashMovement extends Model
     private function resolveCounterpartyPartnerLabel(): string
     {
         return $this->snapshotValue('counterparty_partner_name')
+            ?? $this->manual_counterparty_name
             ?? $this->counterpartyPartner?->name
             ?? 'Nao informado';
     }

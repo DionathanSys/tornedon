@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Tables;
 
 use App\Enum\AccountPayable\Status;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -20,9 +21,14 @@ class AccountPayablesTable
     {
         return $table
             ->columns([
-                TextColumn::make('supplier.name')
+                TextColumn::make('counterparty_label')
                     ->label('Fornecedor')
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search): void {
+                            $query->whereHas('supplier', fn (Builder $supplierQuery) => $supplierQuery->where('name', 'like', "%{$search}%"))
+                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                        });
+                    })
                     ->sortable()
                     ->limit(40),
                 TextColumn::make('document_number')

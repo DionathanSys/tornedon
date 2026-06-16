@@ -34,6 +34,11 @@ class AccountPayableInstallmentPayment extends Model
         return $this->belongsTo(AccountPayableInstallment::class, 'account_payable_installment_id');
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function financialAccount(): BelongsTo
     {
         return $this->belongsTo(FinancialAccount::class, 'financial_account_id');

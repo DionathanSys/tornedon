@@ -266,7 +266,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $payable = $this->service->create([
             'supplier_id' => $this->supplier->id,
             'company_id' => $this->company->id,
-            'due_date' => '2026-05-20',
+            'due_date' => '2026-12-20',
             'due_amount' => 200,
             'payment_method' => PaymentMethod::PIX->value,
             'installment_count' => 2,
@@ -308,6 +308,26 @@ class AccountPayableFinancialIntegrationTest extends TestCase
 
         $this->assertNull($payable);
         $this->assertArrayHasKey('auto_register_payment_on_due_date', $this->service->getErrors());
+    }
+
+    public function test_create_payable_allows_manual_counterparty_without_supplier(): void
+    {
+        $payable = $this->service->create([
+            'supplier_id' => null,
+            'manual_counterparty_name' => 'Fornecedor Avulso',
+            'is_manual_counterparty' => true,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-04-10',
+            'due_amount' => 100,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 1,
+            'financial_category_id' => $this->payableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($payable, $this->service->getMessage());
+        $this->assertNull($payable->supplier_id);
+        $this->assertSame('Fornecedor Avulso', $payable->manual_counterparty_name);
+        $this->assertSame('Fornecedor Avulso', $payable->counterparty_label);
     }
 
     public function test_update_and_delete_installment_generate_audit_entries(): void

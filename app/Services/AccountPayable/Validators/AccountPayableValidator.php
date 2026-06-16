@@ -24,6 +24,8 @@ class AccountPayableValidator
             'note_number' => 'nullable|string|max:100',
             'document_number' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:255',
+            'manual_counterparty_name' => 'nullable|string|max:255',
+            'is_manual_counterparty' => 'nullable|boolean',
             'is_effective' => 'nullable|boolean',
             'paid' => 'nullable|boolean',
             'type' => 'nullable|string|max:50',
@@ -37,7 +39,6 @@ class AccountPayableValidator
     private static function messages(): array
     {
         return [
-            'supplier_id.required' => 'O fornecedor é obrigatório.',
             'supplier_id.exists' => 'Fornecedor não encontrado.',
             'company_id.required' => 'A empresa é obrigatória.',
             'company_id.exists' => 'Empresa não encontrada.',
@@ -58,7 +59,7 @@ class AccountPayableValidator
     public static function validateCreate(array $data): array
     {
         $rules = array_merge(self::commonRules(), [
-            'supplier_id' => 'required|integer|exists:partners,id',
+            'supplier_id' => 'nullable|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'required|string|max:2',
@@ -75,6 +76,19 @@ class AccountPayableValidator
         $validator = Validator::make($data, $rules, self::messages());
 
         $validator->after(function ($validator) use ($data): void {
+            $isManualCounterparty = (bool) ($data['is_manual_counterparty'] ?? false);
+            $supplierId = $data['supplier_id'] ?? null;
+            $manualCounterpartyName = trim((string) ($data['manual_counterparty_name'] ?? ''));
+            $isManualCounterparty = $isManualCounterparty || ($manualCounterpartyName !== '' && blank($supplierId));
+
+            if ($isManualCounterparty) {
+                if ($manualCounterpartyName === '') {
+                    $validator->errors()->add('manual_counterparty_name', 'Informe o nome da contraparte avulsa.');
+                }
+            } elseif (blank($supplierId)) {
+                $validator->errors()->add('supplier_id', 'O fornecedor é obrigatório.');
+            }
+
             $autoRegister = (bool) ($data['auto_register_payment_on_due_date'] ?? false);
             $isEffective = (bool) ($data['is_effective'] ?? true);
 
@@ -124,13 +138,29 @@ class AccountPayableValidator
     public static function validateUpdate(array $data, int $id): array
     {
         $rules = array_merge(self::commonRules(), [
-            'supplier_id' => 'sometimes|required|integer|exists:partners,id',
+            'supplier_id' => 'sometimes|nullable|integer|exists:partners,id',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'sometimes|required|string|max:2',
             'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
         ]);
 
-        return Validator::make($data, $rules, self::messages())->validate();
+        $validator = Validator::make($data, $rules, self::messages());
+        $validator->after(function ($validator) use ($data): void {
+            $isManualCounterparty = (bool) ($data['is_manual_counterparty'] ?? false);
+            $supplierId = $data['supplier_id'] ?? null;
+            $manualCounterpartyName = trim((string) ($data['manual_counterparty_name'] ?? ''));
+            $isManualCounterparty = $isManualCounterparty || ($manualCounterpartyName !== '' && blank($supplierId));
+
+            if ($isManualCounterparty) {
+                if ($manualCounterpartyName === '') {
+                    $validator->errors()->add('manual_counterparty_name', 'Informe o nome da contraparte avulsa.');
+                }
+            } elseif (array_key_exists('supplier_id', $data) && blank($supplierId)) {
+                $validator->errors()->add('supplier_id', 'O fornecedor é obrigatório.');
+            }
+        });
+
+        return $validator->validate();
     }
 }

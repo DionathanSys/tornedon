@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,7 @@ class AccountPayable extends Model
 {
     protected $fillable = [
         'supplier_id',
+        'manual_counterparty_name',
         'company_id',
         'fiscal_document_id',
         'bank_slip_number',
@@ -91,5 +93,14 @@ class AccountPayable extends Model
     public function companyCardStatements(): HasMany
     {
         return $this->hasMany(CompanyCardStatement::class);
+    }
+
+    protected function counterpartyLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->supplier?->name
+                ?? $this->manual_counterparty_name
+                ?? 'Nao informado',
+        );
     }
 }

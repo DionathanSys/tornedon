@@ -253,6 +253,28 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         );
     }
 
+    public function test_create_receivable_allows_manual_counterparty_and_null_invoice(): void
+    {
+        $receivable = $this->service->create([
+            'customer_id' => null,
+            'manual_counterparty_name' => 'Cliente Avulso',
+            'is_manual_counterparty' => true,
+            'company_id' => $this->company->id,
+            'invoice_id' => null,
+            'due_date' => '2026-04-10',
+            'due_amount' => 180,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 1,
+            'financial_category_id' => $this->receivableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($receivable, $this->service->getMessage());
+        $this->assertNull($receivable->customer_id);
+        $this->assertNull($receivable->invoice_id);
+        $this->assertSame('Cliente Avulso', $receivable->manual_counterparty_name);
+        $this->assertSame('Cliente Avulso', $receivable->counterparty_label);
+    }
+
     public function test_update_and_delete_installment_generate_audit_entries(): void
     {
         $this->actingAs($this->user);

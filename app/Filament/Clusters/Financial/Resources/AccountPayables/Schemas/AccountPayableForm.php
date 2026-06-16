@@ -16,6 +16,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -38,10 +40,37 @@ class AccountPayableForm
                     ])
                     ->columnSpanFull()
                     ->schema([
+                        Toggle::make('is_manual_counterparty')
+                            ->label('Parceiro Avulso?')
+                            ->live()
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function (Toggle $component, ?bool $state, ?object $record): void {
+                                if (! $record) {
+                                    return;
+                                }
+
+                                $component->state($record->supplier_id === null && filled($record->manual_counterparty_name));
+                            })
+                            ->afterStateUpdated(function (bool $state, Set $set): void {
+                                if ($state) {
+                                    $set('supplier_id', null);
+                                    return;
+                                }
+
+                                $set('manual_counterparty_name', null);
+                            })
+                            ->columnSpan(['md' => 1, 'lg' => 3]),
                         SelectPartner::make('supplier_id', 'all')
                             ->label('Fornecedor')
                             ->columnSpan(['md' => 2, 'lg' => 5])
-                            ->required(),
+                            ->required(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
+                            ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
+                        TextInput::make('manual_counterparty_name')
+                            ->label('Nome da Contraparte')
+                            ->columnSpan(['md' => 2, 'lg' => 5])
+                            ->maxLength(255)
+                            ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
+                            ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
                         Select::make('fiscal_document_id')
                             ->label('Documento Fiscal')
                             ->columnSpan(['md' => 2, 'lg' => 4])
