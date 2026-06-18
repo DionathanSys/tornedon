@@ -2,6 +2,7 @@
 
 namespace App\Services\ProductionOrder\Actions;
 
+use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Status;
 use App\Models\ProductionOrder;
 use App\Services\Audit\AuditRecorder;
@@ -21,19 +22,23 @@ class CreateProductionOrder
     public function execute(array $data): ?ProductionOrder
     {
         try {
+            $data['destination_type'] = filled($data['customer_id'] ?? null)
+                ? DestinationType::DIRECT_DELIVERY->value
+                : DestinationType::STOCK->value;
+
             $validatedData = ProductionOrderValidator::validateCreate($data);
 
             $productionOrder = ProductionOrder::create([
-                'company_id'        => $validatedData['company_id'],
-                'customer_id'        => $validatedData['customer_id'] ?? null,
-                'quote_id'          => $validatedData['quote_id'] ?? null,
-                'status'            => Status::QUEUED->value,
-                'priority'          => $validatedData['priority'],
-                'destination_type'  => $validatedData['destination_type'],
-                'observations'      => $validatedData['observations'] ?? null,
+                'company_id' => $validatedData['company_id'],
+                'customer_id' => $validatedData['customer_id'] ?? null,
+                'quote_id' => $validatedData['quote_id'] ?? null,
+                'status' => Status::QUEUED->value,
+                'priority' => $validatedData['priority'],
+                'destination_type' => $validatedData['destination_type'],
+                'observations' => $validatedData['observations'] ?? null,
                 'assigned_operator' => $validatedData['assigned_operator'] ?? null,
-                'assigned_machine'  => $validatedData['assigned_machine'] ?? null,
-                'created_by'        => $this->createdBy,
+                'assigned_machine' => $validatedData['assigned_machine'] ?? null,
+                'created_by' => $this->createdBy,
             ]);
             $audit = app(AuditRecorder::class);
 
@@ -53,19 +58,19 @@ class CreateProductionOrder
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
-            Log::error(__METHOD__ . '@' . __LINE__, [
+            Log::error(__METHOD__.'@'.__LINE__, [
                 'error_code' => $this->getErrorCode(),
-                'message'    => 'Falha de validação dos dados',
-                'errors'     => $e->errors(),
+                'message' => 'Falha de validação dos dados',
+                'errors' => $e->errors(),
             ]);
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro ao criar ordem de produção: ' . $e->getMessage());
+            $this->setError('Erro ao criar ordem de produção: '.$e->getMessage());
 
-            Log::error(__METHOD__ . '@' . __LINE__, [
+            Log::error(__METHOD__.'@'.__LINE__, [
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
+                'message' => $e->getMessage(),
             ]);
 
             return null;

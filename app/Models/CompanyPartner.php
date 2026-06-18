@@ -79,7 +79,7 @@ class CompanyPartner extends Model
     public function address(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->company()->first()->address
+            get: fn() => $this->company?->address
         );
     }
 

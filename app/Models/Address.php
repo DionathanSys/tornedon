@@ -12,6 +12,7 @@ class Address extends Model
 {
     protected $appends = [
         'inside_state',
+        'same_as_company_address',
     ];
 
     protected $fillable = [
@@ -51,12 +52,46 @@ class Address extends Model
         );
     }
 
+    protected function number(): Attribute
+    {
+        return Attribute::make(
+            set: fn(mixed $value): mixed => is_string($value) ? str_replace('-', '', $value) : $value,
+        );
+    }
+
     protected function insideState(): Attribute
     {
-        $companyAddress = $this->companyPartner->address;
-
         return Attribute::make(
-            get: fn() => Str::upper($this->state) === Str::upper($companyAddress['state'])
+            get: function (): ?bool {
+                $companyAddress = $this->companyPartner?->address;
+
+                if (! is_array($companyAddress) || blank($this->state) || blank($companyAddress['state'] ?? null)) {
+                    return null;
+                }
+
+                return Str::upper($this->state) === Str::upper($companyAddress['state']);
+            }
+        );
+    }
+
+    protected function sameAsCompanyAddress(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?bool {
+                $companyAddress = $this->companyPartner?->address;
+
+                if (! is_array($companyAddress)) {
+                    return null;
+                }
+
+                return $this->normalizeAddressValue($this->street) === $this->normalizeAddressValue($companyAddress['street'] ?? null)
+                    && $this->normalizeAddressValue($this->number) === $this->normalizeAddressValue($companyAddress['number'] ?? null)
+                    && $this->normalizeAddressValue($this->complement) === $this->normalizeAddressValue($companyAddress['complement'] ?? null)
+                    && $this->normalizeAddressValue($this->city) === $this->normalizeAddressValue($companyAddress['city'] ?? null)
+                    && $this->normalizeAddressValue($this->state) === $this->normalizeAddressValue($companyAddress['state'] ?? null)
+                    && $this->normalizeAddressValue($this->postal_code) === $this->normalizeAddressValue($companyAddress['postal_code'] ?? $companyAddress['zip_code'] ?? null)
+                    && $this->normalizeAddressValue($this->city_code) === $this->normalizeAddressValue($companyAddress['city_code'] ?? null);
+            }
         );
     }
 
@@ -97,6 +132,17 @@ class Address extends Model
         }
 
         return implode(', ', $parts);
+    }
+
+    private function normalizeAddressValue(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized === '' ? null : Str::upper($normalized);
     }
 
 }

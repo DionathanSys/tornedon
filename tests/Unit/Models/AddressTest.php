@@ -9,6 +9,21 @@ use Tests\TestCase;
 
 class AddressTest extends TestCase
 {
+    public function test_it_removes_hyphen_from_address_number_when_setting_the_value(): void
+    {
+        $address = new Address([
+            'number' => '91-E',
+        ]);
+
+        $this->assertSame('91E', $address->number);
+        $this->assertSame('91E', $address->getAttributes()['number']);
+
+        $address->number = '12-34-A';
+
+        $this->assertSame('1234A', $address->number);
+        $this->assertSame('1234A', $address->getAttributes()['number']);
+    }
+
     public function test_returns_true_when_address_matches_company_address(): void
     {
         $companyPartner = $this->makeCompanyPartner([

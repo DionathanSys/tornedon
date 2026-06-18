@@ -76,6 +76,7 @@ class CashMovementService
                     'cash_movement'
                 );
                 $counterpartyPartner = $this->resolveCounterpartyPartner($data['counterparty_partner_id'] ?? null);
+                $manualCounterpartyName = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
                 $counterpartyFinancialAccount = $this->resolveCounterpartyFinancialAccount(
                     companyId: $companyId,
                     financialAccountId: $account->id,
@@ -93,6 +94,7 @@ class CashMovementService
                     'origin_type' => 'manual',
                     'origin_id' => null,
                     'counterparty_partner_id' => $counterpartyPartner?->id,
+                    'manual_counterparty_name' => $manualCounterpartyName,
                     'counterparty_financial_account_id' => $counterpartyFinancialAccount?->id,
                     'transfer_group_id' => $data['transfer_group_id'] ?? null,
                     'notes' => $data['notes'] ?? null,
@@ -100,6 +102,7 @@ class CashMovementService
                         companyId: $companyId,
                         financialAccount: $account,
                         counterpartyPartner: $counterpartyPartner,
+                        manualCounterpartyName: $manualCounterpartyName,
                         counterpartyFinancialAccount: $counterpartyFinancialAccount,
                     ),
                     'created_by' => $userId,
@@ -163,6 +166,11 @@ class CashMovementService
                         ? $data['counterparty_partner_id']
                         : $movement->counterparty_partner_id
                 );
+                $manualCounterpartyName = $this->normalizeCounterpartyName(
+                    array_key_exists('manual_counterparty_name', $data)
+                        ? $data['manual_counterparty_name']
+                        : $movement->manual_counterparty_name
+                );
                 $counterpartyFinancialAccount = $this->resolveCounterpartyFinancialAccount(
                     companyId: $companyId,
                     financialAccountId: $account->id,
@@ -179,6 +187,7 @@ class CashMovementService
                     'amount' => $data['amount'] ?? $movement->amount,
                     'description' => $data['description'] ?? $movement->description,
                     'counterparty_partner_id' => $counterpartyPartner?->id,
+                    'manual_counterparty_name' => $manualCounterpartyName,
                     'counterparty_financial_account_id' => $counterpartyFinancialAccount?->id,
                     'transfer_group_id' => $data['transfer_group_id'] ?? $movement->transfer_group_id,
                     'notes' => $data['notes'] ?? $movement->notes,
@@ -186,6 +195,7 @@ class CashMovementService
                         companyId: $companyId,
                         financialAccount: $account,
                         counterpartyPartner: $counterpartyPartner,
+                        manualCounterpartyName: $manualCounterpartyName,
                         counterpartyFinancialAccount: $counterpartyFinancialAccount,
                     ),
                     'updated_by' => $userId,
@@ -365,6 +375,7 @@ class CashMovementService
                         companyId: $companyId,
                         financialAccount: $sourceAccount,
                         counterpartyPartner: null,
+                        manualCounterpartyName: null,
                         counterpartyFinancialAccount: $destinationAccount,
                     ),
                 ]);
@@ -378,6 +389,7 @@ class CashMovementService
                         companyId: $companyId,
                         financialAccount: $destinationAccount,
                         counterpartyPartner: null,
+                        manualCounterpartyName: null,
                         counterpartyFinancialAccount: $sourceAccount,
                     ),
                 ]);
@@ -584,6 +596,7 @@ class CashMovementService
                         companyId: (int) $payment->company_id,
                         financialAccount: $account,
                         counterpartyPartner: $counterpartyPartner,
+                        manualCounterpartyName: null,
                         counterpartyFinancialAccount: null,
                     ),
                     'reversed_at' => null,
@@ -840,6 +853,7 @@ class CashMovementService
                 companyId: $companyId,
                 financialAccount: $account,
                 counterpartyPartner: null,
+                manualCounterpartyName: null,
                 counterpartyFinancialAccount: $counterpartyAccount,
             ),
             'created_by' => $userId,
@@ -851,6 +865,7 @@ class CashMovementService
         int $companyId,
         FinancialAccount $financialAccount,
         ?Partner $counterpartyPartner,
+        ?string $manualCounterpartyName,
         ?FinancialAccount $counterpartyFinancialAccount,
     ): array {
         $company = Company::query()->find($companyId);
@@ -858,9 +873,16 @@ class CashMovementService
         return array_filter([
             'company_name' => $company?->name,
             'financial_account_name' => $financialAccount->display_name,
-            'counterparty_partner_name' => $counterpartyPartner?->name,
+            'counterparty_partner_name' => $counterpartyPartner?->name ?? $manualCounterpartyName,
             'counterparty_financial_account_name' => $counterpartyFinancialAccount?->display_name,
         ], static fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function normalizeCounterpartyName(?string $counterpartyName): ?string
+    {
+        $counterpartyName = trim((string) $counterpartyName);
+
+        return $counterpartyName === '' ? null : $counterpartyName;
     }
 
     private function resolvePaymentCounterpartyPartner(

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,7 @@ class AccountReceivable extends Model
 {
     protected $fillable = [
         'customer_id',
+        'manual_counterparty_name',
         'company_id',
         'invoice_id',
         'fiscal_document_id',
@@ -102,6 +104,15 @@ class AccountReceivable extends Model
             AccountReceivableInstallment::class,
             'account_receivable_id',
             'account_receivable_installment_id'
+        );
+    }
+
+    protected function counterpartyLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->customer?->name
+                ?? $this->manual_counterparty_name
+                ?? 'Nao informado',
         );
     }
 }

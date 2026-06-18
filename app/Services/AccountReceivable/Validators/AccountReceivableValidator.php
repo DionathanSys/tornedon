@@ -22,6 +22,8 @@ class AccountReceivableValidator
             'paid_amount' => 'nullable|numeric|min:0',
             'document_number' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:255',
+            'manual_counterparty_name' => 'nullable|string|max:255',
+            'is_manual_counterparty' => 'nullable|boolean',
             'paid' => 'nullable|boolean',
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
@@ -49,11 +51,9 @@ class AccountReceivableValidator
     private static function messages(): array
     {
         return [
-            'customer_id.required' => 'O cliente é obrigatório.',
             'customer_id.exists' => 'Cliente não encontrado.',
             'company_id.required' => 'A empresa é obrigatória.',
             'company_id.exists' => 'Empresa não encontrada.',
-            'invoice_id.required' => 'A fatura é obrigatória.',
             'invoice_id.exists' => 'Fatura não encontrada.',
             'due_date.required' => 'A data de vencimento é obrigatória.',
             'due_date.date' => 'A data de vencimento deve ser uma data válida.',
@@ -71,7 +71,7 @@ class AccountReceivableValidator
     public static function validateCreate(array $data): array
     {
         $rules = array_merge(self::commonRules(), [
-            'customer_id' => 'required|integer|exists:partners,id',
+            'customer_id' => 'nullable|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
             'invoice_id' => 'nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
@@ -88,7 +88,7 @@ class AccountReceivableValidator
     public static function validateUpdate(array $data, int $id): array
     {
         $rules = array_merge(self::commonRules(), [
-            'customer_id' => 'sometimes|required|integer|exists:partners,id',
+            'customer_id' => 'sometimes|nullable|integer|exists:partners,id',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'invoice_id' => 'sometimes|nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
@@ -104,6 +104,19 @@ class AccountReceivableValidator
         $validator = Validator::make($data, $rules, self::messages());
 
         $validator->after(function ($validator) use ($data): void {
+            $isManualCounterparty = (bool) ($data['is_manual_counterparty'] ?? false);
+            $customerId = $data['customer_id'] ?? null;
+            $manualCounterpartyName = trim((string) ($data['manual_counterparty_name'] ?? ''));
+            $isManualCounterparty = $isManualCounterparty || ($manualCounterpartyName !== '' && blank($customerId));
+
+            if ($isManualCounterparty) {
+                if ($manualCounterpartyName === '') {
+                    $validator->errors()->add('manual_counterparty_name', 'Informe o nome da contraparte avulsa.');
+                }
+            } elseif ((array_key_exists('customer_id', $data) || ! array_key_exists('invoice_id', $data)) && blank($customerId)) {
+                $validator->errors()->add('customer_id', 'O cliente é obrigatório.');
+            }
+
             $paymentMethod = $data['payment_method'] ?? null;
 
             if ($paymentMethod !== PaymentMethod::CREDIT_CARD->value) {

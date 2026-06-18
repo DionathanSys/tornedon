@@ -12,6 +12,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServ
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedDetailedServiceOrdersPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersAction;
@@ -270,6 +271,7 @@ class ServiceOrdersTable
                     BulkInvoiceServiceOrderAction::make(),
                     ExportSelectedServiceOrdersAction::make(),
                     ExportSelectedServiceOrdersPdfAction::make(),
+                    ExportSelectedDetailedServiceOrdersPdfAction::make(),
                 ]),
                 CreateServiceOrderAction::make()
                     ->label('Ordem Serviço')

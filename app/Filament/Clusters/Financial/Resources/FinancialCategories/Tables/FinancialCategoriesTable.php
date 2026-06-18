@@ -12,6 +12,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class FinancialCategoriesTable
 {
@@ -30,7 +31,11 @@ class FinancialCategoriesTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('parent.name')
                     ->label('Categoria Pai')
-                    ->searchable(['parent.name'])
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $searchTerm = "%{$search}%";
+
+                        return $query->whereHas('parent', fn (Builder $parentQuery): Builder => $parentQuery->where('name', 'like', $searchTerm));
+                    })
                     ->sortable(['parent.name'])
                     ->placeholder('N/A')
                     ->toggleable(isToggledHiddenByDefault: false),

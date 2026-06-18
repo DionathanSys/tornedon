@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\Pages;
 
+use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Status;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use App\Models\ProductionOrder;
@@ -24,7 +25,10 @@ class CreateProductionOrder extends CreateRecord
         $data['company_id'] = Filament::getTenant()->id;
         $data['created_by'] = Auth::id();
         $data['status'] = Status::QUEUED->value;
-        
+        $data['destination_type'] = filled($data['customer_id'] ?? null)
+            ? DestinationType::DIRECT_DELIVERY->value
+            : DestinationType::STOCK->value;
+
         return $data;
     }
 
@@ -35,7 +39,7 @@ class CreateProductionOrder extends CreateRecord
 
         if ($service->hasError() || $productionOrder === null) {
             Log::error('CreateProductionOrder: Falha ao criar ordem de produção', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $service->getMessage(),
                 'error_code' => $service->getErrorCode(),
                 'errors' => $service->getErrors(),

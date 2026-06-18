@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables;
 
 use App\Enum\AccountReceivable\Status;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -20,9 +21,14 @@ class AccountReceivablesTable
     {
         return $table
             ->columns([
-                TextColumn::make('customer.name')
+                TextColumn::make('counterparty_label')
                     ->label('Cliente')
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search): void {
+                            $query->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', "%{$search}%"))
+                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                        });
+                    })
                     ->sortable()
                     ->limit(40),
                 TextColumn::make('document_number')
@@ -93,6 +99,9 @@ class AccountReceivablesTable
                     ->label('Conta a Receber')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make(),
             ]);
     }
 }

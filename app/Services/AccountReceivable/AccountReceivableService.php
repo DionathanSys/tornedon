@@ -50,6 +50,10 @@ class AccountReceivableService
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
 
+                $data['customer_id'] = $this->normalizeCounterpartyId($data['customer_id'] ?? null);
+                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
+                unset($data['is_manual_counterparty']);
+
                 $data = $this->applyCardRulesForCreate($data);
 
                 $installments = $this->buildInstallmentsData($data, $installmentCount, $scheduleConfig);
@@ -151,6 +155,9 @@ class AccountReceivableService
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountReceivable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
+                $data['customer_id'] = $this->normalizeCounterpartyId($data['customer_id'] ?? null);
+                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
+                unset($data['is_manual_counterparty']);
                 $data = $this->applyCardRulesForUpdate($accountReceivable, $data);
 
                 $action = new UpdateAccountReceivableAction($updatedBy, $accountReceivable);
@@ -775,6 +782,22 @@ class AccountReceivableService
     private function formatSequenceNumber(int $sequence): string
     {
         return str_pad((string) $sequence, 2, '0', STR_PAD_LEFT);
+    }
+
+    private function normalizeCounterpartyId(int|string|null $counterpartyId): ?int
+    {
+        if ($counterpartyId === null || $counterpartyId === '') {
+            return null;
+        }
+
+        return (int) $counterpartyId;
+    }
+
+    private function normalizeCounterpartyName(?string $counterpartyName): ?string
+    {
+        $counterpartyName = trim((string) $counterpartyName);
+
+        return $counterpartyName === '' ? null : $counterpartyName;
     }
 
     private function recalculateReceivableInstallment(AccountReceivableInstallment $installment): void

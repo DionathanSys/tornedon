@@ -190,6 +190,26 @@ class CashMovementServiceTest extends TestCase
         $this->assertDatabaseCount('cash_movements', 0);
     }
 
+    public function test_manual_cash_movement_can_store_manual_counterparty_name(): void
+    {
+        $movement = $this->service->createManual([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->mainAccount->id,
+            'financial_category_id' => $this->category->id,
+            'direction' => CashMovementDirection::OUTFLOW->value,
+            'transaction_date' => '2026-04-09',
+            'amount' => 90,
+            'description' => 'Pagamento avulso identificado',
+            'manual_counterparty_name' => 'Favorecido Avulso',
+        ], $this->user->id);
+
+        $this->assertNotNull($movement, $this->service->getMessage());
+        $this->assertNull($movement->counterparty_partner_id);
+        $this->assertSame('Favorecido Avulso', $movement->manual_counterparty_name);
+        $this->assertSame('Favorecido Avulso', data_get($movement->participants_snapshot, 'counterparty_partner_name'));
+        $this->assertSame('Favorecido Avulso', $movement->party_to_label);
+    }
+
     public function test_update_manual_cash_movement_can_clear_counterparty(): void
     {
         $movement = CashMovement::create([

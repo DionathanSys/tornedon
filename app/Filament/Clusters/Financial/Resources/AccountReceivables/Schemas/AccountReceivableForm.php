@@ -24,6 +24,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -47,15 +49,43 @@ class AccountReceivableForm
                     ])
                     ->columnSpanFull()
                     ->schema([
+                        Toggle::make('is_manual_counterparty')
+                            ->label('Parceiro Avulso?')
+                            ->live()
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function (Toggle $component, ?bool $state, ?AccountReceivable $record): void {
+                                if (! $record) {
+                                    return;
+                                }
+
+                                $component->state($record->customer_id === null && filled($record->manual_counterparty_name));
+                            })
+                            ->afterStateUpdated(function (bool $state, Set $set): void {
+                                if ($state) {
+                                    $set('customer_id', null);
+                                    return;
+                                }
+
+                                $set('manual_counterparty_name', null);
+                            })
+                            ->columnSpan(['md' => 1, 'lg' => 3]),
                         SelectPartner::make('customer_id', 'all')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 5])
-                            ->required(),
+                            ->required(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
+                            ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
+                        TextInput::make('manual_counterparty_name')
+                            ->label('Nome da Contraparte')
+                            ->columnSpan(['md' => 2, 'lg' => 5])
+                            ->maxLength(255)
+                            ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
+                            ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
                         Select::make('invoice_id')
                             ->label('Fatura')
                             ->columnSpan(['md' => 1])
                             ->relationship('invoice', 'invoice_number')
                             ->disabled()
+                            ->nullable()
                             ->visibleOn('edit'),
                         TextInput::make('installment_count')
                             ->label('Qtd. Parcelas')
