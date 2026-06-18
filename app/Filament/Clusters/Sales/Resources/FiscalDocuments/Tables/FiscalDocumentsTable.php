@@ -25,6 +25,27 @@ class FiscalDocumentsTable
         return $table
             ->modifyQueryUsing(function (Builder $query): Builder {
                 return $query
+                    ->select([
+                        'id',
+                        'company_id',
+                        'customer_id',
+                        'operation_type',
+                        'document_type',
+                        'document_number',
+                        'document_series',
+                        'rps_series',
+                        'rps_number',
+                        'operation_nature',
+                        'issued_at',
+                        'nfe_status',
+                        'nfse_status',
+                        'status',
+                        'nfe_protocolo',
+                        'document_key',
+                        'confirmed_at',
+                        'pending',
+                        'created_at',
+                    ])
                     ->with(['customer']);
             })
             ->columns([
