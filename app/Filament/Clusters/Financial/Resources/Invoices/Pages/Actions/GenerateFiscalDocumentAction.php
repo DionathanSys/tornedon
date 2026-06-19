@@ -9,6 +9,7 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
+use App\Enum\FiscalDocument\Status;
 use App\Enum\FiscalDocument\VolumeSpecies;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
@@ -45,7 +46,7 @@ final class GenerateFiscalDocumentAction
             ->modalDescription('Um documento fiscal será criado a partir dos itens desta fatura. Preencha os dados obrigatórios abaixo.')
             ->modalSubmitActionLabel('Gerar')
             ->visible(fn (Invoice $record): bool => self::canGenerateDocument($record, $documentType))
-            ->disabled(fn (Invoice $record): bool => $record->fiscalDocuments()->where('document_type', $documentType->value)->exists())
+            ->disabled(fn (Invoice $record): bool => self::hasBlockingDocument($record, $documentType))
             ->schema(function (Invoice $record) use ($documentType, $isNfse): array {
                 $invoiceService = app(InvoiceService::class);
                 $serviceOptions = $isNfse ? $invoiceService->getNfseServiceOptions($record) : [];
@@ -236,7 +237,7 @@ final class GenerateFiscalDocumentAction
                 ];
             })
             ->action(function (Invoice $record, array $data, EditInvoice $livewire) use ($documentType, $isNfse): void {
-                if ($record->fiscalDocuments()->where('document_type', $documentType->value)->exists()) {
+                if (self::hasBlockingDocument($record, $documentType)) {
                     notify::warning('Já existe um documento deste tipo para esta fatura.');
                     return;
                 }
@@ -336,7 +337,7 @@ final class GenerateFiscalDocumentAction
             return false;
         }
 
-        if ($record->fiscalDocuments()->where('document_type', $documentType->value)->exists()) {
+        if (self::hasBlockingDocument($record, $documentType)) {
             return false;
         }
 
@@ -348,5 +349,13 @@ final class GenerateFiscalDocumentAction
             DocumentModel::NFSE => $record->serviceOrders
                 ->contains(fn ($serviceOrder): bool => $serviceOrder->items->isNotEmpty()),
         };
+    }
+
+    private static function hasBlockingDocument(Invoice $record, DocumentModel $documentType): bool
+    {
+        return $record->fiscalDocuments()
+            ->where('document_type', $documentType->value)
+            ->where('status', '!=', Status::CANCELLED->value)
+            ->exists();
     }
 }
