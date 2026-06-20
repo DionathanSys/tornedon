@@ -56,8 +56,8 @@ class CompanyPartnerForm
                 Section::make('Parceiro')
                     ->columns([
                         'sm' => 1,
-                        'md' => 4,
-                        'lg' => 8,
+                        'md' => 5,
+                        'lg' => 9,
                     ])
                     ->columnSpanFull()
                     ->description(
@@ -79,6 +79,7 @@ class CompanyPartnerForm
                         // Hidden::make('alert_partner_exists'),
                         Select::make('document_type')
                             ->label('Tipo de Doc.')
+
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->options([
                                 'cpf' => 'CPF',
@@ -104,23 +105,22 @@ class CompanyPartnerForm
                             ->validationMessages([
                                 'max' => 'O nome do parceiro deve ter no máximo 60 caracteres.',
                             ])
-                            ->columnSpan(['md' => 4, 'lg' => 8])
+                            ->columnSpan(['md' => 3, 'lg' => 5])
                             ->disabledOn('edit'),
                         TextInput::make('state_tax_id')
                             ->label('Inscricao Estadual')
-                            ->placeholder('Nao definido')
+                            ->placeholder('Não definido')
                             ->live()
                             ->columnStart(1)
-                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->columnSpan(['md' => 1, 'lg' => 2])
                             ->autocomplete(false)
                             ->numeric()
-                            ->suffixAction(FetchStateTaxIdAction::make())
                             ->disabledOn('edit'),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscricao Municipal')
-                            ->placeholder('Nao definido')
+                            ->placeholder('Não definido')
                             ->autocomplete(false)
-                            ->columnSpan(['md' => 2, 'lg' => 2])
+                            ->columnSpan(['md' => 1, 'lg' => 2])
                             ->numeric()
                             ->disabledOn('edit'),
                         Select::make('state_tax_indicator')
@@ -128,7 +128,9 @@ class CompanyPartnerForm
                             ->columnSpanFull()
                             ->options(Enum\Tax\StateTaxIndicator::toSelectArray())
                             ->native(false)
-                            ->disabledOn('edit'),
+                            ->default(Enum\Tax\StateTaxIndicator::NAO_CONTRIBUINTE->value)
+                            ->disabledOn('edit')
+                            ->columnSpan(['md' => 3, 'lg' => 5]),
                     ]),
 
                 Section::make('Configurações da Empresa')
@@ -174,14 +176,13 @@ class CompanyPartnerForm
                                     ->default(true)
                                     ->required(),
                             ]),
-                        Select::make('company_partner.type')
+                        CheckboxList::make('company_partner.type')
                             ->label('Tipo')
                             ->columnStart(1)
                             ->columnSpanFull()
                             ->options(Enum\Partner\Type::toSelectArray())
-                            ->native(false)
-                            ->multiple()
-                            ->default(Enum\Partner\Type::CUSTOMER->value)
+                            ->columns(4)
+                            ->default([Enum\Partner\Type::CUSTOMER->value])
                             ->required(),
 
                     ]),
