@@ -66,6 +66,8 @@ final class ManageRemittanceAssetAction
                                     $search,
                                     Filament::getTenant()->id,
                                     $record->fiscalDocument->customer_id,
+                                    20,
+                                    ['owner' => false],
                                 );
                             })
                             ->getOptionLabelUsing(fn ($value): ?string => filled($value)
