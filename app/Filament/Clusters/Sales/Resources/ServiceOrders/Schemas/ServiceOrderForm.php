@@ -166,7 +166,7 @@ class ServiceOrderForm
 
                                     ]),
                                 Section::make('Anotações')
-                                    ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
+                                    ->columns(['sm' => 1, 'md' => 3, 'lg' => 12])
                                     ->collapsible()
                                     ->secondary()
                                     ->collapsed()
@@ -174,22 +174,32 @@ class ServiceOrderForm
                                     ->schema([
                                         Textarea::make('customer_observations')
                                             ->label('Observações do Cliente')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3)
+                                            ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->rows(2)
+                                            ->autocomplete(false),
+                                        Textarea::make('general_observations')
+                                            ->label('Observações gerais')
+                                            ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->rows(2)
                                             ->autocomplete(false),
                                         Textarea::make('items_received')
                                             ->label('Itens Recebidos ')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3),
+                                            ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->rows(2),
                                         Textarea::make('technician_observations')
                                             ->label('Observações do Técnico')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(3)
+                                            ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->rows(2)
+                                            ->autocomplete(false),
+                                        Textarea::make('internal_observations')
+                                            ->label('Observações internas')
+                                            ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->rows(2)
                                             ->autocomplete(false),
                                         Textarea::make('solution')
                                             ->label('Solução Aplicada')
-                                            ->columnSpan(['md' => 4, 'lg' => 12])
-                                            ->rows(4)
+                                            ->columnSpan(['md' => 1, 'lg' => 4])
+                                            ->rows(2)
                                             ->autocomplete(false),
                                     ]),
                                 Section::make('Atendimento')

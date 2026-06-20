@@ -57,6 +57,8 @@ class ServiceOrder extends Model
         'equipment_id',
         'location',
         'customer_observations',
+        'general_observations',
+        'internal_observations',
         'technician_observations',
         'estimated_hours',
         'actual_hours',
