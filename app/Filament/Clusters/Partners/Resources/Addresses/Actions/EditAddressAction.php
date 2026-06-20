@@ -19,7 +19,6 @@ final class EditAddressAction
         return Action::make('edit_address')
             ->label('Editar')
             ->icon(Heroicon::PencilSquare)
-            ->modal()
             ->fillForm(function (array $arguments): array {
                 $addressId = $arguments['address_id'] ?? null;
 
