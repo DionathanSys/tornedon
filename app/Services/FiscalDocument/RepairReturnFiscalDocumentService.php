@@ -3,6 +3,8 @@
 namespace App\Services\FiscalDocument;
 
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
+use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
+use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
@@ -75,6 +77,25 @@ class RepairReturnFiscalDocumentService
                         422,
                         $itemService->getErrorCode()
                     );
+
+                    return null;
+                }
+
+                $returnDocument->load('items');
+
+                $resolver = app(ResolveFiscalContextAction::class);
+                $decisions = $resolver->execute($returnDocument, $returnDocument->items->all());
+
+                if ($resolver->hasError() || $decisions === []) {
+                    $this->setError($resolver->getMessage() ?? 'Não foi possível resolver as regras fiscais da nota de retorno.');
+
+                    return null;
+                }
+
+                $snapshotPersister = app(PersistFiscalSnapshotAction::class);
+
+                if (! $snapshotPersister->execute($returnDocument, $decisions)) {
+                    $this->setError($snapshotPersister->getMessage() ?? 'Não foi possível persistir o snapshot fiscal da nota de retorno.');
 
                     return null;
                 }

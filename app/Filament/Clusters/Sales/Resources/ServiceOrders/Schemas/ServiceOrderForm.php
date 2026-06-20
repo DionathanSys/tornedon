@@ -6,8 +6,10 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource as FinancialFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ProductsRelationManager;
@@ -405,60 +407,21 @@ class ServiceOrderForm
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                         TextEntry::make('remittance_origin_document')
                                             ->label('NF de remessa')
-                                            ->state(function (ServiceOrder $record): string {
-                                                $originDocument = $record->remittanceAssets()
-                                                    ->with('fiscalDocument')
-                                                    ->first()
-                                                    ?->fiscalDocument;
-
-                                                if ($originDocument === null) {
-                                                    return '-';
-                                                }
-
-                                                $number = $originDocument->document_number;
-                                                $series = $originDocument->document_series;
-
-                                                if (filled($number) && filled($series)) {
-                                                    return sprintf('%s / Série %s', $number, $series);
-                                                }
-
-                                                if (filled($number)) {
-                                                    return (string) $number;
-                                                }
-
-                                                if (filled($originDocument->document_key)) {
-                                                    return 'Chave ' . $originDocument->document_key;
-                                                }
-
-                                                return 'Documento #' . $originDocument->id;
-                                            })
+                                            ->state(fn (ServiceOrder $record): string => self::formatLinkedFiscalDocument(
+                                                $record->remittanceAssets()->with('fiscalDocument')->first()?->fiscalDocument
+                                            ))
+                                            ->url(fn (ServiceOrder $record): ?string => ($originDocument = $record->remittanceAssets()->with('fiscalDocument')->first()?->fiscalDocument)
+                                                ? FinancialFiscalDocumentResource::getUrl('edit', ['record' => $originDocument])
+                                                : null)
+                                            ->openUrlInNewTab()
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                         TextEntry::make('remittance_return_document')
                                             ->label('NF de retorno')
-                                            ->state(function (ServiceOrder $record): string {
-                                                $returnDocument = $record->linkedReturnFiscalDocument();
-
-                                                if ($returnDocument === null) {
-                                                    return '-';
-                                                }
-
-                                                $number = $returnDocument->document_number;
-                                                $series = $returnDocument->document_series;
-
-                                                if (filled($number) && filled($series)) {
-                                                    return sprintf('%s / Série %s', $number, $series);
-                                                }
-
-                                                if (filled($number)) {
-                                                    return (string) $number;
-                                                }
-
-                                                if (filled($returnDocument->document_key)) {
-                                                    return 'Chave ' . $returnDocument->document_key;
-                                                }
-
-                                                return 'Documento #' . $returnDocument->id;
-                                            })
+                                            ->state(fn (ServiceOrder $record): string => self::formatLinkedFiscalDocument($record->linkedReturnFiscalDocument()))
+                                            ->url(fn (ServiceOrder $record): ?string => ($returnDocument = $record->linkedReturnFiscalDocument())
+                                                ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument])
+                                                : null)
+                                            ->openUrlInNewTab()
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                     ]),
                                 Section::make('Ativos recebidos')
@@ -534,5 +497,29 @@ class ServiceOrderForm
             ->filter(fn (array $item) => filled($item['type']) || filled($item['observation']))
             ->values()
             ->all();
+    }
+
+    private static function formatLinkedFiscalDocument(mixed $document): string
+    {
+        if ($document === null) {
+            return '-';
+        }
+
+        $number = $document->document_number;
+        $series = $document->document_series;
+
+        if (filled($number) && filled($series)) {
+            return sprintf('%s / Série %s', $number, $series);
+        }
+
+        if (filled($number)) {
+            return (string) $number;
+        }
+
+        if (filled($document->document_key)) {
+            return 'Chave ' . $document->document_key;
+        }
+
+        return 'Documento #' . $document->id;
     }
 }

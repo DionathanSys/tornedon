@@ -48,6 +48,13 @@ class RepairReturnFiscalDocumentServiceTest extends TestCase
         $this->assertSame($originDocument->document_key, data_get($returnDocument->tax_data, 'reference.document_key'));
         $this->assertSame($serviceOrder->id, data_get($returnDocument->tax_data, 'reference.service_order_id'));
 
+        $returnItem = FiscalDocumentItem::query()
+            ->where('fiscal_document_id', $returnDocument->id)
+            ->first();
+
+        $this->assertNotNull($returnItem);
+        $this->assertSame('5916', $returnItem->cfop_code);
+
         $this->assertDatabaseHas('fiscal_document_item_origins', [
             'origin_fiscal_document_id' => $originDocument->id,
             'origin_fiscal_document_item_id' => $asset->fiscal_document_item_id,
