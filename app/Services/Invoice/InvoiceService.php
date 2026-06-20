@@ -3,19 +3,20 @@
 namespace App\Services\Invoice;
 
 use App\Enum\FiscalDocument\DocumentModel;
-use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\FiscalDocument\NfseDescriptionMode;
+use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Invoice\Status;
+use App\Models\CompanyPreference;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
 use App\Models\RequisitionItem;
 use App\Models\Service as ServiceModel;
 use App\Models\ServiceOrderItem;
-use App\Services\FiscalDocument\FiscalDocumentService;
-use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Services\Fiscal\Actions\PersistFiscalSnapshotAction;
 use App\Services\Fiscal\Actions\ResolveFiscalContextAction;
+use App\Services\FiscalDocument\FiscalDocumentService;
+use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Services\Invoice\Actions\CreateInvoiceAction;
 use App\Services\Invoice\Actions\DeleteInvoiceAction;
 use App\Services\Invoice\Actions\GenerateInvoiceAccountReceivablesAction;
@@ -24,6 +25,7 @@ use App\Services\Invoice\Actions\ReturnInvoiceToPendingAction;
 use App\Services\Invoice\Actions\UpdateInvoiceAction;
 use App\Services\Product\ProductUnitConversionService;
 use App\Support\Fiscal\FiscalItemAmounts;
+use App\Support\Fiscal\NfsePrintSettings;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -62,13 +64,13 @@ class InvoiceService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
                         'action_message' => $action->getMessage(),
-                        'errors'         => $action->getErrors(),
-                        'data'           => $data,
-                        'user_id'        => $createdBy,
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $createdBy,
                     ]);
 
                     return null;
@@ -77,9 +79,9 @@ class InvoiceService
                 $this->setSuccess('Fatura criada com sucesso');
 
                 Log::info('Fatura criada com sucesso via service', [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $invoice->id,
-                    'number'     => $invoice->invoice_number,
+                    'number' => $invoice->invoice_number,
                 ]);
 
                 return $invoice;
@@ -88,12 +90,12 @@ class InvoiceService
             $this->setError('Erro ao criar fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $createdBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $createdBy,
             ]);
 
             return null;
@@ -118,13 +120,13 @@ class InvoiceService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $invoice->id,
-                        'message'    => $this->getMessage(),
+                        'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
-                        'data'       => $data,
-                        'user_id'    => $updatedBy,
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $updatedBy,
                     ]);
 
                     return null;
@@ -133,7 +135,7 @@ class InvoiceService
                 $this->setSuccess('Fatura atualizada com sucesso');
 
                 Log::info('Fatura atualizada com sucesso via service', [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $invoice->id,
                 ]);
 
@@ -143,13 +145,13 @@ class InvoiceService
             $this->setError('Erro ao atualizar fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $updatedBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $updatedBy,
             ]);
 
             return null;
@@ -174,12 +176,12 @@ class InvoiceService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $invoice->id,
-                        'message'    => $action->getMessage(),
+                        'message' => $action->getMessage(),
                         'error_code' => $action->getErrorCode(),
-                        'errors'     => $action->getErrors(),
-                        'user_id'    => $deletedBy,
+                        'errors' => $action->getErrors(),
+                        'user_id' => $deletedBy,
                     ]);
 
                     return false;
@@ -188,9 +190,9 @@ class InvoiceService
                 $this->setSuccess('Fatura excluída com sucesso');
 
                 Log::info('Fatura excluída com sucesso via service', [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $invoice->id,
-                    'user_id'    => $deletedBy,
+                    'user_id' => $deletedBy,
                 ]);
 
                 return $result;
@@ -199,12 +201,12 @@ class InvoiceService
             $this->setError('Erro ao excluir fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'user_id'    => $deletedBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $deletedBy,
             ]);
 
             return false;
@@ -229,13 +231,13 @@ class InvoiceService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $invoice->id,
-                        'message'    => $action->getMessage(),
+                        'message' => $action->getMessage(),
                         'error_code' => $action->getErrorCode(),
-                        'errors'     => $action->getErrors(),
-                        'data'       => $data,
-                        'user_id'    => $confirmedBy,
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $confirmedBy,
                     ]);
 
                     return null;
@@ -243,12 +245,12 @@ class InvoiceService
 
                 $this->setSuccess('Fatura confirmada com sucesso', $result);
 
-                Log::info('Fatura confirmada com sucesso via service - Invoice ID: ' . $invoice->id, [
-                    'metodo'                    => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'                => $invoice->id,
-                    'documents_count'           => $result['documents_count'] ?? 0,
+                Log::info('Fatura confirmada com sucesso via service - Invoice ID: '.$invoice->id, [
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
+                    'documents_count' => $result['documents_count'] ?? 0,
                     'account_receivables_count' => $result['account_receivables_count'] ?? 0,
-                    'user_id'                   => $confirmedBy,
+                    'user_id' => $confirmedBy,
                 ]);
 
                 return $result;
@@ -257,13 +259,13 @@ class InvoiceService
             $this->setError('Erro ao confirmar fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $confirmedBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $confirmedBy,
             ]);
 
             return null;
@@ -298,7 +300,7 @@ class InvoiceService
             $this->setError('Erro ao retornar fatura para pendente');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -342,7 +344,7 @@ class InvoiceService
             $this->setError('Erro ao gerar contas a receber da fatura');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -374,6 +376,7 @@ class InvoiceService
                 $invoice->loadMissing([
                     'requisitions.items.product.tax',
                     'serviceOrders.items.service',
+                    'serviceOrders.equipment',
                     'company.fiscalProfile',
                     'customer',
                 ]);
@@ -382,20 +385,20 @@ class InvoiceService
                 // 1. Criar cabeçalho do Documento Fiscal via FiscalDocumentService
                 // ------------------------------------------------------------------
                 $documentData = array_merge($fiscalData, [
-                    'customer_id'   => $invoice->customer_id,
-                    'company_id'    => $invoice->company_id,
-                    'invoice_id'    => $invoice->id,
-                    'status'        => FiscalDocumentStatus::PENDING->value,
+                    'customer_id' => $invoice->customer_id,
+                    'company_id' => $invoice->company_id,
+                    'invoice_id' => $invoice->id,
+                    'status' => FiscalDocumentStatus::PENDING->value,
                     'document_type' => $documentType,
-                    'issued_at'     => $fiscalData['issued_at'] ?? now()->toDateString(),
-                    'movement_at'   => $fiscalData['movement_at'] ?? now()->toDateString(),
+                    'issued_at' => $fiscalData['issued_at'] ?? now()->toDateString(),
+                    'movement_at' => $fiscalData['movement_at'] ?? now()->toDateString(),
                 ]);
 
                 Log::debug('Iniciando criação do documento fiscal a partir da fatura via InvoiceService', [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $invoice->id,
-                    'data'       => $documentData,
-                    'user_id'    => $userId,
+                    'data' => $documentData,
+                    'user_id' => $userId,
                 ]);
 
                 $fiscalDocumentService = app(FiscalDocumentService::class);
@@ -409,20 +412,21 @@ class InvoiceService
                         $fiscalDocumentService->getErrorCode()
                     );
                     Log::error($this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $invoice->id,
-                        'message'    => $this->getMessage(),
+                        'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $fiscalDocumentService->getErrors(),
-                        'data'       => $documentData,
-                        'user_id'    => $userId,
+                        'errors' => $fiscalDocumentService->getErrors(),
+                        'data' => $documentData,
+                        'user_id' => $userId,
                     ]);
+
                     return null;
                 }
 
                 Log::info('Cabeçalho do documento fiscal criado via InvoiceService', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'         => $invoice->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);
 
@@ -431,8 +435,8 @@ class InvoiceService
                 // ------------------------------------------------------------------
 
                 Log::info('Iniciando criação dos itens do documento fiscal via InvoiceService', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'         => $invoice->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
                     'total_requisitions' => $invoice->requisitions->count(),
                 ]);
@@ -457,22 +461,22 @@ class InvoiceService
                     );
 
                     Log::warning('InvoiceService: Não foi possível montar itens para o documento fiscal', [
-                        'metodo'              => __METHOD__ . '@' . __LINE__,
-                        'invoice_id'          => $invoice->id,
-                        'fiscal_document_id'  => $fiscalDocument->id,
-                        'document_type'       => $documentType,
-                        'service_orders'      => $invoice->serviceOrders->count(),
-                        'requisitions'        => $invoice->requisitions->count(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'invoice_id' => $invoice->id,
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'document_type' => $documentType,
+                        'service_orders' => $invoice->serviceOrders->count(),
+                        'requisitions' => $invoice->requisitions->count(),
                     ]);
 
                     return null;
                 }
 
                 Log::info('Itens montados para criação do documento fiscal via InvoiceService', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'         => $invoice->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'total_items'        => count($items),
+                    'total_items' => count($items),
                 ]);
 
                 $fiscalDocumentItemService = app(FiscalDocumentItemService::class);
@@ -486,14 +490,15 @@ class InvoiceService
                         $fiscalDocumentItemService->getErrorCode()
                     );
                     Log::error($this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'invoice_id' => $invoice->id,
-                        'message'    => $this->getMessage(),
+                        'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $fiscalDocumentItemService->getErrors(),
-                        'data'       => $items,
-                        'user_id'    => $userId,
+                        'errors' => $fiscalDocumentItemService->getErrors(),
+                        'data' => $items,
+                        'user_id' => $userId,
                     ]);
+
                     return null;
                 }
 
@@ -503,11 +508,11 @@ class InvoiceService
                 $step3StartedAt = microtime(true);
 
                 Log::info('InvoiceService: Iniciando etapa 3 (resolver contexto fiscal e persistir snapshot)', [
-                    'metodo'               => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'           => $invoice->id,
-                    'fiscal_document_id'   => $fiscalDocument->id,
-                    'total_items_payload'  => count($items),
-                    'total_items_criados'  => is_countable($createdItems) ? count($createdItems) : null,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'total_items_payload' => count($items),
+                    'total_items_criados' => is_countable($createdItems) ? count($createdItems) : null,
                 ]);
 
                 $resolveAction = app(ResolveFiscalContextAction::class);
@@ -515,65 +520,65 @@ class InvoiceService
 
                 if ($resolveAction->hasError()) {
                     Log::error('InvoiceService: Falha ao resolver contexto fiscal', [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
-                        'invoice_id'         => $invoice->id,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'invoice_id' => $invoice->id,
                         'fiscal_document_id' => $fiscalDocument->id,
-                        'error_code'         => $resolveAction->getErrorCode(),
-                        'message'            => $resolveAction->getMessage(),
-                        'errors'             => $resolveAction->getErrors(),
-                        'decisions_count'    => count($decisions),
+                        'error_code' => $resolveAction->getErrorCode(),
+                        'message' => $resolveAction->getMessage(),
+                        'errors' => $resolveAction->getErrors(),
+                        'decisions_count' => count($decisions),
                     ]);
                 } else {
                     Log::info('InvoiceService: Contexto fiscal resolvido', [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
-                        'invoice_id'         => $invoice->id,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'invoice_id' => $invoice->id,
                         'fiscal_document_id' => $fiscalDocument->id,
-                        'decisions_count'    => count($decisions),
+                        'decisions_count' => count($decisions),
                     ]);
                 }
 
                 $snapshotPersisted = false;
 
-                if (!empty($decisions)) {
-                    $snapshotAction = new PersistFiscalSnapshotAction();
+                if (! empty($decisions)) {
+                    $snapshotAction = new PersistFiscalSnapshotAction;
                     $snapshotPersisted = $snapshotAction->execute($fiscalDocument, $decisions);
 
-                    if (!$snapshotPersisted || $snapshotAction->hasError()) {
+                    if (! $snapshotPersisted || $snapshotAction->hasError()) {
                         Log::error('InvoiceService: Falha ao persistir snapshot fiscal nos itens', [
-                            'metodo'             => __METHOD__ . '@' . __LINE__,
-                            'invoice_id'         => $invoice->id,
+                            'metodo' => __METHOD__.'@'.__LINE__,
+                            'invoice_id' => $invoice->id,
                             'fiscal_document_id' => $fiscalDocument->id,
-                            'error_code'         => $snapshotAction->getErrorCode(),
-                            'message'            => $snapshotAction->getMessage(),
-                            'errors'             => $snapshotAction->getErrors(),
-                            'decisions_count'    => count($decisions),
+                            'error_code' => $snapshotAction->getErrorCode(),
+                            'message' => $snapshotAction->getMessage(),
+                            'errors' => $snapshotAction->getErrors(),
+                            'decisions_count' => count($decisions),
                         ]);
                     } else {
                         Log::info('InvoiceService: Snapshot fiscal persistido com sucesso', [
-                            'metodo'             => __METHOD__ . '@' . __LINE__,
-                            'invoice_id'         => $invoice->id,
+                            'metodo' => __METHOD__.'@'.__LINE__,
+                            'invoice_id' => $invoice->id,
                             'fiscal_document_id' => $fiscalDocument->id,
-                            'decisions_count'    => count($decisions),
+                            'decisions_count' => count($decisions),
                         ]);
                     }
                 } else {
                     Log::warning('InvoiceService: Nenhuma decisão fiscal retornada; etapa de snapshot foi ignorada', [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
-                        'invoice_id'         => $invoice->id,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'invoice_id' => $invoice->id,
                         'fiscal_document_id' => $fiscalDocument->id,
-                        'total_items_payload'=> count($items),
+                        'total_items_payload' => count($items),
                     ]);
                 }
 
                 $step3ElapsedMs = (int) round((microtime(true) - $step3StartedAt) * 1000);
 
                 Log::info('InvoiceService: Etapa 3 finalizada', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'         => $invoice->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'decisions_count'    => count($decisions),
+                    'decisions_count' => count($decisions),
                     'snapshot_persisted' => $snapshotPersisted,
-                    'elapsed_ms'         => $step3ElapsedMs,
+                    'elapsed_ms' => $step3ElapsedMs,
                 ]);
 
                 // ------------------------------------------------------------------
@@ -584,13 +589,13 @@ class InvoiceService
                 $this->setSuccess('Documento fiscal criado com sucesso a partir da fatura.');
 
                 Log::info('Documento fiscal criado a partir da fatura via InvoiceService', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'invoice_id'         => $invoice->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'total_items'        => count($items),
-                    'decisions_count'    => count($decisions),
+                    'total_items' => count($items),
+                    'decisions_count' => count($decisions),
                     'snapshot_persisted' => $snapshotPersisted,
-                    'step3_elapsed_ms'   => $step3ElapsedMs,
+                    'step3_elapsed_ms' => $step3ElapsedMs,
                 ]);
 
                 return $fiscalDocument;
@@ -602,10 +607,10 @@ class InvoiceService
             $this->setError($message, $e->errors(), 422);
 
             Log::warning($message, [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
-                'errors'     => $e->errors(),
-                'user_id'    => $userId,
+                'errors' => $e->errors(),
+                'user_id' => $userId,
             ]);
 
             return null;
@@ -613,12 +618,12 @@ class InvoiceService
             $this->setError('Erro ao gerar documento fiscal a partir da fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'invoice_id' => $invoice->id,
-                'user_id'    => $userId,
+                'user_id' => $userId,
             ]);
 
             return null;
@@ -636,19 +641,19 @@ class InvoiceService
 
         $item = [
             'fiscal_document_id' => $fiscalDocumentId,
-            'product_id'         => $reqItem->product_id,
-            'product_code'       => $product?->product_code,
-            'product_origin'     => $productTax?->product_origin?->value,
-            'barcode'            => $product?->barcode,
-            'description'        => $product?->name,
-            'ncm_code'           => $productTax?->ncm_code,
-            'cest_code'          => $productTax?->cest_code,
-            'unit_of_measure'    => $unitOfMeasure,
-            'quantity'           => $quantity,
-            'unit_price'         => $unitPrice,
-            'total_price'        => $totalPrice,
-            'discount_amount'    => round((float) ($reqItem->discount_amount ?? 0), 2),
-            'included_in_total'  => true,
+            'product_id' => $reqItem->product_id,
+            'product_code' => $product?->product_code,
+            'product_origin' => $productTax?->product_origin?->value,
+            'barcode' => $product?->barcode,
+            'description' => $product?->name,
+            'ncm_code' => $productTax?->ncm_code,
+            'cest_code' => $productTax?->cest_code,
+            'unit_of_measure' => $unitOfMeasure,
+            'quantity' => $quantity,
+            'unit_price' => $unitPrice,
+            'total_price' => $totalPrice,
+            'discount_amount' => round((float) ($reqItem->discount_amount ?? 0), 2),
+            'included_in_total' => true,
         ];
 
         if ($product && $unitOfMeasure) {
@@ -670,20 +675,21 @@ class InvoiceService
     private function syncInvoiceStatusAfterFiscalDocumentGeneration(Invoice $invoice, int $userId): void
     {
         $invoice->update([
-            'status'       => Status::CONFIRMED->value,
-            'pending'      => false,
-            'confirmed'    => true,
+            'status' => Status::CONFIRMED->value,
+            'pending' => false,
+            'confirmed' => true,
             'confirmed_at' => now(),
             'confirmed_by' => $userId,
-            'updated_by'   => $userId,
+            'updated_by' => $userId,
         ]);
 
         Log::info('InvoiceService: Status da fatura atualizado após geração do documento fiscal', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'invoice_id' => $invoice->id,
-            'status'     => Status::CONFIRMED->value,
+            'status' => Status::CONFIRMED->value,
         ]);
     }
+
     /**
      * Gera o PDF da fatura em base64.
      */
@@ -693,30 +699,31 @@ class InvoiceService
 
         try {
             $action = app(PrintInvoicePdfAction::class);
-            $pdf    = $action->execute($invoice);
+            $pdf = $action->execute($invoice);
 
             if ($pdf === null || $action->hasError()) {
                 $this->setError($action->getMessage());
+
                 return null;
             }
 
             $this->setSuccess('PDF da fatura gerado.');
 
             Log::info('InvoiceService: PDF gerado com sucesso', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
-                'user_id'    => $userId,
+                'user_id' => $userId,
             ]);
 
             return $pdf;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da fatura: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da fatura: '.$e->getMessage());
 
             Log::error('InvoiceService::pdf', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
-                'user_id'    => $userId,
-                'exception'  => $e->getMessage(),
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -741,13 +748,13 @@ class InvoiceService
 
             return ['pdf' => $pdf];
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da fatura: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da fatura: '.$e->getMessage());
 
             Log::error('InvoiceService::preview', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
-                'user_id'    => $userId,
-                'exception'  => $e->getMessage(),
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -824,7 +831,25 @@ class InvoiceService
             ->unique()
             ->values();
 
+        $configuredDescription = $this->buildConfiguredNfseText(
+            $invoice,
+            $sourceItems,
+            $selectedService,
+            'description'
+        );
+
+        $configuredAdditionalInformation = $this->buildConfiguredNfseText(
+            $invoice,
+            $sourceItems,
+            $selectedService,
+            'additional_information'
+        );
+
         $description = trim((string) ($fiscalData['nfse_item_description'] ?? ''));
+
+        if ($description === '') {
+            $description = $configuredDescription;
+        }
 
         if ($description === '') {
             $description = trim((string) ($selectedService?->name ?? ''));
@@ -842,10 +867,14 @@ class InvoiceService
         $additionalInformation = trim((string) ($fiscalData['nfse_additional_information'] ?? ''));
 
         if ($additionalInformation === '') {
+            $additionalInformation = $configuredAdditionalInformation;
+        }
+
+        if ($additionalInformation === '') {
             $additionalInformation = $this->buildNfseOrderNumbersDescription($orderNumbers);
         }
 
-        $additionalInformation = mb_substr($additionalInformation, 0, 500);
+        $additionalInformation = mb_substr($additionalInformation, 0, 2000);
 
         return [
             'fiscal_document_id' => $fiscalDocument->id,
@@ -879,6 +908,17 @@ class InvoiceService
                         return [
                             'id' => (int) $serviceOrder->id,
                             'number' => (string) ($serviceOrder->number ?? $serviceOrder->id),
+                            'location' => $serviceOrder->location,
+                            'customer_observations' => $serviceOrder->customer_observations,
+                            'technician_observations' => $serviceOrder->technician_observations,
+                            'items_received' => $serviceOrder->items_received,
+                            'additional_info' => $serviceOrder->additional_info,
+                            'equipment' => [
+                                'id' => $serviceOrder->equipment?->id,
+                                'name' => $serviceOrder->equipment?->name,
+                                'identifier' => $serviceOrder->equipment?->identifier,
+                                'display' => $this->buildEquipmentDisplay($serviceOrder->equipment),
+                            ],
                             'items' => $rows->map(function (array $row): array {
                                 $item = $row['item'];
                                 $service = $row['service'];
@@ -907,7 +947,7 @@ class InvoiceService
 
     private function getNfseSourceItems(Invoice $invoice): Collection
     {
-        $invoice->loadMissing('serviceOrders.items.service');
+        $invoice->loadMissing('serviceOrders.items.service', 'serviceOrders.equipment');
 
         return $invoice->serviceOrders
             ->flatMap(function ($serviceOrder) {
@@ -924,8 +964,7 @@ class InvoiceService
         Invoice $invoice,
         ?int $selectedServiceId = null,
         bool $requireChoiceWhenMultiple = true
-    ): ?ServiceModel
-    {
+    ): ?ServiceModel {
         $services = $this->getNfseSourceItems($invoice)
             ->map(fn (array $row): mixed => $row['service'])
             ->filter(fn ($service): bool => $service instanceof ServiceModel)
@@ -987,10 +1026,20 @@ class InvoiceService
         Invoice $invoice,
         string $mode = NfseDescriptionMode::AUTO->value,
         ?int $selectedServiceId = null
-    ): string
-    {
+    ): string {
         $sourceItems = $this->getNfseSourceItems($invoice);
         $selectedService = $this->resolveNfseServiceChoice($invoice, $selectedServiceId, requireChoiceWhenMultiple: false);
+
+        $configuredDescription = $this->buildConfiguredNfseText(
+            $invoice,
+            $sourceItems,
+            $selectedService,
+            'description'
+        );
+
+        if ($configuredDescription !== '') {
+            return mb_substr($configuredDescription, 0, 2000);
+        }
 
         if ($selectedService instanceof ServiceModel) {
             return mb_substr(trim((string) $selectedService->name), 0, 2000);
@@ -1001,12 +1050,167 @@ class InvoiceService
 
     public function buildNfseItemAdditionalInformation(Invoice $invoice): string
     {
-        $orderNumbers = $this->getNfseSourceItems($invoice)
+        $sourceItems = $this->getNfseSourceItems($invoice);
+
+        $configuredAdditionalInformation = $this->buildConfiguredNfseText(
+            $invoice,
+            $sourceItems,
+            null,
+            'additional_information'
+        );
+
+        if ($configuredAdditionalInformation !== '') {
+            return mb_substr($configuredAdditionalInformation, 0, 2000);
+        }
+
+        $orderNumbers = $sourceItems
             ->map(fn (array $row): string => (string) ($row['service_order']->number ?? $row['service_order']->id))
             ->unique()
             ->values();
 
         return $this->buildNfseOrderNumbersDescription($orderNumbers);
+    }
+
+    private function buildConfiguredNfseText(
+        Invoice $invoice,
+        Collection $sourceItems,
+        ?ServiceModel $selectedService,
+        string $field
+    ): string {
+        if ($sourceItems->isEmpty()) {
+            return '';
+        }
+
+        $tokens = data_get(
+            CompanyPreference::get(NfsePrintSettings::PREFERENCE_KEY, $invoice->company_id, []),
+            'documento_fiscal_nfse.'.$field,
+            []
+        );
+
+        if (! is_array($tokens) || $tokens === []) {
+            return '';
+        }
+
+        $separator = $field === 'description' ? ' | ' : "\n";
+
+        return mb_substr(
+            collect($tokens)
+                ->map(fn (mixed $token): string => $this->resolveConfiguredNfseFieldValue(
+                    (string) $token,
+                    $invoice,
+                    $sourceItems,
+                    $selectedService,
+                    $field
+                ))
+                ->filter(fn (string $value): bool => $value !== '')
+                ->implode($separator),
+            0,
+            2000
+        );
+    }
+
+    private function resolveConfiguredNfseFieldValue(
+        string $token,
+        Invoice $invoice,
+        Collection $sourceItems,
+        ?ServiceModel $selectedService,
+        string $field
+    ): string {
+        return match ($token) {
+            'service_name' => $this->resolveConfiguredServiceName($sourceItems, $selectedService),
+            'service_order_number' => $this->resolveConfiguredServiceOrderNumbers($sourceItems),
+            'equipment_display' => $this->resolveConfiguredEquipmentDisplays($sourceItems, $field),
+            'customer_observations' => $this->resolveConfiguredCustomerObservations($sourceItems, $field),
+            'invoice_number' => trim((string) ($invoice->invoice_number ?? '')),
+            default => '',
+        };
+    }
+
+    private function buildEquipmentDisplay(mixed $equipment): string
+    {
+        if ($equipment === null) {
+            return '';
+        }
+
+        $identifier = trim((string) ($equipment->identifier ?? ''));
+        $name = trim((string) ($equipment->name ?? ''));
+
+        if ($identifier !== '' && $name !== '') {
+            return $identifier.' - '.$name;
+        }
+
+        return $identifier !== '' ? $identifier : $name;
+    }
+
+    private function resolveConfiguredServiceName(Collection $sourceItems, ?ServiceModel $selectedService): string
+    {
+        if ($selectedService instanceof ServiceModel) {
+            return trim((string) $selectedService->name);
+        }
+
+        return $sourceItems
+            ->map(function (array $row): string {
+                $service = $row['service'];
+                $item = $row['item'];
+
+                return trim((string) ($service?->name ?? $item->observations ?? ''));
+            })
+            ->filter(fn (string $name): bool => $name !== '')
+            ->unique()
+            ->values()
+            ->implode(', ');
+    }
+
+    private function resolveConfiguredServiceOrderNumbers(Collection $sourceItems): string
+    {
+        return $sourceItems
+            ->map(fn (array $row): string => trim((string) ($row['service_order']->number ?? $row['service_order']->id)))
+            ->filter(fn (string $number): bool => $number !== '')
+            ->unique()
+            ->values()
+            ->implode(', ');
+    }
+
+    private function resolveConfiguredEquipmentDisplays(Collection $sourceItems, string $field): string
+    {
+        return $sourceItems
+            ->map(fn (array $row): string => $this->buildEquipmentDisplay($row['service_order']->equipment))
+            ->filter(fn (string $display): bool => $display !== '')
+            ->unique()
+            ->values()
+            ->implode($field === 'description' ? ', ' : "\n");
+    }
+
+    private function resolveConfiguredCustomerObservations(Collection $sourceItems, string $field): string
+    {
+        return $sourceItems
+            ->map(fn (array $row): string => trim((string) ($row['service_order']->customer_observations ?? '')))
+            ->filter(fn (string $observation): bool => $observation !== '')
+            ->unique()
+            ->values()
+            ->implode($field === 'description' ? ' | ' : "\n");
+    }
+
+    private function stringifyServiceOrderAdditionalInfo(mixed $additionalInfo): string
+    {
+        if (! is_array($additionalInfo)) {
+            return '';
+        }
+
+        return collect($additionalInfo)
+            ->filter(fn ($item): bool => is_array($item))
+            ->map(function (array $item): string {
+                $label = trim((string) ($item['label'] ?? $item['campo'] ?? ''));
+                $value = trim((string) ($item['value'] ?? $item['texto'] ?? ''));
+
+                if ($label !== '' && $value !== '') {
+                    return $label.': '.$value;
+                }
+
+                return $value !== '' ? $value : $label;
+            })
+            ->filter(fn (string $line): bool => $line !== '')
+            ->implode("\n");
     }
 
     private function buildNfseServiceNamesDescription(Collection $sourceItems): string
@@ -1026,11 +1230,10 @@ class InvoiceService
 
     private function buildNfseOrderNumbersDescription(Collection $orderNumbers): string
     {
-        $description = 'OS referenciadas: ' . $orderNumbers
-            ->map(fn (string $number): string => '#' . $number)
+        $description = 'OS referenciadas: '.$orderNumbers
+            ->map(fn (string $number): string => '#'.$number)
             ->implode(', ');
 
         return mb_substr(trim($description), 0, 255);
     }
-
 }

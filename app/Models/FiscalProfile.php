@@ -55,24 +55,24 @@ class FiscalProfile extends Model
     ];
 
     protected $casts = [
-        'tax_regime'                                => TaxRegime::class,
-        'is_active'                                 => 'boolean',
-        'icms_aliquota_interna'                     => 'float',
-        'icms_reducao_base'                         => 'float',
-        'icms_st_aliquota'                          => 'float',
-        'icms_st_mva'                               => 'float',
-        'icms_st_reducao_base'                      => 'float',
-        'pis_aliquota_default'                      => 'float',
-        'cofins_aliquota_default'                   => 'float',
-        'ipi_aliquota_default'                      => 'float',
-        'iss_rate_default'                          => 'float',
-        'iss_withheld_default'                      => 'boolean',
-        'allow_unconditional_discount_nfse'         => 'boolean',
-        'icms_aliquotas_interestaduais'             => 'array',
-        'cfop_rules'                                => 'array',
-        'additional_purchase_information_default'   => 'array',
-        'taxpayer_observations_default'             => 'array',
-        'tax_observations_default'                  => 'array',
+        'tax_regime' => TaxRegime::class,
+        'is_active' => 'boolean',
+        'icms_aliquota_interna' => 'float',
+        'icms_reducao_base' => 'float',
+        'icms_st_aliquota' => 'float',
+        'icms_st_mva' => 'float',
+        'icms_st_reducao_base' => 'float',
+        'pis_aliquota_default' => 'float',
+        'cofins_aliquota_default' => 'float',
+        'ipi_aliquota_default' => 'float',
+        'iss_rate_default' => 'float',
+        'iss_withheld_default' => 'boolean',
+        'allow_unconditional_discount_nfse' => 'boolean',
+        'icms_aliquotas_interestaduais' => 'array',
+        'cfop_rules' => 'array',
+        'additional_purchase_information_default' => 'array',
+        'taxpayer_observations_default' => 'array',
+        'tax_observations_default' => 'array',
     ];
 
     /* ==============================
@@ -120,14 +120,14 @@ class FiscalProfile extends Model
 
     public function resolveCfopForOperationNature(string $operationNature, ?string $ncmCode, bool $isCustomManufacturing = false): ?string
     {
-        Log::debug("Resolvendo CFOP por natureza de operação '{$operationNature}', código NCM '{$ncmCode}' e fabricação customizada: " . ($isCustomManufacturing ? 'sim' : 'não') . " usando perfil fiscal ID {$this->id}");
+        Log::debug("Resolvendo CFOP por natureza de operação '{$operationNature}', código NCM '{$ncmCode}' e fabricação customizada: ".($isCustomManufacturing ? 'sim' : 'não')." usando perfil fiscal ID {$this->id}");
 
         $rules = $this->cfop_rules ?? [];
         $rule = $rules[$operationNature] ?? null;
 
         Log::debug('Regra de CFOP encontrada para natureza de operação?', [
             'rules' => $rules,
-            'rule' => $rule
+            'rule' => $rule,
         ]);
 
         if (! is_array($rule)) {
@@ -139,6 +139,7 @@ class FiscalProfile extends Model
             $customCfop = $rule['custom_manufacturing_cfop'];
             if (is_string($customCfop) && $customCfop !== '') {
                 Log::debug("CFOP para fabricação customizada encontrado: '{$customCfop}'");
+
                 return $customCfop;
             }
         }
@@ -148,7 +149,7 @@ class FiscalProfile extends Model
 
         Log::debug('Exceções de CFOP encontradas para natureza de operação?', [
             'exceptions' => $exceptions,
-            'ncmCode' => $ncmCode
+            'ncmCode' => $ncmCode,
         ]);
 
         // 2. Verificar exceções por NCM
@@ -161,6 +162,7 @@ class FiscalProfile extends Model
 
                 if (str_starts_with($ncmCode, $prefix)) {
                     Log::debug("Exceção de CFOP encontrada: prefixo '{$prefix}' para NCM '{$ncmCode}' => CFOP '{$cfop}'");
+
                     return $cfop;
                 }
             }
@@ -168,7 +170,7 @@ class FiscalProfile extends Model
 
         // 3. Usar CFOP padrão
         Log::debug('CFOP resolvido para natureza de operação?', [
-            'cfop' => $defaultCfop
+            'cfop' => $defaultCfop,
         ]);
 
         return $defaultCfop;

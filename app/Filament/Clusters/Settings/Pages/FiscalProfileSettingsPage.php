@@ -30,7 +30,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 
     // protected static ?string $cluster = SettingsCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
+    protected static string|UnitEnum|null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Perfil Fiscal';
 

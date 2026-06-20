@@ -37,7 +37,7 @@ class SchemaFormItemsNfse
                 ->required()
                 ->maxLength(2000)
                 ->rows(3)
-                ->dehydrateStateUsing(fn (string|null $state): ?string => $state ? Str::upper($state) : null)
+                ->dehydrateStateUsing(fn (?string $state): ?string => $state ? Str::upper($state) : null)
                 ->columnSpanFull(),
 
             Group::make()
@@ -82,8 +82,8 @@ class SchemaFormItemsNfse
             Textarea::make('additional_information')
                 ->label('Informações Adicionais do Item')
                 ->rows(2)
-                ->maxLength(500)
-                ->dehydrateStateUsing(fn (string|null $state): ?string => $state ? Str::upper($state) : null)
+                ->maxLength(2000)
+                ->dehydrateStateUsing(fn (?string $state): ?string => $state ? Str::upper($state) : null)
                 ->columnSpanFull(),
         ];
     }
@@ -108,13 +108,13 @@ class SchemaFormItemsNfse
      */
     private static function applyDto(Set $set, FiscalDocumentItemSourceDTO $dto): void
     {
-        $set('description',        $dto->name);
-        $set('unit_price',         $dto->price ? number_format($dto->price, 2, ',', '.') : null);
-        $set('total_price',        $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('description', $dto->name);
+        $set('unit_price', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('total_price', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
         $set('municipal_tax_code', $dto->serviceCode);
-        $set('nbs_code',           $dto->nbsCode);
-        $set('cnae_code',          $dto->cnaeCode);
-        $set('iss_rate',           $dto->issRate);
-        $set('iss_exigibility',    $dto->issExigibility);
+        $set('nbs_code', $dto->nbsCode);
+        $set('cnae_code', $dto->cnaeCode);
+        $set('iss_rate', $dto->issRate);
+        $set('iss_exigibility', $dto->issExigibility);
     }
 }
