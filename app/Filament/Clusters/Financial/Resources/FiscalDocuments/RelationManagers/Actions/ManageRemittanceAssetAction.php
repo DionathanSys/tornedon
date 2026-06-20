@@ -69,7 +69,7 @@ final class ManageRemittanceAssetAction
                                 );
                             })
                             ->getOptionLabelUsing(fn ($value): ?string => filled($value)
-                                ? app(EquipmentService::class)->getLabelForSelect((int) $value)
+                                ? app(EquipmentService::class)->getLabelForSelect((int) $value, ['owner' => false])
                                 : null),
                         TextInput::make('equipment_name')
                             ->label('Descrição do equipamento')
