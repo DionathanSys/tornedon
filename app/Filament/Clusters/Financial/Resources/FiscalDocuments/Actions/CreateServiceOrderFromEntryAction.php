@@ -36,7 +36,7 @@ final class CreateServiceOrderFromEntryAction
             ->color('primary')
             ->modalWidth(Width::ExtraLarge)
             ->modalHeading('Criar ordem de serviço a partir da nota')
-            ->visible(fn (FiscalDocument $record): bool => $record->operation_type === OperationType::ENTRADA)
+            // ->visible(fn (FiscalDocument $record): bool => $record->operation_type === OperationType::ENTRADA)
             ->schema([
                 Tabs::make('createServiceOrderFromEntryTabs')
                     ->columnSpanFull()
