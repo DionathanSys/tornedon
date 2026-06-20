@@ -17,6 +17,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
@@ -34,70 +36,96 @@ final class CreateServiceOrderFromEntryAction
             ->color('primary')
             ->modalWidth(Width::ExtraLarge)
             ->modalHeading('Criar ordem de serviço a partir da nota')
-            ->visible(fn (FiscalDocument $record): bool => $record->operation_type === OperationType::ENTRADA
-                && $record->remittanceAssets()->whereNotNull('equipment_id')->exists())
+            ->visible(fn (FiscalDocument $record): bool => $record->operation_type === OperationType::ENTRADA)
             ->schema([
-                Section::make('Itens disponíveis')
-                    ->schema([
-                        CheckboxList::make('remittance_asset_ids')
-                            ->label('Equipamentos disponíveis para a OS')
-                            ->options(fn (FiscalDocument $record): array => self::buildAssetOptions($record))
-                            ->required()
-                            ->columns(1)
-                            ->live()
-                            ->afterStateUpdated(function (?array $state, Set $set, Get $get): void {
-                                $selected = collect($state ?? [])->filter()->values();
-                                $currentPrimary = $get('primary_remittance_asset_id');
+                Tabs::make('createServiceOrderFromEntryTabs')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Tab::make('Dados iniciais')
+                            ->schema([
+                                Section::make('Itens disponíveis')
+                                    ->schema([
+                                        CheckboxList::make('remittance_asset_ids')
+                                            ->label('Equipamentos disponíveis para a OS')
+                                            ->options(fn (FiscalDocument $record): array => self::buildAssetOptions($record))
+                                            ->helperText(fn (FiscalDocument $record): ?string => self::hasAvailableAssets($record)
+                                                ? null
+                                                : 'Vincule ao menos um equipamento aos itens da nota para criar a ordem de serviço.')
+                                            ->required()
+                                            ->columns(1)
+                                            ->live()
+                                            ->afterStateUpdated(function (?array $state, Set $set, Get $get): void {
+                                                $selected = collect($state ?? [])->filter()->values();
+                                                $currentPrimary = $get('primary_remittance_asset_id');
 
-                                if ($selected->count() === 1) {
-                                    $set('primary_remittance_asset_id', (int) $selected->first());
+                                                if ($selected->count() === 1) {
+                                                    $set('primary_remittance_asset_id', (int) $selected->first());
 
-                                    return;
-                                }
+                                                    return;
+                                                }
 
-                                if ($currentPrimary !== null && ! $selected->contains((string) $currentPrimary) && ! $selected->contains((int) $currentPrimary)) {
-                                    $set('primary_remittance_asset_id', null);
-                                }
-                            }),
-                        Select::make('primary_remittance_asset_id')
-                            ->label('Equipamento principal da OS')
-                            ->options(fn (Get $get, FiscalDocument $record): array => self::buildPrimaryAssetOptions($record, $get('remittance_asset_ids') ?? []))
-                            ->native(false)
-                            ->required(),
+                                                if ($currentPrimary !== null && ! $selected->contains((string) $currentPrimary) && ! $selected->contains((int) $currentPrimary)) {
+                                                    $set('primary_remittance_asset_id', null);
+                                                }
+                                            }),
+                                        Select::make('primary_remittance_asset_id')
+                                            ->label('Equipamento principal da OS')
+                                            ->options(fn (Get $get, FiscalDocument $record): array => self::buildPrimaryAssetOptions($record, $get('remittance_asset_ids') ?? []))
+                                            ->native(false)
+                                            ->required(),
+                                    ]),
+                                Section::make('Dados iniciais da OS')
+                                    ->schema([
+                                        DatePicker::make('order_date')
+                                            ->label('Data da ordem')
+                                            ->default(now())
+                                            ->required(),
+                                        Select::make('priority')
+                                            ->label('Prioridade')
+                                            ->options(Priority::toSelectArray())
+                                            ->default(Priority::NORMAL->value)
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('type')
+                                            ->label('Tipo')
+                                            ->options(Type::toSelectArray())
+                                            ->default(Type::MAINTENANCE->value)
+                                            ->native(false)
+                                            ->required(),
+                                        Toggle::make('open_service_order')
+                                            ->label('Abrir OS após criar')
+                                            ->default(true)
+                                            ->inline(false),
+                                    ])
+                                    ->columns(2),
+                            ]),
+                        Tab::make('Observações')
+                            ->schema([
+                                Section::make('Anotações')
+                                    ->schema([
+                                        Textarea::make('customer_observations')
+                                            ->label('Observações Cliente')
+                                            ->rows(3)
+                                            ->columnSpanFull(),
+                                        Textarea::make('general_observations')
+                                            ->label('Observações gerais')
+                                            ->rows(3)
+                                            ->columnSpanFull(),
+                                        Textarea::make('items_received')
+                                            ->label('Itens recebidos')
+                                            ->rows(4)
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
                     ]),
-                Section::make('Dados iniciais da OS')
-                    ->schema([
-                        DatePicker::make('order_date')
-                            ->label('Data da ordem')
-                            ->default(now())
-                            ->required(),
-                        Select::make('priority')
-                            ->label('Prioridade')
-                            ->options(Priority::toSelectArray())
-                            ->default(Priority::NORMAL->value)
-                            ->native(false)
-                            ->required(),
-                        Select::make('type')
-                            ->label('Tipo')
-                            ->options(Type::toSelectArray())
-                            ->default(Type::MAINTENANCE->value)
-                            ->native(false)
-                            ->required(),
-                        Toggle::make('open_service_order')
-                            ->label('Abrir OS após criar')
-                            ->default(true),
-                        Textarea::make('customer_observations')
-                            ->label('Observações iniciais')
-                            ->rows(3)
-                            ->columnSpanFull(),
-                        Textarea::make('items_received')
-                            ->label('Itens recebidos')
-                            ->rows(4)
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(2),
             ])
             ->action(function (FiscalDocument $record, array $data): void {
+                if (! self::hasAvailableAssets($record)) {
+                    notify::error(message: 'Vincule ao menos um equipamento aos itens da nota antes de criar a ordem de serviço.');
+
+                    return;
+                }
+
                 $service = app(FiscalDocumentServiceOrderService::class);
                 $serviceOrder = $service->createFromEntryDocument($record, $data, Auth::id());
 
@@ -120,6 +148,13 @@ final class CreateServiceOrderFromEntryAction
                     redirect(ServiceOrderResource::getUrl('edit', ['record' => $serviceOrder]));
                 }
             });
+    }
+
+    private static function hasAvailableAssets(FiscalDocument $record): bool
+    {
+        return $record->remittanceAssets()
+            ->whereNotNull('equipment_id')
+            ->exists();
     }
 
     private static function buildAssetOptions(FiscalDocument $record): array

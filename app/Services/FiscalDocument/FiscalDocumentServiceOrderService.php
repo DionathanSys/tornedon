@@ -77,6 +77,7 @@ class FiscalDocumentServiceOrderService
                     'priority' => $data['priority'] ?? Priority::NORMAL->value,
                     'type' => $data['type'] ?? Type::MAINTENANCE->value,
                     'customer_observations' => $data['customer_observations'] ?? null,
+                    'general_observations' => $data['general_observations'] ?? null,
                     'items_received' => $data['items_received'] ?? $this->buildItemsReceivedSummary($assets),
                 ], $userId);
 
