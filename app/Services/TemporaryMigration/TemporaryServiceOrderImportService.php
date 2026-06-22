@@ -498,7 +498,7 @@ class TemporaryServiceOrderImportService
                 ->first();
 
             if ($serviceLink?->service_id) {
-                $service = Service::query()->find($serviceLink->service_id);
+                $service = Service::withTrashed()->find($serviceLink->service_id);
 
                 if ($service) {
                     return $service;
@@ -506,7 +506,7 @@ class TemporaryServiceOrderImportService
             }
         }
 
-        return Service::query()
+        return Service::withTrashed()
             ->where('company_id', $companyId)
             ->where('service_code', $this->formatServiceCode($legacyServiceId))
             ->first();

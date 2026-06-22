@@ -12,6 +12,7 @@ use App\Models\ServiceOrderItem;
 use App\Models\TemporaryEquipmentMigrationLink;
 use App\Models\TemporaryPartnerMigrationLink;
 use App\Models\TemporaryServiceMigrationLink;
+use App\Models\TemporaryServiceOrderMigrationLink;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -240,5 +241,138 @@ class ImportTemporaryMigrationServicesAndOrdersCommandTest extends TestCase
         $item = ServiceOrderItem::query()->where('service_order_id', $order->id)->where('service_id', $service->id)->first();
         $this->assertNotNull($item);
         $this->assertSame(1.0, (float) $item->quantity);
+    }
+
+    public function test_it_imports_service_order_item_when_linked_service_is_soft_deleted(): void
+    {
+        config()->set('services.migration_api.base_url', 'https://legacy.example');
+
+        $user = User::factory()->create();
+        $company = Company::query()->create([
+            'name' => 'Empresa Teste',
+            'document_number' => '12345678000144',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'email' => 'empresa@example.com',
+            'phone' => '11999999999',
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $partner = Partner::query()->create([
+            'name' => 'Cliente Importado',
+            'document_type' => 'cnpj',
+            'document_number' => '12.345.678/0001-99',
+            'state_tax_indicator' => '1',
+            'created_by' => $user->id,
+        ]);
+
+        $companyPartner = CompanyPartner::query()->create([
+            'company_id' => $company->id,
+            'partner_id' => $partner->id,
+            'type' => ['customer'],
+            'invoice_threshold' => 0,
+            'is_active' => true,
+        ]);
+
+        $equipment = Equipment::query()->create([
+            'name' => 'IMPRESSORA TERMICA',
+            'owner_id' => $partner->id,
+            'company_id' => $company->id,
+            'type' => 'general_electronic',
+            'mark' => 'EPSON',
+            'model' => 'TMT20',
+            'serial_number' => 'SN-ABC-001',
+            'created_by' => $user->id,
+        ]);
+
+        $service = Service::query()->create([
+            'company_id' => $company->id,
+            'service_code' => '0007',
+            'name' => 'SERVICO SOFT DELETED',
+            'price' => 1800,
+            'min_sale_price' => 0,
+            'cost' => 0,
+            'category' => 'migrado',
+            'is_active' => true,
+            'requires_approval' => false,
+            'accept_customer_discount' => true,
+            'created_by' => $user->id,
+        ]);
+        $service->delete();
+
+        TemporaryPartnerMigrationLink::query()->create([
+            'company_id' => $company->id,
+            'legacy_id' => 14,
+            'partner_id' => $partner->id,
+            'company_partner_id' => $companyPartner->id,
+            'last_imported_at' => now(),
+        ]);
+
+        TemporaryEquipmentMigrationLink::query()->create([
+            'company_id' => $company->id,
+            'legacy_id' => 64,
+            'legacy_partner_id' => 14,
+            'equipment_id' => $equipment->id,
+            'owner_partner_id' => $partner->id,
+            'last_imported_at' => now(),
+        ]);
+
+        TemporaryServiceMigrationLink::query()->create([
+            'company_id' => $company->id,
+            'legacy_id' => 7,
+            'service_id' => $service->id,
+            'last_imported_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://legacy.example/api/migracao/ordens-servico*' => Http::response([
+                'data' => [[
+                    'legacy_id' => 755,
+                    'legacy_parceiro_id' => 14,
+                    'legacy_equipamento_id' => 64,
+                    'legacy_fatura_id' => null,
+                    'placa' => null,
+                    'data_ordem' => '2025-10-14',
+                    'data_encerrado' => null,
+                    'valor_total' => 1700,
+                    'desconto' => 100,
+                    'prioridade' => 'BAIXA',
+                    'tipo_manutencao' => 'CORRETIVA',
+                    'status' => 'ENCERRADA',
+                    'status_processo' => 'ENCERRADA',
+                    'relato_cliente' => 'REVISAR',
+                    'itens_recebidos' => '',
+                    'path_pdf' => null,
+                    'img_equipamento' => [],
+                    'nota_entrada_id' => null,
+                    'nota_retorno_id' => null,
+                    'observacao_geral' => 'ALARME 23100',
+                    'observacao_interna' => '',
+                    'created_at' => '2024-12-13T16:58:04.000000Z',
+                    'updated_at' => '2025-10-15T21:22:27.000000Z',
+                    'itens' => [[
+                        'legacy_id' => 68,
+                        'legacy_ordem_servico_id' => 755,
+                        'legacy_servico_id' => 7,
+                        'quantidade' => 1,
+                        'valor_unitario' => 1800,
+                        'valor_total' => 1800,
+                        'desconto' => 0,
+                        'observacao' => null,
+                        'garantia' => null,
+                    ]],
+                ]],
+                'meta' => ['resource' => 'ordens_servico', 'count' => 1, 'limit' => 200, 'has_more' => false, 'next_after_id' => null, 'filters' => ['after_id' => 0]],
+            ]),
+        ]);
+
+        $this->artisan('migration:service-orders:import', ['company_id' => $company->id, 'user_id' => $user->id])->assertExitCode(0);
+
+        $order = ServiceOrder::query()->where('company_id', $company->id)->where('number', '755')->first();
+        $this->assertNotNull($order);
+        $this->assertDatabaseHas('service_order_items', [
+            'service_order_id' => $order->id,
+            'service_id' => $service->id,
+        ]);
     }
 }
