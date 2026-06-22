@@ -257,40 +257,7 @@ class TemporaryServiceImportService
             return $byCode;
         }
 
-        $byName = Service::withTrashed()
-            ->where('company_id', $companyId)
-            ->where('name', $normalized['name'])
-            ->get();
-
-        if ($byName->count() > 1) {
-            Log::warning(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Duplicidade detectada ao reconciliar servico por nome durante migracao temporaria',
-                'company_id' => $companyId,
-                'legacy_id' => $normalized['legacy_id'],
-                'name' => $normalized['name'],
-                'matching_service_ids' => $byName->pluck('id')->all(),
-            ]);
-
-            throw new \RuntimeException(sprintf(
-                'Existem multiplos servicos locais com nome %s na empresa %s.',
-                $normalized['name'],
-                $companyId,
-            ));
-        }
-
-        $matchedByName = $byName->first();
-
-        if ($matchedByName !== null) {
-            Log::warning(__METHOD__ . '@' . __LINE__, [
-                'message' => 'Servico reconciliado por nome sem mapeamento legado previo',
-                'company_id' => $companyId,
-                'legacy_id' => $normalized['legacy_id'],
-                'name' => $normalized['name'],
-                'service_id' => $matchedByName->id,
-            ]);
-        }
-
-        return $matchedByName;
+        return null;
     }
 
     private function mappingTableExists(): bool

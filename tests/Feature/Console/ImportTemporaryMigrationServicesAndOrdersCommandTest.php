@@ -21,6 +21,55 @@ class ImportTemporaryMigrationServicesAndOrdersCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_it_creates_distinct_services_for_distinct_legacy_ids_even_with_same_name(): void
+    {
+        config()->set('services.migration_api.base_url', 'https://legacy.example');
+
+        $user = User::factory()->create();
+        $company = Company::query()->create([
+            'name' => 'Empresa Teste',
+            'document_number' => '12345678000144',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'email' => 'empresa@example.com',
+            'phone' => '11999999999',
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        Http::fake([
+            'https://legacy.example/api/migracao/servicos*' => Http::response([
+                'data' => [
+                    [
+                        'legacy_id' => 8,
+                        'nome' => 'SERVICO REPETIDO',
+                        'descricao' => 'VERSAO 1',
+                        'valor_unitario' => 150.0,
+                        'ativo' => true,
+                        'updated_at' => '2026-06-12T09:11:05.000000Z',
+                        'deleted_at' => null,
+                    ],
+                    [
+                        'legacy_id' => 11,
+                        'nome' => 'SERVICO REPETIDO',
+                        'descricao' => 'VERSAO 2',
+                        'valor_unitario' => 100.0,
+                        'ativo' => true,
+                        'updated_at' => '2026-06-12T09:11:05.000000Z',
+                        'deleted_at' => null,
+                    ],
+                ],
+                'meta' => ['resource' => 'servicos', 'count' => 2, 'limit' => 500, 'has_more' => false, 'next_after_id' => null, 'filters' => ['after_id' => 0]],
+            ]),
+        ]);
+
+        $this->artisan('migration:services:import', ['company_id' => $company->id, 'user_id' => $user->id])->assertExitCode(0);
+
+        $this->assertDatabaseCount('services', 2);
+        $this->assertDatabaseHas('services', ['company_id' => $company->id, 'service_code' => '0008', 'name' => 'SERVICO REPETIDO']);
+        $this->assertDatabaseHas('services', ['company_id' => $company->id, 'service_code' => '0011', 'name' => 'SERVICO REPETIDO']);
+        $this->assertSame(2, TemporaryServiceMigrationLink::query()->where('company_id', $company->id)->count());
+    }
+
     public function test_it_imports_services_and_service_orders_with_items(): void
     {
         config()->set('services.migration_api.base_url', 'https://legacy.example');
