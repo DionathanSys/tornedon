@@ -508,7 +508,7 @@ class TemporaryServiceOrderImportService
 
         return Service::query()
             ->where('company_id', $companyId)
-            ->where('service_code', (string) $legacyServiceId)
+            ->where('service_code', $this->formatServiceCode($legacyServiceId))
             ->first();
     }
 
@@ -527,5 +527,10 @@ class TemporaryServiceOrderImportService
         }
 
         return $this->serviceMappingTableExists;
+    }
+
+    private function formatServiceCode(int $legacyServiceId): string
+    {
+        return str_pad((string) $legacyServiceId, 4, '0', STR_PAD_LEFT);
     }
 }

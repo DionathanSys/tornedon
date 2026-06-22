@@ -159,7 +159,7 @@ class TemporaryServiceImportService
 
             $service->forceFill([
                 'company_id' => $companyId,
-                'service_code' => (string) $normalized['legacy_id'],
+                'service_code' => $this->formatServiceCode($normalized['legacy_id']),
                 'name' => $normalized['name'],
                 'description' => $normalized['description'],
                 'price' => $normalized['price'],
@@ -242,7 +242,7 @@ class TemporaryServiceImportService
 
         $byCode = Service::withTrashed()
             ->where('company_id', $companyId)
-            ->where('service_code', (string) $normalized['legacy_id'])
+            ->where('service_code', $this->formatServiceCode($normalized['legacy_id']))
             ->first();
 
         if ($byCode !== null) {
@@ -342,5 +342,10 @@ class TemporaryServiceImportService
         }
 
         return Carbon::parse($value);
+    }
+
+    private function formatServiceCode(int $legacyId): string
+    {
+        return str_pad((string) $legacyId, 4, '0', STR_PAD_LEFT);
     }
 }

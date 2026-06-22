@@ -173,11 +173,12 @@ class ImportTemporaryMigrationServicesAndOrdersCommandTest extends TestCase
         $this->assertDatabaseCount('service_orders', 1);
         $this->assertDatabaseCount('service_order_items', 2);
 
-        $service = Service::query()->where('service_code', '8')->first();
+        $service = Service::query()->where('service_code', '0008')->first();
         $order = ServiceOrder::query()->where('number', '320')->first();
 
         $this->assertNotNull($service);
         $this->assertNotNull($order);
+        $this->assertSame('0008', $service->service_code);
         $this->assertSame(0.0, (float) $service->min_sale_price);
         $this->assertNull($service->tax_classification);
         $this->assertSame(['migration' => ['legacy_id' => 8]], $service->additional_info);
