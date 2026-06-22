@@ -401,6 +401,7 @@ class TemporaryPartnerImportService
 
             $mapped[] = match ($part) {
                 'CLIENTE' => PartnerType::CUSTOMER->value,
+                'COLABORADOR' => PartnerType::EMPLOYEE->value,
                 'FORNECEDOR' => PartnerType::SUPPLIER->value,
                 'VENDEDOR' => PartnerType::SALESPERSON->value,
                 'FUNCIONARIO' => PartnerType::EMPLOYEE->value,
