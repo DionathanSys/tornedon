@@ -3,6 +3,7 @@
 namespace App\Services\Requisition;
 
 use App\Enum\Requisition\Status;
+use App\Enum\ServiceOrder\State;
 use App\Models\Invoice;
 use App\Models\Requisition;
 use App\Models\RequisitionSequence;
@@ -332,7 +333,7 @@ class RequisitionService
             return null;
         }
 
-        if ($serviceOrder->status !== ServiceOrderState::OPEN) {
+        if ($serviceOrder->status !== State::OPEN) {
             $this->setError('Só é possível desvincular quando a ordem de serviço vinculada estiver aberta.');
 
             return null;
