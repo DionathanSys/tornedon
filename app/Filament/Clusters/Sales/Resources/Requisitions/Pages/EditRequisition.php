@@ -21,7 +21,6 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
@@ -45,13 +44,13 @@ class EditRequisition extends EditRecord
                     ->hiddenLabel()
                     ->tooltip('Voltar')
                     ->icon(Heroicon::ArrowUturnLeft)
-                    ->color(Color::Gray)
+                    ->color('gray')
                     ->url(RequisitionResource::getUrl()),
                 Action::make('openServiceOrder')
                     ->hiddenLabel()
                     ->tooltip('Abrir ordem de serviço em nova guia')
                     ->icon(Heroicon::ArrowTopRightOnSquare)
-                    ->color(Color::Info)
+                    ->color('info')
                     ->visible(fn ($record): bool => filled($record->service_order_id))
                     ->url(fn ($record): string => ServiceOrderResource::getUrl('edit', ['record' => $record->service_order_id]))
                     ->openUrlInNewTab(),
@@ -99,7 +98,7 @@ class EditRequisition extends EditRecord
             ActionGroup::make([
                 CloseRequisitionAction::make()
                     ->size(Size::Small)
-                    ->color(Color::Green)
+                    ->color('green')
                     ->hidden(fn ($record): bool => (bool) $record->service_order_id)
                     ->tooltip('Fechar requisição'),
                 PreviewRequisitionPdfAction::make()
