@@ -162,7 +162,7 @@ class TemporaryServiceOrderImportService
             }
 
             $order->forceFill([
-                'number' => sprintf('LEG-OS-%d', $normalized['legacy_id']),
+                'number' => (string) $normalized['legacy_id'],
                 'customer_id' => (int) $partnerLink->partner_id,
                 'company_id' => $companyId,
                 'order_date' => $normalized['order_date'],
@@ -293,10 +293,28 @@ class TemporaryServiceOrderImportService
             }
         }
 
-        return ServiceOrder::query()
+        $existingOrder = ServiceOrder::query()
             ->where('company_id', $companyId)
-            ->where('number', sprintf('LEG-OS-%d', $normalized['legacy_id']))
+            ->where('number', (string) $normalized['legacy_id'])
             ->first();
+
+        if ($existingOrder !== null) {
+            Log::warning(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Duplicidade detectada para numero de ordem de servico durante importacao temporaria',
+                'company_id' => $companyId,
+                'legacy_id' => $normalized['legacy_id'],
+                'existing_service_order_id' => $existingOrder->id,
+                'existing_number' => $existingOrder->number,
+            ]);
+
+            throw new \RuntimeException(sprintf(
+                'Ja existe uma ordem de servico local com number %s na empresa %s.',
+                $normalized['legacy_id'],
+                $companyId,
+            ));
+        }
+
+        return null;
     }
 
     private function resolveOrderItem(ServiceOrder $order, ?TemporaryServiceOrderItemMigrationLink $link, int $serviceId): ?ServiceOrderItem
@@ -308,7 +326,26 @@ class TemporaryServiceOrderImportService
             }
         }
 
-        return $order->items()->where('service_id', $serviceId)->first();
+        $matchingItems = $order->items()
+            ->where('service_id', $serviceId)
+            ->get();
+
+        if ($matchingItems->count() > 1) {
+            Log::warning(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Duplicidade detectada para itens de ordem sem mapeamento legado durante importacao temporaria',
+                'service_order_id' => $order->id,
+                'service_id' => $serviceId,
+                'matching_item_ids' => $matchingItems->pluck('id')->all(),
+            ]);
+
+            throw new \RuntimeException(sprintf(
+                'Existem multiplos itens locais para service_order_id %s e service_id %s sem mapeamento legado.',
+                $order->id,
+                $serviceId,
+            ));
+        }
+
+        return $matchingItems->first();
     }
 
     private function normalizeOrder(array $record): array

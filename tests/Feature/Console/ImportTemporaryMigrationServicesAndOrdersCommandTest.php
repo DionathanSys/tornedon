@@ -174,7 +174,7 @@ class ImportTemporaryMigrationServicesAndOrdersCommandTest extends TestCase
         $this->assertDatabaseCount('service_order_items', 2);
 
         $service = Service::query()->where('service_code', 'LEG-8')->first();
-        $order = ServiceOrder::query()->where('number', 'LEG-OS-320')->first();
+        $order = ServiceOrder::query()->where('number', '320')->first();
 
         $this->assertNotNull($service);
         $this->assertNotNull($order);
