@@ -136,6 +136,19 @@ class TemporaryAddressImportService
                 $updated = true;
             }
 
+            $before = $updated ? $address->only([
+                'company_partner_id',
+                'street',
+                'number',
+                'complement',
+                'neighborhood',
+                'city',
+                'state',
+                'country',
+                'postal_code',
+                'city_code',
+            ]) : null;
+
             $address->forceFill([
                 'company_partner_id' => (int) $partnerLink->company_partner_id,
                 'street' => $normalized['street'],
@@ -162,6 +175,33 @@ class TemporaryAddressImportService
                     'last_imported_at' => now(),
                 ]
             );
+
+            $after = $updated ? $address->only([
+                'company_partner_id',
+                'street',
+                'number',
+                'complement',
+                'neighborhood',
+                'city',
+                'state',
+                'country',
+                'postal_code',
+                'city_code',
+            ]) : null;
+
+            if ($updated && $before !== $after) {
+                Log::info(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Endereco atualizado durante importacao temporaria',
+                    'company_id' => $companyId,
+                    'user_id' => $userId,
+                    'legacy_id' => $normalized['legacy_id'],
+                    'legacy_partner_id' => $normalized['legacy_partner_id'],
+                    'address_id' => $address->id,
+                    'company_partner_id' => $address->company_partner_id,
+                    'before' => $before,
+                    'after' => $after,
+                ]);
+            }
 
             return ['legacy_id' => $normalized['legacy_id'], 'address_created' => $created, 'address_updated' => $updated];
         });

@@ -135,6 +135,15 @@ class TemporaryContactImportService
                 $updated = true;
             }
 
+            $before = $updated ? $contact->only([
+                'company_partner_id',
+                'email',
+                'phone',
+                'mobile',
+                'notify',
+                'is_active',
+            ]) : null;
+
             $contact->forceFill([
                 'company_partner_id' => (int) $partnerLink->company_partner_id,
                 'email' => $normalized['email'],
@@ -158,6 +167,30 @@ class TemporaryContactImportService
                     'last_imported_at' => now(),
                 ]
             );
+
+            $after = $updated ? $contact->only([
+                'company_partner_id',
+                'email',
+                'phone',
+                'mobile',
+                'notify',
+                'is_active',
+            ]) : null;
+
+            if ($updated && $before !== $after) {
+                Log::info(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Contato atualizado durante importacao temporaria',
+                    'company_id' => $companyId,
+                    'user_id' => $userId,
+                    'legacy_id' => $normalized['legacy_id'],
+                    'legacy_partner_id' => $normalized['legacy_partner_id'],
+                    'contact_id' => $contact->id,
+                    'company_partner_id' => $contact->company_partner_id,
+                    'legacy_contact_name' => $normalized['legacy_contact_name'],
+                    'before' => $before,
+                    'after' => $after,
+                ]);
+            }
 
             return ['legacy_id' => $normalized['legacy_id'], 'contact_created' => $created, 'contact_updated' => $updated];
         });
