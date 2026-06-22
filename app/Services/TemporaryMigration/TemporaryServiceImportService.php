@@ -11,10 +11,13 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class TemporaryServiceImportService
 {
     use HandlesServiceResponse;
+
+    private ?bool $mappingTableExists = null;
 
     public function __construct(private ServiceMigrationApiClient $client) {}
 
@@ -123,10 +126,12 @@ class TemporaryServiceImportService
         $normalized = $this->normalizeRecord($record);
 
         return DB::transaction(function () use ($companyId, $userId, $record, $normalized): array {
-            $link = TemporaryServiceMigrationLink::query()
-                ->where('company_id', $companyId)
-                ->where('legacy_id', $normalized['legacy_id'])
-                ->first();
+            $link = $this->mappingTableExists()
+                ? TemporaryServiceMigrationLink::query()
+                    ->where('company_id', $companyId)
+                    ->where('legacy_id', $normalized['legacy_id'])
+                    ->first()
+                : null;
 
             $service = $this->resolveService($companyId, $link, $normalized);
             $created = false;
@@ -154,7 +159,7 @@ class TemporaryServiceImportService
 
             $service->forceFill([
                 'company_id' => $companyId,
-                'service_code' => sprintf('LEG-%d', $normalized['legacy_id']),
+                'service_code' => (string) $normalized['legacy_id'],
                 'name' => $normalized['name'],
                 'description' => $normalized['description'],
                 'price' => $normalized['price'],
@@ -186,16 +191,18 @@ class TemporaryServiceImportService
                 $restored = true;
             }
 
-            TemporaryServiceMigrationLink::query()->updateOrCreate(
-                ['company_id' => $companyId, 'legacy_id' => $normalized['legacy_id']],
-                [
-                    'service_id' => $service->id,
-                    'legacy_updated_at' => $normalized['updated_at'],
-                    'legacy_deleted_at' => $normalized['deleted_at'],
-                    'payload' => $record,
-                    'last_imported_at' => now(),
-                ]
-            );
+            if ($this->mappingTableExists()) {
+                TemporaryServiceMigrationLink::query()->updateOrCreate(
+                    ['company_id' => $companyId, 'legacy_id' => $normalized['legacy_id']],
+                    [
+                        'service_id' => $service->id,
+                        'legacy_updated_at' => $normalized['updated_at'],
+                        'legacy_deleted_at' => $normalized['deleted_at'],
+                        'payload' => $record,
+                        'last_imported_at' => now(),
+                    ]
+                );
+            }
 
             Log::info(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Servico importado com sucesso da API de migracao',
@@ -237,7 +244,7 @@ class TemporaryServiceImportService
 
         $byCode = Service::withTrashed()
             ->where('company_id', $companyId)
-            ->where('service_code', sprintf('LEG-%d', $normalized['legacy_id']))
+            ->where('service_code', (string) $normalized['legacy_id'])
             ->first();
 
         if ($byCode !== null) {
@@ -286,6 +293,23 @@ class TemporaryServiceImportService
         }
 
         return $matchedByName;
+    }
+
+    private function mappingTableExists(): bool
+    {
+        if ($this->mappingTableExists !== null) {
+            return $this->mappingTableExists;
+        }
+
+        $this->mappingTableExists = Schema::hasTable('temporary_service_migration_links');
+
+        if (! $this->mappingTableExists) {
+            Log::warning(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Tabela temporary_service_migration_links nao existe. Importacao de servicos seguira sem gravar mapa auxiliar.',
+            ]);
+        }
+
+        return $this->mappingTableExists;
     }
 
     private function normalizeRecord(array $record): array

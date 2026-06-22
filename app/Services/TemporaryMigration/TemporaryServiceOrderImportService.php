@@ -22,10 +22,13 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class TemporaryServiceOrderImportService
 {
     use HandlesServiceResponse;
+
+    private ?bool $serviceMappingTableExists = null;
 
     public function __construct(private ServiceOrderMigrationApiClient $client) {}
 
@@ -227,14 +230,14 @@ class TemporaryServiceOrderImportService
 
         foreach ($items as $item) {
             $normalized = $this->normalizeItem($item);
-            $serviceLink = TemporaryServiceMigrationLink::query()->where('company_id', $companyId)->where('legacy_id', $normalized['legacy_service_id'])->first();
+            $service = $this->resolveImportedService($companyId, $normalized['legacy_service_id']);
 
-            if (! $serviceLink?->service_id) {
+            if (! $service) {
                 throw new \RuntimeException(sprintf('Servico legado %s ainda nao foi importado para a empresa %s.', $normalized['legacy_service_id'], $companyId));
             }
 
             $link = TemporaryServiceOrderItemMigrationLink::query()->where('company_id', $companyId)->where('legacy_id', $normalized['legacy_id'])->first();
-            $orderItem = $this->resolveOrderItem($order, $link, (int) $serviceLink->service_id);
+            $orderItem = $this->resolveOrderItem($order, $link, (int) $service->id);
 
             if (! $orderItem) {
                 $orderItem = new ServiceOrderItem();
@@ -250,7 +253,7 @@ class TemporaryServiceOrderImportService
 
             $orderItem->forceFill([
                 'service_order_id' => $order->id,
-                'service_id' => (int) $serviceLink->service_id,
+                'service_id' => (int) $service->id,
                 'quantity' => $normalized['quantity'],
                 'unit_price' => $normalized['unit_price'],
                 'discount_percentage' => $discountPercentage,
@@ -274,7 +277,7 @@ class TemporaryServiceOrderImportService
                     'legacy_service_id' => $normalized['legacy_service_id'],
                     'service_order_id' => $order->id,
                     'service_order_item_id' => $orderItem->id,
-                    'service_id' => (int) $serviceLink->service_id,
+                    'service_id' => (int) $service->id,
                     'payload' => $item,
                     'last_imported_at' => now(),
                 ]
@@ -484,5 +487,45 @@ class TemporaryServiceOrderImportService
         }
 
         return Carbon::parse($value);
+    }
+
+    private function resolveImportedService(int $companyId, int $legacyServiceId): ?Service
+    {
+        if ($this->serviceMappingTableExists()) {
+            $serviceLink = TemporaryServiceMigrationLink::query()
+                ->where('company_id', $companyId)
+                ->where('legacy_id', $legacyServiceId)
+                ->first();
+
+            if ($serviceLink?->service_id) {
+                $service = Service::query()->find($serviceLink->service_id);
+
+                if ($service) {
+                    return $service;
+                }
+            }
+        }
+
+        return Service::query()
+            ->where('company_id', $companyId)
+            ->where('service_code', (string) $legacyServiceId)
+            ->first();
+    }
+
+    private function serviceMappingTableExists(): bool
+    {
+        if ($this->serviceMappingTableExists !== null) {
+            return $this->serviceMappingTableExists;
+        }
+
+        $this->serviceMappingTableExists = Schema::hasTable('temporary_service_migration_links');
+
+        if (! $this->serviceMappingTableExists) {
+            Log::warning(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Tabela temporary_service_migration_links nao existe. Importacao de ordens resolvera servicos por service_code legado.',
+            ]);
+        }
+
+        return $this->serviceMappingTableExists;
     }
 }
