@@ -114,7 +114,7 @@ class EditRequisition extends EditRecord
                     ->tooltip('Gerar Fatura'),
                 Action::make('openServiceOrder')
                     ->size(Size::Small)
-                    ->hiddenLabel()
+                    ->label('Ordem de Serviço')
                     ->tooltip('Abrir ordem de serviço em nova guia')
                     ->icon(Heroicon::ArrowTopRightOnSquare)
                     ->color('info')
