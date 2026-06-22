@@ -163,17 +163,15 @@ class TemporaryServiceImportService
                 'name' => $normalized['name'],
                 'description' => $normalized['description'],
                 'price' => $normalized['price'],
-                'min_sale_price' => $normalized['price'],
+                'min_sale_price' => 0,
                 'cost' => 0,
                 'category' => 'migrado',
                 'is_active' => $normalized['is_active'],
                 'requires_approval' => false,
                 'accept_customer_discount' => true,
-                'tax_classification' => $normalized['tax_classification'],
                 'additional_info' => [
                     'migration' => [
                         'legacy_id' => $normalized['legacy_id'],
-                        'legacy_imposto_servico_id' => $normalized['legacy_imposto_servico_id'],
                     ],
                 ],
                 'updated_by' => $userId,
@@ -332,8 +330,6 @@ class TemporaryServiceImportService
             'description' => ($description = trim((string) ($record['descricao'] ?? ''))) === '' ? null : mb_substr($description, 0, 2000),
             'price' => (float) ($record['valor_unitario'] ?? 0),
             'is_active' => (bool) ($record['ativo'] ?? true),
-            'legacy_imposto_servico_id' => $record['imposto_servico_id'] ?? null,
-            'tax_classification' => isset($record['imposto_servico_id']) ? (string) $record['imposto_servico_id'] : null,
             'updated_at' => $this->parseDateTime($record['updated_at'] ?? null),
             'deleted_at' => $this->parseDateTime($record['deleted_at'] ?? null),
         ];

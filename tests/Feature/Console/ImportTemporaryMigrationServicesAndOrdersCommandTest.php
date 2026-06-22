@@ -178,6 +178,9 @@ class ImportTemporaryMigrationServicesAndOrdersCommandTest extends TestCase
 
         $this->assertNotNull($service);
         $this->assertNotNull($order);
+        $this->assertSame(0.0, (float) $service->min_sale_price);
+        $this->assertNull($service->tax_classification);
+        $this->assertSame(['migration' => ['legacy_id' => 8]], $service->additional_info);
         $this->assertSame($partner->id, $order->customer_id);
         $this->assertSame($equipment->id, $order->equipment_id);
         $this->assertSame('encerrada', $order->status->value);
