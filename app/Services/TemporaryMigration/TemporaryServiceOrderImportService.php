@@ -338,8 +338,8 @@ class TemporaryServiceOrderImportService
             'items_received' => $this->nullableText($record['itens_recebidos'] ?? null),
             'general_observations' => $this->nullableText($record['observacao_geral'] ?? null),
             'internal_observations' => $this->nullableText($record['observacao_interna'] ?? null),
-            'legacy_path_pdf' => $this->nullableText($record['path_pdf'] ?? null),
-            'legacy_img_equipment' => $this->nullableText($record['img_equipamento'] ?? null),
+            'legacy_path_pdf' => $this->normalizeScalarOrArray($record['path_pdf'] ?? null),
+            'legacy_img_equipment' => $this->normalizeScalarOrArray($record['img_equipamento'] ?? null),
             'legacy_note_entry_id' => $record['nota_entrada_id'] ?? null,
             'legacy_note_return_id' => $record['nota_retorno_id'] ?? null,
             'updated_at' => $this->parseDateTime($record['updated_at'] ?? null),
@@ -414,6 +414,21 @@ class TemporaryServiceOrderImportService
     {
         $text = trim((string) $value);
         return $text === '' ? null : $text;
+    }
+
+    private function normalizeScalarOrArray(mixed $value): string|array|null
+    {
+        if (is_array($value)) {
+            $normalized = array_values(array_filter(array_map(function (mixed $item): ?string {
+                $text = trim((string) $item);
+
+                return $text === '' ? null : $text;
+            }, $value)));
+
+            return $normalized === [] ? null : $normalized;
+        }
+
+        return $this->nullableText($value);
     }
 
     private function parseDate(mixed $value): ?string
