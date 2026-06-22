@@ -12,6 +12,7 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ReopenRequi
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\UnlinkServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ViewInvoiceRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
 use Filament\Actions\Action;
@@ -46,6 +47,14 @@ class EditRequisition extends EditRecord
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->color(Color::Gray)
                     ->url(RequisitionResource::getUrl()),
+                Action::make('openServiceOrder')
+                    ->hiddenLabel()
+                    ->tooltip('Abrir ordem de serviço em nova guia')
+                    ->icon(Heroicon::ArrowTopRightOnSquare)
+                    ->color(Color::Info)
+                    ->visible(fn ($record): bool => filled($record->service_order_id))
+                    ->url(fn ($record): string => ServiceOrderResource::getUrl('edit', ['record' => $record->service_order_id]))
+                    ->openUrlInNewTab(),
                 CreateAction::make()
                     ->hiddenLabel()
                     ->tooltip('Nova Requisição')
