@@ -23,6 +23,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['company_id', 'legacy_id'], 'temp_contact_migration_company_legacy_unique');
+            $table->index(['company_id', 'legacy_partner_id'], 'temp_ctt_mig_company_partner_idx');
+            $table->index('contact_id', 'temp_ctt_mig_contact_idx');
         });
     }
 

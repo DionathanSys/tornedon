@@ -22,6 +22,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['company_id', 'legacy_id'], 'temp_address_migration_company_legacy_unique');
+            $table->index(['company_id', 'legacy_partner_id'], 'temp_addr_mig_company_partner_idx');
+            $table->index('address_id', 'temp_addr_mig_address_idx');
         });
     }
 

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['company_id', 'legacy_id'], 'temp_partner_migration_company_legacy_unique');
-            $table->index('partner_id');
+            $table->index('partner_id', 'temp_partner_mig_partner_idx');
         });
     }
 
