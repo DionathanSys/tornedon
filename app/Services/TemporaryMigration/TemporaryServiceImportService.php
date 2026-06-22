@@ -80,6 +80,16 @@ class TemporaryServiceImportService
                             'legacy_id' => (int) ($record['legacy_id'] ?? 0),
                             'message' => $e->getMessage(),
                         ];
+
+                        Log::error(__METHOD__ . '@' . __LINE__, [
+                            'message' => 'Falha ao importar servico da API de migracao',
+                            'company_id' => $companyId,
+                            'user_id' => $userId,
+                            'legacy_id' => (int) ($record['legacy_id'] ?? 0),
+                            'payload' => $record,
+                            'exception' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
                     }
                 }
 
@@ -132,6 +142,16 @@ class TemporaryServiceImportService
                 $updated = true;
             }
 
+            Log::debug(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Persistindo servico da migracao temporaria',
+                'company_id' => $companyId,
+                'user_id' => $userId,
+                'legacy_id' => $normalized['legacy_id'],
+                'resolved_service_id' => $service->id,
+                'operation' => $created ? 'create' : 'update',
+                'normalized_payload' => $normalized,
+            ]);
+
             $service->forceFill([
                 'company_id' => $companyId,
                 'service_code' => sprintf('LEG-%d', $normalized['legacy_id']),
@@ -177,6 +197,18 @@ class TemporaryServiceImportService
                 ]
             );
 
+            Log::info(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Servico importado com sucesso da API de migracao',
+                'company_id' => $companyId,
+                'user_id' => $userId,
+                'legacy_id' => $normalized['legacy_id'],
+                'service_id' => $service->id,
+                'service_code' => $service->service_code,
+                'operation' => $created ? 'create' : 'update',
+                'soft_deleted' => $softDeleted,
+                'restored' => $restored,
+            ]);
+
             return [
                 'legacy_id' => $normalized['legacy_id'],
                 'service_created' => $created,
@@ -192,17 +224,68 @@ class TemporaryServiceImportService
         if ($link?->service_id) {
             $service = Service::withTrashed()->find($link->service_id);
             if ($service) {
+                Log::debug(__METHOD__ . '@' . __LINE__, [
+                    'message' => 'Servico resolvido por mapeamento legado existente',
+                    'company_id' => $companyId,
+                    'legacy_id' => $normalized['legacy_id'],
+                    'service_id' => $service->id,
+                ]);
+
                 return $service;
             }
         }
 
-        return Service::withTrashed()
+        $byCode = Service::withTrashed()
             ->where('company_id', $companyId)
-            ->where(function ($query) use ($normalized) {
-                $query->where('service_code', sprintf('LEG-%d', $normalized['legacy_id']))
-                    ->orWhere('name', $normalized['name']);
-            })
+            ->where('service_code', sprintf('LEG-%d', $normalized['legacy_id']))
             ->first();
+
+        if ($byCode !== null) {
+            Log::debug(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Servico resolvido por service_code legado',
+                'company_id' => $companyId,
+                'legacy_id' => $normalized['legacy_id'],
+                'service_id' => $byCode->id,
+                'service_code' => $byCode->service_code,
+            ]);
+
+            return $byCode;
+        }
+
+        $byName = Service::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('name', $normalized['name'])
+            ->get();
+
+        if ($byName->count() > 1) {
+            Log::warning(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Duplicidade detectada ao reconciliar servico por nome durante migracao temporaria',
+                'company_id' => $companyId,
+                'legacy_id' => $normalized['legacy_id'],
+                'name' => $normalized['name'],
+                'matching_service_ids' => $byName->pluck('id')->all(),
+            ]);
+
+            throw new \RuntimeException(sprintf(
+                'Existem multiplos servicos locais com nome %s na empresa %s.',
+                $normalized['name'],
+                $companyId,
+            ));
+        }
+
+        $matchedByName = $byName->first();
+
+        if ($matchedByName !== null) {
+            Log::warning(__METHOD__ . '@' . __LINE__, [
+                'message' => 'Servico reconciliado por nome sem mapeamento legado previo',
+                'company_id' => $companyId,
+                'legacy_id' => $normalized['legacy_id'],
+                'name' => $normalized['name'],
+                'service_id' => $matchedByName->id,
+            ]);
+        }
+
+        return $matchedByName;
     }
 
     private function normalizeRecord(array $record): array
