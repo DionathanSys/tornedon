@@ -46,14 +46,6 @@ class EditRequisition extends EditRecord
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->color('gray')
                     ->url(RequisitionResource::getUrl()),
-                Action::make('openServiceOrder')
-                    ->hiddenLabel()
-                    ->tooltip('Abrir ordem de serviço em nova guia')
-                    ->icon(Heroicon::ArrowTopRightOnSquare)
-                    ->color('info')
-                    ->visible(fn ($record): bool => filled($record->service_order_id))
-                    ->url(fn ($record): string => ServiceOrderResource::getUrl('edit', ['record' => $record->service_order_id]))
-                    ->openUrlInNewTab(),
                 CreateAction::make()
                     ->hiddenLabel()
                     ->tooltip('Nova Requisição')
@@ -120,6 +112,15 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->hidden(fn ($record): bool => (bool) $record->service_order_id)
                     ->tooltip('Gerar Fatura'),
+                Action::make('openServiceOrder')
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Abrir ordem de serviço em nova guia')
+                    ->icon(Heroicon::ArrowTopRightOnSquare)
+                    ->color('info')
+                    ->visible(fn ($record): bool => filled($record->service_order_id))
+                    ->url(fn ($record): string => ServiceOrderResource::getUrl('edit', ['record' => $record->service_order_id]))
+                    ->openUrlInNewTab(),
                 UnlinkServiceOrderAction::make()
                     ->size(Size::Small)
                     ->tooltip('Desvincular ordem de serviço'),
