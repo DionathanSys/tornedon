@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('temporary_address_migration_links', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('legacy_id');
+            $table->unsignedBigInteger('legacy_partner_id');
+            $table->foreignId('address_id')->nullable()->constrained('addresses')->nullOnDelete();
+            $table->foreignId('company_partner_id')->nullable()->constrained('company_partner')->nullOnDelete();
+            $table->string('fingerprint', 64)->nullable();
+            $table->timestamp('legacy_updated_at')->nullable();
+            $table->json('payload')->nullable();
+            $table->timestamp('last_imported_at')->nullable();
+            $table->timestamps();
+
+            $table->unique(['company_id', 'legacy_id'], 'temp_address_migration_company_legacy_unique');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('temporary_address_migration_links');
+    }
+};
