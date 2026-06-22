@@ -38,4 +38,10 @@ return [
         ],
     ],
 
+    'migration_api' => [
+        'base_url' => env('MIGRATION_API_BASE_URL'),
+        'key' => env('MIGRATION_API_KEY'),
+        'timeout' => (int) env('MIGRATION_API_TIMEOUT', 30),
+    ],
+
 ];
