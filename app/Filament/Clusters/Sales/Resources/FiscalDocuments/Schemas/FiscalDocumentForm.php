@@ -277,6 +277,7 @@ class FiscalDocumentForm
                                             ->label('Indicador de Presença')
                                             ->options(BuyerPresenceIndicator::toSelectArray())
                                             ->default(BuyerPresenceIndicator::OUTROS->value)
+                                            ->live()
                                             ->native(false)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
 
@@ -284,6 +285,31 @@ class FiscalDocumentForm
                                             ->label('Consumidor Final')
                                             ->inline(false)
                                             ->default(true)
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+
+                                        Select::make('tax_data.intermediario.indicador')
+                                            ->label('Indicador de Intermediador')
+                                            ->options([
+                                                '0' => '0 - Operação sem intermediador',
+                                                '1' => '1 - Operação com marketplace/intermediador',
+                                            ])
+                                            ->helperText('Para vendas por internet, teleatendimento, entrega em domicílio/NFC-e ou outros canais remotos, a SEFAZ pode exigir esse campo.')
+                                            ->native(false)
+                                            ->visible(fn (Get $get): bool => in_array((string) $get('buyer_presence_indicator'), ['2', '3', '4', '9'], true))
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+
+                                        TextInput::make('tax_data.intermediario.cnpj')
+                                            ->label('CNPJ do Intermediador')
+                                            ->mask('99.999.999/9999-99')
+                                            ->visible(fn (Get $get): bool => in_array((string) $get('buyer_presence_indicator'), ['2', '3', '4', '9'], true)
+                                                && (string) $get('tax_data.intermediario.indicador') === '1')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+
+                                        TextInput::make('tax_data.intermediario.identificacao')
+                                            ->label('Identificação no Intermediador')
+                                            ->helperText('Código de cadastro do vendedor na plataforma, quando houver marketplace.')
+                                            ->visible(fn (Get $get): bool => in_array((string) $get('buyer_presence_indicator'), ['2', '3', '4', '9'], true)
+                                                && (string) $get('tax_data.intermediario.indicador') === '1')
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                     ])
                                     ->columns(['md' => 2])

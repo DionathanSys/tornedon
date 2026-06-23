@@ -687,6 +687,173 @@ class BuildNfePayloadActionTest extends TestCase
         $this->assertSame('LACRE-1', data_get($payload, 'frete.volumes.0.lacres.0.numero'));
     }
 
+    public function test_it_defaults_intermediary_indicator_for_remote_sales(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa E-commerce',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Online',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => '111',
+            'document_series' => '1',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => true,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::INTERNET->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-ECM-001',
+            'name' => 'Produto Online',
+            'unit' => \App\Enum\Product\Unit::UN->value,
+            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        FiscalDocumentItem::query()->create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+            'cfop_code' => '5102',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'included_in_total' => true,
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => ['situacao_tributaria' => '00'],
+                    'pis' => ['situacao_tributaria' => '01'],
+                    'cofins' => ['situacao_tributaria' => '01'],
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $payload = app(BuildNfePayloadAction::class)->execute($document->fresh('items.product', 'customer.address', 'company'));
+
+        $this->assertNotNull($payload);
+        $this->assertSame('0', data_get($payload, 'intermediario.indicador'));
+    }
+
+    public function test_it_includes_marketplace_identification_when_configured(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Marketplace',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Marketplace',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::query()->create([
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'status' => Status::PENDING->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_number' => '112',
+            'document_series' => '1',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::SAIDA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => true,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::INTERNET->value,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'tax_data' => [
+                'intermediario' => [
+                    'indicador' => '1',
+                    'cnpj' => '12.345.678/0001-90',
+                    'identificacao' => 'SELLER-123',
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-MKP-001',
+            'name' => 'Produto Marketplace',
+            'unit' => \App\Enum\Product\Unit::UN->value,
+            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        FiscalDocumentItem::query()->create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+            'cfop_code' => '5102',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'included_in_total' => true,
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => ['situacao_tributaria' => '00'],
+                    'pis' => ['situacao_tributaria' => '01'],
+                    'cofins' => ['situacao_tributaria' => '01'],
+                ],
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $payload = app(BuildNfePayloadAction::class)->execute($document->fresh('items.product', 'customer.address', 'company'));
+
+        $this->assertNotNull($payload);
+        $this->assertSame('1', data_get($payload, 'intermediario.indicador'));
+        $this->assertSame('12345678000190', data_get($payload, 'intermediario.cnpj'));
+        $this->assertSame('SELLER-123', data_get($payload, 'intermediario.identificacao'));
+    }
+
     public function test_it_blocks_cst_for_simples_nacional_emitter(): void
     {
         $user = User::factory()->create();

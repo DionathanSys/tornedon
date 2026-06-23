@@ -268,6 +268,12 @@ class BuildNfePayloadAction
                 'pagamento' => $fiscalDocument->payment_data ?? ['formas_pagamento' => [['meio_pagamento' => '99', 'valor' => '0.00']]],
             ];
 
+            $intermediario = $this->resolveIntermediaryData($fiscalDocument);
+
+            if ($intermediario !== null) {
+                $payload['intermediario'] = $intermediario;
+            }
+
             // Totais e cobrança (tax_data)
             if (! empty($fiscalDocument->tax_data)) {
                 if ($scenarioContext?->hasReference()) {
@@ -517,6 +523,42 @@ class BuildNfePayloadAction
         return $normalized;
     }
 
+    private function resolveIntermediaryData(FiscalDocument $fiscalDocument): ?array
+    {
+        $buyerPresence = $fiscalDocument->buyer_presence_indicator instanceof \App\Enum\FiscalDocument\BuyerPresenceIndicator
+            ? $fiscalDocument->buyer_presence_indicator->value
+            : (string) ($fiscalDocument->buyer_presence_indicator ?? '');
+
+        if (! in_array($buyerPresence, ['2', '3', '4', '9'], true)) {
+            return null;
+        }
+
+        $indicator = (string) data_get($fiscalDocument->tax_data, 'intermediario.indicador', '0');
+
+        if (! in_array($indicator, ['0', '1'], true)) {
+            $indicator = '0';
+        }
+
+        $intermediario = [
+            'indicador' => $indicator,
+        ];
+
+        if ($indicator === '1') {
+            $cnpj = preg_replace('/\D/', '', (string) data_get($fiscalDocument->tax_data, 'intermediario.cnpj', ''));
+            $identificacao = trim((string) data_get($fiscalDocument->tax_data, 'intermediario.identificacao', ''));
+
+            if ($cnpj !== '') {
+                $intermediario['cnpj'] = $cnpj;
+            }
+
+            if ($identificacao !== '') {
+                $intermediario['identificacao'] = $identificacao;
+            }
+        }
+
+        return $this->filterEmptyRecursive($intermediario);
+    }
+
     private function buildTotalsFromItems(FiscalDocument $fiscalDocument): array
     {
         $totals = [
@@ -578,6 +620,18 @@ class BuildNfePayloadAction
         $icmsStatus = (string) data_get($taxData, 'imposto.icms.situacao_tributaria', '');
 
         if ($icmsStatus === '') {
+            return $taxData;
+        }
+
+        $hasOwnIcmsHighlight = (float) data_get($taxData, 'imposto.icms.valor_base_calculo', 0) > 0
+            || (float) data_get($taxData, 'imposto.icms.aliquota', 0) > 0
+            || (float) data_get($taxData, 'imposto.icms.valor', 0) > 0;
+
+        // Para Simples, se o usuário destacou ICMS manualmente em um CSOSN sem destaque,
+        // reclassificamos para 900 no payload para manter a tributação informada válida.
+        if (in_array($icmsStatus, ['102', '103', '300', '400'], true) && $hasOwnIcmsHighlight) {
+            data_set($taxData, 'imposto.icms.situacao_tributaria', '900');
+
             return $taxData;
         }
 

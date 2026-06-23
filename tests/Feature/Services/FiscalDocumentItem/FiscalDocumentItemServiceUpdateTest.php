@@ -35,10 +35,10 @@ class FiscalDocumentItemServiceUpdateTest extends TestCase
             'tax_data' => [
                 'imposto' => [
                     'icms' => [
-                        'situacao_tributaria' => '102',
+                        'situacao_tributaria' => '400',
                         'valor_base_calculo' => 250,
-                        'aliquota' => 0,
-                        'valor' => 0,
+                        'aliquota' => 12,
+                        'valor' => 30,
                     ],
                     'pis' => [
                         'situacao_tributaria' => '49',
@@ -58,10 +58,14 @@ class FiscalDocumentItemServiceUpdateTest extends TestCase
 
         $this->assertNotNull($updated, $service->getMessage());
         $this->assertFalse($service->hasError());
-        $this->assertSame('102', data_get($updated->tax_data, 'imposto.icms.situacao_tributaria'));
+        $this->assertSame('900', data_get($updated->tax_data, 'imposto.icms.situacao_tributaria'));
+        $this->assertSame(250, data_get($updated->tax_data, 'imposto.icms.valor_base_calculo'));
+        $this->assertSame(12, data_get($updated->tax_data, 'imposto.icms.aliquota'));
+        $this->assertSame(30, data_get($updated->tax_data, 'imposto.icms.valor'));
         $this->assertSame('49', data_get($updated->tax_data, 'imposto.pis.situacao_tributaria'));
         $this->assertSame('49', data_get($updated->tax_data, 'imposto.cofins.situacao_tributaria'));
         $this->assertSame('250.00', data_get($updated->fiscalDocument->fresh()->tax_data, 'totais.valor_produtos'));
+        $this->assertSame('30.00', data_get($updated->fiscalDocument->fresh()->tax_data, 'totais.valor_icms'));
     }
 
     private function createScenario(): array

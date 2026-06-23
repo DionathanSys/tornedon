@@ -42,6 +42,7 @@ class UpdateFiscalDocumentItemAction
             unset($validated['fiscal_document_id']);
             $validated = $this->ensureProductCode($validated);
             $validated = $this->applyTaxableConversion($validated);
+            $validated = $this->normalizeManualTaxData($validated);
             $validated = $this->normalizeForPersistence($validated);
             $validated['updated_by'] = $this->updatedBy;
 
@@ -219,5 +220,28 @@ class UpdateFiscalDocumentItemAction
         }
 
         return array_replace_recursive($expanded, array_filter($data, fn ($key): bool => ! is_string($key) || ! str_contains($key, '.'), ARRAY_FILTER_USE_KEY));
+    }
+
+    private function normalizeManualTaxData(array $data): array
+    {
+        if (! is_array($data['tax_data'] ?? null)) {
+            return $data;
+        }
+
+        $status = (string) data_get($data, 'tax_data.imposto.icms.situacao_tributaria', '');
+
+        if ($status === '') {
+            return $data;
+        }
+
+        $hasOwnIcmsHighlight = (float) data_get($data, 'tax_data.imposto.icms.valor_base_calculo', 0) > 0
+            || (float) data_get($data, 'tax_data.imposto.icms.aliquota', 0) > 0
+            || (float) data_get($data, 'tax_data.imposto.icms.valor', 0) > 0;
+
+        if (in_array($status, ['102', '103', '300', '400'], true) && $hasOwnIcmsHighlight) {
+            data_set($data, 'tax_data.imposto.icms.situacao_tributaria', '900');
+        }
+
+        return $data;
     }
 }
