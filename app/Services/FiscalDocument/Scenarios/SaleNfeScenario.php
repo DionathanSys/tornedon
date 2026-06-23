@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\Scenarios;
 
 use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\OperationNature;
 use App\Models\FiscalDocument;
 use App\Models\NfeSequence;
 use App\Services\Fiscal\NfeConfigService;
@@ -64,6 +65,12 @@ class SaleNfeScenario implements FiscalEmissionScenarioInterface
 
     public function validate(FiscalDocument $document, array &$errors): void
     {
+        $operationNature = $document->operation_nature?->value ?? $document->operation_nature;
+
+        if ($operationNature === OperationNature::REMESSA_GARANTIA->value) {
+            return;
+        }
+
         if ($this->resolveContext($document)->hasReference()) {
             $errors['scenario'][] = 'Cenário de venda não deve conter referência fiscal ativa.';
         }
@@ -71,6 +78,6 @@ class SaleNfeScenario implements FiscalEmissionScenarioInterface
 
     public function resolveContext(FiscalDocument $document): \App\Domain\DTO\Fiscal\ScenarioContext
     {
-        return new \App\Domain\DTO\Fiscal\ScenarioContext();
+        return new \App\Domain\DTO\Fiscal\ScenarioContext;
     }
 }

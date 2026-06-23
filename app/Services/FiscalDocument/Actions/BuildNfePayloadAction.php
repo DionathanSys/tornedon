@@ -253,6 +253,22 @@ class BuildNfePayloadAction
                     }
                 }
 
+                if (! isset($payload['notas_referenciadas'])) {
+                    $genericReferenceKey = data_get($fiscalDocument->tax_data, 'reference.document_key');
+
+                    if (is_string($genericReferenceKey) && trim($genericReferenceKey) !== '') {
+                        $payload['notas_referenciadas'] = [[
+                            'nfe' => [
+                                'chave' => trim($genericReferenceKey),
+                            ],
+                        ]];
+
+                        Log::warning('BuildNfePayloadAction: usando fallback generico tax_data.reference para notas_referenciadas', [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                        ]);
+                    }
+                }
+
                 $payload['totais'] = $fiscalDocument->tax_data['totais'] ?? [];
                 if (! empty($fiscalDocument->tax_data['cobranca'])) {
                     $payload['cobranca'] = $fiscalDocument->tax_data['cobranca'];
