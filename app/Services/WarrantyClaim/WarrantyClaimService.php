@@ -157,8 +157,7 @@ class WarrantyClaimService
         $lastNumber = WarrantyClaim::query()
             ->where('company_id', $companyId)
             ->lockForUpdate()
-            ->selectRaw('MAX(CAST(number as INTEGER)) as max_number')
-            ->value('max_number');
+            ->max('number');
 
         return str_pad((string) (((int) $lastNumber) + 1), 5, '0', STR_PAD_LEFT);
     }
