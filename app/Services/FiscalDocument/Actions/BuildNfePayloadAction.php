@@ -110,6 +110,22 @@ class BuildNfePayloadAction
             ]);
 
             $itens = [];
+            $payloadTotals = [
+                'valor_produtos' => 0.0,
+                'valor_nota' => 0.0,
+                'valor_desconto' => 0.0,
+                'valor_frete' => 0.0,
+                'valor_seguro' => 0.0,
+                'valor_outras_despesas' => 0.0,
+                'base_calculo_icms' => 0.0,
+                'valor_icms' => 0.0,
+                'base_calculo_icms_st' => 0.0,
+                'valor_icms_st' => 0.0,
+                'valor_ipi' => 0.0,
+                'valor_pis' => 0.0,
+                'valor_cofins' => 0.0,
+            ];
+
             foreach ($fiscalDocument->items as $index => $item) {
                 $taxData = is_array($item->tax_data) ? $item->tax_data : [];
                 $fiscalSnapshot = is_array($item->fiscal_snapshot) ? $item->fiscal_snapshot : [];
@@ -121,6 +137,8 @@ class BuildNfePayloadAction
                         FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData($taxableBase)
                     );
                 }
+
+                $taxData = $this->normalizeItemTaxDataForPayload($taxData);
 
                 $quantityCommercial = (float) number_format((float) $item->quantity, 4, '.', '');
                 $baseUnitPriceCommercial = (float) $item->unit_price;
@@ -168,7 +186,29 @@ class BuildNfePayloadAction
                 }
 
                 $itens[] = $itemPayload;
+
+                $payloadTotals['valor_produtos'] += $grossValueFloat;
+                $payloadTotals['valor_desconto'] += (float) ($item->discount_amount ?? 0);
+                $payloadTotals['valor_frete'] += (float) ($item->freight_amount ?? 0);
+                $payloadTotals['valor_seguro'] += (float) ($item->insurance_amount ?? 0);
+                $payloadTotals['valor_outras_despesas'] += (float) ($item->other_expenses_amount ?? 0);
+                $payloadTotals['base_calculo_icms'] += (float) data_get($taxData, 'imposto.icms.valor_base_calculo', 0);
+                $payloadTotals['valor_icms'] += (float) data_get($taxData, 'imposto.icms.valor', 0);
+                $payloadTotals['base_calculo_icms_st'] += (float) data_get($taxData, 'imposto.icms.valor_base_calculo_st', 0);
+                $payloadTotals['valor_icms_st'] += (float) data_get($taxData, 'imposto.icms.valor_st', 0);
+                $payloadTotals['valor_ipi'] += (float) data_get($taxData, 'imposto.ipi.valor', 0);
+                $payloadTotals['valor_pis'] += (float) data_get($taxData, 'imposto.pis.valor', 0);
+                $payloadTotals['valor_cofins'] += (float) data_get($taxData, 'imposto.cofins.valor', 0);
             }
+
+            $payloadTotals['valor_nota'] = round(
+                $payloadTotals['valor_produtos']
+                - $payloadTotals['valor_desconto']
+                + $payloadTotals['valor_frete']
+                + $payloadTotals['valor_seguro']
+                + $payloadTotals['valor_outras_despesas'],
+                2
+            );
 
             if ($taxRegime !== null) {
                 $regime = $taxRegime instanceof TaxRegime
@@ -269,7 +309,7 @@ class BuildNfePayloadAction
                     }
                 }
 
-                $payload['totais'] = $fiscalDocument->tax_data['totais'] ?? $this->buildTotalsFromItems($fiscalDocument);
+                $payload['totais'] = $this->formatTotalsForPayload($payloadTotals);
                 if (! empty($fiscalDocument->tax_data['cobranca'])) {
                     $payload['cobranca'] = $fiscalDocument->tax_data['cobranca'];
                 }
@@ -524,6 +564,56 @@ class BuildNfePayloadAction
         return collect($totals)
             ->map(fn (float $value): string => number_format(round($value, 2), 2, '.', ''))
             ->all();
+    }
+
+    private function formatTotalsForPayload(array $totals): array
+    {
+        return collect($totals)
+            ->map(fn (float $value): string => number_format(round($value, 2), 2, '.', ''))
+            ->all();
+    }
+
+    private function normalizeItemTaxDataForPayload(array $taxData): array
+    {
+        $icmsStatus = (string) data_get($taxData, 'imposto.icms.situacao_tributaria', '');
+
+        if ($icmsStatus === '') {
+            return $taxData;
+        }
+
+        // CSOSNs do Simples sem destaque de ICMS não devem enviar BC/aliquota/valor.
+        if (in_array($icmsStatus, ['102', '103', '300', '400'], true)) {
+            data_set($taxData, 'imposto.icms', [
+                'situacao_tributaria' => $icmsStatus,
+            ]);
+
+            return $taxData;
+        }
+
+        // CSOSN 500 não deve destacar ICMS próprio, apenas contexto de ST quando existir.
+        if ($icmsStatus === '500') {
+            $normalized = [
+                'situacao_tributaria' => $icmsStatus,
+            ];
+
+            foreach ([
+                'valor_base_calculo_st',
+                'aliquota_st',
+                'valor_st',
+                'modalidade_base_calculo_st',
+                'aliquota_margem_valor_adicionado_st',
+            ] as $field) {
+                $value = data_get($taxData, 'imposto.icms.'.$field);
+
+                if ($value !== null && $value !== '') {
+                    $normalized[$field] = $value;
+                }
+            }
+
+            data_set($taxData, 'imposto.icms', $normalized);
+        }
+
+        return $taxData;
     }
 
     private function normalizeCarrierData(mixed $carrierData, int|string|null $companyId = null): array
