@@ -269,7 +269,7 @@ class BuildNfePayloadAction
                     }
                 }
 
-                $payload['totais'] = $fiscalDocument->tax_data['totais'] ?? [];
+                $payload['totais'] = $fiscalDocument->tax_data['totais'] ?? $this->buildTotalsFromItems($fiscalDocument);
                 if (! empty($fiscalDocument->tax_data['cobranca'])) {
                     $payload['cobranca'] = $fiscalDocument->tax_data['cobranca'];
                 }
@@ -475,6 +475,55 @@ class BuildNfePayloadAction
         }
 
         return $normalized;
+    }
+
+    private function buildTotalsFromItems(FiscalDocument $fiscalDocument): array
+    {
+        $totals = [
+            'valor_produtos' => 0.0,
+            'valor_nota' => 0.0,
+            'valor_desconto' => 0.0,
+            'valor_frete' => 0.0,
+            'valor_seguro' => 0.0,
+            'valor_outras_despesas' => 0.0,
+            'base_calculo_icms' => 0.0,
+            'valor_icms' => 0.0,
+            'base_calculo_icms_st' => 0.0,
+            'valor_icms_st' => 0.0,
+            'valor_ipi' => 0.0,
+            'valor_pis' => 0.0,
+            'valor_cofins' => 0.0,
+        ];
+
+        foreach ($fiscalDocument->items as $item) {
+            $taxData = is_array($item->tax_data) ? $item->tax_data : [];
+
+            $totals['valor_produtos'] += (float) ($item->total_price ?? 0);
+            $totals['valor_desconto'] += (float) ($item->discount_amount ?? 0);
+            $totals['valor_frete'] += (float) ($item->freight_amount ?? 0);
+            $totals['valor_seguro'] += (float) ($item->insurance_amount ?? 0);
+            $totals['valor_outras_despesas'] += (float) ($item->other_expenses_amount ?? 0);
+            $totals['base_calculo_icms'] += (float) data_get($taxData, 'imposto.icms.valor_base_calculo', 0);
+            $totals['valor_icms'] += (float) data_get($taxData, 'imposto.icms.valor', 0);
+            $totals['base_calculo_icms_st'] += (float) data_get($taxData, 'imposto.icms.valor_base_calculo_st', 0);
+            $totals['valor_icms_st'] += (float) data_get($taxData, 'imposto.icms.valor_st', 0);
+            $totals['valor_ipi'] += (float) data_get($taxData, 'imposto.ipi.valor', 0);
+            $totals['valor_pis'] += (float) data_get($taxData, 'imposto.pis.valor', 0);
+            $totals['valor_cofins'] += (float) data_get($taxData, 'imposto.cofins.valor', 0);
+        }
+
+        $totals['valor_nota'] = round(
+            $totals['valor_produtos']
+            - $totals['valor_desconto']
+            + $totals['valor_frete']
+            + $totals['valor_seguro']
+            + $totals['valor_outras_despesas'],
+            2
+        );
+
+        return collect($totals)
+            ->map(fn (float $value): string => number_format(round($value, 2), 2, '.', ''))
+            ->all();
     }
 
     private function normalizeCarrierData(mixed $carrierData, int|string|null $companyId = null): array

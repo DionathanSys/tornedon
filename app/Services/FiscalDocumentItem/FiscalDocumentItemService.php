@@ -2,7 +2,9 @@
 
 namespace App\Services\FiscalDocumentItem;
 
+use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Services\FiscalDocument\Actions\RecalculateFiscalDocumentTaxTotalsAction;
 use App\Services\FiscalDocumentItem\Actions\CreateFiscalDocumentItemAction;
 use App\Services\FiscalDocumentItem\Actions\CreateManyFiscalDocumentItemsAction;
 use App\Services\FiscalDocumentItem\Actions\DeleteFiscalDocumentItemAction;
@@ -34,7 +36,7 @@ class FiscalDocumentItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
                         'errors' => $action->getErrors(),
@@ -61,7 +63,7 @@ class FiscalDocumentItemService
             $this->setError('Erro ao processar criacao do item do documento fiscal');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
@@ -98,7 +100,7 @@ class FiscalDocumentItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
                         'errors' => $action->getErrors(),
@@ -116,6 +118,11 @@ class FiscalDocumentItemService
                     return null;
                 }
 
+                if ($fiscalDocumentId !== null) {
+                    app(RecalculateFiscalDocumentTaxTotalsAction::class)
+                        ->execute(FiscalDocument::query()->findOrFail((int) $fiscalDocumentId));
+                }
+
                 $this->setSuccess('Itens do documento fiscal criados com sucesso');
 
                 return $result;
@@ -124,7 +131,7 @@ class FiscalDocumentItemService
             $this->setError('Erro ao processar criacao dos itens do documento fiscal');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
@@ -154,7 +161,7 @@ class FiscalDocumentItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'fiscal_document_item_id' => $fiscalDocumentItem->id,
                         'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
@@ -169,9 +176,12 @@ class FiscalDocumentItemService
                 $this->setSuccess('Item do documento fiscal atualizado com sucesso');
 
                 Log::info('Item do documento fiscal atualizado com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'fiscal_document_item_id' => $fiscalDocumentItem->id,
                 ]);
+
+                app(RecalculateFiscalDocumentTaxTotalsAction::class)
+                    ->execute(FiscalDocument::query()->findOrFail((int) $updated->fiscal_document_id));
 
                 return $updated;
             });
@@ -179,7 +189,7 @@ class FiscalDocumentItemService
             $this->setError('Erro ao atualizar item do documento fiscal');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_item_id' => $fiscalDocumentItem->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -212,7 +222,7 @@ class FiscalDocumentItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'fiscal_document_item_id' => $fiscalDocumentItem->id,
                         'message' => $action->getMessage(),
                         'error_code' => $action->getErrorCode(),
@@ -227,10 +237,13 @@ class FiscalDocumentItemService
                     return false;
                 }
 
+                app(RecalculateFiscalDocumentTaxTotalsAction::class)
+                    ->execute(FiscalDocument::query()->findOrFail((int) $fiscalDocumentId));
+
                 $this->setSuccess('Item do documento fiscal excluido com sucesso');
 
                 Log::info('Item do documento fiscal excluido com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'fiscal_document_item_id' => $fiscalDocumentItem->id,
                 ]);
 
@@ -240,7 +253,7 @@ class FiscalDocumentItemService
             $this->setError('Erro ao excluir item do documento fiscal');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_item_id' => $fiscalDocumentItem->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -253,7 +266,7 @@ class FiscalDocumentItemService
 
     private function reorderItems(int $fiscalDocumentId, array $context = []): bool
     {
-        $reorderAction = new ReorderFiscalDocumentItemsAction();
+        $reorderAction = new ReorderFiscalDocumentItemsAction;
         $reordered = $reorderAction->execute($fiscalDocumentId);
 
         if (! $reordered || $reorderAction->hasError()) {
@@ -265,7 +278,7 @@ class FiscalDocumentItemService
             );
 
             Log::error($this->getMessage(), array_merge([
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'fiscal_document_id' => $fiscalDocumentId,
