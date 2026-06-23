@@ -10,8 +10,10 @@ use App\Notification\NotifyService as notify;
 use App\Services\WarrantyClaim\WarrantyClaimService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -25,23 +27,27 @@ class OpenWarrantyClaimAction
             ->icon(Heroicon::ShieldCheck)
             ->color('warning')
             ->modalHeading('Abrir garantia da OS')
+            ->modalWidth(Width::FiveExtraLarge)
             ->form([
-                Select::make('coverage_type')
-                    ->label('Cobertura')
-                    ->options(CoverageType::toSelectArray())
-                    ->native(false)
-                    ->default(CoverageType::LABOR_AND_PARTS->value)
-                    ->required(),
-                Select::make('responsibility')
-                    ->label('Responsabilidade')
-                    ->options(Responsibility::toSelectArray())
-                    ->native(false)
-                    ->default(Responsibility::COMPANY->value)
-                    ->required(),
-                DatePicker::make('expires_at')
-                    ->label('Garantia válida até')
-                    ->displayFormat('d/m/Y')
-                    ->default(fn (ServiceOrder $record): ?string => $record->warranty_expires_at?->toDateString()),
+                Grid::make(3)
+                    ->schema([
+                        Select::make('coverage_type')
+                            ->label('Cobertura')
+                            ->options(CoverageType::toSelectArray())
+                            ->native(false)
+                            ->default(CoverageType::LABOR_AND_PARTS->value)
+                            ->required(),
+                        Select::make('responsibility')
+                            ->label('Responsabilidade')
+                            ->options(Responsibility::toSelectArray())
+                            ->native(false)
+                            ->default(Responsibility::COMPANY->value)
+                            ->required(),
+                        DatePicker::make('expires_at')
+                            ->label('Garantia válida até')
+                            ->displayFormat('d/m/Y')
+                            ->default(fn (ServiceOrder $record): ?string => $record->warranty_expires_at?->toDateString()),
+                    ]),
                 Textarea::make('customer_issue_description')
                     ->label('Problema informado pelo cliente')
                     ->required()
