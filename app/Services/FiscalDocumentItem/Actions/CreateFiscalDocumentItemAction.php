@@ -7,12 +7,13 @@ use App\Enum\Product\Origin;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\Product;
-use App\Services\Product\ProductUnitConversionService;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
+use App\Services\Product\ProductUnitConversionService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CreateFiscalDocumentItemAction
@@ -26,6 +27,7 @@ class CreateFiscalDocumentItemAction
     public function execute(array $data): ?FiscalDocumentItem
     {
         try {
+            $data = $this->expandDotNotationPayload($data);
             $validated = FiscalDocumentItemValidatorResolver::validateCreate($data);
 
             $documentType = FiscalDocument::query()
@@ -59,24 +61,25 @@ class CreateFiscalDocumentItemAction
             $item = FiscalDocumentItem::create($validated);
 
             Log::info('Item de documento fiscal criado com sucesso', [
-                'metodo'                    => __METHOD__ . '@' . __LINE__,
-                'fiscal_document_item_id'   => $item->id,
-                'fiscal_document_id'        => $item->fiscal_document_id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'fiscal_document_item_id' => $item->id,
+                'fiscal_document_id' => $item->fiscal_document_id,
             ]);
 
             $this->setSuccess();
+
             return $item;
 
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados do item', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'errors'     => $e->errors(),
-                'data'       => $data,
-                'user_id'    => $this->createdBy,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -85,12 +88,12 @@ class CreateFiscalDocumentItemAction
             $this->setError('Erro ao salvar item do documento fiscal no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
-                'data'          => $data,
-                'user_id'       => $this->createdBy,
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -99,13 +102,13 @@ class CreateFiscalDocumentItemAction
             $this->setError('Erro inesperado ao criar item do documento fiscal');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
-                'data'          => $data,
-                'user_id'       => $this->createdBy,
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -126,7 +129,7 @@ class CreateFiscalDocumentItemAction
         static $tableColumns = null;
 
         if ($tableColumns === null) {
-            $tableColumns = array_flip(Schema::getColumnListing((new FiscalDocumentItem())->getTable()));
+            $tableColumns = array_flip(Schema::getColumnListing((new FiscalDocumentItem)->getTable()));
         }
 
         $persistable = [];
@@ -135,6 +138,7 @@ class CreateFiscalDocumentItemAction
         foreach ($data as $key => $value) {
             if (isset($tableColumns[$key])) {
                 $persistable[$key] = $value;
+
                 continue;
             }
 
@@ -146,6 +150,23 @@ class CreateFiscalDocumentItemAction
         }
 
         return $persistable;
+    }
+
+    private function expandDotNotationPayload(array $data): array
+    {
+        $expanded = [];
+
+        foreach ($data as $key => $value) {
+            if (is_string($key) && str_contains($key, '.')) {
+                Arr::set($expanded, $key, $value);
+
+                continue;
+            }
+
+            $expanded[$key] = $value;
+        }
+
+        return array_replace_recursive($expanded, array_filter($data, fn ($key): bool => ! is_string($key) || ! str_contains($key, '.'), ARRAY_FILTER_USE_KEY));
     }
 
     private function assignItemNumberIfMissing(array $data): array
