@@ -28,7 +28,6 @@ class OpenWarrantyClaimAction
             ->color('warning')
             ->modalHeading('Criar garantia da peça vendida')
             ->visible(fn (Requisition $record): bool => $record->items()->exists())
-            ->columns(2)
             ->schema([
                 Select::make('product_id')
                     ->label('Produto')
