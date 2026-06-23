@@ -12,6 +12,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadSe
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\GenerateRepairReturnFiscalDocumentAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\OpenWarrantyClaimAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
@@ -63,6 +64,8 @@ class EditServiceOrder extends EditRecord
                     ->tooltip('Preview PDF'),
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
+                    ->hiddenLabel(),
+                OpenWarrantyClaimAction::make()
                     ->hiddenLabel(),
                 GenerateRepairReturnFiscalDocumentAction::make()
                     ->hiddenLabel(),

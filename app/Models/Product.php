@@ -96,4 +96,9 @@ class Product extends Model
     {
         return $this->hasMany(SefazItemMapping::class);
     }
+
+    public function warrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class);
+    }
 }

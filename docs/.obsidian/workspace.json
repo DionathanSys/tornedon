@@ -111,8 +111,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -220,8 +219,9 @@
   },
   "active": "cd709947c253db43",
   "lastOpenFiles": [
-    "manual-fluxo-os-faturamento-emissao-notas.md",
+    "Sem título 3.md",
     "API_MIGRACAO_PAYLOADS_AMOSTRA.md",
+    "manual-fluxo-os-faturamento-emissao-notas.md",
     "Consultoria.md",
     "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",
     "manual-vendas-faturamento-emissao-nota.md",
@@ -246,7 +246,6 @@
     "plano-cartoes-financeiro.md",
     "Sem título.md",
     "instrucao-api-nfs-nacional.md",
-    "Migração Gamma Eletrônica.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

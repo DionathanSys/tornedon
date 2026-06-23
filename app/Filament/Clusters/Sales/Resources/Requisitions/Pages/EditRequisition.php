@@ -7,6 +7,7 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CancelRequi
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\CloseRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\DownloadRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\InvoiceRequisitionAction;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\OpenWarrantyClaimAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequisitionPdfAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\ReopenRequisitionAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\UnlinkServiceOrderAction;
@@ -112,6 +113,9 @@ class EditRequisition extends EditRecord
                     ->size(Size::Small)
                     ->hidden(fn ($record): bool => (bool) $record->service_order_id)
                     ->tooltip('Gerar Fatura'),
+                OpenWarrantyClaimAction::make()
+                    ->size(Size::Small)
+                    ->tooltip('Abrir garantia da venda'),
                 Action::make('openServiceOrder')
                     ->size(Size::Small)
                     ->label('Ordem de Serviço')

@@ -200,6 +200,11 @@ class FiscalDocument extends Model
         return $this->hasMany(AccountReceivable::class);
     }
 
+    public function warrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'origin_fiscal_document_id');
+    }
+
     public function purchaseClosingLinks(): HasMany
     {
         return $this->hasMany(PurchaseClosingFiscalDocument::class);

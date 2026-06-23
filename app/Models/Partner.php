@@ -115,6 +115,16 @@ class Partner extends Model
         return $this->hasMany(PurchaseReturnCredit::class);
     }
 
+    public function customerWarrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'customer_id');
+    }
+
+    public function supplierWarrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'supplier_id');
+    }
+
 
 
 }

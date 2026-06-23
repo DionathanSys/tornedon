@@ -10,6 +10,7 @@ use App\Services\FiscalDocument\Scenarios\PurchaseReturnNfeScenario;
 use App\Services\FiscalDocument\Scenarios\RepairRemittanceNfeScenario;
 use App\Services\FiscalDocument\Scenarios\RepairReturnNfeScenario;
 use App\Services\FiscalDocument\Scenarios\SaleNfeScenario;
+use App\Services\FiscalDocument\Scenarios\WarrantyRemittanceNfeScenario;
 
 class FiscalEmissionScenarioResolver
 {
@@ -19,12 +20,13 @@ class FiscalEmissionScenarioResolver
     private function scenarios(): array
     {
         return [
-            new PurchaseReturnNfeScenario(),
-            new RepairReturnNfeScenario(),
-            new RepairRemittanceNfeScenario(),
-            new NationalNfseScenario(),
-            new MunicipalNfseScenario(),
-            new SaleNfeScenario(),
+            new PurchaseReturnNfeScenario,
+            new RepairReturnNfeScenario,
+            new RepairRemittanceNfeScenario,
+            new WarrantyRemittanceNfeScenario,
+            new NationalNfseScenario,
+            new MunicipalNfseScenario,
+            new SaleNfeScenario,
         ];
     }
 

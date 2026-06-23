@@ -138,6 +138,11 @@ class Invoice extends Model
         return $this->hasMany(ServiceOrder::class);
     }
 
+    public function warrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'origin_invoice_id');
+    }
+
     public function productionOrders(): HasMany
     {
         return $this->hasMany(ProductionOrder::class);

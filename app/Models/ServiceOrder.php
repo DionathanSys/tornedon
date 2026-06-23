@@ -174,6 +174,16 @@ class ServiceOrder extends Model
         return $this->hasMany(ServiceOrderItem::class);
     }
 
+    public function warrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'service_order_id');
+    }
+
+    public function originWarrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'origin_service_order_id');
+    }
+
     public function requisition(): HasOne
     {
         return $this->hasOne(Requisition::class);

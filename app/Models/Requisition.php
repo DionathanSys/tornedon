@@ -118,6 +118,11 @@ class Requisition extends Model
         return $this->hasMany(RequisitionItem::class);
     }
 
+    public function warrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class, 'origin_requisition_id');
+    }
+
     public function productionOrder(): BelongsTo
     {
         return $this->belongsTo(ProductionOrder::class);
