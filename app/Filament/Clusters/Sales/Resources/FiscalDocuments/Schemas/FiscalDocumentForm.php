@@ -237,7 +237,9 @@ class FiscalDocumentForm
 
                                         TextEntry::make('operation_type')
                                             ->label('Tipo de Operação')
-                                            ->formatStateUsing(fn ($state): ?string => $state ? $state->description() : 'N/D')
+                                            ->formatStateUsing(fn ($state): ?string => $state instanceof OperationType
+                                                ? $state->description()
+                                                : OperationType::tryFrom((string) $state)?->description())
                                             ->default(OperationType::SAIDA->value)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
 
