@@ -7,6 +7,7 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfseModel;
+use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Enum\Product\Unit;
@@ -16,6 +17,9 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocume
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
 use App\Models\FiscalDocument;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -29,6 +33,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
@@ -217,29 +222,45 @@ class FiscalDocumentForm
                                             ->visible(fn ($state): bool => $state !== null)
                                             ->formatStateUsing(fn ($record, $state): ?string => $state ? $record->invoice->invoice_number : 'Sem fatura vinculada')
                                             ->url(fn ($record): ?string => $record->invoice ? InvoiceResource::getUrl('edit', ['record' => $record->invoice]) : null, true),
-                                        TextEntry::make('operation_nature')
+                                        Hidden::make('operation_type')
+                                            ->default(OperationType::SAIDA->value),
+                                        Select::make('operation_nature')
                                             ->label('Natureza da Operação')
-                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                            ->options(OperationNature::toSelectArray())
+                                            ->placeholder('Selecione a natureza')
+                                            ->native(false)
+                                            ->searchable()
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function (mixed $state, Set $set, Get $get): void {
+                                                if ($state !== OperationNature::REMESSA_GARANTIA->value) {
+                                                    return;
+                                                }
 
-                                        TextEntry::make('issued_at')
+                                                $set('tax_data.reference.type', 'warranty_remittance');
+
+                                                if (blank($get('freight_data.modalidade_frete'))) {
+                                                    $set('freight_data.modalidade_frete', FreightModality::SEM_FRETE->value);
+                                                }
+                                            })
+                                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                                        DatePicker::make('issued_at')
                                             ->label('Data de Emissão')
-                                            ->visibleOn('edit')
-                                            ->formatStateUsing(fn ($state): ?string => $state ? $state->format('d/m/Y') : 'N/D')
+                                            ->displayFormat('d/m/Y')
                                             ->default(now())
+                                            ->required()
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-
-                                        TextEntry::make('movement_at')
+                                        DatePicker::make('movement_at')
                                             ->label('Data Entrada/Saída')
-                                            ->visible(false)
-                                            ->formatStateUsing(fn ($state): ?string => $state ? $state->format('d/m/Y') : 'N/D')
+                                            ->displayFormat('d/m/Y')
                                             ->default(now())
+                                            ->required()
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
-
-                                        TextEntry::make('operation_type')
+                                        TextEntry::make('operation_type_display')
                                             ->label('Tipo de Operação')
                                             ->formatStateUsing(fn ($state): ?string => $state instanceof OperationType
                                                 ? $state->description()
-                                                : OperationType::tryFrom((string) $state)?->description())
+                                                : OperationType::tryFrom((string) ($state ?: OperationType::SAIDA->value))?->description())
                                             ->default(OperationType::SAIDA->value)
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
 
@@ -431,7 +452,7 @@ class FiscalDocumentForm
                                 Section::make('Informações Adicionais')
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])
-                                    ->visible(fn (Get $get, $operation): bool => $get('document_type') !== DocumentModel::NFSE->value && $operation === 'edit')
+                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
                                     ->schema([
                                         Textarea::make('additional_taxpayer_information')
                                             ->label('Informações ao Contribuinte')
@@ -448,7 +469,7 @@ class FiscalDocumentForm
                                     ->collapsible()
                                     ->collapsed(),
                                 Section::make('Informações adicionais de compra')
-                                    ->visible(fn (Get $get, $operation): bool => $get('document_type') !== DocumentModel::NFSE->value && $operation === 'edit')
+                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
                                     ->schema([
                                         TextInput::make('additional_purchase_information_nota_empenho')
                                             ->label('Nota de Empenho')
@@ -466,6 +487,61 @@ class FiscalDocumentForm
                                     ->columnSpanFull()
                                     ->collapsible()
                                     ->collapsed(),
+                                Section::make('Referência da nota de origem')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value
+                                        && $get('operation_nature') === OperationNature::REMESSA_GARANTIA->value)
+                                    ->schema([
+                                        Hidden::make('tax_data.reference.type')
+                                            ->default('warranty_remittance'),
+                                        Select::make('tax_data.reference.fiscal_document_id')
+                                            ->label('Nota de origem do sistema')
+                                            ->searchable()
+                                            ->getSearchResultsUsing(fn (string $search): array => FiscalDocument::query()
+                                                ->where('company_id', Filament::getTenant()->id)
+                                                ->where('document_type', DocumentModel::NFE->value)
+                                                ->where(function ($query) use ($search): void {
+                                                    $query->where('document_number', 'like', "%{$search}%")
+                                                        ->orWhere('document_key', 'like', "%{$search}%");
+                                                })
+                                                ->limit(20)
+                                                ->get()
+                                                ->mapWithKeys(fn (FiscalDocument $document): array => [
+                                                    $document->id => trim(($document->document_number ?: 'Sem número')
+                                                        .($document->document_series ? ' / Série '.$document->document_series : '')
+                                                        .($document->document_key ? ' / Chave '.substr($document->document_key, -8) : '')),
+                                                ])
+                                                ->all())
+                                            ->getOptionLabelUsing(fn ($value): ?string => ($document = FiscalDocument::query()->find($value))
+                                                ? trim(($document->document_number ?: 'Sem número')
+                                                    .($document->document_series ? ' / Série '.$document->document_series : '')
+                                                    .($document->document_key ? ' / Chave '.substr($document->document_key, -8) : ''))
+                                                : null)
+                                            ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                                $document = filled($state) ? FiscalDocument::query()->find((int) $state) : null;
+
+                                                $set('tax_data.reference.document_number', $document?->document_number);
+                                                $set('tax_data.reference.document_series', $document?->document_series);
+                                                $set('tax_data.reference.document_key', $document?->document_key);
+                                            })
+                                            ->columnSpan(['md' => 3, 'lg' => 6])
+                                            ->helperText('Opcional. Selecionar uma nota do sistema preenche número, série e chave automaticamente.'),
+                                        TextInput::make('tax_data.reference.document_number')
+                                            ->label('Número da nota de origem')
+                                            ->maxLength(50)
+                                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                                        TextInput::make('tax_data.reference.document_series')
+                                            ->label('Série da nota de origem')
+                                            ->maxLength(10)
+                                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                                        TextInput::make('tax_data.reference.document_key')
+                                            ->label('Chave da NF-e de origem')
+                                            ->maxLength(44)
+                                            ->columnSpan(['md' => 2, 'lg' => 8])
+                                            ->helperText('Essa chave será enviada em notas referenciadas no payload da NF-e de remessa em garantia.'),
+                                    ])
+                                    ->collapsible(),
                             ]),
 
                         Tab::make('Erros')
