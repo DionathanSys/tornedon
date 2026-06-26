@@ -108,6 +108,52 @@ class PersistFiscalSnapshotActionTest extends TestCase
         $this->assertSame(4.25, (float) $item->iss_amount);
     }
 
+    public function test_it_does_not_highlight_own_icms_for_simples_csosn_102(): void
+    {
+        [$document, $item] = $this->createDocumentWithItem(DocumentModel::NFE, [
+            'product_code' => 'PRD-102',
+            'description' => 'Produto Simples',
+            'quantity' => 1,
+            'unit_of_measure' => 'UN',
+            'unit_price' => 100,
+            'total_price' => 100,
+            'discount_amount' => 0,
+            'product_origin' => '0',
+            'ncm_code' => '84733049',
+        ]);
+
+        $decision = new FiscalDecisionDTO(
+            cfop: '5102',
+            cstIcms: null,
+            csosn: '102',
+            modBcIcms: '3',
+            aliquotaIcms: 18,
+            reducaoBaseIcms: null,
+            modBcSt: null,
+            aliquotaMvaSt: null,
+            aliquotaSt: null,
+            reducaoBaseSt: null,
+            cstPis: '49',
+            aliquotaPis: 0.65,
+            cstCofins: '49',
+            aliquotaCofins: 3.0,
+            cstIpi: null,
+            aliquotaIpi: null,
+            enquadramentoIpi: null,
+        );
+
+        $action = app(PersistFiscalSnapshotAction::class);
+
+        $this->assertTrue($action->execute($document, [1 => $decision]), $action->getMessage() ?? '');
+
+        $item->refresh();
+
+        $this->assertSame('102', data_get($item->tax_data, 'imposto.icms.situacao_tributaria'));
+        $this->assertNull(data_get($item->tax_data, 'imposto.icms.valor_base_calculo'));
+        $this->assertNull(data_get($item->tax_data, 'imposto.icms.aliquota'));
+        $this->assertNull(data_get($item->tax_data, 'imposto.icms.valor'));
+    }
+
     /**
      * @param  array<string, mixed>  $itemAttributes
      * @return array{FiscalDocument, FiscalDocumentItem}

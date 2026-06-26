@@ -58,7 +58,14 @@ class FiscalDecisionDTO
 
         // ICMS
         $icms = [];
-        $icms['situacao_tributaria'] = $this->csosn ?? $this->cstIcms ?? '00';
+        $icmsStatus = $this->csosn ?? $this->cstIcms ?? '00';
+        $icms['situacao_tributaria'] = $icmsStatus;
+
+        if (in_array($icmsStatus, ['102', '103', '300', '400'], true)) {
+            $imposto['icms'] = $icms;
+
+            return $this->appendRemainingTaxes($imposto, $baseCalculo);
+        }
 
         if ($this->modBcIcms !== null) {
             $icms['modalidade_base_calculo'] = $this->modBcIcms;
@@ -95,6 +102,11 @@ class FiscalDecisionDTO
 
         $imposto['icms'] = $icms;
 
+        return $this->appendRemainingTaxes($imposto, $baseCalculo);
+    }
+
+    private function appendRemainingTaxes(array $imposto, float $baseCalculo): array
+    {
         // PIS
         $pis = [];
         $pis['situacao_tributaria'] = $this->cstPis ?? '01';
