@@ -8,7 +8,6 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\CreateAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\DeleteAddressAction;
 use App\Filament\Clusters\Partners\Resources\Addresses\Actions\EditAddressAction;
-use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\FetchStateTaxIdAction;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\ImportCnpjData;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\UpdatePartner;
 use App\Filament\Clusters\Partners\Resources\Components\DocumentNumberInput;

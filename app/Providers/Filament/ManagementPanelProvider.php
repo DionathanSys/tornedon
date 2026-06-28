@@ -38,6 +38,10 @@ class ManagementPanelProvider extends PanelProvider
                 in: app_path('Filament/Management/Resources'),
                 for: 'App\\Filament\\Management\\Resources',
             )
+            ->discoverPages(
+                in: app_path('Filament/Management/Pages'),
+                for: 'App\\Filament\\Management\\Pages',
+            )
             ->pages([
                 Dashboard::class,
             ])
@@ -62,6 +66,7 @@ class ManagementPanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->navigationGroups([
                 'Gestao',
+                'Configurações',
             ]);
     }
 }
