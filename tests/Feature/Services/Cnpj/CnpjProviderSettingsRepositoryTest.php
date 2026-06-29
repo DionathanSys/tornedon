@@ -18,16 +18,19 @@ class CnpjProviderSettingsRepositoryTest extends TestCase
         config()->set('cnpj.provider_classes', [
             'brasil_api' => FakeRepositoryProvider::class,
             'open_cnpja' => FakeRepositoryProvider::class,
+            'cnpj_ws' => FakeRepositoryProvider::class,
             'receitaws' => FakeRepositoryProvider::class,
         ]);
         config()->set('cnpj.provider_labels', [
             'brasil_api' => 'BrasilAPI',
             'open_cnpja' => 'OpenCnpja',
+            'cnpj_ws' => 'CNPJ.ws',
             'receitaws' => 'ReceitaWS',
         ]);
         config()->set('cnpj.provider_settings', [
             'brasil_api' => ['base_url' => 'https://brasil.test', 'timeout' => 15, 'headers' => [], 'rate_limit' => ['max_attempts' => 10, 'decay_seconds' => 60]],
             'open_cnpja' => ['base_url' => 'https://open.test', 'timeout' => 20, 'headers' => [], 'rate_limit' => ['max_attempts' => 5, 'decay_seconds' => 60]],
+            'cnpj_ws' => ['base_url' => 'https://cnpjws.test', 'timeout' => 15, 'headers' => [], 'rate_limit' => ['max_attempts' => 7, 'decay_seconds' => 60]],
             'receitaws' => ['base_url' => 'https://receita.test', 'timeout' => 25, 'headers' => [], 'rate_limit' => ['max_attempts' => 3, 'decay_seconds' => 120]],
         ]);
     }
@@ -36,13 +39,15 @@ class CnpjProviderSettingsRepositoryTest extends TestCase
     {
         $providers = app(CnpjProviderSettingsRepository::class)->all();
 
-        $this->assertCount(3, $providers);
+        $this->assertCount(4, $providers);
         $this->assertSame('brasil_api', $providers[0]['name']);
         $this->assertTrue($providers[0]['enabled']);
         $this->assertSame('open_cnpja', $providers[1]['name']);
         $this->assertTrue($providers[1]['enabled']);
-        $this->assertSame('receitaws', $providers[2]['name']);
+        $this->assertSame('cnpj_ws', $providers[2]['name']);
         $this->assertFalse($providers[2]['enabled']);
+        $this->assertSame('receitaws', $providers[3]['name']);
+        $this->assertFalse($providers[3]['enabled']);
     }
 
     public function test_persists_and_normalizes_global_provider_configuration(): void
@@ -81,6 +86,8 @@ class CnpjProviderSettingsRepositoryTest extends TestCase
         $this->assertFalse($providers[1]['enabled']);
         $this->assertSame('open_cnpja', $providers[2]['name']);
         $this->assertTrue($providers[2]['enabled']);
+        $this->assertSame('cnpj_ws', $providers[3]['name']);
+        $this->assertFalse($providers[3]['enabled']);
     }
 }
 

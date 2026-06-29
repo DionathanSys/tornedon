@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Tenancy\RegisterCompany;
 use App\Models\Company;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -39,13 +38,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->registration()
             ->passwordReset()
             ->emailVerification()
             ->emailChangeVerification()
             ->profile()
             ->tenant(Company::class)
-            ->tenantRegistration(RegisterCompany::class)
             ->colors([
                 'primary' => Color::Zinc,
             ])

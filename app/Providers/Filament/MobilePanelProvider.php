@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Tenancy\RegisterCompany;
 use App\Models\Company;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -34,7 +33,6 @@ class MobilePanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->tenant(Company::class)
-            ->tenantRegistration(RegisterCompany::class)
             ->colors([
                 'primary' => Color::Zinc,
             ])

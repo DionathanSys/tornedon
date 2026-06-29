@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Cnpj\Providers\BrasilApiProvider;
+use App\Services\Cnpj\Providers\CnpjWsProvider;
 use App\Services\Cnpj\Providers\OpenCnpjaProvider;
 use App\Services\Cnpj\Providers\ReceitaWsProvider;
 
@@ -24,12 +25,14 @@ return [
     'provider_classes' => [
         'brasil_api' => BrasilApiProvider::class,
         'open_cnpja' => OpenCnpjaProvider::class,
+        'cnpj_ws' => CnpjWsProvider::class,
         'receitaws' => ReceitaWsProvider::class,
     ],
 
     'provider_labels' => [
         'brasil_api' => 'BrasilAPI',
         'open_cnpja' => 'OpenCnpja',
+        'cnpj_ws' => 'CNPJ.ws',
         'receitaws' => 'ReceitaWS',
     ],
 
@@ -55,6 +58,15 @@ return [
             'rate_limit' => [
                 'max_attempts' => (int) env('CNPJ_OPEN_CNPJA_RATE_LIMIT_MAX_ATTEMPTS', 1000),
                 'decay_seconds' => (int) env('CNPJ_OPEN_CNPJA_RATE_LIMIT_DECAY_SECONDS', 60),
+            ],
+        ],
+        'cnpj_ws' => [
+            'base_url' => env('CNPJ_WS_BASE_URL', 'https://publica.cnpj.ws/cnpj'),
+            'timeout' => (int) env('CNPJ_WS_TIMEOUT', 15),
+            'headers' => [],
+            'rate_limit' => [
+                'max_attempts' => (int) env('CNPJ_WS_RATE_LIMIT_MAX_ATTEMPTS', 1000),
+                'decay_seconds' => (int) env('CNPJ_WS_RATE_LIMIT_DECAY_SECONDS', 60),
             ],
         ],
         'receitaws' => [
