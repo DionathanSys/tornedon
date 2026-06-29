@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use RuntimeException;
 
 class SystemSetting extends Model
 {
@@ -19,9 +21,17 @@ class SystemSetting extends Model
     public static function get(string $key, mixed $default = null): mixed
     {
         return Cache::remember(self::cacheKey($key), now()->addHours(24), function () use ($key, $default) {
-            $setting = self::query()
-                ->where('key', $key)
-                ->first();
+            try {
+                $setting = self::query()
+                    ->where('key', $key)
+                    ->first();
+            } catch (QueryException $e) {
+                if (self::isMissingTableException($e)) {
+                    return $default;
+                }
+
+                throw $e;
+            }
 
             return $setting?->value ?? $default;
         });
@@ -31,23 +41,47 @@ class SystemSetting extends Model
     {
         Cache::forget(self::cacheKey($key));
 
-        return self::updateOrCreate(
-            ['key' => $key],
-            ['value' => $value],
-        );
+        try {
+            return self::updateOrCreate(
+                ['key' => $key],
+                ['value' => $value],
+            );
+        } catch (QueryException $e) {
+            if (self::isMissingTableException($e)) {
+                throw new RuntimeException('A tabela system_settings ainda não existe. Execute php artisan migrate.', previous: $e);
+            }
+
+            throw $e;
+        }
     }
 
     public static function remove(string $key): bool
     {
         Cache::forget(self::cacheKey($key));
 
-        return self::query()
-            ->where('key', $key)
-            ->delete() > 0;
+        try {
+            return self::query()
+                ->where('key', $key)
+                ->delete() > 0;
+        } catch (QueryException $e) {
+            if (self::isMissingTableException($e)) {
+                return false;
+            }
+
+            throw $e;
+        }
     }
 
     private static function cacheKey(string $key): string
     {
         return "system_setting_{$key}";
+    }
+
+    private static function isMissingTableException(QueryException $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'Base table or view not found')
+            || str_contains($message, 'no such table');
     }
 }

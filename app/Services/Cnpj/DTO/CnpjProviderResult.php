@@ -10,6 +10,7 @@ class CnpjProviderResult
         public readonly ?string $message = null,
         public readonly array $errors = [],
         public readonly int $status = 200,
+        public readonly bool $shouldRetryNextProvider = true,
     ) {}
 
     public static function success(array $data): self
@@ -25,6 +26,7 @@ class CnpjProviderResult
         string $message,
         array $errors = [],
         int $status = 422,
+        bool $shouldRetryNextProvider = true,
     ): self {
         return new self(
             success: false,
@@ -32,6 +34,7 @@ class CnpjProviderResult
             message: $message,
             errors: $errors,
             status: $status,
+            shouldRetryNextProvider: $shouldRetryNextProvider,
         );
     }
 
@@ -40,4 +43,3 @@ class CnpjProviderResult
         return $this->success && is_array($this->data);
     }
 }
-

@@ -12,6 +12,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Throwable;
 use UnitEnum;
 
 class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
@@ -59,10 +60,10 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->itemLabel(fn (array $state): string => (string) ($state['label'] ?? $state['name'] ?? 'Provider'))
                             ->schema([
                                 Forms\Components\Hidden::make('name'),
-                                Forms\Components\Hidden::make('label'),
-                                Forms\Components\Placeholder::make('provider_name')
+                                Forms\Components\TextInput::make('label')
                                     ->label('Provider')
-                                    ->content(fn (array $state): string => (string) ($state['label'] ?? $state['name'] ?? 'Provider')),
+                                    ->disabled()
+                                    ->dehydrated(false),
                                 Forms\Components\Toggle::make('enabled')
                                     ->label('Habilitado')
                                     ->inline(false)
@@ -129,7 +130,17 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public function save(CnpjProviderSettingsRepository $repository): void
     {
-        $repository->save((array) ($this->data['providers'] ?? []));
+        try {
+            $repository->save((array) ($this->data['providers'] ?? []));
+        } catch (Throwable $e) {
+            Notification::make()
+                ->title('Não foi possível salvar as configurações')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
 
         $this->data['providers'] = $repository->all();
         $this->form->fill($this->data);
@@ -153,9 +164,26 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
             return;
         }
 
-        $result = $service->consult($cnpj, [
-            'source' => 'management_cnpj_provider_settings_page',
-        ]);
+        try {
+            $result = $service->consult($cnpj, [
+                'source' => 'management_cnpj_provider_settings_page',
+            ]);
+        } catch (Throwable $e) {
+            data_set($this->data, 'consultation.provider', '');
+            data_set($this->data, 'consultation.message', 'Erro interno ao executar a consulta de CNPJ.');
+            data_set($this->data, 'consultation.result', json_encode([
+                'exception' => $e->getMessage(),
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $this->form->fill($this->data);
+
+            Notification::make()
+                ->title('Erro ao consultar CNPJ')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
 
         data_set($this->data, 'consultation.provider', (string) data_get($service->getData(), 'provider', ''));
         data_set($this->data, 'consultation.message', $service->getMessage());

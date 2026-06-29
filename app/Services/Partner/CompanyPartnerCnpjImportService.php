@@ -35,7 +35,11 @@ class CompanyPartnerCnpjImportService
         }
 
         $cnpjService = app(CnpjConsultationService::class);
-        $vo = $cnpjService->consult($partner->document_number);
+        $vo = $cnpjService->consult($partner->document_number, [
+            'company_id' => $companyPartner->company_id,
+            'user_id' => $userId,
+            'source' => 'company_partner_cnpj_import',
+        ]);
 
         if (! $vo) {
             $this->setError(

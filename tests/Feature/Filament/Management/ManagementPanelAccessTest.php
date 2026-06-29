@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Filament\Management;
 
+use App\Filament\Management\Pages\CnpjProviderSettingsPage;
 use App\Filament\Management\Resources\Companies\CompanyResource;
 use App\Filament\Management\Resources\Users\UserResource;
 use App\Models\User;
@@ -33,5 +34,6 @@ class ManagementPanelAccessTest extends TestCase
 
         $this->get(CompanyResource::getUrl('index'))->assertOk();
         $this->get(UserResource::getUrl('index'))->assertOk();
+        $this->get(CnpjProviderSettingsPage::getUrl())->assertOk();
     }
 }
