@@ -3,14 +3,9 @@
 namespace App\Filament\Clusters\Partners\Resources\CompanyPartners\Tables;
 
 use App\Enum\Partner\Type;
-use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\EditCompanyPartnerAction;
-use Filament\Actions\BulkActionGroup;
+use App\Filament\Clusters\Partners\Resources\CompanyPartners\Actions\RegisterPartnerByCnpjAction;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
-use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -45,6 +40,7 @@ class CompanyPartnersTable
                     ->label('Tipo')
                     ->formatStateUsing(function ($state) {
                         $types = explode(',', $state);
+
                         return implode(', ', array_map(function ($type) {
                             return Type::from($type)->description();
                         }, $types));
@@ -78,7 +74,7 @@ class CompanyPartnersTable
                     ->query(function ($query, array $data) {
                         return $query->when(
                             $data['type'] ?? null,
-                            fn($q) => $q->whereJsonContains('type', $data['type'])
+                            fn ($q) => $q->whereJsonContains('type', $data['type'])
                         );
                     }),
                 Filter::make('is_active')
@@ -87,6 +83,7 @@ class CompanyPartnersTable
             ])
             ->recordActions([])
             ->toolbarActions([
+                RegisterPartnerByCnpjAction::make(),
                 CreateAction::make()
                     ->label('Parceiro')
                     ->icon(Heroicon::Plus)
