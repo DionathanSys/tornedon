@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Cnpj;
 
+use App\Domain\DTO\Cnpj\CnpjVO;
 use App\Services\Cnpj\Providers\CnpjWsProvider;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -91,5 +92,56 @@ class CnpjWsProviderTest extends TestCase
         $this->assertSame('11', data_get($result->data, 'phones.0.area'));
         $this->assertSame('33334444', data_get($result->data, 'phones.0.number'));
         $this->assertSame('contato@empresa.ws', data_get($result->data, 'emails.0.address'));
+
+        $normalized = CnpjVO::fromApiResponse($result->data)->toArray();
+
+        $this->assertSame('123456789000', $normalized['state_tax_id']);
+    }
+
+    public function test_returns_null_state_tax_id_when_registration_is_missing(): void
+    {
+        Http::fake([
+            'https://publica.cnpj.ws/cnpj/*' => Http::response([
+                'razao_social' => 'Empresa Sem IE LTDA',
+                'capital_social' => '1000.00',
+                'natureza_juridica' => [
+                    'descricao' => 'Sociedade Empresária Limitada',
+                ],
+                'simples' => null,
+                'estabelecimento' => [
+                    'cnpj' => '12.345.678/0001-95',
+                    'tipo' => 'MATRIZ',
+                    'nome_fantasia' => 'Empresa Sem IE',
+                    'situacao_cadastral' => 'Ativa',
+                    'data_situacao_cadastral' => '2024-01-01',
+                    'data_inicio_atividade' => '2020-01-01',
+                    'logradouro' => 'das Flores',
+                    'numero' => '123',
+                    'bairro' => 'Centro',
+                    'cep' => '01001000',
+                    'cidade' => [
+                        'nome' => 'Sao Paulo',
+                        'ibge_id' => 3550308,
+                    ],
+                    'estado' => [
+                        'sigla' => 'SP',
+                    ],
+                    'atividade_principal' => [
+                        'id' => '6201501',
+                        'descricao' => 'Desenvolvimento',
+                    ],
+                    'inscricoes_estaduais' => [],
+                ],
+            ], 200),
+        ]);
+
+        $provider = new CnpjWsProvider();
+        $result = $provider->consult('12345678000195');
+
+        $this->assertTrue($result->isSuccess());
+
+        $normalized = CnpjVO::fromApiResponse($result->data)->toArray();
+
+        $this->assertNull($normalized['state_tax_id']);
     }
 }

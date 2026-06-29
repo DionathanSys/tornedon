@@ -191,7 +191,7 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
             $this->data,
             'consultation.result',
             json_encode(
-                $result?->toArray() ?? data_get($service->getData(), 'raw', []),
+                data_get($service->getData(), 'provider_response', $result?->toArray() ?? data_get($service->getData(), 'raw', [])),
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
             ) ?: '{}',
         );

@@ -72,7 +72,10 @@ class BrasilApiProvider implements CnpjApiProviderInterface
                 );
             }
 
-            return CnpjProviderResult::success($this->normalizePayload($data, $cnpj));
+            return CnpjProviderResult::success(
+                $this->normalizePayload($data, $cnpj),
+                ['raw_response' => $data],
+            );
         } catch (\Throwable $e) {
             Log::error('Erro ao consultar CNPJ', ['exception' => $e->getMessage()]);
 

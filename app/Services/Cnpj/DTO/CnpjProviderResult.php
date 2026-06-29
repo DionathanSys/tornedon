@@ -11,14 +11,16 @@ class CnpjProviderResult
         public readonly array $errors = [],
         public readonly int $status = 200,
         public readonly bool $shouldRetryNextProvider = true,
+        public readonly array $meta = [],
     ) {}
 
-    public static function success(array $data): self
+    public static function success(array $data, array $meta = []): self
     {
         return new self(
             success: true,
             data: $data,
             status: 200,
+            meta: $meta,
         );
     }
 
@@ -35,6 +37,7 @@ class CnpjProviderResult
             errors: $errors,
             status: $status,
             shouldRetryNextProvider: $shouldRetryNextProvider,
+            meta: [],
         );
     }
 

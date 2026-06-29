@@ -227,6 +227,7 @@ class CnpjConsultationService
             'cnpj' => $cnpj,
             'consultation_id' => $context['consultation_id'] ?? null,
             'company_name' => $vo->companyName,
+            'provider_response' => $result->meta['raw_response'] ?? $data,
             'raw' => $data,
         ]);
 

@@ -68,6 +68,8 @@ class CnpjVO
 
     public function toArray(): array
     {
+        $mainRegistration = $this->getMainStateRegistration();
+
         return [
             'tax_id' => $this->taxId,
             'company_name' => $this->companyName,
@@ -83,6 +85,7 @@ class CnpjVO
             'address' => $this->address->toArray(),
             'main_activity' => $this->mainActivity?->toArray(),
             'side_activities' => array_map(fn(CnpjActivityVO $a) => $a->toArray(), $this->sideActivities),
+            'state_tax_id' => $mainRegistration?->number,
             'registrations' => array_map(fn(CnpjRegistrationVO $r) => $r->toArray(), $this->registrations),
             'phone' => $this->phone,
             'email' => $this->email,

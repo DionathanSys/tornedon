@@ -67,7 +67,10 @@ class ReceitaWsProvider implements CnpjApiProviderInterface
                 );
             }
 
-            return CnpjProviderResult::success($this->normalizePayload($data, $cnpj));
+            return CnpjProviderResult::success(
+                $this->normalizePayload($data, $cnpj),
+                ['raw_response' => $data],
+            );
         } catch (\Throwable $e) {
             return CnpjProviderResult::failure(
                 'Erro ao consultar CNPJ na ReceitaWS.',
