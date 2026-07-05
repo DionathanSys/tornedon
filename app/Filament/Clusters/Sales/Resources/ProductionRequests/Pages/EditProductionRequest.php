@@ -24,6 +24,11 @@ class EditProductionRequest extends EditRecord
 {
     protected static string $resource = ProductionRequestResource::class;
 
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     public function getSubheading(): ?string
     {
         return sprintf('Pedido %s - %s', $this->record->number ?? $this->record->id, $this->record->status->description());

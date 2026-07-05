@@ -15,7 +15,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Tables\Columns\Layout\Grid;
+use Filament\Tables\Columns\Layout\Panel;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
@@ -28,26 +33,47 @@ class ItemsRelationManager extends RelationManager
     {
         return $table
             ->heading('Itens do Pedido')
+            ->contentGrid([
+                'md' => 2,
+            ])
             ->columns([
-                TextColumn::make('product.name')
-                    ->label('Produto')
-                    ->searchable()
-                    ->description(fn (ProductionRequestItem $record): string => sprintf(
-                        '%s x %s',
-                        number_format((float) $record->quantity, 3, ',', '.'),
-                        $record->unit_of_measure,
-                    )),
-                TextColumn::make('quantity')
-                    ->label('Qtde.')
-                    ->numeric(3, ',', '.')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('unit_price')
-                    ->label('Vlr. Unitário')
-                    ->money('BRL')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('total_amount')
-                    ->label('Total')
-                    ->money('BRL'),
+                Split::make([
+                    Stack::make([
+                        Grid::make([
+                            'default' => 2,
+                        ])->schema([
+                            TextColumn::make('product.name')
+                                ->label('Produto')
+                                ->searchable()
+                                ->weight('bold')
+                                ->wrap(),
+                            TextColumn::make('total_amount')
+                                ->label('Total')
+                                ->money('BRL')
+                                ->alignEnd()
+                                ->weight('bold')
+                                ->color('success'),
+                        ]),
+                        TextColumn::make('quantity_summary')
+                            ->label('Quantidade')
+                            ->state(fn (ProductionRequestItem $record): string => sprintf(
+                                '%s x %s',
+                                number_format((float) $record->quantity, 3, ',', '.'),
+                                $record->unit_of_measure,
+                            ))
+                            ->color('gray'),
+                    ]),
+                ])->from('md'),
+                Panel::make([
+                    Stack::make([
+                        TextColumn::make('unit_price')
+                            ->label('Preço unitário')
+                            ->money('BRL'),
+                        TextColumn::make('unit_of_measure')
+                            ->label('Unidade')
+                            ->color('gray'),
+                    ])->space(1),
+                ])->collapsible(),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -86,6 +112,7 @@ class ItemsRelationManager extends RelationManager
                 DeleteAction::make()
                     ->visible(fn (): bool => $this->ownerProductionRequest()->status === Status::OPEN),
             ])
+            ->recordActionsPosition(RecordActionsPosition::AfterContent)
             ->emptyStateDescription('Adicione itens para compor o pedido para produção.');
     }
 

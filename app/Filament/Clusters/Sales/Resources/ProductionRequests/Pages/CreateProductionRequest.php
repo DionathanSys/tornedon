@@ -15,6 +15,11 @@ class CreateProductionRequest extends CreateRecord
 {
     protected static string $resource = ProductionRequestResource::class;
 
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['company_id'] = Filament::getTenant()->id;
