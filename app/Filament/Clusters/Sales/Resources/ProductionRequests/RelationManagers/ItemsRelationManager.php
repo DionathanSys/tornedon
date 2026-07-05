@@ -64,16 +64,6 @@ class ItemsRelationManager extends RelationManager
                             ->color('gray'),
                     ]),
                 ])->from('md'),
-                Panel::make([
-                    Stack::make([
-                        TextColumn::make('unit_price')
-                            ->label('Preço unitário')
-                            ->money('BRL'),
-                        TextColumn::make('unit_of_measure')
-                            ->label('Unidade')
-                            ->color('gray'),
-                    ])->space(1),
-                ])->collapsible(),
             ])
             ->headerActions([
                 CreateAction::make()
