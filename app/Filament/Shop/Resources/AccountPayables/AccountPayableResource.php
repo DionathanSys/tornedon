@@ -2,10 +2,12 @@
 
 namespace App\Filament\Shop\Resources\AccountPayables;
 
-use App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas\AccountPayableForm;
 use App\Filament\Shop\Resources\AccountPayables\Pages\CreateAccountPayable;
 use App\Filament\Shop\Resources\AccountPayables\Pages\EditAccountPayable;
 use App\Filament\Shop\Resources\AccountPayables\Pages\ListAccountPayables;
+use App\Filament\Shop\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Shop\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
+use App\Filament\Shop\Resources\AccountPayables\Schemas\AccountPayableForm;
 use App\Filament\Shop\Resources\AccountPayables\Tables\AccountPayablesTable;
 use App\Models\AccountPayable;
 use BackedEnum;
@@ -39,6 +41,14 @@ class AccountPayableResource extends Resource
     public static function table(Table $table): Table
     {
         return AccountPayablesTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            InstallmentsRelationManager::class,
+            PaymentsRelationManager::class,
+        ];
     }
 
     public static function getEloquentQuery(): Builder

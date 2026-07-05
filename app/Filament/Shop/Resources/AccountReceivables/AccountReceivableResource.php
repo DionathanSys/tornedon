@@ -2,10 +2,12 @@
 
 namespace App\Filament\Shop\Resources\AccountReceivables;
 
-use App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Shop\Resources\AccountReceivables\Pages\CreateAccountReceivable;
 use App\Filament\Shop\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Shop\Resources\AccountReceivables\Pages\ListAccountReceivables;
+use App\Filament\Shop\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Shop\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
+use App\Filament\Shop\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Shop\Resources\AccountReceivables\Tables\AccountReceivablesTable;
 use App\Models\AccountReceivable;
 use BackedEnum;
@@ -39,6 +41,14 @@ class AccountReceivableResource extends Resource
     public static function table(Table $table): Table
     {
         return AccountReceivablesTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            InstallmentsRelationManager::class,
+            PaymentsRelationManager::class,
+        ];
     }
 
     public static function getEloquentQuery(): Builder

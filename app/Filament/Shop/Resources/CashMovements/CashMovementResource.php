@@ -2,10 +2,10 @@
 
 namespace App\Filament\Shop\Resources\CashMovements;
 
-use App\Filament\Clusters\Financial\Resources\CashMovements\Schemas\CashMovementForm;
 use App\Filament\Shop\Resources\CashMovements\Pages\CreateCashMovement;
 use App\Filament\Shop\Resources\CashMovements\Pages\EditCashMovement;
 use App\Filament\Shop\Resources\CashMovements\Pages\ListCashMovements;
+use App\Filament\Shop\Resources\CashMovements\Schemas\CashMovementForm;
 use App\Filament\Shop\Resources\CashMovements\Tables\CashMovementsTable;
 use App\Models\CashMovement;
 use BackedEnum;
