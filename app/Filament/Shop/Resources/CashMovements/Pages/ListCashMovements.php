@@ -3,8 +3,9 @@
 namespace App\Filament\Shop\Resources\CashMovements\Pages;
 
 use App\Filament\Shop\Resources\CashMovements\CashMovementResource;
+use Filament\Resources\Pages\ListRecords;
 
-class ListCashMovements extends \App\Filament\Clusters\Financial\Resources\CashMovements\Pages\ListCashMovements
+class ListCashMovements extends ListRecords
 {
     protected static string $resource = CashMovementResource::class;
 }
