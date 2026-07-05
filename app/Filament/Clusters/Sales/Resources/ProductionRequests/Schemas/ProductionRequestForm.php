@@ -31,6 +31,8 @@ class ProductionRequestForm
                 Section::make('Dados do Pedido')
                     ->columns(['md' => 6, 'lg' => 12])
                     ->columnSpanFull()
+                    ->collapsible()
+                    ->persistCollapsed()
                     ->schema([
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
@@ -81,6 +83,8 @@ class ProductionRequestForm
                 Section::make('Financeiro')
                     ->columns(['md' => 6, 'lg' => 12])
                     ->columnSpanFull()
+                    ->collapsible()
+                    ->persistCollapsed()
                     ->schema([
                         Select::make('payment_method')
                             ->label('Forma de Pagamento')

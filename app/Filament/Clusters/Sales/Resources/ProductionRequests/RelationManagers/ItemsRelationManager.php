@@ -12,14 +12,13 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -30,23 +29,22 @@ class ItemsRelationManager extends RelationManager
         return $table
             ->heading('Itens do Pedido')
             ->columns([
-                TextColumn::make('sequence')
-                    ->label('#')
-                    ->sortable(),
                 TextColumn::make('product.name')
                     ->label('Produto')
-                    ->searchable(),
-                TextColumn::make('unit_of_measure')
-                    ->label('Un.'),
+                    ->searchable()
+                    ->description(fn (ProductionRequestItem $record): string => sprintf(
+                        '%s x %s',
+                        number_format((float) $record->quantity, 3, ',', '.'),
+                        $record->unit_of_measure,
+                    )),
                 TextColumn::make('quantity')
                     ->label('Qtde.')
-                    ->numeric(3, ',', '.'),
+                    ->numeric(3, ',', '.')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('unit_price')
                     ->label('Vlr. Unitário')
-                    ->money('BRL'),
-                TextColumn::make('discount_amount')
-                    ->label('Desc.')
-                    ->money('BRL'),
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('total_amount')
                     ->label('Total')
                     ->money('BRL'),
@@ -61,9 +59,11 @@ class ItemsRelationManager extends RelationManager
 
                         return $record->items()->create([
                             ...$data,
+                            'discount_percentage' => 0,
+                            'discount_amount' => 0,
                             'created_by' => Auth::id(),
                             'updated_by' => Auth::id(),
-                            'sequence' => (int) ($data['sequence'] ?? (((int) $record->items()->max('sequence')) + 1)),
+                            'sequence' => ((int) $record->items()->max('sequence')) + 1,
                         ]);
                     })
                     ->after(fn () => notify::success('Item adicionado com sucesso.')),
@@ -75,6 +75,8 @@ class ItemsRelationManager extends RelationManager
                     ->using(function (ProductionRequestItem $record, array $data): ProductionRequestItem {
                         $record->update([
                             ...$data,
+                            'discount_percentage' => 0,
+                            'discount_amount' => 0,
                             'updated_by' => Auth::id(),
                         ]);
 
@@ -106,7 +108,7 @@ class ItemsRelationManager extends RelationManager
                 ->native(false)
                 ->required()
                 ->live()
-                ->afterStateUpdated(function (Set $set, Get $get, $state): void {
+                ->afterStateUpdated(function (Set $set, $state): void {
                     $product = filled($state)
                         ? Product::query()->where('company_id', Filament::getTenant()->id)->find((int) $state)
                         : null;
@@ -115,14 +117,9 @@ class ItemsRelationManager extends RelationManager
                         return;
                     }
 
-                    $set('description', $get('description') ?: $product->name);
                     $set('unit_of_measure', $product->unit?->value ?? 'UN');
                     $set('unit_price', round((float) ($product->sale_price_value ?? 0), 2));
                 }),
-            Textarea::make('description')
-                ->label('Descrição')
-                ->rows(2)
-                ->columnSpanFull(),
             TextInput::make('unit_of_measure')
                 ->label('Unidade')
                 ->required()
@@ -132,25 +129,8 @@ class ItemsRelationManager extends RelationManager
                 ->numeric()
                 ->minValue(0.001)
                 ->required(),
-            TextInput::make('unit_price')
+            Money::make('unit_price')
                 ->label('Preço Unitário')
-                ->numeric()
-                ->minValue(0)
-                ->required(),
-            TextInput::make('discount_percentage')
-                ->label('Desconto (%)')
-                ->numeric()
-                ->minValue(0)
-                ->default(0),
-            TextInput::make('discount_amount')
-                ->label('Desconto (R$)')
-                ->numeric()
-                ->minValue(0)
-                ->default(0),
-            TextInput::make('sequence')
-                ->label('Sequência')
-                ->numeric()
-                ->default(fn (): int => ((int) $this->ownerProductionRequest()->items()->max('sequence')) + 1)
                 ->required(),
         ];
     }
