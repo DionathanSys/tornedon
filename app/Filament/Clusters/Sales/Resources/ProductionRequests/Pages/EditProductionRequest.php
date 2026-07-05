@@ -4,18 +4,14 @@ namespace App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages;
 
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
+use App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages\Actions\DeliverProductionRequestAction;
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\ProductionRequestResource;
-use App\Models\FinancialAccount;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductionRequest\ProductionRequestService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -78,48 +74,7 @@ class EditProductionRequest extends EditRecord
                     ->visible(fn (): bool => $this->record->status === Status::OPEN),
             ])->buttonGroup(),
             ActionGroup::make([
-                Action::make('deliver')
-                    ->label('Encerrar e entregar')
-                    ->icon(Heroicon::CheckCircle)
-                    ->color('success')
-                    ->visible(fn (): bool => $this->record->status === Status::OPEN)
-                    ->schema([
-                        DatePicker::make('delivered_at')
-                            ->label('Data da entrega')
-                            ->default(now())
-                            ->required(),
-                        Checkbox::make('mark_as_received')
-                            ->label('Registrar recebimento agora')
-                            ->default(false)
-                            ->live(),
-                        DatePicker::make('received_at')
-                            ->label('Data do recebimento')
-                            ->default(now())
-                            ->visible(fn (Get $get): bool => (bool) ($get('mark_as_received') ?? false))
-                            ->required(fn (Get $get): bool => (bool) ($get('mark_as_received') ?? false)),
-                        Select::make('financial_account_id')
-                            ->label('Conta financeira para baixa')
-                            ->options(fn (): array => FinancialAccount::optionsForCompany($this->record->company_id))
-                            ->default(fn (): ?int => FinancialAccount::defaultIdForCompany($this->record->company_id))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->visible(fn (Get $get): bool => (bool) ($get('mark_as_received') ?? false))
-                            ->required(fn (Get $get): bool => (bool) ($get('mark_as_received') ?? false)),
-                    ])
-                    ->action(function (array $data): void {
-                        $service = app(ProductionRequestService::class);
-                        $delivered = $service->deliver($this->record, $data, Auth::id());
-
-                        if ($service->hasError() || $delivered === null) {
-                            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Pedido entregue com sucesso.');
-                    }),
+                DeliverProductionRequestAction::make(),
                 Action::make('openAccountReceivable')
                     ->label('Abrir Conta a Receber')
                     ->icon(Heroicon::Banknotes)

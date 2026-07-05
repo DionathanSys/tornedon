@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\ProductionRequests\Tables;
 
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
+use App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages\Actions\DeliverProductionRequestAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
@@ -65,10 +66,12 @@ class ProductionRequestsTable
                     Stack::make([
                         TextColumn::make('order_date')
                             ->label('Data do pedido')
+                            ->prefix('Pedido em: ')
                             ->date('d/m/Y'),
                         TextColumn::make('delivered_at')
                             ->label('Entregue em')
-                            ->dateTime('d/m/Y H:i')
+                            ->prefix('Entregue em: ')
+                            ->dateTime('d/m/Y')
                             ->placeholder('-'),
                         TextColumn::make('accountReceivable.document_number')
                             ->label('Conta a receber')
@@ -93,6 +96,7 @@ class ProductionRequestsTable
                     ->native(false),
             ])
             ->recordActions([
+                DeliverProductionRequestAction::make()->iconButton(),
                 EditAction::make()->iconButton(),
             ])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
