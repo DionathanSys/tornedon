@@ -107,6 +107,11 @@ class AccountReceivable extends Model
         );
     }
 
+    public function productionRequests(): HasMany
+    {
+        return $this->hasMany(ProductionRequest::class);
+    }
+
     protected function counterpartyLabel(): Attribute
     {
         return Attribute::make(
