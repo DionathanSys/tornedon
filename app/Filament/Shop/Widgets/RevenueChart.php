@@ -40,15 +40,17 @@ class RevenueChart extends ChartWidget
 
         $labels = $months->map(fn ($d) => $d->format('M/Y'));
 
+        $driver = DB::connection()->getDriverName();
+        $dateFormat = $driver === 'sqlite'
+            ? "strftime('%Y-%m', paid_date)"
+            : "DATE_FORMAT(paid_date, '%Y-%m')";
+
         $revenue = AccountReceivable::query()
             ->where('company_id', $tenantId)
             ->where('status', 'received')
             ->whereNotNull('paid_date')
             ->where('paid_date', '>=', $start)
-            ->selectRaw("
-                strftime('%Y-%m', paid_date) as month,
-                COALESCE(SUM(paid_amount), 0) as total
-            ")
+            ->selectRaw("{$dateFormat} as month, COALESCE(SUM(paid_amount), 0) as total")
             ->groupBy('month')
             ->orderBy('month')
             ->pluck('total', 'month');
