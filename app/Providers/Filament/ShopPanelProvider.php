@@ -2,10 +2,15 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Shop\Pages\ShopDashboard;
 use App\Filament\Shop\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Shop\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Shop\Resources\CashMovements\CashMovementResource;
 use App\Filament\Shop\Resources\ProductionRequests\ProductionRequestResource;
+use App\Filament\Shop\Widgets\AccountsChart;
+use App\Filament\Shop\Widgets\ProductionRequestChart;
+use App\Filament\Shop\Widgets\RevenueChart;
+use App\Filament\Shop\Widgets\StatsOverview;
 use App\Models\Company;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -45,6 +50,15 @@ class ShopPanelProvider extends PanelProvider
                 AccountReceivableResource::class,
                 CashMovementResource::class,
                 AccountPayableResource::class,
+            ])
+            ->pages([
+                ShopDashboard::class,
+            ])
+            ->widgets([
+                StatsOverview::class,
+                ProductionRequestChart::class,
+                RevenueChart::class,
+                AccountsChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,
