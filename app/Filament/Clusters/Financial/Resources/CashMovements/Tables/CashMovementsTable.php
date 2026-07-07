@@ -8,7 +8,7 @@ use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransfer
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;

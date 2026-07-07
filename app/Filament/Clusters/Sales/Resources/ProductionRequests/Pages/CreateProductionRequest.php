@@ -17,7 +17,9 @@ class CreateProductionRequest extends CreateRecord
 
     protected function getFormActions(): array
     {
-        return [];
+        return [
+            $this->getCreateFormAction(),
+        ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
