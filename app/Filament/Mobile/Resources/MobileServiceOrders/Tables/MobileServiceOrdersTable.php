@@ -80,6 +80,9 @@ class MobileServiceOrdersTable
                 ])->from('md'),
                 Panel::make([
                     Stack::make([
+                        TextColumn::make('created_at')
+                                ->label('Criado Em')
+                                ->dateTime('d/m/Y H:i'),
                         TextColumn::make('technician.name')
                             ->placeholder('Técnico não atribuído')
                             ->color('gray'),
