@@ -50,7 +50,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function form(Schema $schema): Schema
     {
-        return ProductionRequestForm::configure($schema)->statePath('data');
+        return ProductionRequestForm::configure($schema, includeOrderData: false)->statePath('data');
     }
 
     public function save(): void
@@ -63,6 +63,10 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
         $data = $this->form->getState();
         $data['company_id'] = $this->record->company_id;
+        $data['customer_id'] = $this->record->customer_id;
+        $data['manual_counterparty_name'] = $this->record->manual_counterparty_name;
+        $data['order_date'] = $this->record->order_date?->toDateString();
+        $data['observations'] = $this->record->observations;
         $data['additional_info'] = $this->extractAdditionalInfo($data);
 
         $service = app(ProductionRequestService::class);

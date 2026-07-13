@@ -23,117 +23,125 @@ use Filament\Schemas\Schema;
 
 class ProductionRequestForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $includeOrderData = true, bool $useSections = true): Schema
     {
+        $orderFields = [
+            Toggle::make('is_manual_counterparty')
+                ->label('Parceiro Avulso?')
+                ->live()
+                ->dehydrated(false)
+                ->afterStateHydrated(function (Toggle $component, ?bool $state, ?ProductionRequest $record): void {
+                    if (! $record) {
+                        return;
+                    }
+
+                    $component->state(blank($record->customer_id) && filled($record->manual_counterparty_name));
+                })
+                ->columnSpan(['md' => 2, 'lg' => 3]),
+            SelectPartner::make('customer_id', 'customer')
+                ->label('Cliente')
+                ->columnSpan(['md' => 4, 'lg' => 6])
+                ->required(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
+                ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
+            TextInput::make('manual_counterparty_name')
+                ->label('Nome da Contraparte')
+                ->columnSpan(['md' => 4, 'lg' => 6])
+                ->maxLength(255)
+                ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
+                ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
+            TextInput::make('number')
+                ->label('Número')
+                ->disabled()
+                ->visibleOn('edit')
+                ->columnSpan(['md' => 2, 'lg' => 2]),
+            Select::make('status')
+                ->label('Status')
+                ->options(Status::toSelectArray())
+                ->native(false)
+                ->disabled()
+                ->visibleOn('edit')
+                ->columnSpan(['md' => 2, 'lg' => 2]),
+            DatePicker::make('order_date')
+                ->label('Data do Pedido')
+                ->default(now())
+                ->required()
+                ->displayFormat('d/m/Y')
+                ->columnSpan(['md' => 2, 'lg' => 2]),
+            Textarea::make('observations')
+                ->label('Observações')
+                ->rows(3)
+                ->columnSpanFull(),
+        ];
+
+        $financialFields = [
+            Select::make('payment_method')
+                ->label('Forma de Pagamento')
+                ->options(PaymentMethod::toSelectArray())
+                ->default(fn (): ?string => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()?->id))
+                ->searchable()
+                ->native(false)
+                ->live()
+                ->columnSpan(['md' => 2, 'lg' => 3]),
+            Select::make('payment_condition')
+                ->label('Condição de Pagamento')
+                ->options(PaymentCondition::toGroupedSelectArray())
+                ->default(fn (): ?string => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()?->id))
+                ->searchable()
+                ->native(false)
+                ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
+                ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
+                ->columnSpan(['md' => 2, 'lg' => 3]),
+            Select::make('financial_category_id')
+                ->label('Categoria Financeira')
+                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
+                ->default(fn (): ?int => self::defaultReceivableFinancialCategoryId())
+                ->searchable()
+                ->preload()
+                ->native(false)
+                ->required()
+                ->columnSpan(['md' => 2, 'lg' => 3]),
+            Select::make('card_payment_profile_id')
+                ->label('Perfil de Recebimento no Cartão')
+                ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()?->id ?? 0))
+                ->searchable()
+                ->preload()
+                ->native(false)
+                ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                ->columnSpan(['md' => 3, 'lg' => 3]),
+            DatePicker::make('payment_date')
+                ->label('Data da Venda no Cartão')
+                ->default(now())
+                ->displayFormat('d/m/Y')
+                ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
+                ->columnSpan(['md' => 2, 'lg' => 3]),
+        ];
+
         return $schema
             ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
             ->components([
-                Section::make('Dados do Pedido')
+                ...($includeOrderData ? ($useSections ? [
+                    Section::make('Dados do Pedido')
                     ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()
-                    ->schema([
-                        Toggle::make('is_manual_counterparty')
-                            ->label('Parceiro Avulso?')
-                            ->live()
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function (Toggle $component, ?bool $state, ?ProductionRequest $record): void {
-                                if (! $record) {
-                                    return;
-                                }
-
-                                $component->state(blank($record->customer_id) && filled($record->manual_counterparty_name));
-                            })
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                        SelectPartner::make('customer_id', 'customer')
-                            ->label('Cliente')
-                            ->columnSpan(['md' => 4, 'lg' => 6])
-                            ->required(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
-                            ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
-                        TextInput::make('manual_counterparty_name')
-                            ->label('Nome da Contraparte')
-                            ->columnSpan(['md' => 4, 'lg' => 6])
-                            ->maxLength(255)
-                            ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
-                            ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
-                        TextInput::make('number')
-                            ->label('Número')
-                            ->disabled()
-                            ->visibleOn('edit')
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Select::make('status')
-                            ->label('Status')
-                            ->options(Status::toSelectArray())
-                            ->native(false)
-                            ->disabled()
-                            ->visibleOn('edit')
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        DatePicker::make('order_date')
-                            ->label('Data do Pedido')
-                            ->default(now())
-                            ->required()
-                            ->displayFormat('d/m/Y')
-                            ->columnSpan(['md' => 2, 'lg' => 2]),
-                        Textarea::make('observations')
-                            ->label('Observações')
-                            ->rows(3)
-                            ->columnSpanFull(),
-                    ]),
+                    ->schema($orderFields),
+                ] : $orderFields) : []),
+                ...($useSections ? [
                 Section::make('Financeiro')
                     ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()
-                    ->schema([
-                        Select::make('payment_method')
-                            ->label('Forma de Pagamento')
-                            ->options(PaymentMethod::toSelectArray())
-                            ->default(fn (): ?string => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()?->id))
-                            ->searchable()
-                            ->native(false)
-                            ->live()
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                        Select::make('payment_condition')
-                            ->label('Condição de Pagamento')
-                            ->options(PaymentCondition::toGroupedSelectArray())
-                            ->default(fn (): ?string => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()?->id))
-                            ->searchable()
-                            ->native(false)
-                            ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
-                            ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                        Select::make('financial_category_id')
-                            ->label('Categoria Financeira')
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
-                            ->default(fn (): ?int => self::defaultReceivableFinancialCategoryId())
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->required()
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                        Select::make('card_payment_profile_id')
-                            ->label('Perfil de Recebimento no Cartão')
-                            ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()?->id ?? 0))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->columnSpan(['md' => 3, 'lg' => 3]),
-                        DatePicker::make('payment_date')
-                            ->label('Data da Venda no Cartão')
-                            ->default(now())
-                            ->displayFormat('d/m/Y')
-                            ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
-                            ->columnSpan(['md' => 2, 'lg' => 3]),
-                    ]),
+                    ->schema($financialFields),
+                ] : $financialFields),
                 Hidden::make('company_id'),
             ]);
     }
 
-    private static function defaultReceivableFinancialCategoryId(): ?int
+    public static function defaultReceivableFinancialCategoryId(): ?int
     {
         $tenantId = Filament::getTenant()?->id;
 

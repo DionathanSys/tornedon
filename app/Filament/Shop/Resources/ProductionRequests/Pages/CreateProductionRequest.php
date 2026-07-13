@@ -5,6 +5,7 @@ namespace App\Filament\Shop\Resources\ProductionRequests\Pages;
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas\ProductionRequestForm;
 use App\Filament\Shop\Resources\ProductionRequests\ProductionRequestResource;
+use App\Models\CompanyPreference;
 use App\Notification\NotifyService as notify;
 use App\Services\ProductionRequest\ProductionRequestService;
 use Filament\Facades\Filament;
@@ -21,20 +22,28 @@ class CreateProductionRequest extends Page implements Forms\Contracts\HasForms
 
     protected string $view = 'filament.shop.resources.production-requests.pages.mobile-create';
 
+    protected static ?string $title = 'Novo pedido de produção';
+
     public ?array $data = [];
 
     public function mount(): void
     {
+        $tenantId = Filament::getTenant()?->id;
+
         $this->form->fill([
-            'is_manual_counterparty' => false,
+            'is_manual_counterparty' => true,
             'order_date' => now()->toDateString(),
             'status' => Status::OPEN->value,
+            'payment_method' => CompanyPreference::getDefaultPaymentMethod($tenantId),
+            'payment_condition' => CompanyPreference::getDefaultPaymentCondition($tenantId),
+            'financial_category_id' => ProductionRequestForm::defaultReceivableFinancialCategoryId(),
+            'payment_date' => now()->toDateString(),
         ]);
     }
 
     public function form(Schema $schema): Schema
     {
-        return ProductionRequestForm::configure($schema)->statePath('data');
+        return ProductionRequestForm::configure($schema, useSections: false)->statePath('data');
     }
 
     public function save(): void
