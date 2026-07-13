@@ -3,11 +3,11 @@
 namespace App\Filament\Shop\Resources\ProductionRequests;
 
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas\ProductionRequestForm;
-use App\Filament\Clusters\Sales\Resources\ProductionRequests\Tables\ProductionRequestsTable;
 use App\Filament\Shop\Resources\ProductionRequests\Pages\CreateProductionRequest;
 use App\Filament\Shop\Resources\ProductionRequests\Pages\EditProductionRequest;
 use App\Filament\Shop\Resources\ProductionRequests\Pages\ListProductionRequests;
 use App\Filament\Shop\Resources\ProductionRequests\RelationManagers\ItemsRelationManager;
+use App\Filament\Shop\Resources\ProductionRequests\Tables\ProductionRequestsTable;
 use App\Models\ProductionRequest;
 use BackedEnum;
 use Filament\Facades\Filament;

@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages;
 
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
+use App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages\Actions\CancelProductionRequestAction;
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages\Actions\DeliverProductionRequestAction;
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\ProductionRequestResource;
 use App\Notification\NotifyService as notify;
@@ -83,24 +84,7 @@ class EditProductionRequest extends EditRecord
                         ? AccountReceivableResource::getUrl('edit', ['record' => $this->record->account_receivable_id])
                         : null)
                     ->openUrlInNewTab(),
-                Action::make('cancel')
-                    ->label('Cancelar')
-                    ->icon(Heroicon::NoSymbol)
-                    ->color('danger')
-                    ->visible(fn (): bool => $this->record->status === Status::OPEN)
-                    ->requiresConfirmation()
-                    ->action(function (): void {
-                        $service = app(ProductionRequestService::class);
-
-                        if (! $service->cancel($this->record, Auth::id())) {
-                            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
-
-                            return;
-                        }
-
-                        $this->record->refresh();
-                        notify::success('Pedido cancelado com sucesso.');
-                    }),
+                CancelProductionRequestAction::make(),
                 DeleteAction::make()
                     ->visible(fn (): bool => $this->record->status === Status::OPEN && ! $this->record->items()->exists()),
             ])->button(),
