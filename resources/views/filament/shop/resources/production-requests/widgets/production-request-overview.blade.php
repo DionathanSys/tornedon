@@ -37,7 +37,7 @@
 
     <div class="shop-production-overview">
         <section class="shop-production-overview__primary">
-            <a href="{{ $createUrl }}" class="shop-production-overview__link">Novo pedido de producao</a>
+            <a href="{{ $createUrl }}" class="shop-production-overview__link">Novo pedido de produção</a>
         </section>
     </div>
 </x-filament-widgets::widget>

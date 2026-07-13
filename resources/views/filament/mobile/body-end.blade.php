@@ -9,10 +9,7 @@
             '[contenteditable="true"]',
         ].join(',');
 
-        const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches
-            || window.navigator.standalone === true;
-
-        if (! isStandalone || ! window.visualViewport) {
+        if (! window.visualViewport) {
             return;
         }
 
@@ -46,7 +43,7 @@
                 }
 
                 activeField.scrollIntoView({
-                    block: 'center',
+                    block: 'nearest',
                     inline: 'nearest',
                     behavior: 'smooth',
                 });

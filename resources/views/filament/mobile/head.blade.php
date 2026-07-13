@@ -25,6 +25,48 @@
             }
         }
     }
+
+    html {
+        scroll-padding-bottom: 45dvh;
+    }
+
+    .fi-modal-content,
+    .fi-main {
+        scroll-padding-bottom: 45dvh;
+    }
+
+    .fi-main,
+    .fi-modal-content {
+        overscroll-behavior: contain;
+    }
+
+    .fi-form-actions,
+    .fi-ac-modal-footer {
+        gap: 0.5rem;
+    }
+
+    @media (max-width: 640px) {
+        .fi-modal-window {
+            max-height: min(92dvh, calc(100dvh - 1rem));
+        }
+
+        .fi-modal-content {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+
+        .fi-form-actions,
+        .fi-ac-modal-footer {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .fi-form-actions .fi-btn,
+        .fi-ac-modal-footer .fi-btn {
+            width: 100%;
+            justify-content: center;
+            white-space: nowrap;
+        }
+    }
 </style>
 
 @if (request()->is('shop/production-requests*') || request()->is('shop/*/production-requests*'))

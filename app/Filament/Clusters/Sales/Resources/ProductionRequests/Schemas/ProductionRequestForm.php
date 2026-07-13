@@ -29,7 +29,7 @@ class ProductionRequestForm
             ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
             ->components([
                 Section::make('Dados do Pedido')
-                    ->columns(['md' => 6, 'lg' => 12])
+                    ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()
@@ -81,7 +81,7 @@ class ProductionRequestForm
                             ->columnSpanFull(),
                     ]),
                 Section::make('Financeiro')
-                    ->columns(['md' => 6, 'lg' => 12])
+                    ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
                     ->columnSpanFull()
                     ->collapsible()
                     ->persistCollapsed()
@@ -106,7 +106,7 @@ class ProductionRequestForm
                         Select::make('financial_category_id')
                             ->label('Categoria Financeira')
                             ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
-                            ->default(fn (): ?int => CompanyPreference::getDefaultReceivableFinancialCategoryId(Filament::getTenant()?->id))
+                            ->default(fn (): ?int => self::defaultReceivableFinancialCategoryId())
                             ->searchable()
                             ->preload()
                             ->native(false)
@@ -131,5 +131,23 @@ class ProductionRequestForm
                     ]),
                 Hidden::make('company_id'),
             ]);
+    }
+
+    private static function defaultReceivableFinancialCategoryId(): ?int
+    {
+        $tenantId = Filament::getTenant()?->id;
+
+        if (! $tenantId) {
+            return null;
+        }
+
+        $options = FinancialCategory::optionsForCompany($tenantId, 'receivable');
+        $preferredId = CompanyPreference::getDefaultReceivableFinancialCategoryId($tenantId);
+
+        if ($preferredId !== null && array_key_exists($preferredId, $options)) {
+            return $preferredId;
+        }
+
+        return array_key_first($options);
     }
 }

@@ -69,6 +69,9 @@ class ItemsRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Item')
                     ->visible(fn (): bool => $this->ownerProductionRequest()->status === Status::OPEN)
+                    ->createAnother(false)
+                    ->modalSubmitActionLabel('Salvar')
+                    ->modalCancelActionLabel('Cancelar')
                     ->schema($this->itemSchema())
                     ->using(function (array $data): ProductionRequestItem {
                         $record = $this->ownerProductionRequest();
@@ -87,6 +90,8 @@ class ItemsRelationManager extends RelationManager
             ->recordActions([
                 EditAction::make()
                     ->visible(fn (): bool => $this->ownerProductionRequest()->status === Status::OPEN)
+                    ->modalSubmitActionLabel('Salvar')
+                    ->modalCancelActionLabel('Cancelar')
                     ->schema($this->itemSchema())
                     ->using(function (ProductionRequestItem $record, array $data): ProductionRequestItem {
                         $record->update([
@@ -140,15 +145,18 @@ class ItemsRelationManager extends RelationManager
             TextInput::make('unit_of_measure')
                 ->label('Unidade')
                 ->required()
-                ->maxLength(10),
+                ->maxLength(10)
+                ->columnSpan(['default' => 1, 'sm' => 1]),
             TextInput::make('quantity')
                 ->label('Quantidade')
                 ->numeric()
                 ->minValue(0.001)
-                ->required(),
+                ->required()
+                ->columnSpan(['default' => 1, 'sm' => 1]),
             Money::make('unit_price')
                 ->label('Preço Unitário')
-                ->required(),
+                ->required()
+                ->columnSpan(['default' => 1, 'sm' => 2]),
         ];
     }
 
