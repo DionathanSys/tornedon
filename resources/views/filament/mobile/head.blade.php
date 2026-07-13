@@ -51,9 +51,9 @@
 
         .fi-resource-list-records-page .fi-tabs {
             display: grid;
-            grid-template-columns: repeat(6, minmax(3.9rem, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0.5rem;
-            overflow-x: auto;
+            overflow-x: visible;
             border-bottom: 0;
         }
 
