@@ -4,57 +4,72 @@ namespace App\Filament\Shop\Resources\ProductionRequests\Pages;
 
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Shop\Resources\ProductionRequests\ProductionRequestResource;
-use App\Filament\Shop\Resources\ProductionRequests\Widgets\ProductionRequestOverview;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Schemas\Components\Tabs\Tab;
+use App\Models\ProductionRequest;
+use Filament\Facades\Filament;
+use Filament\Resources\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
-class ListProductionRequests extends ListRecords
+class ListProductionRequests extends Page
 {
     protected static string $resource = ProductionRequestResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [];
-    }
+    protected string $view = 'filament.shop.resources.production-requests.pages.mobile-list';
 
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            ProductionRequestOverview::class,
-        ];
-    }
+    public string $activeTab = 'open';
 
-    public function getTabs(): array
+    public function setTab(string $tab): void
     {
-        return [
-            Status::OPEN->value => Tab::make('Abertos')
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', Status::OPEN->value))
-                ->badge($this->countTab(fn (Builder $query): Builder => $query->where('status', Status::OPEN->value)))
-                ->badgeColor(Status::OPEN->color()),
-            Status::DELIVERED->value => Tab::make('Entreg.')
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', Status::DELIVERED->value))
-                ->badge($this->countTab(fn (Builder $query): Builder => $query->where('status', Status::DELIVERED->value)))
-                ->badgeColor(Status::DELIVERED->color()),
-            'all' => Tab::make('Todos')
-                ->badge($this->countTab())
-                ->badgeColor('gray'),
-        ];
-    }
-
-    public function getDefaultActiveTab(): string|int|null
-    {
-        return Status::OPEN->value;
-    }
-
-    private function countTab(?callable $scope = null): int
-    {
-        $query = static::getResource()::getEloquentQuery();
-
-        if ($scope !== null) {
-            $query = $scope($query);
+        if (! in_array($tab, ['open', 'delivered', 'all'], true)) {
+            return;
         }
 
-        return $query->count();
+        $this->activeTab = $tab;
+    }
+
+    /**
+     * @return Collection<int, ProductionRequest>
+     */
+    public function getProductionRequestsProperty(): Collection
+    {
+        return $this->baseQuery()
+            ->when($this->activeTab === 'open', fn (Builder $query): Builder => $query->where('status', Status::OPEN->value))
+            ->when($this->activeTab === 'delivered', fn (Builder $query): Builder => $query->where('status', Status::DELIVERED->value))
+            ->orderByDesc('order_date')
+            ->orderByDesc('id')
+            ->limit(60)
+            ->get();
+    }
+
+    public function getOpenCountProperty(): int
+    {
+        return $this->baseQuery()->where('status', Status::OPEN->value)->count();
+    }
+
+    public function getDeliveredCountProperty(): int
+    {
+        return $this->baseQuery()->where('status', Status::DELIVERED->value)->count();
+    }
+
+    public function getAllCountProperty(): int
+    {
+        return $this->baseQuery()->count();
+    }
+
+    public function getCreateUrl(): string
+    {
+        return ProductionRequestResource::getUrl('create');
+    }
+
+    public function getDetailUrl(ProductionRequest $record): string
+    {
+        return ProductionRequestResource::getUrl('edit', ['record' => $record]);
+    }
+
+    private function baseQuery(): Builder
+    {
+        return ProductionRequest::query()
+            ->where('company_id', Filament::getTenant()->id)
+            ->with(['customer', 'items']);
     }
 }
