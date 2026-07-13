@@ -2,6 +2,7 @@
 
 namespace App\Services\ServiceOrder\Support;
 
+use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
 use Illuminate\Support\Facades\Storage;
 
@@ -84,7 +85,7 @@ class ServiceOrderPdfDataFormatter
 
         if ($requisition !== null) {
             $requisitionData = [
-                'title' => 'Requisição #' . $requisition->number,
+                'title' => 'Requisição #'.$requisition->number,
                 'items' => $requisition->items->map(fn ($item) => [
                     'product' => $item->product?->name ?? '-',
                     'unit_of_measure' => $item->unit_of_measure ?? '-',
@@ -100,7 +101,7 @@ class ServiceOrderPdfDataFormatter
         $additionalInfoText = $this->buildAdditionalInfoText($serviceOrder->additional_info ?? [], $additionalInfoLabels);
 
         return [
-            'title' => '#' . $serviceOrder->number . ' - ' . $serviceOrder->status?->description(),
+            'title' => '#'.$serviceOrder->number.' - '.$serviceOrder->status?->description(),
             // 'status' => $serviceOrder->status?->description() ?? '-',
             'order_date' => $this->formatDate($serviceOrder->order_date),
             'completion_date' => $this->formatDate($serviceOrder->completion_date),
@@ -116,7 +117,7 @@ class ServiceOrderPdfDataFormatter
             'summary_lines' => $summaryLines,
             'follow_up_responsible_name' => $serviceOrder->follow_up_responsible_name,
             'customer_signature' => $serviceOrder->customer_signature,
-            'customer_signed_at' => $this->formatDate($serviceOrder->customer_signed_at),
+            'customer_signed_at' => $this->formatCustomerSignedAt($serviceOrder),
             'generated_at' => now()->format('d/m/Y H:i'),
             'company_logo' => $this->resolveCompanyLogo($serviceOrder),
             'company_name' => $serviceOrder->company?->name ?? '-',
@@ -128,9 +129,28 @@ class ServiceOrderPdfDataFormatter
         return $date?->format('d/m/Y') ?? '-';
     }
 
+    private function formatCustomerSignedAt(ServiceOrder $serviceOrder): ?string
+    {
+        if ($serviceOrder->customer_signed_at === null) {
+            return null;
+        }
+
+        $display = CompanyPreference::get(
+            'service_order_signature_date_display',
+            $serviceOrder->company_id,
+            'date',
+        );
+
+        return match ($display) {
+            'datetime' => $serviceOrder->customer_signed_at->format('d/m/Y H:i'),
+            'none' => null,
+            default => $serviceOrder->customer_signed_at->format('d/m/Y'),
+        };
+    }
+
     private function formatMoney($value): string
     {
-        return 'R$ ' . number_format((float) $value, 2, ',', '.');
+        return 'R$ '.number_format((float) $value, 2, ',', '.');
     }
 
     private function formatQuantity($value): string
@@ -139,8 +159,8 @@ class ServiceOrderPdfDataFormatter
     }
 
     /**
-     * @param array<int|string, mixed> $additionalInfo
-     * @param array<string, string> $labels
+     * @param  array<int|string, mixed>  $additionalInfo
+     * @param  array<string, string>  $labels
      */
     private function buildAdditionalInfoText(array $additionalInfo, array $labels): ?string
     {
@@ -217,7 +237,7 @@ class ServiceOrderPdfDataFormatter
 
         $logoMime = $logoDisk->mimeType($serviceOrder->company->logo_path) ?: 'image/png';
 
-        return 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($serviceOrder->company->logo_path));
+        return 'data:'.$logoMime.';base64,'.base64_encode((string) $logoDisk->get($serviceOrder->company->logo_path));
     }
 
     /**
@@ -230,7 +250,7 @@ class ServiceOrderPdfDataFormatter
         }
 
         return collect([
-            ['label' => 'Nome', 'value' => $equipment->identifier . ' - ' . $equipment->name],
+            ['label' => 'Nome', 'value' => $equipment->identifier.' - '.$equipment->name],
         ])->filter(fn (array $field) => filled($field['value']))
             ->values()
             ->all();

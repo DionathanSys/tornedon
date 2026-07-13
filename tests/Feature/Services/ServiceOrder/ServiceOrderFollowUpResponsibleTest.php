@@ -6,6 +6,7 @@ use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Models\Company;
+use App\Models\CompanyPreference;
 use App\Models\Partner;
 use App\Models\ServiceOrder;
 use App\Models\User;
@@ -82,5 +83,47 @@ class ServiceOrderFollowUpResponsibleTest extends TestCase
         $pdfData = app(ServiceOrderPdfDataFormatter::class)->format($serviceOrder);
 
         $this->assertSame('Maria Supervisora', $pdfData['follow_up_responsible_name']);
+    }
+
+    public function test_pdf_formatter_uses_signature_date_display_preference(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::query()->create([
+            'name' => 'Empresa PDF Assinatura',
+            'document_number' => '12312312000199',
+            'address' => ['city' => 'Campinas', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+        $customer = Partner::query()->create([
+            'name' => 'Cliente PDF Assinatura',
+            'document_type' => 'CPF',
+            'document_number' => '12312312312',
+            'created_by' => $user->id,
+        ]);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'OS-SIGNATURE-DATE-001',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'order_date' => now()->toDateString(),
+            'status' => State::OPEN,
+            'priority' => Priority::NORMAL,
+            'type' => Type::MAINTENANCE,
+            'customer_signed_at' => '2026-07-13 14:35:00',
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $serviceOrder->load(['company', 'customer', 'items', 'requisition.items']);
+        $formatter = app(ServiceOrderPdfDataFormatter::class);
+
+        CompanyPreference::set('service_order_signature_date_display', 'date', $company->id);
+        $this->assertSame('13/07/2026', $formatter->format($serviceOrder)['customer_signed_at']);
+
+        CompanyPreference::set('service_order_signature_date_display', 'datetime', $company->id);
+        $this->assertSame('13/07/2026 14:35', $formatter->format($serviceOrder)['customer_signed_at']);
+
+        CompanyPreference::set('service_order_signature_date_display', 'none', $company->id);
+        $this->assertNull($formatter->format($serviceOrder)['customer_signed_at']);
     }
 }

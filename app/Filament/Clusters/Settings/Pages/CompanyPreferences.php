@@ -61,6 +61,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'default_quote_validity_days' => CompanyPreference::getDefaultQuoteValidityDays($companyId) ?? 30,
             'default_profit_margin' => CompanyPreference::getDefaultProfitMargin($companyId),
             'default_value_km' => CompanyPreference::get('default_value_km', $companyId, 3.5),
+            'service_order_signature_date_display' => CompanyPreference::get('service_order_signature_date_display', $companyId, 'date'),
             'notify_new_order' => CompanyPreference::get('notify_new_order', $companyId, true),
             'notify_status_change' => CompanyPreference::get('notify_status_change', $companyId, true),
             'notify_low_stock' => CompanyPreference::get('notify_low_stock', $companyId, true),
@@ -178,6 +179,16 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->numeric()
                             ->minValue(0)
                             ->prefix('R$'),
+                        Forms\Components\Select::make('service_order_signature_date_display')
+                            ->label('Data da assinatura no PDF da OS')
+                            ->options([
+                                'date' => 'Exibir data',
+                                'datetime' => 'Exibir data e hora',
+                                'none' => 'Não exibir',
+                            ])
+                            ->default('date')
+                            ->native(false)
+                            ->required(),
                     ])
                     ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
@@ -333,6 +344,12 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             if (isset($data['require_approval_threshold'])) {
                 CompanyPreference::set('require_approval_threshold', $data['require_approval_threshold'], $companyId);
             }
+
+            CompanyPreference::set(
+                'service_order_signature_date_display',
+                (string) ($data['service_order_signature_date_display'] ?? 'date'),
+                $companyId,
+            );
 
             CompanyPreference::set('notify_new_order', (bool) ($data['notify_new_order'] ?? false), $companyId);
             CompanyPreference::set('notify_status_change', (bool) ($data['notify_status_change'] ?? false), $companyId);
