@@ -51,8 +51,9 @@
 
         .fi-resource-list-records-page .fi-tabs {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(3.9rem, 1fr));
             gap: 0.5rem;
+            overflow-x: auto;
             border-bottom: 0;
         }
 
@@ -65,6 +66,7 @@
             font-size: 0.76rem;
             font-weight: 700;
             text-align: center;
+            white-space: nowrap;
         }
 
         .fi-resource-list-records-page .fi-tabs-item[aria-selected='true'] {
@@ -104,6 +106,10 @@
             border-radius: 0.85rem;
         }
 
+        .fi-resource-list-records-page .fi-ta-actions > :first-child {
+            grid-column: 1 / -1;
+        }
+
         .fi-modal-close-overlay {
             background: rgba(15, 23, 42, 0.56);
         }
@@ -113,16 +119,5 @@
             border-radius: 1.35rem;
         }
 
-        @media (min-width: 640px) {
-            .fi-resource-list-records-page .fi-tabs {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .fi-resource-list-records-page .fi-tabs {
-                grid-template-columns: repeat(6, minmax(0, 1fr));
-            }
-        }
     </style>
 @endif
