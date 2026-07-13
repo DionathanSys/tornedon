@@ -116,7 +116,7 @@ class ServiceOrderPdfDataFormatter
             'summary_lines' => $summaryLines,
             'follow_up_responsible_name' => $serviceOrder->follow_up_responsible_name,
             'customer_signature' => $serviceOrder->customer_signature,
-            'customer_signed_at' => $serviceOrder->customer_signed_at?->format('d/m/Y H:i'),
+            'customer_signed_at' => $this->formatDate($serviceOrder->customer_signed_at),
             'generated_at' => now()->format('d/m/Y H:i'),
             'company_logo' => $this->resolveCompanyLogo($serviceOrder),
             'company_name' => $serviceOrder->company?->name ?? '-',
