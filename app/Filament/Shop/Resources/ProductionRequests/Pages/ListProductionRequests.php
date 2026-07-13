@@ -63,7 +63,7 @@ class ListProductionRequests extends Page
 
     public function getDetailUrl(ProductionRequest $record): string
     {
-        return ProductionRequestResource::getUrl('edit', ['record' => $record]);
+        return ProductionRequestResource::getUrl('edit', ['record' => $record->getKey()]);
     }
 
     private function baseQuery(): Builder

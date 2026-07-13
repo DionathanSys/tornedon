@@ -55,7 +55,7 @@ class CreateProductionRequest extends Page implements Forms\Contracts\HasForms
 
         notify::success('Pedido criado com sucesso.');
 
-        $this->redirect(ProductionRequestResource::getUrl('edit', ['record' => $record]), navigate: true);
+        $this->redirect(ProductionRequestResource::getUrl('edit', ['record' => $record->getKey()]), navigate: true);
     }
 
     public function getListUrl(): string

@@ -34,11 +34,13 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public ?int $editingItemId = null;
 
-    public function mount(int|string $record): void
+    public function mount(int|string|ProductionRequest $record): void
     {
+        $recordKey = $record instanceof ProductionRequest ? $record->getKey() : $record;
+
         $this->record = ProductionRequest::query()
             ->where('company_id', Filament::getTenant()->id)
-            ->whereKey($record)
+            ->whereKey($recordKey)
             ->firstOrFail();
 
         $this->loadRecordRelations();

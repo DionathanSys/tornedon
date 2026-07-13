@@ -1,11 +1,6 @@
 <x-filament-panels::page>
     <style>
         .pr-mob-page { display: grid; gap: 1rem; padding-bottom: 1rem; }
-        .pr-mob-hero { border-radius: 1.25rem; padding: 1rem; color: #fff; background: linear-gradient(135deg, #111827, #334155); box-shadow: 0 18px 44px -34px rgba(15, 23, 42, .45); }
-        .pr-mob-hero h2 { margin: 0; font-size: 1.15rem; font-weight: 800; }
-        .pr-mob-hero p { margin: .35rem 0 0; color: rgba(255,255,255,.78); font-size: .78rem; }
-        .pr-mob-hero strong { display: block; margin-top: .9rem; font-size: 1.8rem; line-height: 1; }
-        .pr-mob-top { display: grid; gap: .75rem; grid-template-columns: 1fr; }
         .pr-mob-new { display: inline-flex; align-items: center; justify-content: center; min-height: 3.4rem; border-radius: 1rem; background: #111827; color: #fff; font-weight: 800; text-decoration: none; }
         .pr-mob-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
         .pr-mob-tab { min-height: 3.3rem; border: 0; border-radius: .9rem; background: #e2e8f0; color: #334155; font-size: .75rem; font-weight: 800; }
@@ -24,20 +19,10 @@
         .pr-mob-meta span { display: block; color: #64748b; font-size: .65rem; font-weight: 800; text-transform: uppercase; }
         .pr-mob-meta strong { display: block; margin-top: .2rem; font-size: .82rem; }
         .pr-mob-empty { border-radius: 1rem; padding: 1rem; background: #fff; color: #64748b; text-align: center; }
-        @media (min-width: 640px) { .pr-mob-top { grid-template-columns: 1.6fr 1fr; align-items: stretch; } }
     </style>
 
     <div class="pr-mob-page">
-        <div class="pr-mob-top">
-            <section class="pr-mob-hero">
-                <h2>Pedidos de produção</h2>
-                <p>Operação rápida para acompanhar, editar e entregar pedidos.</p>
-                <strong>{{ number_format($this->openCount, 0, ',', '.') }}</strong>
-                <p>abertos agora</p>
-            </section>
-
-            <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo pedido de produção</a>
-        </div>
+        <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo pedido de produção</a>
 
         <div class="pr-mob-tabs">
             <button type="button" wire:click="setTab('open')" class="pr-mob-tab @if ($activeTab === 'open') is-active @endif">Abertos<span>{{ $this->openCount }}</span></button>
