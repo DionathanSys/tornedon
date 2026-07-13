@@ -69,7 +69,6 @@ class ItemsRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Item')
                     ->visible(fn (): bool => $this->ownerProductionRequest()->status === Status::OPEN)
-                    ->createAnother(false)
                     ->modalSubmitActionLabel('Salvar')
                     ->modalCancelActionLabel('Cancelar')
                     ->schema($this->itemSchema())

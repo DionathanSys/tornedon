@@ -42,6 +42,21 @@
                     return;
                 }
 
+                const modalContent = activeField.closest('.fi-modal-content');
+
+                if (modalContent) {
+                    const delta = rect.bottom > visibleBottom
+                        ? rect.bottom - visibleBottom + 16
+                        : rect.top - padding - 16;
+
+                    modalContent.scrollBy({
+                        top: delta,
+                        behavior: 'smooth',
+                    });
+
+                    return;
+                }
+
                 activeField.scrollIntoView({
                     block: 'nearest',
                     inline: 'nearest',

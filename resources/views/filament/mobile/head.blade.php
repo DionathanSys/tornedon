@@ -57,7 +57,7 @@
         .fi-form-actions,
         .fi-ac-modal-footer {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .fi-form-actions .fi-btn,
