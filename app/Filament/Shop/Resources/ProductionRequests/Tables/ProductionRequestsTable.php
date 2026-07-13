@@ -77,8 +77,7 @@ class ProductionRequestsTable
                         ->label('Observação')
                         ->placeholder('')
                         ->wrap()
-                        ->color('gray')
-                        ->visible(fn ($record): bool => filled($record->observations)),
+                        ->color('gray'),
                     Grid::make([
                         'default' => 2,
                         'sm' => 4,
