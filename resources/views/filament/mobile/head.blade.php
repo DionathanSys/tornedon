@@ -1,4 +1,7 @@
-@include('pwa.meta')
+@include('pwa.meta', [
+    'appName' => $appName ?? 'Tornedon Mobile',
+    'manifest' => $manifest ?? 'manifest-mobile.webmanifest',
+])
 
 <meta
     name="viewport"

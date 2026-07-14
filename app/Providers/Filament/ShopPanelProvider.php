@@ -76,7 +76,10 @@ class ShopPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => new HtmlString(view('filament.mobile.head')->render())
+                fn () => new HtmlString(view('filament.mobile.head', [
+                    'appName' => 'Tornedon Shop',
+                    'manifest' => 'manifest-shop.webmanifest',
+                ])->render())
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,

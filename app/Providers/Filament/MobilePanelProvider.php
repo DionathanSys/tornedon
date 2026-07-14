@@ -60,7 +60,10 @@ class MobilePanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => new HtmlString(view('filament.mobile.head')->render())
+                fn () => new HtmlString(view('filament.mobile.head', [
+                    'appName' => 'Tornedon Mobile',
+                    'manifest' => 'manifest-mobile.webmanifest',
+                ])->render())
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
