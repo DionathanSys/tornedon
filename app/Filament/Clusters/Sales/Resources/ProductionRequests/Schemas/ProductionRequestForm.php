@@ -79,7 +79,7 @@ class ProductionRequestForm
                 ->label('Forma de Pagamento')
                 ->options(PaymentMethod::toSelectArray())
                 ->default(fn (): ?string => CompanyPreference::getDefaultPaymentMethod(Filament::getTenant()?->id))
-                ->searchable()
+                // ->searchable()
                 ->native(false)
                 ->live()
                 ->columnSpan(['md' => 2, 'lg' => 3]),
