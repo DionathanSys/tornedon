@@ -47,6 +47,7 @@ class ProductionRequestForm
                 ->label('Nome da Contraparte')
                 ->columnSpan(['md' => 4, 'lg' => 6])
                 ->maxLength(255)
+                ->autocomplete(false)
                 ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
                 ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
             TextInput::make('number')
