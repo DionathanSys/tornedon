@@ -38,7 +38,7 @@ class ShopPanelProvider extends PanelProvider
             ->sidebarFullyCollapsibleOnDesktop()
             ->sidebarWidth('15rem')
             ->id('shop')
-            ->topNavigation(false)
+            ->navigation(false)
             ->path('shop')
             ->login()
             ->profile()
