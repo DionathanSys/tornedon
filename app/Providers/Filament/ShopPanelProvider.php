@@ -85,7 +85,7 @@ class ShopPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn () => new HtmlString(view('filament.mobile.body-end')->render())
+                fn () => new HtmlString(view('filament.shop.body-end')->render())
             )
             ->resourceCreatePageRedirect('edit')
             ->databaseNotifications()
