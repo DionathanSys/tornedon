@@ -44,7 +44,13 @@
 
     <style>
         .fi-main {
-            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+            padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+        }
+
+        .fi-form-actions,
+        .fi-page-header-actions {
+            position: relative;
+            z-index: 60;
         }
 
         .shop-bottom-navigation {

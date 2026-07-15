@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <style>
-        .pr-mob-detail { display: grid; gap: .85rem; padding-bottom: 6.25rem; }
+        .pr-mob-detail { display: grid; gap: .85rem; padding-bottom: 11.5rem; }
         .pr-mob-card { border: 1px solid rgba(148, 163, 184, .25); border-radius: 1.1rem; padding: .95rem; background: #fff; box-shadow: 0 16px 40px -34px rgba(15, 23, 42, .22); }
         .pr-mob-head { color: #fff; background: linear-gradient(135deg, #111827, #334155); }
         .pr-mob-title { margin: 0; font-size: 1.05rem; font-weight: 850; }
@@ -26,7 +26,7 @@
         .pr-mob-item span { color: #64748b; font-size: .76rem; }
         .pr-mob-item-footer { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
         .pr-mob-item-footer button { min-height: 2.5rem; border: 0; border-radius: .7rem; font-size: .72rem; font-weight: 850; }
-        .pr-mob-bottom { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; padding: .75rem max(.75rem, env(safe-area-inset-left)) max(.75rem, env(safe-area-inset-bottom)); border-top: 1px solid rgba(148, 163, 184, .25); background: rgba(248, 250, 252, .96); backdrop-filter: blur(14px); }
+        .pr-mob-bottom { position: fixed; right: 0; bottom: calc(4.85rem + env(safe-area-inset-bottom)); left: 0; z-index: 60; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .45rem; padding: .75rem max(.75rem, env(safe-area-inset-left)); border-top: 1px solid rgba(148, 163, 184, .25); background: rgba(248, 250, 252, .96); backdrop-filter: blur(14px); }
         .pr-mob-bottom a, .pr-mob-bottom button { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; border: 0; border-radius: .85rem; font-size: .72rem; font-weight: 850; text-decoration: none; }
         .pr-mob-danger { background: #fee2e2; color: #b91c1c; }
         .pr-mob-success { background: #dcfce7; color: #166534; }
@@ -103,8 +103,10 @@
         <button type="button" wire:click="save" class="pr-mob-save">Salvar</button>
         @if ($record->status === \App\Enum\ProductionRequest\Status::OPEN)
             <button type="button" wire:click="deliver" class="pr-mob-success">Entregar</button>
+            <button type="button" wire:click="cancel" class="pr-mob-danger">Cancelar</button>
         @else
             <button type="button" disabled class="pr-mob-secondary">Entregue</button>
+            <button type="button" disabled class="pr-mob-secondary">Cancelar</button>
         @endif
     </div>
 </x-filament-panels::page>
