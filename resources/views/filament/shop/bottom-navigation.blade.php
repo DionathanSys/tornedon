@@ -7,9 +7,11 @@
     use Filament\Facades\Filament;
 
     $tenant = Filament::getTenant();
+    $currentPath = '/' . trim(request()->path(), '/');
+    $hideNavigation = str_ends_with($currentPath, '/create') || str_ends_with($currentPath, '/edit');
 @endphp
 
-@if (Filament::auth()->check() && $tenant)
+@if (Filament::auth()->check() && $tenant && ! $hideNavigation)
     @php
         $items = [
             [
@@ -38,8 +40,6 @@
                 'icon' => 'swap',
             ],
         ];
-
-        $currentPath = '/' . trim(request()->path(), '/');
     @endphp
 
     <style>
