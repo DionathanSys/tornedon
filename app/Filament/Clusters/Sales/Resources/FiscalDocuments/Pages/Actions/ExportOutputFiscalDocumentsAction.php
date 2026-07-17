@@ -6,12 +6,12 @@ use App\Enum\FiscalDocument\OperationType;
 use App\Models\FiscalDocument;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
@@ -41,15 +41,13 @@ final class ExportOutputFiscalDocumentsAction
     public static function getFormSchema(): array
     {
         return [
-            DatePicker::make('start_date')
-                ->label('Data inicial')
+            DateRangePicker::make('date_range')
+                ->label('Período')
                 ->required()
-                ->native(false),
-            DatePicker::make('end_date')
-                ->label('Data final')
-                ->required()
-                ->afterOrEqual('start_date')
-                ->native(false),
+                ->format('d/m/Y')
+                ->firstDayOfWeek(0)
+                ->alwaysShowCalendar()
+                ->autoApply(),
             Select::make('date_column')
                 ->label('Data base')
                 ->options(self::getDateColumnOptions())
@@ -62,9 +60,12 @@ final class ExportOutputFiscalDocumentsAction
     public static function getRecords(array $data): Collection
     {
         $dateColumn = self::normalizeDateColumn($data['date_column'] ?? 'issued_at');
-        $startDate = Carbon::parse($data['start_date']);
-        $endDate = Carbon::parse($data['end_date']);
+        [$startDate, $endDate] = self::parseDateRange($data['date_range'] ?? null);
         $tenantId = Filament::getTenant()?->getKey();
+
+        if ($startDate === null || $endDate === null) {
+            return new Collection;
+        }
 
         return FiscalDocument::query()
             ->with(['customer', 'items.service'])
@@ -147,10 +148,12 @@ final class ExportOutputFiscalDocumentsAction
     public static function buildPeriodDescription(array $data): string
     {
         $dateColumn = self::normalizeDateColumn($data['date_column'] ?? 'issued_at');
-        $startDate = Carbon::parse($data['start_date'])->format('d/m/Y');
-        $endDate = Carbon::parse($data['end_date'])->format('d/m/Y');
+        [$startDate, $endDate] = self::parseDateRange($data['date_range'] ?? null);
 
-        return self::getDateColumnOptions()[$dateColumn].": {$startDate} a {$endDate}";
+        $start = $startDate?->format('d/m/Y') ?? '-';
+        $end = $endDate?->format('d/m/Y') ?? '-';
+
+        return self::getDateColumnOptions()[$dateColumn].": {$start} a {$end}";
     }
 
     private static function streamDownload(Collection $records, array $data): StreamedResponse
@@ -237,6 +240,24 @@ final class ExportOutputFiscalDocumentsAction
             ->unique()
             ->values()
             ->implode(', ');
+    }
+
+    private static function parseDateRange(mixed $dateRange): array
+    {
+        if (! is_string($dateRange) || blank($dateRange)) {
+            return [null, null];
+        }
+
+        $dates = explode(' - ', $dateRange);
+
+        if (count($dates) !== 2) {
+            return [null, null];
+        }
+
+        return [
+            Carbon::createFromFormat('d/m/Y', trim($dates[0])),
+            Carbon::createFromFormat('d/m/Y', trim($dates[1])),
+        ];
     }
 
     private static function formatCnpj(string $document): string

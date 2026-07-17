@@ -6,17 +6,16 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\Status;
-use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Support\Actions\FiscalDocumentRecordActions;
 use App\Models\FiscalDocument;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class FiscalDocumentsTable
 {
@@ -52,8 +51,8 @@ class FiscalDocumentsTable
                 Tables\Columns\TextColumn::make('document_type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn(?DocumentModel $state) => $state?->description() ?? '—')
-                    ->color(fn(?DocumentModel $state) => match ($state) {
+                    ->formatStateUsing(fn (?DocumentModel $state) => $state?->description() ?? '—')
+                    ->color(fn (?DocumentModel $state) => match ($state) {
                         DocumentModel::NFSE => 'info',
                         default => 'gray',
                     })
@@ -99,7 +98,7 @@ class FiscalDocumentsTable
 
                 Tables\Columns\TextColumn::make('operation_nature')
                     ->label('Natureza')
-                    ->formatStateUsing(fn(OperationNature $state) => $state->description())
+                    ->formatStateUsing(fn (OperationNature $state) => $state->description())
                     ->placeholder('Não possui')
                     ->limit(25)
                     ->width('1%')
@@ -116,20 +115,20 @@ class FiscalDocumentsTable
                     ->label('Status Fiscal')
                     ->badge()
                     ->state(
-                        fn(FiscalDocument $record): ?NfeStatus => $record->isNfse()
+                        fn (FiscalDocument $record): ?NfeStatus => $record->isNfse()
                             ? $record->nfse_status
                             : $record->nfe_status
                     )
-                    ->formatStateUsing(fn(?NfeStatus $state) => $state?->description() ?? 'Não enviado')
-                    ->color(fn(?NfeStatus $state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn (?NfeStatus $state) => $state?->description() ?? 'Não enviado')
+                    ->color(fn (?NfeStatus $state) => $state?->color() ?? 'gray')
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn(?Status $state) => $state?->description() ?? '-')
-                    ->color(fn(?Status $state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn (?Status $state) => $state?->description() ?? '-')
+                    ->color(fn (?Status $state) => $state?->color() ?? 'gray')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('nfe_protocolo')
@@ -180,6 +179,20 @@ class FiscalDocumentsTable
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray()),
+
+                DateRangeFilter::make('issued_at')
+                    ->label('Data de Emissão')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->icon('heroicon-o-x-mark')
+                    ->alwaysShowCalendar(),
+
+                DateRangeFilter::make('created_at')
+                    ->label('Criado em')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->icon('heroicon-o-x-mark')
+                    ->alwaysShowCalendar(),
             ])
             ->reorderableColumns()
             ->recordActions([
