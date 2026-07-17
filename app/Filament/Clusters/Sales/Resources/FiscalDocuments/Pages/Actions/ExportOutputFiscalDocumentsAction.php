@@ -93,8 +93,6 @@ final class ExportOutputFiscalDocumentsAction
             'customer_document' => ['label' => 'CNPJ'],
             'amount' => ['label' => 'Valor'],
             'lc116_service_code' => ['label' => 'Código Serviço'],
-            'emission_requested_at' => ['label' => 'Emissão Solicitada em'],
-            'confirmed_at' => ['label' => 'Confirmado em'],
         ];
     }
 
@@ -102,13 +100,11 @@ final class ExportOutputFiscalDocumentsAction
     {
         return match ($column) {
             'document_number' => (string) ($record->document_number ?? ''),
-            'issued_at' => $record->issued_at?->format('d/m/Y') ?? '',
+            'issued_at' => $record->confirmed_at?->format('d/m/Y H:i') ?? '',
             'customer_name' => (string) ($record->customer?->name ?? ''),
             'customer_document' => self::formatCnpj((string) ($record->customer?->document_number ?? '')),
             'amount' => (float) $record->items_total,
             'lc116_service_code' => self::resolveLc116ServiceCodes($record),
-            'emission_requested_at' => $record->emission_requested_at?->format('d/m/Y H:i') ?? '',
-            'confirmed_at' => $record->confirmed_at?->format('d/m/Y H:i') ?? '',
             default => '',
         };
     }
@@ -148,8 +144,6 @@ final class ExportOutputFiscalDocumentsAction
             'customer_document' => '',
             'amount' => number_format($records->sum(fn (FiscalDocument $record): float => (float) self::resolveValue($record, 'amount')), 2, ',', '.'),
             'lc116_service_code' => '',
-            'emission_requested_at' => '',
-            'confirmed_at' => '',
         ];
     }
 
@@ -201,8 +195,6 @@ final class ExportOutputFiscalDocumentsAction
             Cell::fromValue(''),
             Cell::fromValue(''),
             Cell::fromValue($totals['amount'], self::makeNumericStyle()),
-            Cell::fromValue(''),
-            Cell::fromValue(''),
             Cell::fromValue(''),
         ]));
 
