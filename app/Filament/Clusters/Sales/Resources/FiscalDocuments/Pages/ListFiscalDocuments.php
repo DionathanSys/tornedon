@@ -3,14 +3,11 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages;
 
 use App\Enum\FiscalDocument\NfeStatus;
-use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsPdfAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Support\Enums\Size;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListFiscalDocuments extends ListRecords
@@ -23,28 +20,28 @@ class ListFiscalDocuments extends ListRecords
             'all' => Tab::make('Todas')
                 ->badgeColor('gray'),
             NfeStatus::QUEUED->value => Tab::make('Na Fila')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::QUEUED))
+                ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::QUEUED))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::QUEUED)->count())
                 ->badgeColor(NfeStatus::QUEUED->color()),
             NfeStatus::PENDING->value => Tab::make('Pendente')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::PENDING))
+                ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::PENDING))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::PENDING)->count())
                 ->badgeColor(NfeStatus::PENDING->color()),
             NfeStatus::IN_PROCESSING->value => Tab::make('Em Processamento')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::IN_PROCESSING))
+                ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::IN_PROCESSING))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::IN_PROCESSING)->count())
                 ->badgeColor(NfeStatus::IN_PROCESSING->color()),
             NfeStatus::REJECTED->value => Tab::make('Rejeitada')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::REJECTED))
+                ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::REJECTED))
                 ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::REJECTED)->count())
                 ->badgeColor(NfeStatus::REJECTED->color()),
             NfeStatus::AUTHORIZED->value => Tab::make('Autorizada')
-                ->modifyQueryUsing(fn(Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::AUTHORIZED)),
+                ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::AUTHORIZED)),
 
         ];
     }
 
-    public function getDefaultActiveTab(): string | int | null
+    public function getDefaultActiveTab(): string|int|null
     {
         return NfeStatus::PENDING->value;
     }
@@ -67,6 +64,9 @@ class ListFiscalDocuments extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            ExportOutputFiscalDocumentsAction::make(),
+            ExportOutputFiscalDocumentsPdfAction::make(),
+        ];
     }
 }
