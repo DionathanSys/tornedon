@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions;
 
 use App\Enum\FiscalDocument\OperationType;
+use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -72,13 +73,14 @@ final class ExportOutputFiscalDocumentsAction
             ->withSum('items as items_total', 'total_price')
             ->where('company_id', $tenantId)
             ->where('operation_type', OperationType::SAIDA->value)
+            ->where('status', '!=', Status::PENDING->value)
             ->when(
                 $dateColumn === 'created_at',
                 fn ($query) => $query->whereBetween('created_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()]),
                 fn ($query) => $query->whereBetween('issued_at', [$startDate->toDateString(), $endDate->toDateString()]),
             )
+            ->orderByRaw('document_number + 0')
             ->orderBy($dateColumn)
-            ->orderBy('document_number')
             ->get();
     }
 

@@ -63,7 +63,7 @@ class FiscalDocumentsTable
                 Tables\Columns\TextColumn::make('document_number')
                     ->label('Número')
                     ->searchable()
-                    ->sortable()
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw('document_number + 0 '.$direction))
                     ->placeholder('-')
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -178,7 +178,9 @@ class FiscalDocumentsTable
 
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Status')
-                    ->options(Status::toSelectArray()),
+                    ->options(Status::toSelectArray())
+                    ->multiple()
+                    ->native(false),
 
                 DateRangeFilter::make('issued_at')
                     ->label('Data de Emissão')
