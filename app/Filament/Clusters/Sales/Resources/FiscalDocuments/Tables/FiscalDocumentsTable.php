@@ -62,7 +62,7 @@ class FiscalDocumentsTable
 
                 Tables\Columns\TextColumn::make('document_number')
                     ->label('Número')
-                    ->searchable()
+                    ->searchable(isIndividual: true)
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw('document_number + 0 '.$direction))
                     ->placeholder('-')
                     ->width('1%')
@@ -83,6 +83,7 @@ class FiscalDocumentsTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 Tables\Columns\TextColumn::make('rps_number')
                     ->label('RPS Número')
+                    ->searchable(isIndividual: true)
                     ->sortable()
                     ->placeholder('-')
                     ->width('1%')
@@ -90,7 +91,7 @@ class FiscalDocumentsTable
 
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Cliente')
-                    ->searchable()
+                    ->searchable(isIndividual: true)
                     ->sortable()
                     ->wrap()
                     ->lineClamp(2)
@@ -170,17 +171,24 @@ class FiscalDocumentsTable
 
                 Tables\Filters\SelectFilter::make('nfe_status')
                     ->label('Status NF-e')
-                    ->options(NfeStatus::toSelectArray()),
+                    ->options(NfeStatus::toSelectArray())
+                    ->multiple()
+                    ->native(false)
+                    ->query(fn (Builder $query, array $data): Builder => self::applyMultiSelectFilter($query, 'nfe_status', $data)),
 
                 Tables\Filters\SelectFilter::make('nfse_status')
                     ->label('Status NFS-e')
-                    ->options(NfeStatus::toSelectArray()),
+                    ->options(NfeStatus::toSelectArray())
+                    ->multiple()
+                    ->native(false)
+                    ->query(fn (Builder $query, array $data): Builder => self::applyMultiSelectFilter($query, 'nfse_status', $data)),
 
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
                     ->multiple()
-                    ->native(false),
+                    ->native(false)
+                    ->query(fn (Builder $query, array $data): Builder => self::applyMultiSelectFilter($query, 'status', $data)),
 
                 DateRangeFilter::make('issued_at')
                     ->label('Data de Emissão')
@@ -210,5 +218,16 @@ class FiscalDocumentsTable
                     ->size(Size::Small),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function applyMultiSelectFilter(Builder $query, string $column, array $data): Builder
+    {
+        $values = array_values(array_filter($data['values'] ?? []));
+
+        if ($values === []) {
+            return $query;
+        }
+
+        return $query->whereIn($column, $values);
     }
 }
