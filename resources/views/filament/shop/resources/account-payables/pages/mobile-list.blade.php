@@ -38,80 +38,56 @@
     </style>
 
     <div class="pr-mob-page">
-        <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo Contas à Receber</a>
+        <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo Contas à Pagar</a>
 
         <div class="pr-mob-tabs">
             <button type="button" wire:click="setTab('pending')" class="pr-mob-tab @if ($activeTab === 'pending') is-active @endif">Pendentes<span>{{ $this->pendingCount }}</span></button>
-            <button type="button" wire:click="setTab('{{ \App\Enum\AccountReceivable\Status::RECEIVED->value }}')" class="pr-mob-tab @if ($activeTab === \App\Enum\AccountReceivable\Status::RECEIVED->value) is-active @endif">Recebidas<span>{{ $this->receivedCount }}</span></button>
+            <button type="button" wire:click="setTab('{{ \App\Enum\AccountPayable\Status::PAID->value }}')" class="pr-mob-tab @if ($activeTab === \App\Enum\AccountPayable\Status::PAID->value) is-active @endif">Pagas<span>{{ $this->paidCount }}</span></button>
             <button type="button" wire:click="setTab('all')" class="pr-mob-tab @if ($activeTab === 'all') is-active @endif">Todas<span>{{ $this->allCount }}</span></button>
         </div>
 
         <div class="pr-mob-list">
-            @forelse ($this->accountReceivables as $receivable)
+            @forelse ($this->accountPayables as $payable)
                 <div class="pr-mob-card">
                     <div class="pr-mob-card__top">
                         <div>
-                            <p class="pr-mob-card__title">{{ $receivable->counterparty_label }}</p>
-                            <p class="pr-mob-card__sub">{{ $receivable->document_number ?: 'Sem documento' }} - {{ $receivable->due_date?->format('d/m/Y') ?? '-' }}</p>
+                            <p class="pr-mob-card__title">{{ $payable->counterparty_label }}</p>
+                            <p class="pr-mob-card__sub">{{ $payable->document_number ?: 'Sem documento' }} - {{ $payable->due_date?->format('d/m/Y') ?? '-' }}</p>
                         </div>
 
                         <span @class([
                             'pr-mob-badge',
-                            'pr-mob-badge--success' => $receivable->status === \App\Enum\AccountReceivable\Status::RECEIVED,
-                            'pr-mob-badge--danger' => $receivable->status === \App\Enum\AccountReceivable\Status::OVERDUE,
-                            'pr-mob-badge--info' => $receivable->status === \App\Enum\AccountReceivable\Status::PARTIALLY_RECEIVED,
-                            'pr-mob-badge--gray' => $receivable->status === \App\Enum\AccountReceivable\Status::CANCELLED,
-                        ])>{{ $receivable->status === \App\Enum\AccountReceivable\Status::OVERDUE ? 'Pendente' : $receivable->status->description() }}</span>
+                            'pr-mob-badge--success' => $payable->status === \App\Enum\AccountPayable\Status::PAID,
+                            'pr-mob-badge--danger' => $payable->status === \App\Enum\AccountPayable\Status::OVERDUE,
+                            'pr-mob-badge--info' => $payable->status === \App\Enum\AccountPayable\Status::PARTIALLY_PAID,
+                            'pr-mob-badge--gray' => $payable->status === \App\Enum\AccountPayable\Status::CANCELLED,
+                        ])>{{ $payable->status === \App\Enum\AccountPayable\Status::OVERDUE ? 'Pendente' : $payable->status->description() }}</span>
                     </div>
 
                     <div class="pr-mob-meta">
-                        <div><span>Valor</span><strong>R$ {{ number_format((float) $receivable->due_amount, 2, ',', '.') }}</strong></div>
-                        <div><span>Recebido</span><strong>R$ {{ number_format((float) $receivable->paid_amount, 2, ',', '.') }}</strong></div>
+                        <div><span>Valor</span><strong>R$ {{ number_format((float) $payable->due_amount, 2, ',', '.') }}</strong></div>
+                        <div><span>Pago</span><strong>R$ {{ number_format((float) $payable->paid_amount, 2, ',', '.') }}</strong></div>
                     </div>
 
                     <div class="pr-mob-actions">
-                        <a href="{{ $this->getDetailUrl($receivable) }}" class="pr-mob-action pr-mob-action--secondary">Ver detalhes</a>
-                        @if (in_array($receivable->status, [\App\Enum\AccountReceivable\Status::PENDING, \App\Enum\AccountReceivable\Status::PARTIALLY_RECEIVED, \App\Enum\AccountReceivable\Status::OVERDUE], true))
-                            <button
-                                type="button"
-                                class="pr-mob-action"
-                                wire:click="openRegisterPayment({{ $receivable->getKey() }})"
-                                wire:loading.attr="disabled"
-                            >
-                                Pago?
-                            </button>
+                        <a href="{{ $this->getDetailUrl($payable) }}" class="pr-mob-action pr-mob-action--secondary">Ver detalhes</a>
+                        @if (in_array($payable->status, [\App\Enum\AccountPayable\Status::PENDING, \App\Enum\AccountPayable\Status::PARTIALLY_PAID, \App\Enum\AccountPayable\Status::OVERDUE], true))
+                            <button type="button" class="pr-mob-action" wire:click="openRegisterPayment({{ $payable->getKey() }})" wire:loading.attr="disabled">Pago?</button>
                         @endif
                     </div>
 
-                    @if ($showPaymentForm && $paymentReceivableId === $receivable->getKey())
+                    @if ($showPaymentForm && $paymentPayableId === $payable->getKey())
                         <div class="pr-mob-item-form">
                             <div class="pr-mob-payment-grid">
-                                <div class="pr-mob-field">
-                                    <label>Data</label>
-                                    <input type="date" wire:model="paymentData.payment_date">
-                                </div>
-                                <div class="pr-mob-field">
-                                    <label>Valor recebido</label>
-                                    <input type="text" inputmode="decimal" wire:model="paymentData.amount">
-                                </div>
+                                <div class="pr-mob-field"><label>Data</label><input type="date" wire:model="paymentData.payment_date"></div>
+                                <div class="pr-mob-field"><label>Valor pago</label><input type="text" inputmode="decimal" wire:model="paymentData.amount"></div>
                             </div>
-
                             <div class="pr-mob-payment-grid">
-                                <div class="pr-mob-field">
-                                    <label>Juros</label>
-                                    <input type="text" inputmode="decimal" wire:model="paymentData.interest_amount">
-                                </div>
-                                <div class="pr-mob-field">
-                                    <label>Multa</label>
-                                    <input type="text" inputmode="decimal" wire:model="paymentData.fine_amount">
-                                </div>
+                                <div class="pr-mob-field"><label>Juros</label><input type="text" inputmode="decimal" wire:model="paymentData.interest_amount"></div>
+                                <div class="pr-mob-field"><label>Multa</label><input type="text" inputmode="decimal" wire:model="paymentData.fine_amount"></div>
                             </div>
-
                             <div class="pr-mob-payment-grid">
-                                <div class="pr-mob-field">
-                                    <label>Desconto</label>
-                                    <input type="text" inputmode="decimal" wire:model="paymentData.discount_amount">
-                                </div>
+                                <div class="pr-mob-field"><label>Desconto</label><input type="text" inputmode="decimal" wire:model="paymentData.discount_amount"></div>
                                 <div class="pr-mob-field">
                                     <label>Conta financeira</label>
                                     <select wire:model="paymentData.financial_account_id">
@@ -122,17 +98,8 @@
                                     </select>
                                 </div>
                             </div>
-
-                            <div class="pr-mob-field">
-                                <label>Descrição</label>
-                                <input type="text" wire:model="paymentData.description">
-                            </div>
-
-                            <div class="pr-mob-field">
-                                <label>Observações</label>
-                                <textarea wire:model="paymentData.notes"></textarea>
-                            </div>
-
+                            <div class="pr-mob-field"><label>Descrição</label><input type="text" wire:model="paymentData.description"></div>
+                            <div class="pr-mob-field"><label>Observações</label><textarea wire:model="paymentData.notes"></textarea></div>
                             <div class="pr-mob-item-actions">
                                 <button type="button" wire:click="cancelRegisterPayment" class="pr-mob-secondary">Cancelar</button>
                                 <button type="button" wire:click="savePayment" class="pr-mob-save">Salvar</button>
@@ -141,7 +108,7 @@
                     @endif
                 </div>
             @empty
-                <div class="pr-mob-empty">Nenhuma conta a receber encontrada.</div>
+                <div class="pr-mob-empty">Nenhuma conta a pagar encontrada.</div>
             @endforelse
         </div>
     </div>

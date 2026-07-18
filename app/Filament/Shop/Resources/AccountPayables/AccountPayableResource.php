@@ -35,7 +35,7 @@ class AccountPayableResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return AccountPayableForm::configure($schema);
+        return AccountPayableForm::configure($schema, useSections: false);
     }
 
     public static function table(Table $table): Table

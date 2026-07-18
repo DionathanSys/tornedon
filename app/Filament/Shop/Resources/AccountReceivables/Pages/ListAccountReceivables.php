@@ -20,7 +20,7 @@ class ListAccountReceivables extends Page
 
     protected string $view = 'filament.shop.resources.account-receivables.pages.mobile-list';
 
-    public string $activeTab = 'open';
+    public string $activeTab = 'pending';
 
     public bool $showPaymentForm = false;
 
@@ -30,7 +30,7 @@ class ListAccountReceivables extends Page
 
     public function setTab(string $tab): void
     {
-        if (! in_array($tab, ['open', Status::OVERDUE->value, Status::RECEIVED->value, 'all'], true)) {
+        if (! in_array($tab, ['pending', Status::RECEIVED->value, 'all'], true)) {
             return;
         }
 
@@ -53,11 +53,11 @@ class ListAccountReceivables extends Page
     public function getAccountReceivablesProperty(): Collection
     {
         return $this->baseQuery()
-            ->when($this->activeTab === 'open', fn (Builder $query): Builder => $query->whereIn('status', [
+            ->when($this->activeTab === 'pending', fn (Builder $query): Builder => $query->whereIn('status', [
                 Status::PENDING->value,
                 Status::PARTIALLY_RECEIVED->value,
+                Status::OVERDUE->value,
             ]))
-            ->when($this->activeTab === Status::OVERDUE->value, fn (Builder $query): Builder => $query->where('status', Status::OVERDUE->value))
             ->when($this->activeTab === Status::RECEIVED->value, fn (Builder $query): Builder => $query->where('status', Status::RECEIVED->value))
             ->orderBy('due_date')
             ->orderByDesc('id')
@@ -65,17 +65,13 @@ class ListAccountReceivables extends Page
             ->get();
     }
 
-    public function getOpenCountProperty(): int
+    public function getPendingCountProperty(): int
     {
         return $this->baseQuery()->whereIn('status', [
             Status::PENDING->value,
             Status::PARTIALLY_RECEIVED->value,
+            Status::OVERDUE->value,
         ])->count();
-    }
-
-    public function getOverdueCountProperty(): int
-    {
-        return $this->baseQuery()->where('status', Status::OVERDUE->value)->count();
     }
 
     public function getReceivedCountProperty(): int

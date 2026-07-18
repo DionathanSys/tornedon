@@ -33,7 +33,7 @@ class CashMovementResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return CashMovementForm::configure($schema);
+        return CashMovementForm::configure($schema, useSections: false);
     }
 
     public static function table(Table $table): Table
