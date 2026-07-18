@@ -5,6 +5,7 @@ namespace App\Filament\Shop\Resources\ProductionRequests\Pages;
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas\ProductionRequestForm;
 use App\Filament\Shop\Resources\ProductionRequests\ProductionRequestResource;
+use App\Models\FinancialAccount;
 use App\Models\Product;
 use App\Models\ProductionRequest;
 use App\Models\ProductionRequestItem;
@@ -32,7 +33,11 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public bool $showItemForm = false;
 
+    public bool $showDeliverConfirmation = false;
+
     public ?int $editingItemId = null;
+
+    public array $deliverData = [];
 
     public function mount(int|string|ProductionRequest $record): void
     {
@@ -46,6 +51,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->loadRecordRelations();
         $this->fillMainForm();
         $this->resetItemForm();
+        $this->resetDeliverForm();
     }
 
     public function form(Schema $schema): Schema
@@ -221,8 +227,25 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function deliver(): void
     {
+        if ($this->record->status !== Status::OPEN) {
+            notify::error('Somente pedidos abertos podem ser entregues.');
+
+            return;
+        }
+
+        $this->resetDeliverForm();
+        $this->showDeliverConfirmation = true;
+    }
+
+    public function confirmDeliver(): void
+    {
         $service = app(ProductionRequestService::class);
-        $delivered = $service->deliver($this->record, ['delivered_at' => now()->toDateString()], Auth::id());
+        $delivered = $service->deliver($this->record, [
+            'delivered_at' => now()->toDateString(),
+            'mark_as_received' => (bool) ($this->deliverData['mark_as_received'] ?? false),
+            'financial_account_id' => $this->deliverData['financial_account_id'] ?? null,
+            'received_at' => $this->deliverData['received_at'] ?? now()->toDateString(),
+        ], Auth::id());
 
         if ($service->hasError() || $delivered === null) {
             notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
@@ -233,7 +256,15 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->record = $delivered;
         $this->loadRecordRelations();
         $this->fillMainForm();
+        $this->resetDeliverForm();
+        $this->showDeliverConfirmation = false;
         notify::success('Pedido entregue com sucesso.');
+    }
+
+    public function cancelDeliverConfirmation(): void
+    {
+        $this->showDeliverConfirmation = false;
+        $this->resetDeliverForm();
     }
 
     public function cancel(): void
@@ -265,6 +296,11 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();
+    }
+
+    public function getFinancialAccountOptionsProperty(): array
+    {
+        return FinancialAccount::optionsForCompany(Filament::getTenant()->id);
     }
 
     public function updatedItemDataQuantity(mixed $value = null): void
@@ -313,6 +349,15 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             'unit_of_measure' => 'UN',
             'quantity' => '1,000',
             'unit_price' => '15,00',
+        ];
+    }
+
+    private function resetDeliverForm(): void
+    {
+        $this->deliverData = [
+            'mark_as_received' => false,
+            'financial_account_id' => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id),
+            'received_at' => now()->toDateString(),
         ];
     }
 

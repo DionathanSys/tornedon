@@ -33,6 +33,11 @@
         .pr-mob-bottom a, .pr-mob-bottom button { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; border: 0; border-radius: .85rem; font-size: .72rem; font-weight: 850; text-decoration: none; }
         .pr-mob-danger { background: #fee2e2; color: #b91c1c; }
         .pr-mob-success { background: #dcfce7; color: #166534; }
+        .pr-mob-deliver-confirm { display: grid; gap: .7rem; border: 1px solid rgba(22, 101, 52, .18); background: #f0fdf4; }
+        .pr-mob-check { display: flex; align-items: center; gap: .55rem; color: #14532d; font-size: .85rem; font-weight: 850; }
+        .pr-mob-check input { width: 1.15rem; height: 1.15rem; }
+        .pr-mob-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+        .pr-mob-confirm-actions button { min-height: 2.75rem; border: 0; border-radius: .75rem; font-size: .72rem; font-weight: 850; }
     </style>
 
     <div class="pr-mob-detail">
@@ -113,6 +118,41 @@
                 {{ $this->form }}
             </form>
         </section>
+
+        @if ($showDeliverConfirmation)
+            <section class="pr-mob-card pr-mob-deliver-confirm">
+                <div class="pr-mob-section-title">
+                    <h3>Confirmar entrega</h3>
+                </div>
+
+                <label class="pr-mob-check">
+                    <input type="checkbox" wire:model.live="deliverData.mark_as_received">
+                    Já recebido?
+                </label>
+
+                @if ($deliverData['mark_as_received'] ?? false)
+                    <div class="pr-mob-field">
+                        <label>Conta financeira</label>
+                        <select wire:model="deliverData.financial_account_id">
+                            <option value="">Selecione</option>
+                            @foreach ($this->financialAccountOptions as $accountId => $accountName)
+                                <option value="{{ $accountId }}">{{ $accountName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="pr-mob-field">
+                        <label>Data do recebimento</label>
+                        <input type="date" wire:model="deliverData.received_at">
+                    </div>
+                @endif
+
+                <div class="pr-mob-confirm-actions">
+                    <button type="button" wire:click="cancelDeliverConfirmation" class="pr-mob-secondary">Voltar</button>
+                    <button type="button" wire:click="confirmDeliver" class="pr-mob-success">Confirmar</button>
+                </div>
+            </section>
+        @endif
     </div>
 
     <div class="pr-mob-bottom">

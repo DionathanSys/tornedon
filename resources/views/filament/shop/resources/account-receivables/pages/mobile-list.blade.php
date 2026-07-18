@@ -30,11 +30,11 @@
     <x-filament-actions::modals />
 
     <div class="pr-mob-page">
-        <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Nova conta a receber</a>
+        <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo Contas à Receber</a>
 
         <div class="pr-mob-tabs">
             <button type="button" wire:click="setTab('open')" class="pr-mob-tab @if ($activeTab === 'open') is-active @endif">Abertas<span>{{ $this->openCount }}</span></button>
-            <button type="button" wire:click="setTab('{{ \App\Enum\AccountReceivable\Status::OVERDUE->value }}')" class="pr-mob-tab @if ($activeTab === \App\Enum\AccountReceivable\Status::OVERDUE->value) is-active @endif">Vencidas<span>{{ $this->overdueCount }}</span></button>
+            <button type="button" wire:click="setTab('{{ \App\Enum\AccountReceivable\Status::OVERDUE->value }}')" class="pr-mob-tab @if ($activeTab === \App\Enum\AccountReceivable\Status::OVERDUE->value) is-active @endif">Pendentes<span>{{ $this->overdueCount }}</span></button>
             <button type="button" wire:click="setTab('{{ \App\Enum\AccountReceivable\Status::RECEIVED->value }}')" class="pr-mob-tab @if ($activeTab === \App\Enum\AccountReceivable\Status::RECEIVED->value) is-active @endif">Recebidas<span>{{ $this->receivedCount }}</span></button>
             <button type="button" wire:click="setTab('all')" class="pr-mob-tab @if ($activeTab === 'all') is-active @endif">Todas<span>{{ $this->allCount }}</span></button>
         </div>
@@ -54,7 +54,7 @@
                             'pr-mob-badge--danger' => $receivable->status === \App\Enum\AccountReceivable\Status::OVERDUE,
                             'pr-mob-badge--info' => $receivable->status === \App\Enum\AccountReceivable\Status::PARTIALLY_RECEIVED,
                             'pr-mob-badge--gray' => $receivable->status === \App\Enum\AccountReceivable\Status::CANCELLED,
-                        ])>{{ $receivable->status->description() }}</span>
+                        ])>{{ $receivable->status === \App\Enum\AccountReceivable\Status::OVERDUE ? 'Pendente' : $receivable->status->description() }}</span>
                     </div>
 
                     <div class="pr-mob-meta">
@@ -71,7 +71,7 @@
                                 wire:click="openRegisterPayment({{ $receivable->getKey() }})"
                                 wire:loading.attr="disabled"
                             >
-                                Registrar recebimento
+                                Pago?
                             </button>
                         @endif
                     </div>

@@ -38,6 +38,16 @@ class ListAccountReceivables extends Page
         $this->activeTab = $tab;
     }
 
+    public function getTitle(): string
+    {
+        return 'Contas à Receber';
+    }
+
+    public function getHeading(): string
+    {
+        return 'Contas à Receber';
+    }
+
     /**
      * @return Collection<int, AccountReceivable>
      */
