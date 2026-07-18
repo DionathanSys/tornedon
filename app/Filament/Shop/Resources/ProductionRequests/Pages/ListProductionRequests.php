@@ -66,7 +66,9 @@ class ListProductionRequests extends Page
 
     public function getOpenProductsReportUrl(): string
     {
-        return rtrim(ProductionRequestResource::getUrl(), '/') . '/relatorio-abertos';
+        return route('filament.shop.resources.production-requests.open-products-report', [
+            'tenant' => Filament::getTenant(),
+        ]);
     }
 
     public function getDetailUrl(ProductionRequest $record): string
