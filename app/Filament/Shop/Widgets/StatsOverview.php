@@ -57,12 +57,16 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->selectRaw('COALESCE(SUM(due_amount - COALESCE(paid_amount, 0)), 0) as total')
             ->value('total');
 
+        $currentMonthStart = now()->startOfMonth();
+        $currentMonthEnd = now()->endOfMonth();
+        $previousMonthStart = now()->subMonthNoOverflow()->startOfMonth();
+        $previousMonthEnd = now()->subMonthNoOverflow()->endOfMonth();
+
         $cashIn = CashMovement::query()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::INFLOW->value)
             ->whereNull('reversal_of_id')
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
+            ->whereBetween('transaction_date', [$currentMonthStart, $currentMonthEnd])
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
@@ -70,8 +74,23 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::OUTFLOW->value)
             ->whereNull('reversal_of_id')
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
+            ->whereBetween('transaction_date', [$currentMonthStart, $currentMonthEnd])
+            ->selectRaw('COALESCE(SUM(amount), 0) as total')
+            ->value('total');
+
+        $previousCashIn = CashMovement::query()
+            ->where('company_id', $tenantId)
+            ->where('direction', CashMovementDirection::INFLOW->value)
+            ->whereNull('reversal_of_id')
+            ->whereBetween('transaction_date', [$previousMonthStart, $previousMonthEnd])
+            ->selectRaw('COALESCE(SUM(amount), 0) as total')
+            ->value('total');
+
+        $previousCashOut = CashMovement::query()
+            ->where('company_id', $tenantId)
+            ->where('direction', CashMovementDirection::OUTFLOW->value)
+            ->whereNull('reversal_of_id')
+            ->whereBetween('transaction_date', [$previousMonthStart, $previousMonthEnd])
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
@@ -99,12 +118,12 @@ class StatsOverview extends BaseStatsOverviewWidget
                 ->color('danger'),
 
             Stat::make('Entradas do Mês', 'R$ ' . number_format($cashIn / 100, 2, ',', '.'))
-                ->description('Fluxo de caixa positivo')
+                ->description('Mês anterior: R$ ' . number_format($previousCashIn / 100, 2, ',', '.'))
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success'),
 
             Stat::make('Saídas do Mês', 'R$ ' . number_format($cashOut / 100, 2, ',', '.'))
-                ->description('Fluxo de caixa negativo')
+                ->description('Mês anterior: R$ ' . number_format($previousCashOut / 100, 2, ',', '.'))
                 ->descriptionIcon('heroicon-o-credit-card')
                 ->color('danger'),
         ];

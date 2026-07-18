@@ -21,7 +21,7 @@ class AccountsChart extends ChartWidget
 
     public function getHeading(): string | Htmlable | null
     {
-        return 'Contas a Receber vs a Pagar';
+        return 'Contas a Receber vs a Pagar (pendentes de todos os períodos)';
     }
 
     protected function getData(): array
