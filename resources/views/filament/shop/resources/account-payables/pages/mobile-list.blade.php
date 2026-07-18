@@ -6,6 +6,11 @@
         .pr-mob-tab { min-height: 3.3rem; border: 0; border-radius: .9rem; background: #e2e8f0; color: #334155; font-size: .75rem; font-weight: 800; }
         .pr-mob-tab span { display: block; margin-top: .2rem; font-size: .7rem; opacity: .8; }
         .pr-mob-tab.is-active { background: #111827; color: #fff; }
+        .pr-mob-filters { display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; align-items: end; border-radius: 1rem; padding: .75rem; background: #fff; box-shadow: 0 16px 40px -34px rgba(15, 23, 42, .22); }
+        .pr-mob-filter { display: grid; gap: .3rem; }
+        .pr-mob-filter label { color: #64748b; font-size: .65rem; font-weight: 800; text-transform: uppercase; }
+        .pr-mob-filter input { width: 100%; min-height: 2.65rem; border: 1px solid rgba(148, 163, 184, .45); border-radius: .8rem; padding: .45rem .6rem; background: #fff; color: #0f172a; }
+        .pr-mob-filter-clear { min-height: 2.65rem; border: 0; border-radius: .8rem; padding: 0 .7rem; background: #e2e8f0; color: #334155; font-size: .72rem; font-weight: 850; }
         .pr-mob-list { display: grid; gap: .75rem; }
         .pr-mob-card { display: grid; gap: .75rem; border: 1px solid rgba(148, 163, 184, .25); border-radius: 1rem; padding: .95rem; background: #fff; color: #0f172a; text-decoration: none; box-shadow: 0 16px 40px -34px rgba(15, 23, 42, .22); }
         .pr-mob-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
@@ -44,6 +49,12 @@
             <button type="button" wire:click="setTab('pending')" class="pr-mob-tab @if ($activeTab === 'pending') is-active @endif">Pendentes<span>{{ $this->pendingCount }}</span></button>
             <button type="button" wire:click="setTab('{{ \App\Enum\AccountPayable\Status::PAID->value }}')" class="pr-mob-tab @if ($activeTab === \App\Enum\AccountPayable\Status::PAID->value) is-active @endif">Pagas<span>{{ $this->paidCount }}</span></button>
             <button type="button" wire:click="setTab('all')" class="pr-mob-tab @if ($activeTab === 'all') is-active @endif">Todas<span>{{ $this->allCount }}</span></button>
+        </div>
+
+        <div class="pr-mob-filters">
+            <div class="pr-mob-filter"><label>De</label><input type="date" wire:model.live="dateFrom"></div>
+            <div class="pr-mob-filter"><label>Até</label><input type="date" wire:model.live="dateTo"></div>
+            <button type="button" class="pr-mob-filter-clear" wire:click="clearDateFilters">Limpar</button>
         </div>
 
         <div class="pr-mob-list">

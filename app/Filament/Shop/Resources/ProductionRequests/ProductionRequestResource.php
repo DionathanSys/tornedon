@@ -6,6 +6,7 @@ use App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas\ProductionR
 use App\Filament\Shop\Resources\ProductionRequests\Pages\CreateProductionRequest;
 use App\Filament\Shop\Resources\ProductionRequests\Pages\EditProductionRequest;
 use App\Filament\Shop\Resources\ProductionRequests\Pages\ListProductionRequests;
+use App\Filament\Shop\Resources\ProductionRequests\Pages\OpenProductsReport;
 use App\Filament\Shop\Resources\ProductionRequests\RelationManagers\ItemsRelationManager;
 use App\Filament\Shop\Resources\ProductionRequests\Tables\ProductionRequestsTable;
 use App\Models\ProductionRequest;
@@ -60,6 +61,7 @@ class ProductionRequestResource extends Resource
         return [
             'index' => ListProductionRequests::route('/'),
             'create' => CreateProductionRequest::route('/create'),
+            'open-products-report' => OpenProductsReport::route('/relatorio-abertos'),
             'edit' => EditProductionRequest::route('/{record}/edit'),
         ];
     }

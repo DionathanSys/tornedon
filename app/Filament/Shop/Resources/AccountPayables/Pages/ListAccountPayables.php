@@ -22,6 +22,10 @@ class ListAccountPayables extends Page
 
     public string $activeTab = 'pending';
 
+    public ?string $dateFrom = null;
+
+    public ?string $dateTo = null;
+
     public bool $showPaymentForm = false;
 
     public ?int $paymentPayableId = null;
@@ -35,6 +39,12 @@ class ListAccountPayables extends Page
         }
 
         $this->activeTab = $tab;
+    }
+
+    public function clearDateFilters(): void
+    {
+        $this->dateFrom = null;
+        $this->dateTo = null;
     }
 
     public function getTitle(): string
@@ -179,6 +189,8 @@ class ListAccountPayables extends Page
     {
         return AccountPayable::query()
             ->where('company_id', Filament::getTenant()->id)
+            ->when($this->dateFrom, fn (Builder $query): Builder => $query->whereDate('due_date', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn (Builder $query): Builder => $query->whereDate('due_date', '<=', $this->dateTo))
             ->with('supplier');
     }
 

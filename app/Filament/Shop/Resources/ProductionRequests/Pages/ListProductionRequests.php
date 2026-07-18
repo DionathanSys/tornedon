@@ -64,6 +64,11 @@ class ListProductionRequests extends Page
         return ProductionRequestResource::getUrl('create');
     }
 
+    public function getOpenProductsReportUrl(): string
+    {
+        return ProductionRequestResource::getUrl('open-products-report');
+    }
+
     public function getDetailUrl(ProductionRequest $record): string
     {
         return ProductionRequestResource::getUrl('edit', ['record' => $record->getKey()]);
