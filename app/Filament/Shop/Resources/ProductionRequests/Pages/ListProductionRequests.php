@@ -17,6 +17,8 @@ class ListProductionRequests extends Page
 
     protected string $view = 'filament.shop.resources.production-requests.pages.mobile-list';
 
+    protected static ?string $title = 'Pedidos';
+
     public string $activeTab = 'open';
 
     public function setTab(string $tab): void

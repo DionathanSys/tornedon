@@ -7,19 +7,12 @@ use App\Filament\Shop\Resources\AccountReceivables\AccountReceivableResource;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\FinancialAccount;
+use App\Notification\NotifyService as notify;
 use App\Services\AccountReceivable\AccountReceivableService;
-use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
-use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ListAccountReceivables extends Page
 {
@@ -28,6 +21,12 @@ class ListAccountReceivables extends Page
     protected string $view = 'filament.shop.resources.account-receivables.pages.mobile-list';
 
     public string $activeTab = 'open';
+
+    public bool $showPaymentForm = false;
+
+    public ?int $paymentReceivableId = null;
+
+    public array $paymentData = [];
 
     public function setTab(string $tab): void
     {
@@ -101,101 +100,83 @@ class ListAccountReceivables extends Page
 
     public function openRegisterPayment(int $receivableId): void
     {
-        $this->mountAction('registerPayment', ['receivable' => $receivableId]);
+        $installment = $this->findReceivableInstallment($receivableId);
+
+        if ($installment === null) {
+            notify::warning('Nenhuma parcela em aberto encontrada para esta conta.');
+
+            return;
+        }
+
+        $this->paymentReceivableId = $receivableId;
+        $this->paymentData = [
+            'payment_date' => now()->toDateString(),
+            'amount' => $this->formatMoney((float) ($installment->balance_amount ?: $installment->due_amount)),
+            'interest_amount' => '0,00',
+            'fine_amount' => '0,00',
+            'discount_amount' => '0,00',
+            'financial_account_id' => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id),
+            'description' => $installment->description ?? $installment->accountReceivable?->description,
+            'notes' => null,
+        ];
+        $this->showPaymentForm = true;
     }
 
-    public function registerPaymentAction(): Action
+    public function cancelRegisterPayment(): void
     {
-        return Action::make('registerPayment')
-            ->label('Registrar recebimento')
-            ->icon('heroicon-o-currency-dollar')
-            ->color('success')
-            ->schema(fn (Schema $schema) => $schema
-                ->columns(2)
-                ->components([
-                    DatePicker::make('payment_date')
-                        ->label('Data do recebimento')
-                        ->default(now())
-                        ->required(),
-                    Money::make('amount')
-                        ->label('Valor recebido')
-                        ->required(),
-                    Money::make('interest_amount')->label('Juros'),
-                    Money::make('fine_amount')->label('Multa'),
-                    Money::make('discount_amount')->label('Desconto'),
-                    TextInput::make('bank_account_id')
-                        ->label('Conta bancaria (ID)')
-                        ->visible(false)
-                        ->numeric(),
-                    Select::make('financial_account_id')
-                        ->label('Conta Financeira')
-                        ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
-                        ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
-                        ->searchable()
-                        ->preload()
-                        ->native(false)
-                        ->required(),
-                    Textarea::make('description')
-                        ->label('Descrição do Movimento')
-                        ->rows(2)
-                        ->maxLength(255)
-                        ->columnSpanFull(),
-                    Textarea::make('notes')
-                        ->label('Observações')
-                        ->rows(3)
-                        ->columnSpanFull(),
-                ]))
-            ->fillForm(function (array $arguments): array {
-                $installment = $this->findReceivableInstallment((int) ($arguments['receivable'] ?? 0));
+        $this->resetPaymentForm();
+    }
 
-                return [
-                    'payment_date' => now()->toDateString(),
-                    'amount' => $installment?->balance_amount ?: $installment?->due_amount,
-                    'description' => $installment?->description ?? $installment?->accountReceivable?->description,
-                ];
-            })
-            ->action(function (array $arguments, array $data): void {
-                $installment = $this->findReceivableInstallment((int) ($arguments['receivable'] ?? 0));
+    public function savePayment(): void
+    {
+        $installment = $this->findReceivableInstallment((int) $this->paymentReceivableId);
 
-                if ($installment === null) {
-                    Notification::make()
-                        ->title('Nenhuma parcela em aberto encontrada para esta conta.')
-                        ->warning()
-                        ->send();
+        if ($installment === null) {
+            notify::warning('Nenhuma parcela em aberto encontrada para esta conta.');
+            $this->resetPaymentForm();
 
-                    return;
-                }
+            return;
+        }
 
-                $service = app(AccountReceivableService::class);
-                $payment = $service->registerInstallmentPayment(
-                    $installment,
-                    (float) ($data['amount'] ?? 0),
-                    (string) ($data['payment_date'] ?? ''),
-                    [
-                        'interest_amount' => (float) ($data['interest_amount'] ?? 0),
-                        'fine_amount' => (float) ($data['fine_amount'] ?? 0),
-                        'discount_amount' => (float) ($data['discount_amount'] ?? 0),
-                        'bank_account_id' => $data['bank_account_id'] ?? null,
-                        'financial_account_id' => $data['financial_account_id'] ?? null,
-                        'description' => $data['description'] ?? null,
-                        'notes' => $data['notes'] ?? null,
-                    ]
-                );
+        $data = validator($this->paymentData, [
+            'payment_date' => ['required', 'date'],
+            'amount' => ['required'],
+            'interest_amount' => ['nullable'],
+            'fine_amount' => ['nullable'],
+            'discount_amount' => ['nullable'],
+            'financial_account_id' => ['required', 'integer'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+        ])->validate();
 
-                if ($service->hasError() || $payment === null) {
-                    Notification::make()
-                        ->title($service->getMessageUser() ?: 'Erro ao registrar recebimento.')
-                        ->danger()
-                        ->send();
+        $service = app(AccountReceivableService::class);
+        $payment = $service->registerInstallmentPayment(
+            $installment,
+            $this->toDecimal($data['amount'] ?? 0),
+            (string) $data['payment_date'],
+            [
+                'interest_amount' => $this->toDecimal($data['interest_amount'] ?? 0),
+                'fine_amount' => $this->toDecimal($data['fine_amount'] ?? 0),
+                'discount_amount' => $this->toDecimal($data['discount_amount'] ?? 0),
+                'financial_account_id' => $data['financial_account_id'] ?? null,
+                'description' => $data['description'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]
+        );
 
-                    return;
-                }
+        if ($service->hasError() || $payment === null) {
+            notify::error($service->getMessageUser() ?: 'Erro ao registrar recebimento.');
 
-                Notification::make()
-                    ->title($service->getMessage() ?: 'Recebimento registrado com sucesso.')
-                    ->success()
-                    ->send();
-            });
+            return;
+        }
+
+        notify::success($service->getMessage() ?: 'Recebimento registrado com sucesso.');
+        $this->resetPaymentForm();
+    }
+
+    public function getFinancialAccountOptionsProperty(): array
+    {
+        return FinancialAccount::optionsForCompany(Filament::getTenant()->id);
     }
 
     private function baseQuery(): Builder
@@ -222,5 +203,29 @@ class ListAccountReceivables extends Page
             ->with('accountReceivable')
             ->orderBy('sequence_number')
             ->first();
+    }
+
+    private function resetPaymentForm(): void
+    {
+        $this->showPaymentForm = false;
+        $this->paymentReceivableId = null;
+        $this->paymentData = [];
+    }
+
+    private function toDecimal(mixed $value): float
+    {
+        $normalized = trim((string) $value);
+
+        if (str_contains($normalized, ',')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        return (float) $normalized;
+    }
+
+    private function formatMoney(float $value): string
+    {
+        return number_format($value, 2, ',', '.');
     }
 }

@@ -5,11 +5,7 @@ namespace App\Filament\Shop\Resources\AccountReceivables\Pages;
 use App\Filament\Shop\Resources\AccountReceivables\AccountReceivableResource;
 use App\Notification\NotifyService as notify;
 use App\Services\AccountReceivable\AccountReceivableService;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -18,40 +14,41 @@ class EditAccountReceivable extends EditRecord
 {
     protected static string $resource = AccountReceivableResource::class;
 
+    protected string $view = 'filament.shop.resources.account-receivables.pages.mobile-edit';
+
     protected function getHeaderActions(): array
     {
-        return [
-            ActionGroup::make([
-                Action::make('back')
-                    ->hiddenLabel()
-                    ->tooltip('Voltar')
-                    ->icon(Heroicon::ArrowUturnLeft)
-                    ->url(AccountReceivableResource::getUrl()),
-                DeleteAction::make()
-                    ->using(function (Model $record): bool {
-                        $service = app(AccountReceivableService::class);
-                        $result = $service->delete($record);
+        return [];
+    }
 
-                        if ($service->hasError()) {
-                            Log::error('Shop EditAccountReceivable: Erro ao deletar conta a receber', [
-                                'metodo' => __METHOD__.'@'.__LINE__,
-                                'error_code' => $service->getErrorCode(),
-                                'message' => $service->getMessage(),
-                                'account_receivable_id' => $record->id,
-                            ]);
+    public function getListUrl(): string
+    {
+        return AccountReceivableResource::getUrl();
+    }
 
-                            notify::error(
-                                message: $service->getMessageUser(),
-                                errorCode: $service->getErrorCode(),
-                            );
+    public function deleteRecord(): void
+    {
+        $service = app(AccountReceivableService::class);
+        $result = $service->delete($this->record);
 
-                            return false;
-                        }
+        if ($service->hasError() || ! $result) {
+            Log::error('Shop EditAccountReceivable: Erro ao deletar conta a receber', [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'error_code' => $service->getErrorCode(),
+                'message' => $service->getMessage(),
+                'account_receivable_id' => $this->record->id,
+            ]);
 
-                        return $result;
-                    }),
-            ])->button(),
-        ];
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode(),
+            );
+
+            return;
+        }
+
+        notify::success('Conta a receber excluída com sucesso.');
+        $this->redirect(AccountReceivableResource::getUrl(), navigate: true);
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model

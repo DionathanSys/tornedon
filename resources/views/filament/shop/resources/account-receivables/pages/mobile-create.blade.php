@@ -17,21 +17,21 @@
         .pr-mob-save { background: #111827; color: #fff; }
     </style>
 
-    <form wire:submit="save">
+    <form wire:submit="create">
         <div class="pr-mob-detail">
             <section class="pr-mob-card pr-mob-head">
-                <p class="pr-mob-title">Novo pedido</p>
-                <p class="pr-mob-sub">Preencha os dados do pedido para depois adicionar os itens.</p>
+                <p class="pr-mob-title">Novo Contas à Receber</p>
+                <p class="pr-mob-sub">Preencha os dados do recebível para criar a conta.</p>
                 <div class="pr-mob-kpis">
-                    <div><span>Status</span><strong>Aberto</strong></div>
-                    <div><span>Itens</span><strong>0</strong></div>
-                    <div><span>Total</span><strong>R$ 0,00</strong></div>
+                    <div><span>Status</span><strong>Pendente</strong></div>
+                    <div><span>Parcelas</span><strong>1+</strong></div>
+                    <div><span>Tipo</span><strong>Receber</strong></div>
                 </div>
             </section>
 
             <section class="pr-mob-card">
                 <div class="pr-mob-section-title">
-                    <h3>Dados do pedido</h3>
+                    <h3>Dados da conta</h3>
                 </div>
 
                 {{ $this->form }}
