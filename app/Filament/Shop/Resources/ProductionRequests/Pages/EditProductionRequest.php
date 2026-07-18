@@ -105,10 +105,24 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->itemData = [
             'product_id' => $item->product_id,
             'unit_of_measure' => $item->unit_of_measure,
-            'quantity' => (string) $item->quantity,
+            'quantity' => $this->formatQuantity((float) $item->quantity),
             'unit_price' => number_format((float) $item->unit_price, 2, ',', '.'),
         ];
         $this->showItemForm = true;
+    }
+
+    public function incrementItemQuantity(): void
+    {
+        $this->itemData['quantity'] = $this->formatQuantity(
+            $this->toDecimal($this->itemData['quantity'] ?? 0) + 1
+        );
+    }
+
+    public function decrementItemQuantity(): void
+    {
+        $quantity = $this->toDecimal($this->itemData['quantity'] ?? 0) - 1;
+
+        $this->itemData['quantity'] = $this->formatQuantity(max(0.001, $quantity));
     }
 
     public function saveItem(bool $createAnother = false): void
@@ -299,5 +313,10 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         }
 
         return (float) $normalized;
+    }
+
+    private function formatQuantity(float $value): string
+    {
+        return number_format($value, 3, ',', '.');
     }
 }

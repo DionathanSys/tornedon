@@ -16,6 +16,9 @@
         .pr-mob-field { display: grid; gap: .3rem; }
         .pr-mob-field label { color: #475569; font-size: .72rem; font-weight: 800; }
         .pr-mob-field input, .pr-mob-field select { width: 100%; min-height: 2.85rem; border: 1px solid rgba(148, 163, 184, .45); border-radius: .85rem; padding: .55rem .7rem; background: #fff; color: #0f172a; }
+        .pr-mob-quantity { display: grid; grid-template-columns: 2.85rem 1fr 2.85rem; gap: .4rem; }
+        .pr-mob-quantity button { min-height: 2.85rem; border: 1px solid rgba(148, 163, 184, .45); border-radius: .85rem; background: #fff; color: #0f172a; font-size: 1.1rem; font-weight: 900; }
+        .pr-mob-quantity input { text-align: center; }
         .pr-mob-item-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
         .pr-mob-item-actions button { min-height: 2.75rem; border: 0; border-radius: .75rem; font-size: .72rem; font-weight: 850; }
         .pr-mob-secondary { background: #e2e8f0; color: #334155; }
@@ -69,7 +72,14 @@
                         </select>
                     </div>
                     <div class="pr-mob-field"><label>Unidade</label><input type="text" wire:model="itemData.unit_of_measure"></div>
-                    <div class="pr-mob-field"><label>Quantidade</label><input type="text" inputmode="decimal" wire:model="itemData.quantity"></div>
+                    <div class="pr-mob-field">
+                        <label>Quantidade</label>
+                        <div class="pr-mob-quantity">
+                            <button type="button" wire:click="decrementItemQuantity" aria-label="Diminuir quantidade">-</button>
+                            <input type="text" inputmode="decimal" wire:model="itemData.quantity">
+                            <button type="button" wire:click="incrementItemQuantity" aria-label="Aumentar quantidade">+</button>
+                        </div>
+                    </div>
                     <div class="pr-mob-field"><label>Valor unitário</label><input type="text" inputmode="decimal" wire:model="itemData.unit_price"></div>
                     <div class="pr-mob-item-actions">
                         <button type="button" wire:click="$set('showItemForm', false)" class="pr-mob-secondary">Cancelar</button>
