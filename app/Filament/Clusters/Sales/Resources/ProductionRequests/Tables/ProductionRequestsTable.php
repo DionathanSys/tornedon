@@ -61,6 +61,20 @@ class ProductionRequestsTable
                         ? AccountReceivableResource::getUrl('edit', ['record' => $record->account_receivable_id])
                         : null)
                     ->openUrlInNewTab(),
+                TextColumn::make('created_at')
+                    ->label('Criado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+                TextColumn::make('updated_at')
+                    ->label('Atualizado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+                TextColumn::make('created_by.name')
+                    ->label('Criado por')
+                    ->sortable(),
+                TextColumn::make('updated_by.name')
+                    ->label('Atualizado por')
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')

@@ -51,6 +51,7 @@ class CashMovement extends Model
         'party_to_label',
         'account_from_label',
         'account_to_label',
+        'counterparty_label',
         'tracking_label',
     ];
 
@@ -234,6 +235,11 @@ class CashMovement extends Model
         return "{$this->resolvePrimaryAccountLabel()} | {$this->origin_label}";
     }
 
+    public function getCounterpartyLabelAttribute(): string
+    {
+        return $this->resolveCounterpartyPartnerLabel();
+    }
+
     private function resolveCompanyLabel(): string
     {
         return $this->snapshotValue('company_name')
@@ -246,7 +252,31 @@ class CashMovement extends Model
         return $this->snapshotValue('counterparty_partner_name')
             ?? $this->manual_counterparty_name
             ?? $this->counterpartyPartner?->name
+            ?? $this->resolveOriginCounterpartyLabel()
             ?? 'Nao informado';
+    }
+
+    private function resolveOriginCounterpartyLabel(): ?string
+    {
+        if ($this->origin_type === AccountReceivableInstallmentPayment::class && $this->origin_id !== null) {
+            return AccountReceivableInstallmentPayment::query()
+                ->with('installment.accountReceivable.customer')
+                ->find($this->origin_id)
+                ?->installment
+                ?->accountReceivable
+                ?->counterparty_label;
+        }
+
+        if ($this->origin_type === AccountPayableInstallmentPayment::class && $this->origin_id !== null) {
+            return AccountPayableInstallmentPayment::query()
+                ->with('installment.accountPayable.supplier')
+                ->find($this->origin_id)
+                ?->installment
+                ?->accountPayable
+                ?->counterparty_label;
+        }
+
+        return null;
     }
 
     private function resolvePrimaryAccountLabel(): string

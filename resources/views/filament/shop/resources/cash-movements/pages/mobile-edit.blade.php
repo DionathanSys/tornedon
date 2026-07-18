@@ -18,8 +18,8 @@
     <form wire:submit="save">
         <div class="pr-mob-detail">
             <section class="pr-mob-card pr-mob-head">
-                <p class="pr-mob-title">{{ $record->description ?: 'Movimento' }}</p>
-                <p class="pr-mob-sub">{{ $record->transaction_date?->format('d/m/Y') ?? '-' }} - {{ $record->financialAccount?->name ?? 'Sem conta' }}</p>
+                <p class="pr-mob-title">{{ $record->counterparty_label }}</p>
+                <p class="pr-mob-sub">{{ $record->transaction_date?->format('d/m/Y') ?? '-' }} - {{ $record->description ?: 'Movimento' }}</p>
                 <div class="pr-mob-kpis">
                     <div><span>Tipo</span><strong>{{ $record->direction?->description() ?? '-' }}</strong></div>
                     <div><span>Valor</span><strong>R$ {{ number_format((float) $record->amount, 2, ',', '.') }}</strong></div>

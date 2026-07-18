@@ -6,11 +6,11 @@
         .pr-mob-tab { min-height: 3.3rem; border: 0; border-radius: .9rem; background: #e2e8f0; color: #334155; font-size: .75rem; font-weight: 800; }
         .pr-mob-tab span { display: block; margin-top: .2rem; font-size: .7rem; opacity: .8; }
         .pr-mob-tab.is-active { background: #111827; color: #fff; }
-        .pr-mob-filters { display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; align-items: end; border-radius: 1rem; padding: .75rem; background: #fff; box-shadow: 0 16px 40px -34px rgba(15, 23, 42, .22); }
+        .pr-mob-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .45rem; border-radius: 1rem; padding: .65rem; background: #fff; box-shadow: 0 16px 40px -34px rgba(15, 23, 42, .22); }
         .pr-mob-filter { display: grid; gap: .3rem; }
         .pr-mob-filter label { color: #64748b; font-size: .65rem; font-weight: 800; text-transform: uppercase; }
-        .pr-mob-filter input { width: 100%; min-height: 2.65rem; border: 1px solid rgba(148, 163, 184, .45); border-radius: .8rem; padding: .45rem .6rem; background: #fff; color: #0f172a; }
-        .pr-mob-filter-clear { min-height: 2.65rem; border: 0; border-radius: .8rem; padding: 0 .7rem; background: #e2e8f0; color: #334155; font-size: .72rem; font-weight: 850; }
+        .pr-mob-filter input { width: 100%; min-width: 0; min-height: 2.35rem; border: 1px solid rgba(148, 163, 184, .45); border-radius: .75rem; padding: .35rem .45rem; background: #fff; color: #0f172a; font-size: .74rem; }
+        .pr-mob-filter-clear { grid-column: 1 / -1; min-height: 2.25rem; border: 0; border-radius: .75rem; padding: 0 .6rem; background: #e2e8f0; color: #334155; font-size: .72rem; font-weight: 850; }
         .pr-mob-list { display: grid; gap: .75rem; }
         .pr-mob-card { display: grid; gap: .75rem; border: 1px solid rgba(148, 163, 184, .25); border-radius: 1rem; padding: .95rem; background: #fff; color: #0f172a; text-decoration: none; box-shadow: 0 16px 40px -34px rgba(15, 23, 42, .22); }
         .pr-mob-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
@@ -47,8 +47,8 @@
                 <div class="pr-mob-card">
                     <div class="pr-mob-card__top">
                         <div>
-                            <p class="pr-mob-card__title">{{ $movement->description ?: 'Movimento' }}</p>
-                            <p class="pr-mob-card__sub">{{ $movement->transaction_date?->format('d/m/Y') ?? '-' }} - {{ $movement->financialAccount?->name ?? 'Sem conta' }}</p>
+                            <p class="pr-mob-card__title">{{ $movement->counterparty_label }}</p>
+                            <p class="pr-mob-card__sub">{{ $movement->transaction_date?->format('d/m/Y') ?? '-' }} - {{ $movement->description ?: 'Movimento' }}</p>
                         </div>
                         <span @class(['pr-mob-badge', 'pr-mob-badge--danger' => $movement->direction === \App\Enum\Financial\CashMovementDirection::OUTFLOW])>{{ $movement->direction?->description() ?? '-' }}</span>
                     </div>

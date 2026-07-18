@@ -564,6 +564,7 @@ class CashMovementService
                 $audit = app(AuditRecorder::class);
                 $account = $this->resolveFinancialAccount((int) $payment->financial_account_id, (int) $payment->company_id);
                 $counterpartyPartner = $this->resolvePaymentCounterpartyPartner($payment);
+                $manualCounterpartyName = $this->resolvePaymentManualCounterpartyName($payment);
 
                 $installment = $payment->installment;
                 $categoryId = $installment->financial_category_id
@@ -591,12 +592,13 @@ class CashMovementService
                     'description' => $this->buildPaymentDescription($payment, $descriptionPrefix),
                     'notes' => $payment->notes,
                     'counterparty_partner_id' => $counterpartyPartner?->id,
+                    'manual_counterparty_name' => $manualCounterpartyName,
                     'counterparty_financial_account_id' => null,
                     'participants_snapshot' => $this->buildParticipantsSnapshot(
                         companyId: (int) $payment->company_id,
                         financialAccount: $account,
                         counterpartyPartner: $counterpartyPartner,
-                        manualCounterpartyName: null,
+                        manualCounterpartyName: $manualCounterpartyName,
                         counterpartyFinancialAccount: null,
                     ),
                     'reversed_at' => null,
@@ -893,6 +895,22 @@ class CashMovementService
         return $payment instanceof AccountPayableInstallmentPayment
             ? $installment->accountPayable?->supplier
             : $installment->accountReceivable?->customer;
+    }
+
+    private function resolvePaymentManualCounterpartyName(
+        AccountPayableInstallmentPayment|AccountReceivableInstallmentPayment $payment,
+    ): ?string {
+        $installment = $payment->installment;
+
+        if ($payment instanceof AccountPayableInstallmentPayment) {
+            return $installment->accountPayable?->supplier_id === null
+                ? $this->normalizeCounterpartyName($installment->accountPayable?->manual_counterparty_name)
+                : null;
+        }
+
+        return $installment->accountReceivable?->customer_id === null
+            ? $this->normalizeCounterpartyName($installment->accountReceivable?->manual_counterparty_name)
+            : null;
     }
 
     private function buildPaymentDescription(

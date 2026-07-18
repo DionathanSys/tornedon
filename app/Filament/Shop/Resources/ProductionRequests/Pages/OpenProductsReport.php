@@ -4,6 +4,7 @@ namespace App\Filament\Shop\Resources\ProductionRequests\Pages;
 
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Shop\Resources\ProductionRequests\ProductionRequestResource;
+use App\Models\ProductionRequest;
 use App\Models\ProductionRequestItem;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\Page;
@@ -41,7 +42,7 @@ class OpenProductsReport extends Page
 
     public function getOpenOrdersCountProperty(): int
     {
-        return ProductionRequestResource::getModel()::query()
+        return ProductionRequest::query()
             ->where('company_id', Filament::getTenant()->id)
             ->where('status', Status::OPEN->value)
             ->count();

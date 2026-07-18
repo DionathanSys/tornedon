@@ -1,7 +1,10 @@
 <x-filament-panels::page>
     <style>
         .pr-mob-page { display: grid; gap: 1rem; padding-bottom: 1rem; }
-        .pr-mob-new { display: inline-flex; align-items: center; justify-content: center; min-height: 3.4rem; border-radius: 1rem; background: #111827; color: #fff; font-weight: 800; text-decoration: none; }
+        .pr-mob-top-actions { display: grid; grid-template-columns: 1.2fr 1fr; gap: .5rem; }
+        .pr-mob-new, .pr-mob-report { display: inline-flex; align-items: center; justify-content: center; min-height: 3.4rem; border-radius: 1rem; font-weight: 800; text-align: center; text-decoration: none; }
+        .pr-mob-new { background: #111827; color: #fff; }
+        .pr-mob-report { background: #e2e8f0; color: #334155; }
         .pr-mob-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
         .pr-mob-tab { min-height: 3.3rem; border: 0; border-radius: .9rem; background: #e2e8f0; color: #334155; font-size: .75rem; font-weight: 800; }
         .pr-mob-tab span { display: block; margin-top: .2rem; font-size: .7rem; opacity: .8; }
@@ -27,7 +30,10 @@
     </style>
 
     <div class="pr-mob-page">
-        <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo pedido de produção</a>
+        <div class="pr-mob-top-actions">
+            <a href="{{ $this->getCreateUrl() }}" class="pr-mob-new">Novo pedido</a>
+            <a href="{{ $this->getOpenProductsReportUrl() }}" class="pr-mob-report">Resumo</a>
+        </div>
 
         <div class="pr-mob-tabs">
             <button type="button" wire:click="setTab('open')" class="pr-mob-tab @if ($activeTab === 'open') is-active @endif">Abertos<span>{{ $this->openCount }}</span></button>
