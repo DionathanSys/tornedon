@@ -23,7 +23,8 @@ class AccountReceivablesTable
     {
         return $table
             ->contentGrid([
-                'md' => 2,
+                'default' => 1,
+                '2xl' => 2,
             ])
             ->columns([
                 Split::make([

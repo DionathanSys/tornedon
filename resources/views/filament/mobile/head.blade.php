@@ -72,7 +72,7 @@
     }
 </style>
 
-@if (request()->is('shop/production-requests*') || request()->is('shop/*/production-requests*'))
+@if (request()->is('shop/production-requests*') || request()->is('shop/*/production-requests*') || request()->is('shop/account-receivables*') || request()->is('shop/*/account-receivables*'))
     <style>
         .fi-main {
             background: #f8fafc;
@@ -104,6 +104,7 @@
 
         .fi-resource-list-records-page .fi-tabs-item {
             justify-content: center;
+            min-width: 0;
             min-height: 4rem;
             border-radius: 0.95rem;
             background: #e2e8f0;
@@ -114,12 +115,20 @@
             white-space: nowrap;
         }
 
+        .fi-resource-list-records-page .fi-tabs-item-label,
+        .fi-resource-list-records-page .fi-tabs-item span:not(.fi-badge):not(.fi-badge-label) {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            line-height: 1.1;
+        }
+
         .fi-resource-list-records-page .fi-tabs-item[aria-selected='true'] {
             background: #111827;
             color: #fff;
         }
 
         .fi-resource-list-records-page .fi-tabs-item .fi-badge {
+            flex-shrink: 0;
             min-width: 2rem;
             justify-content: center;
         }
@@ -164,5 +173,13 @@
             border-radius: 1.35rem;
         }
 
+    </style>
+@endif
+
+@if (request()->is('shop/account-receivables*') || request()->is('shop/*/account-receivables*'))
+    <style>
+        .fi-resource-list-records-page .fi-tabs {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
     </style>
 @endif

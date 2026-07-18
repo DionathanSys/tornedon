@@ -5,6 +5,7 @@ namespace App\Filament\Shop\Resources\ProductionRequests\Pages;
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Shop\Resources\ProductionRequests\ProductionRequestResource;
 use App\Models\ProductionRequest;
+use App\Notification\NotifyService as notify;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,6 +65,24 @@ class ListProductionRequests extends Page
     public function getDetailUrl(ProductionRequest $record): string
     {
         return ProductionRequestResource::getUrl('edit', ['record' => $record->getKey()]);
+    }
+
+    public function deleteProductionRequest(int $recordId): void
+    {
+        $record = ProductionRequest::query()
+            ->where('company_id', Filament::getTenant()->id)
+            ->whereKey($recordId)
+            ->firstOrFail();
+
+        if ($record->status !== Status::OPEN) {
+            notify::error('Somente pedidos abertos podem ser excluidos.');
+
+            return;
+        }
+
+        $record->delete();
+
+        notify::success('Pedido excluido com sucesso.');
     }
 
     private function baseQuery(): Builder

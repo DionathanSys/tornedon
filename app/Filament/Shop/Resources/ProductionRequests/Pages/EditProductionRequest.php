@@ -116,6 +116,8 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->itemData['quantity'] = $this->formatQuantity(
             $this->toDecimal($this->itemData['quantity'] ?? 0) + 1
         );
+
+        $this->applyUnitPriceForQuantity();
     }
 
     public function decrementItemQuantity(): void
@@ -123,6 +125,21 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $quantity = $this->toDecimal($this->itemData['quantity'] ?? 0) - 1;
 
         $this->itemData['quantity'] = $this->formatQuantity(max(0.001, $quantity));
+        $this->applyUnitPriceForQuantity();
+    }
+
+    public function incrementItemUnitPrice(): void
+    {
+        $this->itemData['unit_price'] = $this->formatMoney(
+            $this->toDecimal($this->itemData['unit_price'] ?? 0) + 1
+        );
+    }
+
+    public function decrementItemUnitPrice(): void
+    {
+        $unitPrice = $this->toDecimal($this->itemData['unit_price'] ?? 0) - 1;
+
+        $this->itemData['unit_price'] = $this->formatMoney(max(0, $unitPrice));
     }
 
     public function saveItem(bool $createAnother = false): void
@@ -143,6 +160,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $product = Product::query()
             ->where('company_id', Filament::getTenant()->id)
             ->where('is_active', true)
+            ->where('is_invoiceable', true)
             ->find((int) $data['product_id']);
 
         if (! $product) {
@@ -243,15 +261,25 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         return Product::query()
             ->where('company_id', Filament::getTenant()->id)
             ->where('is_active', true)
+            ->where('is_invoiceable', true)
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();
     }
 
+    public function updatedItemDataQuantity(mixed $value = null): void
+    {
+        $this->applyUnitPriceForQuantity();
+    }
+
     public function updatedItemDataProductId($value): void
     {
         $product = filled($value)
-            ? Product::query()->where('company_id', Filament::getTenant()->id)->find((int) $value)
+            ? Product::query()
+                ->where('company_id', Filament::getTenant()->id)
+                ->where('is_active', true)
+                ->where('is_invoiceable', true)
+                ->find((int) $value)
             : null;
 
         if (! $product) {
@@ -259,7 +287,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         }
 
         $this->itemData['unit_of_measure'] = $product->unit?->value ?? 'UN';
-        $this->itemData['unit_price'] = number_format((float) ($product->sale_price_value ?? 0), 2, ',', '.');
+        $this->applyUnitPriceForQuantity();
     }
 
     private function fillMainForm(): void
@@ -284,7 +312,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             'product_id' => null,
             'unit_of_measure' => 'UN',
             'quantity' => '1,000',
-            'unit_price' => '0,00',
+            'unit_price' => '15,00',
         ];
     }
 
@@ -318,5 +346,17 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
     private function formatQuantity(float $value): string
     {
         return number_format($value, 3, ',', '.');
+    }
+
+    private function formatMoney(float $value): string
+    {
+        return number_format($value, 2, ',', '.');
+    }
+
+    private function applyUnitPriceForQuantity(): void
+    {
+        $quantity = $this->toDecimal($this->itemData['quantity'] ?? 0);
+
+        $this->itemData['unit_price'] = $this->formatMoney($quantity >= 2 ? 12 : 15);
     }
 }

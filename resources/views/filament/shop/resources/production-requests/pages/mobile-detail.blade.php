@@ -47,12 +47,6 @@
         </section>
 
         <section class="pr-mob-card">
-            <form wire:submit="save">
-                {{ $this->form }}
-            </form>
-        </section>
-
-        <section class="pr-mob-card">
             <div class="pr-mob-section-title">
                 <h3>Itens</h3>
                 @if ($record->status === \App\Enum\ProductionRequest\Status::OPEN)
@@ -76,11 +70,18 @@
                         <label>Quantidade</label>
                         <div class="pr-mob-quantity">
                             <button type="button" wire:click="decrementItemQuantity" aria-label="Diminuir quantidade">-</button>
-                            <input type="text" inputmode="decimal" wire:model="itemData.quantity">
+                            <input type="text" inputmode="decimal" wire:model.live.debounce.500ms="itemData.quantity">
                             <button type="button" wire:click="incrementItemQuantity" aria-label="Aumentar quantidade">+</button>
                         </div>
                     </div>
-                    <div class="pr-mob-field"><label>Valor unitário</label><input type="text" inputmode="decimal" wire:model="itemData.unit_price"></div>
+                    <div class="pr-mob-field">
+                        <label>Valor unitário</label>
+                        <div class="pr-mob-quantity">
+                            <button type="button" wire:click="decrementItemUnitPrice" aria-label="Diminuir valor unitário">-</button>
+                            <input type="text" inputmode="decimal" wire:model="itemData.unit_price">
+                            <button type="button" wire:click="incrementItemUnitPrice" aria-label="Aumentar valor unitário">+</button>
+                        </div>
+                    </div>
                     <div class="pr-mob-item-actions">
                         <button type="button" wire:click="$set('showItemForm', false)" class="pr-mob-secondary">Cancelar</button>
                         <button type="button" wire:click="saveItem(true)" class="pr-mob-secondary">Salvar +</button>
@@ -105,6 +106,12 @@
                     <div class="pr-mob-item"><span>Nenhum item adicionado.</span></div>
                 @endforelse
             </div>
+        </section>
+
+        <section class="pr-mob-card">
+            <form wire:submit="save">
+                {{ $this->form }}
+            </form>
         </section>
     </div>
 
