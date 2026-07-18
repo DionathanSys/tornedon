@@ -66,7 +66,7 @@ class ListProductionRequests extends Page
 
     public function getOpenProductsReportUrl(): string
     {
-        return ProductionRequestResource::getUrl('open-products-report');
+        return rtrim(ProductionRequestResource::getUrl(), '/') . '/relatorio-abertos';
     }
 
     public function getDetailUrl(ProductionRequest $record): string
