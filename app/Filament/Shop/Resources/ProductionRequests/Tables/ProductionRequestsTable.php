@@ -21,7 +21,7 @@ class ProductionRequestsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with(['customer', 'accountReceivable'])
+                ->with(['customer', 'accountReceivable', 'createdBy', 'updatedBy'])
                 ->withCount('items'))
             ->contentGrid([
                 'default' => 1,
@@ -84,6 +84,16 @@ class ProductionRequestsTable
                             ->url(fn ($record): ?string => $record->account_receivable_id
                                 ? AccountReceivableResource::getUrl('edit', ['record' => $record->account_receivable_id])
                                 : null),
+                        TextColumn::make('createdBy.name')
+                            ->label('Criado por')
+                            ->placeholder('-')
+                            ->badge()
+                            ->color('gray'),
+                        TextColumn::make('updatedBy.name')
+                            ->label('Atualizado por')
+                            ->placeholder('-')
+                            ->badge()
+                            ->color('gray'),
                     ]),
                 ])->space(3),
             ])

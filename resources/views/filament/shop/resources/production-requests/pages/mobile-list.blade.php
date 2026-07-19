@@ -56,6 +56,7 @@
                     <div class="pr-mob-meta">
                         <div><span>Total</span><strong>R$ {{ number_format((float) $request->total_amount, 2, ',', '.') }}</strong></div>
                         <div><span>Itens</span><strong>{{ $request->items->count() }}</strong></div>
+                        <div><span>Criado por</span><strong>{{ $request->createdBy?->name ?? '-' }}</strong></div>
                     </div>
 
                     <div class="pr-mob-actions">

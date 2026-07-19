@@ -5,7 +5,9 @@ namespace App\Filament\Clusters\Sales\Resources\ProductionRequests\Tables;
 use App\Enum\ProductionRequest\Status;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Sales\Resources\ProductionRequests\Pages\Actions\DeliverProductionRequestAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -69,10 +71,10 @@ class ProductionRequestsTable
                     ->label('Atualizado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-                TextColumn::make('created_by.name')
+                TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable(),
-                TextColumn::make('updated_by.name')
+                TextColumn::make('updatedBy.name')
                     ->label('Atualizado por')
                     ->sortable(),
             ])
@@ -93,6 +95,9 @@ class ProductionRequestsTable
                 EditAction::make()->iconButton(),
             ])
             ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
                 CreateAction::make()
                     ->label('Pedido para Produção')
                     ->icon(Heroicon::Plus)

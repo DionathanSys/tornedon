@@ -98,6 +98,6 @@ class ListProductionRequests extends Page
     {
         return ProductionRequest::query()
             ->where('company_id', Filament::getTenant()->id)
-            ->with(['customer', 'items']);
+            ->with(['customer', 'items', 'createdBy', 'updatedBy']);
     }
 }
