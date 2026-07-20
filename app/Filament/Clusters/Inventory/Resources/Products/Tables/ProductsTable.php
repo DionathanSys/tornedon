@@ -3,25 +3,18 @@
 namespace App\Filament\Clusters\Inventory\Resources\Products\Tables;
 
 use App\Enum\Product\Unit;
-use App\Models\Category;
-use App\Notification\NotifyService as notify;
-use App\Services\Product\ProductService;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ProductsTable
 {
@@ -64,16 +57,13 @@ class ProductsTable
                     ->sortable(),
                 TextColumn::make('has_stock_control')
                     ->label('Controla Estoque?')
-                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
+                    ->formatStateUsing(fn ($state) => $state ? 'Sim' : 'Não')
                     ->badge()
                     ->sortable(),
-                TextColumn::make('is_invoiceable')
-                    ->label('Faturável?')
-                    ->badge()
-                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
-                    ->color(fn($state) => $state ? 'success' : 'danger')
+                ToggleColumn::make('is_invoiceable')
+                    ->label('Permite Venda')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -98,7 +88,7 @@ class ProductsTable
                     ->relationship(
                         name: 'category',
                         titleAttribute: 'name',
-                        modifyQueryUsing: fn($query) => $query
+                        modifyQueryUsing: fn ($query) => $query
                             ->where('company_id', Filament::getTenant()->id)
                             ->orderBy('name')
                     )
@@ -141,5 +131,4 @@ class ProductsTable
             ])
             ->defaultSort('created_at', 'desc');
     }
-
 }

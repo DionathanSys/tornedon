@@ -114,6 +114,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             'quantity' => $this->formatQuantity((float) $item->quantity),
             'unit_price' => number_format((float) $item->unit_price, 2, ',', '.'),
         ];
+        $this->applyUnitPriceForQuantity();
         $this->showItemForm = true;
     }
 
@@ -175,12 +176,15 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             return;
         }
 
+        $quantity = $this->toDecimal($data['quantity']);
+        $unitPrice = $this->packageUnitPrice($this->resolveTotalPackageQuantity($quantity));
+
         $payload = [
             'product_id' => $product->id,
             'description' => $product->name,
             'unit_of_measure' => $data['unit_of_measure'],
-            'quantity' => $this->toDecimal($data['quantity']),
-            'unit_price' => $this->toDecimal($data['unit_price']),
+            'quantity' => $quantity,
+            'unit_price' => $unitPrice,
             'discount_percentage' => 0,
             'discount_amount' => 0,
             'updated_by' => Auth::id(),
@@ -199,6 +203,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             notify::success('Item adicionado com sucesso.');
         }
 
+        $this->syncPackageUnitPrices();
         $this->loadRecordRelations();
 
         if ($createAnother) {
@@ -221,6 +226,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         }
 
         $this->record->items()->whereKey($itemId)->delete();
+        $this->syncPackageUnitPrices();
         $this->loadRecordRelations();
         notify::success('Item excluido com sucesso.');
     }
@@ -402,6 +408,46 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
     {
         $quantity = $this->toDecimal($this->itemData['quantity'] ?? 0);
 
-        $this->itemData['unit_price'] = $this->formatMoney($quantity >= 2 ? 12 : 15);
+        $this->itemData['unit_price'] = $this->formatMoney(
+            $this->packageUnitPrice($this->resolveTotalPackageQuantity($quantity))
+        );
+    }
+
+    private function resolveTotalPackageQuantity(float $currentQuantity): float
+    {
+        $existingQuantity = $this->record->items
+            ->reject(fn (ProductionRequestItem $item): bool => $this->editingItemId !== null && $item->id === $this->editingItemId)
+            ->sum(fn (ProductionRequestItem $item): float => (float) $item->quantity);
+
+        return round((float) $existingQuantity + $currentQuantity, 3);
+    }
+
+    private function syncPackageUnitPrices(): void
+    {
+        $items = $this->record->items()->get();
+
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        $unitPrice = $this->packageUnitPrice(
+            (float) $items->sum(fn (ProductionRequestItem $item): float => (float) $item->quantity)
+        );
+
+        foreach ($items as $item) {
+            if ((float) $item->unit_price === $unitPrice) {
+                continue;
+            }
+
+            $item->update([
+                'unit_price' => $unitPrice,
+                'updated_by' => Auth::id(),
+            ]);
+        }
+    }
+
+    private function packageUnitPrice(float $totalQuantity): float
+    {
+        return $totalQuantity > 1 ? 12 : 15;
     }
 }
