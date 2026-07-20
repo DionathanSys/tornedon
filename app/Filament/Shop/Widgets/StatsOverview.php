@@ -78,6 +78,22 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
+        $totalCashIn = CashMovement::query()
+            ->where('company_id', $tenantId)
+            ->where('direction', CashMovementDirection::INFLOW->value)
+            ->whereNull('reversal_of_id')
+            ->selectRaw('COALESCE(SUM(amount), 0) as total')
+            ->value('total');
+
+        $totalCashOut = CashMovement::query()
+            ->where('company_id', $tenantId)
+            ->where('direction', CashMovementDirection::OUTFLOW->value)
+            ->whereNull('reversal_of_id')
+            ->selectRaw('COALESCE(SUM(amount), 0) as total')
+            ->value('total');
+
+        $generalBalance = (float) $totalCashIn - (float) $totalCashOut;
+
         $previousCashIn = CashMovement::query()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::INFLOW->value)
@@ -116,6 +132,11 @@ class StatsOverview extends BaseStatsOverviewWidget
                 ->description('Saldo pendente')
                 ->descriptionIcon('heroicon-o-arrow-trending-down')
                 ->color('danger'),
+
+            Stat::make('Saldo Geral', 'R$ ' . number_format($generalBalance / 100, 2, ',', '.'))
+                ->description('Todas entradas - todas saídas')
+                ->descriptionIcon('heroicon-o-scale')
+                ->color($generalBalance >= 0 ? 'success' : 'danger'),
 
             Stat::make('Entradas do Mês', 'R$ ' . number_format($cashIn / 100, 2, ',', '.'))
                 ->description('Mês anterior: R$ ' . number_format($previousCashIn / 100, 2, ',', '.'))

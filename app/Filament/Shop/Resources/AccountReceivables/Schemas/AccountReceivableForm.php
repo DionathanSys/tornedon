@@ -26,7 +26,8 @@ class AccountReceivableForm
     {
         $launchComponents = [
             Toggle::make('is_manual_counterparty')
-                ->label('Parceiro Avulso?')
+                ->label('Cliente Avulso?')
+                ->default(true)
                 ->live()
                 ->dehydrated(false)
                 ->afterStateHydrated(function (Toggle $component, ?bool $state, ?AccountReceivable $record): void {
@@ -89,6 +90,7 @@ class AccountReceivableForm
             Select::make('payment_method')
                 ->label('Forma de Pagamento')
                 ->options(PaymentMethod::toSelectArray())
+                ->default(PaymentMethod::CASH->value)
                 ->native(false)
                 ->searchable()
                 ->live()
@@ -115,6 +117,7 @@ class AccountReceivableForm
             Select::make('financial_category_id')
                 ->label('Categoria Financeira')
                 ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
+                ->default(fn (): ?int => self::defaultFinancialCategoryId())
                 ->searchable()
                 ->preload()
                 ->native(false)
@@ -176,5 +179,12 @@ class AccountReceivableForm
         }
 
         return (float) $normalized;
+    }
+
+    private static function defaultFinancialCategoryId(): ?int
+    {
+        $options = FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable');
+
+        return count($options) === 1 ? (int) array_key_first($options) : null;
     }
 }
