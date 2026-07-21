@@ -60,10 +60,57 @@
             </div>
 
             @if ($showItemForm)
-                <div class="pr-mob-item-form">
+                @php
+                    $existingPackageQuantity = $record->items
+                        ->reject(fn ($item): bool => $editingItemId !== null && $item->id === $editingItemId)
+                        ->sum(fn ($item): float => (float) $item->quantity);
+                @endphp
+                <div
+                    class="pr-mob-item-form"
+                    wire:key="production-request-item-form-{{ $editingItemId ?? 'new' }}-{{ $itemData['product_id'] ?? 'none' }}"
+                    x-data="{
+                        quantity: @js($itemData['quantity'] ?? '1,000'),
+                        unitPrice: @js($itemData['unit_price'] ?? '15,00'),
+                        existingQuantity: @js((float) $existingPackageQuantity),
+                        parseDecimal(value) {
+                            const normalized = String(value || '0').trim().replaceAll('.', '').replace(',', '.')
+
+                            return Number.parseFloat(normalized) || 0
+                        },
+                        formatQuantity(value) {
+                            return Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+                        },
+                        formatMoney(value) {
+                            return Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        },
+                        updatePackagePrice() {
+                            const totalQuantity = this.existingQuantity + this.parseDecimal(this.quantity)
+
+                            this.unitPrice = this.formatMoney(totalQuantity > 1 ? 12 : 15)
+                        },
+                        incrementQuantity() {
+                            this.quantity = this.formatQuantity(this.parseDecimal(this.quantity) + 1)
+                            this.updatePackagePrice()
+                        },
+                        decrementQuantity() {
+                            this.quantity = this.formatQuantity(Math.max(0.001, this.parseDecimal(this.quantity) - 1))
+                            this.updatePackagePrice()
+                        },
+                        incrementUnitPrice() {
+                            this.unitPrice = this.formatMoney(this.parseDecimal(this.unitPrice) + 1)
+                        },
+                        decrementUnitPrice() {
+                            this.unitPrice = this.formatMoney(Math.max(0, this.parseDecimal(this.unitPrice) - 1))
+                        },
+                        syncItemData() {
+                            $wire.set('itemData.quantity', this.quantity, false)
+                            $wire.set('itemData.unit_price', this.unitPrice, false)
+                        },
+                    }"
+                >
                     <div class="pr-mob-field">
                         <label>Produto</label>
-                        <select wire:model.live="itemData.product_id">
+                        <select wire:model.live="itemData.product_id" x-on:change="syncItemData">
                             <option value="">Selecione</option>
                             @foreach ($this->productOptions as $productId => $productName)
                                 <option value="{{ $productId }}">{{ $productName }}</option>
@@ -74,23 +121,23 @@
                     <div class="pr-mob-field">
                         <label>Quantidade</label>
                         <div class="pr-mob-quantity">
-                            <button type="button" wire:click="decrementItemQuantity" aria-label="Diminuir quantidade">-</button>
-                            <input type="text" inputmode="decimal" wire:model.live.debounce.500ms="itemData.quantity">
-                            <button type="button" wire:click="incrementItemQuantity" aria-label="Aumentar quantidade">+</button>
+                            <button type="button" x-on:click="decrementQuantity" aria-label="Diminuir quantidade">-</button>
+                            <input type="text" inputmode="decimal" x-model="quantity" x-on:input="updatePackagePrice">
+                            <button type="button" x-on:click="incrementQuantity" aria-label="Aumentar quantidade">+</button>
                         </div>
                     </div>
                     <div class="pr-mob-field">
                         <label>Valor unitário</label>
                         <div class="pr-mob-quantity">
-                            <button type="button" wire:click="decrementItemUnitPrice" aria-label="Diminuir valor unitário">-</button>
-                            <input type="text" inputmode="decimal" wire:model="itemData.unit_price">
-                            <button type="button" wire:click="incrementItemUnitPrice" aria-label="Aumentar valor unitário">+</button>
+                            <button type="button" x-on:click="decrementUnitPrice" aria-label="Diminuir valor unitário">-</button>
+                            <input type="text" inputmode="decimal" x-model="unitPrice">
+                            <button type="button" x-on:click="incrementUnitPrice" aria-label="Aumentar valor unitário">+</button>
                         </div>
                     </div>
                     <div class="pr-mob-item-actions">
                         <button type="button" wire:click="$set('showItemForm', false)" class="pr-mob-secondary">Cancelar</button>
-                        <button type="button" wire:click="saveItem(true)" class="pr-mob-secondary">Salvar +</button>
-                        <button type="button" wire:click="saveItem(false)" class="pr-mob-save">Salvar</button>
+                        <button type="button" x-on:click="syncItemData(); $wire.saveItem(true)" class="pr-mob-secondary">Salvar +</button>
+                        <button type="button" x-on:click="syncItemData(); $wire.saveItem(false)" class="pr-mob-save">Salvar</button>
                     </div>
                 </div>
             @endif

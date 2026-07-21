@@ -26,6 +26,11 @@ Schedule::command('sefaz:dfe-sync-dispatch')
     ->withoutOverlapping()
     ->description('Despacha a sincronização assíncrona de DF-e recebidos por empresa');
 
+Schedule::command('fiscal-document-xml-exports:prune-expired')
+    ->hourly()
+    ->withoutOverlapping()
+    ->description('Remove ZIPs/XMLs expirados de exportações de documentos fiscais');
+
 if ((bool) config('audit.archive.enabled', true)) {
     Schedule::command('audit:archive-prune')
         ->dailyAt((string) config('audit.archive.schedule_at', '03:20'))

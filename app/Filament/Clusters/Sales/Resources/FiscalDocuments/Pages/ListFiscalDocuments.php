@@ -6,6 +6,7 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsPdfAction;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsXmlAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -67,6 +68,7 @@ class ListFiscalDocuments extends ListRecords
         return [
             ExportOutputFiscalDocumentsAction::make(),
             ExportOutputFiscalDocumentsPdfAction::make(),
+            ExportOutputFiscalDocumentsXmlAction::make(),
         ];
     }
 }
