@@ -12,6 +12,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -118,6 +120,21 @@ class FinalizeFiscalDocumentXmlExportJob implements ShouldQueue
     private function notifySuccess(?FiscalDocumentXmlExport $export): void
     {
         if (! $export || ! $export->user instanceof User || blank($export->download_token)) {
+            return;
+        }
+
+        if (! Route::has('fiscal-document-xml-exports.download')) {
+            Log::error('FinalizeFiscalDocumentXmlExportJob: rota de download não registrada', [
+                'export_id' => $export->id,
+                'route' => 'fiscal-document-xml-exports.download',
+            ]);
+
+            Notification::make()
+                ->title('ZIP de XMLs gerado, mas link indisponível')
+                ->body('A rota de download não está carregada na aplicação. Limpe o cache de rotas e tente gerar a exportação novamente.')
+                ->danger()
+                ->sendToDatabase($export->user);
+
             return;
         }
 

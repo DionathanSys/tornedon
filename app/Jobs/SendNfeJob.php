@@ -21,15 +21,17 @@ class SendNfeJob implements ShouldQueue
      */
     public int $tries = 3;
 
+    public int $timeout = 900;
+
     /**
      * Tempo de espera entre tentativas (segundos).
      */
     public array $backoff = [30, 60, 120];
 
     public function __construct(
-        private int     $fiscalDocumentId,
-        private int     $userId,
-        private ?string $serie           = null,
+        private int $fiscalDocumentId,
+        private int $userId,
+        private ?string $serie = null,
         private ?string $operationNature = null,
     ) {}
 
@@ -48,6 +50,7 @@ class SendNfeJob implements ShouldQueue
                 toDatabase: true,
                 users: $this->userId
             );
+
             return;
         }
 
@@ -57,8 +60,8 @@ class SendNfeJob implements ShouldQueue
         if (! $result) {
             Log::error('SendNfeJob: falha no envio da NF-e', [
                 'fiscal_document_id' => $this->fiscalDocumentId,
-                'erro'               => $action->getMessage(),
-                'tentativa'          => $this->attempts(),
+                'erro' => $action->getMessage(),
+                'tentativa' => $this->attempts(),
             ]);
 
             // Não re-tenta em erros de validação (5001/5002) — falha imediata
@@ -85,17 +88,17 @@ class SendNfeJob implements ShouldQueue
     {
         Log::error('SendNfeJob: job falhou definitivamente', [
             'fiscal_document_id' => $this->fiscalDocumentId,
-            'exception'          => $exception->getMessage(),
+            'exception' => $exception->getMessage(),
         ]);
 
         // Registra no documento
         $doc = FiscalDocument::find($this->fiscalDocumentId);
         if ($doc) {
-            $errors   = $doc->errors_messages ?? [];
+            $errors = $doc->errors_messages ?? [];
             $errors[] = [
-                'at'      => now()->toDateTimeString(),
-                'job'     => 'SendNfeJob',
-                'mensagem'=> $exception->getMessage(),
+                'at' => now()->toDateTimeString(),
+                'job' => 'SendNfeJob',
+                'mensagem' => $exception->getMessage(),
             ];
             $doc->update(['errors_messages' => $errors]);
         }

@@ -103,9 +103,10 @@ class SendNfseAction
             // ------------------------------------------------------------------
             // 3. Enviar via SDK
             // ------------------------------------------------------------------
-            $ambiente = $configService->resolveAmbiente($fiscalDocument->company_id);
+            $companyId = (int) $fiscalDocument->company_id;
+            $ambiente = $configService->resolveAmbiente($companyId);
             $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams(
-                $fiscalDocument->company_id,
+                $companyId,
                 NfseConfigService::OPERATION_CREATE,
             ));
 
@@ -121,7 +122,12 @@ class SendNfseAction
             ]);
 
             $apiCallStarted = true;
-            $resp = $sdk->cria($payload);
+            $resp = app(\App\Services\Fiscal\IntegranotasRateLimiter::class)->run(
+                token: $configService->resolveToken($companyId),
+                bucket: 'default',
+                key: null,
+                callback: fn (): object => $sdk->cria($payload),
+            );
 
             Log::debug('SendNfseAction: resposta da API recebida', [
                 'fiscal_document_id' => $fiscalDocument->id,

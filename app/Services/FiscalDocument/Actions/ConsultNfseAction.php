@@ -48,9 +48,15 @@ class ConsultNfseAction
             }
 
             $configService = app(\App\Services\Fiscal\NfseConfigService::class);
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($fiscalDocument->company_id));
+            $companyId = (int) $fiscalDocument->company_id;
+            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($companyId));
 
-            $resp = $sdk->consulta(['chave' => $fiscalDocument->document_key]);
+            $resp = app(\App\Services\Fiscal\IntegranotasRateLimiter::class)->run(
+                token: $configService->resolveToken($companyId),
+                bucket: 'key',
+                key: (string) $fiscalDocument->document_key,
+                callback: fn (): object => $sdk->consulta(['chave' => $fiscalDocument->document_key]),
+            );
 
             Log::info('ConsultNfseAction: resposta da API recebida', [
                 'fiscal_document_id' => $fiscalDocument->id,

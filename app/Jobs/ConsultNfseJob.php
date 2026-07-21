@@ -18,6 +18,8 @@ class ConsultNfseJob implements ShouldQueue
 
     public int $tries = 1;
 
+    public int $timeout = 900;
+
     private const MAX_POLLING_ATTEMPTS = 5;
 
     public function __construct(
@@ -34,6 +36,7 @@ class ConsultNfseJob implements ShouldQueue
             Log::error('ConsultNfseJob: FiscalDocument não encontrado', [
                 'fiscal_document_id' => $this->fiscalDocumentId,
             ]);
+
             return;
         }
 
@@ -41,12 +44,13 @@ class ConsultNfseJob implements ShouldQueue
         if ($doc->nfse_status !== NfeStatus::IN_PROCESSING) {
             Log::info('ConsultNfseJob: status já atualizado (provavelmente via webhook)', [
                 'fiscal_document_id' => $this->fiscalDocumentId,
-                'nfse_status'        => $doc->nfse_status?->value,
+                'nfse_status' => $doc->nfse_status?->value,
             ]);
+
             return;
         }
 
-        $action = new ConsultNfseAction();
+        $action = new ConsultNfseAction;
         $action->execute($doc);
 
         $doc->refresh();
@@ -58,8 +62,8 @@ class ConsultNfseJob implements ShouldQueue
 
                 Log::info('ConsultNfseJob: ainda em processamento, reagendando', [
                     'fiscal_document_id' => $this->fiscalDocumentId,
-                    'tentativa'          => $this->tentativa,
-                    'proximo_em'         => $delay . 's',
+                    'tentativa' => $this->tentativa,
+                    'proximo_em' => $delay.'s',
                 ]);
 
                 dispatch(new self($this->fiscalDocumentId, $this->userId, $this->tentativa + 1))
@@ -67,7 +71,7 @@ class ConsultNfseJob implements ShouldQueue
             } else {
                 Log::warning('ConsultNfseJob: máximo de tentativas atingido, aguardando webhook', [
                     'fiscal_document_id' => $this->fiscalDocumentId,
-                    'tentativas'         => self::MAX_POLLING_ATTEMPTS,
+                    'tentativas' => self::MAX_POLLING_ATTEMPTS,
                 ]);
             }
 
@@ -76,7 +80,7 @@ class ConsultNfseJob implements ShouldQueue
 
         Log::info('ConsultNfseJob: status final obtido', [
             'fiscal_document_id' => $this->fiscalDocumentId,
-            'nfse_status'        => $doc->nfse_status?->value,
+            'nfse_status' => $doc->nfse_status?->value,
         ]);
     }
 }

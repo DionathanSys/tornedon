@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument\XmlExport;
 
 use App\Models\FiscalDocument;
+use App\Services\Fiscal\IntegranotasRateLimiter;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\Fiscal\NfseConfigService;
 use App\Traits\HandlesActionResponse;
@@ -14,6 +15,10 @@ use Illuminate\Support\Str;
 class DownloadFiscalDocumentXmlAction
 {
     use HandlesActionResponse;
+
+    public function __construct(
+        private readonly IntegranotasRateLimiter $rateLimiter,
+    ) {}
 
     public function execute(FiscalDocument $fiscalDocument): ?string
     {
@@ -59,17 +64,31 @@ class DownloadFiscalDocumentXmlAction
     private function downloadNfe(FiscalDocument $fiscalDocument): object
     {
         $configService = app(NfeConfigService::class);
-        $sdk = new Nfe($configService->buildSdkParams($fiscalDocument->company_id));
+        $companyId = (int) $fiscalDocument->company_id;
+        $token = $configService->resolveToken($companyId);
+        $sdk = new Nfe($configService->buildSdkParams($companyId));
 
-        return $sdk->download(['chave' => $fiscalDocument->document_key]);
+        return $this->rateLimiter->run(
+            token: $token,
+            bucket: 'default',
+            key: null,
+            callback: fn (): object => $sdk->download(['chave' => $fiscalDocument->document_key]),
+        );
     }
 
     private function downloadNfse(FiscalDocument $fiscalDocument): object
     {
         $configService = app(NfseConfigService::class);
-        $sdk = new Nfse($configService->buildSdkParams($fiscalDocument->company_id));
+        $companyId = (int) $fiscalDocument->company_id;
+        $token = $configService->resolveToken($companyId);
+        $sdk = new Nfse($configService->buildSdkParams($companyId));
 
-        return $sdk->consulta(['chave' => $fiscalDocument->document_key]);
+        return $this->rateLimiter->run(
+            token: $token,
+            bucket: 'key',
+            key: (string) $fiscalDocument->document_key,
+            callback: fn (): object => $sdk->consulta(['chave' => $fiscalDocument->document_key]),
+        );
     }
 
     private function extractXml(mixed $response): ?string

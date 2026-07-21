@@ -18,11 +18,13 @@ class SendNfseJob implements ShouldQueue
 
     public int $tries = 3;
 
+    public int $timeout = 900;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
-        private int     $fiscalDocumentId,
-        private int     $userId,
+        private int $fiscalDocumentId,
+        private int $userId,
         private ?string $serie = null,
     ) {}
 
@@ -41,6 +43,7 @@ class SendNfseJob implements ShouldQueue
                 toDatabase: true,
                 users: $this->userId
             );
+
             return;
         }
 
@@ -50,8 +53,8 @@ class SendNfseJob implements ShouldQueue
         if (! $result) {
             Log::error('SendNfseJob: falha no envio da NFS-e', [
                 'fiscal_document_id' => $this->fiscalDocumentId,
-                'erro'               => $action->getMessage(),
-                'tentativa'          => $this->attempts(),
+                'erro' => $action->getMessage(),
+                'tentativa' => $this->attempts(),
             ]);
 
             // Não re-tenta em erros de validação (5001/5002) — falha imediata
@@ -78,15 +81,15 @@ class SendNfseJob implements ShouldQueue
     {
         Log::error('SendNfseJob: job falhou definitivamente', [
             'fiscal_document_id' => $this->fiscalDocumentId,
-            'exception'          => $exception->getMessage(),
+            'exception' => $exception->getMessage(),
         ]);
 
         $doc = FiscalDocument::find($this->fiscalDocumentId);
         if ($doc) {
-            $errors   = $doc->errors_messages ?? [];
+            $errors = $doc->errors_messages ?? [];
             $errors[] = [
-                'at'       => now()->toDateTimeString(),
-                'job'      => 'SendNfseJob',
+                'at' => now()->toDateTimeString(),
+                'job' => 'SendNfseJob',
                 'mensagem' => $exception->getMessage(),
             ];
             $doc->update(['errors_messages' => $errors]);

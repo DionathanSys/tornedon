@@ -22,14 +22,15 @@ class ProcessQueuedNfseEmissionJob implements ShouldQueue
 
     public int $tries = 1;
 
+    public int $timeout = 900;
+
     public function __construct(
         private readonly string $emissionGroupKey,
-    ) {
-    }
+    ) {}
 
     public function handle(): void
     {
-        $lock = Cache::lock('fiscal-emission-group:' . md5($this->emissionGroupKey), 300);
+        $lock = Cache::lock('fiscal-emission-group:'.md5($this->emissionGroupKey), 300);
 
         if (! $lock->get()) {
             return;
@@ -124,7 +125,7 @@ class ProcessQueuedNfseEmissionJob implements ShouldQueue
      */
     private function persistError(FiscalDocument $document, string $action, ?string $message, array $errors, ?string $scenarioCode = null): void
     {
-        $persistAction = new SaveFiscalDocumentErrorAction();
+        $persistAction = new SaveFiscalDocumentErrorAction;
         $persistAction->execute($document, $message, [
             'acao' => $action,
             'erros' => $errors,
