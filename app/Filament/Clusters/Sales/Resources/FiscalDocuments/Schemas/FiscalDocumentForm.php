@@ -51,6 +51,7 @@ class FiscalDocumentForm
                     ->persistTab(true)
                     ->tabs([
                         Tab::make('Principal')
+                            ->icon(Heroicon::DocumentText)
                             ->columns(['md' => 6, 'lg' => 12])
                             ->columnSpanFull()
                             ->schema([
@@ -76,6 +77,7 @@ class FiscalDocumentForm
                                             ->options(NfseModel::toSelectArray())
                                             ->disabledOn('edit')
                                             ->native(false)
+                                            ->visible(fn (Get $get): bool => $get('document_type') === DocumentModel::NFSE->value)
                                             ->columnSpan(['md' => 1, 'lg' => 3]),
                                     ])
                                     ->columns(['md' => 2])
@@ -225,12 +227,14 @@ class FiscalDocumentForm
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->required()
+                                            ->disabledOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                         DatePicker::make('movement_at')
                                             ->label('Data Entrada/Saída')
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->required()
+                                            ->disabledOn('edit')
                                             ->columnSpan(['md' => 2, 'lg' => 2]),
                                         TextEntry::make('operation_type_display')
                                             ->label('Tipo de Operação')
@@ -593,6 +597,7 @@ class FiscalDocumentForm
                             ]),
 
                         Tab::make('Logs')
+                            ->icon(Heroicon::ClipboardDocumentList)
                             ->visibleOn([Operation::Edit])
                             ->columnSpanFull()
                             ->columns(['md' => 6, 'lg' => 12])

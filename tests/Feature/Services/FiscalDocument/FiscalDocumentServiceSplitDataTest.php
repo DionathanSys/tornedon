@@ -27,7 +27,11 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
         [$user, $company, $customer] = $this->makeScenario();
 
         $document = app(FiscalDocumentService::class)->create($this->basePayload($company, $customer, [
-            'freight_data' => ['modalidade_frete' => FreightModality::SEM_FRETE->value],
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+                'transportador' => ['id' => '123'],
+                'veiculo' => ['placa' => 'ABC1234', 'uf' => 'SP'],
+            ],
             'payment_data' => ['formas_pagamento' => [['meio_pagamento' => '99', 'valor' => '0.00']]],
             'tax_data' => ['reference' => ['document_key' => 'NFE-REF']],
         ]), $user->id);
@@ -41,7 +45,11 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
 
         $document = $document->fresh()->load('taxDetail');
 
-        $this->assertSame(['modalidade_frete' => FreightModality::SEM_FRETE->value], $document->freight_data);
+        $this->assertSame([
+            'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            'transportador' => ['id' => '123'],
+            'veiculo' => ['placa' => 'ABC1234', 'uf' => 'SP'],
+        ], $document->freight_data);
         $this->assertSame(['formas_pagamento' => [['meio_pagamento' => '99', 'valor' => '0.00']]], $document->payment_data);
         $this->assertSame(['reference' => ['document_key' => 'NFE-REF']], $document->tax_data);
     }
@@ -58,7 +66,11 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
         $this->assertNotNull($document, $service->getMessage());
 
         $updated = $service->update($document, $this->basePayload($company, $customer, [
-            'freight_data' => ['modalidade_frete' => FreightModality::FOB_DESTINATARIO->value],
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::FOB_DESTINATARIO->value,
+                'transportador' => ['id' => '456'],
+                'volumes' => [['quantidade' => '2', 'especie' => 'CAIXA']],
+            ],
             'payment_data' => ['formas_pagamento' => [['meio_pagamento' => '01', 'valor' => '100.00']]],
             'tax_data' => ['intermediario' => ['indicador' => '0']],
         ]), $user->id);
@@ -72,7 +84,11 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
 
         $updated = $updated->fresh()->load('taxDetail');
 
-        $this->assertSame(['modalidade_frete' => FreightModality::FOB_DESTINATARIO->value], $updated->freight_data);
+        $this->assertSame([
+            'modalidade_frete' => FreightModality::FOB_DESTINATARIO->value,
+            'transportador' => ['id' => '456'],
+            'volumes' => [['quantidade' => '2', 'especie' => 'CAIXA']],
+        ], $updated->freight_data);
         $this->assertSame(['formas_pagamento' => [['meio_pagamento' => '01', 'valor' => '100.00']]], $updated->payment_data);
         $this->assertSame(['intermediario' => ['indicador' => '0']], $updated->tax_data);
     }
@@ -87,7 +103,10 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
         $this->assertNotNull($document, $service->getMessage());
 
         $payload = $this->basePayload($company, $customer, [
-            'freight_data' => ['modalidade_frete' => FreightModality::FOB_DESTINATARIO->value],
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::FOB_DESTINATARIO->value,
+                'icms_retido' => ['valor_servico' => '10.00'],
+            ],
             'payment_data' => ['formas_pagamento' => [['meio_pagamento' => '03', 'valor' => '50.00']]],
             'tax_data' => ['reference' => ['document_key' => 'NFE-SEM-TIPO']],
         ]);
@@ -104,7 +123,10 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
 
         $updated = $updated->fresh()->load('taxDetail');
 
-        $this->assertSame(['modalidade_frete' => FreightModality::FOB_DESTINATARIO->value], $updated->freight_data);
+        $this->assertSame([
+            'modalidade_frete' => FreightModality::FOB_DESTINATARIO->value,
+            'icms_retido' => ['valor_servico' => '10.00'],
+        ], $updated->freight_data);
         $this->assertSame(['formas_pagamento' => [['meio_pagamento' => '03', 'valor' => '50.00']]], $updated->payment_data);
         $this->assertSame(['reference' => ['document_key' => 'NFE-SEM-TIPO']], $updated->tax_data);
     }

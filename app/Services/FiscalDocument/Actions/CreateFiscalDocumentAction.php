@@ -36,7 +36,7 @@ class CreateFiscalDocumentAction
             $validated = FiscalDocumentValidatorResolver::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
             $validated = $this->applyInitialFiscalStatus($validated);
-            $taxDetailData = array_intersect_key($validated, array_flip([
+            $taxDetailData = array_intersect_key($data, array_flip([
                 'freight_data',
                 'payment_data',
                 'tax_data',

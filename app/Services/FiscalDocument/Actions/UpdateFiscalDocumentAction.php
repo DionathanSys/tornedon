@@ -42,7 +42,7 @@ class UpdateFiscalDocumentAction
             $payloadData = array_intersect_key($validated, array_flip(['nfe_payload', 'nfse_payload']));
             unset($validated['nfe_payload'], $validated['nfse_payload']);
 
-            $taxDetailData = array_intersect_key($validated, array_flip([
+            $taxDetailData = array_intersect_key($data, array_flip([
                 'freight_data',
                 'payment_data',
                 'tax_data',
