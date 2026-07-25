@@ -11,6 +11,8 @@ use App\Models\FiscalDocumentItem;
 use App\Models\Product;
 use App\Models\SefazDistributionDocument;
 use App\Services\Audit\AuditRecorder;
+use App\Services\FiscalDocument\Actions\UpsertFiscalDocumentPayloadAction;
+use App\Services\FiscalDocument\Actions\UpsertFiscalDocumentTaxDetailAction;
 use Illuminate\Support\Facades\DB;
 
 class SefazDistributionFiscalDocumentImportService
@@ -85,6 +87,26 @@ class SefazDistributionFiscalDocumentImportService
 
                 $items = $this->buildItemsPayload($locked, $parsed['items']);
                 $this->assertAllItemsAreMapped($items);
+                $nfePayload = [
+                    'import_origin' => 'sefaz_distribution',
+                    'distribution_document_id' => $locked->id,
+                    'summary_xml_path' => $locked->summary_xml_path,
+                    'full_xml_path' => $locked->full_xml_path,
+                    'raw_response_path' => $locked->raw_response_path,
+                    'issuer' => $parsed['issuer'],
+                    'recipient' => $parsed['recipient'],
+                    'protocol' => $parsed['protocol'],
+                    'xml' => $xml,
+                    'items_count' => count($items),
+                ];
+                $taxDetailData = [
+                    'freight_data' => $parsed['transport'],
+                    'payment_data' => $parsed['payment'],
+                    'tax_data' => [
+                        'totals' => $parsed['totals'],
+                        'protocol' => $parsed['protocol'],
+                    ],
+                ];
 
                 $fiscalDocument = FiscalDocument::query()->create([
                     'customer_id' => $partner->id,
@@ -108,35 +130,22 @@ class SefazDistributionFiscalDocumentImportService
                     'additional_tax_information' => $parsed['additional_info']['tax_observations'] ?? null,
                     'additional_taxpayer_information' => $parsed['additional_info']['taxpayer_observations'] ?? null,
                     'additional_purchase_information' => null,
-                    'freight_data' => $parsed['transport'],
-                    'payment_data' => $parsed['payment'],
-                    'tax_data' => [
-                        'totals' => $parsed['totals'],
-                        'protocol' => $parsed['protocol'],
-                    ],
                     'pending' => true,
                     'confirmed' => false,
                     'canceled' => false,
                     'created_by' => $actorUserId,
                     'updated_by' => $actorUserId,
                     'nfe_status' => null,
-                    'nfe_payload' => [
-                        'import_origin' => 'sefaz_distribution',
-                        'distribution_document_id' => $locked->id,
-                        'summary_xml_path' => $locked->summary_xml_path,
-                        'full_xml_path' => $locked->full_xml_path,
-                        'raw_response_path' => $locked->raw_response_path,
-                        'issuer' => $parsed['issuer'],
-                        'recipient' => $parsed['recipient'],
-                        'protocol' => $parsed['protocol'],
-                        'xml' => $xml,
-                        'items_count' => count($items),
-                    ],
                     'logs' => [
                         'imported_from_dfe' => true,
                         'distribution_document_id' => $locked->id,
                     ],
                 ]);
+
+                app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
+                    'nfe_payload' => $nfePayload,
+                ]);
+                app(UpsertFiscalDocumentTaxDetailAction::class)->execute($fiscalDocument, $taxDetailData);
 
                 foreach ($items as $item) {
                     FiscalDocumentItem::query()->create([

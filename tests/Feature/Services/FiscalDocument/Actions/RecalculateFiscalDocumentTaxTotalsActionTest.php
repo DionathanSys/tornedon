@@ -65,6 +65,12 @@ class RecalculateFiscalDocumentTaxTotalsActionTest extends TestCase
             'tax_data' => null,
         ]);
 
+        $updated->load('taxDetail');
+
+        $this->assertNull($updated->taxDetail->tax_data);
+        $this->assertSame([], $updated->taxDetail->fiscal_metadata);
+        $this->assertSame('100.00', data_get($updated->taxDetail->tax_totals, 'valor_produtos'));
+
         $this->assertSame('100.00', data_get($updated->tax_data, 'totais.valor_produtos'));
         $this->assertSame('100.00', data_get($updated->tax_data, 'totais.valor_nota'));
         $this->assertSame('90.00', data_get($updated->tax_data, 'totais.base_calculo_icms'));

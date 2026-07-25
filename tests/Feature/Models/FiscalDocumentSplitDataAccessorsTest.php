@@ -32,7 +32,8 @@ class FiscalDocumentSplitDataAccessorsTest extends TestCase
             'fiscal_document_id' => $document->id,
             'freight_data' => ['source' => 'split-freight'],
             'payment_data' => ['source' => 'split-payment'],
-            'tax_data' => ['source' => 'split-tax'],
+            'fiscal_metadata' => ['source' => 'split-tax'],
+            'tax_totals' => ['valor_nota' => '100.00'],
         ]);
 
         FiscalDocumentPayload::query()->create([
@@ -46,7 +47,10 @@ class FiscalDocumentSplitDataAccessorsTest extends TestCase
 
         $this->assertSame(['source' => 'split-freight'], $document->freight_data);
         $this->assertSame(['source' => 'split-payment'], $document->payment_data);
-        $this->assertSame(['source' => 'split-tax'], $document->tax_data);
+        $this->assertSame([
+            'source' => 'split-tax',
+            'totais' => ['valor_nota' => '100.00'],
+        ], $document->tax_data);
         $this->assertSame(['source' => 'split-nfe'], $document->nfe_payload);
         $this->assertSame(['source' => 'split-nfse'], $document->nfse_payload);
     }
@@ -66,6 +70,21 @@ class FiscalDocumentSplitDataAccessorsTest extends TestCase
         $this->assertSame(['source' => 'legacy-tax'], $document->tax_data);
         $this->assertSame(['source' => 'legacy-nfe'], $document->nfe_payload);
         $this->assertSame(['source' => 'legacy-nfse'], $document->nfse_payload);
+    }
+
+    public function test_it_falls_back_to_legacy_split_tax_data_when_new_tax_fields_do_not_exist(): void
+    {
+        $document = $this->makeFiscalDocument(['tax_data' => ['source' => 'legacy-column']]);
+
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'tax_data' => ['source' => 'legacy-split'],
+        ]);
+
+        $document = FiscalDocument::query()->with('taxDetail')->findOrFail($document->id);
+
+        $this->assertSame(['source' => 'legacy-split'], $document->tax_data);
     }
 
     /**

@@ -13,12 +13,16 @@ class FiscalDocumentTaxDetail extends Model
         'freight_data',
         'payment_data',
         'tax_data',
+        'tax_totals',
+        'fiscal_metadata',
     ];
 
     protected $casts = [
         'freight_data' => 'array',
         'payment_data' => 'array',
         'tax_data' => 'array',
+        'tax_totals' => 'array',
+        'fiscal_metadata' => 'array',
     ];
 
     public function company(): BelongsTo

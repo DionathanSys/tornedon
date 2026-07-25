@@ -28,16 +28,27 @@ class CreateFiscalDocumentAction
             $data = $this->normalizeDataBeforeValidation($data);
 
             Log::debug('Iniciando criação de documento fiscal', [
-                'metodo'  => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'user_id' => $this->createdBy,
-                'data'    => $data,
+                'data' => $data,
             ]);
 
             $validated = FiscalDocumentValidatorResolver::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
             $validated = $this->applyInitialFiscalStatus($validated);
+            $taxDetailData = array_intersect_key($validated, array_flip([
+                'freight_data',
+                'payment_data',
+                'tax_data',
+            ]));
+            unset($validated['freight_data'], $validated['payment_data'], $validated['tax_data']);
 
             $fiscalDocument = FiscalDocument::create($validated);
+            if ($taxDetailData !== []) {
+                app(UpsertFiscalDocumentTaxDetailAction::class)->execute($fiscalDocument, $taxDetailData);
+                $fiscalDocument->refresh();
+            }
+
             $audit = app(AuditRecorder::class);
 
             $audit->recordModelEvent(
@@ -50,22 +61,23 @@ class CreateFiscalDocumentAction
             );
 
             Log::info('Documento fiscal criado com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
             ]);
 
             $this->setSuccess();
+
             return $fiscalDocument;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'errors'     => $e->errors(),
-                'data'       => $data,
-                'user_id'    => $this->createdBy,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -73,12 +85,12 @@ class CreateFiscalDocumentAction
             $this->setError('Erro ao salvar documento fiscal no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
-                'data'          => $data,
-                'user_id'       => $this->createdBy,
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -86,13 +98,13 @@ class CreateFiscalDocumentAction
             $this->setError('Erro inesperado ao criar documento fiscal');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
-                'data'          => $data,
-                'user_id'       => $this->createdBy,
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;

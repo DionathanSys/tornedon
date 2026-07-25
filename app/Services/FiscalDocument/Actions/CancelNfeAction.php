@@ -46,7 +46,7 @@ class CancelNfeAction
             $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($fiscalDocument->company_id));
 
             $resp = $sdk->cancela([
-                'chave' => $fiscalDocument->document_key,
+                'chave'         => $fiscalDocument->document_key,
                 'justificativa' => $justificativa,
             ]);
 
@@ -66,12 +66,16 @@ class CancelNfeAction
                 }
 
                 $fiscalDocument->update([
-                    'nfe_status' => NfeStatus::CANCELED->value,
+                    'nfe_status'    => NfeStatus::CANCELED->value,
                     'nfe_protocolo' => $resp->protocolo ?? $fiscalDocument->nfe_protocolo,
-                    'status' => Status::CANCELLED->value,
-                    'canceled_at' => now(),
+                    'status'        => Status::CANCELLED->value,
+                    'canceled_at'   => now(),
+                ]);
+                
+                app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
                     'nfe_payload' => $payload,
                 ]);
+                
                 $fiscalDocument->refresh();
 
                 $audit->recordModelEvent(

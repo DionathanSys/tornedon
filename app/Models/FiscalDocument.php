@@ -213,7 +213,7 @@ class FiscalDocument extends Model
     protected function taxData(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): mixed => $this->taxDetailValue('tax_data', $value),
+            get: fn (mixed $value): mixed => $this->documentTaxDataValue($value),
         );
     }
 
@@ -237,9 +237,39 @@ class FiscalDocument extends Model
             ? $this->getRelation('taxDetail')
             : $this->taxDetail()->first();
 
-        return $taxDetail instanceof FiscalDocumentTaxDetail
-            ? $taxDetail->getAttribute($key)
-            : $this->jsonAttributeValue($fallback);
+        if (! $taxDetail instanceof FiscalDocumentTaxDetail) {
+            return $this->jsonAttributeValue($fallback);
+        }
+
+        $value = $taxDetail->getAttribute($key);
+
+        return $value !== null ? $value : $this->jsonAttributeValue($fallback);
+    }
+
+    private function documentTaxDataValue(mixed $fallback): mixed
+    {
+        $taxDetail = $this->relationLoaded('taxDetail')
+            ? $this->getRelation('taxDetail')
+            : $this->taxDetail()->first();
+
+        if (! $taxDetail instanceof FiscalDocumentTaxDetail) {
+            return $this->jsonAttributeValue($fallback);
+        }
+
+        $metadata = is_array($taxDetail->fiscal_metadata) ? $taxDetail->fiscal_metadata : [];
+        $totals = is_array($taxDetail->tax_totals) ? $taxDetail->tax_totals : null;
+
+        if ($metadata !== [] || $totals !== null) {
+            if ($totals !== null) {
+                $metadata['totais'] = $totals;
+            }
+
+            return $metadata;
+        }
+
+        $legacyTaxData = $taxDetail->getAttribute('tax_data');
+
+        return $legacyTaxData !== null ? $legacyTaxData : $this->jsonAttributeValue($fallback);
     }
 
     private function payloadValue(string $key, mixed $fallback): mixed
@@ -248,9 +278,13 @@ class FiscalDocument extends Model
             ? $this->getRelation('payload')
             : $this->payload()->first();
 
-        return $payload instanceof FiscalDocumentPayload
-            ? $payload->getAttribute($key)
-            : $this->jsonAttributeValue($fallback);
+        if (! $payload instanceof FiscalDocumentPayload) {
+            return $this->jsonAttributeValue($fallback);
+        }
+
+        $value = $payload->getAttribute($key);
+
+        return $value !== null ? $value : $this->jsonAttributeValue($fallback);
     }
 
     private function jsonAttributeValue(mixed $value): mixed

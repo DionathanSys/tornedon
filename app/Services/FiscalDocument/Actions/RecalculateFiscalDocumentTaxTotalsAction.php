@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument\Actions;
 
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use Illuminate\Support\Arr;
 
 class RecalculateFiscalDocumentTaxTotalsAction
 {
@@ -65,10 +66,10 @@ class RecalculateFiscalDocumentTaxTotalsAction
             ->all();
 
         $taxData = is_array($document->tax_data) ? $document->tax_data : [];
-        $taxData['totais'] = $totals;
 
         app(UpsertFiscalDocumentTaxDetailAction::class)->execute($document, [
-            'tax_data' => $taxData,
+            'fiscal_metadata' => Arr::except($taxData, ['totais']),
+            'tax_totals' => $totals,
         ]);
 
         return $document->fresh();

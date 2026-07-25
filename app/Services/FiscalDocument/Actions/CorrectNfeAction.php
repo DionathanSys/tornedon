@@ -77,6 +77,8 @@ class CorrectNfeAction
 
                 $fiscalDocument->update([
                     'nfe_protocolo' => $resp->protocolo ?? $fiscalDocument->nfe_protocolo,
+                ]);
+                app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
                     'nfe_payload' => $documentPayload,
                 ]);
                 $fiscalDocument->refresh();

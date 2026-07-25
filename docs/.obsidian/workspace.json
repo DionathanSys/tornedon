@@ -86,7 +86,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "\\",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -107,12 +107,12 @@
               "title": "Marcadores"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -218,7 +218,7 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "b83cdb2be748ea10",
+  "active": "b0b1c65d03b39764",
   "lastOpenFiles": [
     "estrutura-fiscal-emissao-notas.md",
     "Sem título 3.md",

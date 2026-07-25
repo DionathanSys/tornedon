@@ -163,8 +163,10 @@ class SendNfeAction
                     'document_key' => $resp->chave,
                     'nfe_status' => NfeStatus::IN_PROCESSING->value,
                     'nfe_ambiente' => $ambiente,
-                    'nfe_payload' => $payload,
                     'nfe_sequence_id' => $confirmed['sequence_id'],
+                ]);
+                app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
+                    'nfe_payload' => $payload,
                 ]);
                 $fiscalDocument->refresh();
 

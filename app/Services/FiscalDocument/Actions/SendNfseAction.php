@@ -143,6 +143,8 @@ class SendNfseAction
                 $fiscalDocument->update([
                     'document_key' => $resp->chave,
                     'nfse_status' => NfeStatus::IN_PROCESSING->value,
+                ]);
+                app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
                     'nfse_payload' => $payload,
                 ]);
                 $fiscalDocument->refresh();

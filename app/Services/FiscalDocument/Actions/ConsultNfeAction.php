@@ -65,6 +65,7 @@ class ConsultNfeAction
             }
 
             $updates = [];
+            $payloadUpdates = [];
 
             if ($resp->sucesso ?? false) {
                 // Autorizada
@@ -80,7 +81,7 @@ class ConsultNfeAction
                 $updates['nfe_protocolo'] = $resp->protocolo ?? null;
                 $updates['status'] = Status::CONFIRMED->value;
                 $updates['confirmed_at'] = now();
-                $updates['nfe_payload'] = $payload;
+                $payloadUpdates['nfe_payload'] = $payload;
 
                 if (! empty($resp->numero)) {
                     $updates['document_number'] = $resp->numero;
@@ -117,6 +118,9 @@ class ConsultNfeAction
             }
 
             $fiscalDocument->update($updates);
+            if ($payloadUpdates !== []) {
+                app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, $payloadUpdates);
+            }
             $fiscalDocument->refresh();
 
             if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
