@@ -72,6 +72,23 @@ class EditFiscalDocument extends EditRecord
         return $data;
     }
 
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        $service = app(FiscalDocumentService::class);
+        $updated = $service->update($record, $data, (int) Auth::id());
+
+        if ($service->hasError() || $updated === null) {
+            notify::error(
+                message: $service->getMessageUser(),
+                errorCode: $service->getErrorCode()
+            );
+
+            $this->halt();
+        }
+
+        return $updated;
+    }
+
     public function getAutoRefreshInterval(): ?string
     {
         return $this->isAutoRefreshEnabled() ? '10s' : null;
