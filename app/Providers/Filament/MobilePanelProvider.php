@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Models\Company;
+use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -15,9 +16,9 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Support\HtmlString;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class MobilePanelProvider extends PanelProvider
@@ -70,6 +71,6 @@ class MobilePanelProvider extends PanelProvider
                 fn () => new HtmlString(view('filament.mobile.body-end')->render())
             )
             ->resourceCreatePageRedirect('edit')
-            ->databaseNotifications();
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Sidebar);
     }
 }

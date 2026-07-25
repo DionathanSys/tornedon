@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -62,7 +63,7 @@ class ManagementPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->databaseNotifications()
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Sidebar)
             ->unsavedChangesAlerts()
             ->navigationGroups([
                 'Gestao',

@@ -12,6 +12,7 @@ use App\Filament\Shop\Widgets\ProductionRequestChart;
 use App\Filament\Shop\Widgets\RevenueChart;
 use App\Filament\Shop\Widgets\StatsOverview;
 use App\Models\Company;
+use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -88,7 +89,7 @@ class ShopPanelProvider extends PanelProvider
                 fn () => new HtmlString(view('filament.shop.body-end')->render())
             )
             ->resourceCreatePageRedirect('edit')
-            ->databaseNotifications()
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Sidebar)
             ->navigationGroups([
                 'Vendas',
                 'Financeiro',
