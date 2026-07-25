@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Models\Company;
+use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -11,20 +12,16 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Support\HtmlString;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Livewire\CreateErrorTicketAction;
-use Filament\Navigation\NavigationGroup;
-use Filament\Support\Enums\Width;
-use Filament\Support\Icons\Heroicon;
-use Filament\View\PanelsRenderHook;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -83,7 +80,7 @@ class AdminPanelProvider extends PanelProvider
                 fn () => new HtmlString(view('filament.partials.body-end')->render())
             )
             ->resourceCreatePageRedirect('edit')
-            ->databaseNotifications()
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Sidebar)
             ->registerErrorNotification(
                 title: 'Ocorreu um erro',
                 body: 'Tente novamente mais tarde.',
@@ -94,7 +91,6 @@ class AdminPanelProvider extends PanelProvider
                 'Vendas',
                 'Financeiro',
                 'Configurações',
-            ])
-        ;
+            ]);
     }
 }

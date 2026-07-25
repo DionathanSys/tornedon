@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FiscalDocument extends Model
 {
@@ -166,6 +167,16 @@ class FiscalDocument extends Model
     public function items(): HasMany
     {
         return $this->hasMany(FiscalDocumentItem::class);
+    }
+
+    public function taxDetail(): HasOne
+    {
+        return $this->hasOne(FiscalDocumentTaxDetail::class);
+    }
+
+    public function payload(): HasOne
+    {
+        return $this->hasOne(FiscalDocumentPayload::class);
     }
 
     protected function itemsTotal(): Attribute
