@@ -26,6 +26,7 @@ class UpsertFiscalDocumentPayloadAction
         Log::debug('Upserting fiscal document payload', [
             'fiscal_document_id' => $fiscalDocument->id,
             'company_id' => $fiscalDocument->company_id,
+            'data' => $data,
             'payload' => $payload,
         ]);
         

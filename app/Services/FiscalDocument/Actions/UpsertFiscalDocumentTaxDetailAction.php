@@ -27,6 +27,7 @@ class UpsertFiscalDocumentTaxDetailAction
         Log::debug('Upserting fiscal document tax detail', [
             'fiscal_document_id' => $fiscalDocument->id,
             'company_id' => $fiscalDocument->company_id,
+            'data' => $data,
             'payload' => $payload,
         ]);
         

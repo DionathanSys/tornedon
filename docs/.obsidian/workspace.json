@@ -54,7 +54,7 @@
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -218,11 +218,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "cd709947c253db43",
+  "active": "b83cdb2be748ea10",
   "lastOpenFiles": [
+    "estrutura-fiscal-emissao-notas.md",
     "Sem título 3.md",
     "Consultoria.md",
-    "estrutura-fiscal-emissao-notas.md",
     "API_MIGRACAO_PAYLOADS_AMOSTRA.md",
     "manual-fluxo-os-faturamento-emissao-notas.md",
     "Excalidraw/Drawing 2026-05-30 23.07.25.excalidraw.md",

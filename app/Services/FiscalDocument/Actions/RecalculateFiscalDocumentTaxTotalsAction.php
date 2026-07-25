@@ -67,9 +67,9 @@ class RecalculateFiscalDocumentTaxTotalsAction
         $taxData = is_array($document->tax_data) ? $document->tax_data : [];
         $taxData['totais'] = $totals;
 
-        $document->forceFill([
+        app(UpsertFiscalDocumentTaxDetailAction::class)->execute($document, [
             'tax_data' => $taxData,
-        ])->save();
+        ]);
 
         return $document->fresh();
     }
