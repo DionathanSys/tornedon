@@ -196,6 +196,78 @@ class FiscalDocument extends Model
         );
     }
 
+    protected function freightData(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): mixed => $this->taxDetailValue('freight_data', $value),
+        );
+    }
+
+    protected function paymentData(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): mixed => $this->taxDetailValue('payment_data', $value),
+        );
+    }
+
+    protected function taxData(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): mixed => $this->taxDetailValue('tax_data', $value),
+        );
+    }
+
+    protected function nfePayload(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): mixed => $this->payloadValue('nfe_payload', $value),
+        );
+    }
+
+    protected function nfsePayload(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): mixed => $this->payloadValue('nfse_payload', $value),
+        );
+    }
+
+    private function taxDetailValue(string $key, mixed $fallback): mixed
+    {
+        $taxDetail = $this->relationLoaded('taxDetail')
+            ? $this->getRelation('taxDetail')
+            : $this->taxDetail()->first();
+
+        return $taxDetail instanceof FiscalDocumentTaxDetail
+            ? $taxDetail->getAttribute($key)
+            : $this->jsonAttributeValue($fallback);
+    }
+
+    private function payloadValue(string $key, mixed $fallback): mixed
+    {
+        $payload = $this->relationLoaded('payload')
+            ? $this->getRelation('payload')
+            : $this->payload()->first();
+
+        return $payload instanceof FiscalDocumentPayload
+            ? $payload->getAttribute($key)
+            : $this->jsonAttributeValue($fallback);
+    }
+
+    private function jsonAttributeValue(mixed $value): mixed
+    {
+        if ($value === null || is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+
+            return json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
+        }
+
+        return $value;
+    }
+
     public function remittanceAssets(): HasMany
     {
         return $this->hasMany(RemittanceAsset::class);
