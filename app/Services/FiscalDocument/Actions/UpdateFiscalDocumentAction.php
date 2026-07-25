@@ -33,6 +33,7 @@ class UpdateFiscalDocumentAction
             ]);
 
             $documentType = $data['document_type'] ?? $this->fiscalDocument->document_type;
+            $documentType = $documentType instanceof \BackedEnum ? $documentType->value : $documentType;
             $data['document_type'] = $documentType;
 
             $validated = FiscalDocumentValidatorResolver::validateUpdate($data, $this->fiscalDocument->id);

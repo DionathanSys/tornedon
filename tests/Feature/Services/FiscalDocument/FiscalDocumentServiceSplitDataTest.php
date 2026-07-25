@@ -77,6 +77,38 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
         $this->assertSame(['intermediario' => ['indicador' => '0']], $updated->tax_data);
     }
 
+    public function test_it_writes_split_data_on_update_when_document_type_is_not_submitted(): void
+    {
+        [$user, $company, $customer] = $this->makeScenario();
+        $service = app(FiscalDocumentService::class);
+
+        $document = $service->create($this->basePayload($company, $customer), $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+
+        $payload = $this->basePayload($company, $customer, [
+            'freight_data' => ['modalidade_frete' => FreightModality::FOB_DESTINATARIO->value],
+            'payment_data' => ['formas_pagamento' => [['meio_pagamento' => '03', 'valor' => '50.00']]],
+            'tax_data' => ['reference' => ['document_key' => 'NFE-SEM-TIPO']],
+        ]);
+        unset($payload['document_type']);
+
+        $updated = $service->update($document, $payload, $user->id);
+
+        $this->assertNotNull($updated, $service->getMessage());
+
+        $legacy = DB::table('fiscal_documents')->where('id', $document->id)->first();
+        $this->assertNull($legacy->freight_data);
+        $this->assertNull($legacy->payment_data);
+        $this->assertNull($legacy->tax_data);
+
+        $updated = $updated->fresh()->load('taxDetail');
+
+        $this->assertSame(['modalidade_frete' => FreightModality::FOB_DESTINATARIO->value], $updated->freight_data);
+        $this->assertSame(['formas_pagamento' => [['meio_pagamento' => '03', 'valor' => '50.00']]], $updated->payment_data);
+        $this->assertSame(['reference' => ['document_key' => 'NFE-SEM-TIPO']], $updated->tax_data);
+    }
+
     /**
      * @return array{0: User, 1: Company, 2: Partner}
      */
