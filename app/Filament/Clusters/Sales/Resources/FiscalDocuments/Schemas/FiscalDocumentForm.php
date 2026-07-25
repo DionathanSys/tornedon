@@ -26,6 +26,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Livewire;
@@ -75,31 +76,6 @@ class FiscalDocumentForm
                                             ->options(NfseModel::toSelectArray())
                                             ->disabledOn('edit')
                                             ->native(false)
-                                            ->columnSpan(['md' => 1, 'lg' => 3]),
-                                        TextEntry::make('emission_requested_at')
-                                            ->label('Solicitação de Emissão')
-                                            ->dateTime('d/m/Y H:i:s')
-                                            ->visibleOn('edit')
-                                            ->placeholder(' - ')
-                                            ->columnStart(1)
-                                            ->columnSpan(['md' => 1, 'lg' => 3]),
-                                        TextEntry::make('emission_attempted_at')
-                                            ->label('Última Tentativa')
-                                            ->dateTime('d/m/Y H:i:s')
-                                            ->placeholder(' - ')
-                                            ->visibleOn('edit')
-                                            ->columnSpan(['md' => 1, 'lg' => 3]),
-                                        TextEntry::make('confirmed_at')
-                                            ->label('Dt. Confirmação')
-                                            ->dateTime('d/m/Y H:i:s')
-                                            ->placeholder(' - ')
-                                            ->visibleOn('edit')
-                                            ->columnSpan(['md' => 1, 'lg' => 3]),
-                                        TextEntry::make('updated_at')
-                                            ->label('Últ. Alteração')
-                                            ->dateTime('d/m/Y H:i:s')
-                                            ->placeholder(' - ')
-                                            ->visibleOn('edit')
                                             ->columnSpan(['md' => 1, 'lg' => 3]),
                                     ])
                                     ->columns(['md' => 2])
@@ -333,148 +309,6 @@ class FiscalDocumentForm
                                     ->columnSpanFull()
                                     ->visibleOn([Operation::Edit]),
 
-                                Section::make('Frete')
-                                    ->columnSpanFull()
-                                    ->collapsed()
-                                    ->collapsible()
-                                    ->columns(['md' => 6, 'lg' => 12])
-                                    ->schema([
-                                        Select::make('freight_data.modalidade_frete')
-                                            ->label('Modalidade do Frete')
-                                            ->options(FreightModality::toSelectArray())
-                                            ->default(FreightModality::SEM_FRETE->value)
-                                            ->native(false)
-                                            ->columnSpan(['md' => 3]),
-
-                                        Section::make('Transportador')
-                                            ->columnSpanFull()
-                                            ->columns(['md' => 6, 'lg' => 12])
-                                            ->schema([
-                                                SelectPartner::make('freight_data.transportador.id', 'supplier')
-                                                    ->label('Transportador')
-                                                    ->columnSpanFull()
-                                                    ->required(false),
-                                            ])
-                                            ->collapsible(),
-
-                                        Section::make('ICMS Retido')
-                                            ->columnSpanFull()
-                                            ->columns(['md' => 6, 'lg' => 12])
-                                            ->schema([
-                                                TextInput::make('freight_data.icms_retido.valor_servico')
-                                                    ->label('Valor do Serviço')
-                                                    ->numeric()
-                                                    ->inputMode('decimal')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('freight_data.icms_retido.base_calculo_retencao_icms')
-                                                    ->label('Base de Cálculo')
-                                                    ->numeric()
-                                                    ->inputMode('decimal')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('freight_data.icms_retido.aliquota_retencao')
-                                                    ->label('Alíquota de Retenção')
-                                                    ->numeric()
-                                                    ->inputMode('decimal')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('freight_data.icms_retido.valor_icms_retido')
-                                                    ->label('Valor ICMS Retido')
-                                                    ->numeric()
-                                                    ->inputMode('decimal')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('freight_data.icms_retido.cfop')
-                                                    ->label('CFOP')
-                                                    ->maxLength(4)
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('freight_data.icms_retido.codigo_municipio_ocorrencia_fato_gerador')
-                                                    ->label('Cód. Município Fato Gerador')
-                                                    ->maxLength(7)
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                            ])
-                                            ->collapsed()
-                                            ->collapsible(),
-
-                                        Section::make('Veículo e Identificações')
-                                            ->columnSpanFull()
-                                            ->columns(['md' => 6, 'lg' => 12])
-                                            ->schema([
-                                                TextInput::make('freight_data.veiculo.placa')
-                                                    ->label('Placa')
-                                                    ->maxLength(8)
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('freight_data.veiculo.uf')
-                                                    ->label('UF do Veículo')
-                                                    ->maxLength(2)
-                                                    ->columnSpan(['md' => 1, 'lg' => 1]),
-                                                TextInput::make('freight_data.veiculo.rntc')
-                                                    ->label('RNTC')
-                                                    ->maxLength(20)
-                                                    ->columnSpan(['md' => 3, 'lg' => 3]),
-                                                TextInput::make('freight_data.identificacao_vagao')
-                                                    ->label('Identificação do Vagão')
-                                                    ->maxLength(20)
-                                                    ->columnSpan(['md' => 3, 'lg' => 3]),
-                                                TextInput::make('freight_data.identificacao_balsa')
-                                                    ->label('Identificação da Balsa')
-                                                    ->maxLength(20)
-                                                    ->columnSpan(['md' => 3, 'lg' => 3]),
-                                            ])
-                                            ->collapsed()
-                                            ->collapsible(),
-
-                                        Repeater::make('freight_data.volumes')
-                                            ->label('Volumes')
-                                            ->columnSpanFull()
-                                            ->columns(['md' => 6, 'lg' => 12])
-                                            ->schema([
-                                                TextInput::make('quantidade')
-                                                    ->label('Quantidade')
-                                                    ->numeric()
-                                                    ->inputMode('numeric')
-                                                    ->columnSpan(['md' => 1, 'lg' => 2]),
-                                                Select::make('especie')
-                                                    ->label('Espécie')
-                                                    ->options(Unit::toSelectArray())
-                                                    ->searchable()
-                                                    ->native(false)
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('marca')
-                                                    ->label('Marca')
-                                                    ->maxLength(60)
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('numero')
-                                                    ->label('Número')
-                                                    ->maxLength(60)
-                                                    ->columnSpan(['md' => 1, 'lg' => 2]),
-                                                TextInput::make('peso_liquido')
-                                                    ->label('Peso Líquido')
-                                                    ->numeric()
-                                                    ->inputMode('decimal')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                TextInput::make('peso_bruto')
-                                                    ->label('Peso Bruto')
-                                                    ->numeric()
-                                                    ->inputMode('decimal')
-                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
-                                                Repeater::make('lacres')
-                                                    ->label('Lacres')
-                                                    ->columnSpanFull()
-                                                    ->schema([
-                                                        TextInput::make('numero')
-                                                            ->label('Número do Lacre')
-                                                            ->maxLength(60),
-                                                    ])
-                                                    ->defaultItems(0)
-                                                    ->addActionLabel('Adicionar lacre')
-                                                    ->collapsible(),
-                                            ])
-                                            ->defaultItems(0)
-                                            ->addActionLabel('Adicionar volume')
-                                            ->collapsible(),
-                                    ])
-                                    ->columns(['md' => 2])
-                                    ->collapsible()
-                                    ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value),
-
                                 Section::make('Informações Adicionais')
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])
@@ -570,11 +404,251 @@ class FiscalDocumentForm
                                     ->collapsible(),
                             ]),
 
-                        Tab::make('Erros')
+                        Tab::make('Frete')
+                            ->icon(Heroicon::Truck)
+                            ->visible(fn (Get $get): bool => $get('document_type') !== DocumentModel::NFSE->value)
+                            ->columnSpanFull()
+                            ->columns(['md' => 6, 'lg' => 12])
+                            ->schema([
+                                Callout::make('Informações de Frete')
+                                    ->info()
+                                    ->description('Defina os dados de transporte que serão enviados na NF-e. Preencha transportador, volumes e informações fiscais apenas quando aplicável.')
+                                    ->columnSpanFull(),
+
+                                Section::make('1. Modalidade do Frete')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        ToggleButtons::make('freight_data.modalidade_frete')
+                                            ->label('Modalidade do Frete')
+                                            ->options(FreightModality::toSelectArray())
+                                            ->icons([
+                                                FreightModality::CIF_EMITENTE->value => Heroicon::Truck,
+                                                FreightModality::FOB_DESTINATARIO->value => Heroicon::Truck,
+                                                FreightModality::TERCEIROS->value => Heroicon::Truck,
+                                                FreightModality::PROPRIO_REMETENTE->value => Heroicon::Truck,
+                                                FreightModality::PROPRIO_DESTINATARIO->value => Heroicon::Truck,
+                                                FreightModality::SEM_FRETE->value => Heroicon::XCircle,
+                                            ])
+                                            ->colors([
+                                                FreightModality::CIF_EMITENTE->value => 'primary',
+                                                FreightModality::FOB_DESTINATARIO->value => 'info',
+                                                FreightModality::TERCEIROS->value => 'warning',
+                                                FreightModality::PROPRIO_REMETENTE->value => 'success',
+                                                FreightModality::PROPRIO_DESTINATARIO->value => 'success',
+                                                FreightModality::SEM_FRETE->value => 'gray',
+                                            ])
+                                            ->default(FreightModality::SEM_FRETE->value)
+                                            ->inline()
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Section::make('2. Transportador')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        SelectPartner::make('freight_data.transportador.id', 'supplier')
+                                            ->label('Transportador')
+                                            ->required(false)
+                                            ->columnSpan(['md' => 6, 'lg' => 12]),
+                                    ]),
+
+                                Section::make('3. Veículo e Identificações')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        TextInput::make('freight_data.veiculo.placa')
+                                            ->label('Placa')
+                                            ->maxLength(8)
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('freight_data.veiculo.uf')
+                                            ->label('UF do Veículo')
+                                            ->maxLength(2)
+                                            ->columnSpan(['md' => 1, 'lg' => 1]),
+                                        TextInput::make('freight_data.veiculo.rntc')
+                                            ->label('RNTC')
+                                            ->maxLength(20)
+                                            ->columnSpan(['md' => 3, 'lg' => 3]),
+                                        TextInput::make('freight_data.identificacao_vagao')
+                                            ->label('Identificação do Vagão')
+                                            ->maxLength(20)
+                                            ->columnSpan(['md' => 3, 'lg' => 3]),
+                                        TextInput::make('freight_data.identificacao_balsa')
+                                            ->label('Identificação da Balsa')
+                                            ->maxLength(20)
+                                            ->columnSpan(['md' => 3, 'lg' => 3]),
+                                    ])
+                                    ->collapsed()
+                                    ->collapsible(),
+
+                                Section::make('4. Volumes')
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        Repeater::make('freight_data.volumes')
+                                            ->label('Volumes transportados')
+                                            ->columnSpanFull()
+                                            ->columns(['md' => 6, 'lg' => 12])
+                                            ->table([
+                                                TableColumn::make('Quantidade')
+                                                    ->width('120px'),
+                                                TableColumn::make('Espécie')
+                                                    ->width('180px'),
+                                                TableColumn::make('Marca')
+                                                    ->width('160px'),
+                                                TableColumn::make('Número')
+                                                    ->width('160px'),
+                                                TableColumn::make('Peso Líquido')
+                                                    ->width('140px'),
+                                                TableColumn::make('Peso Bruto')
+                                                    ->width('140px'),
+                                                TableColumn::make('Lacres')
+                                                    ->width('160px'),
+                                            ])
+                                            ->schema([
+                                                TextInput::make('quantidade')
+                                                    ->label('Quantidade')
+                                                    ->numeric()
+                                                    ->inputMode('numeric')
+                                                    ->columnSpan(['md' => 1, 'lg' => 2]),
+                                                Select::make('especie')
+                                                    ->label('Espécie')
+                                                    ->options(Unit::toSelectArray())
+                                                    ->searchable()
+                                                    ->native(false)
+                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                                TextInput::make('marca')
+                                                    ->label('Marca')
+                                                    ->maxLength(60)
+                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                                TextInput::make('numero')
+                                                    ->label('Número')
+                                                    ->maxLength(60)
+                                                    ->columnSpan(['md' => 1, 'lg' => 2]),
+                                                TextInput::make('peso_liquido')
+                                                    ->label('Peso Líquido')
+                                                    ->numeric()
+                                                    ->inputMode('decimal')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                                TextInput::make('peso_bruto')
+                                                    ->label('Peso Bruto')
+                                                    ->numeric()
+                                                    ->inputMode('decimal')
+                                                    ->columnSpan(['md' => 2, 'lg' => 2]),
+                                                Repeater::make('lacres')
+                                                    ->label('Lacres')
+                                                    ->columnSpanFull()
+                                                    ->schema([
+                                                        TextInput::make('numero')
+                                                            ->label('Número do Lacre')
+                                                            ->maxLength(60),
+                                                    ])
+                                                    ->defaultItems(0)
+                                                    ->addActionLabel('Adicionar lacre')
+                                                    ->collapsible(),
+                                            ])
+                                            ->defaultItems(0)
+                                            ->addActionLabel('Adicionar volume')
+                                            ->collapsible(),
+                                    ]),
+
+                                Section::make('5. ICMS Retido')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        TextInput::make('freight_data.icms_retido.valor_servico')
+                                            ->label('Valor do Serviço')
+                                            ->numeric()
+                                            ->inputMode('decimal')
+                                            ->prefix('R$')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('freight_data.icms_retido.base_calculo_retencao_icms')
+                                            ->label('Base de Cálculo')
+                                            ->numeric()
+                                            ->inputMode('decimal')
+                                            ->prefix('R$')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('freight_data.icms_retido.aliquota_retencao')
+                                            ->label('Alíquota de Retenção')
+                                            ->numeric()
+                                            ->inputMode('decimal')
+                                            ->suffix('%')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('freight_data.icms_retido.valor_icms_retido')
+                                            ->label('Valor ICMS Retido')
+                                            ->numeric()
+                                            ->inputMode('decimal')
+                                            ->prefix('R$')
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('freight_data.icms_retido.cfop')
+                                            ->label('CFOP')
+                                            ->maxLength(4)
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                        TextInput::make('freight_data.icms_retido.codigo_municipio_ocorrencia_fato_gerador')
+                                            ->label('Cód. Município Fato Gerador')
+                                            ->maxLength(7)
+                                            ->columnSpan(['md' => 2, 'lg' => 2]),
+                                    ])
+                                    ->collapsed()
+                                    ->collapsible(),
+                            ]),
+
+                        Tab::make('Logs')
                             ->visibleOn([Operation::Edit])
                             ->columnSpanFull()
                             ->columns(['md' => 6, 'lg' => 12])
                             ->schema([
+                                Section::make('Controle e Responsáveis')
+                                    ->columnSpanFull()
+                                    ->columns(['md' => 6, 'lg' => 12])
+                                    ->schema([
+                                        TextEntry::make('emission_requested_at')
+                                            ->label('Solicitada em')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('emission_attempted_at')
+                                            ->label('Última tentativa')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('confirmed_at')
+                                            ->label('Confirmada em')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('canceled_at')
+                                            ->label('Cancelada em')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('created_at')
+                                            ->label('Criada em')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('updated_at')
+                                            ->label('Atualizada em')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('createdBy.name')
+                                            ->label('Criada por')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('updatedBy.name')
+                                            ->label('Atualizada por')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('confirmedBy.name')
+                                            ->label('Confirmada por')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        TextEntry::make('canceledBy.name')
+                                            ->label('Cancelada por')
+                                            ->placeholder('-')
+                                            ->columnSpan(['md' => 2, 'lg' => 3]),
+                                    ]),
+
                                 Section::make('Histórico de Erros de Emissão')
                                     ->columnSpanFull()
                                     ->columns(['md' => 6, 'lg' => 12])

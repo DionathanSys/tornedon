@@ -44,6 +44,11 @@ class EditFiscalDocument extends EditRecord
         'document_key',
         'errors_messages',
         'nfe_payload',
+        'emission_requested_at',
+        'emission_attempted_at',
+        'confirmed_at',
+        'canceled_at',
+        'updated_at',
     ];
 
     protected function mutateFormDataBeforeFill(array $data): array
