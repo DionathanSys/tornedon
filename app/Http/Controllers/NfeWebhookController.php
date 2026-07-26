@@ -122,7 +122,7 @@ class NfeWebhookController extends Controller
             $updates[$statusField] = NfeStatus::AUTHORIZED->value;
             $updates[$protocoloField] = $payload['protocolo'] ?? null;
             $updates['status'] = Status::CONFIRMED->value;
-            $updates['confirmed_at'] = now();
+            $updates['authorized_at'] = now();
 
             if (! empty($payload['numero'])) {
                 $updates['document_number'] = $payload['numero'];

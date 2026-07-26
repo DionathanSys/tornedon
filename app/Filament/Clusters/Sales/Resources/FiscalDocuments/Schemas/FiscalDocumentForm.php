@@ -613,13 +613,13 @@ class FiscalDocumentForm
                                             ->dateTime('d/m/Y H:i:s')
                                             ->placeholder('-')
                                             ->columnSpan(['md' => 2, 'lg' => 3]),
-                                        TextEntry::make('emission_attempted_at')
-                                            ->label('Última tentativa')
+                                        TextEntry::make('confirmed_at')
+                                            ->label('Confirmada em')
                                             ->dateTime('d/m/Y H:i:s')
                                             ->placeholder('-')
                                             ->columnSpan(['md' => 2, 'lg' => 3]),
-                                        TextEntry::make('confirmed_at')
-                                            ->label('Confirmada em')
+                                        TextEntry::make('authorized_at')
+                                            ->label('Autorizada em')
                                             ->dateTime('d/m/Y H:i:s')
                                             ->placeholder('-')
                                             ->columnSpan(['md' => 2, 'lg' => 3]),

@@ -103,11 +103,15 @@ class NfeDocumentService
                 return false;
             }
 
+            $requestedAt = now();
+
             $doc->update([
                 'status' => \App\Enum\FiscalDocument\Status::PENDING->value,
                 'nfe_status' => NfeStatus::QUEUED->value,
-                'emission_requested_at' => now(),
+                'emission_requested_at' => $requestedAt,
                 'emission_group_key' => $preflight->queueGroupKey,
+                'confirmed_at' => $requestedAt,
+                'confirmed_by' => $userId,
                 'updated_by' => $userId,
             ]);
 

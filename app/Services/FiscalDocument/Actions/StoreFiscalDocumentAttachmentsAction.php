@@ -108,7 +108,7 @@ class StoreFiscalDocumentAttachmentsAction
                         'kind' => $kind,
                         'document_key' => $fiscalDocument->document_key,
                         'document_number' => $fiscalDocument->document_number,
-                        'authorized_at' => optional($fiscalDocument->confirmed_at)->toDateTimeString(),
+                        'authorized_at' => optional($fiscalDocument->authorized_at ?? $fiscalDocument->confirmed_at)->toDateTimeString(),
                     ],
                 ],
             );
@@ -161,4 +161,3 @@ class StoreFiscalDocumentAttachmentsAction
         return null;
     }
 }
-

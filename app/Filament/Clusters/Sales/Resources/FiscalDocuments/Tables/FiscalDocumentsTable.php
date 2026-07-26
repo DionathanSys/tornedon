@@ -154,6 +154,13 @@ class FiscalDocumentsTable
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                Tables\Columns\TextColumn::make('authorized_at')
+                    ->label('Autorizado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('pending')
                     ->label('Pendente')
                     ->toggleable(isToggledHiddenByDefault: true),

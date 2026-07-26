@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  *   - nfe_protocolo
  *   - document_number / document_series (quando a SEFAZ confirmar)
  *   - status (CONFIRMED / CANCELLED)
- *   - confirmed_at / canceled_at
+ *   - authorized_at / canceled_at
  */
 class ConsultNfeAction
 {
@@ -80,7 +80,7 @@ class ConsultNfeAction
                 $updates['nfe_status'] = NfeStatus::AUTHORIZED->value;
                 $updates['nfe_protocolo'] = $resp->protocolo ?? null;
                 $updates['status'] = Status::CONFIRMED->value;
-                $updates['confirmed_at'] = now();
+                $updates['authorized_at'] = now();
                 $payloadUpdates['nfe_payload'] = $payload;
 
                 if (! empty($resp->numero)) {

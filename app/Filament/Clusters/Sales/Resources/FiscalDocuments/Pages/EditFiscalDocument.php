@@ -45,9 +45,9 @@ class EditFiscalDocument extends EditRecord
         'errors_messages',
         'nfe_payload',
         'emission_requested_at',
-        'emission_attempted_at',
         'confirmed_at',
         'confirmed_by',
+        'authorized_at',
         'canceled_at',
         'updated_at',
     ];

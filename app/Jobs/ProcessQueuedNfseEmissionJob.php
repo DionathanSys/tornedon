@@ -60,7 +60,6 @@ class ProcessQueuedNfseEmissionJob implements ShouldQueue
             $document->update([
                 'status' => Status::PENDING->value,
                 'nfse_status' => NfeStatus::PENDING->value,
-                'emission_attempted_at' => now(),
             ]);
 
             $this->persistError(
@@ -73,10 +72,6 @@ class ProcessQueuedNfseEmissionJob implements ShouldQueue
 
             return;
         }
-
-        $document->update([
-            'emission_attempted_at' => now(),
-        ]);
 
         $userId = (int) ($document->updated_by ?? $document->created_by ?? 0);
         $action = new SendNfseAction($userId);

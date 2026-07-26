@@ -146,11 +146,6 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->dateTime('d/m/Y H:i:s')
                                             ->placeholder('-'),
-                                        TextEntry::make('emission_attempted_at')
-                                            ->label('Ultima tentativa')
-                                            ->columnSpan(['md' => 2, 'lg' => 3])
-                                            ->dateTime('d/m/Y H:i:s')
-                                            ->placeholder('-'),
                                         TextEntry::make('return_financial_processed_at')
                                             ->label('Proc. financeiro em')
                                             ->columnSpan(['md' => 2, 'lg' => 3])

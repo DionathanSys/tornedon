@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  *   - nfse_status
  *   - nfse_protocol
  *   - status (CONFIRMED / CANCELLED)
- *   - confirmed_at / canceled_at
+ *   - authorized_at / canceled_at
  */
 class ConsultNfseAction
 {
@@ -93,7 +93,7 @@ class ConsultNfseAction
                 $updates['nfse_status'] = NfeStatus::AUTHORIZED->value;
                 $updates['nfse_protocol'] = $resp->protocolo ?? null;
                 $updates['status'] = Status::CONFIRMED->value;
-                $updates['confirmed_at'] = now();
+                $updates['authorized_at'] = now();
                 $payloadUpdates['nfse_payload'] = $payload;
 
                 if (! empty($resp->numero)) {
