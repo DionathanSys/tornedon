@@ -77,6 +77,19 @@ class EditFiscalDocument extends EditRecord
         ];
     }
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $record = $this->getRecord();
+
+        $data['freight_data'] = $record->freight_data;
+        $data['payment_data'] = $record->payment_data;
+        $data['tax_data'] = $record->tax_data;
+        $data['nfe_payload'] = $record->nfe_payload;
+        $data['nfse_payload'] = $record->nfse_payload;
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['is_final_consumer'] = true;

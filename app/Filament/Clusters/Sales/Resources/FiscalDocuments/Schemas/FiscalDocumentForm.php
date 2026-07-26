@@ -18,6 +18,8 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Items
 use App\Models\FiscalDocument;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\CodeEditor;
+use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -734,6 +736,25 @@ class FiscalDocumentForm
                                     ]),
                             ]),
 
+                        Tab::make('Payload')
+                            ->icon(Heroicon::DocumentText)
+                            ->visibleOn([Operation::Edit])
+                            ->columnSpanFull()
+                            ->schema([
+                                Section::make('Payload do documento')
+                                    ->description('Conteúdo persistido para integração fiscal. Este campo é somente leitura.')
+                                    ->columnSpanFull()
+                                    ->schema([
+                                        CodeEditor::make('fiscal_payload_preview')
+                                            ->label('Payload')
+                                            ->state(fn (?FiscalDocument $record): string => self::payloadJson($record))
+                                            ->language(Language::Json)
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+
                         Tab::make('Cartas de Correção')
                             ->visible(fn (?FiscalDocument $record, $operation): bool => $operation === 'edit'
                                 && $record?->isNfe()
@@ -866,6 +887,21 @@ class FiscalDocumentForm
         }
 
         return ! $record->isNfeAuthorized() && ! $record->isNfeCanceled();
+    }
+
+    private static function payloadJson(?FiscalDocument $record): string
+    {
+        if (! $record instanceof FiscalDocument) {
+            return '{}';
+        }
+
+        $payload = $record->isNfse() ? $record->nfse_payload : $record->nfe_payload;
+
+        if (! is_array($payload) || $payload === []) {
+            return '{}';
+        }
+
+        return json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
     }
 
     private static function formatCorrectionEventDate(mixed $state): ?string

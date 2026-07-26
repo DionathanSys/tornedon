@@ -25,7 +25,7 @@ class FiscalDocumentResource extends Resource
 
     protected static ?string $slug = 'nf-saida';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
+    protected static string|UnitEnum|null $navigationGroup = 'Vendas';
 
     protected static ?string $modelLabel = 'Nota de Saída';
 
@@ -44,6 +44,7 @@ class FiscalDocumentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['taxDetail', 'payload'])
             ->where('operation_type', OperationType::SAIDA->value);
     }
 
@@ -55,9 +56,9 @@ class FiscalDocumentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListFiscalDocuments::route('/'),
+            'index' => ListFiscalDocuments::route('/'),
             'create' => CreateFiscalDocument::route('/create'),
-            'edit'   => EditFiscalDocument::route('/{record}/edit'),
+            'edit' => EditFiscalDocument::route('/{record}/edit'),
         ];
     }
 }

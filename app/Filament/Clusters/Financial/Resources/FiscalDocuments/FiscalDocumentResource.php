@@ -25,10 +25,10 @@ class FiscalDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $slug = 'nf-entrada';
-    
+
     protected static ?string $modelLabel = 'Nota de Entrada';
 
     protected static ?string $pluralModelLabel = 'Notas de Entrada';
@@ -37,14 +37,13 @@ class FiscalDocumentResource extends Resource
 
     protected static ?int $navigationSort = 9;
 
-
-
     /**
      * Restringe o resource apenas a notas de entrada (operation_type = ENTRADA).
      */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['taxDetail', 'payload'])
             ->withSum('items as items_total', 'total_price')
             ->where('company_id', Filament::getTenant()->id)
             ->where('operation_type', OperationType::ENTRADA->value);
@@ -63,9 +62,9 @@ class FiscalDocumentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListFiscalDocuments::route('/'),
+            'index' => ListFiscalDocuments::route('/'),
             'create' => CreateFiscalDocument::route('/create'),
-            'edit'   => EditFiscalDocument::route('/{record}/edit'),
+            'edit' => EditFiscalDocument::route('/{record}/edit'),
         ];
     }
 
