@@ -47,6 +47,7 @@ class EditFiscalDocument extends EditRecord
         'emission_requested_at',
         'emission_attempted_at',
         'confirmed_at',
+        'confirmed_by',
         'canceled_at',
         'updated_at',
     ];

@@ -95,6 +95,7 @@ class NfseDocumentService
                 'nfse_status' => NfeStatus::QUEUED->value,
                 'emission_requested_at' => now(),
                 'emission_group_key' => $preflight->queueGroupKey,
+                'confirmed_by' => $userId,
                 'updated_by' => $userId,
             ]);
 

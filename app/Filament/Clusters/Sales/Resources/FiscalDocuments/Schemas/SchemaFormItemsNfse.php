@@ -119,8 +119,7 @@ class SchemaFormItemsNfse
                 ->columns(3)
                 ->schema([
                     TextInput::make('municipal_tax_code')
-                        ->label('Código Tributação Município')
-                        ->helperText('Valor persistido no item fiscal e enviado como codigo_tributacao_municipio.')
+                        ->label('Código Tributação')
                         ->maxLength(20),
                     TextInput::make('nbs_code')
                         ->label('NBS')

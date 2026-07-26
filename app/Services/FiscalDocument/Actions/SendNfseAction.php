@@ -20,7 +20,7 @@ use Throwable;
  *  3. Chama $nfse->cria($payload) via SDK
  *  4. Em código 5023 (lote em processamento): confirma consumo do RPS, salva chave e status
  *  5. Em falhas antes da aceitação: limpa a atribuição do número
- *  6. Dispara ConsultNfseJob como fallback de polling
+ *  6. Aguarda o webhook da IntegraNotas ou consulta manual pelo usuário
  */
 class SendNfseAction
 {
@@ -165,9 +165,6 @@ class SendNfseAction
                     'chave' => $resp->chave,
                     'ambiente' => $ambiente,
                 ]);
-
-                dispatch(new \App\Jobs\ConsultNfseJob($fiscalDocument->id, $this->userId))
-                    ->delay(now()->addSeconds(15));
 
                 $this->setSuccess();
 

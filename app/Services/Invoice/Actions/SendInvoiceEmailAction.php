@@ -13,7 +13,6 @@ use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\DTO\EmailAttachment;
 use App\Services\Email\DTO\EmailMessage;
 use App\Services\FiscalDocument\Actions\ConsultNfeAction;
-use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
@@ -215,9 +214,6 @@ class SendInvoiceEmailAction
         }
 
         if ($fiscalDocument->isNfse()) {
-            $action = app(ConsultNfseAction::class);
-            $action->execute($fiscalDocument);
-
             return;
         }
 
