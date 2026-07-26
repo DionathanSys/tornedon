@@ -25,6 +25,7 @@ class NfseItemValidator
             'items.*.service_code' => 'nullable|string|max:20',
             'items.*.nbs_code' => 'nullable|string|max:9',
             'items.*.iss_rate' => 'nullable|numeric|min:0|max:100',
+            'items.*.iss_amount' => 'nullable|numeric|min:0',
             'items.*.iss_exigibility' => 'nullable|string|max:2',
             'items.*.additional_information' => 'nullable|string|max:2000',
         ];
@@ -73,6 +74,7 @@ class NfseItemValidator
             'municipal_tax_code' => 'nullable|string|max:20',
             'discount_amount' => 'nullable|numeric|min:0',
             'iss_rate' => 'nullable|numeric|min:0|max:100',
+            'iss_amount' => 'nullable|numeric|min:0',
             'iss_exigibility' => 'nullable|string|max:2',
             'iss_withheld' => 'nullable|boolean',
             'additional_information' => 'nullable|string|max:2000',
@@ -141,6 +143,7 @@ class NfseItemValidator
             'municipal_tax_code' => 'sometimes|nullable|string|max:20',
             'discount_amount' => 'sometimes|nullable|numeric|min:0',
             'iss_rate' => 'sometimes|nullable|numeric|min:0|max:100',
+            'iss_amount' => 'sometimes|nullable|numeric|min:0',
             'iss_exigibility' => 'sometimes|nullable|string|max:2',
             'iss_withheld' => 'sometimes|nullable|boolean',
             'additional_information' => 'sometimes|nullable|string|max:2000',

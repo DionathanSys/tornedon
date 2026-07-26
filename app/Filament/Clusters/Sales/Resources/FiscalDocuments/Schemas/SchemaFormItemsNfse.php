@@ -11,7 +11,6 @@ use App\Models\Service;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -31,7 +30,6 @@ class SchemaFormItemsNfse
             Section::make('Serviço')
                 ->columnSpanFull()
                 ->schema([
-                    Hidden::make('service_id'),
                     Grid::make([
                         'default' => 1,
                         'md' => 5,
@@ -78,6 +76,18 @@ class SchemaFormItemsNfse
                         ])
                         ->columnSpanFull(),
 
+                    Select::make('service_id')
+                        ->label('Serviço do item fiscal')
+                        ->searchable()
+                        ->relationship('service', 'name', function ($query) {
+                            $query->where('services.company_id', Filament::getTenant()->id);
+                        })
+                        ->getOptionLabelFromRecordUsing(fn (Service $record): string => trim("[{$record->service_code}] {$record->name}"))
+                        ->required()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn (Set $set, Get $get, $state): null => self::syncServiceById($set, $get, $state))
+                        ->columnSpanFull(),
+
                     Textarea::make('description')
                         ->label('Discriminação do Serviço')
                         ->required()
@@ -118,6 +128,11 @@ class SchemaFormItemsNfse
                         ->step(0.01)
                         ->minValue(0)
                         ->maxValue(100),
+                    TextInput::make('iss_amount')
+                        ->label('Valor ISS')
+                        ->numeric()
+                        ->inputMode('decimal')
+                        ->prefix('R$'),
                     Select::make('iss_exigibility')
                         ->label('Exigibilidade ISS')
                         ->options(IssExigibility::toSelectArray())
@@ -128,18 +143,13 @@ class SchemaFormItemsNfse
                         ->default(false),
                 ]),
 
-            Section::make('Informações adicionais')
+            Textarea::make('additional_information')
+                ->label('Informações Adicionais do Item')
+                ->rows(2)
+                ->maxLength(2000)
+                ->dehydrateStateUsing(fn (?string $state): ?string => $state ? Str::upper($state) : null)
                 ->columnSpanFull()
-                ->schema([
-                    Textarea::make('additional_information')
-                        ->label('Informações Adicionais do Item')
-                        ->rows(2)
-                        ->maxLength(2000)
-                        ->dehydrateStateUsing(fn (?string $state): ?string => $state ? Str::upper($state) : null)
-                        ->columnSpanFull(),
-                ])
-                ->collapsed()
-                ->collapsible(),
+                ->columnStart(1),
         ];
     }
 
@@ -178,6 +188,7 @@ class SchemaFormItemsNfse
             $set('nbs_code', null);
             $set('cnae_code', null);
             $set('iss_rate', null);
+            $set('iss_amount', null);
             $set('iss_exigibility', null);
 
             ItemValueGroup::recalculate($get, $set, totalAmountField: 'total_price');
@@ -244,6 +255,7 @@ class SchemaFormItemsNfse
         $set('nbs_code', $dto->nbsCode);
         $set('cnae_code', $dto->cnaeCode);
         $set('iss_rate', $dto->issRate);
+        $set('iss_amount', null);
         $set('iss_exigibility', $dto->issExigibility);
 
         ItemValueGroup::recalculate($get, $set, totalAmountField: 'total_price');

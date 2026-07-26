@@ -34,7 +34,12 @@ final class EditNfseItemAction
                 $data['municipal_tax_code'] = $record->municipal_tax_code;
                 $data['nbs_code'] = $record->nbs_code;
                 $data['cnae_code'] = $record->cnae_code;
+                $data['quantity'] = $record->quantity;
+                $data['unit_price'] = $record->unit_price;
+                $data['discount_amount'] = $record->discount_amount;
+                $data['total_price'] = $record->total_price;
                 $data['iss_rate'] = $record->iss_rate;
+                $data['iss_amount'] = $record->iss_amount;
                 $data['iss_exigibility'] = $record->iss_exigibility;
                 $data['iss_withheld'] = $record->iss_withheld;
                 $data['additional_information'] = $record->additional_information;
