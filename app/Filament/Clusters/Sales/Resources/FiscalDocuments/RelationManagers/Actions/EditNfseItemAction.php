@@ -21,7 +21,18 @@ final class EditNfseItemAction
             ->visible(fn (RelationManager $livewire): bool => $livewire->getOwnerRecord()->isNfse()
                 && ! $livewire->getOwnerRecord()->isNfseSent()
             )
-            ->schema(SchemaFormItemsNfse::make())
+            ->schema(fn (RelationManager $livewire): array => SchemaFormItemsNfse::make(
+                disableQuantity: filled($livewire->getOwnerRecord()->invoice_id),
+            ))
+            ->fillForm(function (array $data, FiscalDocumentItem $record): array {
+                $data['service_id'] = $record->service_id;
+                $data['service_lookup_id'] = $record->service_id;
+                $data['service_lookup_modal'] = $record->service_id;
+                $data['service_code_lookup'] = $record->service?->service_code;
+                $data['service_name_lookup'] = $record->service?->name;
+
+                return $data;
+            })
             ->using(function (FiscalDocumentItem $record, array $data): ?Model {
                 Log::debug('Atualizando item NFS-e via RelationManager', [
                     'metodo'  => __METHOD__ . '@' . __LINE__,
@@ -32,6 +43,10 @@ final class EditNfseItemAction
                 // Garante que iss_exigibility seja sempre string
                 if (isset($data['iss_exigibility']) && ! is_null($data['iss_exigibility'])) {
                     $data['iss_exigibility'] = (string) $data['iss_exigibility'];
+                }
+
+                if (filled($record->fiscalDocument?->invoice_id)) {
+                    $data['quantity'] = $record->quantity;
                 }
 
                 $service = new FiscalDocumentItemService();

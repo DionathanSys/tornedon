@@ -33,6 +33,7 @@ class ItemsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         $isNfse = $this->getOwnerRecord()->isNfse();
+        $itemsLocked = $this->itemsAreLocked();
 
         return $table
             ->recordTitleAttribute('item_number')
@@ -174,7 +175,7 @@ class ItemsRelationManager extends RelationManager
                     ->visible(fn () => ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
                 DeleteItemAction::make()
                     ->iconButton()
-                    ->visible(fn () => ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
+                    ->visible(fn () => ! $itemsLocked && ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
 
                 // NFS-e actions
                 EditNfseItemAction::make()
@@ -182,22 +183,29 @@ class ItemsRelationManager extends RelationManager
                     ->visible(fn () => $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
                 DeleteItemAction::make('deleteNfseItem')
                     ->iconButton()
-                    ->visible(fn () => $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
+                    ->visible(fn () => ! $itemsLocked && $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                    DeleteBulkAction::make()
+                        ->visible(fn () => ! $itemsLocked),
+                ])
+                    ->visible(fn () => ! $itemsLocked),
                 // NF-e create
                 CreateItemAction::make()
-                    ->visible(fn () => ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
+                    ->visible(fn () => ! $itemsLocked && ! $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
                 // NFS-e create
                 CreateNfseItemAction::make()
-                    ->visible(fn () => $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
+                    ->visible(fn () => ! $itemsLocked && $isNfse && $this->getOwnerRecord()->status == Status::PENDING),
             ])
             ->emptyStateDescription($isNfse
                 ? 'Adicione serviços à NFS-e para que sejam exibidos aqui.'
                 : 'Adicione itens à nota fiscal para que sejam exibidos aqui.'
             );
+    }
+
+    private function itemsAreLocked(): bool
+    {
+        return filled($this->getOwnerRecord()->invoice_id);
     }
 }

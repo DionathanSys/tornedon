@@ -33,6 +33,12 @@ final class CreateItemAction
             ->using(function (array $data, RelationManager $livewire): ?Model {
                 $fiscalDocument = $livewire->getOwnerRecord();
 
+                if (filled($fiscalDocument->invoice_id)) {
+                    notify::error(message: 'Itens de documentos fiscais originados por fatura não podem ser adicionados manualmente.');
+
+                    return null;
+                }
+
                 $data['fiscal_document_id'] = $fiscalDocument->id;
 
                 Log::debug('Criando item de nota fiscal via RelationManager', [

@@ -23,7 +23,8 @@ final class EditItemAction
             ->visible(fn(RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
             ->schema(fn(RelationManager $livewire): array => SchemaFormItemsNfe::make(
                 context: 'edit',
-                showTaxesTab: SchemaFormItemsNfe::shouldShowTaxesTab($livewire->getOwnerRecord())
+                showTaxesTab: SchemaFormItemsNfe::shouldShowTaxesTab($livewire->getOwnerRecord()),
+                disableQuantity: filled($livewire->getOwnerRecord()->invoice_id),
             ))
             ->mutateRecordDataUsing(function (array $data): array {
                 Log::debug('Mutating record data', [
@@ -50,6 +51,10 @@ final class EditItemAction
                     'item_id' => $record->id,
                     'data'    => $data,
                 ]);
+
+                if (filled($record->fiscalDocument?->invoice_id)) {
+                    $data['quantity'] = $record->quantity;
+                }
 
                 $service = new FiscalDocumentItemService();
                 $item = $service->update($record, $data, Auth::id());

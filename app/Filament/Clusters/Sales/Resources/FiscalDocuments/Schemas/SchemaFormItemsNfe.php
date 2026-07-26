@@ -26,7 +26,7 @@ use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class SchemaFormItemsNfe
 {
-    public static function make(string $context = 'create', bool $showTaxesTab = false): array
+    public static function make(string $context = 'create', bool $showTaxesTab = false, bool $disableQuantity = false): array
     {
         return [
             Tabs::make('item_tabs')
@@ -70,6 +70,7 @@ class SchemaFormItemsNfe
 
                             ItemValueGroup::make([
                                 'totalAmountField' => 'total_price',
+                                'disableQuantity' => $disableQuantity,
                             ]),
                             Textarea::make('additional_information')
                                 ->label('Informações Adicionais do Item')

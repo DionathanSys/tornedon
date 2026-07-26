@@ -32,6 +32,7 @@ class ItemValueGroup
      *     showDiscount?: bool,
      *     preserveDiscountOnValueChange?: bool,
      *     enforceEffectiveMinSalePrice?: bool,
+     *     disableQuantity?: bool,
      * } $options
      */
     public static function make(array $options = []): Group
@@ -48,6 +49,7 @@ class ItemValueGroup
         $showDiscount = $options['showDiscount'] ?? true;
         $preserveDiscountOnValueChange = $options['preserveDiscountOnValueChange'] ?? false;
         $enforceEffectiveMinSalePrice = $options['enforceEffectiveMinSalePrice'] ?? false;
+        $disableQuantity = $options['disableQuantity'] ?? false;
 
         $schema = [
             TextInput::make($qty)
@@ -57,6 +59,7 @@ class ItemValueGroup
                 ->default(1)
                 ->minValue(0)
                 ->live(onBlur: true)
+                ->disabled($disableQuantity)
                 ->autocomplete(false)
                 ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
                 ->afterStateUpdated(function ($state, Set $set, Get $get) use (

@@ -22,6 +22,12 @@ final class DeleteItemAction
             ->modalDescription('Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.')
             ->modalSubmitActionLabel('Sim, excluir')
             ->using(function (FiscalDocumentItem $record): bool {
+                if (filled($record->fiscalDocument?->invoice_id)) {
+                    notify::error(message: 'Itens de documentos fiscais originados por fatura não podem ser excluídos manualmente.');
+
+                    return false;
+                }
+
                 Log::debug('Excluindo item de nota fiscal via RelationManager', [
                     'metodo'  => __METHOD__ . '@' . __LINE__,
                     'item_id' => $record->id,
