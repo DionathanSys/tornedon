@@ -86,8 +86,24 @@ class EditFiscalDocument extends EditRecord
         $data['tax_data'] = $record->tax_data;
         $data['nfe_payload'] = $record->nfe_payload;
         $data['nfse_payload'] = $record->nfse_payload;
+        $data['fiscal_payload_preview'] = $this->payloadJson($record);
 
         return $data;
+    }
+
+    private function payloadJson(Model $record): string
+    {
+        if (! $record instanceof \App\Models\FiscalDocument) {
+            return '{}';
+        }
+
+        $payload = $record->isNfse() ? $record->nfse_payload : $record->nfe_payload;
+
+        if (! is_array($payload) || $payload === []) {
+            return '{}';
+        }
+
+        return json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

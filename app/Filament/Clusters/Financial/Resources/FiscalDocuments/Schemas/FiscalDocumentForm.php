@@ -208,7 +208,6 @@ class FiscalDocumentForm
                                     ->schema([
                                         CodeEditor::make('fiscal_payload_preview')
                                             ->label('Payload')
-                                            ->state(fn (?FiscalDocument $record): string => self::payloadJson($record))
                                             ->language(Language::Json)
                                             ->disabled()
                                             ->dehydrated(false)
@@ -217,20 +216,5 @@ class FiscalDocumentForm
                             ]),
                     ]),
             ]);
-    }
-
-    private static function payloadJson(?FiscalDocument $record): string
-    {
-        if (! $record instanceof FiscalDocument) {
-            return '{}';
-        }
-
-        $payload = $record->isNfse() ? $record->nfse_payload : $record->nfe_payload;
-
-        if (! is_array($payload) || $payload === []) {
-            return '{}';
-        }
-
-        return json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
     }
 }
