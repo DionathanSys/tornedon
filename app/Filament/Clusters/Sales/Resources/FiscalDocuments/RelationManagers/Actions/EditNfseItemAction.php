@@ -23,6 +23,8 @@ final class EditNfseItemAction
             )
             ->schema(fn (RelationManager $livewire): array => SchemaFormItemsNfse::make(
                 disableQuantity: filled($livewire->getOwnerRecord()->invoice_id),
+                showServiceLookup: false,
+                showValues: true,
             ))
             ->fillForm(function (array $data, FiscalDocumentItem $record): array {
                 $data['service_id'] = $record->service_id;

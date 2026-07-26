@@ -212,8 +212,8 @@ class BuildNfseMunicipalPayloadAction
                     $itemPayload['codigo_nbs'] = $codigoNbs;
                 }
 
-                $ctm = $item->service?->municipal_tax_code
-                    ?? $item->municipal_tax_code
+                $ctm = $item->municipal_tax_code
+                    ?? $item->service?->municipal_tax_code
                     ?? $profile?->default_municipal_tax_code
                     ?? null;
                 if ($ctm) {

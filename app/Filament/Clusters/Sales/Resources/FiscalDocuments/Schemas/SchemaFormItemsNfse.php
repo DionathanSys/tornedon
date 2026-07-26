@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,16 +25,20 @@ use Illuminate\Support\Str;
 
 class SchemaFormItemsNfse
 {
-    public static function make(bool $disableQuantity = false): array
+    public static function make(bool $disableQuantity = false, bool $showServiceLookup = true, bool $showValues = true): array
     {
         return [
             Section::make('Serviço')
                 ->columnSpanFull()
                 ->schema([
+                    Hidden::make('service_id')
+                        ->visible(! $showServiceLookup),
+
                     Grid::make([
                         'default' => 1,
                         'md' => 5,
                     ])
+                        ->visible($showServiceLookup)
                         ->schema([
                             TextInput::make('service_code_lookup')
                                 ->label('Cód.')
@@ -78,6 +83,7 @@ class SchemaFormItemsNfse
 
                     Select::make('service_id')
                         ->label('Serviço do item fiscal')
+                        ->visible($showServiceLookup)
                         ->searchable()
                         ->relationship('service', 'name', function ($query) {
                             $query->where('services.company_id', Filament::getTenant()->id);
@@ -98,6 +104,7 @@ class SchemaFormItemsNfse
                 ]),
 
             Section::make('Valores')
+                ->visible($showValues)
                 ->columnSpanFull()
                 ->schema([
                     ItemValueGroup::make([
@@ -112,8 +119,8 @@ class SchemaFormItemsNfse
                 ->columns(3)
                 ->schema([
                     TextInput::make('municipal_tax_code')
-                        ->label('Código do Serviço (Nacional / LC 116)')
-                        ->helperText('Código fiscal utilizado no payload da NFS-e Nacional.')
+                        ->label('Código Tributação Município')
+                        ->helperText('Valor persistido no item fiscal e enviado como codigo_tributacao_municipio.')
                         ->maxLength(20),
                     TextInput::make('nbs_code')
                         ->label('NBS')
