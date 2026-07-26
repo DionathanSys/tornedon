@@ -30,6 +30,14 @@ final class EditNfseItemAction
                 $data['service_lookup_modal'] = $record->service_id;
                 $data['service_code_lookup'] = $record->service?->service_code;
                 $data['service_name_lookup'] = $record->service?->name;
+                $data['description'] = $record->description;
+                $data['municipal_tax_code'] = $record->municipal_tax_code;
+                $data['nbs_code'] = $record->nbs_code;
+                $data['cnae_code'] = $record->cnae_code;
+                $data['iss_rate'] = $record->iss_rate;
+                $data['iss_exigibility'] = $record->iss_exigibility;
+                $data['iss_withheld'] = $record->iss_withheld;
+                $data['additional_information'] = $record->additional_information;
 
                 return $data;
             })

@@ -73,9 +73,19 @@ class ItemsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('service_code')
-                    ->label('Cód. Serviço')
+                    ->label('Cód. Serviço Nacional')
                     ->visible($isNfse)
                     ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('nbs_code')
+                    ->label('NBS')
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('cnae_code')
+                    ->label('CNAE')
+                    ->visible($isNfse)
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 // Common columns
                 TextColumn::make('description')
