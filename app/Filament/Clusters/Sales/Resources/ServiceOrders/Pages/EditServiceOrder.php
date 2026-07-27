@@ -15,6 +15,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceSer
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\OpenWarrantyClaimAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\TransferServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Schemas\ServiceOrderForm;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
@@ -80,6 +81,8 @@ class EditServiceOrder extends EditRecord
                     ->openUrlInNewTab(),
                 CloseServiceOrderAction::make()
                     ->color('gray')
+                    ->hiddenLabel(),
+                TransferServiceOrderAction::make()
                     ->hiddenLabel(),
                 InvoiceServiceOrderAction::make(),
                 Action::make('view-linked-requisition')

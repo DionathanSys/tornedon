@@ -7,19 +7,21 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\BulkInvoiceServiceOrderAction;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseSelectedServiceOrdersAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseSelectedServiceOrdersAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedDetailedServiceOrdersPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersPdfAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedDetailedServiceOrdersPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\TransferServiceOrderAction;
 use App\Models\ServiceOrder;
+use App\Notification\NotifyService as notify;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Partner\PartnerService;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -32,14 +34,13 @@ use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
-use App\Notification\NotifyService as notify;
-use Filament\Tables\Enums\ColumnManagerLayout;
 
 class ServiceOrdersTable
 {
@@ -67,8 +68,8 @@ class ServiceOrdersTable
                     ->label('Status')
                     ->width('1%')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state->description())
-                    ->color(fn($state) => match ($state) {
+                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->color(fn ($state) => match ($state) {
                         State::OPEN => 'info',
                         State::CLOSED => 'success',
                         State::INVOICED => 'warning',
@@ -80,15 +81,15 @@ class ServiceOrdersTable
                     ->label('Prioridade')
                     ->badge()
                     ->width('1%')
-                    ->formatStateUsing(fn($state) => $state->description())
-                    ->color(fn($state) => $state->color())
+                    ->formatStateUsing(fn ($state) => $state->description())
+                    ->color(fn ($state) => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
                     ->width('1%')
-                    ->formatStateUsing(fn($state) => $state->description())
+                    ->formatStateUsing(fn ($state) => $state->description())
                     ->color('gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -111,20 +112,20 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('services_total_amount')
                     ->label('Total Serviços')
-                    ->state(fn(ServiceOrder $record): float => (float) $record->services_total_amount)
-                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn (ServiceOrder $record): float => (float) $record->services_total_amount)
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('requisition_total_amount')
                     ->label('Total Produtos')
-                    ->state(fn(ServiceOrder $record): float => (float) $record->requisition_total_amount)
-                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn (ServiceOrder $record): float => (float) $record->requisition_total_amount)
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('grand_total_amount')
                     ->label('Total Geral')
-                    ->state(fn(ServiceOrder $record): float => (float) $record->grand_total_amount)
-                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn (ServiceOrder $record): float => (float) $record->grand_total_amount)
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('scheduled_date')
@@ -142,7 +143,7 @@ class ServiceOrdersTable
                     ->label('Fatura')
                     ->sortable()
                     ->placeholder('Sem Fatura')
-                    ->url(fn($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
+                    ->url(fn ($record) => $record->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]) : null),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
@@ -168,11 +169,11 @@ class ServiceOrdersTable
                     ->searchable()
                     ->preload()
                     ->getSearchResultsUsing(
-                        fn(string $search): array => (new PartnerService)
+                        fn (string $search): array => (new PartnerService)
                             ->searchForSelect($search, Filament::getTenant()->id, 'customer', 20, ['document_number' => false])
                     )
                     ->getOptionLabelUsing(
-                        fn($value): ?string => (new PartnerService)
+                        fn ($value): ?string => (new PartnerService)
                             ->getLabelForSelect((int) $value, ['document_number' => false])
                     )
                     ->native(false),
@@ -181,11 +182,11 @@ class ServiceOrdersTable
                     ->searchable()
                     ->preload()
                     ->getSearchResultsUsing(
-                        fn(string $search): array => (new EquipmentService)
+                        fn (string $search): array => (new EquipmentService)
                             ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
                     )
                     ->getOptionLabelUsing(
-                        fn($value): ?string => (new EquipmentService)
+                        fn ($value): ?string => (new EquipmentService)
                             ->getLabelForSelect((int) $value)
                     )
                     ->native(false),
@@ -219,20 +220,21 @@ class ServiceOrdersTable
                     PreviewServiceOrderPdfAction::make(),
                     DownloadServiceOrderPdfAction::make(),
                     CloseServiceOrderAction::make(),
+                    TransferServiceOrderAction::make(),
                     InvoiceServiceOrderAction::make(),
                     Action::make('open-invoice')
-                        ->url(fn($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
-                        ->visible(fn($record) => $record->invoice_id)
+                        ->url(fn ($record) => InvoiceResource::getUrl('edit', ['record' => $record->invoice_id]))
+                        ->visible(fn ($record) => $record->invoice_id)
                         ->icon(Heroicon::Eye)
                         ->label('Acessar Fatura'),
                     CancelServiceOrderAction::make(),
                     DeleteAction::make()
                         ->hiddenLabel()
                         ->icon(Heroicon::Trash)
-                        ->visible(fn(Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
+                        ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
                         ->using(function (Model $record): bool {
                             Log::debug('EditServiceOrder: Iniciando exclusão de ordem de serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'service_order_id' => $record->id,
                             ]);
 
@@ -241,7 +243,7 @@ class ServiceOrdersTable
 
                             if ($service->hasError()) {
                                 Log::error('EditServiceOrder: Erro ao deletar ordem de serviço', [
-                                    'metodo' => __METHOD__ . '@' . __LINE__,
+                                    'metodo' => __METHOD__.'@'.__LINE__,
                                     'error_code' => $service->getErrorCode(),
                                     'message' => $service->getMessage(),
                                     'service_order_id' => $record->id,
@@ -251,11 +253,12 @@ class ServiceOrdersTable
                                     message: $service->getMessageUser(),
                                     errorCode: $service->getErrorCode()
                                 );
+
                                 return false;
                             }
 
                             Log::info('EditServiceOrder: Ordem de serviço deletada com sucesso', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'service_order_id' => $record->id,
                             ]);
 

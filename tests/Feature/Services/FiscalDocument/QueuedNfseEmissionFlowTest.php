@@ -85,6 +85,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $config = Mockery::mock(NfseConfigService::class);
         $config->shouldReceive('resolveAmbiente')->andReturn(2);
         $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $config->shouldReceive('buildSdkParams')->andReturn([
             'token' => 'fake-token',
             'ambiente' => 2,
@@ -144,6 +145,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $config = Mockery::mock(NfseConfigService::class);
         $config->shouldReceive('resolveAmbiente')->andReturn(2);
         $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $config->shouldReceive('buildSdkParams')->andReturn([
             'token' => 'fake-token',
             'ambiente' => 2,
@@ -188,6 +190,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $config = Mockery::mock(NfseConfigService::class);
         $config->shouldReceive('resolveAmbiente')->andReturn(2);
         $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $config->shouldReceive('buildSdkParams')->andReturn([
             'token' => 'fake-token',
             'ambiente' => 2,
@@ -230,6 +233,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
 
         $config = Mockery::mock(NfseConfigService::class);
         $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $this->app->instance(NfseConfigService::class, $config);
 
         $action = new \App\Services\FiscalDocument\Actions\SendNfseAction($user->id);
@@ -269,6 +273,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $config = Mockery::mock(NfseConfigService::class);
         $config->shouldReceive('resolveAmbiente')->andReturn(2);
         $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $config->shouldReceive('buildSdkParams')->andReturn([
             'token' => 'fake-token',
             'ambiente' => 2,

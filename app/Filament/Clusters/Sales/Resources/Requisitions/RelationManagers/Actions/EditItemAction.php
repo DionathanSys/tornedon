@@ -2,30 +2,22 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions;
 
-use App\Filament\Clusters\Sales\Resources\Components\SelectProduct;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Schemas\ItemsForm;
 use App\Models\RequisitionItem;
-use App\Services\Product\ProductSalePriceService;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\Hidden;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Group;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use App\Notification\NotifyService as notify;
+use App\Services\Product\ProductSalePriceService;
 use App\Services\RequisitionItem\RequisitionItemService;
 use App\Traits\AuthorizesRequisitionItemActions;
 use App\Traits\ParsesMoneyValues;
-use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class EditItemAction
 {
@@ -36,32 +28,35 @@ final class EditItemAction
     {
         return EditAction::make()
             ->label('Editar')
-            ->visible(fn(RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
+            ->visible(fn (RelationManager $livewire): bool => self::canModifyItems($livewire->getOwnerRecord()))
             ->mutateRecordDataUsing(function (array $data, RequisitionItem $record): array {
                 $data['_min_sale_price'] = $record->product_id
-                    ? (new ProductSalePriceService())->getMinSalePriceById($record->product_id)
+                    ? (new ProductSalePriceService)->getMinSalePriceById($record->product_id)
                     : 0;
-                // $data['item.product_stock_id'] = $record->productStock()->first()?->id;
+                $data = ItemsForm::hydrateRecordData($data, $record->product_id);
                 $data['description'] = $record->product->name;
+
                 return $data;
             })
-            ->schema(fn(Schema $schema) => ItemsForm::configure($schema))
+            ->schema(fn (Schema $schema) => ItemsForm::configure($schema))
             ->using(function (RequisitionItem $record, array $data): ?Model {
                 Log::debug('Iniciando atualização de item via RelationManager', [
-                    'metodo' => __METHOD__ . '@ ' . __LINE__,
+                    'metodo' => __METHOD__.'@ '.__LINE__,
                     'item_id' => $record->id,
                     'data' => $data,
                 ]);
 
-                $service = new RequisitionItemService();
+                $service = new RequisitionItemService;
                 $item = $service->update($record, $data, Auth::id());
 
                 if ($service->hasError()) {
                     notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                     return null;
                 }
 
                 notify::success(message: $service->getMessageUser());
+
                 return $item;
             })
             ->after(function (ItemsRelationManager $livewire) {

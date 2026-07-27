@@ -16,10 +16,12 @@ use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\FiscalDocumentTaxDetail;
 use App\Models\FiscalProfile;
 use App\Models\NfeSequence;
 use App\Models\Partner;
 use App\Models\Product;
+use App\Models\ProductTax;
 use App\Models\User;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
@@ -76,8 +78,8 @@ class QueuedNfeEmissionFlowTest extends TestCase
             'nfe_status' => NfeStatus::QUEUED->value,
             'emission_group_key' => "nfe:{$firstDocument->company_id}:1:2",
             'emission_requested_at' => now()->subMinute(),
-            'freight_data' => [],
         ]);
+        $firstDocument->taxDetail()->update(['freight_data' => []]);
 
         $secondDocument->update([
             'nfe_status' => NfeStatus::QUEUED->value,
@@ -88,6 +90,7 @@ class QueuedNfeEmissionFlowTest extends TestCase
         $config = Mockery::mock(NfeConfigService::class);
         $config->shouldReceive('resolveAmbiente')->andReturn(2);
         $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $config->shouldReceive('buildSdkParams')->andReturn([
             'token' => 'fake-token',
             'ambiente' => 2,
@@ -204,7 +207,7 @@ class QueuedNfeEmissionFlowTest extends TestCase
 
         $product = Product::query()->create([
             'company_id' => $company->id,
-            'product_code' => 'PRD-' . str_pad((string) $company->id, 4, '0', STR_PAD_LEFT) . '-' . str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT),
+            'product_code' => 'PRD-'.str_pad((string) $company->id, 4, '0', STR_PAD_LEFT).'-'.str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT),
             'name' => 'Produto de Teste',
             'unit' => 'UN',
             'sale_price_value' => 100,
@@ -237,6 +240,13 @@ class QueuedNfeEmissionFlowTest extends TestCase
             'nfe_status' => NfeStatus::PENDING->value,
             'created_by' => $user->id,
             'updated_by' => $user->id,
+        ]);
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
         ]);
 
         FiscalDocumentItem::query()->create([

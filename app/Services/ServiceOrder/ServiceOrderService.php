@@ -2,9 +2,16 @@
 
 namespace App\Services\ServiceOrder;
 
+use App\Enum\Partner\Type as PartnerType;
+use App\Enum\Requisition\Status as RequisitionStatus;
+use App\Enum\ServiceOrder\State;
+use App\Models\CompanyPartner;
+use App\Models\Equipment;
+use App\Models\Partner;
+use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderSequence;
-use App\Services\ServiceOrder\ServiceOrderBillingService;
+use App\Services\Audit\AuditRecorder;
 use App\Services\ServiceOrder\Actions\CancelServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
 use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
@@ -34,9 +41,9 @@ class ServiceOrderService
     public function list(int $companyId, array $filters = []): Collection
     {
         Log::debug('Listando ordens de serviço', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'company_id' => $companyId,
-            'filters'    => $filters,
+            'filters' => $filters,
         ]);
 
         $query = ServiceOrder::where('company_id', $companyId);
@@ -93,10 +100,10 @@ class ServiceOrderService
     public function paginate(int $companyId, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         Log::debug('Listando ordens de serviço com paginação', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'company_id' => $companyId,
-            'filters'    => $filters,
-            'per_page'   => $perPage,
+            'filters' => $filters,
+            'per_page' => $perPage,
         ]);
 
         $query = ServiceOrder::where('company_id', $companyId);
@@ -154,9 +161,9 @@ class ServiceOrderService
     public function find(int $id, ?int $companyId = null): ?ServiceOrder
     {
         Log::debug('Buscando ordem de serviço', [
-            'metodo'            => __METHOD__ . '@' . __LINE__,
-            'service_order_id'  => $id,
-            'company_id'        => $companyId,
+            'metodo' => __METHOD__.'@'.__LINE__,
+            'service_order_id' => $id,
+            'company_id' => $companyId,
         ]);
 
         $query = ServiceOrder::where('id', $id);
@@ -183,8 +190,8 @@ class ServiceOrderService
     public function findByNumber(string $number, int $companyId): ?ServiceOrder
     {
         Log::debug('Buscando ordem de serviço por número', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
-            'number'     => $number,
+            'metodo' => __METHOD__.'@'.__LINE__,
+            'number' => $number,
             'company_id' => $companyId,
         ]);
 
@@ -232,13 +239,13 @@ class ServiceOrderService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'            => __METHOD__ . '@' . __LINE__,
-                        'message'           => $this->getMessage(),
-                        'error_code'        => $this->getErrorCode(),
-                        'action_message'    => $action->getMessage(),
-                        'errors'            => $action->getErrors(),
-                        'data'              => $data,
-                        'user_id'           => $createdBy,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'action_message' => $action->getMessage(),
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $createdBy,
                     ]);
 
                     return null;
@@ -247,9 +254,9 @@ class ServiceOrderService
                 $this->setSuccess('Ordem de serviço criada com sucesso');
 
                 Log::info('Ordem de serviço criada com sucesso via service', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'number'            => $serviceOrder->number,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'service_order_id' => $serviceOrder->id,
+                    'number' => $serviceOrder->number,
                 ]);
 
                 return $serviceOrder;
@@ -260,12 +267,12 @@ class ServiceOrderService
             $this->setError('Erro ao criar ordem de serviço');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $createdBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $createdBy,
             ]);
 
             return null;
@@ -293,13 +300,13 @@ class ServiceOrderService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'            => __METHOD__ . '@' . __LINE__,
-                        'service_order_id'  => $serviceOrder->id,
-                        'message'           => $this->getMessage(),
-                        'error_code'        => $this->getErrorCode(),
-                        'errors'            => $action->getErrors(),
-                        'data'              => $data,
-                        'user_id'           => $updatedBy,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'service_order_id' => $serviceOrder->id,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $updatedBy,
                     ]);
 
                     return null;
@@ -308,9 +315,9 @@ class ServiceOrderService
                 $this->setSuccess('Ordem de serviço atualizada com sucesso');
 
                 Log::info('Ordem de serviço atualizada com sucesso via service', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'number'            => $serviceOrder->number,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'service_order_id' => $serviceOrder->id,
+                    'number' => $serviceOrder->number,
                 ]);
 
                 return $updated;
@@ -319,13 +326,13 @@ class ServiceOrderService
             $this->setError('Erro ao atualizar ordem de serviço');
 
             Log::error($this->getMessage(), [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'error_code'        => $this->getErrorCode(),
-                'message'           => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
-                'data'              => $data,
-                'user_id'           => $updatedBy,  
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $updatedBy,
             ]);
 
             return null;
@@ -353,11 +360,11 @@ class ServiceOrderService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'            => __METHOD__ . '@' . __LINE__,
-                        'service_order_id'  => $serviceOrder->id,
-                        'message'           => $action->getMessage(),
-                        'error_code'        => $action->getErrorCode(),
-                        'errors'            => $action->getErrors(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'service_order_id' => $serviceOrder->id,
+                        'message' => $action->getMessage(),
+                        'error_code' => $action->getErrorCode(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return false;
@@ -366,9 +373,9 @@ class ServiceOrderService
                 $this->setSuccess('Ordem de serviço excluída com sucesso');
 
                 Log::info('Ordem de serviço excluída com sucesso via service', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'number'            => $serviceOrder->number,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'service_order_id' => $serviceOrder->id,
+                    'number' => $serviceOrder->number,
                 ]);
 
                 return $result;
@@ -377,11 +384,11 @@ class ServiceOrderService
             $this->setError('Erro ao excluir ordem de serviço');
 
             Log::error('Erro ao excluir ordem de serviço via service', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'error_code'        => $this->getErrorCode(),
-                'message'           => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -417,28 +424,29 @@ class ServiceOrderService
                     );
 
                     Log::error($action->getMessage(), [
-                        'metodo'           => __METHOD__ . '@' . __LINE__,
-                        'message'          => $this->getMessage(),
-                        'error_code'       => $this->getErrorCode(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
                         'service_order_id' => $serviceOrder->id,
-                        'errors'           => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Ordem de serviço encerrada com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao encerrar ordem de serviço');
 
             Log::error('Erro ao encerrar ordem de serviço via service', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'error_code'       => $this->getErrorCode(),
-                'exception'        => $e->getMessage(),
-                'trace'            => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -492,28 +500,29 @@ class ServiceOrderService
                     );
 
                     Log::error($action->getMessage(), [
-                        'metodo'           => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'service_order_id' => $serviceOrder->id,
-                        'message'          => $this->getMessage(),
-                        'error_code'       => $this->getErrorCode(),
-                        'errors'           => $action->getErrors(),
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Ordem de serviço cancelada com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao cancelar ordem de serviço');
 
             Log::error('Erro ao cancelar ordem de serviço via service', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'error_code'       => $this->getErrorCode(),
-                'exception'        => $e->getMessage(),
-                'trace'            => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -541,28 +550,162 @@ class ServiceOrderService
                     );
 
                     Log::error($action->getMessage(), [
-                        'metodo'           => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'service_order_id' => $serviceOrder->id,
-                        'message'          => $this->getMessage(),
-                        'error_code'       => $this->getErrorCode(),
-                        'errors'           => $action->getErrors(),
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Ordem de serviço reaberta com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao reabrir ordem de serviço');
 
             Log::error('Erro ao reabrir ordem de serviço via service', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'error_code'       => $this->getErrorCode(),
-                'exception'        => $e->getMessage(),
-                'trace'            => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    public function transfer(ServiceOrder $serviceOrder, int $targetCustomerId, ?int $targetEquipmentId, int $updatedBy): ?ServiceOrder
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($serviceOrder, $targetCustomerId, $targetEquipmentId, $updatedBy) {
+                $serviceOrder->loadMissing(['equipment', 'requisition']);
+
+                if (! $this->guardTransferableServiceOrder($serviceOrder)) {
+                    return null;
+                }
+
+                if ((int) $serviceOrder->customer_id === $targetCustomerId) {
+                    $this->setError('Selecione um cliente diferente do cliente atual para transferir a ordem de serviço.');
+
+                    return null;
+                }
+
+                $targetCustomer = $this->resolveTransferCustomer($serviceOrder->company_id, $targetCustomerId);
+
+                if ($targetCustomer === null) {
+                    return null;
+                }
+
+                $linkedRequisition = $serviceOrder->requisition;
+
+                if ($linkedRequisition !== null) {
+                    if (! $this->guardTransferableRequisition($linkedRequisition)) {
+                        return null;
+                    }
+                }
+
+                $resolvedEquipment = $this->resolveTransferEquipment(
+                    $serviceOrder,
+                    $targetCustomerId,
+                    $targetEquipmentId,
+                    $updatedBy,
+                );
+
+                if ($resolvedEquipment === null && $this->getMessage() !== '') {
+                    return null;
+                }
+
+                $audit = app(AuditRecorder::class);
+                $serviceOrderBefore = $audit->snapshot($serviceOrder);
+                $requisitionBefore = $linkedRequisition ? $audit->snapshot($linkedRequisition) : null;
+
+                $serviceOrder->update([
+                    'customer_id' => $targetCustomerId,
+                    'equipment_id' => $resolvedEquipment?->id,
+                    'updated_by' => $updatedBy,
+                ]);
+
+                if ($linkedRequisition !== null) {
+                    $linkedRequisition->update([
+                        'customer_id' => $targetCustomerId,
+                        'equipment_id' => $resolvedEquipment?->id,
+                        'updated_by' => $updatedBy,
+                    ]);
+                }
+
+                $serviceOrder->refresh();
+                $serviceOrder->load(['customer', 'equipment', 'requisition']);
+
+                $audit->recordModelEvent(
+                    $serviceOrder,
+                    'service_order.transferred',
+                    sprintf('Ordem de serviço #%s transferida para %s', $serviceOrder->number, $targetCustomer->name),
+                    $serviceOrderBefore,
+                    $audit->snapshot($serviceOrder),
+                    $updatedBy,
+                    metadata: [
+                        'previous_customer_id' => $serviceOrderBefore['customer_id'] ?? null,
+                        'new_customer_id' => $serviceOrder->customer_id,
+                        'previous_equipment_id' => $serviceOrderBefore['equipment_id'] ?? null,
+                        'new_equipment_id' => $serviceOrder->equipment_id,
+                        'linked_requisition_id' => $linkedRequisition?->id,
+                        'equipment_created' => $resolvedEquipment?->wasRecentlyCreated ?? false,
+                    ],
+                );
+
+                if ($linkedRequisition !== null) {
+                    $linkedRequisition->refresh();
+
+                    $audit->recordModelEvent(
+                        $linkedRequisition,
+                        'requisition.transferred_with_service_order',
+                        sprintf('Requisição #%s sincronizada com a transferência da OS #%s', $linkedRequisition->number, $serviceOrder->number),
+                        $requisitionBefore,
+                        $audit->snapshot($linkedRequisition),
+                        $updatedBy,
+                        metadata: [
+                            'service_order_id' => $serviceOrder->id,
+                            'previous_customer_id' => $requisitionBefore['customer_id'] ?? null,
+                            'new_customer_id' => $linkedRequisition->customer_id,
+                            'previous_equipment_id' => $requisitionBefore['equipment_id'] ?? null,
+                            'new_equipment_id' => $linkedRequisition->equipment_id,
+                        ],
+                    );
+                }
+
+                $this->setSuccess('Ordem de serviço transferida com sucesso.');
+
+                Log::info('Ordem de serviço transferida com sucesso', [
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'service_order_id' => $serviceOrder->id,
+                    'target_customer_id' => $targetCustomerId,
+                    'target_equipment_id' => $resolvedEquipment?->id,
+                    'linked_requisition_id' => $linkedRequisition?->id,
+                    'equipment_created' => $resolvedEquipment?->wasRecentlyCreated ?? false,
+                    'user_id' => $updatedBy,
+                ]);
+
+                return $serviceOrder;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao transferir ordem de serviço.');
+
+            Log::error('Erro ao transferir ordem de serviço via service', [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'target_customer_id' => $targetCustomerId,
+                'target_equipment_id' => $targetEquipmentId,
+                'user_id' => $updatedBy,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -577,10 +720,6 @@ class ServiceOrderService
      * Aplica valor de desconto distribuído igualmente entre os itens da OS.
      * O desconto é igualmente distribuído e, se o item já possuir desconto,
      * o valor será incrementado. O discount_percentage também será calculado.
-     *
-     * @param  ServiceOrder  $serviceOrder
-     * @param  float         $discountAmount
-     * @return bool
      */
     public function applyDiscount(ServiceOrder $serviceOrder, float $discountAmount): bool
     {
@@ -598,21 +737,21 @@ class ServiceOrderService
 
                 foreach ($items as $item) {
                     Log::debug('Desconto aplicado ao item de ordem de serviço', [
-                        'metodo'                    => __METHOD__ . '@' . __LINE__,
-                        'service_order_item_id'     => $item->id,
-                        'service_order_id'          => $serviceOrder->id,
-                        'new_discount_amount'       => (float) $item->discount_amount,
-                        'discount_percentage'       => (float) $item->discount_percentage,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'service_order_item_id' => $item->id,
+                        'service_order_id' => $serviceOrder->id,
+                        'new_discount_amount' => (float) $item->discount_amount,
+                        'discount_percentage' => (float) $item->discount_percentage,
                     ]);
                 }
 
                 $this->setSuccess('Desconto aplicado com sucesso aos itens.');
 
                 Log::info('Desconto aplicado com sucesso na ordem de serviço', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'total_discount'    => $discountAmount,
-                    'item_count'        => $result['item_count'],
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'service_order_id' => $serviceOrder->id,
+                    'total_discount' => $discountAmount,
+                    'item_count' => $result['item_count'],
                 ]);
 
                 return true;
@@ -621,11 +760,11 @@ class ServiceOrderService
             $this->setError('Erro ao aplicar desconto na ordem de serviço.');
 
             Log::error('Erro ao aplicar desconto na ordem de serviço', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'discount_amount'   => $discountAmount,
-                'error_message'     => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'discount_amount' => $discountAmount,
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -634,9 +773,6 @@ class ServiceOrderService
 
     /**
      * Remove todos os descontos dos itens da OS, zerando discount_amount e discount_percentage.
-     *
-     * @param  ServiceOrder  $serviceOrder
-     * @return bool
      */
     public function clearDiscount(ServiceOrder $serviceOrder): bool
     {
@@ -653,18 +789,18 @@ class ServiceOrderService
 
                 foreach ($items as $item) {
                     Log::debug('Desconto removido do item de ordem de serviço', [
-                        'metodo'                => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'service_order_item_id' => $item->id,
-                        'service_order_id'      => $serviceOrder->id,
+                        'service_order_id' => $serviceOrder->id,
                     ]);
                 }
 
                 $this->setSuccess('Descontos removidos com sucesso.');
 
                 Log::info('Descontos removidos com sucesso da ordem de serviço', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,
-                    'service_order_id'  => $serviceOrder->id,
-                    'item_count'        => $itemCount,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'service_order_id' => $serviceOrder->id,
+                    'item_count' => $itemCount,
                 ]);
 
                 return true;
@@ -673,10 +809,10 @@ class ServiceOrderService
             $this->setError('Erro ao remover descontos da ordem de serviço.');
 
             Log::error('Erro ao remover descontos da ordem de serviço', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'error_message'     => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -692,30 +828,31 @@ class ServiceOrderService
 
         try {
             $action = app(PrintServiceOrderPdfAction::class);
-            $pdf    = $action->execute($serviceOrder);
+            $pdf = $action->execute($serviceOrder);
 
             if ($pdf === null || $action->hasError()) {
                 $this->setError($action->getMessage());
+
                 return null;
             }
 
             $this->setSuccess('PDF da ordem de serviço gerado.');
 
             Log::info('ServiceOrderService: PDF gerado com sucesso', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'user_id'          => $userId,
+                'user_id' => $userId,
             ]);
 
             return $pdf;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da ordem de serviço: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da ordem de serviço: '.$e->getMessage());
 
             Log::error('ServiceOrderService::pdf', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'user_id'          => $userId,
-                'exception'        => $e->getMessage(),
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -740,13 +877,13 @@ class ServiceOrderService
 
             return ['pdf' => $pdf];
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da ordem de serviço: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da ordem de serviço: '.$e->getMessage());
 
             Log::error('ServiceOrderService::preview', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'user_id'          => $userId,
-                'exception'        => $e->getMessage(),
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -756,9 +893,6 @@ class ServiceOrderService
     /**
      * Gera o próximo número de ordem de serviço para a empresa.
      * Usa lock pessimista para evitar duplicidade.
-     *
-     * @param  int  $companyId
-     * @return string
      */
     private function generateNumber(int $companyId): string
     {
@@ -771,5 +905,119 @@ class ServiceOrderService
         $sequence->increment('last_number');
 
         return str_pad($sequence->last_number, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function guardTransferableServiceOrder(ServiceOrder $serviceOrder): bool
+    {
+        if (! in_array($serviceOrder->status, [State::OPEN, State::CLOSED], true)) {
+            $this->setError('Só é possível transferir ordens de serviço abertas ou encerradas.');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function guardTransferableRequisition(Requisition $requisition): bool
+    {
+        if (in_array($requisition->status, [RequisitionStatus::INVOICED, RequisitionStatus::CANCELLED], true)) {
+            $this->setError('Não é possível transferir a ordem de serviço porque a requisição vinculada está faturada ou cancelada.');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function resolveTransferCustomer(int $companyId, int $targetCustomerId): ?Partner
+    {
+        $companyPartner = CompanyPartner::query()
+            ->where('company_id', $companyId)
+            ->where('partner_id', $targetCustomerId)
+            ->where('is_active', true)
+            ->first();
+
+        $hasValidLink = $companyPartner !== null
+            && in_array(PartnerType::CUSTOMER->value, (array) $companyPartner->type, true);
+
+        if (! $hasValidLink) {
+            $this->setError('O cliente de destino não possui vínculo ativo como cliente nesta empresa.');
+
+            return null;
+        }
+
+        $partner = Partner::query()->find($targetCustomerId);
+
+        if ($partner === null) {
+            $this->setError('O cliente de destino informado não existe.');
+
+            return null;
+        }
+
+        return $partner;
+    }
+
+    private function resolveTransferEquipment(
+        ServiceOrder $serviceOrder,
+        int $targetCustomerId,
+        ?int $targetEquipmentId,
+        int $updatedBy,
+    ): ?Equipment {
+        if ($targetEquipmentId !== null) {
+            $targetEquipment = Equipment::query()
+                ->where('company_id', $serviceOrder->company_id)
+                ->where('owner_id', $targetCustomerId)
+                ->find($targetEquipmentId);
+
+            if ($targetEquipment === null) {
+                $this->setError('O equipamento selecionado não pertence ao cliente de destino na empresa atual.');
+
+                return null;
+            }
+
+            return $targetEquipment;
+        }
+
+        if ($serviceOrder->equipment === null) {
+            return null;
+        }
+
+        $existingEquipment = $this->findMatchingEquipmentForCustomer($serviceOrder->equipment, $targetCustomerId);
+
+        if ($existingEquipment !== null) {
+            return $existingEquipment;
+        }
+
+        return Equipment::query()->create([
+            'name' => $serviceOrder->equipment->name,
+            'owner_id' => $targetCustomerId,
+            'company_id' => $serviceOrder->company_id,
+            'type' => $serviceOrder->equipment->type,
+            'placa' => $serviceOrder->equipment->placa,
+            'mark' => $serviceOrder->equipment->mark,
+            'model' => $serviceOrder->equipment->model,
+            'serial_number' => $serviceOrder->equipment->serial_number,
+            'created_by' => $updatedBy,
+        ]);
+    }
+
+    private function findMatchingEquipmentForCustomer(Equipment $equipment, int $targetCustomerId): ?Equipment
+    {
+        $query = Equipment::query()
+            ->where('company_id', $equipment->company_id)
+            ->where('owner_id', $targetCustomerId)
+            ->where('type', $equipment->type);
+
+        if (filled($equipment->placa)) {
+            $query->where('placa', $equipment->placa);
+        } elseif (filled($equipment->serial_number)) {
+            $query->where('serial_number', $equipment->serial_number);
+        } else {
+            $query->where('name', $equipment->name)
+                ->where('mark', $equipment->mark)
+                ->where('model', $equipment->model);
+        }
+
+        return $query->first();
     }
 }
