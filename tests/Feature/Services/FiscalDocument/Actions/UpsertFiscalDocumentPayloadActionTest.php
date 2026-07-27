@@ -16,7 +16,7 @@ class UpsertFiscalDocumentPayloadActionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_writes_payload_to_split_table_without_updating_legacy_payload_columns(): void
+    public function test_it_writes_payload_to_split_table(): void
     {
         $document = $this->makeFiscalDocument();
 
@@ -28,11 +28,6 @@ class UpsertFiscalDocumentPayloadActionTest extends TestCase
         $this->assertDatabaseHas('fiscal_document_payloads', [
             'fiscal_document_id' => $document->id,
             'company_id' => $document->company_id,
-        ]);
-        $this->assertDatabaseHas('fiscal_documents', [
-            'id' => $document->id,
-            'nfe_payload' => null,
-            'nfse_payload' => null,
         ]);
 
         $document = $document->fresh()->load('payload');

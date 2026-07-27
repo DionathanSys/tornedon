@@ -15,7 +15,6 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class FiscalDocumentServiceSplitDataTest extends TestCase
@@ -37,11 +36,6 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
         ]), $user->id);
 
         $this->assertNotNull($document);
-
-        $legacy = DB::table('fiscal_documents')->where('id', $document->id)->first();
-        $this->assertNull($legacy->freight_data);
-        $this->assertNull($legacy->payment_data);
-        $this->assertNull($legacy->tax_data);
 
         $document = $document->fresh()->load('taxDetail');
 
@@ -77,11 +71,6 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
 
         $this->assertNotNull($updated, $service->getMessage());
 
-        $legacy = DB::table('fiscal_documents')->where('id', $document->id)->first();
-        $this->assertNull($legacy->freight_data);
-        $this->assertNull($legacy->payment_data);
-        $this->assertNull($legacy->tax_data);
-
         $updated = $updated->fresh()->load('taxDetail');
 
         $this->assertSame([
@@ -115,11 +104,6 @@ class FiscalDocumentServiceSplitDataTest extends TestCase
         $updated = $service->update($document, $payload, $user->id);
 
         $this->assertNotNull($updated, $service->getMessage());
-
-        $legacy = DB::table('fiscal_documents')->where('id', $document->id)->first();
-        $this->assertNull($legacy->freight_data);
-        $this->assertNull($legacy->payment_data);
-        $this->assertNull($legacy->tax_data);
 
         $updated = $updated->fresh()->load('taxDetail');
 

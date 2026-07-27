@@ -56,9 +56,6 @@ class FiscalDocument extends Model
         'taxpayer_observations',
         'additional_taxpayer_information',
         'additional_purchase_information',
-        'freight_data',
-        'payment_data',
-        'tax_data',
         'return_financial_data',
         'pending',
         'confirmed',
@@ -75,13 +72,11 @@ class FiscalDocument extends Model
         'nfe_status',
         'nfe_ambiente',
         'nfe_protocolo',
-        'nfe_payload',
         'nfe_sequence_id',
         'emission_requested_at',
         'emission_group_key',
         'nfse_model',
         'nfse_status',
-        'nfse_payload',
         'nfse_protocol',
         'rps_number',
         'rps_series',
@@ -101,9 +96,6 @@ class FiscalDocument extends Model
         'issued_at' => 'date',
         'movement_at' => 'date',
         'is_final_consumer' => 'boolean',
-        'freight_data' => 'array',
-        'payment_data' => 'array',
-        'tax_data' => 'array',
         'return_financial_data' => 'array',
         'pending' => 'boolean',
         'confirmed' => 'boolean',
@@ -114,11 +106,9 @@ class FiscalDocument extends Model
         'errors_messages' => 'array',
         'logs' => 'array',
         'nfe_status' => NfeStatus::class,
-        'nfe_payload' => 'array',
         'nfe_ambiente' => 'integer',
         'emission_requested_at' => 'datetime',
         'nfse_status' => NfeStatus::class,
-        'nfse_payload' => 'array',
         'return_financial_processed_at' => 'datetime',
         'return_stock_processed_at' => 'datetime',
         'created_at' => 'datetime',
@@ -199,61 +189,64 @@ class FiscalDocument extends Model
     protected function freightData(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): mixed => $this->taxDetailValue('freight_data', $value),
+            get: fn (): mixed => $this->taxDetailValue('freight_data'),
+            set: fn (): array => [],
         );
     }
 
     protected function paymentData(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): mixed => $this->taxDetailValue('payment_data', $value),
+            get: fn (): mixed => $this->taxDetailValue('payment_data'),
+            set: fn (): array => [],
         );
     }
 
     protected function taxData(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): mixed => $this->documentTaxDataValue($value),
+            get: fn (): mixed => $this->documentTaxDataValue(),
+            set: fn (): array => [],
         );
     }
 
     protected function nfePayload(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): mixed => $this->payloadValue('nfe_payload', $value),
+            get: fn (): mixed => $this->payloadValue('nfe_payload'),
+            set: fn (): array => [],
         );
     }
 
     protected function nfsePayload(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): mixed => $this->payloadValue('nfse_payload', $value),
+            get: fn (): mixed => $this->payloadValue('nfse_payload'),
+            set: fn (): array => [],
         );
     }
 
-    private function taxDetailValue(string $key, mixed $fallback): mixed
+    private function taxDetailValue(string $key): mixed
     {
         $taxDetail = $this->relationLoaded('taxDetail')
             ? $this->getRelation('taxDetail')
             : $this->taxDetail()->first();
 
         if (! $taxDetail instanceof FiscalDocumentTaxDetail) {
-            return $this->jsonAttributeValue($fallback);
+            return null;
         }
 
-        $value = $taxDetail->getAttribute($key);
-
-        return $value !== null ? $value : $this->jsonAttributeValue($fallback);
+        return $taxDetail->getAttribute($key);
     }
 
-    private function documentTaxDataValue(mixed $fallback): mixed
+    private function documentTaxDataValue(): mixed
     {
         $taxDetail = $this->relationLoaded('taxDetail')
             ? $this->getRelation('taxDetail')
             : $this->taxDetail()->first();
 
         if (! $taxDetail instanceof FiscalDocumentTaxDetail) {
-            return $this->jsonAttributeValue($fallback);
+            return null;
         }
 
         $metadata = is_array($taxDetail->fiscal_metadata) ? $taxDetail->fiscal_metadata : [];
@@ -269,37 +262,20 @@ class FiscalDocument extends Model
 
         $legacyTaxData = $taxDetail->getAttribute('tax_data');
 
-        return $legacyTaxData !== null ? $legacyTaxData : $this->jsonAttributeValue($fallback);
+        return $legacyTaxData;
     }
 
-    private function payloadValue(string $key, mixed $fallback): mixed
+    private function payloadValue(string $key): mixed
     {
         $payload = $this->relationLoaded('payload')
             ? $this->getRelation('payload')
             : $this->payload()->first();
 
         if (! $payload instanceof FiscalDocumentPayload) {
-            return $this->jsonAttributeValue($fallback);
+            return null;
         }
 
-        $value = $payload->getAttribute($key);
-
-        return $value !== null ? $value : $this->jsonAttributeValue($fallback);
-    }
-
-    private function jsonAttributeValue(mixed $value): mixed
-    {
-        if ($value === null || is_array($value)) {
-            return $value;
-        }
-
-        if (is_string($value) && $value !== '') {
-            $decoded = json_decode($value, true);
-
-            return json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
-        }
-
-        return $value;
+        return $payload->getAttribute($key);
     }
 
     public function remittanceAssets(): HasMany

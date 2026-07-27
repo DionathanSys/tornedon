@@ -15,6 +15,7 @@ use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\FiscalDocumentTaxDetail;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\Product;
@@ -112,12 +113,16 @@ trait BuildsNfePreviewDocuments
             'issue_purpose' => IssuePurpose::NORMAL->value,
             'is_final_consumer' => false,
             'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
-            'freight_data' => [
-                'modalidade_frete' => FreightModality::SEM_FRETE->value,
-            ],
             'nfe_status' => NfeStatus::PENDING->value,
             'created_by' => $user->id,
             'updated_by' => $user->id,
+        ]);
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
         ]);
 
         FiscalDocumentItem::query()->create([

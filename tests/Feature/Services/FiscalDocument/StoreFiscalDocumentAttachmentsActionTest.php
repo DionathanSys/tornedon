@@ -6,7 +6,9 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\Status;
 use App\Models\Company;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentPayload;
 use App\Models\Partner;
+use App\Models\User;
 use App\Services\FiscalDocument\Actions\StoreFiscalDocumentAttachmentsAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,6 +28,10 @@ class StoreFiscalDocumentAttachmentsActionTest extends TestCase
         $fiscalDocument->update([
             'document_number' => '1234',
             'document_key' => 'NFEKEY123',
+        ]);
+        FiscalDocumentPayload::query()->create([
+            'company_id' => $fiscalDocument->company_id,
+            'fiscal_document_id' => $fiscalDocument->id,
             'nfe_payload' => ['xml' => '<NFe><infNFe>ok</infNFe></NFe>'],
         ]);
 
@@ -36,7 +42,7 @@ class StoreFiscalDocumentAttachmentsActionTest extends TestCase
         $action = app(StoreFiscalDocumentAttachmentsAction::class);
         $ok = $action->execute($fiscalDocument->fresh());
 
-        $this->assertTrue($ok, $action->getMessage());
+        $this->assertTrue($ok, (string) $action->getMessage());
 
         $attachments = $fiscalDocument->fresh()->attachments()->get();
         $this->assertCount(2, $attachments);
@@ -52,6 +58,10 @@ class StoreFiscalDocumentAttachmentsActionTest extends TestCase
         $fiscalDocument->update([
             'document_number' => '1234',
             'document_key' => 'NFEKEY123',
+        ]);
+        FiscalDocumentPayload::query()->create([
+            'company_id' => $fiscalDocument->company_id,
+            'fiscal_document_id' => $fiscalDocument->id,
             'nfe_payload' => ['xml' => '<NFe><infNFe>ok</infNFe></NFe>'],
         ]);
 
@@ -68,8 +78,19 @@ class StoreFiscalDocumentAttachmentsActionTest extends TestCase
 
     private function createFiscalDocument(): FiscalDocument
     {
-        $company = Company::factory()->create();
-        $customer = Partner::factory()->create();
+        $user = User::factory()->create();
+        $company = Company::query()->create([
+            'name' => 'Empresa Anexos',
+            'document_number' => '12345678000199',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+        $customer = Partner::query()->create([
+            'name' => 'Cliente Anexos',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000188',
+            'created_by' => $user->id,
+        ]);
 
         return FiscalDocument::query()->create([
             'customer_id' => $customer->id,

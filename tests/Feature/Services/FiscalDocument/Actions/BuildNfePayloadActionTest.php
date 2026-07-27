@@ -14,6 +14,7 @@ use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\FiscalDocumentTaxDetail;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\Product;
@@ -64,7 +65,6 @@ class BuildNfePayloadActionTest extends TestCase
             ],
             'created_by' => $user->id,
         ]);
-
         $product = Product::query()->create([
             'company_id' => $company->id,
             'created_by' => $user->id,
@@ -149,7 +149,6 @@ class BuildNfePayloadActionTest extends TestCase
             ],
             'created_by' => $user->id,
         ]);
-
         $product = Product::query()->create([
             'company_id' => $company->id,
             'created_by' => $user->id,
@@ -238,7 +237,6 @@ class BuildNfePayloadActionTest extends TestCase
             ],
             'created_by' => $user->id,
         ]);
-
         $product = Product::query()->create([
             'company_id' => $company->id,
             'created_by' => $user->id,
@@ -320,7 +318,6 @@ class BuildNfePayloadActionTest extends TestCase
             ],
             'created_by' => $user->id,
         ]);
-
         $product = Product::query()->create([
             'company_id' => $company->id,
             'created_by' => $user->id,
@@ -408,6 +405,18 @@ class BuildNfePayloadActionTest extends TestCase
             ],
             'created_by' => $user->id,
         ]);
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'fiscal_metadata' => [
+                'purchase_return_origin' => [
+                    'document_key' => '42260304152592000460550020000182011223433135',
+                ],
+            ],
+        ]);
 
         $product = Product::query()->create([
             'company_id' => $company->id,
@@ -490,7 +499,6 @@ class BuildNfePayloadActionTest extends TestCase
             ],
             'created_by' => $user->id,
         ]);
-
         $product = Product::query()->create([
             'company_id' => $company->id,
             'created_by' => $user->id,
@@ -635,6 +643,46 @@ class BuildNfePayloadActionTest extends TestCase
                 ],
             ],
             'created_by' => $user->id,
+        ]);
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::FOB_DESTINATARIO->value,
+                'transportador' => [
+                    'id' => $carrier->id,
+                ],
+                'icms_retido' => [
+                    'valor_servico' => '150.00',
+                    'base_calculo_retencao_icms' => '150.00',
+                    'aliquota_retencao' => '12.00',
+                    'valor_icms_retido' => '18.00',
+                    'cfop' => '5353',
+                    'codigo_municipio_ocorrencia_fato_gerador' => '3550308',
+                ],
+                'veiculo' => [
+                    'placa' => 'ABC1D23',
+                    'uf' => 'SP',
+                    'rntc' => '12345678',
+                ],
+                'identificacao_vagao' => 'VAG-01',
+                'identificacao_balsa' => 'BALSA-01',
+                'volumes' => [
+                    [
+                        'quantidade' => '2',
+                        'especie' => 'CAIXA',
+                        'marca' => 'PADRAO',
+                        'numero' => '10',
+                        'peso_liquido' => '5.5',
+                        'peso_bruto' => '6.1',
+                        'lacres' => [
+                            ['numero' => 'LACRE-1'],
+                            ['numero' => ''],
+                        ],
+                    ],
+                    [],
+                ],
+            ],
         ]);
 
         $product = Product::query()->create([
@@ -809,6 +857,21 @@ class BuildNfePayloadActionTest extends TestCase
                 ],
             ],
             'created_by' => $user->id,
+        ]);
+
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => [
+                'modalidade_frete' => FreightModality::SEM_FRETE->value,
+            ],
+            'fiscal_metadata' => [
+                'intermediario' => [
+                    'indicador' => '1',
+                    'cnpj' => '12.345.678/0001-90',
+                    'identificacao' => 'SELLER-123',
+                ],
+            ],
         ]);
 
         $product = Product::query()->create([

@@ -7,6 +7,7 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\Company;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentPayload;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\Audit\AuditRecorder;
@@ -55,8 +56,12 @@ class CorrectNfeActionTest extends TestCase
             'document_number' => '1',
             'document_series' => '1',
             'nfe_status' => NfeStatus::AUTHORIZED->value,
-            'nfe_payload' => ['foo' => 'bar'],
             'created_by' => $user->id,
+        ]);
+        FiscalDocumentPayload::query()->create([
+            'company_id' => $company->id,
+            'fiscal_document_id' => $document->id,
+            'nfe_payload' => ['foo' => 'bar'],
         ]);
 
         $config = Mockery::mock(NfeConfigService::class);

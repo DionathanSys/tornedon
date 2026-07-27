@@ -19,13 +19,7 @@ class FiscalDocumentSplitDataAccessorsTest extends TestCase
 
     public function test_it_reads_split_tax_and_payload_data_when_available(): void
     {
-        $document = $this->makeFiscalDocument([
-            'freight_data' => ['source' => 'legacy-freight'],
-            'payment_data' => ['source' => 'legacy-payment'],
-            'tax_data' => ['source' => 'legacy-tax'],
-            'nfe_payload' => ['source' => 'legacy-nfe'],
-            'nfse_payload' => ['source' => 'legacy-nfse'],
-        ]);
+        $document = $this->makeFiscalDocument();
 
         FiscalDocumentTaxDetail::query()->create([
             'company_id' => $document->company_id,
@@ -55,26 +49,20 @@ class FiscalDocumentSplitDataAccessorsTest extends TestCase
         $this->assertSame(['source' => 'split-nfse'], $document->nfse_payload);
     }
 
-    public function test_it_falls_back_to_legacy_columns_when_split_records_do_not_exist(): void
+    public function test_it_returns_null_when_split_records_do_not_exist(): void
     {
-        $document = $this->makeFiscalDocument([
-            'freight_data' => ['source' => 'legacy-freight'],
-            'payment_data' => ['source' => 'legacy-payment'],
-            'tax_data' => ['source' => 'legacy-tax'],
-            'nfe_payload' => ['source' => 'legacy-nfe'],
-            'nfse_payload' => ['source' => 'legacy-nfse'],
-        ])->fresh();
+        $document = $this->makeFiscalDocument()->fresh();
 
-        $this->assertSame(['source' => 'legacy-freight'], $document->freight_data);
-        $this->assertSame(['source' => 'legacy-payment'], $document->payment_data);
-        $this->assertSame(['source' => 'legacy-tax'], $document->tax_data);
-        $this->assertSame(['source' => 'legacy-nfe'], $document->nfe_payload);
-        $this->assertSame(['source' => 'legacy-nfse'], $document->nfse_payload);
+        $this->assertNull($document->freight_data);
+        $this->assertNull($document->payment_data);
+        $this->assertNull($document->tax_data);
+        $this->assertNull($document->nfe_payload);
+        $this->assertNull($document->nfse_payload);
     }
 
     public function test_it_falls_back_to_legacy_split_tax_data_when_new_tax_fields_do_not_exist(): void
     {
-        $document = $this->makeFiscalDocument(['tax_data' => ['source' => 'legacy-column']]);
+        $document = $this->makeFiscalDocument();
 
         FiscalDocumentTaxDetail::query()->create([
             'company_id' => $document->company_id,

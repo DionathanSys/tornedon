@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services\Invoice;
 
 use App\Enum\FiscalDocument\DocumentModel;
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Requisition\Status as RequisitionStatus;
@@ -14,6 +15,7 @@ use App\Models\CompanyPartner;
 use App\Models\CompanyPreference;
 use App\Models\Contact;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentPayload;
 use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Requisition;
@@ -75,7 +77,7 @@ class SendInvoiceEmailActionTest extends TestCase
         $action = app(SendInvoiceEmailAction::class);
         $result = $action->execute($invoice->fresh(), 'Assunto manual', 'Mensagem manual', 10);
 
-        $this->assertTrue($result, $action->getMessage());
+        $this->assertTrue($result, (string) $action->getMessage());
         $this->assertTrue($action->isSuccess());
         $this->assertNotNull($companyPartner);
     }
@@ -84,21 +86,26 @@ class SendInvoiceEmailActionTest extends TestCase
     {
         [$invoice] = $this->createInvoiceContext(withServiceOrder: false, withRequisition: false);
 
-        FiscalDocument::query()->create([
+        $secondFiscalDocument = FiscalDocument::query()->create([
             'customer_id' => $invoice->customer_id,
             'company_id' => $invoice->company_id,
             'invoice_id' => $invoice->id,
-                'status' => FiscalDocumentStatus::CONFIRMED->value,
-                'issued_at' => now()->toDateString(),
-                'movement_at' => now()->toDateString(),
-                'document_type' => DocumentModel::NFE->value,
-                'document_number' => '1002',
-                'nfe_payload' => ['xml' => '<xml>doc-2</xml>'],
-                'pending' => false,
-                'confirmed' => true,
-                'canceled' => false,
-                'confirmed_at' => now(),
-            ]);
+            'status' => FiscalDocumentStatus::CONFIRMED->value,
+            'issued_at' => now()->toDateString(),
+            'movement_at' => now()->toDateString(),
+            'document_type' => DocumentModel::NFE->value,
+            'document_number' => '1002',
+            'nfe_status' => NfeStatus::AUTHORIZED->value,
+            'pending' => false,
+            'confirmed' => true,
+            'canceled' => false,
+            'confirmed_at' => now(),
+        ]);
+        FiscalDocumentPayload::query()->create([
+            'company_id' => $secondFiscalDocument->company_id,
+            'fiscal_document_id' => $secondFiscalDocument->id,
+            'nfe_payload' => ['xml' => '<xml>doc-2</xml>'],
+        ]);
 
         $this->mockInvoicePdf('invoice-pdf');
         $this->mockFiscalDanfe(['danfe-1', 'danfe-2']);
@@ -128,7 +135,7 @@ class SendInvoiceEmailActionTest extends TestCase
 
         $action = app(SendInvoiceEmailAction::class);
 
-        $this->assertTrue($action->execute($invoice->fresh(), 'Assunto', 'Mensagem', 10), $action->getMessage());
+        $this->assertTrue($action->execute($invoice->fresh(), 'Assunto', 'Mensagem', 10), (string) $action->getMessage());
     }
 
     public function test_it_sends_only_invoice_and_fiscal_attachments_when_no_service_order_or_requisition_exist(): void
@@ -161,7 +168,7 @@ class SendInvoiceEmailActionTest extends TestCase
 
         $action = app(SendInvoiceEmailAction::class);
 
-        $this->assertTrue($action->execute($invoice->fresh(), 'Assunto', 'Mensagem', 10), $action->getMessage());
+        $this->assertTrue($action->execute($invoice->fresh(), 'Assunto', 'Mensagem', 10), (string) $action->getMessage());
     }
 
     public function test_it_fails_when_company_partner_is_missing(): void
@@ -206,7 +213,6 @@ class SendInvoiceEmailActionTest extends TestCase
 
         $invoicePdfAction = Mockery::mock(PrintInvoicePdfAction::class);
         $invoicePdfAction->shouldReceive('execute')->once()->andReturn(null);
-        $invoicePdfAction->shouldReceive('hasError')->once()->andReturn(true);
         $this->app->instance(PrintInvoicePdfAction::class, $invoicePdfAction);
 
         $provider = Mockery::mock(EmailProviderInterface::class);
@@ -239,7 +245,7 @@ class SendInvoiceEmailActionTest extends TestCase
         $owner = \App\Models\User::factory()->create();
 
         $company = Company::query()->create([
-            'name' => 'Empresa Teste ' . str()->uuid(),
+            'name' => 'Empresa Teste '.str()->uuid(),
             'document_number' => '12345678000199',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
             'email' => 'empresa@example.com',
@@ -248,7 +254,7 @@ class SendInvoiceEmailActionTest extends TestCase
         ]);
 
         $customer = Partner::query()->create([
-            'name' => 'Cliente Teste ' . str()->uuid(),
+            'name' => 'Cliente Teste '.str()->uuid(),
             'document_type' => 'CPF',
             'document_number' => preg_replace('/\D/', '', (string) fake()->unique()->cpf(false)),
             'created_by' => $owner->id,
@@ -288,7 +294,7 @@ class SendInvoiceEmailActionTest extends TestCase
         }
 
         if ($withFiscalDocument) {
-            FiscalDocument::query()->create([
+            $fiscalDocument = FiscalDocument::query()->create([
                 'customer_id' => $customer->id,
                 'company_id' => $company->id,
                 'invoice_id' => $invoice->id,
@@ -297,11 +303,16 @@ class SendInvoiceEmailActionTest extends TestCase
                 'movement_at' => now()->toDateString(),
                 'document_type' => DocumentModel::NFE->value,
                 'document_number' => '1001',
-                'nfe_payload' => ['xml' => '<xml>doc-1</xml>'],
+                'nfe_status' => NfeStatus::AUTHORIZED->value,
                 'pending' => false,
                 'confirmed' => true,
                 'canceled' => false,
                 'confirmed_at' => now(),
+            ]);
+            FiscalDocumentPayload::query()->create([
+                'company_id' => $fiscalDocument->company_id,
+                'fiscal_document_id' => $fiscalDocument->id,
+                'nfe_payload' => ['xml' => '<xml>doc-1</xml>'],
             ]);
         }
 
@@ -342,7 +353,7 @@ class SendInvoiceEmailActionTest extends TestCase
     }
 
     /**
-     * @param array<int,string> $contents
+     * @param  array<int,string>  $contents
      */
     private function mockFiscalDanfe(array $contents): void
     {

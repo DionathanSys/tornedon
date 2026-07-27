@@ -17,7 +17,7 @@ class RecalculateFiscalDocumentTaxTotalsActionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_writes_totals_to_split_tax_details_without_updating_legacy_tax_data_column(): void
+    public function test_it_writes_totals_to_split_tax_details(): void
     {
         $document = $this->makeFiscalDocument();
 
@@ -59,10 +59,6 @@ class RecalculateFiscalDocumentTaxTotalsActionTest extends TestCase
         $this->assertDatabaseHas('fiscal_document_tax_details', [
             'fiscal_document_id' => $document->id,
             'company_id' => $document->company_id,
-        ]);
-        $this->assertDatabaseHas('fiscal_documents', [
-            'id' => $document->id,
-            'tax_data' => null,
         ]);
 
         $updated->load('taxDetail');
