@@ -712,6 +712,17 @@ class ServiceOrderService
         }
     }
 
+    public function findMatchingTransferEquipment(ServiceOrder $serviceOrder, int $targetCustomerId): ?Equipment
+    {
+        $serviceOrder->loadMissing('equipment');
+
+        if ($serviceOrder->equipment === null) {
+            return null;
+        }
+
+        return $this->findMatchingEquipmentForCustomer($serviceOrder->equipment, $targetCustomerId);
+    }
+
     /* ==============================
      |  Métodos Auxiliares
      |==============================*/
