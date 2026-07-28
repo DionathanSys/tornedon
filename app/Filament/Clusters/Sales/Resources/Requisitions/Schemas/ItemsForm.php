@@ -71,6 +71,7 @@ class ItemsForm
                                 AutoSubmitModalTableSelect::make('product_stock_lookup_modal')
                                     ->label('Busca avancada')
                                     ->saved(false)
+                                    ->getOptionLabelUsing(fn ($value): ?string => self::getProductStockOptionLabel($value))
                                     ->tableConfiguration(ProductsStockTable::class)
                                     ->selectAction(
                                         fn (Action $action) => $action
