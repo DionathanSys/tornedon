@@ -28,14 +28,7 @@ class ModalSelectProductStock
                     ->where('company_id', Filament::getTenant()->id)
                     ->find((int) $value);
 
-                if (! $stock) {
-                    return null;
-                }
-
-                $code = $stock->product?->product_code;
-                $name = $stock->product?->name ?? 'Produto sem nome';
-
-                return $code ? "[{$code}] {$name}" : $name;
+                return $stock?->product?->product_code;
             })
             ->tableConfiguration(ProductsStockTable::class)
             ->selectAction(

@@ -323,7 +323,7 @@ class ItemsForm
             ->where('company_id', Filament::getTenant()->id)
             ->find((int) $value);
 
-        return $stock ? self::formatProductStockLabel($stock) : null;
+        return $stock?->product?->product_code;
     }
 
     private static function formatProductStockLabel(ProductStock $stock): string
