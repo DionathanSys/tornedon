@@ -13,10 +13,13 @@ class AutoSubmitModalTableSelect extends ModalTableSelect
             ->label($this->getLabel())
             ->hiddenLabel()
             ->tableConfiguration($this->getTableConfiguration())
-            ->relationshipName($this->getRelationshipName())
             ->multiple($this->isMultiple())
             ->maxItems($this->getMaxItems())
             ->tableArguments($this->getTableArguments());
+
+        if (filled($this->getRelationshipName())) {
+            $select->relationshipName($this->getRelationshipName());
+        }
 
         if ($this->modifyTableSelectUsing) {
             $select = $this->evaluate(

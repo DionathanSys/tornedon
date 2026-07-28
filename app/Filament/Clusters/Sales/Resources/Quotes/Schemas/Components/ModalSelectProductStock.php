@@ -16,7 +16,6 @@ class ModalSelectProductStock
         return AutoSubmitModalTableSelect::make($field)
             ->label('Produto Em Estoque')
             ->saved(false)
-            ->relationship('productStock', 'product.product_code')
             ->tableConfiguration(ProductsStockTable::class)
             ->selectAction(
                 fn(Action $action) => $action
