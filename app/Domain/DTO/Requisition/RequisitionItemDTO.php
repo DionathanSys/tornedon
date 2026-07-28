@@ -11,7 +11,7 @@ class RequisitionItemDTO
         public readonly int $productId,
         public readonly string $code,
         public readonly string $name,
-        public readonly Unit $unit,
+        public readonly Unit|string $unit,
         public readonly float $price,
         public readonly float $minSalePrice = 0,
     ) {

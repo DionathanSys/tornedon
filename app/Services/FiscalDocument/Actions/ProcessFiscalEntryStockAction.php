@@ -69,34 +69,30 @@ class ProcessFiscalEntryStockAction
                 continue;
             }
 
-            $operationalUnit = (string) ($item->taxable_unit ?: ($item->unit_of_measure ?? $product->unit?->value));
+            $movementData = $this->resolveMovementData($product, $item, $stock->id, $document->company_id);
 
-            if (! app(ProductUnitConversionService::class)->isAllowedUnit($product, $operationalUnit)) {
-                $result['errors'][] = "Produto {$product->product_code} com unidade {$operationalUnit} não cadastrada.";
+            if ($movementData === null) {
+                $invalidUnit = (string) ($item->unit_of_measure ?: $item->taxable_unit ?: $product->unit?->value);
+                $result['errors'][] = "Produto {$product->product_code} com unidade {$invalidUnit} não cadastrada.";
 
                 Log::warning('ProcessFiscalEntryStockAction: Unidade não cadastrada para o produto', [
                     'metodo' => __METHOD__.'@'.__LINE__,
                     'product_id' => $item->product_id,
                     'product_code' => $product->product_code,
-                    'operational_unit' => $operationalUnit,
+                    'operational_unit' => $invalidUnit,
                     'fiscal_document_id' => $document->id,
                 ]);
 
                 continue;
             }
 
-            $movement = $this->stockMovementService->create([
-                'product_stock_id' => $stock->id,
-                'product_id' => $item->product_id,
-                'company_id' => $document->company_id,
+            $movement = $this->stockMovementService->create(array_merge($movementData, [
                 'type' => MovementType::ENTRY->value,
-                'operational_unit' => $operationalUnit,
-                'quantity' => (float) ($item->taxable_quantity ?? $item->quantity),
                 'unit_price' => (float) $item->unit_price,
                 'reason' => "Nota de Entrada #{$document->document_number} - Produto: {$product->product_code}",
                 'source_type' => 'fiscal_document',
                 'source_id' => $document->id,
-            ], $userId);
+            ]), $userId);
 
             if ($this->stockMovementService->hasError() || ! $movement) {
                 $result['errors'][] = "Erro ao registrar movimentação para produto {$product->product_code}: "
@@ -109,5 +105,48 @@ class ProcessFiscalEntryStockAction
         }
 
         return $result;
+    }
+
+    private function resolveMovementData(mixed $product, mixed $item, int $stockId, int $companyId): ?array
+    {
+        $conversionService = app(ProductUnitConversionService::class);
+        $commercialUnit = (string) ($item->unit_of_measure ?? '');
+        $commercialQuantity = (float) ($item->quantity ?? 0);
+        $taxableUnit = (string) ($item->taxable_unit ?? '');
+        $taxableQuantity = (float) ($item->taxable_quantity ?? 0);
+
+        if (
+            $commercialUnit !== ''
+            && $commercialQuantity > 0
+            && $taxableUnit !== ''
+            && $taxableQuantity > 0
+            && $conversionService->isAllowedUnit($product, $commercialUnit)
+        ) {
+            return [
+                'product_stock_id' => $stockId,
+                'product_id' => $item->product_id,
+                'company_id' => $companyId,
+                'operational_unit' => $commercialUnit,
+                'operational_quantity' => $commercialQuantity,
+                'base_unit' => $product->unit?->value,
+                'base_quantity' => $taxableQuantity,
+                'conversion_factor_snapshot' => round($taxableQuantity / $commercialQuantity, 8),
+                'quantity' => $taxableQuantity,
+            ];
+        }
+
+        $operationalUnit = (string) ($item->taxable_unit ?: ($item->unit_of_measure ?? $product->unit?->value));
+
+        if (! $conversionService->isAllowedUnit($product, $operationalUnit)) {
+            return null;
+        }
+
+        return [
+            'product_stock_id' => $stockId,
+            'product_id' => $item->product_id,
+            'company_id' => $companyId,
+            'operational_unit' => $operationalUnit,
+            'quantity' => (float) ($item->taxable_quantity ?? $item->quantity),
+        ];
     }
 }

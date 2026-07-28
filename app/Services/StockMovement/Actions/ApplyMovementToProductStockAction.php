@@ -33,6 +33,7 @@ class ApplyMovementToProductStockAction
 
         $quantity  = $movement->resolvedBaseQuantity();
         $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
+        $baseUnitCost = $this->resolveBaseUnitCost($movement, $unitPrice);
 
         // Calcula o delta positivo/negativo segundo o tipo de movimento
         $delta = $type->applyDelta($quantity);
@@ -66,16 +67,16 @@ class ApplyMovementToProductStockAction
         ];
 
         // — Custo médio ponderado (somente em entradas reais sem reversão, ou reversão de saídas) —
-        if (!$reverse && $type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
+        if (!$reverse && $type->isInbound() && $baseUnitCost !== null && $baseUnitCost > 0) {
             // Entrada: recalcula custo médio ponderado
-            $newAvgCost = $this->recalcWeightedAvgCost($currentQty, $currentAvg, abs($quantity), $unitPrice);
+            $newAvgCost = $this->recalcWeightedAvgCost($currentQty, $currentAvg, abs($quantity), $baseUnitCost);
             $updates['average_cost'] = $newAvgCost;
-            $updates['last_cost']    = $unitPrice;
-        } elseif (!$reverse && $type === Type::ADJUSTMENT && $delta > 0 && $unitPrice !== null && $unitPrice > 0) {
+            $updates['last_cost']    = $baseUnitCost;
+        } elseif (!$reverse && $type === Type::ADJUSTMENT && $delta > 0 && $baseUnitCost !== null && $baseUnitCost > 0) {
             // Ajuste positivo com preço informado: recalcula custo médio
-            $newAvgCost = $this->recalcWeightedAvgCost($currentQty, $currentAvg, $delta, $unitPrice);
+            $newAvgCost = $this->recalcWeightedAvgCost($currentQty, $currentAvg, $delta, $baseUnitCost);
             $updates['average_cost'] = $newAvgCost;
-            $updates['last_cost']    = $unitPrice;
+            $updates['last_cost']    = $baseUnitCost;
         }
 
         // — Último preço de venda (somente em saídas que possuem unit_price) —
@@ -119,6 +120,22 @@ class ApplyMovementToProductStockAction
             (($currentQty * $currentAvg) + ($incomingQty * $incomingCost)) / $totalQty,
             4
         );
+    }
+
+    private function resolveBaseUnitCost(StockMovement $movement, ?float $operationalUnitPrice): ?float
+    {
+        if ($operationalUnitPrice === null || $operationalUnitPrice <= 0) {
+            return null;
+        }
+
+        $operationalQuantity = $movement->resolvedOperationalQuantity();
+        $baseQuantity = $movement->resolvedBaseQuantity();
+
+        if ($operationalQuantity <= 0 || $baseQuantity <= 0) {
+            return $operationalUnitPrice;
+        }
+
+        return round(($operationalQuantity * $operationalUnitPrice) / $baseQuantity, 4);
     }
 
     /**

@@ -26,6 +26,7 @@ class Product extends Model
         'has_stock_control',
         'is_invoiceable',
         'unit',
+        'sale_unit',
         'profit_margin',
         'min_sale_price',
         'origin_sale_price',
@@ -48,6 +49,7 @@ class Product extends Model
         'is_invoiceable'            => 'boolean',
         'has_stock_control'         => 'boolean',
         'unit'                      => Unit::class,
+        'sale_unit'                 => Unit::class,
         'origin_sale_price'         => OriginSalePrice::class,
         'profit_margin'             => 'decimal:2',
         'min_sale_price'            => MoneyCast::class,
@@ -100,5 +102,17 @@ class Product extends Model
     public function warrantyClaims(): HasMany
     {
         return $this->hasMany(WarrantyClaim::class);
+    }
+
+    public function resolvedSaleUnit(): Unit|string|null
+    {
+        return $this->sale_unit ?? $this->unit;
+    }
+
+    public function resolvedSaleUnitValue(): ?string
+    {
+        $unit = $this->resolvedSaleUnit();
+
+        return $unit instanceof Unit ? $unit->value : ($unit !== null ? (string) $unit : null);
     }
 }

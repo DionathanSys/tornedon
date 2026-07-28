@@ -37,6 +37,7 @@ final class TransferServiceOrderAction
                     ->helperText('Selecione o cliente que receberá a ordem de serviço. O equipamento será localizado ou criado automaticamente ao confirmar.'),
                 Callout::make('existing-transfer-equipment')
                     ->info()
+                    ->heading('Equipamento encontrado')
                     ->visible(fn (ServiceOrder $record, Get $get): bool => self::resolveMatchingEquipment($record, $get) !== null)
                     ->description(fn (ServiceOrder $record, Get $get): string => sprintf(
                         'Equipamento encontrado para o cliente de destino: %s. Ele será vinculado automaticamente à ordem de serviço e à requisição vinculada.',
@@ -44,10 +45,12 @@ final class TransferServiceOrderAction
                     )),
                 Callout::make('missing-transfer-equipment')
                     ->warning()
+                    ->heading('Equipamento será criado')
                     ->visible(fn (ServiceOrder $record, Get $get): bool => filled($get('customer_id')) && $record->equipment !== null && self::resolveMatchingEquipment($record, $get) === null)
                     ->description('Nenhum equipamento equivalente foi encontrado para o cliente de destino. Um novo equipamento será criado automaticamente ao confirmar a transferência.'),
                 Callout::make('no-origin-equipment')
                     ->warning()
+                    ->heading('Ordem sem equipamento')
                     ->visible(fn (ServiceOrder $record, Get $get): bool => filled($get('customer_id')) && $record->equipment === null)
                     ->description('Esta ordem de serviço não possui equipamento vinculado. A transferência será concluída sem equipamento para a ordem e para a requisição vinculada.'),
             ])

@@ -255,6 +255,102 @@ class ProcessFiscalEntryActionTest extends TestCase
         $this->assertEquals(2.0, (float) $product->stock()->first()->quantity_total);
     }
 
+    public function test_process_fiscal_entry_stock_preserves_commercial_unit_and_converts_cost_to_base_unit(): void
+    {
+        $user = User::factory()->create();
+
+        $company = Company::create([
+            'name' => 'Empresa Entrada Fiscal Conversao',
+            'document_number' => '12345678000188',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+
+        $supplier = Partner::create([
+            'name' => 'Fornecedor Fiscal Conversao',
+            'document_type' => 'CNPJ',
+            'document_number' => '22345678000158',
+            'created_by' => $user->id,
+        ]);
+
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'product_code' => 'PRD-ENT-0135',
+            'name' => 'Produto Entrada Convertida',
+            'unit' => Unit::KG->value,
+            'sale_unit' => Unit::KG->value,
+            'has_stock_control' => true,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
+            'sale_price_value' => 100,
+            'is_active' => true,
+        ]);
+
+        $product->alternativeUnitConversions()->create([
+            'unit' => Unit::PC->value,
+            'conversion_factor' => 13.5,
+        ]);
+
+        ProductStock::query()->create([
+            'product_id' => $product->id,
+            'company_id' => $company->id,
+            'quantity_total' => 0,
+            'quantity_reserved' => 0,
+            'is_active' => true,
+            'allow_negative' => false,
+            'created_by' => $user->id,
+        ]);
+
+        $document = FiscalDocument::create([
+            'customer_id' => $supplier->id,
+            'company_id' => $company->id,
+            'status' => FiscalDocumentStatus::CONFIRMED->value,
+            'issued_at' => '2026-04-08',
+            'movement_at' => '2026-04-08',
+            'document_type' => DocumentModel::NFE->value,
+            'operation_type' => OperationType::ENTRADA->value,
+            'document_number' => 'NF-ENT-135',
+            'document_series' => '1',
+            'created_by' => $user->id,
+        ]);
+
+        FiscalDocumentItem::create([
+            'fiscal_document_id' => $document->id,
+            'product_id' => $product->id,
+            'product_code' => $product->product_code,
+            'description' => $product->name,
+            'item_number' => 1,
+            'product_origin' => '0',
+            'ncm_code' => '27111910',
+            'quantity' => 1,
+            'unit_of_measure' => Unit::PC->value,
+            'taxable_unit' => Unit::KG->value,
+            'taxable_quantity' => 13.5,
+            'unit_price' => 899,
+            'total_price' => 899,
+            'taxable_unit_price' => 66.5926,
+            'included_in_total' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $result = app(ProcessFiscalEntryStockAction::class)->execute($document, $user->id);
+
+        $movement = StockMovement::query()->latest('id')->first();
+        $stock = $product->stock()->first();
+
+        $this->assertSame(1, $result['stock_movements']);
+        $this->assertSame([], $result['errors']);
+        $this->assertNotNull($movement);
+        $this->assertSame(Unit::PC->value, $movement->operational_unit);
+        $this->assertEquals(1.0, (float) $movement->operational_quantity);
+        $this->assertSame(Unit::KG->value, $movement->base_unit);
+        $this->assertEquals(13.5, (float) $movement->base_quantity);
+        $this->assertEquals(13.5, (float) $movement->quantity);
+        $this->assertEquals(13.5, (float) $stock->quantity_total);
+        $this->assertEqualsWithDelta(66.5926, (float) $stock->average_cost, 0.0001);
+        $this->assertEqualsWithDelta(66.5926, (float) $stock->last_cost, 0.0001);
+    }
+
     public function test_generate_fiscal_entry_card_transaction_creates_installment_lines_without_payable(): void
     {
         $user = User::factory()->create();

@@ -162,7 +162,7 @@ class ItemsForm
             productId: $product->id,
             code: $product->product_code,
             name: $product->name,
-            unit: $product->unit,
+            unit: $product->resolvedSaleUnit(),
             price: (float) ($price ?? 0),  // null = FREE price mode; form starts at 0 for user input
             minSalePrice: $productStock->min_sale_price ?? 0,
         );
@@ -186,7 +186,7 @@ class ItemsForm
         $set('product_name_lookup', $dto->code ? "[{$dto->code}] {$dto->name}" : $dto->name);
         $set('description', $dto->name);
         $set('quantity', 1);
-        $set('unit_of_measure', $dto->unit);
+        $set('unit_of_measure', $dto->unit instanceof Unit ? $dto->unit->value : $dto->unit);
         $set('unit_price', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
         $set('total_amount', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
         $set('commission_percentage', 0);

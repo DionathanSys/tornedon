@@ -42,6 +42,7 @@ class ProductServiceTest extends TestCase
             'company_id' => $this->company->id,
             'name' => 'Produto teste conversao',
             'unit' => Unit::JG->value,
+            'sale_unit' => Unit::PC->value,
             'alternative_unit_conversions' => [
                 ['unit' => Unit::CX->value, 'conversion_factor' => 2],
                 ['unit' => Unit::PC->value, 'conversion_factor' => 0.125],
@@ -50,6 +51,7 @@ class ProductServiceTest extends TestCase
 
         $this->assertNotNull($product);
         $this->assertTrue($this->service->isSuccess());
+        $this->assertSame(Unit::PC, $product->fresh()->sale_unit);
         $this->assertDatabaseHas('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::CX->value,
@@ -81,6 +83,7 @@ class ProductServiceTest extends TestCase
         ]);
 
         $updated = $this->service->update($product, [
+            'sale_unit' => Unit::PC->value,
             'alternative_unit_conversions' => [
                 ['unit' => Unit::PC->value, 'conversion_factor' => 0.125],
             ],
@@ -88,6 +91,7 @@ class ProductServiceTest extends TestCase
 
         $this->assertNotNull($updated);
         $this->assertTrue($this->service->isSuccess());
+        $this->assertSame(Unit::PC, $updated->fresh()->sale_unit);
         $this->assertDatabaseMissing('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::CX->value,
@@ -107,6 +111,7 @@ class ProductServiceTest extends TestCase
             'product_code' => 'PRD-1002',
             'name' => 'Produto legado',
             'unit' => Unit::JG->value,
+            'sale_unit' => Unit::PC->value,
             'origin_sale_price' => 'free',
             'sale_price_value' => 10,
             'is_active' => true,
@@ -128,6 +133,7 @@ class ProductServiceTest extends TestCase
 
         $this->assertNotNull($updated);
         $this->assertTrue($this->service->isSuccess());
+        $this->assertSame(Unit::JG, $updated->fresh()->sale_unit);
         $this->assertDatabaseMissing('product_alternative_units', [
             'product_id' => $product->id,
             'unit' => Unit::CX->value,
@@ -136,5 +142,18 @@ class ProductServiceTest extends TestCase
             'product_id' => $product->id,
             'unit' => Unit::PC->value,
         ]);
+    }
+
+    public function test_it_rejects_sale_unit_not_configured_for_product(): void
+    {
+        $product = $this->service->create([
+            'company_id' => $this->company->id,
+            'name' => 'Produto sale unit inválida',
+            'unit' => Unit::KG->value,
+            'sale_unit' => Unit::PC->value,
+        ], $this->user->id);
+
+        $this->assertNull($product);
+        $this->assertFalse($this->service->isSuccess());
     }
 }

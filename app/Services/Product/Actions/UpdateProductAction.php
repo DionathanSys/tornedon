@@ -32,6 +32,7 @@ class UpdateProductAction
             $validated = ProductValidator::validateUpdate($data, $this->product->id, $this->product->company_id);
             $hasAlternativeUnits = array_key_exists('alternative_unit_conversions', $validated);
             $alternativeUnitConversions = $this->resolveAlternativeUnitConversions($validated);
+            $validated['sale_unit'] = $this->resolveSaleUnit($validated, $hasAlternativeUnits, $alternativeUnitConversions);
 
             // Remove campos que nao devem ser atualizados
             unset($validated['product_code'], $validated['company_id'], $validated['alternative_unit_conversions']);
@@ -178,5 +179,27 @@ class UpdateProductAction
         }
 
         return $resolved;
+    }
+
+    private function resolveSaleUnit(array $validated, bool $hasAlternativeUnits, array $alternativeUnitConversions): string
+    {
+        $baseUnit = (string) ($validated['unit'] ?? $this->product->unit?->value ?? $this->product->unit);
+        $candidate = (string) ($validated['sale_unit'] ?? $this->product->resolvedSaleUnitValue() ?? $baseUnit);
+
+        $availableUnits = [$baseUnit];
+
+        if ($hasAlternativeUnits) {
+            foreach ($alternativeUnitConversions as $conversion) {
+                $availableUnits[] = (string) $conversion['unit'];
+            }
+        } else {
+            foreach ($this->product->alternativeUnitConversions as $conversion) {
+                $availableUnits[] = $conversion->unit?->value ?? (string) $conversion->unit;
+            }
+        }
+
+        $availableUnits = array_values(array_unique(array_filter($availableUnits)));
+
+        return in_array($candidate, $availableUnits, true) ? $candidate : $baseUnit;
     }
 }

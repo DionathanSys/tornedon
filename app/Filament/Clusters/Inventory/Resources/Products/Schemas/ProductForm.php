@@ -22,6 +22,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -115,9 +116,30 @@ class ProductForm
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->options(Unit::toSelectArray())
                                             ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function (?string $state, ?string $old, Get $get, Set $set): void {
+                                                if (! $state) {
+                                                    return;
+                                                }
+
+                                                $saleUnit = $get('sale_unit');
+                                                $availableUnits = array_keys(self::saleUnitOptions($get));
+
+                                                if ($saleUnit === null || $saleUnit === $old || ! in_array($saleUnit, $availableUnits, true)) {
+                                                    $set('sale_unit', $state);
+                                                }
+                                            })
                                             ->disabledOn('edit')
                                             ->native(false)
                                             ->default('UN'),
+                                        Select::make('sale_unit')
+                                            ->label('Unid. Padrão Venda')
+                                            ->columnSpan(['md' => 1, 'lg' => 2])
+                                            ->options(fn (Get $get): array => self::saleUnitOptions($get))
+                                            ->required()
+                                            ->native(false)
+                                            ->default('UN')
+                                            ->helperText('Usada como unidade inicial na requisição. Por padrão, segue a unidade base do produto.'),
                                         Select::make('item_type')
                                             ->label('Tipo de Item')
                                             ->columnSpan(['md' => 2, 'lg' => 2])
@@ -230,6 +252,7 @@ class ProductForm
                                     ->reorderable(false)
                                     ->collapsed()
                                     ->addActionLabel('Adicionar unidade alternativa')
+                                    ->live()
                                     ->schema([
                                         Select::make('unit')
                                             ->label('Unidade alternativa')
@@ -246,7 +269,15 @@ class ProductForm
                                             ->minValue(0.00000001)
                                             ->step('0.00000001'),
                                     ])
-                                    ->columns(2),
+                                    ->columns(2)
+                                    ->afterStateUpdated(function (Get $get, Set $set): void {
+                                        $saleUnit = (string) ($get('sale_unit') ?? '');
+                                        $availableUnits = array_keys(self::saleUnitOptions($get));
+
+                                        if ($saleUnit !== '' && ! in_array($saleUnit, $availableUnits, true)) {
+                                            $set('sale_unit', $get('unit') ?: Unit::UN->value);
+                                        }
+                                    }),
                             ]),
                         Tab::make('Impostos')
                             ->icon(Heroicon::CurrencyDollar)
@@ -409,5 +440,32 @@ class ProductForm
                     ]),
 
             ]);
+    }
+
+    private static function saleUnitOptions(Get $get): array
+    {
+        $labels = Unit::toSelectArray();
+        $units = [];
+        $baseUnit = $get('unit');
+
+        if (is_string($baseUnit) && trim($baseUnit) !== '') {
+            $units[] = $baseUnit;
+        }
+
+        foreach (($get('alternative_unit_conversions') ?? []) as $conversion) {
+            $unit = $conversion['unit'] ?? null;
+
+            if (is_string($unit) && trim($unit) !== '' && ! in_array($unit, $units, true)) {
+                $units[] = $unit;
+            }
+        }
+
+        $options = [];
+
+        foreach ($units as $unit) {
+            $options[$unit] = $labels[$unit] ?? $unit;
+        }
+
+        return $options;
     }
 }

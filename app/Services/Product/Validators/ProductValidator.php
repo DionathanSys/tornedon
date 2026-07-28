@@ -28,6 +28,7 @@ class ProductValidator
             'is_custom_manufacturing'                   => 'nullable|boolean',
             'has_stock_control'                         => 'nullable|boolean',
             'is_invoiceable'                           => 'nullable|boolean',
+            'sale_unit'                                => ['nullable', Rule::in($unitValues)],
             'alternative_unit_conversions'              => 'nullable|array',
             'alternative_unit_conversions.*.unit'       => ['required_with:alternative_unit_conversions', 'string', Rule::in($unitValues), 'distinct'],
             'alternative_unit_conversions.*.conversion_factor' => 'required_with:alternative_unit_conversions|numeric|gt:0',
@@ -61,6 +62,7 @@ class ProductValidator
             'is_invoiceable.boolean'                            => 'O campo faturável deve ser verdadeiro ou falso',
             'unit.required'                                     => 'E obrigatorio informar a unidade de medida',
             'unit.in'                                           => 'A unidade de medida informada e invalida',
+            'sale_unit.in'                                      => 'A unidade padrao de venda informada e invalida',
             'alternative_unit_conversions.array'                => 'As conversoes de unidade alternativa devem ser uma lista',
             'alternative_unit_conversions.*.unit.required_with' => 'Informe a unidade da conversao alternativa',
             'alternative_unit_conversions.*.unit.in'            => 'A unidade alternativa informada e invalida',
@@ -155,10 +157,6 @@ class ProductValidator
         $validator = Validator::make($data, $rules, self::messages());
 
         $validator->after(function ($validator) use ($data, $productId): void {
-            if (empty($data['alternative_unit_conversions']) || !is_array($data['alternative_unit_conversions'])) {
-                return;
-            }
-
             $baseUnit = $data['unit'] ?? null;
 
             if ($baseUnit === null && $productId !== null) {
@@ -175,15 +173,49 @@ class ProductValidator
                 return;
             }
 
-            foreach ($data['alternative_unit_conversions'] as $index => $conversion) {
-                $alternativeUnit = $conversion['unit'] ?? null;
+            if (! empty($data['alternative_unit_conversions']) && is_array($data['alternative_unit_conversions'])) {
+                foreach ($data['alternative_unit_conversions'] as $index => $conversion) {
+                    $alternativeUnit = $conversion['unit'] ?? null;
 
-                if ($alternativeUnit && $alternativeUnit === $baseUnit) {
-                    $validator->errors()->add(
-                        "alternative_unit_conversions.$index.unit",
-                        'A unidade alternativa nao pode ser igual a unidade padrao do produto'
-                    );
+                    if ($alternativeUnit && $alternativeUnit === $baseUnit) {
+                        $validator->errors()->add(
+                            "alternative_unit_conversions.$index.unit",
+                            'A unidade alternativa nao pode ser igual a unidade padrao do produto'
+                        );
+                    }
                 }
+            }
+
+            $saleUnit = $data['sale_unit'] ?? null;
+
+            if (! $saleUnit) {
+                return;
+            }
+
+            if ($saleUnit === $baseUnit) {
+                return;
+            }
+
+            $alternativeUnits = collect($data['alternative_unit_conversions'])
+                ->pluck('unit')
+                ->filter()
+                ->all();
+
+            if ($productId !== null && $alternativeUnits === []) {
+                $alternativeUnits = Product::query()
+                    ->with('alternativeUnitConversions')
+                    ->find($productId)?->alternativeUnitConversions
+                    ->pluck('unit')
+                    ->map(fn ($unit) => $unit instanceof Unit ? $unit->value : (string) $unit)
+                    ->filter()
+                    ->all() ?? [];
+            }
+
+            if (! in_array($saleUnit, $alternativeUnits, true)) {
+                $validator->errors()->add(
+                    'sale_unit',
+                    'A unidade padrao de venda deve ser a unidade base ou uma unidade alternativa cadastrada'
+                );
             }
         });
 

@@ -61,25 +61,21 @@ class ProcessPurchaseReturnStockAction
                 continue;
             }
 
-            $operationalUnit = (string) ($item->taxable_unit ?: ($item->unit_of_measure ?? $product->unit?->value));
+            $movementData = $this->resolveMovementData($product, $item, $stock->id, $document->company_id);
 
-            if (! app(ProductUnitConversionService::class)->isAllowedUnit($product, $operationalUnit)) {
-                $result['errors'][] = "Produto {$product->product_code} com unidade {$operationalUnit} não cadastrada. Movimentação ignorada.";
+            if ($movementData === null) {
+                $invalidUnit = (string) ($item->unit_of_measure ?: $item->taxable_unit ?: $product->unit?->value);
+                $result['errors'][] = "Produto {$product->product_code} com unidade {$invalidUnit} não cadastrada. Movimentação ignorada.";
                 continue;
             }
 
-            $movement = $this->stockMovementService->create([
-                'product_stock_id' => $stock->id,
-                'product_id' => $item->product_id,
-                'company_id' => $document->company_id,
+            $movement = $this->stockMovementService->create(array_merge($movementData, [
                 'type' => MovementType::RETURN->value,
-                'operational_unit' => $operationalUnit,
-                'quantity' => (float) ($item->taxable_quantity ?? $item->quantity),
                 'unit_price' => (float) $item->unit_price,
                 'reason' => "Devolução de compra NF #{$document->document_number} - Produto: {$product->product_code}",
                 'source_type' => 'fiscal_document_item',
                 'source_id' => $item->id,
-            ], $userId);
+            ]), $userId);
 
             if ($this->stockMovementService->hasError() || ! $movement) {
                 $result['errors'][] = "Erro ao registrar devolução para produto {$product->product_code}: "
@@ -102,5 +98,46 @@ class ProcessPurchaseReturnStockAction
         ]);
 
         return $result;
+    }
+
+    private function resolveMovementData(mixed $product, mixed $item, int $stockId, int $companyId): ?array
+    {
+        $conversionService = app(ProductUnitConversionService::class);
+        $commercialUnit = (string) ($item->unit_of_measure ?? '');
+        $commercialQuantity = (float) ($item->quantity ?? 0);
+        $taxableQuantity = (float) ($item->taxable_quantity ?? 0);
+
+        if (
+            $commercialUnit !== ''
+            && $commercialQuantity > 0
+            && $taxableQuantity > 0
+            && $conversionService->isAllowedUnit($product, $commercialUnit)
+        ) {
+            return [
+                'product_stock_id' => $stockId,
+                'product_id' => $item->product_id,
+                'company_id' => $companyId,
+                'operational_unit' => $commercialUnit,
+                'operational_quantity' => $commercialQuantity,
+                'base_unit' => $product->unit?->value,
+                'base_quantity' => $taxableQuantity,
+                'conversion_factor_snapshot' => round($taxableQuantity / $commercialQuantity, 8),
+                'quantity' => $taxableQuantity,
+            ];
+        }
+
+        $operationalUnit = (string) ($item->taxable_unit ?: ($item->unit_of_measure ?? $product->unit?->value));
+
+        if (! $conversionService->isAllowedUnit($product, $operationalUnit)) {
+            return null;
+        }
+
+        return [
+            'product_stock_id' => $stockId,
+            'product_id' => $item->product_id,
+            'company_id' => $companyId,
+            'operational_unit' => $operationalUnit,
+            'quantity' => (float) ($item->taxable_quantity ?? $item->quantity),
+        ];
     }
 }

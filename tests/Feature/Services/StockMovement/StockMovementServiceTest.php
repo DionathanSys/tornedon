@@ -81,6 +81,7 @@ class StockMovementServiceTest extends TestCase
         $this->assertEquals(160.0, (float) $movement->total_amount);
 
         $this->assertEquals(2.0, (float) $stock->fresh()->quantity_total);
-        $this->assertEquals(10.0, (float) $stock->fresh()->average_cost);
+        $this->assertEquals(80.0, (float) $stock->fresh()->average_cost);
+        $this->assertEquals(80.0, (float) $stock->fresh()->last_cost);
     }
 }

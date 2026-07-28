@@ -31,6 +31,7 @@ class CreateProductAction
         try {
             $validated = ProductValidator::validateCreate($data);
             $alternativeUnitConversions = $this->resolveAlternativeUnitConversions($validated);
+            $validated['sale_unit'] ??= $validated['unit'] ?? null;
 
             if (empty($validated['product_code'])) {
                 $validated['product_code'] = ProductCodeService::generate($validated['company_id']);
