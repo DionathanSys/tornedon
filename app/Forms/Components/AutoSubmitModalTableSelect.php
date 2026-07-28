@@ -7,6 +7,15 @@ use Filament\Forms\Components\TableSelect;
 
 class AutoSubmitModalTableSelect extends ModalTableSelect
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->getOptionLabelUsing(null);
+        $this->getOptionLabelsUsing(null);
+        $this->getSelectedRecordUsing(null);
+    }
+
     public function getTableSelect(): TableSelect
     {
         $select = AutoSubmitTableSelect::make('selection')
