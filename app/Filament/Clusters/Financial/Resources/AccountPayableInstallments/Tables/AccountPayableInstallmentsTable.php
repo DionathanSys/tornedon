@@ -31,6 +31,7 @@ class AccountPayableInstallmentsTable
             ->columns([
                 TextColumn::make('accountPayable.supplier.name')
                     ->label('Fornecedor')
+                    ->getStateUsing(fn (AccountPayableInstallment $record): string => $record->accountPayable?->counterparty_label ?? '-')
                     ->sortable()
                     ->limit(40)
                     ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
@@ -145,7 +146,7 @@ class AccountPayableInstallmentsTable
                     ->label('Vencimento')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar()
+                    ->alwaysShowCalendar(),
             ])
             ->recordActions([
                 ActionGroup::make([
