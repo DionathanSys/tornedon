@@ -5,7 +5,6 @@ namespace App\Filament\Clusters\Financial\Resources\CashMovements\Pages;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\ImportOfxAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Filament\Clusters\Financial\Resources\CashMovements\CashMovementResource;
-use App\Filament\Clusters\Financial\Resources\CashMovements\Widgets\CashMovementsFlowChart;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Widgets\CashMovementsReconciliationStats;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Widgets\CashMovementsStatsOverview;
 use Filament\Facades\Filament;
@@ -24,7 +23,6 @@ class ListCashMovements extends ListRecords
         return [
             CashMovementsStatsOverview::class,
             CashMovementsReconciliationStats::class,
-            CashMovementsFlowChart::class,
         ];
     }
 

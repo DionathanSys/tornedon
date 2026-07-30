@@ -31,14 +31,23 @@ class BankStatementImportAndReconciliationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Company $company;
+
     private FinancialAccount $financialAccount;
+
     private FinancialCategory $cashCategory;
+
     private FinancialCategory $payableCategory;
+
     private FinancialCategory $receivableCategory;
+
     private Partner $supplier;
+
     private Partner $customer;
+
     private ImportBankStatementService $importService;
+
     private ResolveBankStatementLineService $resolveService;
 
     protected function setUp(): void
@@ -214,6 +223,83 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertDatabaseCount('bank_statement_imports', 1);
         $this->assertDatabaseCount('bank_statement_lines', 2);
         $this->assertSame('extrato-bradesco-reprocessado.ofx', $replacement->file_name);
+    }
+
+    public function test_imports_banco_inter_ofx(): void
+    {
+        $ofx = <<<'OFX'
+OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+SECURITY:NONE
+ENCODING:USASCII
+CHARSET:1252
+COMPRESSION:NONE
+OLDFILEUID:NONE
+NEWFILEUID:NONE
+
+<OFX>
+<SIGNONMSGSRSV1>
+<SONRS>
+<FI>
+<ORG>Banco Intermedium S/A</ORG>
+<FID>077</FID>
+</FI>
+</SONRS>
+</SIGNONMSGSRSV1>
+<BANKMSGSRSV1>
+<STMTTRNRS>
+<STMTRS>
+<CURDEF>BRL</CURDEF>
+<BANKACCTFROM>
+<BANKID>077</BANKID>
+<BRANCHID>0001-9</BRANCHID>
+<ACCTID>31957099</ACCTID>
+<ACCTTYPE>CHECKING</ACCTTYPE>
+</BANKACCTFROM>
+<BANKTRANLIST>
+<DTSTART>20260630</DTSTART>
+<DTEND>20260730</DTEND>
+<STMTTRN>
+<TRNTYPE>PAYMENT</TRNTYPE>
+<DTPOSTED>20260727</DTPOSTED>
+<TRNAMT>-60.00</TRNAMT>
+<FITID>202607270771</FITID>
+<CHECKNUM>077</CHECKNUM>
+<REFNUM>077</REFNUM>
+<MEMO>Pix enviado: "Cp :00000000-Carlos Giovani Deitos"</MEMO>
+<NAME>Carlos Giovani Deitos</NAME>
+</STMTTRN>
+<STMTTRN>
+<TRNTYPE>CREDIT</TRNTYPE>
+<DTPOSTED>20260722</DTPOSTED>
+<TRNAMT>24.00</TRNAMT>
+<FITID>202607220772</FITID>
+<CHECKNUM>077</CHECKNUM>
+<REFNUM>077</REFNUM>
+<MEMO>Pix recebido: "00019 58037349 ROBSON VAZ"</MEMO>
+<NAME>Robson Luiz De Ramos Vaz</NAME>
+</STMTTRN>
+</BANKTRANLIST>
+</STMTRS>
+</STMTTRNRS>
+</BANKMSGSRSV1>
+</OFX>
+OFX;
+
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $ofx,
+            'extrato-inter.ofx',
+            $this->user->id,
+        );
+
+        $this->assertNotNull($import, $this->importService->getMessageUser());
+        $this->assertSame('Banco Inter', data_get($import->metadata, 'institution_name'));
+        $this->assertSame('077', data_get($import->metadata, 'bank_id'));
+        $this->assertSame(2, $import->lines->count());
+        $this->assertSame('outflow', data_get($import->lines->first()->metadata, 'direction'));
     }
 
     public function test_reconciles_line_with_existing_cash_movement(): void

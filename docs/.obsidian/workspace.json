@@ -52,9 +52,23 @@
               "icon": "lucide-file",
               "title": "estrutura-fiscal-emissao-notas"
             }
+          },
+          {
+            "id": "f822935cac42aa85",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Faturamento CPO Julho.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Faturamento CPO Julho"
+            }
           }
         ],
-        "currentTab": 1
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -218,10 +232,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "b0b1c65d03b39764",
+  "active": "f822935cac42aa85",
   "lastOpenFiles": [
+    "Faturamento CPO Julho.md",
     "estrutura-fiscal-emissao-notas.md",
-    "Sem título 3.md",
+    "CT Bugio em duplicidade.md",
     "Consultoria.md",
     "API_MIGRACAO_PAYLOADS_AMOSTRA.md",
     "manual-fluxo-os-faturamento-emissao-notas.md",
@@ -246,7 +261,6 @@
     "Notas diárias/2026.05.12.md",
     "Notas diárias/2026.05.11.md",
     "plano-cartoes-financeiro.md",
-    "Sem título.md",
     "Sem título.base",
     "Sem título 1.base",
     "Notas diárias",

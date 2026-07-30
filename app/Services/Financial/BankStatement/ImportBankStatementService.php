@@ -10,6 +10,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\BankStatement\Contracts\BankOfxNormalizerInterface;
 use App\Services\Financial\BankStatement\Contracts\OfxStatementParserInterface;
 use App\Services\Financial\BankStatement\Normalizers\BradescoOfxNormalizer;
+use App\Services\Financial\BankStatement\Normalizers\InterOfxNormalizer;
 use App\Services\Financial\BankStatement\Normalizers\SicoobOfxNormalizer;
 use App\Services\Financial\BankStatement\Normalizers\SicrediOfxNormalizer;
 use App\Services\Financial\BankStatement\Parsers\GenericOfxStatementParser;
@@ -25,8 +26,8 @@ class ImportBankStatementService
      * @param  array<int, BankOfxNormalizerInterface>|null  $normalizers
      */
     public function __construct(
-        private readonly OfxStatementParserInterface $parser = new GenericOfxStatementParser(),
-        private readonly SuggestBankStatementMatchesService $suggestService = new SuggestBankStatementMatchesService(),
+        private readonly OfxStatementParserInterface $parser = new GenericOfxStatementParser,
+        private readonly SuggestBankStatementMatchesService $suggestService = new SuggestBankStatementMatchesService,
         private readonly ?array $normalizers = null,
     ) {}
 
@@ -100,17 +101,17 @@ class ImportBankStatementService
 
                 foreach ($transactions as $transaction) {
                     BankStatementLine::create([
-                        'bank_statement_import_id'  => $import->id,
-                        'company_id'                => $account->company_id,
-                        'financial_account_id'      => $account->id,
-                        'transaction_date'          => $transaction->transactionDate,
-                        'amount'                    => $transaction->amount,
-                        'balance_amount'            => null,
-                        'description'               => $transaction->description,
-                        'external_id'               => $transaction->externalId ?? $transaction->lineHash(),
-                        'document_number'           => $transaction->documentNumber,
-                        'reconciliation_status'     => 'pending',
-                        'metadata'                  => [
+                        'bank_statement_import_id' => $import->id,
+                        'company_id' => $account->company_id,
+                        'financial_account_id' => $account->id,
+                        'transaction_date' => $transaction->transactionDate,
+                        'amount' => $transaction->amount,
+                        'balance_amount' => null,
+                        'description' => $transaction->description,
+                        'external_id' => $transaction->externalId ?? $transaction->lineHash(),
+                        'document_number' => $transaction->documentNumber,
+                        'reconciliation_status' => 'pending',
+                        'metadata' => [
                             ...$transaction->toArray(),
                             'bank' => $header->institutionName,
                         ],
@@ -164,9 +165,10 @@ class ImportBankStatementService
     private function availableNormalizers(): array
     {
         return $this->normalizers ?? [
-            new BradescoOfxNormalizer(),
-            new SicoobOfxNormalizer(),
-            new SicrediOfxNormalizer(),
+            new BradescoOfxNormalizer,
+            new InterOfxNormalizer,
+            new SicoobOfxNormalizer,
+            new SicrediOfxNormalizer,
         ];
     }
 
@@ -179,7 +181,7 @@ class ImportBankStatementService
         }
 
         throw ValidationException::withMessages([
-            'file' => ['Banco OFX nao homologado para importacao automatica. Suporte atual: Bradesco, Sicoob e Sicredi.'],
+            'file' => ['Banco OFX nao homologado para importacao automatica. Suporte atual: Bradesco, Banco Inter, Sicoob e Sicredi.'],
         ]);
     }
 }
