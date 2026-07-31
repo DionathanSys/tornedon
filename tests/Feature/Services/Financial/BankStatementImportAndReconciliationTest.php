@@ -302,6 +302,31 @@ OFX;
         $this->assertSame('outflow', data_get($import->lines->first()->metadata, 'direction'));
     }
 
+    public function test_imports_windows_1252_ofx_with_accented_metadata(): void
+    {
+        $ofx = mb_convert_encoding($this->buildOfx('748', [[
+            'type' => 'DEBIT',
+            'date' => '20260412',
+            'amount' => '-35.50',
+            'fitid' => 'SICREDI-1',
+            'memo' => 'Débito manutenção cartão',
+        ]]), 'Windows-1252', 'UTF-8');
+
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $ofx,
+            'extrato-sicredi-1252.ofx',
+            $this->user->id,
+        );
+
+        $this->assertNotNull($import, $this->importService->getMessageUser());
+        $this->assertSame('Sicredi', data_get($import->metadata, 'institution_name'));
+        $this->assertSame('Débito manutenção cartão', $import->lines->first()->description);
+        $this->assertSame('Débito manutenção cartão', data_get($import->lines->first()->metadata, 'description'));
+        $this->assertSame('Débito manutenção cartão', data_get($import->lines->first()->metadata, 'raw.memo'));
+    }
+
     public function test_reconciles_line_with_existing_cash_movement(): void
     {
         $movement = CashMovement::create([

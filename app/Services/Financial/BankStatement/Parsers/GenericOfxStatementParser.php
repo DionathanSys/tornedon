@@ -12,6 +12,7 @@ final class GenericOfxStatementParser implements OfxStatementParserInterface
 {
     public function parse(string $contents): array
     {
+        $contents = $this->normalizeEncoding($contents);
         $normalized = trim(str_replace("\r", '', $contents));
 
         if ($normalized === '' || stripos($normalized, '<OFX>') === false) {
@@ -99,13 +100,46 @@ final class GenericOfxStatementParser implements OfxStatementParserInterface
 
     private function extractTag(string $source, string $tag): ?string
     {
-        if (preg_match('/<' . preg_quote($tag, '/') . '>\s*([^<\n\r]+)/i', $source, $matches) !== 1) {
+        if (preg_match('/<'.preg_quote($tag, '/').'>\s*([^<\n\r]+)/i', $source, $matches) !== 1) {
             return null;
         }
 
         $value = trim(html_entity_decode($matches[1], ENT_QUOTES | ENT_XML1, 'UTF-8'));
 
         return $value !== '' ? $value : null;
+    }
+
+    private function normalizeEncoding(string $contents): string
+    {
+        if (mb_check_encoding($contents, 'UTF-8')) {
+            return $contents;
+        }
+
+        $declaredEncoding = $this->declaredEncoding($contents);
+
+        foreach (array_filter([$declaredEncoding, 'Windows-1252', 'ISO-8859-1']) as $encoding) {
+            $converted = @mb_convert_encoding($contents, 'UTF-8', $encoding);
+
+            if (mb_check_encoding($converted, 'UTF-8')) {
+                return $converted;
+            }
+        }
+
+        return mb_convert_encoding($contents, 'UTF-8', 'Windows-1252');
+    }
+
+    private function declaredEncoding(string $contents): ?string
+    {
+        if (preg_match('/^CHARSET:\s*([^\r\n]+)/mi', $contents, $matches) !== 1) {
+            return null;
+        }
+
+        return match (strtoupper(trim($matches[1]))) {
+            '1252', 'WINDOWS-1252', 'CP1252' => 'Windows-1252',
+            'ISO-8859-1', 'ISO8859-1', 'LATIN1' => 'ISO-8859-1',
+            'UTF-8', 'UTF8' => 'UTF-8',
+            default => null,
+        };
     }
 
     private function parseOfxDate(?string $value): ?string

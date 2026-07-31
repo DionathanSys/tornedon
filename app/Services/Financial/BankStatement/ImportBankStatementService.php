@@ -16,6 +16,7 @@ use App\Services\Financial\BankStatement\Normalizers\SicrediOfxNormalizer;
 use App\Services\Financial\BankStatement\Parsers\GenericOfxStatementParser;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class ImportBankStatementService
@@ -147,10 +148,24 @@ class ImportBankStatementService
 
             return $import;
         } catch (ValidationException $e) {
+            Log::warning('Falha de validacao ao importar OFX.', [
+                'company_id' => $companyId,
+                'financial_account_id' => $financialAccountId,
+                'file_name' => $fileName,
+                'errors' => $e->errors(),
+            ]);
+
             $this->setError('Falha ao importar OFX.', $e->errors(), 422);
 
             return null;
         } catch (\Throwable $e) {
+            Log::error('Erro ao importar OFX.', [
+                'company_id' => $companyId,
+                'financial_account_id' => $financialAccountId,
+                'file_name' => $fileName,
+                'exception' => $e,
+            ]);
+
             $this->setError('Erro ao importar OFX.', [
                 'exception' => [$e->getMessage()],
             ]);
