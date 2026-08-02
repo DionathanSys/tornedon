@@ -45,12 +45,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Implementação Ipostos IBS_CBS.md",
+                "file": "Documentação/implementacao-ibs-cbs-documentos-saida-sales.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Implementação Ipostos IBS_CBS"
+              "title": "implementacao-ibs-cbs-documentos-saida-sales"
             }
           }
         ],
@@ -219,6 +219,8 @@
   },
   "active": "2ada677253c54c97",
   "lastOpenFiles": [
+    "Implementação Ipostos IBS_CBS.md",
+    "Documentação/implementacao-ibs-cbs-documentos-saida-sales.md",
     "Consultoria.md",
     "estrutura-fiscal-emissao-notas.md",
     "deploy-script.md",
@@ -245,8 +247,6 @@
     "Plan/plano-unidades-produto.md",
     "Plan/Plano para Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/cfop_diagnostic.md",
-    "TESTES-MANUAIS-FLUXOS-PRINCIPAIS.md",
-    "Task Magna Gestor.md",
     "plano-refatoracao-nfse.pdf",
     "PRANCHA04.pdf",
     "reports/alteracoes-fase-cenarios-fiscais.pdf",

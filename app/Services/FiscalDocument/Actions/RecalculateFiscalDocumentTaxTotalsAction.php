@@ -26,6 +26,12 @@ class RecalculateFiscalDocumentTaxTotalsAction
             'valor_ipi' => 0.0,
             'valor_pis' => 0.0,
             'valor_cofins' => 0.0,
+            'base_calculo_ibs_cbs' => 0.0,
+            'valor_ibs_estadual' => 0.0,
+            'valor_ibs_municipal' => 0.0,
+            'valor_total_ibs' => 0.0,
+            'valor_cbs' => 0.0,
+            'valor_total_ibs_cbs' => 0.0,
         ];
 
         foreach ($document->items as $item) {
@@ -50,7 +56,17 @@ class RecalculateFiscalDocumentTaxTotalsAction
             $totals['valor_ipi'] += (float) data_get($taxData, 'imposto.ipi.valor', 0);
             $totals['valor_pis'] += (float) data_get($taxData, 'imposto.pis.valor', 0);
             $totals['valor_cofins'] += (float) data_get($taxData, 'imposto.cofins.valor', 0);
+            $totals['base_calculo_ibs_cbs'] += (float) data_get($taxData, 'imposto.ibs_cbs.grupo_ibs_cbs.valor_base_calculo', 0);
+            $totals['valor_ibs_estadual'] += (float) data_get($taxData, 'imposto.ibs_cbs.grupo_ibs_cbs.ibs_estadual.valor', 0);
+            $totals['valor_ibs_municipal'] += (float) data_get($taxData, 'imposto.ibs_cbs.grupo_ibs_cbs.ibs_municipal.valor', 0);
+            $totals['valor_total_ibs'] += (float) data_get($taxData, 'imposto.ibs_cbs.grupo_ibs_cbs.valor_total_ibs', 0);
+            $totals['valor_cbs'] += (float) data_get($taxData, 'imposto.ibs_cbs.grupo_ibs_cbs.cbs.valor', 0);
         }
+
+        $totals['valor_total_ibs_cbs'] = round(
+            $totals['valor_total_ibs'] + $totals['valor_cbs'],
+            2
+        );
 
         $totals['valor_nota'] = round(
             $totals['valor_produtos']

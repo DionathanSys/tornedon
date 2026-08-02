@@ -50,6 +50,21 @@ class RecalculateFiscalDocumentTaxTotalsActionTest extends TestCase
                     'cofins' => [
                         'valor' => 6.84,
                     ],
+                    'ibs_cbs' => [
+                        'grupo_ibs_cbs' => [
+                            'valor_base_calculo' => '90.00',
+                            'valor_total_ibs' => '0.09',
+                            'ibs_estadual' => [
+                                'valor' => '0.05',
+                            ],
+                            'ibs_municipal' => [
+                                'valor' => '0.04',
+                            ],
+                            'cbs' => [
+                                'valor' => '0.81',
+                            ],
+                        ],
+                    ],
                 ],
             ],
         ]);
@@ -73,6 +88,12 @@ class RecalculateFiscalDocumentTaxTotalsActionTest extends TestCase
         $this->assertSame('16.20', data_get($updated->tax_data, 'totais.valor_icms'));
         $this->assertSame('1.49', data_get($updated->tax_data, 'totais.valor_pis'));
         $this->assertSame('6.84', data_get($updated->tax_data, 'totais.valor_cofins'));
+        $this->assertSame('90.00', data_get($updated->tax_data, 'totais.base_calculo_ibs_cbs'));
+        $this->assertSame('0.05', data_get($updated->tax_data, 'totais.valor_ibs_estadual'));
+        $this->assertSame('0.04', data_get($updated->tax_data, 'totais.valor_ibs_municipal'));
+        $this->assertSame('0.09', data_get($updated->tax_data, 'totais.valor_total_ibs'));
+        $this->assertSame('0.81', data_get($updated->tax_data, 'totais.valor_cbs'));
+        $this->assertSame('0.90', data_get($updated->tax_data, 'totais.valor_total_ibs_cbs'));
     }
 
     private function makeFiscalDocument(): FiscalDocument

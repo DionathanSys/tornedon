@@ -9,13 +9,13 @@ use App\Enum\Product\Origin;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProduct;
 use App\Services\FiscalDocumentItem\FiscalDocumentItemResolverService;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\FusedGroup;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -65,7 +65,7 @@ class SchemaFormItemsNfe
                                 ]),
                             Callout::make('alert')
                                 ->description('Produto não possui vínculo com estoque')
-                                ->visible(fn($get) => ! $get('product_stock_id') && $get('product_id'))
+                                ->visible(fn ($get) => ! $get('product_stock_id') && $get('product_id'))
                                 ->columnSpanFull(),
 
                             ItemValueGroup::make([
@@ -138,7 +138,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.icms.valor_base_calculo')
                                                 ->label('BC ICMS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.icms.aliquota')
                                                 ->label('Aliq. ICMS %')
@@ -147,7 +147,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.icms.valor')
                                                 ->label('Valor ICMS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
@@ -159,7 +159,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.pis.valor_base_calculo')
                                                 ->label('BC PIS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.pis.aliquota')
                                                 ->label('Aliq. PIS %')
@@ -168,7 +168,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.pis.valor')
                                                 ->label('Valor PIS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                     Grid::make(['md' => 6, 'lg' => 12])
@@ -180,7 +180,7 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.cofins.valor_base_calculo')
                                                 ->label('BC COFINS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             TextInput::make('tax_data.imposto.cofins.aliquota')
                                                 ->label('Aliq. COFINS %')
@@ -189,7 +189,64 @@ class SchemaFormItemsNfe
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                             Money::make('tax_data.imposto.cofins.valor')
                                                 ->label('Valor COFINS')
-                                                ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                        ]),
+                                    Section::make('IBS/CBS')
+                                        ->columns(['md' => 6, 'lg' => 12])
+                                        ->columnSpanFull()
+                                        ->schema([
+                                            TextInput::make('tax_data.imposto.ibs_cbs.situacao_tributaria')
+                                                ->label('CST IBS/CBS')
+                                                ->maxLength(3)
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            TextInput::make('tax_data.imposto.ibs_cbs.classificacao_tributaria')
+                                                ->label('Class. Tributária')
+                                                ->maxLength(6)
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            Select::make('tax_data.imposto.ibs_cbs.indicador_doacao')
+                                                ->label('Doação')
+                                                ->options([
+                                                    '0' => 'Não',
+                                                    '1' => 'Sim',
+                                                ])
+                                                ->native(false)
+                                                ->placeholder('Não informar')
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            Money::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.valor_base_calculo')
+                                                ->label('BC IBS/CBS')
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            TextInput::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.ibs_estadual.aliquota')
+                                                ->label('Aliq. IBS UF %')
+                                                ->numeric()
+                                                ->step('0.0001')
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            Money::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.ibs_estadual.valor')
+                                                ->label('Valor IBS UF')
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            TextInput::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.ibs_municipal.aliquota')
+                                                ->label('Aliq. IBS Mun. %')
+                                                ->numeric()
+                                                ->step('0.0001')
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            Money::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.ibs_municipal.valor')
+                                                ->label('Valor IBS Mun.')
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            Money::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.valor_total_ibs')
+                                                ->label('Total IBS')
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            TextInput::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.cbs.aliquota')
+                                                ->label('Aliq. CBS %')
+                                                ->numeric()
+                                                ->step('0.0001')
+                                                ->columnSpan(['md' => 2, 'lg' => 3]),
+                                            Money::make('tax_data.imposto.ibs_cbs.grupo_ibs_cbs.cbs.valor')
+                                                ->label('Valor CBS')
+                                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                                 ->columnSpan(['md' => 2, 'lg' => 3]),
                                         ]),
                                 ]),
@@ -219,7 +276,7 @@ class SchemaFormItemsNfe
             return;
         }
 
-        Log::debug('DTO: ' . json_encode($dto));
+        Log::debug('DTO: '.json_encode($dto));
         self::applyDto($set, $dto);
     }
 
@@ -229,14 +286,14 @@ class SchemaFormItemsNfe
     private static function applyDto(Set $set, FiscalDocumentItemSourceDTO $dto): void
     {
         $set('product_stock_id', $dto->productStockId);
-        $set('product_code',     $dto->productCode);
-        $set('description',      $dto->name);
-        $set('unit_of_measure',  $dto->unit);
-        $set('unit_price',       $dto->price ? number_format($dto->price, 2, ',', '.') : null);
-        $set('total_price',      $dto->price ? number_format($dto->price, 2, ',', '.') : null);
-        $set('product_origin',   $dto->productOrigin);
-        $set('ncm_code',         $dto->ncmCode);
-        $set('cest_code',        $dto->cestCode);
-        $set('barcode',          $dto->barcode);
+        $set('product_code', $dto->productCode);
+        $set('description', $dto->name);
+        $set('unit_of_measure', $dto->unit);
+        $set('unit_price', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('total_price', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('product_origin', $dto->productOrigin);
+        $set('ncm_code', $dto->ncmCode);
+        $set('cest_code', $dto->cestCode);
+        $set('barcode', $dto->barcode);
     }
 }

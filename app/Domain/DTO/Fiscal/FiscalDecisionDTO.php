@@ -144,7 +144,67 @@ class FiscalDecisionDTO
             $imposto['ipi'] = $ipi;
         }
 
+        if ($this->hasIbsCbs()) {
+            $imposto['ibs_cbs'] = $this->buildIbsCbsTaxData($baseCalculo);
+        }
+
         return ['imposto' => $imposto];
+    }
+
+    private function hasIbsCbs(): bool
+    {
+        return filled($this->cstIbsCbs)
+            && filled($this->classificacaoTributariaIbsCbs);
+    }
+
+    private function buildIbsCbsTaxData(float $baseCalculo): array
+    {
+        $baseCalculo = round($baseCalculo, 2);
+        $valorIbsEstadual = $this->calculatePercentAmount($baseCalculo, $this->aliquotaIbsEstadual);
+        $valorIbsMunicipal = $this->calculatePercentAmount($baseCalculo, $this->aliquotaIbsMunicipal);
+        $valorCbs = $this->calculatePercentAmount($baseCalculo, $this->aliquotaCbs);
+
+        $ibsCbs = [
+            'situacao_tributaria' => $this->cstIbsCbs,
+            'classificacao_tributaria' => $this->classificacaoTributariaIbsCbs,
+            'grupo_ibs_cbs' => [
+                'valor_base_calculo' => $this->formatMoney($baseCalculo),
+                'valor_total_ibs' => $this->formatMoney($valorIbsEstadual + $valorIbsMunicipal),
+                'ibs_estadual' => [
+                    'aliquota' => $this->formatRate($this->aliquotaIbsEstadual),
+                    'valor' => $this->formatMoney($valorIbsEstadual),
+                ],
+                'ibs_municipal' => [
+                    'aliquota' => $this->formatRate($this->aliquotaIbsMunicipal),
+                    'valor' => $this->formatMoney($valorIbsMunicipal),
+                ],
+                'cbs' => [
+                    'aliquota' => $this->formatRate($this->aliquotaCbs),
+                    'valor' => $this->formatMoney($valorCbs),
+                ],
+            ],
+        ];
+
+        if (filled($this->indicadorDoacaoIbsCbs)) {
+            $ibsCbs['indicador_doacao'] = $this->indicadorDoacaoIbsCbs;
+        }
+
+        return $ibsCbs;
+    }
+
+    private function calculatePercentAmount(float $baseCalculo, ?float $rate): float
+    {
+        return round($baseCalculo * (($rate ?? 0.0) / 100), 2);
+    }
+
+    private function formatMoney(float $value): string
+    {
+        return number_format(round($value, 2), 2, '.', '');
+    }
+
+    private function formatRate(?float $value): string
+    {
+        return number_format(round($value ?? 0.0, 4), 4, '.', '');
     }
 
     /**

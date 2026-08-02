@@ -8,7 +8,6 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actio
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditItemAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\RelationManagers\Actions\EditNfseItemAction;
-use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -165,6 +164,34 @@ class ItemsRelationManager extends RelationManager
 
                 TextColumn::make('other_expenses_amount')
                     ->label('Outras Desp.')
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
+                TextColumn::make('ibs_estadual_value')
+                    ->label('IBS UF')
+                    ->state(fn (FiscalDocumentItem $item): float => (float) data_get($item->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.ibs_estadual.valor', 0))
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
+                TextColumn::make('ibs_municipal_value')
+                    ->label('IBS Mun.')
+                    ->state(fn (FiscalDocumentItem $item): float => (float) data_get($item->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.ibs_municipal.valor', 0))
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
+                TextColumn::make('ibs_total_value')
+                    ->label('IBS Total')
+                    ->state(fn (FiscalDocumentItem $item): float => (float) data_get($item->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.valor_total_ibs', 0))
+                    ->money('BRL')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(! $isNfse),
+
+                TextColumn::make('cbs_value')
+                    ->label('CBS')
+                    ->state(fn (FiscalDocumentItem $item): float => (float) data_get($item->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.cbs.valor', 0))
                     ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visible(! $isNfse),

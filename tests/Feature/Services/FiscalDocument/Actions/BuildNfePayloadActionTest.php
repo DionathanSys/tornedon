@@ -98,6 +98,12 @@ class BuildNfePayloadActionTest extends TestCase
                 'aliquota_pis' => 1.65,
                 'cst_cofins' => '01',
                 'aliquota_cofins' => 7.6,
+                'cst_ibs_cbs' => '000',
+                'classificacao_tributaria_ibs_cbs' => '000001',
+                'indicador_doacao_ibs_cbs' => '0',
+                'aliquota_ibs_estadual' => 0.05,
+                'aliquota_ibs_municipal' => 0.05,
+                'aliquota_cbs' => 0.90,
             ],
             'created_by' => $user->id,
         ]);
@@ -110,6 +116,11 @@ class BuildNfePayloadActionTest extends TestCase
         $this->assertSame('00', $payload['itens'][0]['imposto']['icms']['situacao_tributaria']);
         $this->assertSame('01', $payload['itens'][0]['imposto']['pis']['situacao_tributaria']);
         $this->assertSame('01', $payload['itens'][0]['imposto']['cofins']['situacao_tributaria']);
+        $this->assertSame('000', $payload['itens'][0]['imposto']['ibs_cbs']['situacao_tributaria']);
+        $this->assertSame('000001', $payload['itens'][0]['imposto']['ibs_cbs']['classificacao_tributaria']);
+        $this->assertSame('100.00', $payload['itens'][0]['imposto']['ibs_cbs']['grupo_ibs_cbs']['valor_base_calculo']);
+        $this->assertSame('0.10', $payload['itens'][0]['imposto']['ibs_cbs']['grupo_ibs_cbs']['valor_total_ibs']);
+        $this->assertSame('0.90', $payload['itens'][0]['imposto']['ibs_cbs']['grupo_ibs_cbs']['cbs']['valor']);
     }
 
     public function test_it_reloads_items_from_database_before_building_payload(): void
