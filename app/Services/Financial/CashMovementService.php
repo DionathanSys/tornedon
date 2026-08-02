@@ -10,6 +10,8 @@ use App\Models\Company;
 use App\Models\FinancialCategory;
 use App\Models\FinancialAccount;
 use App\Models\Partner;
+use App\Services\AccountPayable\AccountPayableService;
+use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
 use App\Support\Financial\InstallmentDescription;
 use App\Traits\HandlesServiceResponse;
@@ -146,6 +148,83 @@ class CashMovementService
             ]);
 
             return null;
+        }
+    }
+
+    public function deleteSafely(CashMovement $movement, ?int $userId = null): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($movement, $userId): bool {
+                $movement = $movement->fresh();
+
+                if (! $movement) {
+                    $this->setSuccess('Movimento financeiro ja removido.');
+                    return true;
+                }
+
+                if ($movement->isTransfer()) {
+                    throw ValidationException::withMessages([
+                        'movement' => ['Transferencias devem ser estornadas pela acao propria.'],
+                    ]);
+                }
+
+                if ($movement->origin_type === AccountReceivableInstallmentPayment::class && $movement->origin_id !== null) {
+                    $payment = AccountReceivableInstallmentPayment::query()->find($movement->origin_id);
+
+                    if (! $payment) {
+                        return $this->deleteStandaloneMovement($movement, $userId);
+                    }
+
+                    $service = app(AccountReceivableService::class);
+
+                    if (! $service->deleteInstallmentPayment($payment)) {
+                        throw ValidationException::withMessages([
+                            'movement' => [$service->getMessageUser() ?: $service->getMessage() ?: 'Nao foi possivel desfazer o recebimento vinculado.'],
+                        ]);
+                    }
+
+                    $this->setSuccess('Recebimento vinculado desfeito com sucesso.');
+                    return true;
+                }
+
+                if ($movement->origin_type === AccountPayableInstallmentPayment::class && $movement->origin_id !== null) {
+                    $payment = AccountPayableInstallmentPayment::query()->find($movement->origin_id);
+
+                    if (! $payment) {
+                        return $this->deleteStandaloneMovement($movement, $userId);
+                    }
+
+                    $service = app(AccountPayableService::class);
+
+                    if (! $service->deleteInstallmentPayment($payment)) {
+                        throw ValidationException::withMessages([
+                            'movement' => [$service->getMessageUser() ?: $service->getMessage() ?: 'Nao foi possivel desfazer o pagamento vinculado.'],
+                        ]);
+                    }
+
+                    $this->setSuccess('Pagamento vinculado desfeito com sucesso.');
+                    return true;
+                }
+
+                return $this->deleteStandaloneMovement($movement, $userId);
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha ao excluir movimento financeiro.', $e->errors(), 422);
+
+            return false;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao excluir movimento financeiro.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'movement_id' => $movement->id,
+            ]);
+
+            return false;
         }
     }
 
@@ -764,6 +843,38 @@ class CashMovementService
 
             return null;
         }
+    }
+
+    private function deleteStandaloneMovement(CashMovement $movement, ?int $userId = null): bool
+    {
+        if ($movement->statementLines()->exists()) {
+            throw ValidationException::withMessages([
+                'movement' => ['Movimento conciliado nao pode ser excluido diretamente. Desfaca a conciliacao ou use estorno quando aplicavel.'],
+            ]);
+        }
+
+        $audit = app(AuditRecorder::class);
+        $before = $audit->snapshot($movement);
+        $movementId = $movement->id;
+
+        $movement->delete();
+
+        $audit->recordModelEvent(
+            $movement,
+            'cash_movement.deleted',
+            'Movimento financeiro excluido',
+            $before,
+            null,
+            $userId,
+            null,
+            [
+                'cash_movement_id' => $movementId,
+            ],
+        );
+
+        $this->setSuccess('Movimento financeiro excluido com sucesso.');
+
+        return true;
     }
 
     private function resolveFinancialAccount(int $financialAccountId, int $companyId): FinancialAccount

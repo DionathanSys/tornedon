@@ -23,6 +23,7 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
+use App\Services\Financial\CashMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -206,6 +207,49 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
 
         $this->assertDatabaseCount('cash_movements', 0);
         $this->assertSame(100.0, $installment->fresh()->balance_amount);
+    }
+
+    public function test_delete_cash_movement_from_receipt_removes_receipt_and_reopens_installment(): void
+    {
+        $receivable = AccountReceivable::create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $this->createInvoice()->id,
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-15',
+            'paid_date' => null,
+            'due_amount' => 100,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+        ]);
+
+        $installment = AccountReceivableInstallment::create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-15',
+            'original_amount' => 100,
+            'due_amount' => 100,
+            'received_amount' => 0,
+            'balance_amount' => 100,
+            'financial_category_id' => $this->receivableCategory->id,
+        ]);
+
+        $payment = $this->service->registerInstallmentPayment($installment, 100, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+        $movement = CashMovement::query()->sole();
+        $cashMovementService = app(CashMovementService::class);
+
+        $this->assertNotNull($payment, $this->service->getMessage());
+        $this->assertTrue($cashMovementService->deleteSafely($movement, $this->user->id), $cashMovementService->getMessage());
+
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $this->assertDatabaseCount('cash_movements', 0);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        $this->assertSame(AccountReceivableStatus::PENDING, $installment->fresh()->status);
     }
 
     public function test_delete_receipt_reverses_cash_movement_when_reconciled(): void

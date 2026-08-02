@@ -41,6 +41,7 @@ class CashMovementForm
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
                             ->live()
+                            ->inline(false)
                             ->dehydrated(false)
                             ->afterStateHydrated(function (Toggle $component, ?bool $state, $record): void {
                                 if (! $record) {
@@ -57,7 +58,7 @@ class CashMovementForm
 
                                 $set('manual_counterparty_name', null);
                             })
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 1, 'lg' => 1]),
                         Select::make('financial_account_id')
                             ->label('Conta Financeira')
                             ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
@@ -89,6 +90,7 @@ class CashMovementForm
                         Money::make('amount')
                             ->label('Valor')
                             ->prefix('R$')
+                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->required()
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         Select::make('counterparty_partner_id')
@@ -118,7 +120,7 @@ class CashMovementForm
                             ->native(false)
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('description')
-                            ->label('DescriDescriçãocao')
+                            ->label('Descrição')
                             ->required()
                             ->maxLength(255)
                             ->columnSpan(['md' => 3, 'lg' => 6]),

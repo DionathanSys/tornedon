@@ -7,9 +7,11 @@ use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\CreateTransf
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
 use App\Models\CashMovement;
+use App\Services\Financial\CashMovementService;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -143,14 +145,36 @@ class CashMovementsTable
                     ->iconButton(),
                 ReverseTransferAction::make()
                     ->iconButton(),
+                Action::make('delete_safely')
+                    ->label('Excluir')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->iconButton()
+                    ->requiresConfirmation()
+                    ->modalHeading('Excluir movimento financeiro')
+                    ->modalDescription('Se este movimento veio de uma baixa de parcela, a baixa sera desfeita e a conta voltara ao estado anterior. Movimentos conciliados serao preservados via estorno quando aplicavel.')
+                    ->action(function (CashMovement $record): void {
+                        $service = app(CashMovementService::class);
+
+                        if (! $service->deleteSafely($record, auth()->id())) {
+                            Notification::make()
+                                ->title($service->getMessageUser() ?: 'Nao foi possivel excluir o movimento.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title($service->getMessage() ?: 'Movimento financeiro excluido com sucesso.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Movimento Manual'),
                 CreateTransferAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->emptyStateHeading('Nenhum movimento financeiro encontrado');
