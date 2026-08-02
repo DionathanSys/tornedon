@@ -41,13 +41,19 @@ class FiscalDecisionDTO
         public readonly ?bool $issRetido = null,
         public readonly ?string $issExigibilidade = null,
 
+        // IBS/CBS (NF-e)
+        public readonly ?string $cstIbsCbs = null,
+        public readonly ?string $classificacaoTributariaIbsCbs = null,
+        public readonly ?string $indicadorDoacaoIbsCbs = null,
+        public readonly ?float $aliquotaIbsEstadual = null,
+        public readonly ?float $aliquotaIbsMunicipal = null,
+        public readonly ?float $aliquotaCbs = null,
+
         // Rastreabilidade
         public readonly string $source = 'regime_default', // product_tax, regime_default
 
-        // Extensível para IBS/CBS
         public readonly ?array $metadata = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Calcula e monta o bloco `imposto` no formato esperado pela IntegraNotas.
@@ -151,9 +157,9 @@ class FiscalDecisionDTO
         return [
             'iss' => [
                 'exigibilidade' => $this->issExigibilidade ?? '1',
-                'aliquota'      => $this->issAliquota ?? 0,
-                'valor'         => $issValor,
-                'retido'        => $this->issRetido ?? false,
+                'aliquota' => $this->issAliquota ?? 0,
+                'valor' => $issValor,
+                'retido' => $this->issRetido ?? false,
             ],
         ];
     }
@@ -164,59 +170,78 @@ class FiscalDecisionDTO
     public function toSnapshotArray(): array
     {
         return [
-            'cfop'              => $this->cfop,
-            'cst_icms'          => $this->cstIcms,
-            'csosn'             => $this->csosn,
-            'mod_bc_icms'       => $this->modBcIcms,
-            'aliquota_icms'     => $this->aliquotaIcms,
+            'cfop' => $this->cfop,
+            'cst_icms' => $this->cstIcms,
+            'csosn' => $this->csosn,
+            'mod_bc_icms' => $this->modBcIcms,
+            'aliquota_icms' => $this->aliquotaIcms,
             'reducao_base_icms' => $this->reducaoBaseIcms,
-            'mod_bc_st'         => $this->modBcSt,
-            'aliquota_mva_st'   => $this->aliquotaMvaSt,
-            'aliquota_st'       => $this->aliquotaSt,
-            'reducao_base_st'   => $this->reducaoBaseSt,
-            'cst_pis'           => $this->cstPis,
-            'aliquota_pis'      => $this->aliquotaPis,
-            'cst_cofins'        => $this->cstCofins,
-            'aliquota_cofins'   => $this->aliquotaCofins,
-            'cst_ipi'           => $this->cstIpi,
-            'aliquota_ipi'      => $this->aliquotaIpi,
+            'mod_bc_st' => $this->modBcSt,
+            'aliquota_mva_st' => $this->aliquotaMvaSt,
+            'aliquota_st' => $this->aliquotaSt,
+            'reducao_base_st' => $this->reducaoBaseSt,
+            'cst_pis' => $this->cstPis,
+            'aliquota_pis' => $this->aliquotaPis,
+            'cst_cofins' => $this->cstCofins,
+            'aliquota_cofins' => $this->aliquotaCofins,
+            'cst_ipi' => $this->cstIpi,
+            'aliquota_ipi' => $this->aliquotaIpi,
             'enquadramento_ipi' => $this->enquadramentoIpi,
-            'iss_rate'      => $this->issAliquota,
-            'iss_withheld'        => $this->issRetido,
+            'iss_rate' => $this->issAliquota,
+            'iss_withheld' => $this->issRetido,
             'iss_exigibilidade' => $this->issExigibilidade,
-            'source'            => $this->source,
-            'metadata'          => $this->metadata,
+            'cst_ibs_cbs' => $this->cstIbsCbs,
+            'classificacao_tributaria_ibs_cbs' => $this->classificacaoTributariaIbsCbs,
+            'indicador_doacao_ibs_cbs' => $this->indicadorDoacaoIbsCbs,
+            'aliquota_ibs_estadual' => $this->aliquotaIbsEstadual,
+            'aliquota_ibs_municipal' => $this->aliquotaIbsMunicipal,
+            'aliquota_cbs' => $this->aliquotaCbs,
+            'source' => $this->source,
+            'metadata' => $this->metadata,
         ];
     }
 
     /**
      * Retorna uma cópia deste DTO com o CFOP substituído.
      */
-    public function withCfop(string $cfop): self
-    {
+    public function withCfop(
+        string $cfop,
+        ?string $cstIbsCbs = null,
+        ?string $classificacaoTributariaIbsCbs = null,
+        ?string $indicadorDoacaoIbsCbs = null,
+        ?float $aliquotaIbsEstadual = null,
+        ?float $aliquotaIbsMunicipal = null,
+        ?float $aliquotaCbs = null,
+    ): self {
         return new self(
-            cfop:             $cfop,
-            cstIcms:          $this->cstIcms,
-            csosn:            $this->csosn,
-            modBcIcms:        $this->modBcIcms,
-            aliquotaIcms:     $this->aliquotaIcms,
-            reducaoBaseIcms:  $this->reducaoBaseIcms,
-            modBcSt:          $this->modBcSt,
-            aliquotaMvaSt:    $this->aliquotaMvaSt,
-            aliquotaSt:       $this->aliquotaSt,
-            reducaoBaseSt:    $this->reducaoBaseSt,
-            cstPis:           $this->cstPis,
-            aliquotaPis:      $this->aliquotaPis,
-            cstCofins:        $this->cstCofins,
-            aliquotaCofins:   $this->aliquotaCofins,
-            cstIpi:           $this->cstIpi,
-            aliquotaIpi:      $this->aliquotaIpi,
+            cfop: $cfop,
+            cstIcms: $this->cstIcms,
+            csosn: $this->csosn,
+            modBcIcms: $this->modBcIcms,
+            aliquotaIcms: $this->aliquotaIcms,
+            reducaoBaseIcms: $this->reducaoBaseIcms,
+            modBcSt: $this->modBcSt,
+            aliquotaMvaSt: $this->aliquotaMvaSt,
+            aliquotaSt: $this->aliquotaSt,
+            reducaoBaseSt: $this->reducaoBaseSt,
+            cstPis: $this->cstPis,
+            aliquotaPis: $this->aliquotaPis,
+            cstCofins: $this->cstCofins,
+            aliquotaCofins: $this->aliquotaCofins,
+            cstIpi: $this->cstIpi,
+            aliquotaIpi: $this->aliquotaIpi,
             enquadramentoIpi: $this->enquadramentoIpi,
-            issAliquota:      $this->issAliquota,
-            issRetido:        $this->issRetido,
+            issAliquota: $this->issAliquota,
+            issRetido: $this->issRetido,
             issExigibilidade: $this->issExigibilidade,
-            source:           $this->source,
-            metadata:         $this->metadata,
+            cstIbsCbs: $cstIbsCbs ?? $this->cstIbsCbs,
+            classificacaoTributariaIbsCbs: $classificacaoTributariaIbsCbs ?? $this->classificacaoTributariaIbsCbs,
+            indicadorDoacaoIbsCbs: $indicadorDoacaoIbsCbs ?? $this->indicadorDoacaoIbsCbs,
+            aliquotaIbsEstadual: $aliquotaIbsEstadual ?? $this->aliquotaIbsEstadual,
+            aliquotaIbsMunicipal: $aliquotaIbsMunicipal ?? $this->aliquotaIbsMunicipal,
+            aliquotaCbs: $aliquotaCbs ?? $this->aliquotaCbs,
+            source: $this->source,
+            metadata: $this->metadata,
         );
     }
 
@@ -244,10 +269,17 @@ class FiscalDecisionDTO
             issAliquota: isset($data['iss_rate']) ? (float) $data['iss_rate'] : null,
             issRetido: isset($data['iss_withheld']) ? (bool) $data['iss_withheld'] : null,
             issExigibilidade: $data['iss_exigibilidade'] ?? null,
+            cstIbsCbs: $data['cst_ibs_cbs'] ?? null,
+            classificacaoTributariaIbsCbs: $data['classificacao_tributaria_ibs_cbs'] ?? null,
+            indicadorDoacaoIbsCbs: $data['indicador_doacao_ibs_cbs'] ?? null,
+            aliquotaIbsEstadual: isset($data['aliquota_ibs_estadual']) ? (float) $data['aliquota_ibs_estadual'] : null,
+            aliquotaIbsMunicipal: isset($data['aliquota_ibs_municipal']) ? (float) $data['aliquota_ibs_municipal'] : null,
+            aliquotaCbs: isset($data['aliquota_cbs']) ? (float) $data['aliquota_cbs'] : null,
             source: $data['source'] ?? 'regime_default',
             metadata: $data['metadata'] ?? null,
         );
         Log::debug('FiscalDecisionDTO::fromArray completed', ['source' => $result->source]);
+
         return $result;
     }
 }
