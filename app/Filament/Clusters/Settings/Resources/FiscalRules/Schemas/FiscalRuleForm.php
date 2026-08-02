@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Settings\Resources\FiscalRules\Schemas;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\Product\Origin as ProductOrigin;
 use App\Enum\Tax\CofinsCst;
+use App\Enum\Tax\IbsCbsCst;
 use App\Enum\Tax\IcmsCsosn;
 use App\Enum\Tax\IcmsCst;
 use App\Enum\Tax\PisCst;
@@ -218,6 +219,57 @@ class FiscalRuleForm
                             ->minValue(0)
                             ->maxValue(100)
                             ->columnSpan(['md' => 1, 'lg' => 3]),
+                    ]),
+
+                Section::make('IBS/CBS')
+                    ->description('Configuração base para montagem do bloco IBS/CBS na NF-e de saída.')
+                    ->columnSpanFull()
+                    ->columns(['md' => 2, 'lg' => 12])
+                    ->schema([
+                        Select::make('cst_ibs_cbs')
+                            ->label('CST IBS/CBS')
+                            ->options(IbsCbsCst::toSelectArray())
+                            ->searchable()
+                            ->native(false)
+                            ->placeholder('Não informar')
+                            ->columnSpan(['md' => 1, 'lg' => 4]),
+                        TextInput::make('classificacao_tributaria_ibs_cbs')
+                            ->label('Classificação Tributária')
+                            ->maxLength(6)
+                            ->rule('regex:/^[0-9]{6}$/')
+                            ->placeholder('Ex: 000001')
+                            ->helperText('Código cClassTrib com 6 dígitos.')
+                            ->columnSpan(['md' => 1, 'lg' => 4]),
+                        Select::make('indicador_doacao_ibs_cbs')
+                            ->label('Indicador Doação')
+                            ->options([
+                                '0' => '0 - Não',
+                                '1' => '1 - Sim',
+                            ])
+                            ->native(false)
+                            ->placeholder('Não informar')
+                            ->columnSpan(['md' => 1, 'lg' => 4]),
+                        TextInput::make('aliquota_ibs_estadual')
+                            ->label('Alíquota IBS Estadual (%)')
+                            ->numeric()
+                            ->step(0.0001)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->columnSpan(['md' => 1, 'lg' => 4]),
+                        TextInput::make('aliquota_ibs_municipal')
+                            ->label('Alíquota IBS Municipal (%)')
+                            ->numeric()
+                            ->step(0.0001)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->columnSpan(['md' => 1, 'lg' => 4]),
+                        TextInput::make('aliquota_cbs')
+                            ->label('Alíquota CBS (%)')
+                            ->numeric()
+                            ->step(0.0001)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->columnSpan(['md' => 1, 'lg' => 4]),
                     ]),
 
                 Section::make('Vigência e Observações')

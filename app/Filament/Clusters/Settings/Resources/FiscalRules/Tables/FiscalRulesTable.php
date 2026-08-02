@@ -90,6 +90,22 @@ class FiscalRulesTable
                 TextColumn::make('cst_ipi')
                     ->label('CST IPI')
                     ->searchable(),
+                TextColumn::make('cst_ibs_cbs')
+                    ->label('CST IBS/CBS')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('classificacao_tributaria_ibs_cbs')
+                    ->label('Class. IBS/CBS')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('indicador_doacao_ibs_cbs')
+                    ->label('Doação IBS/CBS')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        '0' => 'Não',
+                        '1' => 'Sim',
+                        default => '-',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('aliquota_icms')
                     ->label('Aliq. ICMS')
                     ->numeric()
@@ -110,6 +126,24 @@ class FiscalRulesTable
                     ->numeric()
                     ->suffix('%')
                     ->sortable(),
+                TextColumn::make('aliquota_ibs_estadual')
+                    ->label('Aliq. IBS UF')
+                    ->numeric()
+                    ->suffix('%')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('aliquota_ibs_municipal')
+                    ->label('Aliq. IBS Mun.')
+                    ->numeric()
+                    ->suffix('%')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('aliquota_cbs')
+                    ->label('Aliq. CBS')
+                    ->numeric()
+                    ->suffix('%')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('priority')
                     ->label('Prioridade')
                     ->numeric()
