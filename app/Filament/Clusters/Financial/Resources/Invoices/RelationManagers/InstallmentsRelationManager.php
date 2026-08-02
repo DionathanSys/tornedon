@@ -35,11 +35,6 @@ class InstallmentsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('sequence_number')
             ->columns([
-                TextColumn::make('accountReceivable.sequence_number')
-                    ->label('Conta')
-                    ->badge()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sequence_number')
                     ->label('Parcela')
                     ->badge()
@@ -54,6 +49,7 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('due_date')
                     ->label('Vencimento')
                     ->date('d/m/Y')
+                    ->sinceTooltip()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('original_amount')
