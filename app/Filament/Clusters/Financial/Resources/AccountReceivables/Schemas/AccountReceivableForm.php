@@ -52,6 +52,7 @@ class AccountReceivableForm
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
                             ->live()
+                            ->inline(false)
                             ->dehydrated(false)
                             ->afterStateHydrated(function (Toggle $component, ?bool $state, ?AccountReceivable $record): void {
                                 if (! $record) {

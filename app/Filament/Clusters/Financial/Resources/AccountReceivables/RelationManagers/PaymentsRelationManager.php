@@ -69,6 +69,7 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Descrição')
                     ->limit(50)
                     ->placeholder('-')
+                    ->tooltip(fn ($state): string => $state)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observações')

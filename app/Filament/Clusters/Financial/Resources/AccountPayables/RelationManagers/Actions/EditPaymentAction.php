@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class EditPaymentAction
@@ -23,36 +24,41 @@ final class EditPaymentAction
             ->icon('heroicon-o-pencil-square')
             ->color('warning')
             ->schema([
-                DatePicker::make('payment_date')
-                    ->label('Data do pagamento')
-                    ->required(),
-                Money::make('amount')
-                    ->label('Valor pago')
-                    ->required(),
-                Money::make('interest_amount')
-                    ->label('Juros'),
-                Money::make('fine_amount')
-                    ->label('Multa'),
-                Money::make('discount_amount')
-                    ->label('Desconto'),
-                TextInput::make('bank_account_id')
-                    ->label('Conta bancaria (ID)')
-                    ->numeric()
-                    ->visible(false),
-                Select::make('financial_account_id')
-                    ->label('Conta Financeira')
-                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
-                    ->searchable()
-                    ->preload()
-                    ->native(false)
-                    ->required(),
-                Textarea::make('description')
-                    ->label('Descrição do Movimento')
-                    ->rows(2)
-                    ->maxLength(255),
-                Textarea::make('notes')
-                    ->label('Observações')
-                    ->rows(3),
+                Grid::make(3)
+                    ->schema([
+                        DatePicker::make('payment_date')
+                            ->label('Data do pagamento')
+                            ->required(),
+                        Money::make('amount')
+                            ->label('Valor pago')
+                            ->required(),
+                        Select::make('financial_account_id')
+                            ->label('Conta Financeira')
+                            ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->required(),
+                        Money::make('interest_amount')
+                            ->label('Juros'),
+                        Money::make('fine_amount')
+                            ->label('Multa'),
+                        Money::make('discount_amount')
+                            ->label('Desconto'),
+                        TextInput::make('bank_account_id')
+                            ->label('Conta bancaria (ID)')
+                            ->numeric()
+                            ->visible(false),
+                        Textarea::make('description')
+                            ->label('Descrição do Movimento')
+                            ->rows(2)
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                        Textarea::make('notes')
+                            ->label('Observações')
+                            ->rows(3)
+                            ->columnSpanFull(),
+                    ]),
             ])
             ->fillForm(fn (AccountPayableInstallmentPayment $record): array => [
                 'payment_date' => $record->payment_date?->format('Y-m-d'),

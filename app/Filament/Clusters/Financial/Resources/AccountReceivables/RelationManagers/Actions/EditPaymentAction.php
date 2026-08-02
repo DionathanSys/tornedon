@@ -23,6 +23,13 @@ final class EditPaymentAction
             ->icon('heroicon-o-pencil-square')
             ->color('warning')
             ->schema([
+                Select::make('financial_account_id')
+                    ->label('Conta Financeira')
+                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->required(),
                 DatePicker::make('payment_date')
                     ->label('Data do recebimento')
                     ->required(),
@@ -39,19 +46,14 @@ final class EditPaymentAction
                     ->label('Conta bancaria (ID)')
                     ->numeric()
                     ->visible(false),
-                Select::make('financial_account_id')
-                    ->label('Conta Financeira')
-                    ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
-                    ->searchable()
-                    ->preload()
-                    ->native(false)
-                    ->required(),
                 Textarea::make('description')
                     ->label('Descrição do Movimento')
                     ->rows(2)
+                    ->columnSpanFull()
                     ->maxLength(255),
                 Textarea::make('notes')
                     ->label('Observações')
+                    ->columnSpanFull()
                     ->rows(3),
             ])
             ->fillForm(fn (AccountReceivableInstallmentPayment $record): array => [

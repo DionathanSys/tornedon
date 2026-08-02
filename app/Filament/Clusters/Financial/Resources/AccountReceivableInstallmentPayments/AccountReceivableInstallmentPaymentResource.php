@@ -20,6 +20,8 @@ class AccountReceivableInstallmentPaymentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Banknotes;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Pgto de parcela à receber';
