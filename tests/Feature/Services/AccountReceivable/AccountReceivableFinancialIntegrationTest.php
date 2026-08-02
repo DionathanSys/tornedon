@@ -271,6 +271,10 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $this->assertNull($receivable->invoice_id);
         $this->assertSame('Cliente Avulso', $receivable->manual_counterparty_name);
         $this->assertSame('Cliente Avulso', $receivable->counterparty_label);
+        $this->assertSame(
+            'Cliente Avulso | Doc. Sem documento | Parcela 01',
+            $receivable->installments()->sole()->description
+        );
     }
 
     public function test_update_and_delete_installment_generate_audit_entries(): void

@@ -17,6 +17,7 @@ use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class AccountReceivableInstallmentsTable
@@ -26,10 +27,15 @@ class AccountReceivableInstallmentsTable
         return $table
             ->recordTitleAttribute('sequence_number')
             ->columns([
-                TextColumn::make('accountReceivable.customer.name')
+                TextColumn::make('accountReceivable.counterparty_label')
                     ->label('Cliente')
-                    ->searchable()
-                    ->sortable()
+                    ->getStateUsing(fn (AccountReceivableInstallment $record): string => $record->accountReceivable?->counterparty_label ?? '-')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('accountReceivable', function (Builder $query) use ($search): void {
+                            $query->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', "%{$search}%"))
+                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                        });
+                    })
                     ->limit(40)
                     ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
                         ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])

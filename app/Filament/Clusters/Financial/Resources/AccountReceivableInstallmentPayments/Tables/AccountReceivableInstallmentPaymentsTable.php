@@ -26,10 +26,15 @@ class AccountReceivableInstallmentPaymentsTable
         return $table
             ->recordTitleAttribute('id')
             ->columns([
-                TextColumn::make('installment.accountReceivable.customer.name')
+                TextColumn::make('installment.accountReceivable.counterparty_label')
                     ->label('Cliente')
-                    ->searchable()
-                    ->sortable()
+                    ->getStateUsing(fn (AccountReceivableInstallmentPayment $record): string => $record->installment?->accountReceivable?->counterparty_label ?? '-')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('installment.accountReceivable', function (Builder $query) use ($search): void {
+                            $query->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', "%{$search}%"))
+                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                        });
+                    })
                     ->limit(40),
                 TextColumn::make('installment.accountReceivable.document_number')
                     ->label('Nº Documento')

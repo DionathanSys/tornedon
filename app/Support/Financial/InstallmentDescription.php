@@ -70,7 +70,7 @@ class InstallmentDescription
 
     public static function fallbackForReceivable(?AccountReceivable $accountReceivable, ?string $sequenceNumber): string
     {
-        $customer = trim((string) ($accountReceivable?->customer?->name ?? 'Conta a receber'));
+        $customer = trim((string) ($accountReceivable?->counterparty_label ?? 'Conta a receber'));
         $document = trim((string) ($accountReceivable?->document_number ?? 'Sem documento'));
         $sequence = trim((string) ($sequenceNumber ?: '01'));
 
