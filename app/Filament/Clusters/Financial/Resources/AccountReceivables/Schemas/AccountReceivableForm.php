@@ -69,7 +69,7 @@ class AccountReceivableForm
 
                                 $set('manual_counterparty_name', null);
                             })
-                            ->columnSpan(['md' => 1, 'lg' => 3]),
+                            ->columnSpan(['md' => 1, 'lg' => 1]),
                         SelectPartner::make('customer_id', 'all')
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 5])

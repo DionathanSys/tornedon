@@ -25,9 +25,9 @@ class AccountReceivableInstallmentResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
 
-    protected static ?string $modelLabel = 'Parcela Receber';
+    protected static ?string $modelLabel = 'Conta à Receber';
 
-    protected static ?string $pluralModelLabel = 'Parcelas Receber';
+    protected static ?string $pluralModelLabel = 'Contas à Receber';
 
     protected static ?int $navigationSort = 3;
 

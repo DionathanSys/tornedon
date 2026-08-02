@@ -25,6 +25,8 @@ class AccountPayableResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowTrendingDown;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     // protected static ?string $cluster = FinancialCluster::class;
 
     protected static string | UnitEnum | null $navigationGroup = 'Financeiro';

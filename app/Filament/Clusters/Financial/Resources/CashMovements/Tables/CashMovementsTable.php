@@ -6,6 +6,7 @@ use App\Enum\Financial\CashMovementDirection;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\CreateTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
+use App\Models\CashMovement;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteBulkAction;
@@ -16,6 +17,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class CashMovementsTable
@@ -36,6 +38,17 @@ class CashMovementsTable
                 TextColumn::make('financialCategory.full_name')
                     ->label('Categoria')
                     ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('counterparty_label')
+                    ->label('Parceiro')
+                    ->getStateUsing(fn (CashMovement $record): string => $record->counterparty_label)
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search): void {
+                            $query->whereHas('counterpartyPartner', fn (Builder $partnerQuery) => $partnerQuery->where('name', 'like', "%{$search}%"))
+                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('direction')
                     ->label('Tipo')

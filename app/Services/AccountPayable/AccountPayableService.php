@@ -767,7 +767,7 @@ class AccountPayableService
                 $userId = auth()->id();
                 $payment->loadMissing('installment.accountPayable');
 
-                $reversal = $this->cashMovementService->reverseForPayablePayment($payment, $userId);
+                $this->cashMovementService->deleteOrReverseForPayablePayment($payment, $userId);
 
                 if ($this->cashMovementService->hasError()) {
                     $this->setError(

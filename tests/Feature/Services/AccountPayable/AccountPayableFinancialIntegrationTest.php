@@ -86,7 +86,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         ]);
     }
 
-    public function test_register_payment_creates_cash_movement_and_delete_reverses_it(): void
+    public function test_register_payment_creates_cash_movement_and_delete_removes_it_when_not_reconciled(): void
     {
         $payable = AccountPayable::create([
             'supplier_id' => $this->supplier->id,
@@ -146,20 +146,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         ]);
 
         $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
-        $this->assertDatabaseCount('cash_movements', 2);
-
-        $original = CashMovement::query()
-            ->where('origin_type', $payment::class)
-            ->where('origin_id', $payment->id)
-            ->first();
-
-        $reversal = CashMovement::query()
-            ->where('reversal_of_id', $original->id)
-            ->first();
-
-        $this->assertNotNull($original?->reversed_at);
-        $this->assertNotNull($reversal);
-        $this->assertSame(CashMovementDirection::INFLOW, $reversal->direction);
+        $this->assertDatabaseCount('cash_movements', 0);
         $this->assertSame(150.0, $installment->fresh()->balance_amount);
     }
 

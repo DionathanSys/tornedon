@@ -59,6 +59,16 @@ class CashMovementService
         return $this->reverseForOrigin(AccountReceivableInstallmentPayment::class, $payment->id, $userId);
     }
 
+    public function deleteOrReverseForPayablePayment(AccountPayableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
+    {
+        return $this->deleteOrReverseForOrigin(AccountPayableInstallmentPayment::class, $payment->id, $userId);
+    }
+
+    public function deleteOrReverseForReceivablePayment(AccountReceivableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
+    {
+        return $this->deleteOrReverseForOrigin(AccountReceivableInstallmentPayment::class, $payment->id, $userId);
+    }
+
     public function createManual(array $data, ?int $userId = null): ?CashMovement
     {
         $this->resetResponse();
@@ -702,6 +712,47 @@ class CashMovementService
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao reverter movimento financeiro.');
+
+            Log::error($this->getMessage(), [
+                'metodo' => __METHOD__ . '@' . __LINE__,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'origin_type' => $originType,
+                'origin_id' => $originId,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function deleteOrReverseForOrigin(string $originType, int $originId, ?int $userId = null): ?CashMovement
+    {
+        $this->resetResponse();
+
+        try {
+            return DB::transaction(function () use ($originType, $originId, $userId) {
+                $movement = CashMovement::query()
+                    ->where('origin_type', $originType)
+                    ->where('origin_id', $originId)
+                    ->first();
+
+                if (! $movement) {
+                    $this->setSuccess('Nenhum movimento financeiro precisava ser removido.');
+                    return null;
+                }
+
+                if ($movement->statementLines()->exists()) {
+                    return $this->reverseForOrigin($originType, $originId, $userId);
+                }
+
+                $movement->delete();
+
+                $this->setSuccess('Movimento financeiro removido com sucesso.');
+
+                return $movement;
+            });
+        } catch (\Exception $e) {
+            $this->setError('Erro ao remover ou reverter movimento financeiro.');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

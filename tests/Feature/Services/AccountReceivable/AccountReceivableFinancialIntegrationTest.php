@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services\AccountReceivable;
 
 use App\Enum\AccountReceivable\Status as AccountReceivableStatus;
+use App\Enum\Financial\BankStatementImportStatus;
 use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Invoice\Status as InvoiceStatus;
@@ -11,6 +12,8 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AuditEntry;
+use App\Models\BankStatementImport;
+use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
@@ -162,6 +165,114 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
             'event' => 'account_receivable.payment_registered',
             'action' => 'payment_registered',
         ]);
+    }
+
+    public function test_delete_receipt_removes_cash_movement_when_not_reconciled(): void
+    {
+        $receivable = AccountReceivable::create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $this->createInvoice()->id,
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-15',
+            'paid_date' => null,
+            'due_amount' => 100,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+        ]);
+
+        $installment = AccountReceivableInstallment::create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-15',
+            'original_amount' => 100,
+            'due_amount' => 100,
+            'received_amount' => 0,
+            'balance_amount' => 100,
+            'financial_category_id' => $this->receivableCategory->id,
+        ]);
+
+        $payment = $this->service->registerInstallmentPayment($installment, 100, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+
+        $this->assertNotNull($payment, $this->service->getMessage());
+        $this->assertDatabaseCount('cash_movements', 1);
+
+        $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
+
+        $this->assertDatabaseCount('cash_movements', 0);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+    }
+
+    public function test_delete_receipt_reverses_cash_movement_when_reconciled(): void
+    {
+        $receivable = AccountReceivable::create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $this->createInvoice()->id,
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-15',
+            'paid_date' => null,
+            'due_amount' => 100,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+        ]);
+
+        $installment = AccountReceivableInstallment::create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-15',
+            'original_amount' => 100,
+            'due_amount' => 100,
+            'received_amount' => 0,
+            'balance_amount' => 100,
+            'financial_category_id' => $this->receivableCategory->id,
+        ]);
+
+        $payment = $this->service->registerInstallmentPayment($installment, 100, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+        $movement = CashMovement::query()->sole();
+        $import = BankStatementImport::create([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->financialAccount->id,
+            'source' => 'test',
+            'reference' => 'reconciled-receipt',
+            'file_name' => 'test.ofx',
+            'status' => BankStatementImportStatus::COMPLETED->value,
+            'imported_at' => now(),
+            'line_count' => 1,
+            'created_by' => $this->user->id,
+        ]);
+        BankStatementLine::create([
+            'bank_statement_import_id' => $import->id,
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->financialAccount->id,
+            'cash_movement_id' => $movement->id,
+            'transaction_date' => '2026-04-15',
+            'amount' => 100,
+            'description' => 'Recebimento conciliado',
+            'reconciliation_status' => 'reconciled',
+            'reconciled_at' => now(),
+        ]);
+
+        $this->assertNotNull($payment, $this->service->getMessage());
+        $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
+
+        $this->assertDatabaseCount('cash_movements', 2);
+        $this->assertNotNull($movement->fresh()->reversed_at);
+        $this->assertDatabaseHas('cash_movements', [
+            'reversal_of_id' => $movement->id,
+            'direction' => CashMovementDirection::OUTFLOW->value,
+        ]);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
     }
 
     public function test_validator_rejects_category_with_invalid_scope_for_receivable_installment(): void

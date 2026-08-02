@@ -43,6 +43,7 @@ class AccountPayableForm
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
                             ->live()
+                            ->inline(false)
                             ->dehydrated(false)
                             ->afterStateHydrated(function (Toggle $component, ?bool $state, ?object $record): void {
                                 if (! $record) {
@@ -59,7 +60,7 @@ class AccountPayableForm
 
                                 $set('manual_counterparty_name', null);
                             })
-                            ->columnSpan(['md' => 1, 'lg' => 3]),
+                            ->columnSpan(['md' => 1, 'lg' => 1]),
                         SelectPartner::make('supplier_id', 'all')
                             ->label('Fornecedor')
                             ->columnSpan(['md' => 2, 'lg' => 5])
@@ -171,8 +172,8 @@ class AccountPayableForm
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->required()
                             ->helperText(fn (callable $get): string => $get('amount_input_mode') === 'per_installment'
-                                ? 'O total da conta sera calculado pela quantidade de parcelas.'
-                                : 'O valor total sera distribuido entre as parcelas.'),
+                                ? 'O total da conta será calculado pela quantidade de parcelas.'
+                                : 'O valor total será distribuido entre as parcelas.'),
                         DatePicker::make('paid_date')
                             ->label('Data de Pagamento')
                             ->columnSpan(['md' => 1, 'lg' => 3])

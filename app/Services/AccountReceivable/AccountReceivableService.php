@@ -614,7 +614,7 @@ class AccountReceivableService
                 $userId = auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
-                $reversal = $this->cashMovementService->reverseForReceivablePayment($payment, $userId);
+                $this->cashMovementService->deleteOrReverseForReceivablePayment($payment, $userId);
 
                 if ($this->cashMovementService->hasError()) {
                     $this->setError(
