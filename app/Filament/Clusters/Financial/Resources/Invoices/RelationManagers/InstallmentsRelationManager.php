@@ -45,6 +45,12 @@ class InstallmentsRelationManager extends RelationManager
                     ->badge()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('description')
+                    ->label('Descrição')
+                    ->limit(40)
+                    ->tooltip(fn($state, $record) => $record->description)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
                     ->label('Vencimento')
                     ->date('d/m/Y')
@@ -73,8 +79,8 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
-                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
+                    ->color(fn($state) => $state?->color() ?? 'gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_date')

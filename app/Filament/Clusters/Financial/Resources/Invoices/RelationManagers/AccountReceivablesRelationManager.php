@@ -46,6 +46,7 @@ class AccountReceivablesRelationManager extends RelationManager
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->limit(40)
+                    ->tooltip(fn($state, $record) => $record->description)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
