@@ -66,14 +66,13 @@ class GenerateInvoiceAccountReceivablesAction
             'company_id' => $this->invoice->company_id,
             'invoice_id' => $this->invoice->id,
             'fiscal_document_id' => null,
-            'sequence_number' => '01',
             'due_date' => $installments[0]['due_date'],
             'paid_date' => null,
             'due_amount' => round((float) $this->invoice->netValue, 2),
             'paid_amount' => 0,
             'document_number' => Str::padLeft($this->invoice->invoice_number, 5, '0'),
             'description' => sprintf(
-                'Referente a fatura %s',
+                'Fatura: %s',
                 Str::padLeft($this->invoice->invoice_number, 5, '0')
             ),
             'paid' => false,

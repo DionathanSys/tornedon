@@ -83,6 +83,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Data Receb.')
                     ->date('d/m/Y')
                     ->placeholder('-')
+                    ->sinceTooltip()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('financialCategory.full_name')

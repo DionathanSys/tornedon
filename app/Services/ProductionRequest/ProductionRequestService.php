@@ -257,7 +257,6 @@ class ProductionRequestService
             'customer_id' => $request->customer_id,
             'manual_counterparty_name' => $request->manual_counterparty_name,
             'company_id' => $request->company_id,
-            'sequence_number' => '01',
             'status' => AccountReceivableStatus::PENDING->value,
             'due_date' => $dueDate,
             'paid_date' => null,

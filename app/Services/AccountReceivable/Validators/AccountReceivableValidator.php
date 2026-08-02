@@ -15,7 +15,6 @@ class AccountReceivableValidator
     private static function commonRules(): array
     {
         return [
-            'sequence_number' => 'nullable|string|max:2',
             'due_date' => 'required|date',
             'paid_date' => 'nullable|date',
             'due_amount' => 'required|numeric|min:0',
@@ -75,7 +74,6 @@ class AccountReceivableValidator
             'company_id' => 'required|integer|exists:companies,id',
             'invoice_id' => 'nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
-            'sequence_number' => 'required|string|max:2',
             'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
         ]);
 
@@ -92,7 +90,6 @@ class AccountReceivableValidator
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'invoice_id' => 'sometimes|nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
-            'sequence_number' => 'sometimes|required|string|max:2',
             'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
         ]);
 

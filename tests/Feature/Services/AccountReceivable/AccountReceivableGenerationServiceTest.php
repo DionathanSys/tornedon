@@ -81,7 +81,6 @@ class AccountReceivableGenerationServiceTest extends TestCase
 
         $this->assertSame($invoice->id, $accountReceivable->invoice_id);
         $this->assertSame($fiscalDocument->id, $accountReceivable->fiscal_document_id);
-        $this->assertSame('01', $accountReceivable->sequence_number);
         $this->assertSame(PaymentMethod::PIX, $accountReceivable->payment_method);
         $this->assertSame(100.0, $accountReceivable->due_amount);
         $this->assertSame('2026-04-09', $accountReceivable->due_date?->toDateString());

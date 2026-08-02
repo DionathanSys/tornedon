@@ -39,10 +39,6 @@ class PaymentsRelationManager extends RelationManager
                     ->where('invoice_id', $this->getOwnerRecord()->getKey())))
             ->recordTitleAttribute('id')
             ->columns([
-                TextColumn::make('installment.accountReceivable.sequence_number')
-                    ->label('Conta')
-                    ->badge()
-                    ->sortable(),
                 TextColumn::make('installment.sequence_number')
                     ->label('Parcela')
                     ->badge()

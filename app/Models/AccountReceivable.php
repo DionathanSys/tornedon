@@ -19,7 +19,6 @@ class AccountReceivable extends Model
         'company_id',
         'invoice_id',
         'fiscal_document_id',
-        'sequence_number',
         'status',
         'due_date',
         'paid_date',

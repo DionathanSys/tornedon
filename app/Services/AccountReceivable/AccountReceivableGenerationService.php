@@ -235,7 +235,6 @@ class AccountReceivableGenerationService
             'company_id' => $invoice->company_id,
             'invoice_id' => $invoice->id,
             'fiscal_document_id' => $fiscalDocument->id,
-            'sequence_number' => '01',
             'due_date' => $firstDueDate->toDateString(),
             'paid_date' => null,
             'due_amount' => $netValue,

@@ -49,6 +49,7 @@ class AccountReceivableService
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
+                unset($data['sequence_number']);
 
                 $data['customer_id'] = $this->normalizeCounterpartyId($data['customer_id'] ?? null);
                 $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
@@ -100,7 +101,7 @@ class AccountReceivableService
                     'Conta a receber criada',
                     null,
                     $audit->snapshot($syncedAccountReceivable),
-                    $createdBy,
+                    $createdBy > 0 ? $createdBy : null,
                     null,
                     [
                         'installments_count' => $installmentCount,
@@ -769,7 +770,6 @@ class AccountReceivableService
 
         return [
             ...$data,
-            'sequence_number' => '01',
             'status' => Status::PENDING->value,
             'due_date' => $installments[0]['due_date'] ?? $data['due_date'],
             'due_amount' => $totalAmount,

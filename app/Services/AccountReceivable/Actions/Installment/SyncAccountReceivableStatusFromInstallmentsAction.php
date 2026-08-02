@@ -41,7 +41,6 @@ class SyncAccountReceivableStatusFromInstallmentsAction
                     : null,
                 'due_amount' => $totalDue,
                 'due_date' => $this->accountReceivable->installments->min('due_date') ?? $this->accountReceivable->due_date,
-                'sequence_number' => '01',
             ]);
 
             $this->setSuccess();

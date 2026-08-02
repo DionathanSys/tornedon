@@ -34,10 +34,6 @@ class AccountReceivablesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('document_number')
             ->columns([
-                TextColumn::make('sequence_number')
-                    ->label('Seq.')
-                    ->badge()
-                    ->sortable(),
                 TextColumn::make('document_number')
                     ->label('Documento')
                     ->placeholder('-')
@@ -77,7 +73,7 @@ class AccountReceivablesRelationManager extends RelationManager
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
-            ->defaultSort('sequence_number')
+            ->defaultSort('due_date')
             ->headerActions([])
             ->recordActions([])
             ->toolbarActions([])

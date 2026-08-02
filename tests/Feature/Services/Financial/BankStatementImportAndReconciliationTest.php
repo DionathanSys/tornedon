@@ -468,7 +468,6 @@ OFX;
             'customer_id' => $this->customer->id,
             'company_id' => $this->company->id,
             'invoice_id' => $invoice->id,
-            'sequence_number' => '01',
             'status' => AccountReceivableStatus::PENDING->value,
             'due_date' => '2026-04-12',
             'paid_date' => null,
