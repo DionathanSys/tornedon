@@ -12,6 +12,7 @@ final class SefazDistributionDocumentRecordActions
     public static function make(): array
     {
         return [
+            GenerateAccountPayableAction::make(),
             ImportDocumentAction::make(),
             DownloadXmlAction::make(),
             ViewXmlAction::make(),

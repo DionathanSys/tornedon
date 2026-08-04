@@ -41,7 +41,7 @@ class SefazDistributionDocumentsTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('document_key')
                     ->label('Chave')
-                    ->tooltip(fn(SefazDistributionDocument $record): string => $record->document_key)
+                    ->tooltip(fn (SefazDistributionDocument $record): string => $record->document_key)
                     ->searchable()
                     ->copyable()
                     ->copyMessage('Chave copiada')
@@ -49,22 +49,22 @@ class SefazDistributionDocumentsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn(Status $state): string => $state->description())
-                    ->color(fn(Status $state): string => $state->color())
+                    ->formatStateUsing(fn (Status $state): string => $state->description())
+                    ->color(fn (Status $state): string => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('import_status')
                     ->label('Importação')
                     ->badge()
-                    ->formatStateUsing(fn(ImportStatus $state): string => $state->description())
-                    ->color(fn(ImportStatus $state): string => $state->color())
+                    ->formatStateUsing(fn (ImportStatus $state): string => $state->description())
+                    ->color(fn (ImportStatus $state): string => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('manifestation_status')
                     ->label('Manifestação')
                     ->badge()
-                    ->formatStateUsing(fn(ManifestationStatus $state): string => $state->description())
-                    ->color(fn(ManifestationStatus $state): string => $state->color())
+                    ->formatStateUsing(fn (ManifestationStatus $state): string => $state->description())
+                    ->color(fn (ManifestationStatus $state): string => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('full_xml_available')
@@ -91,11 +91,17 @@ class SefazDistributionDocumentsTable
                     ->label('Nota entrada')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('accountPayable.id')
+                    ->label('Conta pagar')
+                    ->badge()
+                    ->placeholder('Não gerada')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('partner_id')
                     ->label('Fornecedor')
                     ->badge()
-                    ->formatStateUsing(fn($state, SefazDistributionDocument $record): string => $record->partner?->name ? 'Vinculado' : 'Pendente')
-                    ->color(fn($state, SefazDistributionDocument $record): string => $record->partner?->name ? 'success' : 'warning')
+                    ->formatStateUsing(fn ($state, SefazDistributionDocument $record): string => $record->partner?->name ? 'Vinculado' : 'Pendente')
+                    ->color(fn ($state, SefazDistributionDocument $record): string => $record->partner?->name ? 'success' : 'warning')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('last_seen_at')
                     ->label('Última detecção')
@@ -109,47 +115,47 @@ class SefazDistributionDocumentsTable
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->options(collect(Status::cases())->mapWithKeys(fn(Status $status) => [
+                    ->options(collect(Status::cases())->mapWithKeys(fn (Status $status) => [
                         $status->value => $status->description(),
                     ])->all()),
                 SelectFilter::make('import_status')
-                    ->options(collect(ImportStatus::cases())->mapWithKeys(fn(ImportStatus $status) => [
+                    ->options(collect(ImportStatus::cases())->mapWithKeys(fn (ImportStatus $status) => [
                         $status->value => $status->description(),
                     ])->all()),
                 SelectFilter::make('manifestation_status')
-                    ->options(collect(ManifestationStatus::cases())->mapWithKeys(fn(ManifestationStatus $status) => [
+                    ->options(collect(ManifestationStatus::cases())->mapWithKeys(fn (ManifestationStatus $status) => [
                         $status->value => $status->description(),
                     ])->all()),
                 Filter::make('ready_to_import')
                     ->label('Prontos para importar')
-                    ->query(fn($query) => $query->where('import_status', ImportStatus::READY_TO_IMPORT->value)),
+                    ->query(fn ($query) => $query->where('import_status', ImportStatus::READY_TO_IMPORT->value)),
                 Filter::make('with_errors')
                     ->label('Com erro')
-                    ->query(fn($query) => $query->where(function ($subQuery) {
+                    ->query(fn ($query) => $query->where(function ($subQuery) {
                         $subQuery
                             ->where('status', Status::ERROR->value)
                             ->orWhere('import_status', ImportStatus::IMPORT_ERROR->value);
                     })),
                 Filter::make('ignored')
                     ->label('Ignorados')
-                    ->query(fn($query) => $query->where('import_status', ImportStatus::IGNORED->value)),
+                    ->query(fn ($query) => $query->where('import_status', ImportStatus::IGNORED->value)),
                 Filter::make('without_partner')
                     ->label('Sem fornecedor vinculado')
-                    ->query(fn($query) => $query->whereNull('partner_id')),
+                    ->query(fn ($query) => $query->whereNull('partner_id')),
                 Filter::make('without_products')
                     ->label('Sem produtos vinculados')
-                    ->query(fn($query) => $query->where(function ($subQuery) {
+                    ->query(fn ($query) => $query->where(function ($subQuery) {
                         $subQuery
                             ->whereNull('items_json')
                             ->orWhereJsonContains('items_json', [['product_id' => null]]);
                     })),
                 Filter::make('imported')
                     ->label('Já importados')
-                    ->query(fn($query) => $query->where('import_status', ImportStatus::IMPORTED->value)),
+                    ->query(fn ($query) => $query->where('import_status', ImportStatus::IMPORTED->value)),
             ])
             ->recordActions([
                 ActionGroup::make(SefazDistributionDocumentRecordActions::make())
-                    ->icon(Heroicon::Bars3)
+                    ->icon(Heroicon::Bars3),
             ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 DeleteBulkAction::make()

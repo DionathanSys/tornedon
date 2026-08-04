@@ -16,6 +16,7 @@ class SefazDistributionDocument extends Model
         'company_id',
         'partner_id',
         'fiscal_document_id',
+        'account_payable_id',
         'document_key',
         'nsu',
         'schema',
@@ -83,6 +84,11 @@ class SefazDistributionDocument extends Model
     public function fiscalDocument(): BelongsTo
     {
         return $this->belongsTo(FiscalDocument::class);
+    }
+
+    public function accountPayable(): BelongsTo
+    {
+        return $this->belongsTo(AccountPayable::class);
     }
 
     public function importedBy(): BelongsTo

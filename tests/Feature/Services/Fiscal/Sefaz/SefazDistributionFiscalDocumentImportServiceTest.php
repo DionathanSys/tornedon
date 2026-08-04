@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Services\Fiscal\Sefaz;
 
+use App\Enum\Payment\Condition;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
@@ -11,6 +13,7 @@ use App\Models\Product;
 use App\Models\ProductAlternativeUnit;
 use App\Models\SefazDistributionDocument;
 use App\Models\User;
+use App\Services\Fiscal\Sefaz\GenerateSefazDistributionPayableAction;
 use App\Services\Fiscal\Sefaz\SefazDistributionFiscalDocumentImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -224,6 +227,165 @@ class SefazDistributionFiscalDocumentImportServiceTest extends TestCase
             $this->assertDatabaseCount('fiscal_documents', 0);
             $this->assertDatabaseCount('fiscal_document_items', 0);
         }
+    }
+
+    public function test_it_generates_account_payable_directly_from_distribution_xml(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $company = $this->createCompany($user);
+        $partner = $this->seedSupplierPartner($company, $user);
+
+        $xmlPath = 'sefaz/distribution/company-'.$company->id.'/35260412345678000199550010000003211000000321/full/payable.xml';
+        Storage::disk('local')->put($xmlPath, $this->fullXml());
+
+        $distributionDocument = SefazDistributionDocument::query()->create([
+            'company_id' => $company->id,
+            'partner_id' => $partner->id,
+            'document_key' => '35260412345678000199550010000003211000000321',
+            'nsu' => '000000000000053',
+            'schema' => 'procNFe_v4.00.xsd',
+            'document_type' => 'nfe',
+            'issuer_document' => '12345678000199',
+            'issuer_name' => 'Fornecedor Teste',
+            'document_number' => '321',
+            'document_series' => '1',
+            'status' => Status::FULL_XML_AVAILABLE,
+            'manifestation_status' => ManifestationStatus::ACCEPTED,
+            'import_status' => ImportStatus::READY_TO_IMPORT,
+            'full_xml_available' => true,
+            'full_xml_path' => $xmlPath,
+            'total_amount' => 150.99,
+            'import_ready_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        $payable = app(GenerateSefazDistributionPayableAction::class)->execute($distributionDocument, [
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+            'payment_condition' => Condition::CASH->value,
+            'due_date' => '2026-04-20',
+            'description' => 'Conta gerada pelo DF-e',
+        ], $user->id);
+
+        $this->assertDatabaseCount('account_payables', 1);
+        $this->assertDatabaseCount('account_payable_installments', 1);
+        $this->assertSame($partner->id, $payable->supplier_id);
+        $this->assertNull($payable->fiscal_document_id);
+        $this->assertEquals(150.99, (float) $payable->due_amount);
+
+        $distributionDocument->refresh();
+        $this->assertSame($payable->id, $distributionDocument->account_payable_id);
+        $this->assertSame('account_payable_generated', $distributionDocument->last_action);
+    }
+
+    public function test_it_does_not_duplicate_account_payable_for_same_distribution_document(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $company = $this->createCompany($user);
+        $partner = $this->seedSupplierPartner($company, $user);
+
+        $xmlPath = 'sefaz/distribution/company-'.$company->id.'/35260412345678000199550010000003211000000321/full/payable-duplicate.xml';
+        Storage::disk('local')->put($xmlPath, $this->fullXml());
+
+        $distributionDocument = SefazDistributionDocument::query()->create([
+            'company_id' => $company->id,
+            'partner_id' => $partner->id,
+            'document_key' => '35260412345678000199550010000003211000000321',
+            'nsu' => '000000000000054',
+            'schema' => 'procNFe_v4.00.xsd',
+            'document_type' => 'nfe',
+            'issuer_document' => '12345678000199',
+            'issuer_name' => 'Fornecedor Teste',
+            'document_number' => '321',
+            'document_series' => '1',
+            'status' => Status::FULL_XML_AVAILABLE,
+            'manifestation_status' => ManifestationStatus::ACCEPTED,
+            'import_status' => ImportStatus::READY_TO_IMPORT,
+            'full_xml_available' => true,
+            'full_xml_path' => $xmlPath,
+            'total_amount' => 150.99,
+            'import_ready_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        $first = app(GenerateSefazDistributionPayableAction::class)->execute($distributionDocument, [
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+            'payment_condition' => Condition::CASH->value,
+            'due_date' => '2026-04-20',
+        ], $user->id);
+        $second = app(GenerateSefazDistributionPayableAction::class)->execute($distributionDocument->fresh(), [
+            'payment_method' => PaymentMethod::PIX->value,
+            'payment_condition' => Condition::DAYS_30->value,
+            'due_date' => '2026-05-20',
+        ], $user->id);
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertDatabaseCount('account_payables', 1);
+    }
+
+    public function test_import_links_previously_generated_account_payable_to_fiscal_document(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $company = $this->createCompany($user);
+        $partner = $this->seedSupplierPartner($company, $user);
+        $product = Product::query()->create([
+            'company_id' => $company->id,
+            'product_code' => 'P001',
+            'name' => 'Produto importado',
+            'unit' => 'UN',
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $xmlPath = 'sefaz/distribution/company-'.$company->id.'/35260412345678000199550010000003211000000321/full/payable-import.xml';
+        Storage::disk('local')->put($xmlPath, $this->fullXml());
+
+        $distributionDocument = SefazDistributionDocument::query()->create([
+            'company_id' => $company->id,
+            'partner_id' => $partner->id,
+            'document_key' => '35260412345678000199550010000003211000000321',
+            'nsu' => '000000000000055',
+            'schema' => 'procNFe_v4.00.xsd',
+            'document_type' => 'nfe',
+            'issuer_document' => '12345678000199',
+            'issuer_name' => 'Fornecedor Teste',
+            'document_number' => '321',
+            'document_series' => '1',
+            'status' => Status::FULL_XML_AVAILABLE,
+            'manifestation_status' => ManifestationStatus::ACCEPTED,
+            'import_status' => ImportStatus::READY_TO_IMPORT,
+            'full_xml_available' => true,
+            'full_xml_path' => $xmlPath,
+            'total_amount' => 150.99,
+            'items_json' => [
+                [
+                    'line' => 1,
+                    'product_code' => 'P001',
+                    'description' => 'Produto Teste',
+                    'product_id' => $product->id,
+                ],
+            ],
+            'import_ready_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        $payable = app(GenerateSefazDistributionPayableAction::class)->execute($distributionDocument, [
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+            'payment_condition' => Condition::CASH->value,
+            'due_date' => '2026-04-20',
+        ], $user->id);
+
+        $fiscalDocument = app(SefazDistributionFiscalDocumentImportService::class)->import($distributionDocument->fresh(), $user->id);
+
+        $payable->refresh();
+        $this->assertSame($fiscalDocument->id, $payable->fiscal_document_id);
+        $this->assertSame($payable->id, $distributionDocument->fresh()->account_payable_id);
+        $this->assertSame(ImportStatus::IMPORTED, $distributionDocument->fresh()->import_status);
     }
 
     private function createCompany(User $user): Company

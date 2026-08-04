@@ -13,8 +13,8 @@ use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use UnitEnum;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class SefazDistributionDocumentResource extends Resource
 {
@@ -24,7 +24,7 @@ class SefazDistributionDocumentResource extends Resource
 
     // protected static ?string $cluster = FinancialCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'DF-e detectado';
 
@@ -50,6 +50,7 @@ class SefazDistributionDocumentResource extends Resource
             ->with([
                 'partner',
                 'fiscalDocument',
+                'accountPayable',
                 'ignoredBy',
                 'auditEntries' => fn ($query) => $query->latest('occurred_at'),
             ])

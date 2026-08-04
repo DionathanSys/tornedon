@@ -49,24 +49,27 @@ class SefazDistributionDocumentInfolist
                         TextEntry::make('status')
                             ->label('Fluxo DF-e')
                             ->badge()
-                            ->formatStateUsing(fn(Status $state): string => $state->description())
-                            ->color(fn(Status $state): string => $state->color()),
+                            ->formatStateUsing(fn (Status $state): string => $state->description())
+                            ->color(fn (Status $state): string => $state->color()),
                         TextEntry::make('import_status')
                             ->label('Importação')
                             ->badge()
-                            ->formatStateUsing(fn(ImportStatus $state): string => $state->description())
-                            ->color(fn(ImportStatus $state): string => $state->color()),
+                            ->formatStateUsing(fn (ImportStatus $state): string => $state->description())
+                            ->color(fn (ImportStatus $state): string => $state->color()),
                         TextEntry::make('manifestation_status')
                             ->label('Manifestação')
                             ->badge()
-                            ->formatStateUsing(fn(ManifestationStatus $state): string => $state->description())
-                            ->color(fn(ManifestationStatus $state): string => $state->color()),
+                            ->formatStateUsing(fn (ManifestationStatus $state): string => $state->description())
+                            ->color(fn (ManifestationStatus $state): string => $state->color()),
                         TextEntry::make('partner.name')
                             ->label('Fornecedor vinculado')
                             ->placeholder('Não vinculado'),
                         TextEntry::make('fiscalDocument.id')
                             ->label('Documento fiscal')
                             ->placeholder('Ainda não importado'),
+                        TextEntry::make('accountPayable.id')
+                            ->label('Conta a pagar')
+                            ->placeholder('Ainda não gerada'),
                         TextEntry::make('issued_at')
                             ->label('Emissão')
                             ->dateTime('d/m/Y H:i'),
@@ -124,7 +127,7 @@ class SefazDistributionDocumentInfolist
 
                                 $auditTimeline = $record->auditEntries
                                     ->sortByDesc('occurred_at')
-                                    ->map(fn($entry): array => [
+                                    ->map(fn ($entry): array => [
                                         'when' => $entry->occurred_at,
                                         'title' => $entry->summary,
                                         'description' => $entry->event,
@@ -133,7 +136,7 @@ class SefazDistributionDocumentInfolist
 
                                 return $baseTimeline
                                     ->concat($auditTimeline)
-                                    ->sortByDesc(fn(array $item) => optional($item['when'])->timestamp ?? 0)
+                                    ->sortByDesc(fn (array $item) => optional($item['when'])->timestamp ?? 0)
                                     ->values()
                                     ->all();
                             })
@@ -165,7 +168,7 @@ class SefazDistributionDocumentInfolist
                             ->columnSpanFull(),
                     ])
 
-                    ->collapsed(fn($record): bool => empty($record->items_json)),
+                    ->collapsed(fn ($record): bool => empty($record->items_json)),
             ]);
     }
 }
