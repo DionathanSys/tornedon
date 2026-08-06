@@ -197,7 +197,7 @@ class BuildNfePayloadActionTest extends TestCase
                     'ibs_cbs' => [
                         'grupo_ibs_cbs' => [
                             'valor_base_calculo' => 0,
-                            'ibs_estadual' => ['valor' => 0],
+                            'ibs_estadual' => ['valor' => 1],
                             'ibs_municipal' => ['valor' => 0],
                             'cbs' => ['valor' => 0],
                         ],

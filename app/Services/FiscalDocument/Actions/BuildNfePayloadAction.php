@@ -10,6 +10,7 @@ use App\Models\FiscalDocument;
 use App\Models\Partner;
 use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -630,6 +631,11 @@ class BuildNfePayloadAction
 
     private function normalizeItemTaxDataForPayload(array $taxData): array
     {
+        $ibsCbs = data_get($taxData, 'imposto.ibs_cbs');
+        if ($this->isEmptyIbsCbs($ibsCbs)) {
+            data_forget($taxData, 'imposto.ibs_cbs');
+        }
+
         $icmsStatus = (string) data_get($taxData, 'imposto.icms.situacao_tributaria', '');
 
         if ($icmsStatus === '') {
@@ -681,6 +687,40 @@ class BuildNfePayloadAction
         }
 
         return $taxData;
+    }
+
+    private function isEmptyIbsCbs(mixed $ibsCbs): bool
+    {
+        if (! is_array($ibsCbs) || $ibsCbs === []) {
+            return false;
+        }
+
+        foreach (Arr::dot($ibsCbs) as $value) {
+            if (is_array($value)) {
+                continue;
+            }
+
+            if ($this->isZeroLike($value)) {
+                continue;
+            }
+
+            if (blank($value)) {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isZeroLike(mixed $value): bool
+    {
+        if (is_numeric($value)) {
+            return (float) $value === 0.0;
+        }
+
+        return is_string($value) && preg_match('/^0+([,.]0+)?$/', trim($value)) === 1;
     }
 
     private function validateIbsCbsForPayload(array $taxData, int $itemNumber): ?string

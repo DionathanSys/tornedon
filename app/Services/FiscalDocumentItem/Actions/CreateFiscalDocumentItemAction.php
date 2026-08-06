@@ -176,6 +176,11 @@ class CreateFiscalDocumentItemAction
             return $data;
         }
 
+        $ibsCbs = data_get($data, 'tax_data.imposto.ibs_cbs');
+        if ($this->isEmptyIbsCbs($ibsCbs)) {
+            data_forget($data, 'tax_data.imposto.ibs_cbs');
+        }
+
         $status = (string) data_get($data, 'tax_data.imposto.icms.situacao_tributaria', '');
 
         if ($status === '') {
@@ -191,6 +196,40 @@ class CreateFiscalDocumentItemAction
         }
 
         return $data;
+    }
+
+    private function isEmptyIbsCbs(mixed $ibsCbs): bool
+    {
+        if (! is_array($ibsCbs) || $ibsCbs === []) {
+            return false;
+        }
+
+        foreach (Arr::dot($ibsCbs) as $value) {
+            if (is_array($value)) {
+                continue;
+            }
+
+            if ($this->isZeroLike($value)) {
+                continue;
+            }
+
+            if (blank($value)) {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isZeroLike(mixed $value): bool
+    {
+        if (is_numeric($value)) {
+            return (float) $value === 0.0;
+        }
+
+        return is_string($value) && preg_match('/^0+([,.]0+)?$/', trim($value)) === 1;
     }
 
     private function assignItemNumberIfMissing(array $data): array

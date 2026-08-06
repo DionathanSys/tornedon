@@ -68,6 +68,60 @@ class FiscalDocumentItemServiceUpdateTest extends TestCase
         $this->assertSame('30.00', data_get($updated->fiscalDocument->fresh()->tax_data, 'totais.valor_icms'));
     }
 
+    public function test_it_removes_empty_ibs_cbs_recreated_by_item_form(): void
+    {
+        [$user, $item] = $this->createScenario();
+
+        $service = app(FiscalDocumentItemService::class);
+        $updated = $service->update($item, [
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => [
+                        'situacao_tributaria' => '900',
+                        'valor_base_calculo' => 250,
+                        'aliquota' => 12,
+                        'valor' => 30,
+                    ],
+                    'pis' => [
+                        'situacao_tributaria' => '49',
+                        'valor_base_calculo' => 0,
+                        'aliquota' => 0,
+                        'valor' => 0,
+                    ],
+                    'cofins' => [
+                        'situacao_tributaria' => '49',
+                        'valor_base_calculo' => 0,
+                        'aliquota' => 0,
+                        'valor' => 0,
+                    ],
+                    'ibs_cbs' => [
+                        'situacao_tributaria' => null,
+                        'classificacao_tributaria' => '',
+                        'grupo_ibs_cbs' => [
+                            'valor_base_calculo' => '0,00',
+                            'ibs_estadual' => [
+                                'aliquota' => null,
+                                'valor' => '0,00',
+                            ],
+                            'ibs_municipal' => [
+                                'aliquota' => '',
+                                'valor' => 0,
+                            ],
+                            'valor_total_ibs' => 0,
+                            'cbs' => [
+                                'aliquota' => null,
+                                'valor' => '0.00',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ], $user->id);
+
+        $this->assertNotNull($updated, $service->getMessage());
+        $this->assertNull(data_get($updated->tax_data, 'imposto.ibs_cbs'));
+    }
+
     private function createScenario(): array
     {
         $user = User::factory()->create();

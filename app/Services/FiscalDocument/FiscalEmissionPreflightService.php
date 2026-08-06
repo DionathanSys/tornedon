@@ -433,6 +433,11 @@ class FiscalEmissionPreflightService
             }
 
             $ibsCbs = data_get($taxData, 'imposto.ibs_cbs');
+            if ($this->isEmptyIbsCbs($ibsCbs)) {
+                data_forget($taxData, 'imposto.ibs_cbs');
+                $ibsCbs = null;
+            }
+
             if (is_array($ibsCbs) && $ibsCbs !== []) {
                 foreach ($this->requiredIbsCbsFields() as $field => $label) {
                     if (blank(data_get($ibsCbs, $field))) {
@@ -458,6 +463,40 @@ class FiscalEmissionPreflightService
                 'tax_data' => $taxData,
             ];
         })->all();
+    }
+
+    private function isEmptyIbsCbs(mixed $ibsCbs): bool
+    {
+        if (! is_array($ibsCbs) || $ibsCbs === []) {
+            return false;
+        }
+
+        foreach (Arr::dot($ibsCbs) as $value) {
+            if (is_array($value)) {
+                continue;
+            }
+
+            if ($this->isZeroLike($value)) {
+                continue;
+            }
+
+            if (blank($value)) {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isZeroLike(mixed $value): bool
+    {
+        if (is_numeric($value)) {
+            return (float) $value === 0.0;
+        }
+
+        return is_string($value) && preg_match('/^0+([,.]0+)?$/', trim($value)) === 1;
     }
 
     /**
