@@ -432,6 +432,15 @@ class FiscalEmissionPreflightService
                 }
             }
 
+            $ibsCbs = data_get($taxData, 'imposto.ibs_cbs');
+            if (is_array($ibsCbs) && $ibsCbs !== []) {
+                foreach ($this->requiredIbsCbsFields() as $field => $label) {
+                    if (blank(data_get($ibsCbs, $field))) {
+                        $itemErrors["{$prefix}.tax_data.imposto.ibs_cbs.{$field}"][] = "IBS/CBS incompleto: {$label}.";
+                    }
+                }
+            }
+
             if ($itemErrors !== []) {
                 $errors = array_merge_recursive($errors, $itemErrors);
             }
@@ -449,6 +458,24 @@ class FiscalEmissionPreflightService
                 'tax_data' => $taxData,
             ];
         })->all();
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    private function requiredIbsCbsFields(): array
+    {
+        return [
+            'situacao_tributaria' => 'CST obrigatório',
+            'classificacao_tributaria' => 'classificação tributária obrigatória',
+            'grupo_ibs_cbs.valor_base_calculo' => 'base de cálculo obrigatória',
+            'grupo_ibs_cbs.ibs_estadual.aliquota' => 'alíquota IBS estadual obrigatória',
+            'grupo_ibs_cbs.ibs_estadual.valor' => 'valor IBS estadual obrigatório',
+            'grupo_ibs_cbs.ibs_municipal.aliquota' => 'alíquota IBS municipal obrigatória',
+            'grupo_ibs_cbs.ibs_municipal.valor' => 'valor IBS municipal obrigatório',
+            'grupo_ibs_cbs.cbs.aliquota' => 'alíquota CBS obrigatória',
+            'grupo_ibs_cbs.cbs.valor' => 'valor CBS obrigatório',
+        ];
     }
 
     private function normalizeNfseServiceCode(?string $code): string

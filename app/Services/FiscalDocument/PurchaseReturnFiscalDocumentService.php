@@ -2,6 +2,7 @@
 
 namespace App\Services\FiscalDocument;
 
+use App\Domain\DTO\Fiscal\FiscalContextDTO;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
@@ -12,6 +13,7 @@ use App\Enum\FiscalDocument\OperationType;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\FiscalDocumentItemOrigin;
+use App\Services\Fiscal\FiscalDecisionService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -49,9 +51,11 @@ class PurchaseReturnFiscalDocumentService
                     return null;
                 }
 
+                $returnDocument->loadMissing('company', 'customer.address');
+
                 $itemPayloads = $originDocument->items
                     ->values()
-                    ->map(fn (FiscalDocumentItem $item, int $index): array => $this->buildReturnItemData($item, $returnDocument->id, $index + 1))
+                    ->map(fn (FiscalDocumentItem $item, int $index): array => $this->buildReturnItemData($item, $returnDocument, $index + 1))
                     ->all();
 
                 $itemService = app(\App\Services\FiscalDocumentItem\FiscalDocumentItemService::class);
@@ -77,6 +81,7 @@ class PurchaseReturnFiscalDocumentService
 
                     if (! $returnItem instanceof FiscalDocumentItem) {
                         $this->setError('Não foi possível alinhar os itens da nota de devolução gerada.');
+
                         return null;
                     }
 
@@ -99,7 +104,7 @@ class PurchaseReturnFiscalDocumentService
                 $this->setSuccess('Nota de devolução gerada com sucesso.');
 
                 Log::info('PurchaseReturnFiscalDocumentService: nota de devolução gerada', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'origin_fiscal_document_id' => $originDocument->id,
                     'return_fiscal_document_id' => $returnDocument->id,
                     'items_count' => count($createdItems),
@@ -112,7 +117,7 @@ class PurchaseReturnFiscalDocumentService
             $this->setError($e->getMessage());
 
             Log::error('PurchaseReturnFiscalDocumentService: exceção ao gerar devolução', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'origin_fiscal_document_id' => $originDocument->id,
                 'user_id' => $userId,
                 'exception' => $e->getMessage(),
@@ -127,21 +132,25 @@ class PurchaseReturnFiscalDocumentService
     {
         if (! $originDocument->isNfe()) {
             $this->setError('A devolução de compra só pode ser gerada a partir de uma NF-e de entrada.');
+
             return false;
         }
 
         if ($originDocument->operation_type !== OperationType::ENTRADA) {
             $this->setError('A devolução de compra só pode ser gerada a partir de uma nota de entrada.');
+
             return false;
         }
 
         if ($originDocument->status === \App\Enum\FiscalDocument\Status::CANCELLED || $originDocument->canceled) {
             $this->setError('Não é possível gerar devolução para uma nota de entrada cancelada.');
+
             return false;
         }
 
         if ($originDocument->items->isEmpty()) {
             $this->setError('A nota de entrada não possui itens para gerar devolução.');
+
             return false;
         }
 
@@ -151,6 +160,7 @@ class PurchaseReturnFiscalDocumentService
 
         if ($alreadyLinked) {
             $this->setError('Já existe uma nota de devolução vinculada a esta nota de entrada.');
+
             return false;
         }
 
@@ -193,25 +203,40 @@ class PurchaseReturnFiscalDocumentService
         ];
     }
 
-    private function buildReturnItemData(FiscalDocumentItem $originItem, int $returnDocumentId, int $itemNumber): array
+    private function buildReturnItemData(FiscalDocumentItem $originItem, FiscalDocument $returnDocument, int $itemNumber): array
     {
         $fiscalSnapshot = is_array($originItem->fiscal_snapshot) ? $originItem->fiscal_snapshot : [];
-        $taxData = is_array($originItem->tax_data) ? $originItem->tax_data : [];
+        $originTaxData = is_array($originItem->tax_data) ? $originItem->tax_data : [];
+        $taxData = $originTaxData;
 
-        if (($taxData['imposto'] ?? null) === null && $fiscalSnapshot !== []) {
+        $decision = $this->resolveReturnFiscalDecision($returnDocument, $originItem);
+
+        if ($decision instanceof FiscalDecisionDTO) {
+            $taxData = $decision->toTaxData((float) $originItem->total_price);
+            $originIbsCbs = data_get($originTaxData, 'imposto.ibs_cbs');
+
+            if ($this->isCompleteIbsCbs($originIbsCbs)) {
+                data_set($taxData, 'imposto.ibs_cbs', $originIbsCbs);
+            }
+        } elseif (($taxData['imposto'] ?? null) === null && $fiscalSnapshot !== []) {
             $taxData = array_replace_recursive(
                 $taxData,
                 FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData((float) $originItem->total_price)
             );
         }
 
+        if (is_array(data_get($taxData, 'imposto.ibs_cbs')) && ! $this->isCompleteIbsCbs(data_get($taxData, 'imposto.ibs_cbs'))) {
+            data_forget($taxData, 'imposto.ibs_cbs');
+        }
+
         $fiscalSnapshot['purchase_return_origin'] = [
             'fiscal_document_item_id' => $originItem->id,
             'item_number' => $originItem->item_number,
+            'tax_resolution_source' => $decision instanceof FiscalDecisionDTO ? $decision->source : 'origin_tax_data',
         ];
 
         return [
-            'fiscal_document_id' => $returnDocumentId,
+            'fiscal_document_id' => $returnDocument->id,
             'product_id' => $originItem->product_id,
             'product_code' => $originItem->product_code,
             'description' => $originItem->description,
@@ -220,7 +245,7 @@ class PurchaseReturnFiscalDocumentService
             'ncm_code' => $originItem->ncm_code,
             'cest_code' => $originItem->cest_code,
             'barcode' => $originItem->barcode,
-            'cfop_code' => $originItem->cfop_code ?: ($fiscalSnapshot['cfop'] ?? null),
+            'cfop_code' => $decision?->cfop ?: $originItem->cfop_code ?: ($fiscalSnapshot['cfop'] ?? null),
             'quantity' => (float) $originItem->quantity,
             'unit_of_measure' => $originItem->unit_of_measure,
             'taxable_unit' => $originItem->taxable_unit,
@@ -239,12 +264,64 @@ class PurchaseReturnFiscalDocumentService
         ];
     }
 
+    private function resolveReturnFiscalDecision(FiscalDocument $returnDocument, FiscalDocumentItem $originItem): ?FiscalDecisionDTO
+    {
+        try {
+            $contextItem = new FiscalDocumentItem([
+                'product_id' => $originItem->product_id,
+                'ncm_code' => $originItem->ncm_code,
+                'cest_code' => $originItem->cest_code,
+                'product_origin' => $originItem->product_origin,
+            ]);
+
+            $decision = app(FiscalDecisionService::class)->resolve(
+                FiscalContextDTO::fromFiscalDocumentItem($returnDocument, $contextItem)
+            );
+
+            return in_array($decision->source, ['fiscal_rule', 'product_tax'], true) ? $decision : null;
+        } catch (\Throwable $e) {
+            Log::warning('PurchaseReturnFiscalDocumentService: falha ao resolver regra fiscal da devolucao', [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'return_fiscal_document_id' => $returnDocument->id,
+                'origin_fiscal_document_item_id' => $originItem->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function isCompleteIbsCbs(mixed $ibsCbs): bool
+    {
+        if (! is_array($ibsCbs) || $ibsCbs === []) {
+            return false;
+        }
+
+        foreach ([
+            'situacao_tributaria',
+            'classificacao_tributaria',
+            'grupo_ibs_cbs.valor_base_calculo',
+            'grupo_ibs_cbs.ibs_estadual.aliquota',
+            'grupo_ibs_cbs.ibs_estadual.valor',
+            'grupo_ibs_cbs.ibs_municipal.aliquota',
+            'grupo_ibs_cbs.ibs_municipal.valor',
+            'grupo_ibs_cbs.cbs.aliquota',
+            'grupo_ibs_cbs.cbs.valor',
+        ] as $field) {
+            if (blank(data_get($ibsCbs, $field))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function buildOriginReferenceText(FiscalDocument $originDocument): string
     {
         $parts = array_filter([
-            'NF de origem: ' . ($originDocument->document_number ?: $originDocument->id),
-            $originDocument->document_series ? 'Série ' . $originDocument->document_series : null,
-            $originDocument->document_key ? 'Chave ' . $originDocument->document_key : null,
+            'NF de origem: '.($originDocument->document_number ?: $originDocument->id),
+            $originDocument->document_series ? 'Série '.$originDocument->document_series : null,
+            $originDocument->document_key ? 'Chave '.$originDocument->document_key : null,
         ]);
 
         return implode(' | ', $parts);

@@ -140,6 +140,19 @@ class BuildNfePayloadAction
 
                 $taxData = $this->normalizeItemTaxDataForPayload($taxData);
 
+                $ibsCbsError = $this->validateIbsCbsForPayload($taxData, $index + 1);
+                if ($ibsCbsError !== null) {
+                    $this->setError($ibsCbsError);
+                    Log::warning('BuildNfePayloadAction: IBS/CBS incompleto no item', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'item_id' => $item->id,
+                        'item_number' => $index + 1,
+                        'erro' => $ibsCbsError,
+                    ]);
+
+                    return null;
+                }
+
                 $quantityCommercial = (float) number_format((float) $item->quantity, 4, '.', '');
                 $baseUnitPriceCommercial = (float) $item->unit_price;
                 $grossValueFloat = round($quantityCommercial * $baseUnitPriceCommercial, 2);
@@ -668,6 +681,41 @@ class BuildNfePayloadAction
         }
 
         return $taxData;
+    }
+
+    private function validateIbsCbsForPayload(array $taxData, int $itemNumber): ?string
+    {
+        $ibsCbs = data_get($taxData, 'imposto.ibs_cbs');
+
+        if (! is_array($ibsCbs) || $ibsCbs === []) {
+            return null;
+        }
+
+        foreach ($this->requiredIbsCbsFields() as $field) {
+            if (blank(data_get($ibsCbs, $field))) {
+                return "Item {$itemNumber}: IBS/CBS incompleto. Configure CST, classificação tributária e alíquotas de IBS/CBS na regra fiscal da devolução ou reimporte a NF de origem com os dados completos.";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function requiredIbsCbsFields(): array
+    {
+        return [
+            'situacao_tributaria',
+            'classificacao_tributaria',
+            'grupo_ibs_cbs.valor_base_calculo',
+            'grupo_ibs_cbs.ibs_estadual.aliquota',
+            'grupo_ibs_cbs.ibs_estadual.valor',
+            'grupo_ibs_cbs.ibs_municipal.aliquota',
+            'grupo_ibs_cbs.ibs_municipal.valor',
+            'grupo_ibs_cbs.cbs.aliquota',
+            'grupo_ibs_cbs.cbs.valor',
+        ];
     }
 
     private function normalizeCarrierData(mixed $carrierData, int|string|null $companyId = null): array

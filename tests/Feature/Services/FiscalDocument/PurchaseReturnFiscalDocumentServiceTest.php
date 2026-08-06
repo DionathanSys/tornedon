@@ -14,6 +14,7 @@ use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\FiscalDocumentItemOrigin;
 use App\Models\FiscalProfile;
+use App\Models\FiscalRule;
 use App\Models\Partner;
 use App\Models\Product;
 use App\Models\User;
@@ -113,6 +114,80 @@ class PurchaseReturnFiscalDocumentServiceTest extends TestCase
         $this->assertSame('00', data_get($returnItem?->tax_data, 'imposto.icms.situacao_tributaria'));
         $this->assertSame('01', data_get($returnItem?->tax_data, 'imposto.pis.situacao_tributaria'));
         $this->assertSame('01', data_get($returnItem?->tax_data, 'imposto.cofins.situacao_tributaria'));
+    }
+
+    public function test_it_uses_purchase_return_fiscal_rule_and_preserves_complete_origin_ibs_cbs(): void
+    {
+        [$user, $company, $supplier] = $this->createBaseContext();
+        $originDocument = $this->createEntryDocument($company, $supplier, $user);
+        $originItem = $this->createEntryItem($originDocument, $company, $user);
+        $profile = FiscalProfile::query()->where('company_id', $company->id)->firstOrFail();
+
+        FiscalRule::query()->create([
+            'company_id' => $company->id,
+            'fiscal_profile_id' => $profile->id,
+            'operation_nature' => OperationNature::DEVOLUCAO_COMPRA->value,
+            'tax_regime' => 'simples_nacional',
+            'is_interestadual' => false,
+            'cfop' => '5202',
+            'csosn' => '900',
+            'cst_pis' => '49',
+            'cst_cofins' => '49',
+            'cst_ibs_cbs' => '000',
+            'classificacao_tributaria_ibs_cbs' => '000001',
+            'aliquota_ibs_estadual' => 0.1,
+            'aliquota_ibs_municipal' => 0,
+            'aliquota_cbs' => 0.9,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $originItem->update([
+            'tax_data' => [
+                'imposto' => [
+                    'icms' => ['situacao_tributaria' => '00'],
+                    'pis' => ['situacao_tributaria' => '01'],
+                    'cofins' => ['situacao_tributaria' => '01'],
+                    'ibs_cbs' => [
+                        'situacao_tributaria' => '000',
+                        'classificacao_tributaria' => '000001',
+                        'grupo_ibs_cbs' => [
+                            'valor_base_calculo' => '80.00',
+                            'valor_total_ibs' => '0.08',
+                            'ibs_estadual' => [
+                                'aliquota' => '0.1000',
+                                'valor' => '0.08',
+                            ],
+                            'ibs_municipal' => [
+                                'aliquota' => '0.0000',
+                                'valor' => '0.00',
+                            ],
+                            'cbs' => [
+                                'aliquota' => '0.9000',
+                                'valor' => '0.72',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $service = app(PurchaseReturnFiscalDocumentService::class);
+        $returnDocument = $service->generateFromEntry($originDocument->fresh('items'), $user->id);
+
+        $this->assertNotNull($returnDocument, $service->getMessage());
+
+        $returnItem = FiscalDocumentItem::query()
+            ->where('fiscal_document_id', $returnDocument->id)
+            ->first();
+
+        $this->assertSame('5202', $returnItem?->cfop_code);
+        $this->assertSame('900', data_get($returnItem?->tax_data, 'imposto.icms.situacao_tributaria'));
+        $this->assertSame('49', data_get($returnItem?->tax_data, 'imposto.pis.situacao_tributaria'));
+        $this->assertSame('49', data_get($returnItem?->tax_data, 'imposto.cofins.situacao_tributaria'));
+        $this->assertSame('000', data_get($returnItem?->tax_data, 'imposto.ibs_cbs.situacao_tributaria'));
+        $this->assertSame('80.00', data_get($returnItem?->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.valor_base_calculo'));
+        $this->assertSame('0.1000', data_get($returnItem?->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.ibs_estadual.aliquota'));
     }
 
     private function createBaseContext(): array
