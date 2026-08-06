@@ -16,10 +16,11 @@ use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
+use App\Models\FiscalDocumentItemOrigin;
+use App\Models\FiscalDocumentTaxDetail;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\Product;
-use App\Models\ProductTax;
 use App\Models\User;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\Fiscal\NfseConfigService;
@@ -76,6 +77,67 @@ class FiscalEmissionPreflightServiceTest extends TestCase
 
         $this->assertNull($result);
         $this->assertArrayHasKey('tax_data.purchase_return_origin.document_key', $service->getErrors());
+    }
+
+    public function test_nfe_purchase_return_uses_item_origin_link_as_reference_fallback(): void
+    {
+        [, $document] = $this->createReadyNfeDocument(
+            operationNature: OperationNature::DEVOLUCAO_COMPRA,
+            issuePurpose: IssuePurpose::DEVOLUCAO,
+        );
+
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $document->company_id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => ['modalidade_frete' => FreightModality::SEM_FRETE->value],
+            'fiscal_metadata' => ['intermediario' => ['indicador' => null]],
+        ]);
+
+        $originDocument = FiscalDocument::query()->create([
+            'customer_id' => $document->customer_id,
+            'company_id' => $document->company_id,
+            'status' => Status::CONFIRMED->value,
+            'document_type' => DocumentModel::NFE->value,
+            'issued_at' => now()->subDays(2)->toDateString(),
+            'movement_at' => now()->subDays(2)->toDateString(),
+            'document_number' => '57018',
+            'document_series' => '1',
+            'document_key' => '42260890136409002095550010000570181512864919',
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'operation_type' => OperationType::ENTRADA->value,
+            'issue_purpose' => IssuePurpose::NORMAL->value,
+            'is_final_consumer' => false,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS->value,
+            'freight_data' => ['modalidade_frete' => FreightModality::SEM_FRETE->value],
+            'created_by' => $document->created_by,
+            'updated_by' => $document->updated_by,
+        ]);
+
+        $returnItem = $document->items()->firstOrFail();
+        $originItem = $returnItem->replicate(['id']);
+        $originItem->fiscal_document_id = $originDocument->id;
+        $originItem->save();
+
+        FiscalDocumentItemOrigin::query()->create([
+            'origin_fiscal_document_id' => $originDocument->id,
+            'origin_fiscal_document_item_id' => $originItem->id,
+            'return_fiscal_document_id' => $document->id,
+            'return_fiscal_document_item_id' => $returnItem->id,
+            'linked_quantity' => 1,
+            'linked_value' => 100,
+            'origin_document_key' => '42260890136409002095550010000570181512864919',
+        ]);
+
+        $config = Mockery::mock(NfeConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $this->app->instance(NfeConfigService::class, $config);
+
+        $service = app(FiscalEmissionPreflightService::class);
+        $result = $service->validateForQueue($document->fresh('items'));
+
+        $this->assertNotNull($result, $service->getMessage());
+        $this->assertSame('42260890136409002095550010000570181512864919', $result->scenarioContext->referenceDocumentKey);
     }
 
     public function test_nfse_municipal_preflight_requires_municipal_tax_code_and_nbs(): void

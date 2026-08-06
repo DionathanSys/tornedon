@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument\Resolvers;
 
 use App\Domain\DTO\Fiscal\FiscalDocumentReferenceData;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentItemOrigin;
 
 class FiscalDocumentReferenceResolver
 {
@@ -31,7 +32,43 @@ class FiscalDocumentReferenceResolver
             );
         }
 
-        return null;
+        return $this->resolvePurchaseReturnReferenceFromItemOrigins($document);
+    }
+
+    private function resolvePurchaseReturnReferenceFromItemOrigins(FiscalDocument $document): ?FiscalDocumentReferenceData
+    {
+        $origin = FiscalDocumentItemOrigin::query()
+            ->with('originDocument:id,document_key,document_number,document_series,issued_at')
+            ->where('return_fiscal_document_id', $document->id)
+            ->orderBy('id')
+            ->first();
+
+        if (! $origin instanceof FiscalDocumentItemOrigin) {
+            return null;
+        }
+
+        $documentKey = $this->normalizeString($origin->origin_document_key)
+            ?? $this->normalizeString($origin->originDocument?->document_key);
+
+        if ($documentKey === null) {
+            return null;
+        }
+
+        $raw = [
+            'fiscal_document_id' => $origin->origin_fiscal_document_id,
+            'document_number' => $origin->originDocument?->document_number,
+            'document_series' => $origin->originDocument?->document_series,
+            'document_key' => $documentKey,
+            'issued_at' => $origin->originDocument?->issued_at?->toDateString(),
+            'source' => 'fiscal_document_item_origins',
+        ];
+
+        return new FiscalDocumentReferenceData(
+            referenceType: 'purchase_return_origin',
+            fiscalDocumentId: $this->normalizeInt($origin->origin_fiscal_document_id),
+            documentKey: $documentKey,
+            raw: $raw,
+        );
     }
 
     private function normalizeInt(mixed $value): ?int

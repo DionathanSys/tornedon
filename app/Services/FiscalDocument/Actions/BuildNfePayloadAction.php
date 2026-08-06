@@ -8,6 +8,7 @@ use App\Enum\Tax\TaxRegime;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\Partner;
+use App\Services\FiscalDocument\Resolvers\FiscalDocumentReferenceResolver;
 use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Arr;
@@ -299,32 +300,19 @@ class BuildNfePayloadAction
                 }
 
                 if (! isset($payload['notas_referenciadas'])) {
-                    $originDocumentKey = data_get($fiscalDocument->tax_data, 'purchase_return_origin.document_key');
+                    $reference = app(FiscalDocumentReferenceResolver::class)->resolvePrimaryReference($fiscalDocument);
 
-                    if (is_string($originDocumentKey) && trim($originDocumentKey) !== '') {
+                    if ($reference?->documentKey !== null) {
                         $payload['notas_referenciadas'] = [[
                             'nfe' => [
-                                'chave' => trim($originDocumentKey),
-                            ],
-                        ]];
-                        Log::warning('BuildNfePayloadAction: usando fallback tax_data para notas_referenciadas', [
-                            'fiscal_document_id' => $fiscalDocument->id,
-                        ]);
-                    }
-                }
-
-                if (! isset($payload['notas_referenciadas'])) {
-                    $genericReferenceKey = data_get($fiscalDocument->tax_data, 'reference.document_key');
-
-                    if (is_string($genericReferenceKey) && trim($genericReferenceKey) !== '') {
-                        $payload['notas_referenciadas'] = [[
-                            'nfe' => [
-                                'chave' => trim($genericReferenceKey),
+                                'chave' => $reference->documentKey,
                             ],
                         ]];
 
-                        Log::warning('BuildNfePayloadAction: usando fallback generico tax_data.reference para notas_referenciadas', [
+                        Log::warning('BuildNfePayloadAction: usando referencia resolvida para notas_referenciadas', [
                             'fiscal_document_id' => $fiscalDocument->id,
+                            'reference_type' => $reference->referenceType,
+                            'reference_source' => $reference->raw['source'] ?? 'tax_data',
                         ]);
                     }
                 }
