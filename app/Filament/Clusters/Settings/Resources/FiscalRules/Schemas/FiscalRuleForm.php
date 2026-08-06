@@ -54,7 +54,10 @@ class FiscalRuleForm
                             ->required()
                             ->live()
                             ->afterStateUpdated(function (Set $set, mixed $state): void {
-                                $profile = FiscalProfile::query()->find($state);
+                                $profile = FiscalProfile::query()
+                                    ->where('company_id', Filament::getTenant()?->id)
+                                    ->find($state);
+
                                 $set('tax_regime', $profile?->tax_regime?->value ?? $profile?->tax_regime);
                             })
                             ->columnSpan(['md' => 1, 'lg' => 4]),
@@ -97,6 +100,7 @@ class FiscalRuleForm
                         Toggle::make('is_interestadual')
                             ->label('Operação interestadual')
                             ->default(false)
+                            ->inline(false)
                             ->required()
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         Select::make('product_origin')
@@ -108,21 +112,21 @@ class FiscalRuleForm
                             ->columnSpan(['md' => 1, 'lg' => 4]),
                         Select::make('is_custom_manufacturing')
                             ->label('Fabricação Própria?')
-                            ->options([
-                                1 => 'Sim',
-                                0 => 'Não',
-                            ])
-                            ->required()
+                            ->options(self::nullableBooleanOptions())
+                            ->afterStateHydrated(fn (Select $component, ?object $record): mixed => $component->state(self::nullableBooleanToSelectState($record?->is_custom_manufacturing)))
+                            ->dehydrateStateUsing(fn (mixed $state): ?bool => self::nullableBooleanFromSelectState($state))
                             ->native(false)
+                            ->placeholder('Qualquer')
+                            ->helperText('Use “Qualquer” quando a regra servir para produtos próprios e de terceiros.')
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         Select::make('has_st')
                             ->label('Produto com ST?')
-                            ->options([
-                                1 => 'Sim',
-                                0 => 'Não',
-                            ])
+                            ->options(self::nullableBooleanOptions())
+                            ->afterStateHydrated(fn (Select $component, ?object $record): mixed => $component->state(self::nullableBooleanToSelectState($record?->has_st)))
+                            ->dehydrateStateUsing(fn (mixed $state): ?bool => self::nullableBooleanFromSelectState($state))
                             ->native(false)
                             ->placeholder('Qualquer')
+                            ->helperText('Deixe em branco para não filtrar por substituição tributária.')
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         Select::make('recipient_type')
                             ->label('Tipo de Destinatário')
@@ -132,12 +136,12 @@ class FiscalRuleForm
                             ->columnSpan(['md' => 1, 'lg' => 4]),
                         Select::make('is_final_consumer')
                             ->label('Consumidor final?')
-                            ->options([
-                                1 => 'Sim',
-                                0 => 'Não',
-                            ])
+                            ->options(self::nullableBooleanOptions())
+                            ->afterStateHydrated(fn (Select $component, ?object $record): mixed => $component->state(self::nullableBooleanToSelectState($record?->is_final_consumer)))
+                            ->dehydrateStateUsing(fn (mixed $state): ?bool => self::nullableBooleanFromSelectState($state))
                             ->native(false)
                             ->placeholder('Qualquer')
+                            ->helperText('Deixe em branco para aceitar consumidor final e não final.')
                             ->columnSpan(['md' => 1, 'lg' => 2]),
                         TextInput::make('ncm_prefix')
                             ->label('Prefixo NCM')
@@ -295,5 +299,34 @@ class FiscalRuleForm
     private static function isSimplesRegime(?string $regime): bool
     {
         return in_array($regime, [TaxRegime::MEI->value, TaxRegime::SIMPLES_NACIONAL->value], true);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function nullableBooleanOptions(): array
+    {
+        return [
+            '1' => 'Sim',
+            '0' => 'Não',
+        ];
+    }
+
+    private static function nullableBooleanToSelectState(mixed $state): ?string
+    {
+        return match ($state) {
+            true, 1, '1' => '1',
+            false, 0, '0' => '0',
+            default => null,
+        };
+    }
+
+    private static function nullableBooleanFromSelectState(mixed $state): ?bool
+    {
+        return match ($state) {
+            true, 1, '1' => true,
+            false, 0, '0' => false,
+            default => null,
+        };
     }
 }

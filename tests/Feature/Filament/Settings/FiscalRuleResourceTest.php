@@ -5,6 +5,7 @@ namespace Tests\Feature\Filament\Settings;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\Tax\TaxRegime;
 use App\Filament\Clusters\Settings\Resources\FiscalRules\FiscalRuleResource;
+use App\Filament\Clusters\Settings\Resources\FiscalRules\Pages\EditFiscalRule;
 use App\Models\Company;
 use App\Models\FiscalProfile;
 use App\Models\FiscalRule;
@@ -13,6 +14,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class FiscalRuleResourceTest extends TestCase
@@ -23,7 +25,7 @@ class FiscalRuleResourceTest extends TestCase
     {
         parent::setUp();
 
-        $compiledPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'tornedon-fiscal-rule-views-test-' . Str::uuid();
+        $compiledPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'tornedon-fiscal-rule-views-test-'.Str::uuid();
         File::ensureDirectoryExists($compiledPath);
 
         config(['view.compiled' => $compiledPath]);
@@ -76,6 +78,43 @@ class FiscalRuleResourceTest extends TestCase
         $this->assertNotContains($otherTenantRule->id, $ids);
     }
 
+    public function test_fiscal_rule_form_preserves_nullable_boolean_criteria(): void
+    {
+        [$user, $company] = $this->createAuthenticatedTenant();
+        $profile = $this->createFiscalProfile($company, $user, TaxRegime::SIMPLES_NACIONAL);
+
+        $rule = FiscalRule::query()->create([
+            'company_id' => $company->id,
+            'fiscal_profile_id' => $profile->id,
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO->value,
+            'tax_regime' => TaxRegime::SIMPLES_NACIONAL->value,
+            'is_interestadual' => false,
+            'is_custom_manufacturing' => false,
+            'has_st' => false,
+            'is_final_consumer' => null,
+            'cfop' => '5102',
+            'priority' => 10,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        Livewire::test(EditFiscalRule::class, ['record' => (string) $rule->getRouteKey()])
+            ->assertSet('data.is_custom_manufacturing', '0')
+            ->assertSet('data.has_st', '0')
+            ->assertSet('data.is_final_consumer', null)
+            ->set('data.is_custom_manufacturing', '0')
+            ->set('data.has_st', '1')
+            ->set('data.is_final_consumer', null)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $rule->refresh();
+
+        $this->assertFalse($rule->is_custom_manufacturing);
+        $this->assertTrue($rule->has_st);
+        $this->assertNull($rule->is_final_consumer);
+    }
+
     /**
      * @return array{User,Company}
      */
@@ -108,7 +147,7 @@ class FiscalRuleResourceTest extends TestCase
             'name' => "{$name} {$suffix}",
             'document_number' => $documentNumber,
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
-            'email' => Str::slug("{$name}-{$suffix}") . '@example.com',
+            'email' => Str::slug("{$name}-{$suffix}").'@example.com',
             'is_active' => true,
             'created_by' => $user->id,
         ]);

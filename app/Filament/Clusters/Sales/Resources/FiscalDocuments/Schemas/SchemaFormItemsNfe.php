@@ -83,11 +83,14 @@ class SchemaFormItemsNfe
                         ->columnSpanFull()
                         ->schema([
                             Money::make('freight_amount')
-                                ->label('Frete'),
+                                ->label('Frete')
+                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.')),
                             Money::make('insurance_amount')
-                                ->label('Seguro'),
+                                ->label('Seguro')
+                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.')),
                             Money::make('other_expenses_amount')
-                                ->label('Outras'),
+                                ->label('Outras')
+                                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.')),
                         ]),
                     Tab::make('Impostos')
                         // ->visible($showTaxesTab)

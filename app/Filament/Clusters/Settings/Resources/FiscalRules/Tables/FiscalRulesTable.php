@@ -10,7 +10,6 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -54,28 +53,36 @@ class FiscalRulesTable
                     ->label('Prefixo NCM')
                     ->searchable()
                     ->toggleable(),
-                IconColumn::make('is_custom_manufacturing')
+                TextColumn::make('is_custom_manufacturing')
                     ->label('Fab. Própria')
-                    ->boolean()
+                    ->badge()
+                    ->formatStateUsing(fn (?bool $state): string => self::nullableBooleanLabel($state))
+                    ->color(fn (?bool $state): string => self::nullableBooleanColor($state))
                     ->toggleable(),
-                IconColumn::make('has_st')
+                TextColumn::make('has_st')
                     ->label('ST')
-                    ->boolean()
+                    ->badge()
+                    ->formatStateUsing(fn (?bool $state): string => self::nullableBooleanLabel($state))
+                    ->color(fn (?bool $state): string => self::nullableBooleanColor($state))
                     ->toggleable(),
                 TextColumn::make('recipient_type')
                     ->label('Tipo Destinatário')
                     ->formatStateUsing(fn (?string $state): string => $state ? (StateTaxIndicator::tryFrom($state)?->description() ?? $state) : '-')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('is_interestadual')
+                TextColumn::make('is_interestadual')
                     ->label('Interestadual')
-                    ->boolean(),
+                    ->badge()
+                    ->formatStateUsing(fn (?bool $state): string => self::nullableBooleanLabel($state))
+                    ->color(fn (?bool $state): string => self::nullableBooleanColor($state)),
                 TextColumn::make('product_origin')
                     ->label('Origem Produto')
                     ->searchable(),
-                IconColumn::make('is_final_consumer')
+                TextColumn::make('is_final_consumer')
                     ->label('Consumidor Final')
-                    ->boolean(),
+                    ->badge()
+                    ->formatStateUsing(fn (?bool $state): string => self::nullableBooleanLabel($state))
+                    ->color(fn (?bool $state): string => self::nullableBooleanColor($state)),
                 TextColumn::make('cst_icms')
                     ->label('CST ICMS')
                     ->searchable(),
@@ -148,9 +155,11 @@ class FiscalRulesTable
                     ->label('Prioridade')
                     ->numeric()
                     ->sortable(),
-                IconColumn::make('is_active')
+                TextColumn::make('is_active')
                     ->label('Ativa')
-                    ->boolean(),
+                    ->badge()
+                    ->formatStateUsing(fn (?bool $state): string => self::nullableBooleanLabel($state))
+                    ->color(fn (?bool $state): string => self::nullableBooleanColor($state)),
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->limit(50)
@@ -267,5 +276,23 @@ class FiscalRulesTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function nullableBooleanLabel(?bool $state): string
+    {
+        return match ($state) {
+            true => 'Sim',
+            false => 'Não',
+            null => 'Qualquer',
+        };
+    }
+
+    private static function nullableBooleanColor(?bool $state): string
+    {
+        return match ($state) {
+            true => 'success',
+            false => 'gray',
+            null => 'warning',
+        };
     }
 }
