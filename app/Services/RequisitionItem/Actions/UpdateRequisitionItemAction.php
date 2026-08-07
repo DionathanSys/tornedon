@@ -63,6 +63,7 @@ class UpdateRequisitionItemAction
         try {
             $validated = RequisitionItemValidator::validateUpdate($data);
             $validated = $this->applyBaseQuantitySnapshot($validated);
+            $validated = $this->applyUnitCostSnapshot($validated);
 
             $validated['updated_by'] = $this->updatedBy;
 
@@ -245,6 +246,42 @@ class UpdateRequisitionItemAction
 
         $validated['quantity_in_base_unit'] = round($conversion->baseQuantity, 8);
         $validated['conversion_factor_snapshot'] = $conversion->factor;
+
+        return $validated;
+    }
+
+    private function applyUnitCostSnapshot(array $validated): array
+    {
+        if (array_key_exists('unit_cost', $validated) && $validated['unit_cost'] !== null && (float) $validated['unit_cost'] > 0) {
+            return $validated;
+        }
+
+        if (! array_key_exists('product_id', $validated) && (float) ($this->requisitionItem->unit_cost ?? 0) > 0) {
+            return $validated;
+        }
+
+        $productId = (int) ($validated['product_id'] ?? $this->requisitionItem->product_id ?? 0);
+
+        if ($productId < 1) {
+            return $validated;
+        }
+
+        $product = Product::query()->find($productId, ['id', 'company_id']);
+
+        if (! $product) {
+            return $validated;
+        }
+
+        $stock = ProductStock::query()
+            ->where('product_id', $product->id)
+            ->where('company_id', $product->company_id)
+            ->first(['average_cost', 'last_cost']);
+
+        $cost = (float) ($stock?->average_cost ?: $stock?->last_cost ?: 0);
+
+        if ($cost > 0) {
+            $validated['unit_cost'] = $cost;
+        }
 
         return $validated;
     }
