@@ -182,7 +182,7 @@ class CashMovement extends Model
         return match ($this->direction) {
             CashMovementDirection::OUTFLOW => $this->resolveCompanyLabel(),
             CashMovementDirection::INFLOW => $this->resolveCounterpartyPartnerLabel(),
-            default => 'Nao informado',
+            default => 'Não informado',
         };
     }
 
@@ -191,7 +191,7 @@ class CashMovement extends Model
         return match ($this->direction) {
             CashMovementDirection::OUTFLOW => $this->resolveCounterpartyPartnerLabel(),
             CashMovementDirection::INFLOW => $this->resolveCompanyLabel(),
-            default => 'Nao informado',
+            default => 'Não informado',
         };
     }
 
@@ -200,7 +200,7 @@ class CashMovement extends Model
         return match ($this->direction) {
             CashMovementDirection::OUTFLOW => $this->resolvePrimaryAccountLabel(),
             CashMovementDirection::INFLOW => $this->resolveCounterpartyAccountLabel(),
-            default => 'Nao informado',
+            default => 'Não informado',
         };
     }
 
@@ -209,7 +209,7 @@ class CashMovement extends Model
         return match ($this->direction) {
             CashMovementDirection::OUTFLOW => $this->resolveCounterpartyAccountLabel(),
             CashMovementDirection::INFLOW => $this->resolvePrimaryAccountLabel(),
-            default => 'Nao informado',
+            default => 'Não informado',
         };
     }
 
@@ -253,7 +253,7 @@ class CashMovement extends Model
             ?? $this->manual_counterparty_name
             ?? $this->counterpartyPartner?->name
             ?? $this->resolveOriginCounterpartyLabel()
-            ?? 'Nao informado';
+            ?? 'Não informado';
     }
 
     private function resolveOriginCounterpartyLabel(): ?string
@@ -284,7 +284,7 @@ class CashMovement extends Model
         return $this->snapshotValue('financial_account_name')
             ?? $this->financialAccount?->display_name
             ?? $this->financialAccount?->name
-            ?? 'Nao informado';
+            ?? 'Não informado';
     }
 
     private function resolveCounterpartyAccountLabel(): string
@@ -292,7 +292,7 @@ class CashMovement extends Model
         return $this->snapshotValue('counterparty_financial_account_name')
             ?? $this->counterpartyFinancialAccount?->display_name
             ?? $this->counterpartyFinancialAccount?->name
-            ?? 'Nao informado';
+            ?? 'Não informado';
     }
 
     private function snapshotValue(string $key): mixed

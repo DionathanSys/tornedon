@@ -15,7 +15,7 @@ final class CreateTransferAction
     public static function make(): Action
     {
         return Action::make('create_transfer')
-            ->label('Transferencia entre contas')
+            ->label('Transferência')
             ->icon(Heroicon::ArrowsRightLeft)
             ->color('info')
             ->modalWidth('3xl')

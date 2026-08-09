@@ -72,6 +72,7 @@ class CashMovementsTable
                     ->label('Descrição')
                     ->searchable()
                     ->limit(50)
+                    ->tooltip(fn($state) => $state)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('origin_label')
                     ->label('Origem')
@@ -106,7 +107,7 @@ class CashMovementsTable
             ])
             ->filters([
                 SelectFilter::make('direction')
-                    ->label('Direcao')
+                    ->label('Direção')
                     ->options(CashMovementDirection::toSelectArray())
                     ->native(false),
                 SelectFilter::make('financial_account_id')
@@ -124,6 +125,7 @@ class CashMovementsTable
                     ->native(false),
                 DateRangeFilter::make('transaction_date')
                     ->label('Data Movimento')
+                    ->icon('heroicon-o-x')
                     ->autoApply()
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
@@ -175,7 +177,7 @@ class CashMovementsTable
             ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 CreateAction::make()
-                    ->label('Movimento Manual'),
+                    ->label('Mov. Manual'),
                 CreateTransferAction::make(),
             ])
             ->defaultSort('transaction_date', 'desc')

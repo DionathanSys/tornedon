@@ -106,7 +106,7 @@ class CashMovementServiceTest extends TestCase
         $this->assertNull($movement->counterparty_financial_account_id);
         $this->assertSame('Manual', $movement->origin_label);
         $this->assertSame('Empresa Movimento', $movement->party_from_label);
-        $this->assertSame('Nao informado', $movement->party_to_label);
+        $this->assertSame('Não informado', $movement->party_to_label);
         $this->assertStringContainsString('Conta Principal', $movement->tracking_label);
         $this->assertDatabaseHas('audit_entries', [
             'company_id' => $this->company->id,

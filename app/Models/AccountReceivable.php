@@ -116,7 +116,7 @@ class AccountReceivable extends Model
         return Attribute::make(
             get: fn (): string => $this->customer?->name
                 ?? $this->manual_counterparty_name
-                ?? 'Nao informado',
+                ?? 'Não informado',
         );
     }
 }

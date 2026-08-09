@@ -100,7 +100,7 @@ class AccountPayable extends Model
         return Attribute::make(
             get: fn (): string => $this->supplier?->name
                 ?? $this->manual_counterparty_name
-                ?? 'Nao informado',
+                ?? 'Não informado',
         );
     }
 }
