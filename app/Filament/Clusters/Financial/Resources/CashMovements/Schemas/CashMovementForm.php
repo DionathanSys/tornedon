@@ -72,7 +72,7 @@ class CashMovementForm
                             ->required(false)
                             ->native(false)
                             ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(['md' => 2]),
+                            ->columnSpan(2),
                         DatePicker::make('transaction_date')
                             ->label('Data')
                             ->default(now())
