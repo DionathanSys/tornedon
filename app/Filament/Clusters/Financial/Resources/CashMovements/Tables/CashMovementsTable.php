@@ -20,6 +20,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class CashMovementsTable
@@ -156,7 +157,7 @@ class CashMovementsTable
                     ->action(function (CashMovement $record): void {
                         $service = app(CashMovementService::class);
 
-                        if (! $service->deleteSafely($record, auth()->id())) {
+                        if (! $service->deleteSafely($record, Auth::id())) {
                             Notification::make()
                                 ->title($service->getMessageUser() ?: 'Nao foi possivel excluir o movimento.')
                                 ->danger()

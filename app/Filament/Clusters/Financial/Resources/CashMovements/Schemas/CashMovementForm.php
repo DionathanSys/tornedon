@@ -13,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -59,66 +60,67 @@ class CashMovementForm
                                 $set('manual_counterparty_name', null);
                             })
                             ->columnSpan(['md' => 1, 'lg' => 1]),
-                        Select::make('financial_account_id')
-                            ->label('Conta Financeira')
-                            ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
-                            ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
+                        TextInput::make('manual_counterparty_name')
+                            ->label('Nome da Contraparte')
+                            ->maxLength(255)
+                            ->hidden(fn(Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                        Select::make('counterparty_partner_id')
+                            ->label('Parceiro Contraparte')
                             ->searchable()
                             ->preload()
+                            ->getSearchResultsUsing(fn(string $search): array => app(PartnerService::class)
+                                ->searchForSelect($search, Filament::getTenant()->id, 'all'))
+                            ->getOptionLabelUsing(fn($value): ?string => $value
+                                ? app(PartnerService::class)->getLabelForSelect((int) $value)
+                                : null)
+                            ->options(fn(): array => app(PartnerService::class)
+                                ->searchForSelect('', Filament::getTenant()->id, 'all', 50))
                             ->native(false)
-                            ->required()
+                            ->hidden(fn(Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
                             ->columnSpan(['md' => 2, 'lg' => 4]),
-                        Select::make('financial_category_id')
-                            ->label('Categoria Financeira')
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->required()
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
-                        Select::make('direction')
-                            ->label('Direcao')
+                        ToggleButtons::make('direction')
+                            ->label('Direção')
                             ->options(CashMovementDirection::toSelectArray())
-                            ->native(false)
                             ->required()
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 2]),
                         DatePicker::make('transaction_date')
                             ->label('Data')
                             ->default(now())
                             ->required()
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 1]),
+                        Select::make('financial_account_id')
+                            ->label('Conta Financeira')
+                            ->options(fn(): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->default(fn(): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
+                            ->columnStart(1)
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->required()
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                        Select::make('counterparty_financial_account_id')
+                            ->label('Conta Contraparte')
+                            ->options(fn(): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->disabled()
+                            ->columnSpan(['md' => 2]),
+                        Select::make('financial_category_id')
+                            ->label('Categoria Financeira')
+                            ->options(fn(): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->required()
+                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         Money::make('amount')
                             ->label('Valor')
                             ->prefix('R$')
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->required()
                             ->columnSpan(['md' => 1, 'lg' => 2]),
-                        Select::make('counterparty_partner_id')
-                            ->label('Parceiro Contraparte')
-                            ->searchable()
-                            ->preload()
-                            ->getSearchResultsUsing(fn (string $search): array => app(PartnerService::class)
-                                ->searchForSelect($search, Filament::getTenant()->id, 'all'))
-                            ->getOptionLabelUsing(fn ($value): ?string => $value
-                                ? app(PartnerService::class)->getLabelForSelect((int) $value)
-                                : null)
-                            ->options(fn (): array => app(PartnerService::class)
-                                ->searchForSelect('', Filament::getTenant()->id, 'all', 50))
-                            ->native(false)
-                            ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
-                        TextInput::make('manual_counterparty_name')
-                            ->label('Nome da Contraparte')
-                            ->maxLength(255)
-                            ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
-                        Select::make('counterparty_financial_account_id')
-                            ->label('Conta Contraparte')
-                            ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('description')
                             ->label('Descrição')
                             ->required()
