@@ -64,7 +64,7 @@ class CashMovementForm
                             ->label('Nome da Contraparte')
                             ->maxLength(255)
                             ->hidden(fn(Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                            ->columnSpan(['md' => 2]),
                         Select::make('counterparty_partner_id')
                             ->label('Parceiro Contraparte')
                             ->searchable()
@@ -78,19 +78,18 @@ class CashMovementForm
                                 ->searchForSelect('', Filament::getTenant()->id, 'all', 50))
                             ->native(false)
                             ->hidden(fn(Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
-                        ToggleButtons::make('direction')
-                            ->label('Direção')
-                            ->options(CashMovementDirection::toSelectArray())
-                            ->required()
-                            ->inline()
-                            ->grow(false)
                             ->columnSpan(['md' => 2]),
                         DatePicker::make('transaction_date')
                             ->label('Data')
                             ->default(now())
                             ->required()
                             ->columnSpan(['md' => 1]),
+                        ToggleButtons::make('direction')
+                            ->label('Direção')
+                            ->options(CashMovementDirection::toSelectArray())
+                            ->required()
+                            ->inline()
+                            ->columnSpan(['md' => 2]),
                         Select::make('financial_account_id')
                             ->label('Conta Financeira')
                             ->options(fn(): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
@@ -100,7 +99,7 @@ class CashMovementForm
                             ->preload()
                             ->native(false)
                             ->required()
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                            ->columnSpan(['md' => 2]),
                         Select::make('counterparty_financial_account_id')
                             ->label('Conta Contraparte')
                             ->options(fn(): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
@@ -116,18 +115,18 @@ class CashMovementForm
                             ->preload()
                             ->native(false)
                             ->required()
-                            ->columnSpan(['md' => 2, 'lg' => 4]),
+                            ->columnSpan(['md' => 2]),
                         Money::make('amount')
                             ->label('Valor')
                             ->prefix('R$')
                             ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
                             ->required()
-                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                            ->columnSpan(['md' => 1]),
                         TextInput::make('description')
                             ->label('Descrição')
                             ->required()
                             ->maxLength(255)
-                            ->columnSpan(['md' => 3, 'lg' => 6]),
+                            ->columnSpan(['md' => 2]),
                         Textarea::make('notes')
                             ->label('Observações')
                             ->rows(3)
