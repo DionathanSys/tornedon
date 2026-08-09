@@ -84,6 +84,7 @@ class CashMovementForm
                             ->options(CashMovementDirection::toSelectArray())
                             ->required()
                             ->inline()
+                            ->grow()
                             ->columnSpan(['md' => 2]),
                         DatePicker::make('transaction_date')
                             ->label('Data')
