@@ -38,9 +38,9 @@ class CashMovementsStatsOverview extends StatsOverviewWidget
             Stat::make('Saldo líquido', $this->formatMoney($net))
                 ->description('Entradas menos saídas')
                 ->color($net >= 0 ? 'success' : 'danger'),
-            Stat::make('Movimentos', number_format($count, 0, ',', '.'))
-                ->description('Quantidade de lançamentos filtrados')
-                ->color('gray'),
+            // Stat::make('Movimentos', number_format($count, 0, ',', '.'))
+            //     ->description('Quantidade de lançamentos filtrados')
+            //     ->color('gray'),
         ];
     }
 

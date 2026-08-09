@@ -22,7 +22,7 @@ class ListCashMovements extends ListRecords
     {
         return [
             CashMovementsStatsOverview::class,
-            CashMovementsReconciliationStats::class,
+            // CashMovementsReconciliationStats::class,
         ];
     }
 
