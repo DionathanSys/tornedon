@@ -42,6 +42,7 @@ class AccountPayableForm
                     ->schema([
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
+                            ->disabledOn('edit')
                             ->live()
                             ->inline(false)
                             ->dehydrated(false)

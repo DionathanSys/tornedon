@@ -25,6 +25,7 @@ class AccountPayableForm
         $launchComponents = [
             Toggle::make('is_manual_counterparty')
                 ->label('Parceiro Avulso?')
+                ->disabledOn('edit')
                 ->live()
                 ->dehydrated(false)
                 ->afterStateHydrated(function (Toggle $component, ?bool $state, ?object $record): void {

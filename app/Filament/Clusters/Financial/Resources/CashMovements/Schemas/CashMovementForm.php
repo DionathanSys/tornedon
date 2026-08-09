@@ -41,6 +41,7 @@ class CashMovementForm
                     ->schema([
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
+                            ->disabledOn('edit')
                             ->live()
                             ->inline(false)
                             ->dehydrated(false)
@@ -60,7 +61,6 @@ class CashMovementForm
 
                                 $set('manual_counterparty_name', null);
                             })
-                            ->disabledOn('edit')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         TextInput::make('manual_counterparty_name')
                             ->label('Nome da Contraparte')
