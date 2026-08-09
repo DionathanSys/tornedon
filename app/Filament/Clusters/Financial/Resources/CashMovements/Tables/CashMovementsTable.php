@@ -125,7 +125,7 @@ class CashMovementsTable
                     ->native(false),
                 DateRangeFilter::make('transaction_date')
                     ->label('Data Movimento')
-                    ->icon('heroicon-o-x')
+                    ->icon('heroicon-o-backspace')
                     ->autoApply()
                     ->firstDayOfWeek(0)
                     ->alwaysShowCalendar()
