@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Grouping\Group;
@@ -171,7 +172,7 @@ class CashMovementsTable
                             ->success()
                             ->send();
                     }),
-            ])
+            ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Movimento Manual'),
