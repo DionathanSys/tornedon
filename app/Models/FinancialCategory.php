@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class FinancialCategory extends Model
 {
@@ -15,6 +16,7 @@ class FinancialCategory extends Model
 
     protected $fillable = [
         'company_id',
+        'chart_account_id',
         'parent_id',
         'name',
         'description',
@@ -35,9 +37,21 @@ class FinancialCategory extends Model
         'sort_order' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $category): void {
+            $category->validateChartAccount();
+        });
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function chartAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartAccount::class);
     }
 
     public function parent(): BelongsTo
@@ -113,6 +127,7 @@ class FinancialCategory extends Model
 
             if ($current->relationLoaded('parent')) {
                 $current = $current->parent;
+
                 continue;
             }
 
@@ -205,6 +220,7 @@ class FinancialCategory extends Model
 
             if ($categoriesById->has($parentId)) {
                 $current = $categoriesById->get($parentId);
+
                 continue;
             }
 
@@ -214,5 +230,20 @@ class FinancialCategory extends Model
         }
 
         return implode(' / ', $segments);
+    }
+
+    private function validateChartAccount(): void
+    {
+        if ($this->chart_account_id === null) {
+            return;
+        }
+
+        $account = ChartAccount::query()->find($this->chart_account_id);
+
+        if (! $account || (int) $account->company_id !== (int) $this->company_id) {
+            throw ValidationException::withMessages([
+                'chart_account_id' => ['A conta do plano deve pertencer a mesma empresa da categoria.'],
+            ]);
+        }
     }
 }

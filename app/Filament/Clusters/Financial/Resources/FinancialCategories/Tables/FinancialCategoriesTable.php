@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Financial\Resources\FinancialCategories\Tables;
 
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -38,6 +37,10 @@ class FinancialCategoriesTable
                     })
                     ->sortable(['parent.name'])
                     ->placeholder('N/A')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('chartAccount.display_name')
+                    ->label('Plano de Contas')
+                    ->placeholder('Sem vínculo')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('usage')
                     ->label('Uso')

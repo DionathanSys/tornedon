@@ -2,9 +2,9 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FinancialCategories\Schemas;
 
+use App\Models\ChartAccount;
 use App\Models\FinancialCategory;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -45,6 +45,14 @@ class FinancialCategoryForm
                             ->native(false)
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->placeholder('Raiz'),
+                        Select::make('chart_account_id')
+                            ->label('Plano de Contas')
+                            ->options(fn (): array => ChartAccount::optionsForCompany(Filament::getTenant()->id, true))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->placeholder('Sem vínculo')
+                            ->columnSpan(['md' => 3, 'lg' => 5]),
                         TextInput::make('sort_order')
                             ->label('Ordem')
                             ->numeric()
