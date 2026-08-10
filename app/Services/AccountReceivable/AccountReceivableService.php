@@ -18,8 +18,8 @@ use App\Services\AccountReceivable\Actions\Installment\UpdateAccountReceivableIn
 use App\Services\AccountReceivable\Actions\UpdateAccountReceivableAction;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
 use App\Services\Audit\AuditRecorder;
-use App\Services\Financial\CashMovementService;
 use App\Services\Financial\CardReceivableCalculatorService;
+use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentSchedule;
@@ -34,9 +34,9 @@ class AccountReceivableService
     use HandlesServiceResponse;
 
     public function __construct(
-        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService(),
-        private readonly CashMovementService $cashMovementService = new CashMovementService(),
-        private readonly CardReceivableCalculatorService $cardReceivableCalculatorService = new CardReceivableCalculatorService(),
+        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService,
+        private readonly CashMovementService $cashMovementService = new CashMovementService,
+        private readonly CardReceivableCalculatorService $cardReceivableCalculatorService = new CardReceivableCalculatorService,
     ) {}
 
     public function create(array $data, int $createdBy): ?AccountReceivable
@@ -73,7 +73,7 @@ class AccountReceivableService
                 }
 
                 foreach ($installments as $installmentData) {
-                    $createInstallmentAction = new CreateAccountReceivableInstallmentAction();
+                    $createInstallmentAction = new CreateAccountReceivableInstallmentAction;
                     $createdInstallment = $createInstallmentAction->execute(
                         $this->buildInstallmentRecordData($installmentData, $accountReceivable)
                     );
@@ -111,7 +111,7 @@ class AccountReceivableService
                 $this->setSuccess('Conta a receber criada com sucesso');
 
                 Log::info('Conta a receber criada com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'account_receivable_id' => $syncedAccountReceivable->id,
                     'installments' => $installmentCount,
                 ]);
@@ -122,7 +122,7 @@ class AccountReceivableService
             $this->setError('Falha de validacao dos dados', $e->errors(), 422);
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
@@ -135,7 +135,7 @@ class AccountReceivableService
             $this->setError('Erro ao criar conta a receber');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -173,7 +173,7 @@ class AccountReceivableService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'account_receivable_id' => $accountReceivable->id,
                         'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
@@ -212,7 +212,7 @@ class AccountReceivableService
                 $this->setSuccess('Conta a receber atualizada com sucesso');
 
                 Log::info('Conta a receber atualizada com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'account_receivable_id' => $accountReceivable->id,
                 ]);
 
@@ -222,7 +222,7 @@ class AccountReceivableService
             $this->setError('Erro ao atualizar conta a receber');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_receivable_id' => $accountReceivable->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -282,6 +282,10 @@ class AccountReceivableService
                     ]);
                 }
 
+                if (isset($extra['competence_date']) && filled($extra['competence_date'])) {
+                    $installment->update(['competence_date' => $extra['competence_date']]);
+                }
+
                 $syncAction = new SyncAccountReceivableStatusFromInstallmentsAction($installment->accountReceivable);
                 $synced = $syncAction->execute();
 
@@ -333,12 +337,13 @@ class AccountReceivableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao registrar recebimento da parcela.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'installment_id' => $installment->id,
@@ -424,12 +429,13 @@ class AccountReceivableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar parcela.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -508,12 +514,13 @@ class AccountReceivableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+
             return false;
         } catch (\Exception $e) {
             $this->setError('Erro ao excluir parcela.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -589,12 +596,13 @@ class AccountReceivableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar recebimento.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payment_id' => $payment->id,
@@ -632,6 +640,7 @@ class AccountReceivableService
 
                 if (! $deleted) {
                     $this->setError('Erro ao excluir recebimento.');
+
                     return false;
                 }
 
@@ -659,7 +668,7 @@ class AccountReceivableService
             $this->setError('Erro ao excluir recebimento.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payment_id' => $payment->id,
@@ -689,7 +698,7 @@ class AccountReceivableService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'account_receivable_id' => $accountReceivable->id,
                         'message' => $action->getMessage(),
                         'error_code' => $action->getErrorCode(),
@@ -710,7 +719,7 @@ class AccountReceivableService
                 $this->setSuccess('Conta a receber excluida com sucesso');
 
                 Log::info('Conta a receber excluida com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'account_receivable_id' => $accountReceivable->id,
                 ]);
 
@@ -720,7 +729,7 @@ class AccountReceivableService
             $this->setError('Erro ao excluir conta a receber');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_receivable_id' => $accountReceivable->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -738,6 +747,7 @@ class AccountReceivableService
     {
         if ($installmentCount === 1) {
             $data['sequence_number'] = $this->formatSequenceNumber(1);
+
             return [$data];
         }
 
@@ -829,19 +839,26 @@ class AccountReceivableService
     }
 
     /**
-     * @param array<string, mixed> $installmentData
+     * @param  array<string, mixed>  $installmentData
      * @return array<string, mixed>
      */
     private function buildInstallmentRecordData(array $installmentData, AccountReceivable $accountReceivable): array
     {
         $amount = (float) ($installmentData['due_amount'] ?? 0);
+        $companyId = (int) $accountReceivable->company_id;
+        $categoryId = $this->classificationService->resolveInstallmentCategoryId(
+            $installmentData['financial_category_id'] ?? null,
+            $companyId,
+            'receivable'
+        );
 
         return [
             'account_receivable_id' => $accountReceivable->id,
-            'company_id' => $accountReceivable->company_id,
+            'company_id' => $companyId,
             'sequence_number' => $installmentData['sequence_number'],
             'status' => Status::PENDING->value,
             'due_date' => $installmentData['due_date'],
+            'competence_date' => $installmentData['competence_date'] ?? $installmentData['due_date'],
             'received_date' => null,
             'original_amount' => $amount,
             'interest_amount' => 0,
@@ -851,12 +868,16 @@ class AccountReceivableService
             'received_amount' => 0,
             'balance_amount' => $amount,
             'bank_account_id' => $installmentData['bank_account_id'] ?? null,
-            'financial_category_id' => $this->classificationService->resolveInstallmentCategoryId(
-                $installmentData['financial_category_id'] ?? null,
-                $accountReceivable->company_id,
-                'receivable'
+            'chart_account_id' => $this->classificationService->resolveChartAccountIdFromCategoryId($categoryId, $companyId, 'receivable'),
+            'financial_category_id' => $categoryId,
+            'cost_center_id' => $this->classificationService->assertCostCenterBelongsToCompany(
+                isset($installmentData['cost_center_id']) && filled($installmentData['cost_center_id']) ? (int) $installmentData['cost_center_id'] : null,
+                $companyId,
             ),
-            'cost_center_id' => $installmentData['cost_center_id'] ?? null,
+            'result_center_id' => $this->classificationService->assertResultCenterBelongsToCompany(
+                isset($installmentData['result_center_id']) && filled($installmentData['result_center_id']) ? (int) $installmentData['result_center_id'] : null,
+                $companyId,
+            ),
             'description' => $installmentData['description']
                 ?? InstallmentDescription::fallbackForReceivable($accountReceivable, $installmentData['sequence_number'] ?? null),
             'notes' => $installmentData['notes'] ?? $installmentData['description'] ?? null,
@@ -864,7 +885,7 @@ class AccountReceivableService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function applyCardRulesForCreate(array $data): array
@@ -922,7 +943,7 @@ class AccountReceivableService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function applyCardRulesForUpdate(AccountReceivable $accountReceivable, array $data): array

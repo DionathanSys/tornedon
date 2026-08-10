@@ -7,8 +7,8 @@ use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
 use App\Models\Company;
-use App\Models\FinancialCategory;
 use App\Models\FinancialAccount;
+use App\Models\FinancialCategory;
 use App\Models\Partner;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
@@ -26,7 +26,7 @@ class CashMovementService
     use HandlesServiceResponse;
 
     public function __construct(
-        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService(),
+        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService,
     ) {}
 
     public function syncForPayablePayment(AccountPayableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
@@ -87,6 +87,14 @@ class CashMovementService
                     $companyId,
                     'cash_movement'
                 );
+                $costCenterId = $this->classificationService->assertCostCenterBelongsToCompany(
+                    isset($data['cost_center_id']) && filled($data['cost_center_id']) ? (int) $data['cost_center_id'] : null,
+                    $companyId,
+                );
+                $resultCenterId = $this->classificationService->assertResultCenterBelongsToCompany(
+                    isset($data['result_center_id']) && filled($data['result_center_id']) ? (int) $data['result_center_id'] : null,
+                    $companyId,
+                );
                 $counterpartyPartner = $this->resolveCounterpartyPartner($data['counterparty_partner_id'] ?? null);
                 $manualCounterpartyName = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
                 $counterpartyFinancialAccount = $this->resolveCounterpartyFinancialAccount(
@@ -99,8 +107,12 @@ class CashMovementService
                     'company_id' => $companyId,
                     'financial_account_id' => $account->id,
                     'financial_category_id' => $category->id,
+                    'chart_account_id' => $category->chart_account_id,
+                    'cost_center_id' => $costCenterId,
+                    'result_center_id' => $resultCenterId,
                     'direction' => $data['direction'],
                     'transaction_date' => $data['transaction_date'],
+                    'competence_date' => $data['competence_date'] ?? $data['transaction_date'],
                     'amount' => $data['amount'],
                     'description' => $data['description'],
                     'origin_type' => 'manual',
@@ -136,12 +148,13 @@ class CashMovementService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao criar movimento financeiro.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payload' => $data,
@@ -161,6 +174,7 @@ class CashMovementService
 
                 if (! $movement) {
                     $this->setSuccess('Movimento financeiro ja removido.');
+
                     return true;
                 }
 
@@ -186,6 +200,7 @@ class CashMovementService
                     }
 
                     $this->setSuccess('Recebimento vinculado desfeito com sucesso.');
+
                     return true;
                 }
 
@@ -205,6 +220,7 @@ class CashMovementService
                     }
 
                     $this->setSuccess('Pagamento vinculado desfeito com sucesso.');
+
                     return true;
                 }
 
@@ -218,7 +234,7 @@ class CashMovementService
             $this->setError('Erro ao excluir movimento financeiro.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'movement_id' => $movement->id,
@@ -250,6 +266,14 @@ class CashMovementService
 
                 $account = $this->resolveFinancialAccount($accountId, $companyId);
                 $category = $this->classificationService->assertCategoryIsUsable($categoryId, $companyId, 'cash_movement');
+                $costCenterId = $this->classificationService->assertCostCenterBelongsToCompany(
+                    array_key_exists('cost_center_id', $data) && filled($data['cost_center_id']) ? (int) $data['cost_center_id'] : $movement->cost_center_id,
+                    $companyId,
+                );
+                $resultCenterId = $this->classificationService->assertResultCenterBelongsToCompany(
+                    array_key_exists('result_center_id', $data) && filled($data['result_center_id']) ? (int) $data['result_center_id'] : $movement->result_center_id,
+                    $companyId,
+                );
                 $counterpartyPartner = $this->resolveCounterpartyPartner(
                     array_key_exists('counterparty_partner_id', $data)
                         ? $data['counterparty_partner_id']
@@ -271,8 +295,12 @@ class CashMovementService
                 $movement->update([
                     'financial_account_id' => $account->id,
                     'financial_category_id' => $category->id,
+                    'chart_account_id' => $category->chart_account_id,
+                    'cost_center_id' => $costCenterId,
+                    'result_center_id' => $resultCenterId,
                     'direction' => $data['direction'] ?? $movement->direction?->value,
                     'transaction_date' => $data['transaction_date'] ?? $movement->transaction_date?->toDateString(),
+                    'competence_date' => $data['competence_date'] ?? $movement->competence_date?->toDateString() ?? $data['transaction_date'] ?? $movement->transaction_date?->toDateString(),
                     'amount' => $data['amount'] ?? $movement->amount,
                     'description' => $data['description'] ?? $movement->description,
                     'counterparty_partner_id' => $counterpartyPartner?->id,
@@ -306,12 +334,13 @@ class CashMovementService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar movimento financeiro.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'movement_id' => $movement->id,
@@ -403,7 +432,7 @@ class CashMovementService
             $this->setError('Erro ao criar transferencia entre contas.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payload' => $data,
@@ -514,7 +543,7 @@ class CashMovementService
             $this->setError('Erro ao atualizar transferencia entre contas.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'movement_id' => $movement->id,
@@ -553,7 +582,7 @@ class CashMovementService
                     'direction' => CashMovementDirection::INFLOW->value,
                     'transaction_date' => now()->toDateString(),
                     'amount' => $outflow->amount,
-                    'description' => 'Estorno: ' . $outflow->description,
+                    'description' => 'Estorno: '.$outflow->description,
                     'origin_type' => 'manual',
                     'origin_id' => null,
                     'counterparty_partner_id' => null,
@@ -573,7 +602,7 @@ class CashMovementService
                     'direction' => CashMovementDirection::OUTFLOW->value,
                     'transaction_date' => now()->toDateString(),
                     'amount' => $inflow->amount,
-                    'description' => 'Estorno: ' . $inflow->description,
+                    'description' => 'Estorno: '.$inflow->description,
                     'origin_type' => 'manual',
                     'origin_id' => null,
                     'counterparty_partner_id' => null,
@@ -629,7 +658,7 @@ class CashMovementService
             $this->setError('Erro ao estornar transferencia entre contas.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'movement_id' => $movement->id,
@@ -675,8 +704,12 @@ class CashMovementService
                     'company_id' => $payment->company_id,
                     'financial_account_id' => $account->id,
                     'financial_category_id' => $categoryId,
+                    'chart_account_id' => $installment->chart_account_id,
+                    'cost_center_id' => $installment->cost_center_id,
+                    'result_center_id' => $installment->result_center_id,
                     'direction' => $direction->value,
                     'transaction_date' => $payment->payment_date?->toDateString(),
+                    'competence_date' => $installment->competence_date?->toDateString() ?? $payment->payment_date?->toDateString(),
                     'amount' => $payment->amount,
                     'description' => $this->buildPaymentDescription($payment, $descriptionPrefix),
                     'notes' => $payment->notes,
@@ -722,12 +755,13 @@ class CashMovementService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao sincronizar movimento financeiro.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payment_id' => $payment->id,
@@ -751,6 +785,7 @@ class CashMovementService
 
                 if (! $movement) {
                     $this->setSuccess('Nenhum movimento financeiro precisava ser revertido.');
+
                     return null;
                 }
 
@@ -764,12 +799,16 @@ class CashMovementService
                     'company_id' => $movement->company_id,
                     'financial_account_id' => $movement->financial_account_id,
                     'financial_category_id' => $movement->financial_category_id,
+                    'chart_account_id' => $movement->chart_account_id,
+                    'cost_center_id' => $movement->cost_center_id,
+                    'result_center_id' => $movement->result_center_id,
                     'direction' => $movement->direction === CashMovementDirection::INFLOW
                         ? CashMovementDirection::OUTFLOW->value
                         : CashMovementDirection::INFLOW->value,
                     'transaction_date' => now()->toDateString(),
+                    'competence_date' => now()->toDateString(),
                     'amount' => $movement->amount,
-                    'description' => 'Estorno: ' . $movement->description,
+                    'description' => 'Estorno: '.$movement->description,
                     'counterparty_partner_id' => $movement->counterparty_partner_id,
                     'counterparty_financial_account_id' => $movement->counterparty_financial_account_id,
                     'notes' => $movement->notes,
@@ -793,7 +832,7 @@ class CashMovementService
             $this->setError('Erro ao reverter movimento financeiro.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'origin_type' => $originType,
@@ -817,6 +856,7 @@ class CashMovementService
 
                 if (! $movement) {
                     $this->setSuccess('Nenhum movimento financeiro precisava ser removido.');
+
                     return null;
                 }
 
@@ -834,7 +874,7 @@ class CashMovementService
             $this->setError('Erro ao remover ou reverter movimento financeiro.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'origin_type' => $originType,
@@ -1003,8 +1043,12 @@ class CashMovementService
             'company_id' => $companyId,
             'financial_account_id' => $account->id,
             'financial_category_id' => $category->id,
+            'chart_account_id' => $category->chart_account_id,
+            'cost_center_id' => null,
+            'result_center_id' => null,
             'direction' => $direction->value,
             'transaction_date' => $transactionDate,
+            'competence_date' => $transactionDate,
             'amount' => $amount,
             'description' => $description,
             'origin_type' => 'manual',

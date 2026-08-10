@@ -3,8 +3,11 @@
 namespace App\Services\AccountPayable\Validators;
 
 use App\Enum\AccountPayable\Status;
+use App\Models\ChartAccount;
+use App\Models\CostCenter;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
+use App\Models\ResultCenter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -43,6 +46,7 @@ class AccountPayableInstallmentValidator
             'company_id' => ['required', 'integer', 'exists:companies,id'],
             'sequence_number' => ['required', 'string', 'max:3'],
             'due_date' => ['required', 'date'],
+            'competence_date' => ['nullable', 'date'],
             'due_amount' => ['required', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(array_map(fn (Status $status) => $status->value, Status::cases()))],
             'paid_date' => ['nullable', 'date'],
@@ -53,8 +57,10 @@ class AccountPayableInstallmentValidator
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
             'balance_amount' => ['nullable', 'numeric', 'min:0'],
             'bank_account_id' => self::bankAccountRule(true),
+            'chart_account_id' => self::companyOwnedRule($data, ChartAccount::class, 'Conta do plano nao encontrada.'),
             'financial_category_id' => self::financialCategoryRule($data, 'payable', true),
-            'cost_center_id' => ['nullable', 'integer'],
+            'cost_center_id' => self::companyOwnedRule($data, CostCenter::class, 'Centro de custo nao encontrado.'),
+            'result_center_id' => self::companyOwnedRule($data, ResultCenter::class, 'Centro de resultado nao encontrado.'),
             'description' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ];
@@ -68,7 +74,7 @@ class AccountPayableInstallmentValidator
             array_unshift($rules[$field], 'sometimes');
         }
 
-        foreach (['paid_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'paid_amount', 'balance_amount', 'bank_account_id', 'financial_category_id', 'cost_center_id', 'description', 'notes'] as $field) {
+        foreach (['competence_date', 'paid_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'paid_amount', 'balance_amount', 'bank_account_id', 'chart_account_id', 'financial_category_id', 'cost_center_id', 'result_center_id', 'description', 'notes'] as $field) {
             array_unshift($rules[$field], 'sometimes');
         }
 
@@ -119,16 +125,19 @@ class AccountPayableInstallmentValidator
 
             if (! $category) {
                 $fail('Categoria financeira nao encontrada.');
+
                 return;
             }
 
             if (! $category->is_active) {
                 $fail('A categoria financeira selecionada esta inativa.');
+
                 return;
             }
 
             if (! $category->isLeaf()) {
                 $fail('Selecione uma subcategoria final para a classificacao financeira.');
+
                 return;
             }
 
@@ -156,11 +165,35 @@ class AccountPayableInstallmentValidator
 
             if (! $account) {
                 $fail('Conta financeira nao encontrada.');
+
                 return;
             }
 
             if (! $account->is_active) {
                 $fail('A conta financeira selecionada esta inativa.');
+            }
+        };
+
+        return $rules;
+    }
+
+    private static function companyOwnedRule(array $data, string $modelClass, string $message): array
+    {
+        $companyId = (int) ($data['company_id'] ?? 0);
+        $rules = ['nullable', 'integer'];
+
+        $rules[] = function (string $attribute, mixed $value, \Closure $fail) use ($companyId, $modelClass, $message): void {
+            if ($value === null || $value === '') {
+                return;
+            }
+
+            $exists = $modelClass::query()
+                ->where('company_id', $companyId)
+                ->whereKey($value)
+                ->exists();
+
+            if (! $exists) {
+                $fail($message);
             }
         };
 

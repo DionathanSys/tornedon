@@ -18,8 +18,12 @@ class CashMovement extends Model
         'company_id',
         'financial_account_id',
         'financial_category_id',
+        'chart_account_id',
+        'cost_center_id',
+        'result_center_id',
         'direction',
         'transaction_date',
+        'competence_date',
         'amount',
         'description',
         'origin_type',
@@ -39,6 +43,7 @@ class CashMovement extends Model
     protected $casts = [
         'direction' => CashMovementDirection::class,
         'transaction_date' => 'date',
+        'competence_date' => 'date',
         'amount' => MoneyCast::class,
         'participants_snapshot' => 'array',
         'reversed_at' => 'datetime',
@@ -68,6 +73,21 @@ class CashMovement extends Model
     public function financialCategory(): BelongsTo
     {
         return $this->belongsTo(FinancialCategory::class);
+    }
+
+    public function chartAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartAccount::class, 'chart_account_id');
+    }
+
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+    }
+
+    public function resultCenter(): BelongsTo
+    {
+        return $this->belongsTo(ResultCenter::class, 'result_center_id');
     }
 
     public function counterpartyPartner(): BelongsTo
@@ -124,7 +144,7 @@ class CashMovement extends Model
 
         $directions = $group
             ->pluck('direction')
-            ->map(fn(CashMovementDirection|string|null $direction) => $direction instanceof CashMovementDirection ? $direction->value : $direction)
+            ->map(fn (CashMovementDirection|string|null $direction) => $direction instanceof CashMovementDirection ? $direction->value : $direction)
             ->sort()
             ->values()
             ->all();
@@ -151,7 +171,7 @@ class CashMovement extends Model
     public function transferGroupMovements(): Collection
     {
         if (blank($this->transfer_group_id)) {
-            return new Collection();
+            return new Collection;
         }
 
         return self::query()
@@ -303,7 +323,7 @@ class CashMovement extends Model
     protected function amount(): Attribute
     {
         return Attribute::make(
-            set: fn(mixed $value) => (float) abs((float) $value) * 100,
+            set: fn (mixed $value) => (float) abs((float) $value) * 100,
         );
     }
 }

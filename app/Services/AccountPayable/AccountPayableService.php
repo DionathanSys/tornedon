@@ -14,9 +14,9 @@ use App\Services\AccountPayable\Actions\Installment\RegisterAccountPayableInstal
 use App\Services\AccountPayable\Actions\Installment\SyncAccountPayableStatusFromInstallmentsAction;
 use App\Services\AccountPayable\Actions\Installment\UpdateAccountPayableInstallmentAction;
 use App\Services\AccountPayable\Actions\UpdateAccountPayableAction;
-use App\Services\Audit\AuditRecorder;
 use App\Services\AccountPayable\Validators\AccountPayableInstallmentValidator;
 use App\Services\AccountPayable\Validators\AccountPayableValidator;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
@@ -32,8 +32,8 @@ class AccountPayableService
     use HandlesServiceResponse;
 
     public function __construct(
-        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService(),
-        private readonly CashMovementService $cashMovementService = new CashMovementService(),
+        private readonly FinancialClassificationService $classificationService = new FinancialClassificationService,
+        private readonly CashMovementService $cashMovementService = new CashMovementService,
     ) {}
 
     public function create(array $data, int $createdBy): ?AccountPayable
@@ -76,7 +76,7 @@ class AccountPayableService
                 }
 
                 foreach ($installments as $installmentData) {
-                    $createInstallmentAction = new CreateAccountPayableInstallmentAction();
+                    $createInstallmentAction = new CreateAccountPayableInstallmentAction;
                     $createdInstallment = $createInstallmentAction->execute(
                         $this->buildInstallmentRecordData($installmentData, $accountPayable)
                     );
@@ -114,7 +114,7 @@ class AccountPayableService
                 $this->setSuccess('Conta a pagar criada com sucesso');
 
                 Log::info('Conta a pagar criada com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'account_payable_id' => $syncedAccountPayable->id,
                     'installments' => $installmentCount,
                 ]);
@@ -125,7 +125,7 @@ class AccountPayableService
             $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
@@ -138,7 +138,7 @@ class AccountPayableService
             $this->setError('Erro ao criar conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -160,6 +160,7 @@ class AccountPayableService
 
         if ($installmentCount === 1) {
             $data['sequence_number'] = $this->formatSequenceNumber(1);
+
             return [$data];
         }
 
@@ -268,19 +269,26 @@ class AccountPayableService
     }
 
     /**
-     * @param array<string, mixed> $installmentData
+     * @param  array<string, mixed>  $installmentData
      * @return array<string, mixed>
      */
     private function buildInstallmentRecordData(array $installmentData, AccountPayable $accountPayable): array
     {
         $amount = (float) ($installmentData['due_amount'] ?? 0);
+        $companyId = (int) $accountPayable->company_id;
+        $categoryId = $this->classificationService->resolveInstallmentCategoryId(
+            $installmentData['financial_category_id'] ?? null,
+            $companyId,
+            'payable'
+        );
 
         return [
             'account_payable_id' => $accountPayable->id,
-            'company_id' => $accountPayable->company_id,
+            'company_id' => $companyId,
             'sequence_number' => $installmentData['sequence_number'],
             'status' => Status::PENDING->value,
             'due_date' => $installmentData['due_date'],
+            'competence_date' => $installmentData['competence_date'] ?? $installmentData['due_date'],
             'paid_date' => null,
             'original_amount' => $amount,
             'interest_amount' => 0,
@@ -290,12 +298,16 @@ class AccountPayableService
             'paid_amount' => 0,
             'balance_amount' => $amount,
             'bank_account_id' => $installmentData['bank_account_id'] ?? null,
-            'financial_category_id' => $this->classificationService->resolveInstallmentCategoryId(
-                $installmentData['financial_category_id'] ?? null,
-                $accountPayable->company_id,
-                'payable'
+            'chart_account_id' => $this->classificationService->resolveChartAccountIdFromCategoryId($categoryId, $companyId, 'payable'),
+            'financial_category_id' => $categoryId,
+            'cost_center_id' => $this->classificationService->assertCostCenterBelongsToCompany(
+                isset($installmentData['cost_center_id']) && filled($installmentData['cost_center_id']) ? (int) $installmentData['cost_center_id'] : null,
+                $companyId,
             ),
-            'cost_center_id' => $installmentData['cost_center_id'] ?? null,
+            'result_center_id' => $this->classificationService->assertResultCenterBelongsToCompany(
+                isset($installmentData['result_center_id']) && filled($installmentData['result_center_id']) ? (int) $installmentData['result_center_id'] : null,
+                $companyId,
+            ),
             'description' => $installmentData['description']
                 ?? InstallmentDescription::fallbackForPayable($accountPayable, $installmentData['sequence_number'] ?? null),
             'notes' => $installmentData['notes'] ?? null,
@@ -327,7 +339,7 @@ class AccountPayableService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'account_payable_id' => $accountPayable->id,
                         'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
@@ -366,7 +378,7 @@ class AccountPayableService
                 $this->setSuccess('Conta a pagar atualizada com sucesso');
 
                 Log::info('Conta a pagar atualizada com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'account_payable_id' => $accountPayable->id,
                 ]);
 
@@ -376,7 +388,7 @@ class AccountPayableService
             $this->setError('Erro ao atualizar conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_payable_id' => $accountPayable->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
@@ -436,6 +448,10 @@ class AccountPayableService
                     ]);
                 }
 
+                if (isset($extra['competence_date']) && filled($extra['competence_date'])) {
+                    $installment->update(['competence_date' => $extra['competence_date']]);
+                }
+
                 $syncAction = new SyncAccountPayableStatusFromInstallmentsAction($installment->accountPayable);
                 $synced = $syncAction->execute();
 
@@ -487,11 +503,12 @@ class AccountPayableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao registrar pagamento da parcela.');
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'installment_id' => $installment->id,
@@ -577,12 +594,13 @@ class AccountPayableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar parcela.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -661,12 +679,13 @@ class AccountPayableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors(), 422);
+
             return false;
         } catch (\Exception $e) {
             $this->setError('Erro ao excluir parcela.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -742,12 +761,13 @@ class AccountPayableService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar pagamento.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payment_id' => $payment->id,
@@ -785,6 +805,7 @@ class AccountPayableService
 
                 if (! $deleted) {
                     $this->setError('Erro ao excluir pagamento.');
+
                     return false;
                 }
 
@@ -812,7 +833,7 @@ class AccountPayableService
             $this->setError('Erro ao excluir pagamento.');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payment_id' => $payment->id,
@@ -842,7 +863,7 @@ class AccountPayableService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'account_payable_id' => $accountPayable->id,
                         'message' => $action->getMessage(),
                         'error_code' => $action->getErrorCode(),
@@ -863,7 +884,7 @@ class AccountPayableService
                 $this->setSuccess('Conta a pagar excluída com sucesso');
 
                 Log::info('Conta a pagar excluída com sucesso via service', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'account_payable_id' => $accountPayable->id,
                 ]);
 
@@ -873,7 +894,7 @@ class AccountPayableService
             $this->setError('Erro ao excluir conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_payable_id' => $accountPayable->id,
                 'error_code' => $this->getErrorCode(),
                 'message' => $e->getMessage(),

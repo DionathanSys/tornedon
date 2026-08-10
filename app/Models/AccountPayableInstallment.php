@@ -19,6 +19,7 @@ class AccountPayableInstallment extends Model
         'sequence_number',
         'status',
         'due_date',
+        'competence_date',
         'paid_date',
         'original_amount',
         'interest_amount',
@@ -28,8 +29,10 @@ class AccountPayableInstallment extends Model
         'paid_amount',
         'balance_amount',
         'bank_account_id',
+        'chart_account_id',
         'financial_category_id',
         'cost_center_id',
+        'result_center_id',
         'description',
         'notes',
     ];
@@ -37,6 +40,7 @@ class AccountPayableInstallment extends Model
     protected $casts = [
         'status' => Status::class,
         'due_date' => 'date',
+        'competence_date' => 'date',
         'paid_date' => 'date',
         'original_amount' => MoneyCast::class,
         'interest_amount' => MoneyCast::class,
@@ -60,6 +64,21 @@ class AccountPayableInstallment extends Model
     public function financialCategory(): BelongsTo
     {
         return $this->belongsTo(FinancialCategory::class, 'financial_category_id');
+    }
+
+    public function chartAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartAccount::class, 'chart_account_id');
+    }
+
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+    }
+
+    public function resultCenter(): BelongsTo
+    {
+        return $this->belongsTo(ResultCenter::class, 'result_center_id');
     }
 
     public function payments(): HasMany

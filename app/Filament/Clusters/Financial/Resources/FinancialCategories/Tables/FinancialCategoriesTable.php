@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\FinancialCategories\Tables;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -12,6 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class FinancialCategoriesTable
 {
@@ -69,14 +71,27 @@ class FinancialCategoriesTable
                     ->native(false),
             ])
             ->recordActions([
-                EditAction::make()->iconButton(),
+                EditAction::make()
+                    ->mutateDataUsing(function (array $data): array {
+                        $data['updated_by'] = Auth::id();
+
+                        return $data;
+                    })
+                    ->iconButton(),
                 DeleteAction::make()->iconButton(),
             ])
             ->toolbarActions([
                 CreateAction::make()
                     ->label('Categoria Financeira')
                     ->icon(Heroicon::Plus)
-                    ->size(Size::Small),
+                    ->size(Size::Small)
+                    ->mutateDataUsing(function (array $data): array {
+                        $data['company_id'] = Filament::getTenant()->id;
+                        $data['created_by'] = Auth::id();
+                        $data['updated_by'] = Auth::id();
+
+                        return $data;
+                    }),
             ])
             ->defaultSort('sort_order')
             ->emptyStateHeading('Nenhuma categoria financeira cadastrada');
