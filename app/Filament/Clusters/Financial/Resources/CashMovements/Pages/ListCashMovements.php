@@ -16,6 +16,8 @@ use Filament\Facades\Filament;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Collection;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ListCashMovements extends ListRecords
@@ -37,7 +39,7 @@ class ListCashMovements extends ListRecords
         return [
             ImportOfxAction::make(),
             Action::make('export_xls')
-                ->label('Exportar XLS')
+                ->label('Exportar XLSX')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('gray')
                 ->action(fn (): StreamedResponse => $this->exportXls()),
@@ -57,14 +59,40 @@ class ListCashMovements extends ListRecords
 
     public function exportXls(): StreamedResponse
     {
-        $html = view('exports.cash-movements-xls', [
-            'report' => $this->cashMovementExportReport(),
-        ])->render();
+        $report = $this->cashMovementExportReport();
+        $path = tempnam(sys_get_temp_dir(), 'cash-movements-');
+        $writer = new Writer;
 
-        return response()->streamDownload(function () use ($html): void {
-            echo "\xEF\xBB\xBF".$html;
-        }, $this->exportFileName('xls'), [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues([
+            'Data',
+            'Conta',
+            'nº Doc',
+            'Descrição',
+            'Valor',
+            'Classificação',
+            'Parceiro',
+        ]));
+
+        foreach ($report['rows'] as $row) {
+            $writer->addRow(Row::fromValues([
+                $row['date'],
+                $row['account'],
+                $row['document_number'],
+                $row['description'],
+                $row['amount'],
+                $row['classification'],
+                $row['partner'],
+            ]));
+        }
+
+        $writer->close();
+
+        return response()->streamDownload(function () use ($path): void {
+            readfile($path);
+            @unlink($path);
+        }, $this->exportFileName('xlsx'), [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
     }
 

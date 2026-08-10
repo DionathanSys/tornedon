@@ -4,8 +4,10 @@ namespace App\Filament\Clusters\Financial\Resources\CashMovements\Schemas;
 
 use App\Enum\Financial\CashMovementDirection;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Models\CostCenter;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
+use App\Models\ResultCenter;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -114,6 +116,20 @@ class CashMovementForm
                             ->preload()
                             ->native(false)
                             ->required()
+                            ->columnSpan(['md' => 2]),
+                        Select::make('cost_center_id')
+                            ->label('Centro de Custo')
+                            ->options(fn (): array => CostCenter::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->columnSpan(['md' => 2]),
+                        Select::make('result_center_id')
+                            ->label('Centro de Resultado')
+                            ->options(fn (): array => ResultCenter::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
                             ->columnSpan(['md' => 2]),
                         Money::make('amount')
                             ->label('Valor')

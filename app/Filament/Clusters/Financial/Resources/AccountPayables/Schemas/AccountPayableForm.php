@@ -6,8 +6,10 @@ use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
+use App\Models\CostCenter;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
+use App\Models\ResultCenter;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -56,6 +58,7 @@ class AccountPayableForm
                             ->afterStateUpdated(function (bool $state, Set $set): void {
                                 if ($state) {
                                     $set('supplier_id', null);
+
                                     return;
                                 }
 
@@ -234,6 +237,24 @@ class AccountPayableForm
                             ->native(false)
                             ->visibleOn('create')
                             ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
+                        Select::make('cost_center_id')
+                            ->label('Centro de Custo')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => CostCenter::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('Aplicado às parcelas geradas para esta conta.'),
+                        Select::make('result_center_id')
+                            ->label('Centro de Resultado')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => ResultCenter::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('Aplicado às parcelas geradas para esta conta.'),
                         Toggle::make('is_effective')
                             ->label('Efetivada?')
                             ->columnSpan(['md' => 1, 'lg' => 2])

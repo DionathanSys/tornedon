@@ -3,7 +3,9 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions;
 
 use App\Models\AccountReceivableInstallment;
+use App\Models\CostCenter;
 use App\Models\FinancialCategory;
+use App\Models\ResultCenter;
 use App\Services\AccountReceivable\AccountReceivableService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -24,9 +26,24 @@ final class EditInstallmentAction
                 DatePicker::make('due_date')
                     ->label('Vencimento')
                     ->required(),
+                DatePicker::make('competence_date')
+                    ->label('Competência')
+                    ->helperText('Data econômica usada nos relatórios por competência.'),
                 Select::make('financial_category_id')
                     ->label('Categoria Financeira')
                     ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Select::make('cost_center_id')
+                    ->label('Centro de Custo')
+                    ->options(fn (): array => CostCenter::optionsForCompany(Filament::getTenant()->id))
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Select::make('result_center_id')
+                    ->label('Centro de Resultado')
+                    ->options(fn (): array => ResultCenter::optionsForCompany(Filament::getTenant()->id))
                     ->searchable()
                     ->preload()
                     ->native(false),
@@ -40,7 +57,10 @@ final class EditInstallmentAction
             ])
             ->fillForm(fn (AccountReceivableInstallment $record): array => [
                 'due_date' => $record->due_date?->format('Y-m-d'),
+                'competence_date' => $record->competence_date?->format('Y-m-d'),
                 'financial_category_id' => $record->financial_category_id,
+                'cost_center_id' => $record->cost_center_id,
+                'result_center_id' => $record->result_center_id,
                 'description' => $record->description,
                 'notes' => $record->notes,
             ])

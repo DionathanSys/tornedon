@@ -543,6 +543,16 @@ class AccountPayableService
                 $data['account_payable_id'] = $installment->account_payable_id;
                 $data['company_id'] = $installment->company_id;
 
+                if (array_key_exists('financial_category_id', $data)) {
+                    $categoryId = $this->classificationService->resolveInstallmentCategoryId(
+                        isset($data['financial_category_id']) && filled($data['financial_category_id']) ? (int) $data['financial_category_id'] : null,
+                        (int) $installment->company_id,
+                        'payable'
+                    );
+                    $data['financial_category_id'] = $categoryId;
+                    $data['chart_account_id'] = $this->classificationService->resolveChartAccountIdFromCategoryId($categoryId, (int) $installment->company_id, 'payable');
+                }
+
                 $action = new UpdateAccountPayableInstallmentAction($installment);
                 $updated = $action->execute($data);
 

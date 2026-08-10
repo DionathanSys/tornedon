@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas;
 
 use App\Enum\AccountReceivable\Status;
+use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
@@ -10,14 +11,14 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
 use App\Models\CardPaymentProfile;
+use App\Models\CostCenter;
 use App\Models\FinancialCategory;
-use App\Enum\Payment\Condition as PaymentCondition;
+use App\Models\ResultCenter;
 use App\Services\Financial\CardReceivableCalculatorService;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -65,6 +66,7 @@ class AccountReceivableForm
                             ->afterStateUpdated(function (bool $state, Set $set): void {
                                 if ($state) {
                                     $set('customer_id', null);
+
                                     return;
                                 }
 
@@ -112,7 +114,7 @@ class AccountReceivableForm
                             ->native(false)
                             ->live()
                             ->visibleOn('create')
-                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
+                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1)
                             ->helperText('Defina o intervalo entre vencimentos usando condições de prazo, dia fixo do mês ou intervalo personalizado.'),
                         TextInput::make('installment_fixed_day')
                             ->label('Dia Fixo do Mes')
@@ -120,10 +122,10 @@ class AccountReceivableForm
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(31)
-                            ->required(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->required(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->visibleOn('create')
-                            ->visible(fn(callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
+                            ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                                 && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
                             ->helperText('Usado da 2ª parcela em diante. Se o mês nã tiver esse dia, será utilizado o ultimo dia do mês.'),
                         TextInput::make('installment_interval_days')
@@ -163,7 +165,7 @@ class AccountReceivableForm
                         Money::make('due_amount')
                             ->label('Valor à Receber')
                             ->columnSpan(['md' => 2])
-                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                             ->required(),
                         DatePicker::make('paid_date')
                             ->label('Data de Recebimento')
@@ -176,7 +178,7 @@ class AccountReceivableForm
                         Money::make('paid_amount')
                             ->label('Valor Recebido')
                             ->columnSpan(['md' => 2])
-                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                             ->default(0)
                             ->visibleOn('edit')
                             ->disabled(),
@@ -200,6 +202,24 @@ class AccountReceivableForm
                             ->native(false)
                             ->visibleOn('create')
                             ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
+                        Select::make('cost_center_id')
+                            ->label('Centro de Custo')
+                            ->columnSpan(['md' => 2])
+                            ->options(fn (): array => CostCenter::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('Aplicado às parcelas geradas para esta conta.'),
+                        Select::make('result_center_id')
+                            ->label('Centro de Resultado')
+                            ->columnSpan(['md' => 2])
+                            ->options(fn (): array => ResultCenter::optionsForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visibleOn('create')
+                            ->helperText('Aplicado às parcelas geradas para esta conta.'),
                         TextInput::make('document_number')
                             ->label('Nº Documento')
                             ->autocomplete(false)
@@ -224,7 +244,7 @@ class AccountReceivableForm
                             ->live(onBlur: true),
                         DatePicker::make('payment_date')
                             ->label('Data da Venda no Cartão')
-                            ->columnSpan(['md' => 2,])
+                            ->columnSpan(['md' => 2])
                             ->displayFormat('d/m/Y')
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
@@ -262,14 +282,14 @@ class AccountReceivableForm
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
                     ]),
-                Livewire::make(InstallmentsRelationManager::class, fn(AccountReceivable $record) => [
+                Livewire::make(InstallmentsRelationManager::class, fn (AccountReceivable $record) => [
                     'ownerRecord' => $record,
                     'pageClass' => EditAccountReceivable::class,
                 ])
                     ->key('installments-relation-manager')
                     ->columnSpanFull()
                     ->visibleOn([Operation::Edit]),
-                Livewire::make(PaymentsRelationManager::class, fn(AccountReceivable $record) => [
+                Livewire::make(PaymentsRelationManager::class, fn (AccountReceivable $record) => [
                     'ownerRecord' => $record,
                     'pageClass' => EditAccountReceivable::class,
                 ])
@@ -288,7 +308,7 @@ class AccountReceivableForm
             return '-';
         }
 
-        return 'R$ ' . number_format((float) $preview->feeAmount, 2, ',', '.');
+        return 'R$ '.number_format((float) $preview->feeAmount, 2, ',', '.');
     }
 
     private static function buildCardNetPreview(callable $get): string
@@ -299,7 +319,7 @@ class AccountReceivableForm
             return '-';
         }
 
-        return 'R$ ' . number_format((float) $preview->netAmount, 2, ',', '.');
+        return 'R$ '.number_format((float) $preview->netAmount, 2, ',', '.');
     }
 
     private static function buildCardSettlementPreview(callable $get): string

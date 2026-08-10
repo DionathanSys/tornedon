@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationM
 use App\Models\AccountReceivableInstallment;
 use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\AccountReceivableService;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -12,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -30,7 +32,16 @@ final class RegisterInstallmentPaymentAction
                         ->label('Data do recebimento')
                         ->columnSpan(1)
                         ->default(now())
+                        ->live()
                         ->required(),
+                    Select::make('competence_date')
+                        ->label('Competência')
+                        ->options(fn (AccountReceivableInstallment $record, Get $get): array => self::competenceOptions($record, (string) $get('payment_date')))
+                        ->visible(fn (AccountReceivableInstallment $record, Get $get): bool => self::shouldAskCompetence($record, (string) $get('payment_date')))
+                        ->required(fn (AccountReceivableInstallment $record, Get $get): bool => self::shouldAskCompetence($record, (string) $get('payment_date')))
+                        ->native(false)
+                        ->helperText('Obrigatório quando o recebimento ocorre em mês diferente do vencimento.')
+                        ->columnSpan(1),
                     Money::make('amount')
                         ->label('Valor recebido')
                         ->columnSpan(1)
@@ -86,6 +97,7 @@ final class RegisterInstallmentPaymentAction
                         'discount_amount' => (float) ($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
                         'financial_account_id' => $data['financial_account_id'] ?? null,
+                        'competence_date' => $data['competence_date'] ?? null,
                         'description' => $data['description'] ?? null,
                         'notes' => $data['notes'] ?? null,
                     ]
@@ -109,5 +121,29 @@ final class RegisterInstallmentPaymentAction
                 $livewire->dispatch('refresh-installments');
                 $livewire->dispatch('refresh-payments');
             });
+    }
+
+    private static function shouldAskCompetence(AccountReceivableInstallment $record, ?string $paymentDate): bool
+    {
+        if (blank($paymentDate) || ! $record->due_date) {
+            return false;
+        }
+
+        return ! Carbon::parse($paymentDate)->isSameMonth($record->due_date);
+    }
+
+    private static function competenceOptions(AccountReceivableInstallment $record, ?string $paymentDate): array
+    {
+        if (blank($paymentDate) || ! $record->due_date) {
+            return [];
+        }
+
+        $paymentDate = Carbon::parse($paymentDate)->toDateString();
+        $dueDate = $record->due_date->toDateString();
+
+        return [
+            $dueDate => 'Competência do vencimento ('.$record->due_date->format('m/Y').')',
+            $paymentDate => 'Competência do recebimento ('.Carbon::parse($paymentDate)->format('m/Y').')',
+        ];
     }
 }
