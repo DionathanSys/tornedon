@@ -23,6 +23,8 @@ class CompanyCreditCardResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Cartão Corporativo';
