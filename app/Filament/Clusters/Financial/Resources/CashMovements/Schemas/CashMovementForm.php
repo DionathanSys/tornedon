@@ -3,10 +3,10 @@
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Schemas;
 
 use App\Enum\Financial\CashMovementDirection;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\CostCenter;
 use App\Models\FinancialAccount;
-use App\Models\FinancialCategory;
 use App\Models\ResultCenter;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -109,12 +109,8 @@ class CashMovementForm
                             ->native(false)
                             ->disabled()
                             ->columnSpan(['md' => 2]),
-                        Select::make('financial_category_id')
+                        SelectFinancialCategory::make('financial_category_id', 'cash_movement')
                             ->label('Categoria Financeira')
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
                             ->required()
                             ->columnSpan(['md' => 2]),
                         Select::make('cost_center_id')

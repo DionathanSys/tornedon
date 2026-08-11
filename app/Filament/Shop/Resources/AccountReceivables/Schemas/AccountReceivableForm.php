@@ -4,6 +4,7 @@ namespace App\Filament\Shop\Resources\AccountReceivables\Schemas;
 
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
 use App\Models\CardPaymentProfile;
@@ -114,13 +115,9 @@ class AccountReceivableForm
         ];
 
         $complementComponents = [
-            Select::make('financial_category_id')
+            SelectFinancialCategory::make('financial_category_id', 'receivable')
                 ->label('Categoria Financeira')
-                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
                 ->default(fn (): ?int => self::defaultFinancialCategoryId())
-                ->searchable()
-                ->preload()
-                ->native(false)
                 ->visibleOn('create')
                 ->columnSpan(['md' => 4, 'lg' => 4]),
             TextInput::make('document_number')

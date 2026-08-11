@@ -3,17 +3,16 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Schemas;
 
 use App\Enum\Invoice\Status;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Models\CompanyPartner;
 use App\Models\CompanyPreference;
-use App\Models\FinancialCategory;
 use App\Models\Invoice;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Livewire;
@@ -103,14 +102,10 @@ class InvoiceForm
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2])
                             ->state(fn (Invoice $record): string => $record->payment_condition?->description() ?? 'Não definida'),
-                        Select::make('financial_category_id')
+                        SelectFinancialCategory::make('financial_category_id', 'receivable')
                             ->label('Categoria Financeira')
                             ->columnSpan(['md' => 2, 'lg' => 4])
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
                             ->default(fn (): ?int => CompanyPreference::getDefaultReceivableFinancialCategoryId(Filament::getTenant()?->id))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
                             ->visible(function (?Invoice $record, string $operation): bool {
                                 return $operation === 'create'
                                     || ($record instanceof Invoice && $record->status === Status::PENDING);

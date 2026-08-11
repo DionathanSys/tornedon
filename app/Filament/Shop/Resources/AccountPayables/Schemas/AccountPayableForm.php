@@ -4,9 +4,8 @@ namespace App\Filament\Shop\Resources\AccountPayables\Schemas;
 
 use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
-use App\Models\FinancialCategory;
-use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -94,12 +93,8 @@ class AccountPayableForm
         ];
 
         $complementComponents = [
-            Select::make('financial_category_id')
+            SelectFinancialCategory::make('financial_category_id', 'payable')
                 ->label('Categoria Financeira')
-                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
-                ->searchable()
-                ->preload()
-                ->native(false)
                 ->visibleOn('create')
                 ->columnSpan(['md' => 4, 'lg' => 4]),
             TextInput::make('document_number')

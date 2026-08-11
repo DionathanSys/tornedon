@@ -2,8 +2,8 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Schemas;
 
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\FinancialAccount;
-use App\Models\FinancialCategory;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -31,12 +31,8 @@ class TransferCashMovementActionForm
                 ->preload()
                 ->native(false)
                 ->required(),
-            Select::make('financial_category_id')
+            SelectFinancialCategory::make('financial_category_id', 'cash_movement')
                 ->label('Categoria financeira')
-                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
-                ->searchable()
-                ->preload()
-                ->native(false)
                 ->required(),
             DatePicker::make('transaction_date')
                 ->label('Data')

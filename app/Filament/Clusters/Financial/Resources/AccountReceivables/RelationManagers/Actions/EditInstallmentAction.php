@@ -2,9 +2,9 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions;
 
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\AccountReceivableInstallment;
 use App\Models\CostCenter;
-use App\Models\FinancialCategory;
 use App\Models\ResultCenter;
 use App\Services\AccountReceivable\AccountReceivableService;
 use Filament\Actions\Action;
@@ -29,12 +29,9 @@ final class EditInstallmentAction
                 DatePicker::make('competence_date')
                     ->label('Competência')
                     ->helperText('Data econômica usada nos relatórios por competência.'),
-                Select::make('financial_category_id')
+                SelectFinancialCategory::make('financial_category_id', 'receivable')
                     ->label('Categoria Financeira')
-                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
+                    ->placeholder('Selecione uma categoria'),
                 Select::make('cost_center_id')
                     ->label('Centro de Custo')
                     ->options(fn (): array => CostCenter::optionsForCompany(Filament::getTenant()->id))

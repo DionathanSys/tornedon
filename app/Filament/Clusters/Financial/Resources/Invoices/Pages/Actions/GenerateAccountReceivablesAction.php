@@ -4,10 +4,10 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Models\CardPaymentProfile;
 use App\Models\CompanyPreference;
-use App\Models\FinancialCategory;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
 use App\Services\Invoice\InvoiceService;
@@ -69,14 +69,10 @@ final class GenerateAccountReceivablesAction
                     ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
                     ->helperText('Em cartao, informe apenas se precisar parcelar comercialmente. O primeiro vencimento usara o prazo da operadora.'),
 
-                Select::make('financial_category_id')
+                SelectFinancialCategory::make('financial_category_id', 'receivable')
                     ->label('Categoria Financeira')
-                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
                     ->default(fn (Invoice $record): ?int => $record->financial_category_id
                         ?? CompanyPreference::getDefaultReceivableFinancialCategoryId(Filament::getTenant()?->id))
-                    ->searchable()
-                    ->preload()
-                    ->native(false)
                     ->helperText('Será aplicada às parcelas e aos recebimentos financeiros gerados para esta fatura.'),
             ])
             ->action(function (Invoice $record, array $data, EditInvoice $livewire): void {

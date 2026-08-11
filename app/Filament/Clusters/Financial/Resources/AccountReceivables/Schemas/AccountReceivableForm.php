@@ -8,11 +8,11 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
 use App\Models\CardPaymentProfile;
 use App\Models\CostCenter;
-use App\Models\FinancialCategory;
 use App\Models\ResultCenter;
 use App\Services\Financial\CardReceivableCalculatorService;
 use App\Support\Financial\InstallmentSchedule;
@@ -193,13 +193,9 @@ class AccountReceivableForm
                     ->collapsible()
                     ->persistCollapsed()
                     ->schema([
-                        Select::make('financial_category_id')
+                        SelectFinancialCategory::make('financial_category_id', 'receivable')
                             ->label('Categoria Financeira')
                             ->columnSpan(['md' => 2])
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
                             ->visibleOn('create')
                             ->helperText('A categoria será aplicada às parcelas geradas para esta conta.'),
                         Select::make('cost_center_id')

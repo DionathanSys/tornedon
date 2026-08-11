@@ -2,12 +2,11 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions;
 
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\BankStatementLine;
-use App\Models\FinancialCategory;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -25,12 +24,8 @@ final class CreateManualMovementAction
             ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->value !== 'reconciled')
             ->schema(fn (Schema $schema) => $schema
                 ->components([
-                    Select::make('financial_category_id')
+                    SelectFinancialCategory::make('financial_category_id', 'cash_movement')
                         ->label('Categoria Financeira')
-                        ->options(fn (BankStatementLine $record): array => FinancialCategory::optionsForCompany($record->company_id, 'cash_movement'))
-                        ->searchable()
-                        ->preload()
-                        ->native(false)
                         ->required(),
                     DatePicker::make('transaction_date')
                         ->label('Data do movimento')

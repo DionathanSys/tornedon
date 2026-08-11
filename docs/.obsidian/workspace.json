@@ -74,7 +74,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Explorador de arquivos"
@@ -111,8 +113,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -220,8 +221,10 @@
   },
   "active": "2ada677253c54c97",
   "lastOpenFiles": [
-    "Documentação/implementacao-ibs-cbs-documentos-saida-sales.md",
+    "Excalidraw/Drawing 2026-08-11 09.13.05.excalidraw.md",
     "Documentação/fluxo-fatura-contas-receber-parcelas-pagamentos.md",
+    "Excalidraw",
+    "Documentação/implementacao-ibs-cbs-documentos-saida-sales.md",
     "Implementação Ipostos IBS_CBS.md",
     "Consultoria.md",
     "estrutura-fiscal-emissao-notas.md",
@@ -247,7 +250,6 @@
     "Plan/Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "Plan/Remover campos json de fiscal documents.md",
     "Plan/plano-unidades-produto.md",
-    "Plan/Plano para Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "plano-refatoracao-nfse.pdf",
     "PRANCHA04.pdf",
     "reports/alteracoes-fase-cenarios-fiscais.pdf",
@@ -255,7 +257,6 @@
     "reports/relatorio-auditoria-2026-04-21.pdf",
     "Sem título.base",
     "Sem título 1.base",
-    "Notas diárias",
     "Sem título.canvas",
     "Pasted image 20260402124855.png",
     "Pasted image 20260402125036.png",

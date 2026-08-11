@@ -4,8 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\ChartAccounts\Schemas;
 
 use App\Enum\Financial\AccountingNature;
 use App\Enum\Financial\ChartAccountType;
-use App\Models\ChartAccount;
-use Filament\Facades\Filament;
+use App\Filament\Clusters\Financial\Resources\Components\SelectChartAccount;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -41,12 +40,8 @@ class ChartAccountForm
                             ->required()
                             ->maxLength(255)
                             ->columnSpan(['md' => 3, 'lg' => 6]),
-                        Select::make('parent_id')
+                        SelectChartAccount::make('parent_id')
                             ->label('Conta Pai')
-                            ->options(fn (): array => ChartAccount::optionsForCompany(Filament::getTenant()->id))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
                             ->placeholder('Raiz')
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         Select::make('type')

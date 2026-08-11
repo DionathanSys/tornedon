@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ProductionRequest\Status;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\CardPaymentProfile;
 use App\Models\CompanyPreference;
@@ -92,11 +93,9 @@ class ProductionRequestForm
                 ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
                 ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
                 ->columnSpan(['md' => 2, 'lg' => 3]),
-            Select::make('financial_category_id')
+            SelectFinancialCategory::make('financial_category_id', 'receivable')
                 ->label('Categoria Financeira')
-                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
                 ->default(fn (): ?int => self::defaultReceivableFinancialCategoryId())
-                ->native(false)
                 ->required()
                 ->columnSpan(['md' => 2, 'lg' => 3]),
             Select::make('card_payment_profile_id')
@@ -120,19 +119,19 @@ class ProductionRequestForm
             ->components([
                 ...($includeOrderData ? ($useSections ? [
                     Section::make('Dados do Pedido')
-                    ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
-                    ->columnSpanFull()
-                    ->collapsible()
-                    ->persistCollapsed()
-                    ->schema($orderFields),
+                        ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
+                        ->columnSpanFull()
+                        ->collapsible()
+                        ->persistCollapsed()
+                        ->schema($orderFields),
                 ] : $orderFields) : []),
                 ...($useSections ? [
-                Section::make('Financeiro')
-                    ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
-                    ->columnSpanFull()
-                    ->collapsible()
-                    ->persistCollapsed()
-                    ->schema($financialFields),
+                    Section::make('Financeiro')
+                        ->columns(['default' => 1, 'md' => 6, 'lg' => 12])
+                        ->columnSpanFull()
+                        ->collapsible()
+                        ->persistCollapsed()
+                        ->schema($financialFields),
                 ] : $financialFields),
                 Hidden::make('company_id'),
             ]);

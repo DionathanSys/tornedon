@@ -3,8 +3,8 @@
 namespace App\Filament\Shop\Resources\CashMovements\Schemas;
 
 use App\Enum\Financial\CashMovementDirection;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\FinancialAccount;
-use App\Models\FinancialCategory;
 use App\Services\Partner\PartnerService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -33,12 +33,8 @@ class CashMovementForm
                 ->native(false)
                 ->required()
                 ->columnSpan(['md' => 2, 'lg' => 4]),
-            Select::make('financial_category_id')
+            SelectFinancialCategory::make('financial_category_id', 'cash_movement')
                 ->label('Categoria Financeira')
-                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
-                ->searchable()
-                ->preload()
-                ->native(false)
                 ->required()
                 ->columnSpan(['md' => 2, 'lg' => 4]),
             Select::make('direction')

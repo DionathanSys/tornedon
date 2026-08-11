@@ -5,8 +5,8 @@ namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions;
 use App\Enum\FiscalDocument\Status;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\CompanyCreditCard;
-use App\Models\FinancialCategory;
 use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction;
@@ -14,7 +14,6 @@ use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
 use Carbon\Carbon;
 use Filament\Actions\Action;
-use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -213,12 +212,8 @@ final class ConfirmEntryAction
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
                 ->columnSpanFull(),
 
-            Select::make('category_id')
+            SelectFinancialCategory::make('category_id', 'payable')
                 ->label('Categoria Financeira')
-                ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
-                ->searchable()
-                ->preload()
-                ->native(false)
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
                     && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
                 ->columnSpanFull(),

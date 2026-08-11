@@ -4,10 +4,10 @@ namespace App\Filament\Clusters\Settings\Pages;
 
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\CompanyEmailPolicy;
 use App\Models\CompanyPreference;
-use App\Models\FinancialCategory;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -135,12 +135,8 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->searchable()
                             ->placeholder('Selecione uma condição padrão')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
-                        Forms\Components\Select::make('default_receivable_financial_category_id')
+                        SelectFinancialCategory::make('default_receivable_financial_category_id', 'receivable')
                             ->label('Categoria Financeira Padrão de Recebimento')
-                            ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()?->id ?? 0, 'receivable'))
-                            ->native(false)
-                            ->searchable()
-                            ->preload()
                             ->placeholder('Selecione uma categoria padrão')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])

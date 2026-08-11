@@ -6,7 +6,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\PurchaseClosing\Status;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
-use App\Models\FinancialCategory;
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\PurchaseClosing;
 use App\Notification\NotifyService as notify;
 use App\Services\PurchaseClosing\PurchaseClosingService;
@@ -85,12 +85,9 @@ class GeneratePurchaseClosingAccountPayableAction
                         && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS)
                     ->visible(fn (callable $get): bool => (int) ($get('installment_count') ?? 1) > 1
                         && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS),
-                Select::make('financial_category_id')
+                SelectFinancialCategory::make('financial_category_id', 'payable')
                     ->label('Categoria Financeira')
-                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
+                    ->placeholder('Selecione uma categoria'),
                 TextInput::make('document_number')
                     ->label('Nº Documento')
                     ->maxLength(50)
@@ -106,6 +103,7 @@ class GeneratePurchaseClosingAccountPayableAction
 
                 if ($service->hasError() || $payable === null) {
                     notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                     return;
                 }
 
