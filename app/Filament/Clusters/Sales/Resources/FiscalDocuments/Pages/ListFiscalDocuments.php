@@ -146,10 +146,12 @@ class ListFiscalDocuments extends ListRecords
                         return null;
                     }
 
-                    return response($pdf, 200, [
-                        'Content-Type' => 'application/pdf',
-                        'Content-Disposition' => 'inline; filename="preview-nfe.pdf"',
-                    ]);
+                    return response()->streamDownload(
+                        fn () => print $pdf,
+                        'preview-nfe.pdf',
+                        ['Content-Type' => 'application/pdf'],
+                        'inline',
+                    );
                 } catch (\Throwable $e) {
                     Log::error('ListFiscalDocuments: exceção no preview manual de NF-e', [
                         'company_id' => $tenant->id ?? null,
