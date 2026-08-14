@@ -2,13 +2,13 @@
 
 namespace App\Services\Quote;
 
-use App\Enum\Quote\Status;
 use App\Models\ProductionOrder;
 use App\Models\Quote;
 use App\Services\Quote\Actions\ApproveQuote;
 use App\Services\Quote\Actions\ConvertToProductionOrder;
 use App\Services\Quote\Actions\CreateQuote;
 use App\Services\Quote\Actions\DeleteQuoteAction;
+use App\Services\Quote\Actions\PrintQuotePdfAction;
 use App\Services\Quote\Actions\RejectQuote;
 use App\Services\Quote\Actions\ReopenQuoteAction;
 use App\Services\Quote\Actions\RestoreQuoteAction;
@@ -33,9 +33,9 @@ class QuoteService
     public function list(int $companyId, array $filters = []): Collection
     {
         Log::debug('QuoteService: Listando orçamentos', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'company_id' => $companyId,
-            'filters'    => $filters,
+            'filters' => $filters,
         ]);
 
         $query = Quote::where('company_id', $companyId);
@@ -72,8 +72,8 @@ class QuoteService
     public function find(int $id, ?int $companyId = null): ?Quote
     {
         Log::debug('QuoteService: Buscando orçamento', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
-            'quote_id'   => $id,
+            'metodo' => __METHOD__.'@'.__LINE__,
+            'quote_id' => $id,
             'company_id' => $companyId,
         ]);
 
@@ -91,6 +91,54 @@ class QuoteService
             'createdBy',
             'approvedBy',
         ])->first();
+    }
+
+    /**
+     * Gera o PDF do orçamento em base64.
+     */
+    public function pdf(Quote $quote, int $userId): ?string
+    {
+        $this->resetResponse();
+
+        try {
+            $action = app(PrintQuotePdfAction::class);
+            $pdf = $action->execute($quote);
+
+            if ($pdf === null || $action->hasError()) {
+                $this->setError($action->getMessage());
+
+                return null;
+            }
+
+            $this->setSuccess('PDF do orçamento gerado.');
+
+            Log::info('QuoteService: PDF gerado com sucesso', [
+                'quote_id' => $quote->id,
+                'user_id' => $userId,
+            ]);
+
+            return $pdf;
+        } catch (\Exception $e) {
+            $this->setError('Erro ao gerar PDF do orçamento: '.$e->getMessage());
+
+            Log::error('QuoteService::pdf', [
+                'quote_id' => $quote->id,
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array{pdf: string}|null
+     */
+    public function preview(Quote $quote, int $userId): ?array
+    {
+        $pdf = $this->pdf($quote, $userId);
+
+        return $pdf === null ? null : ['pdf' => $pdf];
     }
 
     /**
@@ -133,12 +181,12 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
-                        'data'       => $data,
-                        'user_id'    => $createdBy,
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $createdBy,
                     ]);
 
                     return null;
@@ -147,8 +195,8 @@ class QuoteService
                 $this->setSuccess('Orçamento criado com sucesso');
 
                 Log::info('QuoteService: Orçamento criado com sucesso', [
-                    'metodo'       => __METHOD__ . '@' . __LINE__,
-                    'quote_id'     => $quote->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'quote_id' => $quote->id,
                     'quote_number' => $quote->quote_number,
                 ]);
 
@@ -157,13 +205,13 @@ class QuoteService
         } catch (\Exception $e) {
             $this->setError('Erro ao criar orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $createdBy,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $createdBy,
             ]);
 
             return null;
@@ -190,13 +238,13 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
-                        'data'       => $data,
-                        'user_id'    => $updatedBy,
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $updatedBy,
                     ]);
 
                     return null;
@@ -205,8 +253,8 @@ class QuoteService
                 $this->setSuccess('Orçamento atualizado com sucesso');
 
                 Log::info('QuoteService: Orçamento atualizado com sucesso', [
-                    'metodo'       => __METHOD__ . '@' . __LINE__,
-                    'quote_id'     => $quote->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'quote_id' => $quote->id,
                     'quote_number' => $quote->quote_number,
                 ]);
 
@@ -215,12 +263,12 @@ class QuoteService
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -247,11 +295,11 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return false;
@@ -260,7 +308,7 @@ class QuoteService
                 $this->setSuccess('Orçamento excluído com sucesso');
 
                 Log::info('QuoteService: Orçamento excluído com sucesso', [
-                    'metodo'   => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'quote_id' => $quote->id,
                 ]);
 
@@ -269,12 +317,12 @@ class QuoteService
         } catch (\Exception $e) {
             $this->setError('Erro ao excluir orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -301,9 +349,9 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
                     ]);
 
@@ -313,7 +361,7 @@ class QuoteService
                 $this->setSuccess('Orçamento excluído permanentemente com sucesso');
 
                 Log::info('QuoteService: Orçamento excluído permanentemente', [
-                    'metodo'   => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'quote_id' => $quote->id,
                 ]);
 
@@ -322,12 +370,12 @@ class QuoteService
         } catch (\Exception $e) {
             $this->setError('Erro ao excluir permanentemente o orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -354,9 +402,9 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
                     ]);
 
@@ -366,7 +414,7 @@ class QuoteService
                 $this->setSuccess('Orçamento restaurado com sucesso');
 
                 Log::info('QuoteService: Orçamento restaurado com sucesso', [
-                    'metodo'   => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'quote_id' => $quote->id,
                 ]);
 
@@ -375,12 +423,12 @@ class QuoteService
         } catch (\Exception $e) {
             $this->setError('Erro ao restaurar orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -411,28 +459,29 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Orçamento enviado para aprovação');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao enviar orçamento para aprovação');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -459,28 +508,29 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Orçamento aprovado com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao aprovar orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -507,28 +557,29 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Orçamento rejeitado');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao rejeitar orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -543,10 +594,10 @@ class QuoteService
         $this->resetResponse();
 
         Log::debug('QuoteService: Iniciando processo de reabertura de orçamento', [
-            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'quote_id' => $quote->id,
-            'user_id'  => $userId,
-            'key'      => 'reopen_quote_action',
+            'user_id' => $userId,
+            'key' => 'reopen_quote_action',
         ]);
 
         try {
@@ -562,28 +613,29 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Orçamento reaberto com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao reabrir orçamento');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -610,11 +662,11 @@ class QuoteService
                         $action->getErrorCode()
                     );
 
-                    Log::error('QuoteService: ' . $this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'quote_id'   => $quote->id,
+                    Log::error('QuoteService: '.$this->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'quote_id' => $quote->id,
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
@@ -623,8 +675,8 @@ class QuoteService
                 $this->setSuccess('Ordem de Produção criada com sucesso');
 
                 Log::info('QuoteService: Ordem de Produção criada a partir do orçamento', [
-                    'metodo'              => __METHOD__ . '@' . __LINE__,
-                    'quote_id'            => $quote->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'quote_id' => $quote->id,
                     'production_order_id' => $productionOrder->id,
                 ]);
 
@@ -633,12 +685,12 @@ class QuoteService
         } catch (\Exception $e) {
             $this->setError('Erro ao converter orçamento em Ordem de Produção');
 
-            Log::error('QuoteService: ' . $this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'quote_id'   => $quote->id,
+            Log::error('QuoteService: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'quote_id' => $quote->id,
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;

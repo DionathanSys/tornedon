@@ -3,15 +3,15 @@
 namespace App\Filament\Clusters\Sales\Resources\Quotes\Tables;
 
 use App\Enum\Quote\Status;
+use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\DownloadQuotePdfAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\Summarizers\Summarizer;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Query\Builder;
@@ -35,13 +35,13 @@ class QuotesTable
                     ->label('Status')
                     ->badge()
                     ->colors([
-                        'gray'      => Status::DRAFT->value,
-                        'info'      => Status::SENT->value,
-                        'success'   => Status::APPROVED->value,
-                        'danger'    => Status::REJECTED->value,
-                        'warning'   => Status::EXPIRED->value,
+                        'gray' => Status::DRAFT->value,
+                        'info' => Status::SENT->value,
+                        'success' => Status::APPROVED->value,
+                        'danger' => Status::REJECTED->value,
+                        'warning' => Status::EXPIRED->value,
                     ])
-                    ->formatStateUsing(fn($state) => $state->description())
+                    ->formatStateUsing(fn ($state) => $state->description())
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
@@ -87,6 +87,9 @@ class QuotesTable
                     ->native(false),
             ])
             ->recordActions([
+                DownloadQuotePdfAction::make()
+                    ->iconButton()
+                    ->tooltip('Baixar PDF do orçamento'),
                 EditAction::make()
                     ->iconButton(),
             ])

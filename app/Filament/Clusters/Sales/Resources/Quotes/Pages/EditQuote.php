@@ -4,6 +4,8 @@ namespace App\Filament\Clusters\Sales\Resources\Quotes\Pages;
 
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ApproveQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ConvertToProductionOrderQuoteAction;
+use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\DownloadQuotePdfAction;
+use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\PreviewQuotePdfAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\RejectQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\ReopenQuoteAction;
 use App\Filament\Clusters\Sales\Resources\Quotes\Pages\Actions\SendForApprovalQuoteAction;
@@ -15,8 +17,6 @@ use App\Notification\NotifyService as notify;
 use App\Services\Quote\QuoteService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -40,6 +40,14 @@ class EditQuote extends EditRecord
                     ->size(Size::Small),
             ])->buttonGroup(),
             ActionGroup::make([
+                PreviewQuotePdfAction::make()
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Visualizar PDF do orçamento'),
+                DownloadQuotePdfAction::make()
+                    ->size(Size::Small)
+                    ->hiddenLabel()
+                    ->tooltip('Baixar PDF do orçamento'),
                 // SendForApprovalQuoteAction::make(),
                 ApproveQuoteAction::make()
                     ->color('primary')
@@ -55,7 +63,7 @@ class EditQuote extends EditRecord
                     ->size(Size::Small)
                     ->using(function (Model $record): bool {
                         Log::debug('EditQuote: Iniciando soft delete de orçamento', [
-                            'metodo'   => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'quote_id' => $record->id,
                         ]);
 
@@ -64,21 +72,22 @@ class EditQuote extends EditRecord
 
                         if ($service->hasError()) {
                             Log::error('EditQuote: Erro ao deletar orçamento', [
-                                'metodo'     => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'error_code' => $service->getErrorCode(),
-                                'message'    => $service->getMessage(),
-                                'quote_id'   => $record->id,
+                                'message' => $service->getMessage(),
+                                'quote_id' => $record->id,
                             ]);
 
                             notify::error(
                                 message: $service->getMessageUser(),
                                 errorCode: $service->getErrorCode()
                             );
+
                             return false;
                         }
 
                         Log::info('EditQuote: Orçamento deletado com sucesso', [
-                            'metodo'   => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'quote_id' => $record->id,
                         ]);
 
@@ -100,9 +109,9 @@ class EditQuote extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         Log::debug('EditQuote: Iniciando atualização de orçamento', [
-            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'quote_id' => $record->id,
-            'data'     => $data,
+            'data' => $data,
         ]);
 
         $service = app(QuoteService::class);
@@ -110,11 +119,11 @@ class EditQuote extends EditRecord
 
         if ($service->hasError() || $updated === null) {
             Log::error($service->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $service->getErrorCode(),
-                'message'    => $service->getMessage(),
-                'errors'     => $service->getErrors(),
-                'quote_id'   => $record->id,
+                'message' => $service->getMessage(),
+                'errors' => $service->getErrors(),
+                'quote_id' => $record->id,
             ]);
 
             notify::error(
@@ -126,7 +135,7 @@ class EditQuote extends EditRecord
         }
 
         Log::info('EditQuote: Orçamento atualizado com sucesso', [
-            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'quote_id' => $updated->id,
         ]);
 
