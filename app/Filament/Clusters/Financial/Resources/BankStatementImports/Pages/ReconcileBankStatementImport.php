@@ -6,6 +6,7 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\Impor
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivableInstallment;
+use App\Models\BankStatementImportRun;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Models\FinancialCategory;
@@ -116,12 +117,30 @@ class ReconcileBankStatementImport extends Page
             'pending' => $this->lines->where('reconciliation_status.value', 'pending')->count(),
             'reconciled' => $this->lines->where('reconciliation_status.value', 'reconciled')->count(),
             'ignored' => $this->lines->where('reconciliation_status.value', 'ignored')->count(),
+            'needs_review' => $this->lines->where('reconciliation_status.value', 'needs_review')->count(),
+            'reversed' => $this->lines->where('reconciliation_status.value', 'reversed')->count(),
         ];
+    }
+
+    public function getLatestRunProperty(): ?BankStatementImportRun
+    {
+        return $this->getRecord()->runs()->latest('id')->first();
+    }
+
+    public function getMissingFromLatestRunCountProperty(): int
+    {
+        if (! $this->latestRun) {
+            return 0;
+        }
+
+        return $this->lines
+            ->where('last_seen_import_run_id', '!=', $this->latestRun->id)
+            ->count();
     }
 
     public function setStatusFilter(string $status): void
     {
-        $this->statusFilter = in_array($status, ['all', 'pending', 'reconciled', 'ignored'], true) ? $status : 'pending';
+        $this->statusFilter = in_array($status, ['all', 'pending', 'reconciled', 'ignored', 'needs_review', 'reversed'], true) ? $status : 'pending';
     }
 
     public function refreshSuggestions(int $lineId): void

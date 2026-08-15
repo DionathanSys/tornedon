@@ -187,7 +187,7 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $import = $this->importService->importFromString(
             $this->company->id,
             $this->financialAccount->id,
-            $ofx,
+            $ofx."\n",
             'extrato-bradesco.ofx',
             $this->user->id,
         );
@@ -228,6 +228,16 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertDatabaseCount('bank_statement_import_runs', 2);
         $this->assertSame(2, $replacement->runs()->latest('id')->first()?->summary['preserved']);
         $this->assertSame($initialLineIds, $replacement->lines->pluck('id')->sort()->values()->all());
+
+        $this->assertNull($this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $ofx."\n",
+            'extrato-bradesco-duplicado.ofx',
+            $this->user->id,
+        ));
+        $this->assertTrue($this->importService->hasError());
+        $this->assertDatabaseCount('bank_statement_import_runs', 2);
     }
 
     public function test_imports_banco_inter_ofx(): void
@@ -295,7 +305,7 @@ OFX;
         $import = $this->importService->importFromString(
             $this->company->id,
             $this->financialAccount->id,
-            $ofx,
+            $ofx."\n",
             'extrato-inter.ofx',
             $this->user->id,
         );
@@ -333,7 +343,7 @@ OFX;
         $import = $this->importService->importFromString(
             $this->company->id,
             $this->financialAccount->id,
-            $ofx,
+            $ofx."\n",
             'extrato-original.ofx',
             $this->user->id,
         );
@@ -416,7 +426,7 @@ OFX;
         $this->assertSame(1, $reimport->runs()->latest('id')->first()?->summary['needs_review']);
     }
 
-    public function test_reimport_marks_a_missing_reconciled_line_for_review_without_deleting_it(): void
+    public function test_reimport_keeps_a_missing_reconciled_line_unchanged_when_the_file_may_be_partial(): void
     {
         $movement = CashMovement::create([
             'company_id' => $this->company->id,
@@ -471,12 +481,12 @@ OFX;
             'extrato-parcial.ofx',
             $this->user->id,
         );
-        $reviewLine = BankStatementLine::query()->findOrFail($line->id);
+        $preservedLine = BankStatementLine::query()->findOrFail($line->id);
 
         $this->assertNotNull($reimport, $this->importService->getMessageUser());
-        $this->assertSame('needs_review', $reviewLine->reconciliation_status->value);
-        $this->assertSame($movement->id, $reviewLine->cash_movement_id);
-        $this->assertSame('Linha não encontrada na reimportação.', $reviewLine->review_reason);
+        $this->assertSame('reconciled', $preservedLine->reconciliation_status->value);
+        $this->assertSame($movement->id, $preservedLine->cash_movement_id);
+        $this->assertNull($preservedLine->review_reason);
         $this->assertSame(2, $reimport->lines()->count());
         $this->assertSame(1, $reimport->runs()->latest('id')->first()?->summary['missing_from_file']);
     }

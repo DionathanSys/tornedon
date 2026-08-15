@@ -6,6 +6,7 @@ use App\Enum\Financial\BankStatementImportStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BankStatementImport extends Model
 {
@@ -47,6 +48,11 @@ class BankStatementImport extends Model
     public function runs(): HasMany
     {
         return $this->hasMany(BankStatementImportRun::class);
+    }
+
+    public function latestRun(): HasOne
+    {
+        return $this->hasOne(BankStatementImportRun::class)->latestOfMany();
     }
 
     public function createdBy(): BelongsTo

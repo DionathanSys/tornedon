@@ -4,7 +4,7 @@
         .bs-reconcile-hero { display: grid; gap: 1rem; padding: 1.1rem; border-radius: 1.4rem; color: #fff; background: linear-gradient(135deg, #0f172a, #1d4ed8 56%, #22c55e); box-shadow: 0 28px 70px -44px rgba(15, 23, 42, .9); }
         .bs-reconcile-hero__title { margin: 0; font-size: 1.2rem; font-weight: 900; letter-spacing: -.02em; }
         .bs-reconcile-hero__sub { margin: .35rem 0 0; font-size: .84rem; color: rgba(255, 255, 255, .82); }
-        .bs-reconcile-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
+        .bs-reconcile-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; }
         .bs-reconcile-kpi { padding: .85rem; border-radius: 1rem; background: rgba(255, 255, 255, .13); backdrop-filter: blur(10px); }
         .bs-reconcile-kpi span { display: block; font-size: .68rem; font-weight: 800; text-transform: uppercase; opacity: .75; }
         .bs-reconcile-kpi strong { display: block; margin-top: .25rem; font-size: 1rem; }
@@ -37,6 +37,16 @@
         .bs-reconcile-suggestion p { margin: 0; }
         .bs-reconcile-suggestion__label { font-size: .86rem; font-weight: 800; color: #0f172a; }
         .bs-reconcile-suggestion__reason { margin-top: .28rem; color: #475569; font-size: .76rem; }
+        .bs-reconcile-review { padding: .85rem; border: 1px solid rgba(190, 24, 93, .18); border-radius: 1rem; background: #fff1f2; color: #9f1239; font-size: .78rem; font-weight: 700; }
+        .bs-reconcile-run { display: grid; gap: .8rem; padding: 1rem; border: 1px solid rgba(59, 130, 246, .16); border-radius: 1.2rem; background: linear-gradient(135deg, #eff6ff, #fff); }
+        .bs-reconcile-run__top { display: flex; gap: .75rem; align-items: baseline; justify-content: space-between; }
+        .bs-reconcile-run__title { margin: 0; color: #0f172a; font-size: .92rem; font-weight: 900; }
+        .bs-reconcile-run__meta { margin: .25rem 0 0; color: #475569; font-size: .75rem; }
+        .bs-reconcile-run__summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; }
+        .bs-reconcile-run__summary div { padding: .65rem; border-radius: .85rem; background: rgba(255, 255, 255, .82); }
+        .bs-reconcile-run__summary span { display: block; color: #64748b; font-size: .61rem; font-weight: 800; text-transform: uppercase; }
+        .bs-reconcile-run__summary strong { display: block; margin-top: .2rem; color: #0f172a; font-size: .9rem; }
+        .bs-reconcile-run__notice { margin: 0; color: #475569; font-size: .73rem; }
         .bs-reconcile-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
         .bs-reconcile-action { border: 0; border-radius: .9rem; padding: .72rem .92rem; color: #fff; font-size: .76rem; font-weight: 850; cursor: pointer; }
         .bs-reconcile-action--primary { background: #0f172a; }
@@ -48,11 +58,13 @@
         .bs-reconcile-empty { padding: 1.35rem; border-radius: 1.2rem; text-align: center; color: #64748b; background: #fff; border: 1px dashed #cbd5e1; }
         @media (max-width: 900px) {
             .bs-reconcile-kpis,
-            .bs-reconcile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .bs-reconcile-grid,
+            .bs-reconcile-run__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 640px) {
             .bs-reconcile-kpis,
-            .bs-reconcile-grid { grid-template-columns: 1fr; }
+            .bs-reconcile-grid,
+            .bs-reconcile-run__summary { grid-template-columns: 1fr; }
             .bs-reconcile-card__top { flex-direction: column; }
             .bs-reconcile-actions { display: grid; grid-template-columns: 1fr; }
         }
@@ -70,12 +82,38 @@
                 <div class="bs-reconcile-kpi"><span>Pendentes</span><strong>{{ $this->statusCounts['pending'] }}</strong></div>
                 <div class="bs-reconcile-kpi"><span>Conciliadas</span><strong>{{ $this->statusCounts['reconciled'] }}</strong></div>
                 <div class="bs-reconcile-kpi"><span>Ignoradas</span><strong>{{ $this->statusCounts['ignored'] }}</strong></div>
+                <div class="bs-reconcile-kpi"><span>Em revisão</span><strong>{{ $this->statusCounts['needs_review'] }}</strong></div>
             </div>
         </section>
 
+        @if ($this->latestRun)
+            @php($summary = $this->latestRun->summary ?? [])
+            <section class="bs-reconcile-run">
+                <div class="bs-reconcile-run__top">
+                    <div>
+                        <p class="bs-reconcile-run__title">Última execução de importação</p>
+                        <p class="bs-reconcile-run__meta">{{ $this->latestRun->file_name ?? 'Arquivo OFX' }} • {{ $this->latestRun->completed_at?->format('d/m/Y H:i') ?? 'Em processamento' }}</p>
+                    </div>
+                    <strong>{{ $this->latestRun->status?->description() ?? '-' }}</strong>
+                </div>
+
+                <div class="bs-reconcile-run__summary">
+                    <div><span>Novas</span><strong>{{ $summary['created'] ?? 0 }}</strong></div>
+                    <div><span>Atualizadas</span><strong>{{ $summary['updated'] ?? 0 }}</strong></div>
+                    <div><span>Preservadas</span><strong>{{ $summary['preserved'] ?? 0 }}</strong></div>
+                    <div><span>Em revisão</span><strong>{{ $summary['needs_review'] ?? 0 }}</strong></div>
+                    <div><span>Não vistas</span><strong>{{ $this->missingFromLatestRunCount }}</strong></div>
+                </div>
+
+                @if ($this->missingFromLatestRunCount > 0)
+                    <p class="bs-reconcile-run__notice">Linhas não vistas nesta execução não têm o status alterado automaticamente, pois o arquivo pode representar apenas parte do período.</p>
+                @endif
+            </section>
+        @endif
+
         <section class="bs-reconcile-toolbar">
             <div class="bs-reconcile-toolbar__filters">
-                @foreach (['pending' => 'Pendentes', 'reconciled' => 'Conciliadas', 'ignored' => 'Ignoradas', 'all' => 'Todas'] as $filter => $label)
+                @foreach (['pending' => 'Pendentes', 'needs_review' => 'Em revisão', 'reconciled' => 'Conciliadas', 'ignored' => 'Ignoradas', 'reversed' => 'Estornadas', 'all' => 'Todas'] as $filter => $label)
                     <button
                         type="button"
                         class="bs-reconcile-chip {{ $this->statusFilter === $filter ? 'is-active' : '' }}"
@@ -146,7 +184,11 @@
                         </div>
                     @endif
 
-                    @if ($status !== 'reconciled')
+                    @if ($status === 'needs_review' && $line->review_reason)
+                        <div class="bs-reconcile-review">Revisão necessária: {{ $line->review_reason }}</div>
+                    @endif
+
+                    @if ($status === 'pending')
                         <div class="bs-reconcile-actions">
                             @if (is_array($suggestion))
                                 <button type="button" class="bs-reconcile-action bs-reconcile-action--primary" wire:click="reconcileSuggestion({{ $line->id }})">Conciliar sugestão</button>

@@ -70,6 +70,23 @@ class ImportBankStatementService
 
             $reference = $header->reference();
             $fileHash = hash('sha256', $contents);
+
+            $existingImport = BankStatementImport::query()
+                ->where('company_id', $account->company_id)
+                ->where('financial_account_id', $account->id)
+                ->where('source', 'ofx')
+                ->where('reference', $reference)
+                ->first();
+
+            if ($existingImport?->runs()
+                ->where('file_hash', $fileHash)
+                ->where('status', 'completed')
+                ->exists()) {
+                throw ValidationException::withMessages([
+                    'file' => ['Este arquivo OFX já foi processado para esta conta e período.'],
+                ]);
+            }
+
             $statementTransactions = $transactions
                 ->map(fn ($transaction): array => [
                     'transaction' => $transaction,
@@ -231,19 +248,7 @@ class ImportBankStatementService
                 }
 
                 foreach ($existingLines->whereNotIn('id', $seenLineIds) as $line) {
-                    $status = $line->reconciliation_status;
-
-                    if (! $status?->canTransitionTo(BankStatementLineStatus::NEEDS_REVIEW)) {
-                        continue;
-                    }
-
-                    $line->update([
-                        'reconciliation_status' => 'needs_review',
-                        'needs_review_at' => now(),
-                        'review_reason' => 'Linha não encontrada na reimportação.',
-                    ]);
                     $summary['missing_from_file']++;
-                    $summary['needs_review']++;
                 }
 
                 foreach ($linesToSuggest as $line) {

@@ -95,9 +95,12 @@ final class ImportOfxAction
                     ->title($service->getMessage() ?: 'Extrato OFX importado com sucesso.')
                     ->success()
                     ->actions([
-                        // NotificationAction::make('open')
-                        //     ->label('Revisar importacao')
-                        //     ->url(BankStatementImportResource::getUrl('view', ['record' => $import])),
+                        Action::make('open')
+                            ->label('Abrir conciliação')
+                            ->url(BankStatementImportResource::getUrl('reconcile', [
+                                'record' => $import,
+                                'tenant' => Filament::getTenant(),
+                            ])),
                     ])
                     ->send();
             });
