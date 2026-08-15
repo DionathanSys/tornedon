@@ -87,7 +87,9 @@
         </section>
 
         @if ($this->latestRun)
-            @php($summary = $this->latestRun->summary ?? [])
+            @php
+                $summary = $this->latestRun->summary ?? [];
+            @endphp
             <section class="bs-reconcile-run">
                 <div class="bs-reconcile-run__top">
                     <div>
