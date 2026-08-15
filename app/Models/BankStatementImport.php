@@ -44,6 +44,11 @@ class BankStatementImport extends Model
         return $this->hasMany(BankStatementLine::class);
     }
 
+    public function runs(): HasMany
+    {
+        return $this->hasMany(BankStatementImportRun::class);
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
-use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\BankStatementLineStatus;
+use App\Enum\Financial\CashMovementDirection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -20,9 +20,14 @@ class BankStatementLine extends Model
         'balance_amount',
         'description',
         'external_id',
+        'transaction_key',
         'document_number',
         'reconciliation_status',
         'reconciled_at',
+        'last_seen_import_run_id',
+        'source_payload_hash',
+        'needs_review_at',
+        'review_reason',
         'metadata',
     ];
 
@@ -32,6 +37,7 @@ class BankStatementLine extends Model
         'balance_amount' => MoneyCast::class,
         'reconciliation_status' => BankStatementLineStatus::class,
         'reconciled_at' => 'datetime',
+        'needs_review_at' => 'datetime',
         'metadata' => 'array',
     ];
 
@@ -53,6 +59,11 @@ class BankStatementLine extends Model
     public function cashMovement(): BelongsTo
     {
         return $this->belongsTo(CashMovement::class);
+    }
+
+    public function lastSeenImportRun(): BelongsTo
+    {
+        return $this->belongsTo(BankStatementImportRun::class, 'last_seen_import_run_id');
     }
 
     public function direction(): ?CashMovementDirection
