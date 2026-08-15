@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/regras-negocio/partner-creation.md",
+                "file": "docs/levantamento-conciliacao-bancaria.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "partner-creation"
+              "title": "levantamento-conciliacao-bancaria"
             }
           }
         ]
@@ -185,8 +185,17 @@
   },
   "active": "f7c4caca2f95ccf5",
   "lastOpenFiles": [
+    "database/migrations/2026_08_15_000003_add_unique_identity_to_bank_statement_imports_table.php",
+    "app/Services/Financial/BankStatement/BankStatementTransactionKeyFactory.php",
+    "tests/Feature/Models/BankStatementImportRunTest.php",
+    "app/Models/BankStatementImportRun.php",
+    "database/migrations/2026_08_15_000002_add_reimport_tracking_to_bank_statement_lines_table.php",
+    "database/migrations/2026_08_15_000001_create_bank_statement_import_runs_table.php",
+    "storage/logs/laravel-2026-08-15.log",
+    "tests/Unit/Enum/Financial/BankStatementLineStatusTest.php",
+    "tests/Unit/Enum/Financial",
+    "tests/Unit/Enum",
     "storage/logs/laravel-2026-02-05.log",
-    "app/Filament/Clusters/Partners/Resources/CompanyPartners/Actions/EditCompanyPartnerAction.php",
     "notas.md"
   ]
 }

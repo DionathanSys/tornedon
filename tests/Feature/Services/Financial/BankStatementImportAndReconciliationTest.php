@@ -13,6 +13,7 @@ use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AuditEntry;
+use App\Models\BankStatementImport;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Models\Company;
@@ -151,7 +152,7 @@ class BankStatementImportAndReconciliationTest extends TestCase
         ]);
     }
 
-    public function test_imports_bradesco_ofx_generates_suggestions_and_replaces_previous_import(): void
+    public function test_imports_bradesco_ofx_generates_suggestions_and_synchronizes_an_existing_import(): void
     {
         $movement = CashMovement::create([
             'company_id' => $this->company->id,
@@ -197,7 +198,7 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertDatabaseCount('bank_statement_lines', 2);
         $this->assertDatabaseHas('audit_entries', [
             'company_id' => $this->company->id,
-            'auditable_type' => \App\Models\BankStatementImport::class,
+            'auditable_type' => BankStatementImport::class,
             'auditable_id' => $import->id,
             'actor_user_id' => $this->user->id,
             'event' => 'bank_statement_import.imported',
@@ -209,6 +210,7 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertSame('outflow', data_get($firstLine->metadata, 'direction'));
         $this->assertSame('cash_movement', data_get($firstLine->metadata, 'suggestions.0.origin_type'));
         $this->assertSame($movement->id, data_get($firstLine->metadata, 'suggestions.0.origin_id'));
+        $initialLineIds = $import->lines->pluck('id')->sort()->values()->all();
 
         $replacement = $this->importService->importFromString(
             $this->company->id,
@@ -223,6 +225,9 @@ class BankStatementImportAndReconciliationTest extends TestCase
         $this->assertDatabaseCount('bank_statement_imports', 1);
         $this->assertDatabaseCount('bank_statement_lines', 2);
         $this->assertSame('extrato-bradesco-reprocessado.ofx', $replacement->file_name);
+        $this->assertDatabaseCount('bank_statement_import_runs', 2);
+        $this->assertSame(2, $replacement->runs()->latest('id')->first()?->summary['preserved']);
+        $this->assertSame($initialLineIds, $replacement->lines->pluck('id')->sort()->values()->all());
     }
 
     public function test_imports_banco_inter_ofx(): void
@@ -299,7 +304,181 @@ OFX;
         $this->assertSame('Banco Inter', data_get($import->metadata, 'institution_name'));
         $this->assertSame('077', data_get($import->metadata, 'bank_id'));
         $this->assertSame(2, $import->lines->count());
-        $this->assertSame('outflow', data_get($import->lines->first()->metadata, 'direction'));
+        $this->assertTrue($import->lines->contains(
+            fn (BankStatementLine $line): bool => data_get($line->metadata, 'direction') === 'outflow'
+        ));
+    }
+
+    public function test_reimport_preserves_a_reconciled_line_when_the_bank_transaction_is_unchanged(): void
+    {
+        $movement = CashMovement::create([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->cashCategory->id,
+            'direction' => CashMovementDirection::INFLOW->value,
+            'transaction_date' => '2026-04-11',
+            'amount' => 75,
+            'description' => 'Recebimento avulso',
+            'origin_type' => 'manual',
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+        ]);
+        $ofx = $this->buildOfx('237', [[
+            'type' => 'CREDIT',
+            'date' => '20260411',
+            'amount' => '75.00',
+            'fitid' => 'RECONCILED-1',
+            'memo' => 'Recebimento avulso',
+        ]]);
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $ofx,
+            'extrato-original.ofx',
+            $this->user->id,
+        );
+        $line = $import?->lines()->sole();
+
+        $this->assertNotNull($line);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+
+        $reimport = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $ofx,
+            'extrato-reimportado.ofx',
+            $this->user->id,
+        );
+        $preservedLine = BankStatementLine::query()->findOrFail($line->id);
+
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $this->assertSame('reconciled', $preservedLine->reconciliation_status->value);
+        $this->assertSame($movement->id, $preservedLine->cash_movement_id);
+        $this->assertSame(1, $reimport->lines()->count());
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()?->summary['preserved']);
+    }
+
+    public function test_reimport_marks_a_changed_reconciled_line_for_review_without_removing_its_link(): void
+    {
+        $movement = CashMovement::create([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->cashCategory->id,
+            'direction' => CashMovementDirection::INFLOW->value,
+            'transaction_date' => '2026-04-11',
+            'amount' => 75,
+            'description' => 'Recebimento avulso',
+            'origin_type' => 'manual',
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+        ]);
+        $originalOfx = $this->buildOfx('237', [[
+            'type' => 'CREDIT',
+            'date' => '20260411',
+            'amount' => '75.00',
+            'fitid' => 'DIVERGENT-1',
+            'memo' => 'Recebimento avulso',
+        ]]);
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $originalOfx,
+            'extrato-original.ofx',
+            $this->user->id,
+        );
+        $line = $import?->lines()->sole();
+
+        $this->assertNotNull($line);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+
+        $changedOfx = $this->buildOfx('237', [[
+            'type' => 'CREDIT',
+            'date' => '20260411',
+            'amount' => '80.00',
+            'fitid' => 'DIVERGENT-1',
+            'memo' => 'Recebimento avulso corrigido',
+        ]]);
+        $reimport = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $changedOfx,
+            'extrato-corrigido.ofx',
+            $this->user->id,
+        );
+        $reviewLine = BankStatementLine::query()->findOrFail($line->id);
+
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $this->assertSame('needs_review', $reviewLine->reconciliation_status->value);
+        $this->assertSame($movement->id, $reviewLine->cash_movement_id);
+        $this->assertSame(80.0, (float) $reviewLine->amount);
+        $this->assertNotNull($reviewLine->needs_review_at);
+        $this->assertSame('Dados bancários divergentes na reimportação.', $reviewLine->review_reason);
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()?->summary['needs_review']);
+    }
+
+    public function test_reimport_marks_a_missing_reconciled_line_for_review_without_deleting_it(): void
+    {
+        $movement = CashMovement::create([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->cashCategory->id,
+            'direction' => CashMovementDirection::INFLOW->value,
+            'transaction_date' => '2026-04-11',
+            'amount' => 75,
+            'description' => 'Recebimento avulso',
+            'origin_type' => 'manual',
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+        ]);
+        $originalOfx = $this->buildOfx('237', [
+            [
+                'type' => 'CREDIT',
+                'date' => '20260411',
+                'amount' => '75.00',
+                'fitid' => 'MISSING-1',
+                'memo' => 'Recebimento avulso',
+            ],
+            [
+                'type' => 'DEBIT',
+                'date' => '20260412',
+                'amount' => '-20.00',
+                'fitid' => 'MISSING-2',
+                'memo' => 'Despesa mantida',
+            ],
+        ]);
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $originalOfx,
+            'extrato-original.ofx',
+            $this->user->id,
+        );
+        $line = $import?->lines()->where('external_id', 'MISSING-1')->sole();
+
+        $this->assertNotNull($line);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+
+        $reimport = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $this->buildOfx('237', [[
+                'type' => 'DEBIT',
+                'date' => '20260412',
+                'amount' => '-20.00',
+                'fitid' => 'MISSING-2',
+                'memo' => 'Despesa mantida',
+            ]]),
+            'extrato-parcial.ofx',
+            $this->user->id,
+        );
+        $reviewLine = BankStatementLine::query()->findOrFail($line->id);
+
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $this->assertSame('needs_review', $reviewLine->reconciliation_status->value);
+        $this->assertSame($movement->id, $reviewLine->cash_movement_id);
+        $this->assertSame('Linha não encontrada na reimportação.', $reviewLine->review_reason);
+        $this->assertSame(2, $reimport->lines()->count());
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()?->summary['missing_from_file']);
     }
 
     public function test_imports_windows_1252_ofx_with_accented_metadata(): void
@@ -367,7 +546,7 @@ OFX;
         $this->assertSame('cash_movement', data_get($resolved->metadata, 'decision.type'));
         $this->assertDatabaseHas('audit_entries', [
             'company_id' => $this->company->id,
-            'auditable_type' => \App\Models\BankStatementImport::class,
+            'auditable_type' => BankStatementImport::class,
             'auditable_id' => $import->id,
             'event' => 'bank_statement_import.movement_reconciled',
             'action' => 'movement_reconciled',
@@ -568,7 +747,7 @@ OFX;
         $this->assertSame('manual', data_get($resolved->metadata, 'decision.type'));
         $this->assertDatabaseHas('audit_entries', [
             'company_id' => $this->company->id,
-            'auditable_type' => \App\Models\BankStatementImport::class,
+            'auditable_type' => BankStatementImport::class,
             'auditable_id' => $import->id,
             'event' => 'bank_statement_import.manual_movement_created',
             'action' => 'manual_movement_created',
