@@ -187,6 +187,7 @@
   },
   "active": "f7c4caca2f95ccf5",
   "lastOpenFiles": [
+    "storage/framework/views/_markdown_probe.php",
     "app/Filament/Clusters/Financial/Resources/BankStatementImports/RelationManagers/Actions/ReopenIgnoredStatementLineAction.php",
     "app/Services/Financial/BankStatement/BankStatementMovementEligibilityService.php",
     "database/migrations/2026_08_15_000004_add_reconciliation_tolerances_to_financial_accounts_table.php",
@@ -197,7 +198,6 @@
     "resources/views/pdf/quote.blade.php",
     "resources/views/filament/pages/dre-report-page.blade.php",
     "database/migrations/2026_08_10_000008_create_dre_line_chart_account_table.php",
-    "database/migrations/2026_08_10_000007_create_dre_lines_table.php",
     "como-preencher-dre.md",
     "notas.md"
   ]
