@@ -2,13 +2,14 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions;
 
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Tables\StatementLineCashMovementsTable;
 use App\Models\BankStatementLine;
-use App\Models\CashMovement;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ModalTableSelect;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Livewire\Component;
 
 final class ReconcileMovementAction
@@ -20,12 +21,16 @@ final class ReconcileMovementAction
             ->icon('heroicon-o-link')
             ->color('info')
             ->schema(fn (Schema $schema) => $schema->components([
-                Select::make('cash_movement_id')
+                ModalTableSelect::make('cash_movement_id')
                     ->label('Movimento financeiro')
-                    ->options(fn (BankStatementLine $record): array => self::optionsForLine($record))
-                    ->searchable()
-                    ->preload()
-                    ->native(false)
+                    ->saved(false)
+                    ->tableConfiguration(StatementLineCashMovementsTable::class)
+                    ->tableArguments(fn (BankStatementLine $record): array => [
+                        'financial_account_id' => $record->financial_account_id,
+                    ])
+                    ->selectAction(fn (Action $action): Action => $action
+                        ->modalHeading('Buscar movimento financeiro')
+                        ->modalWidth(Width::SevenExtraLarge))
                     ->required(),
             ]))
             ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->value !== 'reconciled')
@@ -50,34 +55,5 @@ final class ReconcileMovementAction
             ->after(function (Component $livewire): void {
                 $livewire->dispatch('refresh-statement-lines');
             });
-    }
-
-    private static function optionsForLine(BankStatementLine $line): array
-    {
-        $suggestions = collect($line->suggestions())
-            ->where('origin_type', 'cash_movement')
-            ->mapWithKeys(fn (array $suggestion) => [
-                (int) $suggestion['origin_id'] => "{$suggestion['label']} [score {$suggestion['score']}]",
-            ]);
-
-        $nearbyMovements = CashMovement::query()
-            ->where('company_id', $line->company_id)
-            ->where('financial_account_id', $line->financial_account_id)
-            ->whereDate('transaction_date', '>=', $line->transaction_date?->copy()->subDays(10)->toDateString())
-            ->whereDate('transaction_date', '<=', $line->transaction_date?->copy()->addDays(10)->toDateString())
-            ->whereDoesntHave('statementLines', fn ($query) => $query->where('id', '!=', $line->id))
-            ->orderByDesc('transaction_date')
-            ->limit(20)
-            ->get()
-            ->mapWithKeys(fn (CashMovement $movement) => [
-                $movement->id => sprintf(
-                    '%s | %s | R$ %s',
-                    $movement->transaction_date?->format('d/m/Y'),
-                    $movement->description,
-                    number_format((float) $movement->amount, 2, ',', '.')
-                ),
-            ]);
-
-        return $suggestions->union($nearbyMovements)->toArray();
     }
 }

@@ -74,12 +74,10 @@ class LinesRelationManager extends RelationManager
                 TextColumn::make('metadata.suggestions.0.label')
                     ->label('Melhor sugestão')
                     ->wrap()
-                    ->placeholder('-'),
-                TextColumn::make('metadata.suggestions.0.reason')
-                    ->label('Motivo')
-                    ->wrap()
                     ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->tooltip(fn (BankStatementLine $record): ?string => filled(data_get($record->metadata, 'suggestions.0.label'))
+                        ? data_get($record->metadata, 'suggestions.0.reason')
+                        : null),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->headerActions([])

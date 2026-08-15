@@ -2,15 +2,16 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions;
 
-use App\Models\AccountPayableInstallment;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Tables\StatementLinePayableInstallmentsTable;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use Livewire\Component;
 
@@ -26,12 +27,13 @@ final class ReconcilePayableInstallmentAction
             ->schema(fn (Schema $schema) => $schema
                 ->columns(2)
                 ->components([
-                    Select::make('installment_id')
+                    ModalTableSelect::make('installment_id')
                         ->label('Parcela')
-                        ->options(fn (BankStatementLine $record): array => self::optionsForLine($record))
-                        ->searchable()
-                        ->preload()
-                        ->native(false)
+                        ->saved(false)
+                        ->tableConfiguration(StatementLinePayableInstallmentsTable::class)
+                        ->selectAction(fn (Action $action): Action => $action
+                            ->modalHeading('Buscar parcela a pagar')
+                            ->modalWidth(Width::SevenExtraLarge))
                         ->required()
                         ->columnSpanFull(),
                     DatePicker::make('payment_date')
@@ -73,33 +75,5 @@ final class ReconcilePayableInstallmentAction
             ->after(function (Component $livewire): void {
                 $livewire->dispatch('refresh-statement-lines');
             });
-    }
-
-    private static function optionsForLine(BankStatementLine $line): array
-    {
-        $suggestions = collect($line->suggestions())
-            ->where('origin_type', 'account_payable_installment')
-            ->mapWithKeys(fn (array $suggestion) => [
-                (int) $suggestion['origin_id'] => "{$suggestion['label']} [score {$suggestion['score']}]",
-            ]);
-
-        $openInstallments = AccountPayableInstallment::query()
-            ->with('accountPayable.supplier')
-            ->where('company_id', $line->company_id)
-            ->where('balance_amount', '>', 0)
-            ->orderBy('due_date')
-            ->limit(30)
-            ->get()
-            ->mapWithKeys(fn (AccountPayableInstallment $installment) => [
-                $installment->id => sprintf(
-                    'AP %s | %s | %s | R$ %s',
-                    $installment->sequence_number,
-                    $installment->accountPayable?->supplier?->name ?? 'Sem fornecedor',
-                    $installment->due_date?->format('d/m/Y'),
-                    number_format((float) $installment->balance_amount, 2, ',', '.')
-                ),
-            ]);
-
-        return $suggestions->union($openInstallments)->toArray();
     }
 }

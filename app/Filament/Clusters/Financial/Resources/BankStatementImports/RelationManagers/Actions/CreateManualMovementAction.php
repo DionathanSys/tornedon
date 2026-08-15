@@ -3,13 +3,17 @@
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions;
 
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Livewire\Component;
 
@@ -27,6 +31,27 @@ final class CreateManualMovementAction
                     SelectFinancialCategory::make('financial_category_id', 'cash_movement')
                         ->label('Categoria Financeira')
                         ->required(),
+                    Toggle::make('is_manual_counterparty')
+                        ->label('Parceiro Avulso?')
+                        ->live()
+                        ->dehydrated(false)
+                        ->afterStateUpdated(function (bool $state, Set $set): void {
+                            if ($state) {
+                                $set('counterparty_partner_id', null);
+
+                                return;
+                            }
+
+                            $set('manual_counterparty_name', null);
+                        }),
+                    TextInput::make('manual_counterparty_name')
+                        ->label('Nome da Contraparte')
+                        ->maxLength(255)
+                        ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
+                    SelectPartner::make('counterparty_partner_id', 'all')
+                        ->label('Parceiro Contraparte')
+                        ->required(false)
+                        ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
                     DatePicker::make('transaction_date')
                         ->label('Data do movimento')
                         ->default(fn (BankStatementLine $record) => $record->transaction_date)

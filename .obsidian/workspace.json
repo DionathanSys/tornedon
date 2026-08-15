@@ -41,7 +41,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Explorador de arquivos"
@@ -185,17 +187,18 @@
   },
   "active": "f7c4caca2f95ccf5",
   "lastOpenFiles": [
-    "database/migrations/2026_08_15_000003_add_unique_identity_to_bank_statement_imports_table.php",
-    "app/Services/Financial/BankStatement/BankStatementTransactionKeyFactory.php",
-    "tests/Feature/Models/BankStatementImportRunTest.php",
-    "app/Models/BankStatementImportRun.php",
-    "database/migrations/2026_08_15_000002_add_reimport_tracking_to_bank_statement_lines_table.php",
-    "database/migrations/2026_08_15_000001_create_bank_statement_import_runs_table.php",
-    "storage/logs/laravel-2026-08-15.log",
-    "tests/Unit/Enum/Financial/BankStatementLineStatusTest.php",
-    "tests/Unit/Enum/Financial",
-    "tests/Unit/Enum",
-    "storage/logs/laravel-2026-02-05.log",
+    "app/Filament/Clusters/Financial/Resources/BankStatementImports/Tables/StatementLineReceivableInstallmentsTable.php",
+    "app/Filament/Clusters/Financial/Resources/BankStatementImports/Tables/StatementLinePayableInstallmentsTable.php",
+    "app/Filament/Clusters/Financial/Resources/BankStatementImports/Tables/StatementLineCashMovementsTable.php",
+    "tests/Feature/Services/Financial/DreReportServiceTest.php",
+    "resources/views/pdf/quote.blade.php",
+    "resources/views/filament/pages/dre-report-page.blade.php",
+    "database/migrations/2026_08_10_000008_create_dre_line_chart_account_table.php",
+    "database/migrations/2026_08_10_000007_create_dre_lines_table.php",
+    "database/migrations/2026_08_10_000006_create_dre_models_table.php",
+    "como-preencher-dre.md",
+    "app/Services/Quote/Support/QuotePdfDataFormatter.php",
+    "app/Services/Quote/Support",
     "notas.md"
   ]
 }

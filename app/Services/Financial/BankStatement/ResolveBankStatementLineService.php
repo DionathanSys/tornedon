@@ -263,6 +263,8 @@ class ResolveBankStatementLineService
             'transaction_date' => $payload['transaction_date'] ?? $line->transaction_date?->toDateString(),
             'amount' => (float) $line->amount,
             'description' => $payload['description'] ?? $line->description,
+            'counterparty_partner_id' => $payload['counterparty_partner_id'] ?? null,
+            'manual_counterparty_name' => $payload['manual_counterparty_name'] ?? null,
             'notes' => $payload['notes'] ?? null,
         ], $userId);
 

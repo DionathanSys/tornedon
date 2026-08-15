@@ -746,6 +746,7 @@ OFX;
             'financial_category_id' => $this->cashCategory->id,
             'transaction_date' => '2026-04-15',
             'description' => 'Despesa avulsa conciliada manualmente',
+            'counterparty_partner_id' => $this->supplier->id,
         ], $this->user->id);
 
         $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
@@ -754,6 +755,7 @@ OFX;
         $this->assertNotNull($movement);
         $this->assertSame('Despesa avulsa conciliada manualmente', $movement->description);
         $this->assertSame(42.5, (float) $movement->amount);
+        $this->assertSame($this->supplier->id, $movement->counterparty_partner_id);
         $this->assertSame('manual', data_get($resolved->metadata, 'decision.type'));
         $this->assertDatabaseHas('audit_entries', [
             'company_id' => $this->company->id,
