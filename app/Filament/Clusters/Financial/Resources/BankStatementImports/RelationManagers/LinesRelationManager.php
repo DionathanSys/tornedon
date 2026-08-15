@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManag
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcilePayableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileReceivableInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use BackedEnum;
@@ -86,6 +87,7 @@ class LinesRelationManager extends RelationManager
                     ->label('Atualizar sugestões')
                     ->icon('heroicon-o-arrow-path')
                     ->iconButton()
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true)
                     ->action(function (BankStatementLine $record): void {
                         $service = app(ResolveBankStatementLineService::class);
                         $service->refreshSuggestions($record);
@@ -100,6 +102,7 @@ class LinesRelationManager extends RelationManager
                 ReconcileReceivableInstallmentAction::make()->iconButton(),
                 CreateManualMovementAction::make()->iconButton(),
                 IgnoreStatementLineAction::make()->iconButton(),
+                ReopenIgnoredStatementLineAction::make()->iconButton(),
             ]);
     }
 }

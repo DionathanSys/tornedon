@@ -7,6 +7,7 @@ use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ModalTableSelect;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
@@ -26,17 +27,23 @@ final class ReconcileMovementAction
                     ->saved(false)
                     ->tableConfiguration(StatementLineCashMovementsTable::class)
                     ->tableArguments(fn (BankStatementLine $record): array => [
-                        'financial_account_id' => $record->financial_account_id,
+                        'bank_statement_line_id' => $record->id,
                     ])
                     ->selectAction(fn (Action $action): Action => $action
                         ->modalHeading('Buscar movimento financeiro')
                         ->modalWidth(Width::SevenExtraLarge))
                     ->required(),
+                Textarea::make('exception_reason')
+                    ->label('Justificativa de exceção')
+                    ->helperText('Obrigatória apenas se o movimento selecionado estiver fora da margem de valor ou data.')
+                    ->rows(3),
             ]))
-            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->value !== 'reconciled')
+            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true)
             ->action(function (BankStatementLine $record, array $data): void {
                 $service = app(ResolveBankStatementLineService::class);
-                $resolved = $service->reconcileWithCashMovement($record, (int) $data['cash_movement_id'], auth()->id());
+                $resolved = $service->reconcileWithCashMovement($record, (int) $data['cash_movement_id'], auth()->id(), [
+                    'exception_reason' => $data['exception_reason'] ?? null,
+                ]);
 
                 if ($service->hasError() || $resolved === null) {
                     Notification::make()

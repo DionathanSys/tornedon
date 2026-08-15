@@ -23,7 +23,7 @@ final class ReconcileReceivableInstallmentAction
             ->label('Baixar conta a receber')
             ->icon('heroicon-o-arrow-up-circle')
             ->color('success')
-            ->visible(fn (BankStatementLine $record): bool => $record->isInflow() && $record->reconciliation_status?->value !== 'reconciled')
+            ->visible(fn (BankStatementLine $record): bool => $record->isInflow() && $record->reconciliation_status?->canResolve() === true)
             ->schema(fn (Schema $schema) => $schema
                 ->columns(2)
                 ->components([

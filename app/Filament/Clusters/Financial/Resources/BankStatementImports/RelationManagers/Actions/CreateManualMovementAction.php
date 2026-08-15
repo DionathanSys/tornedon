@@ -25,7 +25,7 @@ final class CreateManualMovementAction
             ->label('Criar movimento')
             ->icon('heroicon-o-plus-circle')
             ->color('gray')
-            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->value !== 'reconciled')
+            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true)
             ->schema(fn (Schema $schema) => $schema
                 ->components([
                     SelectFinancialCategory::make('financial_category_id', 'cash_movement')

@@ -61,15 +61,8 @@ class SuggestBankStatementMatchesService
     {
         $date = Carbon::parse($line->transaction_date);
 
-        return CashMovement::query()
-            ->where('company_id', $line->company_id)
-            ->where('financial_account_id', $line->financial_account_id)
-            ->whereNull('reversal_of_id')
-            ->whereBetween('transaction_date', [
-                $date->copy()->subDays(7)->toDateString(),
-                $date->copy()->addDays(7)->toDateString(),
-            ])
-            ->whereDoesntHave('statementLines', fn ($query) => $query->where('id', '!=', $line->id))
+        return app(BankStatementMovementEligibilityService::class)
+            ->queryForLine($line)
             ->get()
             ->map(function (CashMovement $movement) use ($line, $date) {
                 $amountDiff = abs((float) $movement->amount - (float) $line->amount);

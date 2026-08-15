@@ -10,6 +10,7 @@ use App\Models\BankStatementImportRun;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Models\FinancialCategory;
+use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -219,6 +220,10 @@ class ReconcileBankStatementImport extends Page
                     ->preload()
                     ->native(false)
                     ->required(),
+                Textarea::make('exception_reason')
+                    ->label('Justificativa de exceção')
+                    ->helperText('Obrigatória apenas se o movimento selecionado estiver fora da margem de valor ou data.')
+                    ->rows(3),
             ]))
             ->action(function (array $data): void {
                 $line = $this->selectedLine();
@@ -228,7 +233,9 @@ class ReconcileBankStatementImport extends Page
                 }
 
                 $service = app(ResolveBankStatementLineService::class);
-                $resolved = $service->reconcileWithCashMovement($line, (int) $data['cash_movement_id'], auth()->id());
+                $resolved = $service->reconcileWithCashMovement($line, (int) $data['cash_movement_id'], auth()->id(), [
+                    'exception_reason' => $data['exception_reason'] ?? null,
+                ]);
 
                 if ($service->hasError() || $resolved === null) {
                     Notification::make()
@@ -471,6 +478,46 @@ class ReconcileBankStatementImport extends Page
             ->after(fn () => $this->resetSelectedLine());
     }
 
+    public function reopenIgnoredAction(): Action
+    {
+        return Action::make('reopenIgnored')
+            ->label('Reabrir linha')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->modalHeading(fn (): string => 'Reabrir linha '.$this->selectedLine()?->id)
+            ->schema(fn (Schema $schema) => $schema->components([
+                Textarea::make('reason')
+                    ->label('Motivo da reabertura')
+                    ->rows(3)
+                    ->required(),
+            ]))
+            ->action(function (array $data): void {
+                $line = $this->selectedLine();
+
+                if (! $line) {
+                    return;
+                }
+
+                $service = app(ResolveBankStatementLineService::class);
+                $reopened = $service->reopenIgnored($line, (int) auth()->id(), (string) $data['reason']);
+
+                if ($service->hasError() || $reopened === null) {
+                    Notification::make()
+                        ->title($service->getMessageUser() ?: 'Erro ao reabrir linha.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title($service->getMessage() ?: 'Linha reaberta para conciliação.')
+                    ->success()
+                    ->send();
+            })
+            ->after(fn () => $this->resetSelectedLine());
+    }
+
     protected function resetSelectedLine(): void
     {
         $this->selectedLineId = null;
@@ -503,18 +550,8 @@ class ReconcileBankStatementImport extends Page
             return [];
         }
 
-        $suggestions = collect($line->suggestions())
-            ->where('origin_type', 'cash_movement')
-            ->mapWithKeys(fn (array $suggestion) => [
-                (int) $suggestion['origin_id'] => "{$suggestion['label']} [score {$suggestion['score']}]",
-            ]);
-
-        $nearbyMovements = CashMovement::query()
-            ->where('company_id', $line->company_id)
-            ->where('financial_account_id', $line->financial_account_id)
-            ->whereDate('transaction_date', '>=', $line->transaction_date?->copy()->subDays(10)->toDateString())
-            ->whereDate('transaction_date', '<=', $line->transaction_date?->copy()->addDays(10)->toDateString())
-            ->whereDoesntHave('statementLines', fn ($query) => $query->where('id', '!=', $line->id))
+        return app(BankStatementMovementEligibilityService::class)
+            ->queryForLine($line)
             ->orderByDesc('transaction_date')
             ->limit(20)
             ->get()
@@ -525,9 +562,8 @@ class ReconcileBankStatementImport extends Page
                     $movement->description,
                     number_format((float) $movement->amount, 2, ',', '.')
                 ),
-            ]);
-
-        return $suggestions->union($nearbyMovements)->toArray();
+            ])
+            ->toArray();
     }
 
     protected function payableOptionsForSelectedLine(): array

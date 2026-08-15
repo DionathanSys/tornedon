@@ -23,6 +23,8 @@ class FinancialAccount extends Model
         'account_number',
         'pix_key',
         'opening_balance',
+        'reconciliation_amount_tolerance',
+        'reconciliation_date_tolerance_days',
         'opened_at',
         'is_active',
         'is_default',
@@ -33,6 +35,8 @@ class FinancialAccount extends Model
     protected $casts = [
         'type' => FinancialAccountType::class,
         'opening_balance' => MoneyCast::class,
+        'reconciliation_amount_tolerance' => MoneyCast::class,
+        'reconciliation_date_tolerance_days' => 'integer',
         'opened_at' => 'date',
         'is_active' => 'boolean',
         'is_default' => 'boolean',

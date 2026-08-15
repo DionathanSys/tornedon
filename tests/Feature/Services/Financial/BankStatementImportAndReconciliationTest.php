@@ -563,6 +563,55 @@ OFX;
         ]);
     }
 
+    public function test_it_rejects_incompatible_and_reversed_movements(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'ELIGIBILITY-1');
+        $outflow = $this->createCashMovement(CashMovementDirection::OUTFLOW, 100);
+        $reversedInflow = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['reversed_at' => now()]);
+
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $outflow->id, $this->user->id));
+        $this->assertArrayHasKey('cash_movement_id', $this->resolveService->getErrors());
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $reversedInflow->id, $this->user->id));
+        $this->assertArrayHasKey('cash_movement_id', $this->resolveService->getErrors());
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+    }
+
+    public function test_it_requires_a_reason_to_reconcile_outside_the_configured_margin(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'EXCEPTION-1');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 99);
+
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+        $this->assertArrayHasKey('exception_reason', $this->resolveService->getErrors());
+
+        $resolved = $this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id, [
+            'exception_reason' => 'Tarifa bancária descontada no crédito.',
+        ]);
+
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+        $this->assertNotEmpty(data_get($resolved->metadata, 'decision.eligibility_exceptions'));
+    }
+
+    public function test_an_ignored_line_must_be_reopened_before_receiving_a_new_resolution(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REOPEN-1');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+
+        $this->assertNotNull($this->resolveService->ignore($line, $this->user->id, 'Lançamento em análise.'));
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+        $this->assertNull($this->resolveService->reopenIgnored($line, $this->user->id, ''));
+        $this->assertNotNull($this->resolveService->reopenIgnored($line, $this->user->id, 'Análise concluída.'));
+
+        $resolved = $this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id);
+
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+        $this->assertSame('reconciled', $resolved->reconciliation_status->value);
+        $this->assertDatabaseHas('audit_entries', [
+            'event' => 'bank_statement_import.line_reopened',
+            'auditable_id' => $line->bank_statement_import_id,
+        ]);
+    }
+
     public function test_reconciles_outflow_with_payable_installment_and_creates_payment(): void
     {
         $payable = AccountPayable::create([
@@ -772,6 +821,45 @@ OFX;
                 ->where('event', 'cash_movement.created')
                 ->count()
         );
+    }
+
+    private function importLine(string $type, string $amount, string $fitid): BankStatementLine
+    {
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $this->buildOfx('237', [[
+                'type' => $type,
+                'date' => '20260411',
+                'amount' => $amount,
+                'fitid' => $fitid,
+                'memo' => 'Lançamento de teste',
+            ]]),
+            "{$fitid}.ofx",
+            $this->user->id,
+        );
+
+        return $import?->lines()->sole() ?? throw new \RuntimeException('Não foi possível importar a linha de teste.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createCashMovement(CashMovementDirection $direction, float $amount, array $attributes = []): CashMovement
+    {
+        return CashMovement::create([
+            'company_id' => $this->company->id,
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->cashCategory->id,
+            'direction' => $direction->value,
+            'transaction_date' => '2026-04-11',
+            'amount' => $amount,
+            'description' => 'Movimento de teste',
+            'origin_type' => 'manual',
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+            ...$attributes,
+        ]);
     }
 
     /**

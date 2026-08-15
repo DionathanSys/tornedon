@@ -207,6 +207,12 @@
                             <button type="button" class="bs-reconcile-action bs-reconcile-action--gray" wire:click="refreshSuggestions({{ $line->id }})">Atualizar sugestões</button>
                         </div>
                     @endif
+
+                    @if ($status === 'ignored')
+                        <div class="bs-reconcile-actions">
+                            <button type="button" class="bs-reconcile-action bs-reconcile-action--warning" wire:click="openLineAction('reopenIgnored', {{ $line->id }})">Reabrir linha</button>
+                        </div>
+                    @endif
                 </article>
             @empty
                 <div class="bs-reconcile-empty">Nenhuma linha encontrada para o filtro atual.</div>

@@ -23,7 +23,7 @@ final class ReconcilePayableInstallmentAction
             ->label('Baixar conta a pagar')
             ->icon('heroicon-o-arrow-down-circle')
             ->color('warning')
-            ->visible(fn (BankStatementLine $record): bool => $record->isOutflow() && $record->reconciliation_status?->value !== 'reconciled')
+            ->visible(fn (BankStatementLine $record): bool => $record->isOutflow() && $record->reconciliation_status?->canResolve() === true)
             ->schema(fn (Schema $schema) => $schema
                 ->columns(2)
                 ->components([

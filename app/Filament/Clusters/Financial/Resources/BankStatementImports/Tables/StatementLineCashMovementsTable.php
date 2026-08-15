@@ -2,7 +2,9 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Tables;
 
+use App\Models\BankStatementLine;
 use App\Models\CashMovement;
+use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -13,10 +15,17 @@ final class StatementLineCashMovementsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(fn (Table $table): Builder => CashMovement::query()
-                ->where('company_id', Filament::getTenant()->id)
-                ->where('financial_account_id', $table->getArguments()['financial_account_id'] ?? null)
-                ->whereDoesntHave('statementLines'))
+            ->query(function (Table $table): Builder {
+                $line = BankStatementLine::query()
+                    ->where('company_id', Filament::getTenant()->id)
+                    ->find($table->getArguments()['bank_statement_line_id'] ?? null);
+
+                if (! $line) {
+                    return CashMovement::query()->whereRaw('1 = 0');
+                }
+
+                return app(BankStatementMovementEligibilityService::class)->queryForLine($line);
+            })
             ->recordTitleAttribute('description')
             ->columns([
                 TextColumn::make('transaction_date')

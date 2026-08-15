@@ -6,9 +6,9 @@ use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivableInstallment;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
-use App\Services\Audit\AuditRecorder;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +19,11 @@ class ResolveBankStatementLineService
     use HandlesServiceResponse;
 
     public function __construct(
-        private readonly AccountPayableService $payableService = new AccountPayableService(),
-        private readonly AccountReceivableService $receivableService = new AccountReceivableService(),
-        private readonly CashMovementService $cashMovementService = new CashMovementService(),
-        private readonly SuggestBankStatementMatchesService $suggestService = new SuggestBankStatementMatchesService(),
+        private readonly AccountPayableService $payableService = new AccountPayableService,
+        private readonly AccountReceivableService $receivableService = new AccountReceivableService,
+        private readonly CashMovementService $cashMovementService = new CashMovementService,
+        private readonly SuggestBankStatementMatchesService $suggestService = new SuggestBankStatementMatchesService,
+        private readonly BankStatementMovementEligibilityService $movementEligibility = new BankStatementMovementEligibilityService,
     ) {}
 
     public function reconcileWithCashMovement(BankStatementLine $line, int $cashMovementId, ?int $userId = null, array $decision = []): ?BankStatementLine
@@ -32,19 +33,24 @@ class ResolveBankStatementLineService
         try {
             return DB::transaction(function () use ($line, $cashMovementId, $userId, $decision) {
                 $audit = app(AuditRecorder::class);
-                $line = $line->fresh();
+                $line = BankStatementLine::query()->lockForUpdate()->findOrFail($line->id);
                 $this->assertLineCanBeResolved($line);
 
                 $movement = CashMovement::query()
-                    ->where('company_id', $line->company_id)
-                    ->where('financial_account_id', $line->financial_account_id)
+                    ->lockForUpdate()
                     ->find($cashMovementId);
 
                 if (! $movement) {
                     throw ValidationException::withMessages([
-                        'cash_movement_id' => ['Movimento financeiro nao encontrado para a conta informada.'],
+                        'cash_movement_id' => ['Movimento financeiro não encontrado.'],
                     ]);
                 }
+
+                $exceptions = $this->movementEligibility->assertEligible(
+                    $line,
+                    $movement,
+                    $decision['exception_reason'] ?? null,
+                );
 
                 $alreadyLinked = BankStatementLine::query()
                     ->where('cash_movement_id', $movement->id)
@@ -66,6 +72,7 @@ class ResolveBankStatementLineService
                         'cash_movement_id' => $movement->id,
                         'resolved_by' => $userId,
                         'resolved_at' => now()->toDateTimeString(),
+                        'eligibility_exceptions' => $exceptions,
                         ...$decision,
                     ]),
                 ]);
@@ -111,6 +118,9 @@ class ResolveBankStatementLineService
         $this->resetResponse();
 
         try {
+            $line = $line->fresh();
+            $this->assertLineCanBeResolved($line);
+
             if (! $line->isOutflow()) {
                 throw ValidationException::withMessages([
                     'installment_id' => ['Somente linhas de saida podem baixar contas a pagar.'],
@@ -183,6 +193,9 @@ class ResolveBankStatementLineService
         $this->resetResponse();
 
         try {
+            $line = $line->fresh();
+            $this->assertLineCanBeResolved($line);
+
             if (! $line->isInflow()) {
                 throw ValidationException::withMessages([
                     'installment_id' => ['Somente linhas de entrada podem baixar contas a receber.'],
@@ -253,6 +266,16 @@ class ResolveBankStatementLineService
     public function createManualMovement(BankStatementLine $line, array $payload, ?int $userId = null): ?BankStatementLine
     {
         $this->resetResponse();
+        $line = $line->fresh();
+
+        try {
+            $this->assertLineCanBeResolved($line);
+        } catch (ValidationException $e) {
+            $this->setError('Falha ao criar movimento manual.', $e->errors(), 422);
+
+            return null;
+        }
+
         $audit = app(AuditRecorder::class);
 
         $movement = $this->cashMovementService->createManual([
@@ -312,38 +335,42 @@ class ResolveBankStatementLineService
         $this->resetResponse();
 
         try {
-            $audit = app(AuditRecorder::class);
-            $line->update([
-                'reconciliation_status' => 'ignored',
-                'metadata' => $this->mergeDecisionMetadata($line, [
-                    'type' => 'ignored',
-                    'reason' => $reason,
-                    'resolved_by' => $userId,
-                    'resolved_at' => now()->toDateTimeString(),
-                ]),
-            ]);
-
-            $import = $line->import()->first();
-
-            if ($import) {
-                $audit->recordModelEvent(
-                    $import,
-                    'bank_statement_import.line_ignored',
-                    "Linha #{$line->id} ignorada",
-                    null,
-                    $audit->snapshot($import),
-                    $userId,
-                    null,
-                    [
-                        'bank_statement_line_id' => $line->id,
+            return DB::transaction(function () use ($line, $userId, $reason) {
+                $audit = app(AuditRecorder::class);
+                $line = BankStatementLine::query()->lockForUpdate()->findOrFail($line->id);
+                $this->assertLineCanBeResolved($line);
+                $line->update([
+                    'reconciliation_status' => 'ignored',
+                    'metadata' => $this->mergeDecisionMetadata($line, [
+                        'type' => 'ignored',
                         'reason' => $reason,
-                    ],
-                );
-            }
+                        'resolved_by' => $userId,
+                        'resolved_at' => now()->toDateTimeString(),
+                    ]),
+                ]);
 
-            $this->setSuccess('Linha marcada como ignorada.');
+                $import = $line->import()->first();
 
-            return $line->fresh();
+                if ($import) {
+                    $audit->recordModelEvent(
+                        $import,
+                        'bank_statement_import.line_ignored',
+                        "Linha #{$line->id} ignorada",
+                        null,
+                        $audit->snapshot($import),
+                        $userId,
+                        null,
+                        [
+                            'bank_statement_line_id' => $line->id,
+                            'reason' => $reason,
+                        ],
+                    );
+                }
+
+                $this->setSuccess('Linha marcada como ignorada.');
+
+                return $line->fresh();
+            });
         } catch (\Throwable $e) {
             $this->setError('Erro ao ignorar linha do extrato.', [
                 'exception' => [$e->getMessage()],
@@ -358,19 +385,90 @@ class ResolveBankStatementLineService
         return $this->suggestService->suggestForLine($line->fresh());
     }
 
+    public function reopenIgnored(BankStatementLine $line, int $userId, string $reason): ?BankStatementLine
+    {
+        $this->resetResponse();
+
+        try {
+            if (blank($reason)) {
+                throw ValidationException::withMessages([
+                    'reason' => ['Informe o motivo para reabrir a linha ignorada.'],
+                ]);
+            }
+
+            return DB::transaction(function () use ($line, $userId, $reason) {
+                $audit = app(AuditRecorder::class);
+                $line = BankStatementLine::query()->lockForUpdate()->findOrFail($line->id);
+
+                if ($line->reconciliation_status?->value !== 'ignored') {
+                    throw ValidationException::withMessages([
+                        'line' => ['Somente linhas ignoradas podem ser reabertas.'],
+                    ]);
+                }
+
+                $line->update([
+                    'reconciliation_status' => 'pending',
+                    'metadata' => $this->mergeDecisionMetadata($line, [
+                        'type' => 'reopened',
+                        'reason' => $reason,
+                        'resolved_by' => $userId,
+                        'resolved_at' => now()->toDateTimeString(),
+                    ]),
+                ]);
+
+                $import = $line->import()->first();
+
+                if ($import) {
+                    $audit->recordModelEvent(
+                        $import,
+                        'bank_statement_import.line_reopened',
+                        "Linha #{$line->id} reaberta",
+                        null,
+                        $audit->snapshot($import),
+                        $userId,
+                        null,
+                        [
+                            'bank_statement_line_id' => $line->id,
+                            'reason' => $reason,
+                        ],
+                    );
+                }
+
+                $this->setSuccess('Linha ignorada reaberta para conciliação.');
+
+                return $line->fresh();
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha ao reabrir linha do extrato.', $e->errors(), 422);
+
+            return null;
+        } catch (\Throwable $e) {
+            $this->setError('Erro ao reabrir linha do extrato.', [
+                'exception' => [$e->getMessage()],
+            ]);
+
+            return null;
+        }
+    }
+
     private function assertLineCanBeResolved(BankStatementLine $line): void
     {
-        if ($line->reconciliation_status?->value === 'reconciled') {
+        if (! $line->reconciliation_status?->canResolve()) {
             throw ValidationException::withMessages([
-                'line' => ['Esta linha de extrato ja foi conciliada.'],
+                'line' => ['Somente linhas pendentes podem receber uma nova conciliação.'],
             ]);
         }
     }
 
     private function mergeDecisionMetadata(BankStatementLine $line, array $decision): array
     {
-        return array_merge($line->metadata ?? [], [
-            'decision' => $decision,
-        ]);
+        $metadata = $line->metadata ?? [];
+
+        if (is_array($metadata['decision'] ?? null)) {
+            $metadata['decision_history'] ??= [];
+            $metadata['decision_history'][] = $metadata['decision'];
+        }
+
+        return array_merge($metadata, ['decision' => $decision]);
     }
 }

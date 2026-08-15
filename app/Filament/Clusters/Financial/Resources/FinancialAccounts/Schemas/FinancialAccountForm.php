@@ -63,6 +63,20 @@ class FinancialAccountForm
                             ->formatStateUsing(fn ($state) => 'R$ '.number_format($state, 2, ',', '.'))
                             ->default(0)
                             ->columnSpan(['md' => 1, 'lg' => 2]),
+                        Money::make('reconciliation_amount_tolerance')
+                            ->label('Margem de valor para conciliação')
+                            ->helperText('Diferença máxima permitida entre extrato e movimento antes de exigir justificativa.')
+                            ->default(0.05)
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
+                        TextInput::make('reconciliation_date_tolerance_days')
+                            ->label('Margem de dias para conciliação')
+                            ->helperText('Diferença máxima de datas antes de exigir justificativa.')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(365)
+                            ->default(3)
+                            ->required()
+                            ->columnSpan(['md' => 1, 'lg' => 2]),
                         DatePicker::make('opened_at')
                             ->label('Data de Abertura')
                             ->columnSpan(['md' => 1, 'lg' => 2]),

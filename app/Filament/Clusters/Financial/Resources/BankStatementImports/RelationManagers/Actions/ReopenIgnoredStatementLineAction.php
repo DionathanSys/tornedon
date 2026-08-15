@@ -10,27 +10,28 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Livewire\Component;
 
-final class IgnoreStatementLineAction
+final class ReopenIgnoredStatementLineAction
 {
     public static function make(): Action
     {
-        return Action::make('ignore_statement_line')
-            ->label('Ignorar')
-            ->icon('heroicon-o-no-symbol')
-            ->color('danger')
-            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true)
+        return Action::make('reopen_ignored_statement_line')
+            ->label('Reabrir')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->value === 'ignored')
             ->schema(fn (Schema $schema) => $schema->components([
                 Textarea::make('reason')
-                    ->label('Motivo')
-                    ->rows(3),
+                    ->label('Motivo da reabertura')
+                    ->rows(3)
+                    ->required(),
             ]))
             ->action(function (BankStatementLine $record, array $data): void {
                 $service = app(ResolveBankStatementLineService::class);
-                $ignored = $service->ignore($record, auth()->id(), $data['reason'] ?? null);
+                $reopened = $service->reopenIgnored($record, (int) auth()->id(), (string) $data['reason']);
 
-                if ($service->hasError() || $ignored === null) {
+                if ($service->hasError() || $reopened === null) {
                     Notification::make()
-                        ->title($service->getMessageUser() ?: 'Erro ao ignorar linha.')
+                        ->title($service->getMessageUser() ?: 'Erro ao reabrir linha.')
                         ->danger()
                         ->send();
 
@@ -38,7 +39,7 @@ final class IgnoreStatementLineAction
                 }
 
                 Notification::make()
-                    ->title($service->getMessage() ?: 'Linha ignorada com sucesso.')
+                    ->title($service->getMessage() ?: 'Linha reaberta para conciliação.')
                     ->success()
                     ->send();
             })
