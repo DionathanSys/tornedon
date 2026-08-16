@@ -512,6 +512,83 @@ class ResolveBankStatementLineService
         }
     }
 
+    public function resolveReview(BankStatementLine $line, ?int $userId, string $decision, string $reason): ?BankStatementLine
+    {
+        $this->resetResponse();
+
+        try {
+            if (blank($reason) || ! in_array($decision, ['keep', 'reopen'], true)) {
+                throw ValidationException::withMessages([
+                    'review' => ['Informe uma decisão e sua justificativa para concluir a revisão.'],
+                ]);
+            }
+
+            return DB::transaction(function () use ($line, $userId, $decision, $reason) {
+                $audit = app(AuditRecorder::class);
+                $line = BankStatementLine::query()->lockForUpdate()->findOrFail($line->id);
+
+                if ($line->reconciliation_status?->value !== 'needs_review') {
+                    throw ValidationException::withMessages([
+                        'line' => ['Somente linhas em revisão podem receber esta decisão.'],
+                    ]);
+                }
+
+                if ($decision === 'keep' && ! $line->cash_movement_id) {
+                    throw ValidationException::withMessages([
+                        'review' => ['Não existe efeito financeiro para manter nesta linha. Reabra-a como pendente.'],
+                    ]);
+                }
+
+                if ($decision === 'reopen' && $line->cash_movement_id) {
+                    throw ValidationException::withMessages([
+                        'review' => ['Desfaça a conciliação para reabrir uma linha com efeito financeiro.'],
+                    ]);
+                }
+
+                $nextStatus = $decision === 'keep' ? 'reconciled' : 'pending';
+                $line->update([
+                    'reconciliation_status' => $nextStatus,
+                    'needs_review_at' => null,
+                    'review_reason' => null,
+                    'metadata' => $this->mergeDecisionMetadata($line, [
+                        'type' => 'review_resolved',
+                        'decision' => $decision,
+                        'reason' => $reason,
+                        'resolved_by' => $userId,
+                        'resolved_at' => now()->toDateTimeString(),
+                    ]),
+                ]);
+
+                $import = $line->import()->first();
+
+                if ($import) {
+                    $audit->recordModelEvent(
+                        $import,
+                        'bank_statement_import.review_resolved',
+                        "Revisão da linha #{$line->id} concluída",
+                        null,
+                        $audit->snapshot($import),
+                        $userId,
+                        null,
+                        ['bank_statement_line_id' => $line->id, 'decision' => $decision, 'reason' => $reason],
+                    );
+                }
+
+                $this->setSuccess('Revisão da linha concluída.');
+
+                return $line->fresh();
+            });
+        } catch (ValidationException $e) {
+            $this->setError('Falha ao concluir revisão.', $e->errors(), 422);
+
+            return null;
+        } catch (\Throwable $e) {
+            $this->setError('Erro ao concluir revisão.', ['exception' => [$e->getMessage()]]);
+
+            return null;
+        }
+    }
+
     /**
      * The caller must hold locks for both records inside the orchestration transaction.
      *

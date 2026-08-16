@@ -13,11 +13,15 @@ use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\On;
 
 class LinesRelationManager extends RelationManager
@@ -80,6 +84,11 @@ class LinesRelationManager extends RelationManager
                     ->tooltip(fn (BankStatementLine $record): ?string => filled(data_get($record->metadata, 'suggestions.0.label'))
                         ? data_get($record->metadata, 'suggestions.0.reason')
                         : null),
+                TextColumn::make('suggestions_count')
+                    ->label('Sugestões')
+                    ->badge()
+                    ->getStateUsing(fn (BankStatementLine $record): int => count($record->suggestions()))
+                    ->color(fn (int $state): string => $state > 1 ? 'info' : ($state === 1 ? 'success' : 'gray')),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->headerActions([])
@@ -98,6 +107,76 @@ class LinesRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
+                Action::make('view_suggestions')
+                    ->label('Ver sugestões')
+                    ->icon('heroicon-o-light-bulb')
+                    ->color('info')
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
+                    ->schema(fn (BankStatementLine $record): array => [
+                        Placeholder::make('suggestions')
+                            ->hiddenLabel()
+                            ->content(fn (): HtmlString => new HtmlString(collect($record->suggestions())
+                                ->map(fn (array $suggestion, int $index): string => sprintf(
+                                    '<div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700"><strong>%d. %s</strong><br><span class="text-sm text-gray-600 dark:text-gray-400">%s<br>%s</span></div>',
+                                    $index + 1,
+                                    e($suggestion['label'] ?? 'Candidato'),
+                                    e($suggestion['reason'] ?? 'Sem justificativa adicional.'),
+                                    e('Score '.$suggestion['score'].' | '.match ($suggestion['origin_type'] ?? null) {
+                                        'cash_movement' => 'Movimento financeiro',
+                                        'account_payable_installment' => 'Conta a pagar',
+                                        'account_receivable_installment' => 'Conta a receber',
+                                        default => 'Candidato',
+                                    }),
+                                ))
+                                ->implode('<div class="h-2"></div>'))),
+                    ])
+                    ->modalHeading('Sugestões elegíveis')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar'),
+                Action::make('use_single_suggestion')
+                    ->label('Usar sugestão')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('success')
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && count($record->suggestions()) === 1)
+                    ->action(function (BankStatementLine $record): void {
+                        $this->applySuggestion($record, $record->suggestions()[0]);
+                    }),
+                Action::make('choose_suggestion')
+                    ->label('Escolher sugestão')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('info')
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
+                    ->schema(fn (Schema $schema, BankStatementLine $record): Schema => $schema->components([
+                        Select::make('suggestion')
+                            ->label('Sugestão elegível')
+                            ->options(fn (): array => collect($record->suggestions())
+                                ->mapWithKeys(fn (array $suggestion): array => [
+                                    $this->suggestionKey($suggestion) => sprintf(
+                                        '%s | score %s | %s',
+                                        $suggestion['label'] ?? 'Candidato',
+                                        $suggestion['score'] ?? '-',
+                                        $suggestion['reason'] ?? 'Sem justificativa adicional.',
+                                    ),
+                                ])
+                                ->all())
+                            ->native(false)
+                            ->required(),
+                    ]))
+                    ->action(function (BankStatementLine $record, array $data): void {
+                        $suggestion = collect($record->suggestions())
+                            ->first(fn (array $candidate): bool => $this->suggestionKey($candidate) === $data['suggestion']);
+
+                        if (! $suggestion) {
+                            Notification::make()
+                                ->title('A sugestão não está mais disponível. Atualize as sugestões e tente novamente.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $this->applySuggestion($record, $suggestion);
+                    }),
                 ReconcileMovementAction::make()->iconButton(),
                 ReconcilePayableInstallmentAction::make()->iconButton(),
                 ReconcileReceivableInstallmentAction::make()->iconButton(),
@@ -106,5 +185,38 @@ class LinesRelationManager extends RelationManager
                 ReopenIgnoredStatementLineAction::make()->iconButton(),
                 ReverseStatementLineReconciliationAction::make()->iconButton(),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $suggestion
+     */
+    private function applySuggestion(BankStatementLine $line, array $suggestion): void
+    {
+        $service = app(ResolveBankStatementLineService::class);
+        $resolved = match ($suggestion['origin_type'] ?? null) {
+            'cash_movement' => $service->reconcileWithCashMovement($line, (int) $suggestion['origin_id'], auth()->id()),
+            'account_payable_installment' => $service->reconcileWithPayableInstallment($line, (int) $suggestion['origin_id'], [
+                'payment_date' => $line->transaction_date?->toDateString(),
+                'notes' => $line->description,
+            ], auth()->id()),
+            'account_receivable_installment' => $service->reconcileWithReceivableInstallment($line, (int) $suggestion['origin_id'], [
+                'payment_date' => $line->transaction_date?->toDateString(),
+                'notes' => $line->description,
+            ], auth()->id()),
+            default => null,
+        };
+
+        Notification::make()
+            ->title($resolved ? ($service->getMessageUser() ?: 'Sugestão conciliada com sucesso.') : ($service->getMessageUser() ?: 'Não foi possível conciliar a sugestão.'))
+            ->{$resolved ? 'success' : 'danger'}()
+            ->send();
+    }
+
+    /**
+     * @param  array<string, mixed>  $suggestion
+     */
+    private function suggestionKey(array $suggestion): string
+    {
+        return ($suggestion['origin_type'] ?? '').':'.($suggestion['origin_id'] ?? '');
     }
 }

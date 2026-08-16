@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions;
 
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Models\FinancialAccount;
 use App\Services\Financial\BankStatement\ImportBankStatementService;
 use Filament\Actions\Action;
@@ -94,14 +93,6 @@ final class ImportOfxAction
                 Notification::make()
                     ->title($service->getMessage() ?: 'Extrato OFX importado com sucesso.')
                     ->success()
-                    ->actions([
-                        Action::make('open')
-                            ->label('Abrir conciliação')
-                            ->url(BankStatementImportResource::getUrl('reconcile', [
-                                'record' => $import,
-                                'tenant' => Filament::getTenant(),
-                            ])),
-                    ])
                     ->send();
             });
     }

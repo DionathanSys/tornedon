@@ -633,6 +633,40 @@ OFX;
         $this->assertDatabaseHas('cash_movements', ['id' => $movement->id]);
     }
 
+    public function test_it_resolves_a_review_by_reopening_a_line_without_financial_effect(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVIEW-REOPEN');
+        $line->update([
+            'reconciliation_status' => 'needs_review',
+            'needs_review_at' => now(),
+            'review_reason' => 'Dados bancários divergentes.',
+        ]);
+
+        $resolved = $this->resolveService->resolveReview($line, $this->user->id, 'reopen', 'Divergência confirmada sem efeito financeiro.');
+
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+        $this->assertSame('pending', $resolved->reconciliation_status->value);
+        $this->assertNull($resolved->review_reason);
+    }
+
+    public function test_it_resolves_a_review_by_keeping_the_existing_financial_effect(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVIEW-KEEP');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+        $line->fresh()->update([
+            'reconciliation_status' => 'needs_review',
+            'needs_review_at' => now(),
+            'review_reason' => 'Arquivo reimportado com descrição distinta.',
+        ]);
+
+        $resolved = $this->resolveService->resolveReview($line, $this->user->id, 'keep', 'Movimento e valor conferidos no banco.');
+
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+        $this->assertSame('reconciled', $resolved->reconciliation_status->value);
+        $this->assertSame($movement->id, $resolved->cash_movement_id);
+    }
+
     public function test_an_ignored_line_must_be_reopened_before_receiving_a_new_resolution(): void
     {
         $line = $this->importLine('CREDIT', '100.00', 'REOPEN-1');
@@ -880,6 +914,44 @@ OFX;
         $this->assertSame('reversed', $reversed->reconciliation_status->value);
         $this->assertNull($reversed->cash_movement_id);
         $this->assertDatabaseMissing('cash_movements', ['id' => $resolved->cash_movement_id]);
+    }
+
+    public function test_it_reverses_a_payable_reconciliation_and_restores_the_installment_balance(): void
+    {
+        $installment = $this->createPayableInstallmentForRollback();
+        $line = $this->importLine('DEBIT', '-100.00', 'REVERSE-PAYABLE');
+        $resolved = $this->resolveService->reconcileWithPayableInstallment($line, $installment->id, [
+            'payment_date' => '2026-04-11',
+        ], $this->user->id);
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+
+        $reversed = $this->resolveService->reverseReconciliation($resolved, $this->user->id, 'Pagamento conciliado indevidamente.');
+
+        $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
+        $this->assertSame('reversed', $reversed->reconciliation_status->value);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        $this->assertDatabaseMissing('account_payable_installment_payments', [
+            'account_payable_installment_id' => $installment->id,
+        ]);
+    }
+
+    public function test_it_reverses_a_receivable_reconciliation_and_restores_the_installment_balance(): void
+    {
+        $installment = $this->createReceivableInstallmentForRollback();
+        $line = $this->importLine('CREDIT', '100.00', 'REVERSE-RECEIVABLE');
+        $resolved = $this->resolveService->reconcileWithReceivableInstallment($line, $installment->id, [
+            'payment_date' => '2026-04-11',
+        ], $this->user->id);
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+
+        $reversed = $this->resolveService->reverseReconciliation($resolved, $this->user->id, 'Recebimento conciliado indevidamente.');
+
+        $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
+        $this->assertSame('reversed', $reversed->reconciliation_status->value);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        $this->assertDatabaseMissing('account_receivable_installment_payments', [
+            'account_receivable_installment_id' => $installment->id,
+        ]);
     }
 
     public function test_it_rolls_back_a_payable_payment_when_the_statement_link_is_rejected(): void

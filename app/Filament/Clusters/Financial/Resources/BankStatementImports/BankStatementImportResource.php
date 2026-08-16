@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Financial\Resources\BankStatementImports;
 
 use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ListBankStatementImports;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ReconcileBankStatementImport;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ViewBankStatementImport;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\LinesRelationManager;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Schemas\BankStatementImportInfolist;
@@ -63,7 +62,6 @@ class BankStatementImportResource extends Resource
         return [
             'index' => ListBankStatementImports::route('/'),
             'view' => ViewBankStatementImport::route('/{record}'),
-            'reconcile' => ReconcileBankStatementImport::route('/{record}/reconcile'),
         ];
     }
 }
