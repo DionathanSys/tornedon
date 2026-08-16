@@ -3,9 +3,11 @@
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions;
 
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Tables\StatementLinePayableInstallmentsTable;
+use App\Models\AccountPayableInstallment;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Textarea;
@@ -31,6 +33,11 @@ final class ReconcilePayableInstallmentAction
                         ->label('Parcela')
                         ->saved(false)
                         ->tableConfiguration(StatementLinePayableInstallmentsTable::class)
+                        ->getOptionLabelUsing(fn (mixed $value): ?string => blank($value)
+                            ? null
+                            : AccountPayableInstallment::query()
+                                ->where('company_id', Filament::getTenant()->id)
+                                ->find($value)?->description)
                         ->selectAction(fn (Action $action): Action => $action
                             ->modalHeading('Buscar parcela a pagar')
                             ->modalWidth(Width::SevenExtraLarge))

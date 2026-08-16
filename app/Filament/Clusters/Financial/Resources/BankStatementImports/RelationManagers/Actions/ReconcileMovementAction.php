@@ -4,8 +4,10 @@ namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Relatio
 
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Tables\StatementLineCashMovementsTable;
 use App\Models\BankStatementLine;
+use App\Models\CashMovement;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -26,6 +28,11 @@ final class ReconcileMovementAction
                     ->label('Movimento financeiro')
                     ->saved(false)
                     ->tableConfiguration(StatementLineCashMovementsTable::class)
+                    ->getOptionLabelUsing(fn (mixed $value): ?string => blank($value)
+                        ? null
+                        : CashMovement::query()
+                            ->where('company_id', Filament::getTenant()->id)
+                            ->find($value)?->description)
                     ->tableArguments(fn (BankStatementLine $record): array => [
                         'bank_statement_line_id' => $record->id,
                     ])

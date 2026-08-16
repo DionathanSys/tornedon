@@ -10,8 +10,10 @@ use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
+use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
+use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\AuditEntry;
 use App\Models\BankStatementImport;
 use App\Models\BankStatementLine;
@@ -592,6 +594,45 @@ OFX;
         $this->assertNotEmpty(data_get($resolved->metadata, 'decision.eligibility_exceptions'));
     }
 
+    public function test_only_one_statement_line_can_claim_the_same_cash_movement(): void
+    {
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $import = $this->importService->importFromString(
+            $this->company->id,
+            $this->financialAccount->id,
+            $this->buildOfx('237', [
+                ['type' => 'CREDIT', 'date' => '20260411', 'amount' => '100.00', 'fitid' => 'MOVEMENT-CLAIM-1', 'memo' => 'Primeiro crédito'],
+                ['type' => 'CREDIT', 'date' => '20260411', 'amount' => '100.00', 'fitid' => 'MOVEMENT-CLAIM-2', 'memo' => 'Segundo crédito'],
+            ]),
+            'extrato-disputa-movimento.ofx',
+            $this->user->id,
+        );
+        $lines = $import?->lines()->orderBy('id')->get();
+        $firstLine = $lines?->first();
+        $secondLine = $lines?->last();
+
+        $this->assertNotNull($firstLine);
+        $this->assertNotNull($secondLine);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($firstLine, $movement->id, $this->user->id));
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($secondLine, $movement->id, $this->user->id));
+        $this->assertArrayHasKey('cash_movement_id', $this->resolveService->getErrors());
+        $this->assertSame('pending', $secondLine->fresh()->reconciliation_status->value);
+    }
+
+    public function test_it_reopens_a_existing_movement_reconciliation_as_pending(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVERSE-EXISTING');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+
+        $reversed = $this->resolveService->reverseReconciliation($line, $this->user->id, 'Vínculo selecionado incorretamente.');
+
+        $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
+        $this->assertSame('pending', $reversed->reconciliation_status->value);
+        $this->assertNull($reversed->cash_movement_id);
+        $this->assertDatabaseHas('cash_movements', ['id' => $movement->id]);
+    }
+
     public function test_an_ignored_line_must_be_reopened_before_receiving_a_new_resolution(): void
     {
         $line = $this->importLine('CREDIT', '100.00', 'REOPEN-1');
@@ -821,6 +862,149 @@ OFX;
                 ->where('event', 'cash_movement.created')
                 ->count()
         );
+    }
+
+    public function test_it_removes_a_manual_movement_when_reversing_its_reconciliation(): void
+    {
+        $line = $this->importLine('DEBIT', '-42.50', 'REVERSE-MANUAL');
+        $resolved = $this->resolveService->createManualMovement($line, [
+            'financial_category_id' => $this->cashCategory->id,
+            'transaction_date' => '2026-04-11',
+            'description' => 'Movimento manual a desfazer',
+        ], $this->user->id);
+        $this->assertNotNull($resolved, $this->resolveService->getMessageUser());
+
+        $reversed = $this->resolveService->reverseReconciliation($resolved, $this->user->id, 'Lançamento manual indevido.');
+
+        $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
+        $this->assertSame('reversed', $reversed->reconciliation_status->value);
+        $this->assertNull($reversed->cash_movement_id);
+        $this->assertDatabaseMissing('cash_movements', ['id' => $resolved->cash_movement_id]);
+    }
+
+    public function test_it_rolls_back_a_payable_payment_when_the_statement_link_is_rejected(): void
+    {
+        $installment = $this->createPayableInstallmentForRollback();
+        $line = $this->importLine('DEBIT', '-100.00', 'PAYABLE-ROLLBACK');
+
+        $resolved = $this->resolveService->reconcileWithPayableInstallment($line, $installment->id, [
+            'payment_date' => '2026-05-11',
+        ], $this->user->id);
+
+        $this->assertNull($resolved);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        $this->assertDatabaseMissing('account_payable_installment_payments', [
+            'account_payable_installment_id' => $installment->id,
+        ]);
+        $this->assertDatabaseMissing('cash_movements', [
+            'origin_type' => AccountPayableInstallmentPayment::class,
+        ]);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+    }
+
+    public function test_it_rolls_back_a_receivable_payment_when_the_statement_link_is_rejected(): void
+    {
+        $installment = $this->createReceivableInstallmentForRollback();
+        $line = $this->importLine('CREDIT', '100.00', 'RECEIVABLE-ROLLBACK');
+
+        $resolved = $this->resolveService->reconcileWithReceivableInstallment($line, $installment->id, [
+            'payment_date' => '2026-05-11',
+        ], $this->user->id);
+
+        $this->assertNull($resolved);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        $this->assertDatabaseMissing('account_receivable_installment_payments', [
+            'account_receivable_installment_id' => $installment->id,
+        ]);
+        $this->assertDatabaseMissing('cash_movements', [
+            'origin_type' => AccountReceivableInstallmentPayment::class,
+        ]);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+    }
+
+    public function test_it_rolls_back_a_manual_movement_when_the_statement_link_is_rejected(): void
+    {
+        $line = $this->importLine('DEBIT', '-42.50', 'MANUAL-ROLLBACK');
+
+        $resolved = $this->resolveService->createManualMovement($line, [
+            'financial_category_id' => $this->cashCategory->id,
+            'transaction_date' => '2026-05-11',
+            'description' => 'Movimento que deve ser desfeito',
+        ], $this->user->id);
+
+        $this->assertNull($resolved);
+        $this->assertDatabaseMissing('cash_movements', [
+            'description' => 'Movimento que deve ser desfeito',
+        ]);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+    }
+
+    private function createPayableInstallmentForRollback(): AccountPayableInstallment
+    {
+        $payable = AccountPayable::create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => 'rollback-payable',
+            'status' => AccountPayableStatus::PENDING->value,
+            'due_date' => '2026-04-10',
+            'due_amount' => 100,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+            'description' => 'Pagamento sujeito a rollback',
+        ]);
+
+        return AccountPayableInstallment::create([
+            'account_payable_id' => $payable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountPayableStatus::PENDING->value,
+            'due_date' => '2026-04-10',
+            'original_amount' => 100,
+            'due_amount' => 100,
+            'paid_amount' => 0,
+            'balance_amount' => 100,
+            'financial_category_id' => $this->payableCategory->id,
+        ]);
+    }
+
+    private function createReceivableInstallmentForRollback(): AccountReceivableInstallment
+    {
+        $invoice = Invoice::create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_number' => 'rollback-receivable',
+            'invoice_date' => '2026-04-10',
+            'status' => InvoiceStatus::CONFIRMED->value,
+            'pending' => false,
+            'confirmed' => true,
+            'created_by' => $this->user->id,
+        ]);
+        $receivable = AccountReceivable::create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $invoice->id,
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-10',
+            'due_amount' => 100,
+            'paid_amount' => 0,
+            'paid' => false,
+            'payment_method' => PaymentMethod::PIX->value,
+            'description' => 'Recebimento sujeito a rollback',
+        ]);
+
+        return AccountReceivableInstallment::create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $this->company->id,
+            'sequence_number' => '01',
+            'status' => AccountReceivableStatus::PENDING->value,
+            'due_date' => '2026-04-10',
+            'original_amount' => 100,
+            'due_amount' => 100,
+            'received_amount' => 0,
+            'balance_amount' => 100,
+            'financial_category_id' => $this->receivableCategory->id,
+        ]);
     }
 
     private function importLine(string $type, string $amount, string $fitid): BankStatementLine

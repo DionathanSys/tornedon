@@ -8,6 +8,7 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManag
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcilePayableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileReceivableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use BackedEnum;
@@ -103,6 +104,7 @@ class LinesRelationManager extends RelationManager
                 CreateManualMovementAction::make()->iconButton(),
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),
+                ReverseStatementLineReconciliationAction::make()->iconButton(),
             ]);
     }
 }
