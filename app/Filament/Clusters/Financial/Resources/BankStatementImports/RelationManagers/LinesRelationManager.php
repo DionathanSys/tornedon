@@ -10,14 +10,16 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManag
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
 use App\Models\BankStatementLine;
+use App\Models\CashMovement;
+use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -121,11 +123,14 @@ class LinesRelationManager extends RelationManager
                     ->label('Usar sugestão')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
-                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && count($record->suggestions()) === 1)
+                    ->iconButton()
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
+                    ->modalHidden(fn (BankStatementLine $record): bool => ! $this->suggestionRequiresExceptionReason($record, $record->suggestions()[0]))
                     ->schema(fn (Schema $schema): Schema => $schema->components([
                         Textarea::make('exception_reason')
                             ->label('Justificativa de exceção')
-                            ->helperText('Obrigatória apenas se a sugestão estiver fora da margem de valor ou data.')
+                            ->helperText('A sugestão está fora da margem de valor ou data configurada.')
+                            ->required()
                             ->rows(3),
                     ]))
                     ->action(function (BankStatementLine $record, array $data): void {
@@ -136,63 +141,39 @@ class LinesRelationManager extends RelationManager
                     ->icon('heroicon-o-sparkles')
                     ->color('info')
                     ->iconButton()
-                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && count($record->suggestions()) > 1)
                     ->schema(fn (Schema $schema, BankStatementLine $record): Schema => $schema->components([
-                        Repeater::make('suggestions')
-                            ->hiddenLabel()
-                            ->default($record->suggestions())
-                            ->schema([
-                                TextInput::make('label')
-                                    ->label('Candidato')
-                                    ->columnSpanFull()
-                                    ->disabled(),
-                                TextInput::make('score')
-                                    ->label('Score')
-                                    ->disabled(),
-                                TextInput::make('origin_type')
-                                    ->label('Tipo')
-                                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                                        'cash_movement' => 'Movimento financeiro',
-                                        'account_payable_installment' => 'Conta a pagar',
-                                        'account_receivable_installment' => 'Conta a receber',
-                                        default => 'Candidato',
-                                    })
-                                    ->disabled(),
-                                Textarea::make('reason')
-                                    ->label('Motivo')
-                                    ->rows(2)
-                                    ->columnSpanFull()
-                                    ->disabled(),
-                            ])
-                            ->columns(3)
-                            ->addable(false)
-                            ->deletable(false)
-                            ->reorderable(false)
-                            ->extraItemActions([
-                                Action::make('apply_suggestion')
-                                    ->label('Usar esta sugestão')
-                                    ->icon('heroicon-o-check-circle')
-                                    ->color('info')
-                                    ->schema(fn (Schema $schema): Schema => $schema->components([
-                                        Textarea::make('exception_reason')
-                                            ->label('Justificativa de exceção')
-                                            ->helperText('Obrigatória apenas se a sugestão estiver fora da margem de valor ou data.')
-                                            ->rows(3),
-                                    ]))
-                                    ->action(function (array $arguments, array $data, Repeater $component) use ($record): void {
-                                        $suggestion = $component->getRawState()[$arguments['item']] ?? null;
+                        Radio::make('suggestion_index')
+                            ->label('Sugestão')
+                            ->options($this->suggestionOptions($record))
+                            ->descriptions($this->suggestionDescriptions($record))
+                            ->live()
+                            ->required(),
+                        Textarea::make('exception_reason')
+                            ->label('Justificativa de exceção')
+                            ->helperText('Informe-a se a sugestão selecionada estiver fora da margem de valor ou data.')
+                            ->required(function (Get $get) use ($record): bool {
+                                $index = $get('suggestion_index');
 
-                                        if (! is_array($suggestion)) {
-                                            return;
-                                        }
-
-                                        $this->applySuggestion($record, $suggestion, $data['exception_reason'] ?? null);
-                                    }),
-                            ]),
+                                return is_numeric($index)
+                                    && $this->suggestionRequiresExceptionReason(
+                                        $record,
+                                        $record->suggestions()[(int) $index] ?? [],
+                                    );
+                            })
+                            ->rows(3),
                     ]))
                     ->modalHeading('Escolher sugestão')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Fechar'),
+                    ->modalSubmitActionLabel('Conciliar sugestão')
+                    ->action(function (BankStatementLine $record, array $data): void {
+                        $suggestion = $record->suggestions()[(int) $data['suggestion_index']] ?? null;
+
+                        if (! is_array($suggestion)) {
+                            return;
+                        }
+
+                        $this->applySuggestion($record, $suggestion, $data['exception_reason'] ?? null);
+                    }),
                 ReconcileMovementAction::make()->iconButton(),
                 ReconcilePayableInstallmentAction::make()->iconButton(),
                 ReconcileReceivableInstallmentAction::make()->iconButton(),
@@ -228,5 +209,44 @@ class LinesRelationManager extends RelationManager
             ->title($resolved ? ($service->getMessageUser() ?: 'Sugestão conciliada com sucesso.') : ($service->getMessageUser() ?: 'Não foi possível conciliar a sugestão.'))
             ->{$resolved ? 'success' : 'danger'}()
             ->send();
+    }
+
+    /**
+     * @param  array<string, mixed>  $suggestion
+     */
+    private function suggestionRequiresExceptionReason(BankStatementLine $line, array $suggestion): bool
+    {
+        if (($suggestion['origin_type'] ?? null) !== 'cash_movement') {
+            return false;
+        }
+
+        $movement = CashMovement::query()->find($suggestion['origin_id'] ?? null);
+
+        return $movement !== null
+            && app(BankStatementMovementEligibilityService::class)->exceptionsFor($line, $movement) !== [];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function suggestionOptions(BankStatementLine $line): array
+    {
+        return collect($line->suggestions())
+            ->mapWithKeys(fn (array $suggestion, int $index): array => [
+                $index => sprintf('%s (score: %s)', $suggestion['label'] ?? 'Candidato', $suggestion['score'] ?? '-'),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function suggestionDescriptions(BankStatementLine $line): array
+    {
+        return collect($line->suggestions())
+            ->mapWithKeys(fn (array $suggestion, int $index): array => [
+                $index => $suggestion['reason'] ?? '',
+            ])
+            ->all();
     }
 }

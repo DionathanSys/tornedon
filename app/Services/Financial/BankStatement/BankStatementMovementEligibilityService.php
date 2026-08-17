@@ -58,6 +58,22 @@ class BankStatementMovementEligibilityService
             throw ValidationException::withMessages($errors);
         }
 
+        $exceptions = $this->exceptionsFor($line, $movement);
+
+        if ($exceptions !== [] && blank($exceptionReason)) {
+            throw ValidationException::withMessages([
+                'exception_reason' => ['Informe uma justificativa para conciliar fora da margem configurada.'],
+            ]);
+        }
+
+        return $exceptions;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function exceptionsFor(BankStatementLine $line, CashMovement $movement): array
+    {
         [$amountTolerance, $dateToleranceDays] = $this->tolerancesFor($line);
         $exceptions = [];
         $amountDifference = abs((float) $movement->amount - (float) $line->amount);
@@ -77,12 +93,6 @@ class BankStatementMovementEligibilityService
                 $dateDifference,
                 $dateToleranceDays
             );
-        }
-
-        if ($exceptions !== [] && blank($exceptionReason)) {
-            throw ValidationException::withMessages([
-                'exception_reason' => ['Informe uma justificativa para conciliar fora da margem configurada.'],
-            ]);
         }
 
         return $exceptions;
