@@ -50,21 +50,25 @@ class LinesRelationManager extends RelationManager
                 TextColumn::make('transaction_date')
                     ->label('Data')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->searchable()
                     ->wrap()
-                    ->limit(60),
+                    ->limit(60)
+                    ->toggleable(),
                 TextColumn::make('amount')
                     ->label('Valor')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('metadata.direction')
                     ->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state === 'outflow' ? 'Saida' : 'Entrada')
-                    ->color(fn ($state) => $state === 'outflow' ? 'danger' : 'success'),
+                    ->color(fn ($state) => $state === 'outflow' ? 'danger' : 'success')
+                    ->toggleable(),
                 TextColumn::make('reconciliation_status')
                     ->label('Status')
                     ->badge()
@@ -73,24 +77,28 @@ class LinesRelationManager extends RelationManager
                         'reconciled' => 'success',
                         'ignored' => 'gray',
                         default => 'warning',
-                    }),
+                    })
+                    ->toggleable(),
                 TextColumn::make('cashMovement.description')
                     ->label('Movimento vinculado')
                     ->placeholder('-')
                     ->tooltip(fn (BankStatementLine $record): ?string => filled($record->cashMovement?->description) ? $record->cashMovement?->description : null)
-                    ->limit(40),
+                    ->limit(40)
+                    ->toggleable(),
                 TextColumn::make('metadata.suggestions.0.label')
                     ->label('Melhor sugestão')
                     ->wrap()
                     ->placeholder('-')
                     ->tooltip(fn (BankStatementLine $record): ?string => filled(data_get($record->metadata, 'suggestions.0.label'))
                         ? data_get($record->metadata, 'suggestions.0.reason')
-                        : null),
+                        : null)
+                    ->toggleable(),
                 TextColumn::make('suggestions_count')
                     ->label('Sugestões')
                     ->badge()
                     ->getStateUsing(fn (BankStatementLine $record): int => count($record->suggestions()))
-                    ->color(fn (int $state): string => $state > 1 ? 'info' : ($state === 1 ? 'success' : 'gray')),
+                    ->color(fn (int $state): string => $state > 1 ? 'info' : ($state === 1 ? 'success' : 'gray'))
+                    ->toggleable(),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->headerActions([])
@@ -114,8 +122,14 @@ class LinesRelationManager extends RelationManager
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && count($record->suggestions()) === 1)
-                    ->action(function (BankStatementLine $record): void {
-                        $this->applySuggestion($record, $record->suggestions()[0]);
+                    ->schema(fn (Schema $schema): Schema => $schema->components([
+                        Textarea::make('exception_reason')
+                            ->label('Justificativa de exceção')
+                            ->helperText('Obrigatória apenas se a sugestão estiver fora da margem de valor ou data.')
+                            ->rows(3),
+                    ]))
+                    ->action(function (BankStatementLine $record, array $data): void {
+                        $this->applySuggestion($record, $record->suggestions()[0], $data['exception_reason'] ?? null);
                     }),
                 Action::make('choose_suggestion')
                     ->label('Escolher sugestão')
@@ -159,14 +173,20 @@ class LinesRelationManager extends RelationManager
                                     ->label('Usar esta sugestão')
                                     ->icon('heroicon-o-check-circle')
                                     ->color('info')
-                                    ->action(function (array $arguments, Repeater $component) use ($record): void {
+                                    ->schema(fn (Schema $schema): Schema => $schema->components([
+                                        Textarea::make('exception_reason')
+                                            ->label('Justificativa de exceção')
+                                            ->helperText('Obrigatória apenas se a sugestão estiver fora da margem de valor ou data.')
+                                            ->rows(3),
+                                    ]))
+                                    ->action(function (array $arguments, array $data, Repeater $component) use ($record): void {
                                         $suggestion = $component->getRawState()[$arguments['item']] ?? null;
 
                                         if (! is_array($suggestion)) {
                                             return;
                                         }
 
-                                        $this->applySuggestion($record, $suggestion);
+                                        $this->applySuggestion($record, $suggestion, $data['exception_reason'] ?? null);
                                     }),
                             ]),
                     ]))
@@ -186,11 +206,13 @@ class LinesRelationManager extends RelationManager
     /**
      * @param  array<string, mixed>  $suggestion
      */
-    private function applySuggestion(BankStatementLine $line, array $suggestion): void
+    private function applySuggestion(BankStatementLine $line, array $suggestion, ?string $exceptionReason = null): void
     {
         $service = app(ResolveBankStatementLineService::class);
         $resolved = match ($suggestion['origin_type'] ?? null) {
-            'cash_movement' => $service->reconcileWithCashMovement($line, (int) $suggestion['origin_id'], Auth::id()),
+            'cash_movement' => $service->reconcileWithCashMovement($line, (int) $suggestion['origin_id'], Auth::id(), [
+                'exception_reason' => $exceptionReason,
+            ]),
             'account_payable_installment' => $service->reconcileWithPayableInstallment($line, (int) $suggestion['origin_id'], [
                 'payment_date' => $line->transaction_date?->toDateString(),
                 'notes' => $line->description,

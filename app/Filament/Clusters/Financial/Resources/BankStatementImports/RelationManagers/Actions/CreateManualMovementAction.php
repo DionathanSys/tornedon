@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 final class CreateManualMovementAction
@@ -75,7 +76,7 @@ final class CreateManualMovementAction
                 ]))
             ->action(function (BankStatementLine $record, array $data): void {
                 $service = app(ResolveBankStatementLineService::class);
-                $resolved = $service->createManualMovement($record, $data, auth()->id());
+                $resolved = $service->createManualMovement($record, $data, Auth::id());
 
                 if ($service->hasError() || $resolved === null) {
                     Notification::make()
