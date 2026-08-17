@@ -13,15 +13,15 @@ use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
 use Livewire\Attributes\On;
 
 class LinesRelationManager extends RelationManager
@@ -107,32 +107,6 @@ class LinesRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                Action::make('view_suggestions')
-                    ->label('Ver sugestões')
-                    ->icon('heroicon-o-light-bulb')
-                    ->color('info')
-                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
-                    ->schema(fn (BankStatementLine $record): array => [
-                        Placeholder::make('suggestions')
-                            ->hiddenLabel()
-                            ->content(fn (): HtmlString => new HtmlString(collect($record->suggestions())
-                                ->map(fn (array $suggestion, int $index): string => sprintf(
-                                    '<div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700"><strong>%d. %s</strong><br><span class="text-sm text-gray-600 dark:text-gray-400">%s<br>%s</span></div>',
-                                    $index + 1,
-                                    e($suggestion['label'] ?? 'Candidato'),
-                                    e($suggestion['reason'] ?? 'Sem justificativa adicional.'),
-                                    e('Score '.$suggestion['score'].' | '.match ($suggestion['origin_type'] ?? null) {
-                                        'cash_movement' => 'Movimento financeiro',
-                                        'account_payable_installment' => 'Conta a pagar',
-                                        'account_receivable_installment' => 'Conta a receber',
-                                        default => 'Candidato',
-                                    }),
-                                ))
-                                ->implode('<div class="h-2"></div>'))),
-                    ])
-                    ->modalHeading('Sugestões elegíveis')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Fechar'),
                 Action::make('use_single_suggestion')
                     ->label('Usar sugestão')
                     ->icon('heroicon-o-sparkles')
@@ -145,38 +119,57 @@ class LinesRelationManager extends RelationManager
                     ->label('Escolher sugestão')
                     ->icon('heroicon-o-sparkles')
                     ->color('info')
+                    ->iconButton()
                     ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
                     ->schema(fn (Schema $schema, BankStatementLine $record): Schema => $schema->components([
-                        Select::make('suggestion')
-                            ->label('Sugestão elegível')
-                            ->options(fn (): array => collect($record->suggestions())
-                                ->mapWithKeys(fn (array $suggestion): array => [
-                                    $this->suggestionKey($suggestion) => sprintf(
-                                        '%s | score %s | %s',
-                                        $suggestion['label'] ?? 'Candidato',
-                                        $suggestion['score'] ?? '-',
-                                        $suggestion['reason'] ?? 'Sem justificativa adicional.',
-                                    ),
-                                ])
-                                ->all())
-                            ->native(false)
-                            ->required(),
+                        Repeater::make('suggestions')
+                            ->hiddenLabel()
+                            ->default($record->suggestions())
+                            ->schema([
+                                TextInput::make('label')
+                                    ->label('Candidato')
+                                    ->disabled(),
+                                TextInput::make('score')
+                                    ->label('Score')
+                                    ->disabled(),
+                                TextInput::make('origin_type')
+                                    ->label('Tipo')
+                                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                        'cash_movement' => 'Movimento financeiro',
+                                        'account_payable_installment' => 'Conta a pagar',
+                                        'account_receivable_installment' => 'Conta a receber',
+                                        default => 'Candidato',
+                                    })
+                                    ->disabled(),
+                                Textarea::make('reason')
+                                    ->label('Motivo')
+                                    ->rows(2)
+                                    ->columnSpanFull()
+                                    ->disabled(),
+                            ])
+                            ->columns(3)
+                            ->addable(false)
+                            ->deletable(false)
+                            ->reorderable(false)
+                            ->extraItemActions([
+                                Action::make('apply_suggestion')
+                                    ->label('Usar esta sugestão')
+                                    ->icon('heroicon-o-check')
+                                    ->color('success')
+                                    ->action(function (array $arguments, Repeater $component) use ($record): void {
+                                        $suggestion = $component->getRawState()[$arguments['item']] ?? null;
+
+                                        if (! is_array($suggestion)) {
+                                            return;
+                                        }
+
+                                        $this->applySuggestion($record, $suggestion);
+                                    }),
+                            ]),
                     ]))
-                    ->action(function (BankStatementLine $record, array $data): void {
-                        $suggestion = collect($record->suggestions())
-                            ->first(fn (array $candidate): bool => $this->suggestionKey($candidate) === $data['suggestion']);
-
-                        if (! $suggestion) {
-                            Notification::make()
-                                ->title('A sugestão não está mais disponível. Atualize as sugestões e tente novamente.')
-                                ->danger()
-                                ->send();
-
-                            return;
-                        }
-
-                        $this->applySuggestion($record, $suggestion);
-                    }),
+                    ->modalHeading('Escolher sugestão')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar'),
                 ReconcileMovementAction::make()->iconButton(),
                 ReconcilePayableInstallmentAction::make()->iconButton(),
                 ReconcileReceivableInstallmentAction::make()->iconButton(),
@@ -210,13 +203,5 @@ class LinesRelationManager extends RelationManager
             ->title($resolved ? ($service->getMessageUser() ?: 'Sugestão conciliada com sucesso.') : ($service->getMessageUser() ?: 'Não foi possível conciliar a sugestão.'))
             ->{$resolved ? 'success' : 'danger'}()
             ->send();
-    }
-
-    /**
-     * @param  array<string, mixed>  $suggestion
-     */
-    private function suggestionKey(array $suggestion): string
-    {
-        return ($suggestion['origin_type'] ?? '').':'.($suggestion['origin_id'] ?? '');
     }
 }
