@@ -27,11 +27,12 @@ final class CreateManualMovementAction
             ->color('gray')
             ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true)
             ->schema(fn (Schema $schema) => $schema
-                ->columns(2)
+                ->columns(4)
                 ->components([
                     Toggle::make('is_manual_counterparty')
                         ->label('Parceiro avulso')
                         ->default(true)
+                        ->columnSpan(1)
                         ->live()
                         ->dehydrated(false)
                         ->afterStateUpdated(function (bool $state, Set $set): void {
@@ -44,19 +45,23 @@ final class CreateManualMovementAction
                             $set('manual_counterparty_name', null);
                         }),
                     TextInput::make('manual_counterparty_name')
-                        ->label('Parceiro')
+                        ->label('Parceiro avulso')
                         ->maxLength(255)
+                        ->columnSpan(3)
                         ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
                     SelectPartner::make('counterparty_partner_id', 'all')
-                        ->label('Parceiro')
+                        ->label('Parceiro com cadastro')
                         ->required(false)
+                        ->columnSpan(3)
                         ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
                     SelectFinancialCategory::make('financial_category_id', 'cash_movement')
                         ->label('Categoria Financeira')
+                        ->columnSpan(2)
                         ->required(),
                     DatePicker::make('transaction_date')
                         ->label('Data do movimento')
                         ->default(fn (BankStatementLine $record) => $record->transaction_date)
+                        ->columnSpan(2)
                         ->required(),
                     TextInput::make('description')
                         ->label('Descrição')
