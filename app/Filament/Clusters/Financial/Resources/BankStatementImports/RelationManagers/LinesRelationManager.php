@@ -22,6 +22,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 
 class LinesRelationManager extends RelationManager
@@ -76,6 +77,7 @@ class LinesRelationManager extends RelationManager
                 TextColumn::make('cashMovement.description')
                     ->label('Movimento vinculado')
                     ->placeholder('-')
+                    ->tooltip(fn (BankStatementLine $record): ?string => filled($record->cashMovement?->description) ? $record->cashMovement?->description : null)
                     ->limit(40),
                 TextColumn::make('metadata.suggestions.0.label')
                     ->label('Melhor sugestão')
@@ -128,6 +130,7 @@ class LinesRelationManager extends RelationManager
                             ->schema([
                                 TextInput::make('label')
                                     ->label('Candidato')
+                                    ->columnSpanFull()
                                     ->disabled(),
                                 TextInput::make('score')
                                     ->label('Score')
@@ -154,8 +157,8 @@ class LinesRelationManager extends RelationManager
                             ->extraItemActions([
                                 Action::make('apply_suggestion')
                                     ->label('Usar esta sugestão')
-                                    ->icon('heroicon-o-check')
-                                    ->color('success')
+                                    ->icon('heroicon-o-check-circle')
+                                    ->color('info')
                                     ->action(function (array $arguments, Repeater $component) use ($record): void {
                                         $suggestion = $component->getRawState()[$arguments['item']] ?? null;
 
@@ -187,15 +190,15 @@ class LinesRelationManager extends RelationManager
     {
         $service = app(ResolveBankStatementLineService::class);
         $resolved = match ($suggestion['origin_type'] ?? null) {
-            'cash_movement' => $service->reconcileWithCashMovement($line, (int) $suggestion['origin_id'], auth()->id()),
+            'cash_movement' => $service->reconcileWithCashMovement($line, (int) $suggestion['origin_id'], Auth::id()),
             'account_payable_installment' => $service->reconcileWithPayableInstallment($line, (int) $suggestion['origin_id'], [
                 'payment_date' => $line->transaction_date?->toDateString(),
                 'notes' => $line->description,
-            ], auth()->id()),
+            ], Auth::id()),
             'account_receivable_installment' => $service->reconcileWithReceivableInstallment($line, (int) $suggestion['origin_id'], [
                 'payment_date' => $line->transaction_date?->toDateString(),
                 'notes' => $line->description,
-            ], auth()->id()),
+            ], Auth::id()),
             default => null,
         };
 
