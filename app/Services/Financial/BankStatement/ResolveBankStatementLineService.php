@@ -2,6 +2,7 @@
 
 namespace App\Services\Financial\BankStatement;
 
+use App\Enum\Financial\BankStatementLineStatus;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallment;
@@ -425,7 +426,7 @@ class ResolveBankStatementLineService
                 $audit = app(AuditRecorder::class);
                 $line = BankStatementLine::query()->lockForUpdate()->findOrFail($line->id);
 
-                if ($line->reconciliation_status?->value !== 'reconciled') {
+                if ($line->reconciliation_status !== BankStatementLineStatus::RECONCILED) {
                     throw ValidationException::withMessages([
                         'line' => ['Somente linhas conciliadas podem ter a conciliação desfeita.'],
                     ]);
@@ -436,12 +437,7 @@ class ResolveBankStatementLineService
                     ? CashMovement::query()->lockForUpdate()->find($line->cash_movement_id)
                     : null;
                 $type = $decision['type'] ?? 'cash_movement';
-                $nextStatus = 'reversed';
-                $movementId = $movement?->id;
-
-                if ($type === 'cash_movement') {
-                    $nextStatus = 'pending';
-                } elseif ($type === 'account_payable_installment') {
+                if ($type === 'account_payable_installment') {
                     $payment = AccountPayableInstallmentPayment::query()->lockForUpdate()->find($decision['payment_id'] ?? null);
 
                     if (! $payment || ! $this->payableService->deleteInstallmentPayment($payment)) {
@@ -465,13 +461,12 @@ class ResolveBankStatementLineService
                     if (! $this->cashMovementService->deleteSafely($movement, $userId)) {
                         $this->throwNestedServiceFailure($this->cashMovementService->getMessageUser());
                     }
-
-                    $movementId = null;
                 }
 
                 $line->update([
-                    'cash_movement_id' => $nextStatus === 'pending' ? null : $movementId,
-                    'reconciliation_status' => $nextStatus,
+                    // A reversal removes the financial effect and reopens the bank line for a new decision.
+                    'cash_movement_id' => null,
+                    'reconciliation_status' => BankStatementLineStatus::PENDING,
                     'reconciled_at' => null,
                     'metadata' => $this->mergeDecisionMetadata($line, [
                         'type' => 'reconciliation_reversed',

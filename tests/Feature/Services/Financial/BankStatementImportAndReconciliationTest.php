@@ -911,7 +911,7 @@ OFX;
         $reversed = $this->resolveService->reverseReconciliation($resolved, $this->user->id, 'Lançamento manual indevido.');
 
         $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
-        $this->assertSame('reversed', $reversed->reconciliation_status->value);
+        $this->assertSame('pending', $reversed->reconciliation_status->value);
         $this->assertNull($reversed->cash_movement_id);
         $this->assertDatabaseMissing('cash_movements', ['id' => $resolved->cash_movement_id]);
     }
@@ -928,7 +928,8 @@ OFX;
         $reversed = $this->resolveService->reverseReconciliation($resolved, $this->user->id, 'Pagamento conciliado indevidamente.');
 
         $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
-        $this->assertSame('reversed', $reversed->reconciliation_status->value);
+        $this->assertSame('pending', $reversed->reconciliation_status->value);
+        $this->assertNull($reversed->cash_movement_id);
         $this->assertSame(100.0, $installment->fresh()->balance_amount);
         $this->assertDatabaseMissing('account_payable_installment_payments', [
             'account_payable_installment_id' => $installment->id,
@@ -947,7 +948,8 @@ OFX;
         $reversed = $this->resolveService->reverseReconciliation($resolved, $this->user->id, 'Recebimento conciliado indevidamente.');
 
         $this->assertNotNull($reversed, $this->resolveService->getMessageUser());
-        $this->assertSame('reversed', $reversed->reconciliation_status->value);
+        $this->assertSame('pending', $reversed->reconciliation_status->value);
+        $this->assertNull($reversed->cash_movement_id);
         $this->assertSame(100.0, $installment->fresh()->balance_amount);
         $this->assertDatabaseMissing('account_receivable_installment_payments', [
             'account_receivable_installment_id' => $installment->id,

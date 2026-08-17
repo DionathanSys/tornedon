@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Tables;
 
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\ImportOfxAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -39,9 +38,6 @@ class BankStatementImportsTable
             ])
             ->recordActions([
                 ViewAction::make()->iconButton(),
-            ])
-            ->toolbarActions([
-                ImportOfxAction::make(),
             ])
             ->defaultSort('imported_at', 'desc');
     }

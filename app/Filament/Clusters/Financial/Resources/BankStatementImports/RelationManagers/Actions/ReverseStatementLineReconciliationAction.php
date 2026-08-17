@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions;
 
+use App\Enum\Financial\BankStatementLineStatus;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use Filament\Actions\Action;
@@ -18,7 +19,7 @@ final class ReverseStatementLineReconciliationAction
             ->label('Desfazer conciliação')
             ->icon('heroicon-o-arrow-uturn-left')
             ->color('danger')
-            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->value === 'reconciled')
+            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status === BankStatementLineStatus::RECONCILED)
             ->schema(fn (Schema $schema) => $schema->components([
                 Textarea::make('reason')
                     ->label('Motivo do desfazimento')
@@ -34,6 +35,10 @@ final class ReverseStatementLineReconciliationAction
                     ->{$reversed ? 'success' : 'danger'}()
                     ->send();
             })
-            ->after(fn (Component $livewire) => $livewire->dispatch('refresh-statement-lines'));
+            ->after(function (Component $livewire): void {
+                if (method_exists($livewire, 'resetTable')) {
+                    $livewire->resetTable();
+                }
+            });
     }
 }
