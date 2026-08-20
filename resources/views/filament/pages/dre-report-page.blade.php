@@ -2,6 +2,7 @@
     @php($rows = $this->rows)
     @php($companies = $this->selectedCompanies())
     @php($isComparative = $this->isComparative())
+    @php($isSeparated = $this->isSeparated())
 
     <style>
         .dre-report-table thead {
@@ -56,7 +57,7 @@
                     <tr>
                         <th class="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Linha</th>
                         @foreach($companies as $company)
-                            <th @if($isComparative) colspan="2" @endif class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $company->name }}</th>
+                            <th @if($isComparative || $isSeparated) colspan="2" @endif class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $company->name }}</th>
                         @endforeach
                         @if($isComparative)
                             <th colspan="2" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Consolidado</th>
@@ -64,7 +65,11 @@
                             <th rowspan="2" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Variação %</th>
                             <th rowspan="2" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">% Receita</th>
                         @else
-                            <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Consolidado</th>
+                            @if($isSeparated)
+                                <th colspan="2" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Consolidado</th>
+                            @else
+                                <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Consolidado</th>
+                            @endif
                         @endif
                     </tr>
                     @if($isComparative)
@@ -75,6 +80,15 @@
                             @endforeach
                             <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $this->dateRangeLabel('comparison_date_range') }}</th>
                             <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $this->dateRangeLabel('date_range') }}</th>
+                        </tr>
+                    @elseif($isSeparated)
+                        <tr>
+                            @foreach($companies as $company)
+                                <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Previsto</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Realizado</th>
+                            @endforeach
+                            <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Previsto</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Realizado</th>
                         </tr>
                     @endif
                 </thead>
@@ -94,19 +108,37 @@
                                     <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1rem;">
                                         {{ $this->money((float) data_get($row, 'comparison_amounts.' . $company->id, 0)) }}
                                     </td>
+                                @elseif($isSeparated)
+                                    <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1rem;">
+                                        {{ $this->money((float) data_get($row, 'amounts.' . $company->id, 0)) }}
+                                    </td>
+                                    <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1rem;">
+                                        {{ $this->money((float) data_get($row, 'realized_amounts.' . $company->id, 0)) }}
+                                    </td>
                                 @endif
-                                <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1rem;">
-                                    {{ $this->money((float) data_get($row, 'amounts.' . $company->id, 0)) }}
-                                </td>
+                                @if(! $isSeparated)
+                                    <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1rem;">
+                                        {{ $this->money((float) data_get($row, 'amounts.' . $company->id, 0)) }}
+                                    </td>
+                                @endif
                             @endforeach
                             @if($isComparative)
                                 <td class="px-4 py-4 text-right text-sm font-semibold text-primary-700 dark:text-primary-300" style="padding-block: 1rem; color: #1d4ed8;">
                                     {{ $this->money((float) $row['comparison_total']) }}
                                 </td>
                             @endif
-                            <td class="px-4 py-4 text-right text-sm font-semibold text-primary-700 dark:text-primary-300" style="padding-block: 1rem; color: #1d4ed8;">
-                                {{ $this->money((float) $row['total']) }}
-                            </td>
+                            @if($isSeparated)
+                                <td class="px-4 py-4 text-right text-sm font-semibold text-primary-700 dark:text-primary-300" style="padding-block: 1rem; color: #1d4ed8;">
+                                    {{ $this->money((float) $row['total']) }}
+                                </td>
+                                <td class="px-4 py-4 text-right text-sm font-semibold text-primary-700 dark:text-primary-300" style="padding-block: 1rem; color: #1d4ed8;">
+                                    {{ $this->money((float) $row['realized_total']) }}
+                                </td>
+                            @else
+                                <td class="px-4 py-4 text-right text-sm font-semibold text-primary-700 dark:text-primary-300" style="padding-block: 1rem; color: #1d4ed8;">
+                                    {{ $this->money((float) $row['total']) }}
+                                </td>
+                            @endif
                             @if($isComparative)
                                 <td @class(['px-4 py-4 text-right text-sm font-semibold', 'text-success-600 dark:text-success-400' => $row['variation_amount'] > 0, 'text-danger-600 dark:text-danger-400' => $row['variation_amount'] < 0, 'text-gray-700 dark:text-gray-300' => $row['variation_amount'] == 0]) style="padding-block: 1rem;">
                                     {{ $this->money((float) $row['variation_amount']) }}
@@ -121,7 +153,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $isComparative ? ($companies->count() * 2) + 6 : $companies->count() + 2 }}" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                            <td colspan="{{ $isComparative ? ($companies->count() * 2) + 6 : ($isSeparated ? ($companies->count() * 2) + 3 : $companies->count() + 2) }}" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
                                 Nenhum resultado encontrado. Confirme o período, a classificação das contas e os vínculos das contas nas linhas do modelo.
                             </td>
                         </tr>

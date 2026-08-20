@@ -302,6 +302,116 @@ class DreReportServiceTest extends TestCase
         $this->assertSame(1500.0, $current->revenueBase);
     }
 
+    public function test_report_separates_projected_and_realized_amounts(): void
+    {
+        $company = $this->createCompany('Empresa Previsto Realizado');
+        $revenueAccount = $this->createChartAccount($company->id, '1', 'Receitas', ChartAccountType::REVENUE);
+        $revenueCategory = $this->createCategory($company->id, $revenueAccount->id, 'Receita', true, false);
+        $model = DreModel::query()->create([
+            'company_id' => $company->id,
+            'name' => 'DRE Previsto Realizado',
+            'is_active' => true,
+        ]);
+        $line = DreLine::query()->create([
+            'dre_model_id' => $model->id,
+            'code' => 'RECEITA',
+            'name' => 'Receita',
+            'line_type' => DreLineType::ACCOUNT_GROUP->value,
+            'operation' => DreOperation::ADD->value,
+        ]);
+        $line->chartAccounts()->attach($revenueAccount->id, ['include_descendants' => true]);
+        $receivable = AccountReceivable::query()->create([
+            'company_id' => $company->id,
+            'manual_counterparty_name' => 'Cliente',
+            'status' => ReceivableStatus::PENDING->value,
+            'due_date' => '2026-08-10',
+            'due_amount' => 900,
+            'paid_amount' => 400,
+            'paid' => false,
+        ]);
+
+        foreach ([[ReceivableStatus::PENDING, 500, 0, 500], [ReceivableStatus::RECEIVED, 400, 400, 0]] as [$status, $dueAmount, $receivedAmount, $balanceAmount]) {
+            AccountReceivableInstallment::query()->create([
+                'account_receivable_id' => $receivable->id,
+                'company_id' => $company->id,
+                'sequence_number' => (string) $dueAmount,
+                'status' => $status->value,
+                'due_date' => '2026-08-10',
+                'competence_date' => '2026-08-10',
+                'original_amount' => $dueAmount,
+                'due_amount' => $dueAmount,
+                'received_amount' => $receivedAmount,
+                'balance_amount' => $balanceAmount,
+                'financial_category_id' => $revenueCategory->id,
+                'chart_account_id' => $revenueAccount->id,
+            ]);
+        }
+
+        $service = app(GenerateDreReportService::class);
+        $projected = $service->generate($model, [$company->id], '2026-08-01', '2026-08-31', view: DreView::PROJECTED_ONLY);
+        $realized = $service->generate($model, [$company->id], '2026-08-01', '2026-08-31', view: DreView::REALIZED);
+        $combined = $service->generate($model, [$company->id], '2026-08-01', '2026-08-31', view: DreView::PROJECTED_AND_REALIZED);
+
+        $this->assertSame(500.0, $projected->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->assertSame(400.0, $realized->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->assertSame(900.0, $combined->lines->firstWhere('code', 'RECEITA')->amount);
+    }
+
+    public function test_header_sums_its_child_lines(): void
+    {
+        $company = $this->createCompany('Empresa Cabecalho');
+        $revenueAccount = $this->createChartAccount($company->id, '1', 'Receitas', ChartAccountType::REVENUE);
+        $revenueCategory = $this->createCategory($company->id, $revenueAccount->id, 'Receita', true, false);
+        $model = DreModel::query()->create([
+            'company_id' => $company->id,
+            'name' => 'DRE Cabecalho',
+            'is_active' => true,
+        ]);
+        $header = DreLine::query()->create([
+            'dre_model_id' => $model->id,
+            'code' => 'RECEITAS',
+            'name' => 'Receitas',
+            'line_type' => DreLineType::HEADER->value,
+            'operation' => DreOperation::NONE->value,
+        ]);
+        $line = DreLine::query()->create([
+            'dre_model_id' => $model->id,
+            'parent_id' => $header->id,
+            'code' => 'SERVICOS',
+            'name' => 'Serviços',
+            'line_type' => DreLineType::ACCOUNT_GROUP->value,
+            'operation' => DreOperation::ADD->value,
+        ]);
+        $line->chartAccounts()->attach($revenueAccount->id, ['include_descendants' => true]);
+        $receivable = AccountReceivable::query()->create([
+            'company_id' => $company->id,
+            'manual_counterparty_name' => 'Cliente',
+            'status' => ReceivableStatus::PENDING->value,
+            'due_date' => '2026-08-10',
+            'due_amount' => 700,
+            'paid_amount' => 0,
+            'paid' => false,
+        ]);
+        AccountReceivableInstallment::query()->create([
+            'account_receivable_id' => $receivable->id,
+            'company_id' => $company->id,
+            'sequence_number' => '01',
+            'status' => ReceivableStatus::PENDING->value,
+            'due_date' => '2026-08-10',
+            'competence_date' => '2026-08-10',
+            'original_amount' => 700,
+            'due_amount' => 700,
+            'received_amount' => 0,
+            'balance_amount' => 700,
+            'financial_category_id' => $revenueCategory->id,
+            'chart_account_id' => $revenueAccount->id,
+        ]);
+
+        $report = app(GenerateDreReportService::class)->generate($model, [$company->id], '2026-08-01', '2026-08-31');
+
+        $this->assertSame(700.0, $report->lines->firstWhere('code', 'RECEITAS')->amount);
+    }
+
     private function createCompany(string $name): Company
     {
         $user = User::factory()->create();

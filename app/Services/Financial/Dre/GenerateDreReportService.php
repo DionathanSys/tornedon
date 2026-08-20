@@ -132,9 +132,14 @@ class GenerateDreReportService
             ->whereBetween(DB::raw('COALESCE(competence_date, due_date)'), [$startDate, $endDate])
             ->where('status', '!=', PayableStatus::CANCELLED->value)
             ->when($view === DreView::REALIZED, fn ($query) => $query->whereIn('status', [PayableStatus::PAID->value, PayableStatus::PARTIALLY_PAID->value]))
+            ->when($view === DreView::PROJECTED_ONLY, fn ($query) => $query->whereNotIn('status', [PayableStatus::PAID->value, PayableStatus::CANCELLED->value]))
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
-            ->sum($view === DreView::REALIZED ? 'paid_amount' : 'due_amount');
+            ->sum(match ($view) {
+                DreView::REALIZED => 'paid_amount',
+                DreView::PROJECTED_ONLY => 'balance_amount',
+                default => 'due_amount',
+            });
 
         $receivables = DB::table('account_receivable_installments')
             ->whereIn('company_id', $companyIds)
@@ -142,11 +147,18 @@ class GenerateDreReportService
             ->whereBetween(DB::raw('COALESCE(competence_date, due_date)'), [$startDate, $endDate])
             ->where('status', '!=', ReceivableStatus::CANCELLED->value)
             ->when($view === DreView::REALIZED, fn ($query) => $query->whereIn('status', [ReceivableStatus::RECEIVED->value, ReceivableStatus::PARTIALLY_RECEIVED->value]))
+            ->when($view === DreView::PROJECTED_ONLY, fn ($query) => $query->whereNotIn('status', [ReceivableStatus::RECEIVED->value, ReceivableStatus::CANCELLED->value]))
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
-            ->sum($view === DreView::REALIZED ? 'received_amount' : 'due_amount');
+            ->sum(match ($view) {
+                DreView::REALIZED => 'received_amount',
+                DreView::PROJECTED_ONLY => 'balance_amount',
+                default => 'due_amount',
+            });
 
-        $manualMovements = $this->manualCashMovementAmount($accountIds, $companyIds, 'COALESCE(competence_date, transaction_date)', $startDate, $endDate, $costCenterId, $resultCenterId);
+        $manualMovements = $view === DreView::PROJECTED_ONLY
+            ? 0.0
+            : $this->manualCashMovementAmount($accountIds, $companyIds, 'COALESCE(competence_date, transaction_date)', $startDate, $endDate, $costCenterId, $resultCenterId);
 
         return round((((float) $receivables - (float) $payables) / 100) + $manualMovements, 2);
     }
@@ -194,7 +206,7 @@ class GenerateDreReportService
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
             ->sum('balance_amount');
 
-        return round((float) $movements + (((float) $openReceivables - (float) $openPayables) / 100), 2);
+        return round(($view === DreView::PROJECTED_ONLY ? 0.0 : (float) $movements) + (((float) $openReceivables - (float) $openPayables) / 100), 2);
     }
 
     /**
@@ -228,7 +240,7 @@ class GenerateDreReportService
             ->map(function (DreLine $line) use ($lines, $amountsByLine, $revenueBase, $depth): DreLineResultDTO {
                 $children = $this->buildLineTree($lines, $amountsByLine, $revenueBase, (int) $line->id, $depth + 1);
                 $ownAmount = (float) ($amountsByLine->get($line->id) ?? 0);
-                $amount = $line->line_type === DreLineType::SUBTOTAL
+                $amount = in_array($line->line_type, [DreLineType::SUBTOTAL, DreLineType::HEADER], true)
                     ? round((float) $children->sum('amount'), 2)
                     : $ownAmount;
 

@@ -103,6 +103,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                             ->label('Base do comparativo')
                             ->options([
                                 DreView::REALIZED->value => DreView::REALIZED->description(),
+                                DreView::PROJECTED_ONLY->value => DreView::PROJECTED_ONLY->description(),
                                 DreView::PROJECTED_AND_REALIZED->value => DreView::PROJECTED_AND_REALIZED->description(),
                             ])
                             ->default(DreView::PROJECTED_AND_REALIZED->value)
@@ -163,12 +164,13 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
 
         [$startDate, $endDate] = $this->parseDateRange($filters['date_range'] ?? null);
         $isComparative = ($filters['view'] ?? null) === DreView::COMPARATIVE->value;
+        $isSeparated = ($filters['view'] ?? null) === DreView::PROJECTED_AND_REALIZED_SEPARATED->value;
         [$comparisonStartDate, $comparisonEndDate] = $isComparative
             ? $this->parseDateRange($filters['comparison_date_range'] ?? null)
             : [null, null];
         $reportView = $isComparative
             ? DreView::from((string) ($filters['comparison_base_view'] ?? DreView::PROJECTED_AND_REALIZED->value))
-            : DreView::from((string) $filters['view']);
+            : ($isSeparated ? DreView::PROJECTED_ONLY : DreView::from((string) $filters['view']));
 
         $baseModel = DreModel::query()
             ->where('company_id', Filament::getTenant()->id)
@@ -211,11 +213,49 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                     'total' => 0.0,
                     'comparison_amounts' => [],
                     'comparison_total' => 0.0,
+                    'realized_amounts' => [],
+                    'realized_total' => 0.0,
                 ]);
                 $amount = $this->displayAmount($line->amount, $line->displaySign);
                 $row['amounts'][$companyId] = $amount;
                 $row['total'] = round((float) $row['total'] + $amount, 2);
                 $rows->put($key, $row);
+            }
+
+            if ($isSeparated) {
+                $realizedReport = $service->generate(
+                    dreModel: $model,
+                    companyIds: [(int) $companyId],
+                    startDate: $startDate,
+                    endDate: $endDate,
+                    mode: DreMode::from((string) $filters['mode']),
+                    view: DreView::REALIZED,
+                    costCenterId: $costCenterId,
+                    resultCenterId: $resultCenterId,
+                );
+
+                foreach ($this->flattenLines($realizedReport->lines) as $line) {
+                    $key = $line->code ?: (string) $line->lineId;
+                    $row = $rows->get($key, [
+                        'code' => $line->code,
+                        'name' => $line->name,
+                        'depth' => $line->displayDepth,
+                        'is_bold' => $line->isBold,
+                        'percentage' => null,
+                        'amounts' => [],
+                        'total' => 0.0,
+                        'comparison_amounts' => [],
+                        'comparison_total' => 0.0,
+                        'realized_amounts' => [],
+                        'realized_total' => 0.0,
+                    ]);
+                    $amount = $this->displayAmount($line->amount, $line->displaySign);
+                    $row['realized_amounts'][$companyId] = $amount;
+                    $row['realized_total'] = round((float) $row['realized_total'] + $amount, 2);
+                    $rows->put($key, $row);
+                }
+
+                continue;
             }
 
             if (! $isComparative) {
@@ -245,6 +285,8 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                     'total' => 0.0,
                     'comparison_amounts' => [],
                     'comparison_total' => 0.0,
+                    'realized_amounts' => [],
+                    'realized_total' => 0.0,
                 ]);
                 $amount = $this->displayAmount($line->amount, $line->displaySign);
                 $row['comparison_amounts'][$companyId] = $amount;
@@ -400,6 +442,11 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     public function isComparative(): bool
     {
         return ($this->data['view'] ?? null) === DreView::COMPARATIVE->value;
+    }
+
+    public function isSeparated(): bool
+    {
+        return ($this->data['view'] ?? null) === DreView::PROJECTED_AND_REALIZED_SEPARATED->value;
     }
 
     public function dateRangeLabel(string $field): string
