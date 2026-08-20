@@ -20,6 +20,7 @@ final readonly class DreLineResultDTO
         public int $displayDepth,
         public bool $isBold,
         public bool $isVisible,
+        public string $displaySign,
         public Collection $children,
     ) {}
 }

@@ -7,6 +7,7 @@ use App\DTO\Financial\DreReportDTO;
 use App\Enum\AccountPayable\Status as PayableStatus;
 use App\Enum\AccountReceivable\Status as ReceivableStatus;
 use App\Enum\Financial\CashMovementDirection;
+use App\Enum\Financial\DreDisplaySign;
 use App\Enum\Financial\DreLineType;
 use App\Enum\Financial\DreMode;
 use App\Enum\Financial\DreOperation;
@@ -127,7 +128,7 @@ class GenerateDreReportService
         $payables = DB::table('account_payable_installments')
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
-            ->whereBetween('competence_date', [$startDate, $endDate])
+            ->whereBetween(DB::raw('COALESCE(competence_date, due_date)'), [$startDate, $endDate])
             ->where('status', '!=', PayableStatus::CANCELLED->value)
             ->when($view === DreView::REALIZED, fn ($query) => $query->whereIn('status', [PayableStatus::PAID->value, PayableStatus::PARTIALLY_PAID->value]))
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
@@ -137,14 +138,14 @@ class GenerateDreReportService
         $receivables = DB::table('account_receivable_installments')
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
-            ->whereBetween('competence_date', [$startDate, $endDate])
+            ->whereBetween(DB::raw('COALESCE(competence_date, due_date)'), [$startDate, $endDate])
             ->where('status', '!=', ReceivableStatus::CANCELLED->value)
             ->when($view === DreView::REALIZED, fn ($query) => $query->whereIn('status', [ReceivableStatus::RECEIVED->value, ReceivableStatus::PARTIALLY_RECEIVED->value]))
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
             ->sum($view === DreView::REALIZED ? 'received_amount' : 'due_amount');
 
-        $manualMovements = $this->manualCashMovementAmount($accountIds, $companyIds, 'competence_date', $startDate, $endDate, $costCenterId, $resultCenterId);
+        $manualMovements = $this->manualCashMovementAmount($accountIds, $companyIds, 'COALESCE(competence_date, transaction_date)', $startDate, $endDate, $costCenterId, $resultCenterId);
 
         return round((((float) $receivables - (float) $payables) / 100) + $manualMovements, 2);
     }
@@ -206,7 +207,7 @@ class GenerateDreReportService
             ->whereIn('chart_account_id', $accountIds)
             ->where('origin_type', 'manual')
             ->whereNull('reversal_of_id')
-            ->whereBetween($dateColumn, [$startDate, $endDate])
+            ->whereBetween(DB::raw($dateColumn), [$startDate, $endDate])
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
             ->get(['direction', 'amount'])
@@ -241,6 +242,7 @@ class GenerateDreReportService
                     displayDepth: max(0, (int) ($line->display_depth ?? $depth)),
                     isBold: (bool) $line->is_bold,
                     isVisible: (bool) $line->is_visible,
+                    displaySign: $line->display_sign?->value ?? DreDisplaySign::NATURAL->value,
                     children: $children,
                 );
             })

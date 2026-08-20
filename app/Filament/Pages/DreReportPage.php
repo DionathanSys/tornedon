@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enum\Financial\DreDisplaySign;
 use App\Enum\Financial\DreMode;
 use App\Enum\Financial\DreView;
 use App\Models\Company;
@@ -141,7 +142,9 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
             return collect();
         }
 
-        $baseModel = DreModel::query()->findOrFail((int) ($filters['dre_model_id'] ?? 0));
+        $baseModel = DreModel::query()
+            ->where('company_id', Filament::getTenant()->id)
+            ->findOrFail((int) ($filters['dre_model_id'] ?? 0));
         $companyIds = array_values(array_filter(array_map('intval', (array) ($filters['company_ids'] ?? [Filament::getTenant()->id]))));
         $costCenterId = filled($filters['cost_center_id'] ?? null) ? (int) $filters['cost_center_id'] : null;
         $resultCenterId = filled($filters['result_center_id'] ?? null) ? (int) $filters['result_center_id'] : null;
@@ -177,8 +180,9 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                     'amounts' => [],
                     'total' => 0.0,
                 ]);
-                $row['amounts'][$companyId] = $line->amount;
-                $row['total'] = round((float) $row['total'] + $line->amount, 2);
+                $amount = $this->displayAmount($line->amount, $line->displaySign);
+                $row['amounts'][$companyId] = $amount;
+                $row['total'] = round((float) $row['total'] + $amount, 2);
                 $rows->put($key, $row);
             }
         }
@@ -266,6 +270,15 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     public function money(float $amount): string
     {
         return 'R$ '.number_format($amount, 2, ',', '.');
+    }
+
+    private function displayAmount(float $amount, string $displaySign): float
+    {
+        return match (DreDisplaySign::tryFrom($displaySign)) {
+            DreDisplaySign::POSITIVE => abs($amount),
+            DreDisplaySign::NEGATIVE => -abs($amount),
+            default => $amount,
+        };
     }
 
     public function selectedCompanies(): Collection

@@ -33,6 +33,7 @@ class LinesRelationManager extends RelationManager
     {
         return $schema->components([
             Section::make('Linha')
+                ->description('Uma linha de grupo apura valores pelas contas vinculadas. Subtotal soma as linhas-filhas; cabeçalho e separador apenas organizam a apresentação.')
                 ->columns(['sm' => 1, 'md' => 4, 'lg' => 8])
                 ->schema([
                     TextInput::make('code')
@@ -53,7 +54,13 @@ class LinesRelationManager extends RelationManager
                         ->columnSpan(['md' => 2, 'lg' => 4]),
                     Select::make('line_type')
                         ->label('Tipo')
-                        ->options(DreLineType::toSelectArray())
+                        ->options([
+                            DreLineType::ACCOUNT_GROUP->value => DreLineType::ACCOUNT_GROUP->description(),
+                            DreLineType::SUBTOTAL->value => DreLineType::SUBTOTAL->description(),
+                            DreLineType::HEADER->value => DreLineType::HEADER->description(),
+                            DreLineType::SEPARATOR->value => DreLineType::SEPARATOR->description(),
+                        ])
+                        ->helperText('Para apurar valores, selecione Grupo de contas.')
                         ->default(DreLineType::ACCOUNT_GROUP->value)
                         ->required()
                         ->native(false)
@@ -65,6 +72,7 @@ class LinesRelationManager extends RelationManager
                         ->default(DreOperation::ADD->value)
                         ->required()
                         ->native(false)
+                        ->helperText('Use Subtrair para despesas e custos; Somar para receitas.')
                         ->columnSpan(['md' => 2, 'lg' => 4]),
                     Select::make('display_sign')
                         ->label('Sinal Visual')
@@ -72,6 +80,7 @@ class LinesRelationManager extends RelationManager
                         ->default(DreDisplaySign::NATURAL->value)
                         ->required()
                         ->native(false)
+                        ->helperText('Define como o valor aparece no relatório.')
                         ->columnSpan(['md' => 2, 'lg' => 4]),
                     Select::make('display_depth')
                         ->label('Detalhamento')
@@ -106,10 +115,12 @@ class LinesRelationManager extends RelationManager
                 ->schema([
                     CheckboxList::make('chart_accounts')
                         ->label('Contas')
+                        ->helperText('Selecione ao menos uma conta. Contas-filhas são incluídas automaticamente.')
                         ->options(fn (): array => ChartAccount::optionsForCompany(Filament::getTenant()->id))
                         ->columns(2)
                         ->bulkToggleable()
-                        ->dehydrated(false)
+                        ->required()
+                        ->validationMessages(['required' => 'Vincule ao menos uma conta do plano para que esta linha apresente valores.'])
                         ->afterStateHydrated(function (CheckboxList $component, ?DreLine $record): void {
                             if (! $record) {
                                 return;
@@ -130,6 +141,7 @@ class LinesRelationManager extends RelationManager
                 TextColumn::make('name')->label('Linha')->searchable(),
                 TextColumn::make('line_type')->label('Tipo')->formatStateUsing(fn ($state): string => $state?->description() ?? '-')->badge(),
                 TextColumn::make('operation')->label('Operação')->formatStateUsing(fn ($state): string => $state?->description() ?? '-'),
+                TextColumn::make('chart_accounts_count')->label('Contas')->counts('chartAccounts')->alignCenter(),
                 IconColumn::make('is_visible')->label('Visível')->boolean()->alignCenter(),
             ])
             ->headerActions([
