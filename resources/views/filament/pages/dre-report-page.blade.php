@@ -2,8 +2,8 @@
     @php($rows = $this->rows)
     @php($companies = $this->selectedCompanies())
 
-    <div class="space-y-8">
-        <form wire:submit="applyFilters" class="space-y-5">
+    <div class="space-y-8" style="display: grid; gap: 2rem;">
+        <form wire:submit="applyFilters" class="space-y-5" style="display: grid; gap: 1.5rem;">
             {{ $this->form }}
 
             <div>
@@ -34,7 +34,7 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     @forelse($rows as $row)
                         <tr @class(['bg-gray-50/70 dark:bg-white/5' => $row['is_bold']])>
-                            <td @class(['px-4 py-4 text-sm text-gray-900 dark:text-white', 'font-semibold' => $row['is_bold'], 'font-medium' => ! $row['is_bold']])>
+                            <td @class(['px-4 py-4 text-sm text-gray-900 dark:text-white', 'font-semibold' => $row['is_bold'], 'font-medium' => ! $row['is_bold']]) style="padding-block: 1.25rem;">
                                 <span style="padding-left: {{ (int) $row['depth'] * 1.25 }}rem">
                                 @if($row['code'])
                                     <span class="text-gray-500 dark:text-gray-400">{{ $row['code'] }}</span>
@@ -43,11 +43,11 @@
                                 </span>
                             </td>
                             @foreach($companies as $company)
-                                <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300">
+                                <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1.25rem;">
                                     {{ $this->money((float) data_get($row, 'amounts.' . $company->id, 0)) }}
                                 </td>
                             @endforeach
-                            <td class="px-4 py-4 text-right text-sm font-semibold text-gray-950 dark:text-white">
+                            <td class="px-4 py-4 text-right text-sm font-semibold text-gray-950 dark:text-white" style="padding-block: 1.25rem;">
                                 {{ $this->money((float) $row['total']) }}
                             </td>
                         </tr>
