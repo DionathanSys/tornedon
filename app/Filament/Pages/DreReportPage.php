@@ -18,6 +18,7 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Collection;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
@@ -57,7 +58,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['default' => 1, 'md' => 4])
                     ->schema([
                         DateRangePicker::make('date_range')
-                            ->label('Período')
+                            ->label('Período atual')
                             ->format('d/m/Y')
                             ->firstDayOfWeek(0)
                             ->autoApply()
@@ -88,7 +89,26 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                             ->options(DreView::toSelectArray())
                             ->default(DreView::PROJECTED_AND_REALIZED->value)
                             ->native(false)
+                            ->live()
                             ->required(),
+                        DateRangePicker::make('comparison_date_range')
+                            ->label('Período comparativo')
+                            ->format('d/m/Y')
+                            ->firstDayOfWeek(0)
+                            ->autoApply()
+                            ->visible(fn (Get $get): bool => $get('view') === DreView::COMPARATIVE->value)
+                            ->required(fn (Get $get): bool => $get('view') === DreView::COMPARATIVE->value)
+                            ->columnSpan(['default' => 1, 'md' => 2]),
+                        Select::make('comparison_base_view')
+                            ->label('Base do comparativo')
+                            ->options([
+                                DreView::REALIZED->value => DreView::REALIZED->description(),
+                                DreView::PROJECTED_AND_REALIZED->value => DreView::PROJECTED_AND_REALIZED->description(),
+                            ])
+                            ->default(DreView::PROJECTED_AND_REALIZED->value)
+                            ->native(false)
+                            ->visible(fn (Get $get): bool => $get('view') === DreView::COMPARATIVE->value)
+                            ->required(fn (Get $get): bool => $get('view') === DreView::COMPARATIVE->value),
                         Select::make('company_ids')
                             ->label('Empresas')
                             ->options(fn (): array => $this->companyOptions())
@@ -142,6 +162,13 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         }
 
         [$startDate, $endDate] = $this->parseDateRange($filters['date_range'] ?? null);
+        $isComparative = ($filters['view'] ?? null) === DreView::COMPARATIVE->value;
+        [$comparisonStartDate, $comparisonEndDate] = $isComparative
+            ? $this->parseDateRange($filters['comparison_date_range'] ?? null)
+            : [null, null];
+        $reportView = $isComparative
+            ? DreView::from((string) ($filters['comparison_base_view'] ?? DreView::PROJECTED_AND_REALIZED->value))
+            : DreView::from((string) $filters['view']);
 
         $baseModel = DreModel::query()
             ->where('company_id', Filament::getTenant()->id)
@@ -157,6 +184,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         $modelsByCompany = $this->resolveEquivalentModels($baseModel, $companyIds);
         $service = app(GenerateDreReportService::class);
         $rows = collect();
+        $currentRevenueBase = 0.0;
 
         foreach ($modelsByCompany as $companyId => $model) {
             $report = $service->generate(
@@ -165,10 +193,11 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                 startDate: $startDate,
                 endDate: $endDate,
                 mode: DreMode::from((string) $filters['mode']),
-                view: DreView::from((string) $filters['view']),
+                view: $reportView,
                 costCenterId: $costCenterId,
                 resultCenterId: $resultCenterId,
             );
+            $currentRevenueBase += $report->revenueBase;
 
             foreach ($this->flattenLines($report->lines) as $line) {
                 $key = $line->code ?: (string) $line->lineId;
@@ -180,15 +209,68 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                     'percentage' => $line->percentage,
                     'amounts' => [],
                     'total' => 0.0,
+                    'comparison_amounts' => [],
+                    'comparison_total' => 0.0,
                 ]);
                 $amount = $this->displayAmount($line->amount, $line->displaySign);
                 $row['amounts'][$companyId] = $amount;
                 $row['total'] = round((float) $row['total'] + $amount, 2);
                 $rows->put($key, $row);
             }
+
+            if (! $isComparative) {
+                continue;
+            }
+
+            $comparisonReport = $service->generate(
+                dreModel: $model,
+                companyIds: [(int) $companyId],
+                startDate: $comparisonStartDate,
+                endDate: $comparisonEndDate,
+                mode: DreMode::from((string) $filters['mode']),
+                view: $reportView,
+                costCenterId: $costCenterId,
+                resultCenterId: $resultCenterId,
+            );
+
+            foreach ($this->flattenLines($comparisonReport->lines) as $line) {
+                $key = $line->code ?: (string) $line->lineId;
+                $row = $rows->get($key, [
+                    'code' => $line->code,
+                    'name' => $line->name,
+                    'depth' => $line->displayDepth,
+                    'is_bold' => $line->isBold,
+                    'percentage' => null,
+                    'amounts' => [],
+                    'total' => 0.0,
+                    'comparison_amounts' => [],
+                    'comparison_total' => 0.0,
+                ]);
+                $amount = $this->displayAmount($line->amount, $line->displaySign);
+                $row['comparison_amounts'][$companyId] = $amount;
+                $row['comparison_total'] = round((float) $row['comparison_total'] + $amount, 2);
+                $rows->put($key, $row);
+            }
         }
 
-        return $rows->values();
+        return $rows->values()->map(function (array $row) use ($isComparative, $currentRevenueBase): array {
+            if (! $isComparative) {
+                return $row;
+            }
+
+            $comparisonTotal = (float) $row['comparison_total'];
+            $currentTotal = (float) $row['total'];
+
+            $row['variation_amount'] = round($currentTotal - $comparisonTotal, 2);
+            $row['variation_percentage'] = $comparisonTotal == 0.0
+                ? ($currentTotal == 0.0 ? 0.0 : null)
+                : round((($currentTotal - $comparisonTotal) / abs($comparisonTotal)) * 100, 2);
+            $row['percentage'] = $currentRevenueBase > 0
+                ? round(($currentTotal / $currentRevenueBase) * 100, 2)
+                : null;
+
+            return $row;
+        });
     }
 
     /**
@@ -223,11 +305,15 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
 
     private function defaultFilters(): array
     {
+        $dateRange = now()->startOfMonth()->format('d/m/Y').' - '.now()->endOfMonth()->format('d/m/Y');
+
         return [
-            'date_range' => now()->startOfMonth()->format('d/m/Y').' - '.now()->endOfMonth()->format('d/m/Y'),
+            'date_range' => $dateRange,
+            'comparison_date_range' => $this->previousDateRange($dateRange),
             'dre_model_id' => DreModel::query()->where('company_id', Filament::getTenant()?->id)->active()->orderByDesc('is_default')->value('id'),
             'mode' => DreMode::COMPETENCE->value,
             'view' => DreView::PROJECTED_AND_REALIZED->value,
+            'comparison_base_view' => DreView::PROJECTED_AND_REALIZED->value,
             'company_ids' => [Filament::getTenant()?->id],
             'cost_center_id' => null,
             'result_center_id' => null,
@@ -277,18 +363,48 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         }
 
         try {
-            return [
-                Carbon::createFromFormat('!d/m/Y', trim($dates[0]))->toDateString(),
-                Carbon::createFromFormat('!d/m/Y', trim($dates[1]))->toDateString(),
-            ];
+            $start = Carbon::createFromFormat('!d/m/Y', trim($dates[0]));
+            $end = Carbon::createFromFormat('!d/m/Y', trim($dates[1]));
+
+            if ($start->greaterThan($end)) {
+                throw new \RuntimeException('Informe um período válido.');
+            }
+
+            return [$start->toDateString(), $end->toDateString()];
         } catch (\Throwable) {
             throw new \RuntimeException('Informe um período válido.');
         }
     }
 
+    private function previousDateRange(string $dateRange): string
+    {
+        [$startDate, $endDate] = $this->parseDateRange($dateRange);
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+        $previousEnd = $start->copy()->subDay();
+        $previousStart = $previousEnd->copy()->subDays($start->diffInDays($end));
+
+        return $previousStart->format('d/m/Y').' - '.$previousEnd->format('d/m/Y');
+    }
+
     public function money(float $amount): string
     {
         return 'R$ '.number_format($amount, 2, ',', '.');
+    }
+
+    public function percentage(?float $value): string
+    {
+        return $value === null ? '-' : number_format($value, 2, ',', '.').' %';
+    }
+
+    public function isComparative(): bool
+    {
+        return ($this->data['view'] ?? null) === DreView::COMPARATIVE->value;
+    }
+
+    public function dateRangeLabel(string $field): string
+    {
+        return str_replace(' - ', ' a ', (string) ($this->data[$field] ?? ''));
     }
 
     private function displayAmount(float $amount, string $displaySign): float

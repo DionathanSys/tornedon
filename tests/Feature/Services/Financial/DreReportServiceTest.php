@@ -248,6 +248,60 @@ class DreReportServiceTest extends TestCase
         $this->assertSame(1000.0, $report->lines->firstWhere('code', 'RECEITA')->amount);
     }
 
+    public function test_reports_can_be_generated_for_distinct_comparison_periods(): void
+    {
+        $company = $this->createCompany('Empresa Comparativo');
+        $revenueAccount = $this->createChartAccount($company->id, '1', 'Receitas', ChartAccountType::REVENUE);
+        $revenueCategory = $this->createCategory($company->id, $revenueAccount->id, 'Receita', true, false);
+        $model = DreModel::query()->create([
+            'company_id' => $company->id,
+            'name' => 'DRE Comparativo',
+            'is_active' => true,
+        ]);
+        $line = DreLine::query()->create([
+            'dre_model_id' => $model->id,
+            'code' => 'RECEITA',
+            'name' => 'Receita Bruta',
+            'line_type' => DreLineType::ACCOUNT_GROUP->value,
+            'operation' => DreOperation::ADD->value,
+        ]);
+        $line->chartAccounts()->attach($revenueAccount->id, ['include_descendants' => true]);
+        $receivable = AccountReceivable::query()->create([
+            'company_id' => $company->id,
+            'manual_counterparty_name' => 'Cliente',
+            'status' => ReceivableStatus::PENDING->value,
+            'due_date' => '2026-07-10',
+            'due_amount' => 1500,
+            'paid_amount' => 0,
+            'paid' => false,
+        ]);
+
+        foreach ([['2026-07-10', 1000], ['2026-08-10', 1500]] as [$dueDate, $amount]) {
+            AccountReceivableInstallment::query()->create([
+                'account_receivable_id' => $receivable->id,
+                'company_id' => $company->id,
+                'sequence_number' => (string) $amount,
+                'status' => ReceivableStatus::PENDING->value,
+                'due_date' => $dueDate,
+                'competence_date' => $dueDate,
+                'original_amount' => $amount,
+                'due_amount' => $amount,
+                'received_amount' => 0,
+                'balance_amount' => $amount,
+                'financial_category_id' => $revenueCategory->id,
+                'chart_account_id' => $revenueAccount->id,
+            ]);
+        }
+
+        $service = app(GenerateDreReportService::class);
+        $previous = $service->generate($model, [$company->id], '2026-07-01', '2026-07-31');
+        $current = $service->generate($model, [$company->id], '2026-08-01', '2026-08-31');
+
+        $this->assertSame(1000.0, $previous->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->assertSame(1500.0, $current->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->assertSame(1500.0, $current->revenueBase);
+    }
+
     private function createCompany(string $name): Company
     {
         $user = User::factory()->create();

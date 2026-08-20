@@ -66,6 +66,7 @@ class GenerateDreReportService
             endDate: $end,
             mode: $mode->value,
             view: $view->value,
+            revenueBase: $revenueBase,
             lines: $tree,
         );
     }

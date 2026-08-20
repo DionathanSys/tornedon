@@ -18,6 +18,7 @@ final readonly class DreReportDTO
         public CarbonImmutable $endDate,
         public string $mode,
         public string $view,
+        public float $revenueBase,
         public Collection $lines,
     ) {}
 }
