@@ -3,17 +3,19 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables;
 
 use App\Enum\AccountReceivable\Status;
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\FinancialCategory;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AccountReceivablesTable
 {
@@ -49,8 +51,8 @@ class AccountReceivablesTable
                     ->label('Status')
                     ->sortable()
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
-                    ->color(fn($state) => $state?->color() ?? 'gray'),
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('due_amount')
                     ->label('Valor')
                     ->money('BRL')
@@ -72,7 +74,7 @@ class AccountReceivablesTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_method')
                     ->label('Forma Pgto.')
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -86,6 +88,18 @@ class AccountReceivablesTable
                     ->label('Status')
                     ->options(Status::toSelectArray())
                     ->multiple()
+                    ->native(false),
+                SelectFilter::make('financial_category_id')
+                    ->label('Categoria')
+                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
+                    ->query(fn (Builder $query, array $data): Builder => $query->when(
+                        $data['value'] ?? null,
+                        fn (Builder $query, int $categoryId): Builder => $query->whereHas(
+                            'installments',
+                            fn (Builder $installmentsQuery): Builder => $installmentsQuery->where('financial_category_id', $categoryId),
+                        ),
+                    ))
+                    ->searchable()
                     ->native(false),
             ])
             ->recordActions([

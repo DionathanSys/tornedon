@@ -3,8 +3,10 @@
 namespace App\Filament\Shop\Resources\CashMovements\Tables;
 
 use App\Enum\Financial\CashMovementDirection;
+use App\Models\FinancialCategory;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
@@ -67,6 +69,11 @@ class CashMovementsTable
                 SelectFilter::make('direction')
                     ->label('Direção')
                     ->options(CashMovementDirection::toSelectArray())
+                    ->native(false),
+                SelectFilter::make('financial_category_id')
+                    ->label('Categoria')
+                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
+                    ->searchable()
                     ->native(false),
             ])
             ->recordActions([

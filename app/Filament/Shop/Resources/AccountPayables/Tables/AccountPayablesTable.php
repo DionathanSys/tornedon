@@ -3,8 +3,10 @@
 namespace App\Filament\Shop\Resources\AccountPayables\Tables;
 
 use App\Enum\AccountPayable\Status;
+use App\Models\FinancialCategory;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid;
@@ -77,6 +79,18 @@ class AccountPayablesTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
+                    ->native(false),
+                SelectFilter::make('financial_category_id')
+                    ->label('Categoria')
+                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
+                    ->query(fn (Builder $query, array $data): Builder => $query->when(
+                        $data['value'] ?? null,
+                        fn (Builder $query, int $categoryId): Builder => $query->whereHas(
+                            'installments',
+                            fn (Builder $installmentsQuery): Builder => $installmentsQuery->where('financial_category_id', $categoryId),
+                        ),
+                    ))
+                    ->searchable()
                     ->native(false),
             ])
             ->recordActions([

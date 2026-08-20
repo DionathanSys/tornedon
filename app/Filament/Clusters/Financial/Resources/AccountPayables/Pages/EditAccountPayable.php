@@ -19,6 +19,13 @@ class EditAccountPayable extends EditRecord
 {
     protected static string $resource = AccountPayableResource::class;
 
+    public function getResourceBreadcrumbs(): array
+    {
+        return [
+            AccountPayableInstallmentResource::getUrl() => AccountPayableResource::getBreadcrumb(),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

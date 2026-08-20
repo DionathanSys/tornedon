@@ -3,8 +3,10 @@
 namespace App\Filament\Shop\Resources\AccountReceivables\Tables;
 
 use App\Enum\AccountReceivable\Status;
+use App\Models\FinancialCategory;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid;
@@ -78,6 +80,18 @@ class AccountReceivablesTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
+                    ->native(false),
+                SelectFilter::make('financial_category_id')
+                    ->label('Categoria')
+                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable'))
+                    ->query(fn (Builder $query, array $data): Builder => $query->when(
+                        $data['value'] ?? null,
+                        fn (Builder $query, int $categoryId): Builder => $query->whereHas(
+                            'installments',
+                            fn (Builder $installmentsQuery): Builder => $installmentsQuery->where('financial_category_id', $categoryId),
+                        ),
+                    ))
+                    ->searchable()
                     ->native(false),
             ])
             ->recordActions([

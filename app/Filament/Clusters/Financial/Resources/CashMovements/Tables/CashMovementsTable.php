@@ -8,13 +8,14 @@ use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\CreateTransf
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
 use App\Models\CashMovement;
+use App\Models\FinancialCategory;
 use App\Services\Financial\CashMovementService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
@@ -70,7 +71,7 @@ class CashMovementsTable
                     ->label('Descrição')
                     ->searchable()
                     ->limit(50)
-                    ->tooltip(fn($state) => $state)
+                    ->tooltip(fn ($state) => $state)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('origin_label')
                     ->label('Origem')
@@ -113,6 +114,11 @@ class CashMovementsTable
                     ->relationship('financialAccount', 'name')
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('financial_category_id')
+                    ->label('Categoria')
+                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'cash_movement'))
+                    ->searchable()
+                    ->native(false),
                 TernaryFilter::make('conciliado')
                     ->label('Conciliado')
                     ->queries(

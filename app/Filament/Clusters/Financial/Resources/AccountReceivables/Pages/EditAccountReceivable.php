@@ -19,6 +19,13 @@ class EditAccountReceivable extends EditRecord
 {
     protected static string $resource = AccountReceivableResource::class;
 
+    public function getResourceBreadcrumbs(): array
+    {
+        return [
+            AccountReceivableInstallmentResource::getUrl() => AccountReceivableResource::getBreadcrumb(),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

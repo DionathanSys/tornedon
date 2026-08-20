@@ -52,6 +52,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         return $schema
             ->schema([
                 Section::make('Filtros')
+                    ->collapsible()
                     ->columns(['default' => 1, 'md' => 4])
                     ->schema([
                         DatePicker::make('date_from')

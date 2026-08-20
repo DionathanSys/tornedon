@@ -13,16 +13,16 @@
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
-            <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-white/10">
+        <div class="overflow-x-auto rounded-xl border border-primary-200 bg-white shadow-sm dark:border-primary-500/20 dark:bg-white/5">
+            <div class="flex items-center justify-between gap-3 border-b border-primary-200 bg-primary-50 px-4 py-3 dark:border-primary-500/20 dark:bg-primary-500/10">
                 <div>
-                    <h2 class="text-sm font-semibold text-gray-950 dark:text-white">Resultado da DRE</h2>
+                    <h2 class="text-sm font-semibold text-primary-950 dark:text-primary-100">Resultado da DRE</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400">As linhas só apresentam valores quando possuem contas do plano vinculadas.</p>
                 </div>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $rows->count() }} linhas</span>
+                <span class="rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">{{ $rows->count() }} linhas</span>
             </div>
             <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10">
-                <thead class="bg-gray-50 dark:bg-white/5">
+                <thead class="bg-primary-50/70 dark:bg-primary-500/10">
                     <tr>
                         <th class="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Linha</th>
                         @foreach($companies as $company)
@@ -33,8 +33,8 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     @forelse($rows as $row)
-                        <tr @class(['bg-gray-50/70 dark:bg-white/5' => $row['is_bold']])>
-                            <td @class(['px-4 py-4 text-sm text-gray-900 dark:text-white', 'font-semibold' => $row['is_bold'], 'font-medium' => ! $row['is_bold']]) style="padding-block: 1.25rem;">
+                        <tr @class(['bg-primary-50/70 dark:bg-primary-500/10' => $row['is_bold'], 'hover:bg-primary-50/40 dark:hover:bg-primary-500/5' => ! $row['is_bold']])>
+                            <td @class(['px-4 py-4 text-sm text-gray-900 dark:text-white', 'font-semibold' => $row['is_bold'], 'font-medium' => ! $row['is_bold']]) style="padding-block: 1rem;">
                                 <span style="padding-left: {{ (int) $row['depth'] * 1.25 }}rem">
                                 @if($row['code'])
                                     <span class="text-gray-500 dark:text-gray-400">{{ $row['code'] }}</span>
@@ -43,11 +43,11 @@
                                 </span>
                             </td>
                             @foreach($companies as $company)
-                                <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1.25rem;">
+                                <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300" style="padding-block: 1rem;">
                                     {{ $this->money((float) data_get($row, 'amounts.' . $company->id, 0)) }}
                                 </td>
                             @endforeach
-                            <td class="px-4 py-4 text-right text-sm font-semibold text-gray-950 dark:text-white" style="padding-block: 1.25rem;">
+                            <td class="px-4 py-4 text-right text-sm font-semibold text-primary-700 dark:text-primary-300" style="padding-block: 1rem;">
                                 {{ $this->money((float) $row['total']) }}
                             </td>
                         </tr>
