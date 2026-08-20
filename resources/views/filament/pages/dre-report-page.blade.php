@@ -56,7 +56,7 @@
             <table class="dre-report-table min-w-full divide-y divide-gray-200 dark:divide-white/10">
                 <thead>
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Linha</th>
+                        <th @if($isComparative || $isSeparated) rowspan="2" @endif class="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Linha</th>
                         @foreach($companies as $company)
                             <th @if($isComparative || $isSeparated) colspan="2" @endif class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $company->name }}</th>
                         @endforeach
