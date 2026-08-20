@@ -22,6 +22,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Arr;
 
 class LinesRelationManager extends RelationManager
 {
@@ -145,10 +146,14 @@ class LinesRelationManager extends RelationManager
                 IconColumn::make('is_visible')->label('Visível')->boolean()->alignCenter(),
             ])
             ->headerActions([
-                CreateAction::make()->after(fn (DreLine $record, array $data): mixed => $this->syncChartAccounts($record, $data)),
+                CreateAction::make()
+                    ->mutateDataUsing(fn (array $data): array => Arr::except($data, 'chart_accounts'))
+                    ->after(fn (DreLine $record, CreateAction $action): mixed => $this->syncChartAccounts($record, $action->getRawData())),
             ])
             ->recordActions([
-                EditAction::make()->after(fn (DreLine $record, array $data): mixed => $this->syncChartAccounts($record, $data)),
+                EditAction::make()
+                    ->mutateDataUsing(fn (array $data): array => Arr::except($data, 'chart_accounts'))
+                    ->after(fn (DreLine $record, EditAction $action): mixed => $this->syncChartAccounts($record, $action->getRawData())),
                 DeleteAction::make(),
             ])
             ->defaultSort('sort_order');
