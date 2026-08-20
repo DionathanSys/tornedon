@@ -11,15 +11,16 @@ use App\Models\DreModel;
 use App\Models\ResultCenter;
 use App\Services\Financial\Dre\GenerateDreReportService;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Collection;
+use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 use UnitEnum;
 
 class DreReportPage extends Page implements Forms\Contracts\HasForms
@@ -55,15 +56,12 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                     ->collapsible()
                     ->columns(['default' => 1, 'md' => 4])
                     ->schema([
-                        DatePicker::make('date_from')
-                            ->label('Data inicial')
-                            ->native(false)
-                            ->displayFormat('d/m/Y')
-                            ->required(),
-                        DatePicker::make('date_to')
-                            ->label('Data final')
-                            ->native(false)
-                            ->displayFormat('d/m/Y')
+                        DateRangePicker::make('date_range')
+                            ->label('Período')
+                            ->format('d/m/Y')
+                            ->firstDayOfWeek(0)
+                            ->autoApply()
+                            ->columnSpan(['default' => 1, 'md' => 2])
                             ->required(),
                         Select::make('dre_model_id')
                             ->label('Modelo DRE')
@@ -143,6 +141,8 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
             return collect();
         }
 
+        [$startDate, $endDate] = $this->parseDateRange($filters['date_range'] ?? null);
+
         $baseModel = DreModel::query()
             ->where('company_id', Filament::getTenant()->id)
             ->findOrFail((int) ($filters['dre_model_id'] ?? 0));
@@ -162,8 +162,8 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
             $report = $service->generate(
                 dreModel: $model,
                 companyIds: [(int) $companyId],
-                startDate: (string) $filters['date_from'],
-                endDate: (string) $filters['date_to'],
+                startDate: $startDate,
+                endDate: $endDate,
                 mode: DreMode::from((string) $filters['mode']),
                 view: DreView::from((string) $filters['view']),
                 costCenterId: $costCenterId,
@@ -224,8 +224,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     private function defaultFilters(): array
     {
         return [
-            'date_from' => now()->startOfMonth()->toDateString(),
-            'date_to' => now()->endOfMonth()->toDateString(),
+            'date_range' => now()->startOfMonth()->format('d/m/Y').' - '.now()->endOfMonth()->format('d/m/Y'),
             'dre_model_id' => DreModel::query()->where('company_id', Filament::getTenant()?->id)->active()->orderByDesc('is_default')->value('id'),
             'mode' => DreMode::COMPETENCE->value,
             'view' => DreView::PROJECTED_AND_REALIZED->value,
@@ -266,6 +265,25 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
                 ? collect([$line])->merge($children)
                 : $children;
         });
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function parseDateRange(mixed $dateRange): array
+    {
+        if (! is_string($dateRange) || count($dates = explode(' - ', $dateRange)) !== 2) {
+            throw new \RuntimeException('Informe um período válido.');
+        }
+
+        try {
+            return [
+                Carbon::createFromFormat('!d/m/Y', trim($dates[0]))->toDateString(),
+                Carbon::createFromFormat('!d/m/Y', trim($dates[1]))->toDateString(),
+            ];
+        } catch (\Throwable) {
+            throw new \RuntimeException('Informe um período válido.');
+        }
     }
 
     public function money(float $amount): string
