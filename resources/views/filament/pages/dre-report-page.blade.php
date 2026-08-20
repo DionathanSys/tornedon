@@ -2,13 +2,15 @@
     @php($rows = $this->rows)
     @php($companies = $this->selectedCompanies())
 
-    <div class="space-y-4">
-        <form wire:submit="applyFilters" class="space-y-3">
+    <div class="space-y-8">
+        <form wire:submit="applyFilters" class="space-y-5">
             {{ $this->form }}
 
-            <x-filament::button type="submit" wire:loading.attr="disabled" wire:target="applyFilters">
-                Aplicar filtros
-            </x-filament::button>
+            <div>
+                <x-filament::button type="submit" wire:loading.attr="disabled" wire:target="applyFilters">
+                    Aplicar filtros
+                </x-filament::button>
+            </div>
         </form>
 
         <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
@@ -32,7 +34,7 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     @forelse($rows as $row)
                         <tr @class(['bg-gray-50/70 dark:bg-white/5' => $row['is_bold']])>
-                            <td @class(['px-4 py-2.5 text-sm text-gray-900 dark:text-white', 'font-semibold' => $row['is_bold'], 'font-medium' => ! $row['is_bold']])>
+                            <td @class(['px-4 py-4 text-sm text-gray-900 dark:text-white', 'font-semibold' => $row['is_bold'], 'font-medium' => ! $row['is_bold']])>
                                 <span style="padding-left: {{ (int) $row['depth'] * 1.25 }}rem">
                                 @if($row['code'])
                                     <span class="text-gray-500 dark:text-gray-400">{{ $row['code'] }}</span>
@@ -41,11 +43,11 @@
                                 </span>
                             </td>
                             @foreach($companies as $company)
-                                <td class="px-4 py-2.5 text-right text-sm text-gray-700 dark:text-gray-300">
+                                <td class="px-4 py-4 text-right text-sm text-gray-700 dark:text-gray-300">
                                     {{ $this->money((float) data_get($row, 'amounts.' . $company->id, 0)) }}
                                 </td>
                             @endforeach
-                            <td class="px-4 py-2.5 text-right text-sm font-semibold text-gray-950 dark:text-white">
+                            <td class="px-4 py-4 text-right text-sm font-semibold text-gray-950 dark:text-white">
                                 {{ $this->money((float) $row['total']) }}
                             </td>
                         </tr>

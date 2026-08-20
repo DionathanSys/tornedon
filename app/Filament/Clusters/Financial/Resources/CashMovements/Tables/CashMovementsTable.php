@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\CashMovements\Tables;
 
 use App\Enum\Financial\CashMovementDirection;
+use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\CreateTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
@@ -176,6 +177,7 @@ class CashMovementsTable
                 CreateAction::make()
                     ->label('Mov. Manual'),
                 CreateTransferAction::make(),
+                RefreshChartAccountFromCategoryBulkAction::make(),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->emptyStateHeading('Nenhum movimento financeiro encontrado');

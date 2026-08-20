@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayableInstallments\Tables;
 
 use App\Enum\AccountPayable\Status;
+use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
@@ -167,6 +168,7 @@ class AccountPayableInstallmentsTable
                     ->icon(Heroicon::Plus)
                     ->color('gray')
                     ->url(AccountPayableResource::getUrl('create')),
+                RefreshChartAccountFromCategoryBulkAction::make(),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
             ->emptyStateDescription('As parcelas das contas à pagar aparecerão aqui.')
