@@ -13,11 +13,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Quote extends Model //implements HasMedia
+class Quote extends Model // implements HasMedia
 {
     // use InteractsWithMedia;
 
@@ -117,7 +116,7 @@ class Quote extends Model //implements HasMedia
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
-    }    
+    }
 
     public function isExpired(): bool
     {
@@ -139,10 +138,10 @@ class Quote extends Model //implements HasMedia
     protected function totalAmountServices(): Attribute
     {
         return Attribute::make(
-            get: fn() => round(
+            get: fn () => round(
                 $this->relationLoaded('items')
                     ? (float) $this->items->whereNotNull('service_id')->sum('total_amount')
-                    : ((float) $this->items()->whereNotNull('service_id')->sum('total_amount')) / 100,
+                    : (float) $this->items()->whereNotNull('service_id')->sum('total_amount'),
                 2
             ),
         );
@@ -151,10 +150,10 @@ class Quote extends Model //implements HasMedia
     protected function totalAmountProducts(): Attribute
     {
         return Attribute::make(
-            get: fn() => round(
+            get: fn () => round(
                 $this->relationLoaded('items')
                     ? (float) $this->items->whereNotNull('product_id')->sum('total_amount')
-                    : ((float) $this->items()->whereNotNull('product_id')->sum('total_amount')) / 100,
+                    : (float) $this->items()->whereNotNull('product_id')->sum('total_amount'),
                 2
             ),
         );
@@ -165,11 +164,11 @@ class Quote extends Model //implements HasMedia
         return Attribute::make(
             get: function ($value, array $attributes): float {
                 if (array_key_exists('gross_amount', $attributes)) {
-                    return round(((float) $attributes['gross_amount']) / 100, 2);
+                    return round((float) $attributes['gross_amount'], 2);
                 }
 
                 $grossAmount = array_key_exists('computed_gross_amount', $attributes)
-                    ? ((float) $attributes['computed_gross_amount']) / 100
+                    ? (float) $attributes['computed_gross_amount']
                     : $this->resolveCommercialAmounts()['gross_amount'];
 
                 return round($grossAmount, 2);
@@ -182,11 +181,11 @@ class Quote extends Model //implements HasMedia
         return Attribute::make(
             get: function ($value, array $attributes): float {
                 if (array_key_exists('discount_amount', $attributes)) {
-                    return round(((float) $attributes['discount_amount']) / 100, 2);
+                    return round((float) $attributes['discount_amount'], 2);
                 }
 
                 $discountAmount = array_key_exists('computed_discount_amount', $attributes)
-                    ? ((float) $attributes['computed_discount_amount']) / 100
+                    ? (float) $attributes['computed_discount_amount']
                     : $this->resolveCommercialAmounts()['discount_amount'];
 
                 return round($discountAmount, 2);
@@ -199,11 +198,11 @@ class Quote extends Model //implements HasMedia
         return Attribute::make(
             get: function ($value, array $attributes): float {
                 if (array_key_exists('total_amount', $attributes)) {
-                    return round(((float) $attributes['total_amount']) / 100, 2);
+                    return round((float) $attributes['total_amount'], 2);
                 }
 
                 $totalAmount = array_key_exists('computed_total_amount', $attributes)
-                    ? ((float) $attributes['computed_total_amount']) / 100
+                    ? (float) $attributes['computed_total_amount']
                     : $this->resolveCommercialAmounts()['total_amount'];
 
                 return round($totalAmount, 2);
@@ -234,9 +233,9 @@ class Quote extends Model //implements HasMedia
             ->first();
 
         return $this->resolvedCommercialAmounts = [
-            'gross_amount' => round(((float) ($totals->gross_amount ?? 0)) / 100, 2),
-            'discount_amount' => round(((float) ($totals->discount_amount ?? 0)) / 100, 2),
-            'total_amount' => round(((float) ($totals->total_amount ?? 0)) / 100, 2),
+            'gross_amount' => round((float) ($totals->gross_amount ?? 0), 2),
+            'discount_amount' => round((float) ($totals->discount_amount ?? 0), 2),
+            'total_amount' => round((float) ($totals->total_amount ?? 0), 2),
         ];
     }
 }

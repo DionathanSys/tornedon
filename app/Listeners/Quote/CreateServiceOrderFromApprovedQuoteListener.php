@@ -28,9 +28,12 @@ class CreateServiceOrderFromApprovedQuoteListener
                     ->findOrFail($event->quote->id);
 
                 if ($quote->serviceOrders()->exists()) {
+                    $this->linkRequisition($quote);
+
                     Log::warning('CreateServiceOrderFromApprovedQuoteListener: Ordem de servico ja existe para este orcamento, ignorando', [
                         'quote_id' => $quote->id,
                     ]);
+
                     return;
                 }
 
@@ -42,6 +45,7 @@ class CreateServiceOrderFromApprovedQuoteListener
                     Log::info('CreateServiceOrderFromApprovedQuoteListener: Nenhum item com destinacao SERVICO', [
                         'quote_id' => $quote->id,
                     ]);
+
                     return;
                 }
 
@@ -75,7 +79,7 @@ class CreateServiceOrderFromApprovedQuoteListener
                 ], $event->approvedBy);
 
                 if (! $serviceOrder) {
-                    throw new \Exception('Erro ao criar ordem de servico atraves do service: ' . $serviceOrderService->getMessage());
+                    throw new \Exception('Erro ao criar ordem de servico atraves do service: '.$serviceOrderService->getMessage());
                 }
 
                 $itemService = app(ServiceOrderItemService::class);
@@ -91,13 +95,15 @@ class CreateServiceOrderFromApprovedQuoteListener
                     ], $event->approvedBy);
 
                     if (! $item) {
-                        throw new \Exception('Erro ao criar item da ordem de servico: ' . $itemService->getMessage());
+                        throw new \Exception('Erro ao criar item da ordem de servico: '.$itemService->getMessage());
                     }
                 }
 
                 foreach ($quoteItems as $quoteItem) {
                     $quoteItem->update(['status' => \App\Enum\Quote\Status::LINKED]);
                 }
+
+                $this->linkRequisition($quote, $serviceOrder->id);
 
                 Log::info('CreateServiceOrderFromApprovedQuoteListener: Ordem de servico criada com sucesso', [
                     'quote_id' => $quote->id,
@@ -114,6 +120,28 @@ class CreateServiceOrderFromApprovedQuoteListener
             ]);
 
             throw $e;
+        }
+    }
+
+    private function linkRequisition(Quote $quote, ?int $serviceOrderId = null): void
+    {
+        $serviceOrderId ??= $quote->serviceOrders()->value('id');
+
+        if ($serviceOrderId === null) {
+            return;
+        }
+
+        $updated = $quote->requisitions()
+            ->where('company_id', $quote->company_id)
+            ->whereNull('service_order_id')
+            ->update(['service_order_id' => $serviceOrderId]);
+
+        if ($updated > 0) {
+            Log::info('CreateServiceOrderFromApprovedQuoteListener: Requisição vinculada à ordem de serviço', [
+                'quote_id' => $quote->id,
+                'service_order_id' => $serviceOrderId,
+                'requisitions_linked' => $updated,
+            ]);
         }
     }
 }

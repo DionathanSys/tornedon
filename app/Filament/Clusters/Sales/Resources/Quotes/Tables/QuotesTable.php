@@ -45,11 +45,11 @@ class QuotesTable
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Valor Total')
-                    ->money('BRL')
+                    ->money('BRL', 1)
                     ->summarize(
                         Summarizer::make()
                             ->label('Total')
-                            ->money('BRL')
+                            ->money('BRL', 1)
                             ->using(fn (Builder $query): float => self::resolveSummaryTotal($query))
                     )
                     ->alignEnd(),

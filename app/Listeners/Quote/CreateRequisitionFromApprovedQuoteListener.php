@@ -8,8 +8,8 @@ use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Events\Quote\QuoteApproved;
 use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\Quote\QuoteService;
-use App\Services\RequisitionItem\RequisitionItemService;
 use App\Services\Requisition\RequisitionService;
+use App\Services\RequisitionItem\RequisitionItemService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -31,12 +31,13 @@ class CreateRequisitionFromApprovedQuoteListener
                 Log::info('CreateRequisitionFromApprovedQuoteListener: Nenhum item com destinação REQUISIÇÃO', [
                     'quote_id' => $event->quote->id,
                 ]);
+
                 return;
             }
 
             $discountAmount = $quoteItems->sum('discount_amount');
 
-            DB::transaction(function () use ($event, $quoteItems, $discountAmount) {
+            DB::transaction(function () use ($event, $quoteItems) {
                 // Guarda de idempotência: evita criar uma segunda requisição se o evento
                 // for disparado mais de uma vez (duplo clique, retry de rede, etc.)
                 $alreadyExists = app(QuoteService::class)->hasRequisition($event->quote);
@@ -44,6 +45,7 @@ class CreateRequisitionFromApprovedQuoteListener
                     Log::warning('CreateRequisitionFromApprovedQuoteListener: Requisição já existe para este orçamento — execução ignorada', [
                         'quote_id' => $event->quote->id,
                     ]);
+
                     return;
                 }
 
@@ -60,36 +62,37 @@ class CreateRequisitionFromApprovedQuoteListener
 
                 $requisitionService = app(RequisitionService::class);
                 $requisition = $requisitionService->create([
-                    'company_id'    => $event->quote->company_id,
-                    'customer_id'   => $event->quote->customer_id,
-                    'quote_id'      => $event->quote->id,
-                    'sale_date'     => now()->toDateString(),
-                    'status'        => RequisitionStatus::OPEN,
+                    'company_id' => $event->quote->company_id,
+                    'customer_id' => $event->quote->customer_id,
+                    'quote_id' => $event->quote->id,
+                    'service_order_id' => $event->quote->serviceOrders()->value('id'),
+                    'sale_date' => now()->toDateString(),
+                    'status' => RequisitionStatus::OPEN,
                     'payment_method' => $paymentDefaults['payment_method'],
                     'payment_condition' => $paymentDefaults['payment_condition'],
-                    'observations'  => "Gerada a partir do orçamento #{$event->quote->quote_number}\n{$event->quote->observations}",
+                    'observations' => "Gerada a partir do orçamento #{$event->quote->quote_number}\n{$event->quote->observations}",
                 ], $event->approvedBy);
 
-                if (!$requisition) {
-                    throw new \Exception('Erro ao criar requisição através do service: ' . $requisitionService->getMessage());
+                if (! $requisition) {
+                    throw new \Exception('Erro ao criar requisição através do service: '.$requisitionService->getMessage());
                 }
 
                 // Cria os itens da requisição via RequisitionItemService
                 $itemService = app(RequisitionItemService::class);
                 foreach ($quoteItems as $quoteItem) {
                     $item = $itemService->create([
-                        'requisition_id'    => $requisition->id,
-                        'product_id'        => $quoteItem->product_id,
-                        'unit_of_measure'   => $quoteItem->unit_of_measure,
-                        'quantity'          => $quoteItem->quantity,
-                        'unit_price'        => $quoteItem->unit_price,
+                        'requisition_id' => $requisition->id,
+                        'product_id' => $quoteItem->product_id,
+                        'unit_of_measure' => $quoteItem->unit_of_measure,
+                        'quantity' => $quoteItem->quantity,
+                        'unit_price' => $quoteItem->unit_price,
                         'discount_percentage' => $quoteItem->discount_percentage,
-                        'discount_amount'   => $quoteItem->discount_amount,
-                        'observations'      => $quoteItem->description,
+                        'discount_amount' => $quoteItem->discount_amount,
+                        'observations' => $quoteItem->description,
                     ], $event->approvedBy);
 
-                    if (!$item) {
-                        throw new \Exception('Erro ao criar item da requisição: ' . $itemService->getMessage());
+                    if (! $item) {
+                        throw new \Exception('Erro ao criar item da requisição: '.$itemService->getMessage());
                     }
                 }
 

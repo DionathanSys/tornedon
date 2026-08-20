@@ -27,15 +27,18 @@ class QuoteApprovalAutoCreateOrdersTest extends TestCase
     use RefreshDatabase;
 
     private QuoteService $service;
+
     private User $user;
+
     private Company $company;
+
     private Partner $customer;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->service = new QuoteService();
+        $this->service = new QuoteService;
         $this->user = User::factory()->create();
         $this->company = Company::create([
             'name' => 'Empresa Teste',
@@ -226,5 +229,6 @@ class QuoteApprovalAutoCreateOrdersTest extends TestCase
         $this->assertSame(Condition::DAYS_45, $serviceOrder->payment_condition);
         $this->assertSame(Method::BANK_TRANSFER, $requisition->payment_method);
         $this->assertSame(Condition::DAYS_45, $requisition->payment_condition);
+        $this->assertSame($serviceOrder->id, $requisition->service_order_id);
     }
 }
