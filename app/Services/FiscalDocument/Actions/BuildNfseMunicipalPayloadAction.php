@@ -14,8 +14,7 @@ use Illuminate\Support\Facades\Log;
  * Estrutura: numero, serie, tipo, data_emissao, status, data_competencia,
  * regime_tributacao, incentivo_fiscal, tomador, servico { iss_retido, itens[] }.
  */
-class BuildNfseMunicipalPayloadAction
-    implements NfsePayloadBuilder
+class BuildNfseMunicipalPayloadAction implements NfsePayloadBuilder
 {
     use HandlesActionResponse;
 
@@ -34,11 +33,11 @@ class BuildNfseMunicipalPayloadAction
         try {
             Log::debug('BuildNfseMunicipalPayloadAction: iniciando montagem de payload', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'company_id'         => $fiscalDocument->company_id,
-                'customer_id'        => $fiscalDocument->customer_id,
-                'items_count'        => $fiscalDocument->items->count(),
-                'rps_number'         => $fiscalDocument->rps_number,
-                'rps_series'         => $fiscalDocument->rps_series,
+                'company_id' => $fiscalDocument->company_id,
+                'customer_id' => $fiscalDocument->customer_id,
+                'items_count' => $fiscalDocument->items->count(),
+                'rps_number' => $fiscalDocument->rps_number,
+                'rps_series' => $fiscalDocument->rps_series,
             ]);
 
             $fiscalDocument->loadMissing([
@@ -48,10 +47,10 @@ class BuildNfseMunicipalPayloadAction
                 'fiscalProfile',
             ]);
 
-            $company  = $fiscalDocument->company;
+            $company = $fiscalDocument->company;
             $customer = $fiscalDocument->customer;
-            $address  = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
-            $profile  = $fiscalDocument->fiscalProfile ?? $company->fiscalProfile;
+            $address = $customer?->resolveAddressForCompany($fiscalDocument->company_id);
+            $profile = $fiscalDocument->fiscalProfile ?? $company->fiscalProfile;
 
             $issuedAt = now()->format('Y-m-d\TH:i:sP');
 
@@ -91,6 +90,7 @@ class BuildNfseMunicipalPayloadAction
                     'fiscal_document_id' => $fiscalDocument->id,
                     'customer_id' => $fiscalDocument->customer_id,
                 ]);
+
                 return null;
             }
 
@@ -119,6 +119,7 @@ class BuildNfseMunicipalPayloadAction
                         'customer_id' => $fiscalDocument->customer_id,
                         'field' => $field,
                     ]);
+
                     return null;
                 }
             }
@@ -184,9 +185,9 @@ class BuildNfseMunicipalPayloadAction
                 }
 
                 $itemPayload = [
-                    'codigo'        => $codigoServico,
+                    'codigo' => $codigoServico,
                     'discriminacao' => substr($discriminacao, 0, 2000),
-                    'valor_servicos'=> $valorServicosItem,
+                    'valor_servicos' => $valorServicosItem,
                     'valor_base_calculo' => $valorBaseCalculoItem,
                 ];
 
@@ -195,11 +196,11 @@ class BuildNfseMunicipalPayloadAction
                 }
 
                 Log::debug('Atualizando item NFS-e via RelationManager', [
-                    'metodo'  => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'item_id' => $item->id,
-                    'data'    => $item->additional_information,
+                    'data' => $item->additional_information,
                 ]);
-                
+
                 if (! empty($item->additional_information)) {
                     $itemPayload['informacoes_complementares'] = $item->additional_information;
                 }
@@ -251,9 +252,10 @@ class BuildNfseMunicipalPayloadAction
                 $this->setError($msgErro);
                 Log::warning('BuildNfseMunicipalPayloadAction: validação falhou', [
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'erro'               => $msgErro,
-                    'items_count'        => $fiscalDocument->items->count(),
+                    'erro' => $msgErro,
+                    'items_count' => $fiscalDocument->items->count(),
                 ]);
+
                 return null;
             }
 
@@ -276,22 +278,24 @@ class BuildNfseMunicipalPayloadAction
                 $this->setError($msgErro);
                 Log::warning('BuildNfseMunicipalPayloadAction: código de serviço vazio', [
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'erro'               => $msgErro,
+                    'erro' => $msgErro,
                     'municipal_tax_code_attempts' => array_merge(
                         $fiscalDocument->items->pluck('municipal_tax_code')->filter()->values()->toArray(),
                         $fiscalDocument->items->pluck('service.municipal_tax_code')->filter()->values()->toArray(),
                     ),
                 ]);
+
                 return null;
             }
 
-            if ($codigoNbs === '') {
+            if ($this->requiresNbs() && $codigoNbs === '') {
                 $msgErro = 'NFS-e requer o codigo NBS (cNBS) com 9 digitos.';
                 $this->setError($msgErro);
                 Log::warning('BuildNfseMunicipalPayloadAction: código NBS vazio', [
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'erro'               => $msgErro,
+                    'erro' => $msgErro,
                 ]);
+
                 return null;
             }
 
@@ -299,11 +303,12 @@ class BuildNfseMunicipalPayloadAction
                 $msgErro = 'NFS-e requer valor de servicos maior que zero.';
                 $this->setError($msgErro);
                 Log::warning('BuildNfseMunicipalPayloadAction: valor total zerado', [
-                    'fiscal_document_id'   => $fiscalDocument->id,
-                    'erro'                 => $msgErro,
-                    'valor_total'          => $valorServicosTotal,
-                    'items_count'          => count($itens),
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'erro' => $msgErro,
+                    'valor_total' => $valorServicosTotal,
+                    'items_count' => count($itens),
                 ]);
+
                 return null;
             }
 
@@ -355,27 +360,28 @@ class BuildNfseMunicipalPayloadAction
                     'fiscal_document_id' => $fiscalDocument->id,
                     'rps_series' => $fiscalDocument->rps_series,
                 ]);
+
                 return null;
             }
 
             $payload = [
-                'numero'       => (string) $fiscalDocument->rps_number,
-                'serie'        => $serie,
-                'tipo'         => $fiscalDocument->rps_type ?? '1', // 1 é Recibo provisório de serviços
+                'numero' => (string) $fiscalDocument->rps_number,
+                'serie' => $serie,
+                'tipo' => $fiscalDocument->rps_type ?? '1', // 1 é Recibo provisório de serviços
                 'data_emissao' => $issuedAt,
-                'status'       => '1',
-                'tomador'      => $tomador,
-                'servico'      => $servico,
+                'status' => '1',
+                'tomador' => $tomador,
+                'servico' => $servico,
             ];
 
             // Data de competência (se diferente de emissão)
             if ($fiscalDocument->movement_at && ! $fiscalDocument->movement_at->isSameDay($fiscalDocument->issued_at)) {
                 Log::debug('BuildNfseMunicipalPayloadAction: data de competência diferente da data de emissão, incluindo no payload', [
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'issued_at'          => $fiscalDocument->issued_at->toDateTimeString(),
-                    'movement_at'        => $fiscalDocument->movement_at->toDateTimeString(),
+                    'issued_at' => $fiscalDocument->issued_at->toDateTimeString(),
+                    'movement_at' => $fiscalDocument->movement_at->toDateTimeString(),
                 ]);
-                $payload['data_competencia'] = $fiscalDocument->movement_at->format('Y-m-d') . 'T00:00:00-03:00';
+                $payload['data_competencia'] = $fiscalDocument->movement_at->format('Y-m-d').'T00:00:00-03:00';
             }
 
             // Regime especial de tributação
@@ -395,27 +401,28 @@ class BuildNfseMunicipalPayloadAction
 
             Log::info('BuildNfseMunicipalPayloadAction: payload montado com sucesso', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'rps_number'         => $payload['numero'] ?? null,
-                'items_count'        => count($itens),
-                'valor_total'        => $payload['servico']['valor_servicos'] ?? 0,
-                'codigo_servico'     => $codigoServico,
+                'rps_number' => $payload['numero'] ?? null,
+                'items_count' => count($itens),
+                'valor_total' => $payload['servico']['valor_servicos'] ?? 0,
+                'codigo_servico' => $codigoServico,
             ]);
 
             $this->setSuccess();
+
             return $payload;
 
         } catch (\Exception $e) {
-            $msgErro = 'Erro ao montar payload NFS-e municipal: ' . $e->getMessage();
+            $msgErro = 'Erro ao montar payload NFS-e municipal: '.$e->getMessage();
             $this->setError($msgErro);
 
             Log::error('BuildNfseMunicipalPayloadAction: exceção capturada', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
-                'company_id'         => $fiscalDocument->company_id,
-                'customer_id'        => $fiscalDocument->customer_id,
-                'exception'          => $e->getMessage(),
-                'erro_classe'        => get_class($e),
-                'trace'              => $e->getTraceAsString(),
+                'company_id' => $fiscalDocument->company_id,
+                'customer_id' => $fiscalDocument->customer_id,
+                'exception' => $e->getMessage(),
+                'erro_classe' => get_class($e),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -438,6 +445,11 @@ class BuildNfseMunicipalPayloadAction
         return substr($digits, 0, 5);
     }
 
+    protected function requiresNbs(): bool
+    {
+        return true;
+    }
+
     private function normalizeServiceCode(?string $code): string
     {
         $digits = preg_replace('/\D/', '', (string) $code);
@@ -448,7 +460,8 @@ class BuildNfseMunicipalPayloadAction
 
         // LC 116/2003: formato deve ser XX.XX (2 dígitos.2 dígitos)
         $padded = str_pad(substr($digits, 0, 4), 4, '0', STR_PAD_LEFT);
-        return substr($padded, 0, 2) . '.' . substr($padded, 2, 2);
+
+        return substr($padded, 0, 2).'.'.substr($padded, 2, 2);
     }
 
     private function normalizeNbsCode(?string $code): string

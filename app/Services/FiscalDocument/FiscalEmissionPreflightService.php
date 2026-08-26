@@ -271,8 +271,14 @@ class FiscalEmissionPreflightService
         }
 
         if ($nfseModel === 'municipal') {
-            if (blank($item->iss_exigibility)) {
+            $isPinhalzinhoIpm = $effectiveCity === NfseConfigService::PINHALZINHO_SC_IBGE_CODE;
+
+            if (! $isPinhalzinhoIpm && blank($item->iss_exigibility)) {
                 $errors['items.0.iss_exigibility'][] = 'A exigibilidade do ISS é obrigatória para NFS-e municipal.';
+            }
+
+            if ($isPinhalzinhoIpm) {
+                $this->validatePinhalzinhoIpmConfiguration($document, $errors);
             }
         }
 
@@ -302,6 +308,28 @@ class FiscalEmissionPreflightService
             if ($taxRegime === TaxRegime::SIMPLES_NACIONAL && $specialTaxRegime === '6' && $nationalAssessmentRegime === '') {
                 $errors['fiscal_profile.nfse_nacional_regime_apuracao'][] = 'A NFS-e nacional exige o regime de apuração para emitente Simples Nacional ME/EPP.';
             }
+        }
+    }
+
+    /**
+     * @param  array<int|string,mixed>  $errors
+     */
+    private function validatePinhalzinhoIpmConfiguration(FiscalDocument $document, array &$errors): void
+    {
+        $companyCity = preg_replace('/\D/', '', (string) data_get($document->company?->address, 'city_code'));
+        $config = app(NfseConfigService::class);
+        $companyId = (int) $document->company_id;
+
+        if ($companyCity !== NfseConfigService::PINHALZINHO_SC_IBGE_CODE) {
+            $errors['company.address.city_code'][] = 'A empresa emitente deve ter Pinhalzinho/SC (IBGE 4212908) como município para usar o provedor IPM.';
+        }
+
+        if ($this->resolveEnvironment($document) === NfeConfigService::AMBIENTE_HOMOLOGACAO) {
+            $errors['integranotas.ambiente'][] = 'Pinhalzinho/SC (IPM) não disponibiliza ambiente de homologação na IntegraNotas. Configure produção somente após validação com a prefeitura.';
+        }
+
+        if ($config->resolvePinhalzinhoIpmTaxRegime($companyId) === null) {
+            $errors['integranotas.nfse_ipm_regime_tributacao'][] = 'A situação tributária IPM é obrigatória para NFS-e de Pinhalzinho/SC.';
         }
     }
 

@@ -50,9 +50,33 @@
               "icon": "lucide-file",
               "title": "Sem título 1"
             }
+          },
+          {
+            "id": "aaa33392967aa69b",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.13.7"
+              },
+              "icon": "lucide-book-up",
+              "title": "Notas de Lançamento 1.13.7"
+            }
+          },
+          {
+            "id": "6bf41a3e2104df73",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Excalidraw/Drawing 2026-08-25 17.37.53.excalidraw.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "Drawing 2026-08-25 17.37.53.excalidraw"
+            }
           }
         ],
-        "currentTab": 2
+        "currentTab": 4
       }
     ],
     "direction": "vertical"
@@ -111,7 +135,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -217,8 +242,9 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "d4a9286248e020b0",
+  "active": "6bf41a3e2104df73",
   "lastOpenFiles": [
+    "Excalidraw/Drawing 2026-08-25 17.37.53.excalidraw.md",
     "Sem título 1.md",
     "Sem título.md",
     "Consultoria.md",
@@ -247,7 +273,6 @@
     "Outros/authorization-summary.md",
     "Plan/Estrutura Fiscal.md",
     "Plan/plano_evolucao_fiscal.md",
-    "Plan/Tornar `scenarioCode` uma Chave Operacional do Fluxo Fiscal.md",
     "plano-refatoracao-nfse.pdf",
     "PRANCHA04.pdf",
     "reports/alteracoes-fase-cenarios-fiscais.pdf",

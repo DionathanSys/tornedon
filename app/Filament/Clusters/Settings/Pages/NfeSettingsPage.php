@@ -11,8 +11,8 @@ use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionResult;
 use App\Services\Fiscal\Sefaz\SefazDfeDistributionService;
 use BackedEnum;
-use Filament\Facades\Filament;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
@@ -41,7 +41,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
     // protected static ?string $cluster = SettingsCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
+    protected static string|UnitEnum|null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Integração NF-e';
 
@@ -65,14 +65,15 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
         $companyId = Filament::getTenant()?->id;
 
         $this->form->fill([
-            'token_producao'    => CompanyPreference::get('integranotas.token_producao', $companyId),
+            'token_producao' => CompanyPreference::get('integranotas.token_producao', $companyId),
             'token_homologacao' => CompanyPreference::get('integranotas.token_homologacao', $companyId),
-            'ambiente'          => (string) (CompanyPreference::get('integranotas.ambiente', $companyId) ?? NfeConfigService::AMBIENTE_HOMOLOGACAO),
-            'serie_padrao'      => CompanyPreference::get('integranotas.serie_padrao', $companyId) ?? '1',
-            'nfse_serie_padrao'    => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
-            'nfse_modelo_padrao'   => CompanyPreference::get('integranotas.nfse_modelo_padrao', $companyId) ?? NfseModel::MUNICIPAL->value,
-            'webhook_secret'       => CompanyPreference::get('integranotas.webhook_secret', $companyId),
-            'sefaz_a1_password'    => CompanyPreference::get(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, $companyId),
+            'ambiente' => (string) (CompanyPreference::get('integranotas.ambiente', $companyId) ?? NfeConfigService::AMBIENTE_HOMOLOGACAO),
+            'serie_padrao' => CompanyPreference::get('integranotas.serie_padrao', $companyId) ?? '1',
+            'nfse_serie_padrao' => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
+            'nfse_modelo_padrao' => CompanyPreference::get('integranotas.nfse_modelo_padrao', $companyId) ?? NfseModel::MUNICIPAL->value,
+            'nfse_ipm_regime_tributacao' => CompanyPreference::get('integranotas.nfse_ipm_regime_tributacao', $companyId) ?? '0',
+            'webhook_secret' => CompanyPreference::get('integranotas.webhook_secret', $companyId),
+            'sefaz_a1_password' => CompanyPreference::get(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, $companyId),
         ]);
 
     }
@@ -163,6 +164,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             if (($responseArray['sucesso'] ?? false) !== true || empty($responseArray['notas'])) {
                 $message = (string) ($responseArray['mensagem'] ?? 'A prefeitura não retornou o PDF das notas.');
                 Notification::make()->title('Erro ao consultar documentos')->body($message)->danger()->send();
+
                 return response()->streamDownload(fn () => null, 'notas-prefeitura.pdf');
             }
 
@@ -173,7 +175,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             }, 'notas-prefeitura.pdf', ['Content-Type' => 'application/pdf']);
         } catch (\Throwable $e) {
             Log::error('NfeSettingsPage: erro ao consultar documentos da prefeitura', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'erro' => $e->getMessage(),
                 'tenant' => $companyId,
                 'payload' => $payload,
@@ -181,7 +183,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
             Notification::make()
                 ->title('Erro ao consultar documentos')
-                ->body('Não foi possível consultar os documentos na prefeitura: ' . $e->getMessage())
+                ->body('Não foi possível consultar os documentos na prefeitura: '.$e->getMessage())
                 ->danger()
                 ->send();
 
@@ -252,7 +254,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             }, 'dfe-recebidos.zip', ['Content-Type' => 'application/zip']);
         } catch (\Throwable $e) {
             Log::error('NfeSettingsPage: erro ao consultar DF-e recebidos', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'erro' => $e->getMessage(),
                 'tenant' => $companyId,
                 'payload' => $payload,
@@ -261,7 +263,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
             Notification::make()
                 ->title('Erro ao consultar DF-e recebidos')
-                ->body('Não foi possível consultar os documentos emitidos contra o CNPJ da empresa: ' . $e->getMessage())
+                ->body('Não foi possível consultar os documentos emitidos contra o CNPJ da empresa: '.$e->getMessage())
                 ->danger()
                 ->send();
 
@@ -279,7 +281,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
         $zipPath = "{$tmpFile}.zip";
         @unlink($tmpFile);
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException('Não foi possível criar o arquivo ZIP de retorno.');
         }
@@ -318,7 +320,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                             ->label('Ambiente Ativo')
                             ->options([
                                 (string) NfeConfigService::AMBIENTE_HOMOLOGACAO => 'Homologação (testes)',
-                                (string) NfeConfigService::AMBIENTE_PRODUCAO    => 'Produção',
+                                (string) NfeConfigService::AMBIENTE_PRODUCAO => 'Produção',
                             ])
                             ->native(false)
                             ->required()
@@ -380,6 +382,32 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2])
                     ->collapsible(),
 
+                \Filament\Schemas\Components\Section::make('NFS-e Municipal - Pinhalzinho/SC (IPM)')
+                    ->description('A IntegraNotas injeta as credenciais municipais cadastradas no emitente. Configure aqui somente a situação tributária. A cidade não disponibiliza homologação.')
+                    ->icon('heroicon-o-building-library')
+                    ->schema([
+                        Forms\Components\Select::make('nfse_ipm_regime_tributacao')
+                            ->label('Situação tributária IPM')
+                            ->options([
+                                '0' => '0 - Tributada integralmente',
+                                '1' => '1 - Tributada integralmente com ISSRF',
+                                '2' => '2 - Tributada com substituição tributária',
+                                '3' => '3 - Tributada com redução de base',
+                                '4' => '4 - Redução de base com ISSRF',
+                                '5' => '5 - Redução de base com substituição tributária',
+                                '6' => '6 - Isenta',
+                                '7' => '7 - Imune',
+                                '8' => '8 - Não tributada',
+                                '9' => '9 - Não tributada',
+                                '10' => '10 - Não tributada',
+                                '15' => '15 - Não tributada',
+                            ])
+                            ->native(false)
+                            ->required()
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible(),
+
                 \Filament\Schemas\Components\Section::make('Consulta DF-e via SEFAZ')
                     ->description('Configurações usadas exclusivamente para consultar NF-e recebidas diretamente no Ambiente Nacional.')
                     ->icon('heroicon-o-shield-check')
@@ -421,13 +449,14 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public function save(): void
     {
-        $data      = $this->form->getState();
+        $data = $this->form->getState();
         $companyId = Filament::getTenant()?->id;
 
         CompanyPreference::set('integranotas.ambiente', (int) $data['ambiente'], $companyId);
         CompanyPreference::set('integranotas.serie_padrao', $data['serie_padrao'], $companyId);
         CompanyPreference::set('integranotas.nfse_serie_padrao', $data['nfse_serie_padrao'], $companyId);
         CompanyPreference::set('integranotas.nfse_modelo_padrao', $data['nfse_modelo_padrao'], $companyId);
+        CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', $data['nfse_ipm_regime_tributacao'] ?? '0', $companyId);
 
         if (! empty($data['token_homologacao'])) {
             CompanyPreference::set('integranotas.token_homologacao', $data['token_homologacao'], $companyId);

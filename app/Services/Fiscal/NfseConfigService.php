@@ -4,7 +4,6 @@ namespace App\Services\Fiscal;
 
 use App\Enum\FiscalDocument\NfseModel;
 use App\Models\CompanyPreference;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Resolve as configurações da API IntegraNotas para NFS-e por empresa.
@@ -14,11 +13,16 @@ use Illuminate\Support\Facades\Log;
  */
 class NfseConfigService
 {
+    public const PINHALZINHO_SC_IBGE_CODE = '4212908';
+
     public const API_VERSION_V1 = 1;
+
     public const API_VERSION_V2 = 2;
 
     public const OPERATION_CREATE = 'create';
+
     public const OPERATION_PREVIEW = 'preview';
+
     public const OPERATION_SUBSTITUTE = 'substitute';
 
     public function __construct(
@@ -62,6 +66,22 @@ class NfseConfigService
     public function resolveWebhookSecret(int $companyId): ?string
     {
         return $this->nfeConfig->resolveWebhookSecret($companyId);
+    }
+
+    public function resolvePinhalzinhoIpmTaxRegime(int $companyId): ?string
+    {
+        $value = $this->resolvePreferenceString('integranotas.nfse_ipm_regime_tributacao', $companyId);
+
+        return in_array($value, ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '15'], true)
+            ? $value
+            : null;
+    }
+
+    private function resolvePreferenceString(string $key, int $companyId): string
+    {
+        $value = CompanyPreference::get($key, $companyId, '');
+
+        return trim((string) (is_array($value) ? ($value['value'] ?? '') : $value));
     }
 
     /**

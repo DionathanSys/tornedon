@@ -8,12 +8,15 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\Address;
 use App\Models\Company;
 use App\Models\CompanyPartner;
+use App\Models\CompanyPreference;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\FiscalProfile;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\BuildNfsePayloadAction;
+use App\Services\FiscalDocument\Actions\BuildNfsePinhalzinhoIpmPayloadAction;
+use App\Services\FiscalDocument\FiscalEmissionPreflightService;
 use App\Services\FiscalDocument\Resolvers\NfsePayloadBuilderResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -33,7 +36,7 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertNotNull($builder);
         $this->assertSame('nacional:default', $builder->identifier());
         $this->assertNotNull($payload);
-        $this->assertSame('01.01', data_get($payload, 'servico.codigo'));
+        $this->assertSame('010100', data_get($payload, 'servico.codigo'));
         $this->assertSame('123456789', data_get($payload, 'servico.codigo_nbs'));
     }
 
@@ -51,6 +54,70 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertNotNull($payload);
         $this->assertSame(100.0, (float) data_get($payload, 'servico.valor_servicos'));
         $this->assertSame('01.01', data_get($payload, 'servico.codigo'));
+    }
+
+    public function test_it_resolves_the_ipm_builder_for_pinhalzinho_without_nbs_or_iss_exigibility(): void
+    {
+        $document = $this->createDocument(NfseModel::MUNICIPAL);
+        $company = $document->company;
+        $company->update([
+            'address' => ['city' => 'Pinhalzinho', 'state' => 'SC', 'city_code' => '4212908'],
+        ]);
+        FiscalProfile::query()->where('company_id', $company->id)->update(['default_service_city_code' => '4212908']);
+        $document->items->first()->update([
+            'nbs_code' => null,
+            'iss_exigibility' => null,
+        ]);
+
+        CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', '0', $company->id);
+
+        $document = $document->fresh('items', 'company', 'customer', 'fiscalProfile');
+        $resolver = app(NfsePayloadBuilderResolver::class);
+        $builder = $resolver->resolve($document);
+        $payload = app(BuildNfsePayloadAction::class)->execute($document);
+
+        $this->assertSame('municipal:4212908', $resolver->resolveKey($document));
+        $this->assertInstanceOf(BuildNfsePinhalzinhoIpmPayloadAction::class, $builder);
+        $this->assertNotNull($payload);
+        $this->assertSame('0', $payload['regime_tributacao']);
+        $this->assertArrayNotHasKey('login_prefeitura', $payload);
+        $this->assertArrayNotHasKey('senha_prefeitura', $payload);
+        $this->assertSame('4212908', data_get($payload, 'servico.codigo_municipio'));
+        $this->assertArrayNotHasKey('codigo_nbs', data_get($payload, 'servico'));
+        $this->assertArrayNotHasKey('exigibilidade_iss', data_get($payload, 'servico.itens.0'));
+    }
+
+    public function test_it_keeps_the_national_builder_when_the_company_is_in_pinhalzinho(): void
+    {
+        $document = $this->createDocument(NfseModel::NACIONAL);
+        $document->company->update([
+            'address' => ['city' => 'Pinhalzinho', 'state' => 'SC', 'city_code' => '4212908'],
+        ]);
+        FiscalProfile::query()->where('company_id', $document->company_id)->update(['default_service_city_code' => '4212908']);
+        $document = $document->fresh('items', 'company', 'customer', 'fiscalProfile');
+
+        $resolver = app(NfsePayloadBuilderResolver::class);
+        $builder = $resolver->resolve($document);
+
+        $this->assertSame('nacional:default', $resolver->resolveKey($document));
+        $this->assertSame('nacional:default', $builder->identifier());
+    }
+
+    public function test_it_blocks_pinhalzinho_emission_in_homologation(): void
+    {
+        $document = $this->createDocument(NfseModel::MUNICIPAL);
+        $company = $document->company;
+        $company->update([
+            'address' => ['city' => 'Pinhalzinho', 'state' => 'SC', 'city_code' => '4212908'],
+        ]);
+        FiscalProfile::query()->where('company_id', $company->id)->update(['default_service_city_code' => '4212908']);
+        CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', '0', $company->id);
+
+        $preflight = app(FiscalEmissionPreflightService::class);
+        $result = $preflight->validateForQueue($document->fresh('items', 'company', 'customer', 'fiscalProfile'));
+
+        $this->assertNull($result);
+        $this->assertArrayHasKey('integranotas.ambiente', $preflight->getErrors());
     }
 
     private function createDocument(NfseModel $model): FiscalDocument
