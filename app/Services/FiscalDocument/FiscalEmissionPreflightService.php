@@ -217,8 +217,8 @@ class FiscalEmissionPreflightService
         $profile = $document->fiscalProfile ?? $document->company?->fiscalProfile;
         $effectiveCity = app(NfseEmissionCityResolver::class)->resolve($document);
 
-        if ($effectiveCity === null && ! is_string(config('nfse_builders.municipal:default'))) {
-            $errors['service_city_code'][] = 'A cidade efetiva de emissão da NFS-e não pôde ser resolvida.';
+        if ($nfseModel === 'municipal' && $effectiveCity === null) {
+            $errors['service_city_code'][] = 'Configure a cidade/provedor municipal da NFS-e ou o código IBGE da empresa para emitir a NFS-e municipal.';
         }
 
         $items = $document->items;
