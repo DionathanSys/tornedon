@@ -17,6 +17,7 @@ use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class SefazDistributionDocumentsTable
 {
@@ -126,6 +127,12 @@ class SefazDistributionDocumentsTable
                     ->options(collect(ManifestationStatus::cases())->mapWithKeys(fn (ManifestationStatus $status) => [
                         $status->value => $status->description(),
                     ])->all()),
+                DateRangeFilter::make('issued_at')
+                    ->label('Data de Emissão')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->icon('heroicon-o-x-mark')
+                    ->alwaysShowCalendar(),
                 Filter::make('ready_to_import')
                     ->label('Prontos para importar')
                     ->query(fn ($query) => $query->where('import_status', ImportStatus::READY_TO_IMPORT->value)),

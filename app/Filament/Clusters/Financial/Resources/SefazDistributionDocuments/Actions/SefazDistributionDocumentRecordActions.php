@@ -16,6 +16,7 @@ final class SefazDistributionDocumentRecordActions
             ImportDocumentAction::make(),
             DownloadXmlAction::make(),
             ViewXmlAction::make(),
+            ViewDanfeAction::make(),
             RetryManifestationAction::make(),
             RetryRefreshAction::make(),
             RetryImportAction::make(),

@@ -15,6 +15,7 @@
         "laravel/tinker": "^2.10.1",
         "leandrocfe/filament-ptbr-form-fields": "4.0",
         "malzariey/filament-daterangepicker-filter": "^5.0",
+        "nfephp-org/sped-da": "^1.1",
         "opcodesio/log-viewer": "^3.21",
         "predis/predis": "^3.4",
         "resend/resend-laravel": "^1.3",
