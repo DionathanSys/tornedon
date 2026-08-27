@@ -5,6 +5,7 @@ namespace App\Services\Fiscal\Sefaz;
 use App\Models\SefazDistributionDocument;
 use DOMDocument;
 use DOMXPath;
+use Illuminate\Support\Facades\Log;
 use NFePHP\DA\NFe\Danfe;
 
 class SefazDistributionDanfeService
@@ -32,6 +33,14 @@ class SefazDistributionDanfeService
         try {
             return (new Danfe($xml))->render();
         } catch (\Throwable $exception) {
+            Log::error('SefazDistributionDanfeService: falha ao gerar DANFE', [
+                'distribution_document_id' => $distributionDocument->id,
+                'company_id' => $distributionDocument->company_id,
+                'document_key' => $distributionDocument->document_key,
+                'full_xml_path' => $distributionDocument->full_xml_path,
+                'exception' => $exception,
+            ]);
+
             throw new \RuntimeException('Não foi possível gerar o DANFE a partir do XML armazenado.', previous: $exception);
         }
     }
