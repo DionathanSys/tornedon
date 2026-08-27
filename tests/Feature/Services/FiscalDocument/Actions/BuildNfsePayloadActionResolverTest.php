@@ -63,7 +63,9 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $document->items->first()->update([
             'nbs_code' => null,
             'iss_exigibility' => null,
+            'iss_rate' => null,
         ]);
+        FiscalProfile::query()->where('company_id', $company->id)->update(['iss_rate_default' => null]);
 
         CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', '0', $company->id);
         CompanyPreference::set('integranotas.nfse_municipal_city_code', '4212908', $company->id);
@@ -80,6 +82,7 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertArrayNotHasKey('login_prefeitura', $payload);
         $this->assertArrayNotHasKey('senha_prefeitura', $payload);
         $this->assertSame('4212908', data_get($payload, 'servico.codigo_municipio'));
+        $this->assertSame(0, data_get($payload, 'servico.itens.0.valor_aliquota'));
         $this->assertArrayNotHasKey('codigo_nbs', data_get($payload, 'servico'));
         $this->assertArrayNotHasKey('exigibilidade_iss', data_get($payload, 'servico.itens.0'));
     }

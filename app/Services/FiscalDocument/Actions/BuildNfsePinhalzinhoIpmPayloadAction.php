@@ -40,6 +40,9 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
 
         foreach ($payload['servico']['itens'] as &$item) {
             unset($item['codigo_nbs'], $item['codigo_cnae'], $item['exigibilidade_iss'], $item['valor_iss']);
+
+            // O IPM exige a tag mesmo quando a alíquota aplicável é zero.
+            $item['valor_aliquota'] = $item['valor_aliquota'] ?? 0;
         }
         unset($item);
 
