@@ -4,6 +4,7 @@ namespace App\Services\FiscalDocument;
 
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Domain\DTO\Fiscal\FiscalEmissionPreflightResult;
+use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\Tax\TaxRegime;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
@@ -203,7 +204,7 @@ class FiscalEmissionPreflightService
      */
     private function validateNfseDocument(FiscalDocument $document, array &$errors): void
     {
-        $nfseModel = $document->nfse_model instanceof \App\Enum\FiscalDocument\NfseModel
+        $nfseModel = $document->nfse_model instanceof NfseModel
             ? $document->nfse_model->value
             : trim((string) ($document->nfse_model ?? ''));
 
@@ -316,13 +317,8 @@ class FiscalEmissionPreflightService
      */
     private function validatePinhalzinhoIpmConfiguration(FiscalDocument $document, array &$errors): void
     {
-        $companyCity = preg_replace('/\D/', '', (string) data_get($document->company?->address, 'city_code'));
         $config = app(NfseConfigService::class);
         $companyId = (int) $document->company_id;
-
-        if ($companyCity !== NfseConfigService::PINHALZINHO_SC_IBGE_CODE) {
-            $errors['company.address.city_code'][] = 'A empresa emitente deve ter Pinhalzinho/SC (IBGE 4212908) como município para usar o provedor IPM.';
-        }
 
         if ($this->resolveEnvironment($document) === NfeConfigService::AMBIENTE_HOMOLOGACAO) {
             $errors['integranotas.ambiente'][] = 'Pinhalzinho/SC (IPM) não disponibiliza ambiente de homologação na IntegraNotas. Configure produção somente após validação com a prefeitura.';

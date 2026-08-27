@@ -60,16 +60,13 @@ class BuildNfsePayloadActionResolverTest extends TestCase
     {
         $document = $this->createDocument(NfseModel::MUNICIPAL);
         $company = $document->company;
-        $company->update([
-            'address' => ['city' => 'Pinhalzinho', 'state' => 'SC', 'city_code' => '4212908'],
-        ]);
-        FiscalProfile::query()->where('company_id', $company->id)->update(['default_service_city_code' => '4212908']);
         $document->items->first()->update([
             'nbs_code' => null,
             'iss_exigibility' => null,
         ]);
 
         CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', '0', $company->id);
+        CompanyPreference::set('integranotas.nfse_municipal_city_code', '4212908', $company->id);
 
         $document = $document->fresh('items', 'company', 'customer', 'fiscalProfile');
         $resolver = app(NfsePayloadBuilderResolver::class);

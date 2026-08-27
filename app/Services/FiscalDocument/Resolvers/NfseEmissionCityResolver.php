@@ -2,6 +2,7 @@
 
 namespace App\Services\FiscalDocument\Resolvers;
 
+use App\Models\CompanyPreference;
 use App\Models\FiscalDocument;
 use Illuminate\Support\Arr;
 
@@ -13,6 +14,15 @@ class NfseEmissionCityResolver
 
         if ($override !== null) {
             return $override;
+        }
+
+        $configuredCity = $this->normalizeCityCode(CompanyPreference::get(
+            'integranotas.nfse_municipal_city_code',
+            (int) $document->company_id,
+        ));
+
+        if ($configuredCity !== null) {
+            return $configuredCity;
         }
 
         $profile = $document->fiscalProfile ?? $document->company?->fiscalProfile;

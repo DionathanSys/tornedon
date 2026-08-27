@@ -43,6 +43,7 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
         }
         unset($item);
 
+        $payload['servico']['codigo_municipio'] = NfseConfigService::PINHALZINHO_SC_IBGE_CODE;
         $payload['regime_tributacao'] = $taxRegime;
 
         return $payload;

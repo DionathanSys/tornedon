@@ -6,17 +6,20 @@ use App\Enum\FiscalDocument\NfseModel;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\CompanyPreference;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\Fiscal\NfseConfigService;
 use App\Services\Fiscal\Sefaz\CompanySefazCertificateService;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionResult;
 use App\Services\Fiscal\Sefaz\SefazDfeDistributionService;
 use BackedEnum;
+use CloudDfe\SdkPHP\Nfse;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
@@ -71,6 +74,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
             'serie_padrao' => CompanyPreference::get('integranotas.serie_padrao', $companyId) ?? '1',
             'nfse_serie_padrao' => CompanyPreference::get('integranotas.nfse_serie_padrao', $companyId) ?? '1',
             'nfse_modelo_padrao' => CompanyPreference::get('integranotas.nfse_modelo_padrao', $companyId) ?? NfseModel::MUNICIPAL->value,
+            'nfse_municipal_city_code' => CompanyPreference::get('integranotas.nfse_municipal_city_code', $companyId),
             'nfse_ipm_regime_tributacao' => CompanyPreference::get('integranotas.nfse_ipm_regime_tributacao', $companyId) ?? '0',
             'webhook_secret' => CompanyPreference::get('integranotas.webhook_secret', $companyId),
             'sefaz_a1_password' => CompanyPreference::get(CompanySefazCertificateService::PASSWORD_PREFERENCE_KEY, $companyId),
@@ -156,8 +160,8 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
         ];
 
         try {
-            $configService = app(\App\Services\Fiscal\NfseConfigService::class);
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($companyId));
+            $configService = app(NfseConfigService::class);
+            $sdk = new Nfse($configService->buildSdkParams($companyId));
             $response = $sdk->localiza($payload);
             $responseArray = json_decode(json_encode($response), true) ?? [];
 
@@ -312,7 +316,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
     {
         return $schema
             ->schema([
-                \Filament\Schemas\Components\Section::make('Ambiente')
+                Section::make('Ambiente')
                     ->description('Define se a empresa está operando em homologação ou produção.')
                     ->icon('heroicon-o-server')
                     ->schema([
@@ -359,7 +363,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 4])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Tokens de Acesso')
+                Section::make('Tokens de Acesso')
                     ->description('Tokens JWT fornecidos pela IntegraNotas para cada ambiente. Obtenha em gestao.integranotas.com.br (produção) ou hom-gestao.integranotas.com.br (homologação).')
                     ->icon('heroicon-o-key')
                     ->schema([
@@ -382,10 +386,18 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('NFS-e Municipal - Pinhalzinho/SC (IPM)')
+                Section::make('NFS-e Municipal - Pinhalzinho/SC (IPM)')
                     ->description('A IntegraNotas injeta as credenciais municipais cadastradas no emitente. Configure aqui somente a situação tributária. A cidade não disponibiliza homologação.')
                     ->icon('heroicon-o-building-library')
                     ->schema([
+                        Forms\Components\Select::make('nfse_municipal_city_code')
+                            ->label('Cidade/provedor municipal')
+                            ->options([
+                                '4212908' => 'Pinhalzinho/SC - IPM',
+                            ])
+                            ->native(false)
+                            ->helperText('Seleciona o layout municipal. Para Pinhalzinho, a emissão usa a API v1 da IntegraNotas.')
+                            ->columnSpanFull(),
                         Forms\Components\Select::make('nfse_ipm_regime_tributacao')
                             ->label('Situação tributária IPM')
                             ->options([
@@ -408,7 +420,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                     ])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Consulta DF-e via SEFAZ')
+                Section::make('Consulta DF-e via SEFAZ')
                     ->description('Configurações usadas exclusivamente para consultar NF-e recebidas diretamente no Ambiente Nacional.')
                     ->icon('heroicon-o-shield-check')
                     ->schema([
@@ -423,7 +435,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
                     ->columns(['md' => 2])
                     ->collapsible(),
 
-                \Filament\Schemas\Components\Section::make('Webhook')
+                Section::make('Webhook')
                     ->description('A IntegraNotas enviará notificações ao endpoint POST /webhook/nfe após processar cada NF-e.')
                     ->icon('heroicon-o-arrow-path')
                     ->schema([
@@ -456,6 +468,7 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
         CompanyPreference::set('integranotas.serie_padrao', $data['serie_padrao'], $companyId);
         CompanyPreference::set('integranotas.nfse_serie_padrao', $data['nfse_serie_padrao'], $companyId);
         CompanyPreference::set('integranotas.nfse_modelo_padrao', $data['nfse_modelo_padrao'], $companyId);
+        CompanyPreference::set('integranotas.nfse_municipal_city_code', $data['nfse_municipal_city_code'] ?? '', $companyId);
         CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', $data['nfse_ipm_regime_tributacao'] ?? '0', $companyId);
 
         if (! empty($data['token_homologacao'])) {

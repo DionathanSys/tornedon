@@ -127,6 +127,7 @@ class SendNfseAction
                 'serie' => $serie,
                 'modelo' => $fiscalDocument->nfse_model,
                 'ambiente' => $ambiente,
+                'api_version' => $sdkParams['version'] ?? null,
                 'items_count' => $fiscalDocument->items->count(),
                 'valor_total' => $payload['servico']['valor_servicos'] ?? 0,
                 'scenario_code' => $scenarioCode,
