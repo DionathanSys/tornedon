@@ -2,13 +2,17 @@
 
 namespace App\Services\FiscalDocument\Actions;
 
+use App\Domain\DTO\Fiscal\ScenarioContext;
 use App\Enum\Audit\AuditSource;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Models\FiscalDocument;
 use App\Models\NfseSequence;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Fiscal\IntegranotasRateLimiter;
 use App\Services\Fiscal\NfseConfigService;
+use App\Services\FiscalDocument\Resolvers\NfseEmissionCityResolver;
 use App\Traits\HandlesActionResponse;
+use CloudDfe\SdkPHP\Nfse;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -34,7 +38,7 @@ class SendNfseAction
         FiscalDocument $fiscalDocument,
         ?string $serie = null,
         ?string $scenarioCode = null,
-        ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null
+        ?ScenarioContext $scenarioContext = null
     ): bool {
         $apiCallStarted = false;
         $reservedNow = false;
@@ -105,10 +109,17 @@ class SendNfseAction
             // ------------------------------------------------------------------
             $companyId = (int) $fiscalDocument->company_id;
             $ambiente = $configService->resolveAmbiente($companyId);
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams(
+            $sdkParams = $configService->buildSdkParams(
                 $companyId,
                 NfseConfigService::OPERATION_CREATE,
-            ));
+            );
+
+            // IPM de Pinhalzinho mantém o layout municipal v1 com servico.itens[].
+            if (app(NfseEmissionCityResolver::class)->resolve($fiscalDocument) === NfseConfigService::PINHALZINHO_SC_IBGE_CODE) {
+                $sdkParams['version'] = NfseConfigService::API_VERSION_V1;
+            }
+
+            $sdk = new Nfse($sdkParams);
 
             Log::info('SendNfseAction: enviando para API IntegraNotas', [
                 'fiscal_document_id' => $fiscalDocument->id,
@@ -122,7 +133,7 @@ class SendNfseAction
             ]);
 
             $apiCallStarted = true;
-            $resp = app(\App\Services\Fiscal\IntegranotasRateLimiter::class)->run(
+            $resp = app(IntegranotasRateLimiter::class)->run(
                 token: $configService->resolveToken($companyId),
                 bucket: 'default',
                 key: null,

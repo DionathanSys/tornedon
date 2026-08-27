@@ -5,7 +5,9 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Models\FiscalDocument;
 use App\Models\NfseSequence;
 use App\Services\Fiscal\NfseConfigService;
+use App\Services\FiscalDocument\Resolvers\NfseEmissionCityResolver;
 use App\Traits\HandlesActionResponse;
+use CloudDfe\SdkPHP\Nfse;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,16 +27,16 @@ class PrintNfsePreviewAction
 
             Log::debug('PrintNfsePreviewAction: gerando preview de NFS-e', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'rps_number'         => $fiscalDocument->rps_number,
-                'rps_series'         => $fiscalDocument->rps_series,
-                'nfse_model'         => $fiscalDocument->nfse_model,
+                'rps_number' => $fiscalDocument->rps_number,
+                'rps_series' => $fiscalDocument->rps_series,
+                'nfse_model' => $fiscalDocument->nfse_model,
             ]);
 
             // Se o documento ainda não tem RPS reservado, usa peek para
             // mostrar no preview o próximo número real sem consumir a sequência.
             if (empty($previewDocument->rps_number) || (int) $previewDocument->rps_number < 1) {
                 $configService = app(NfseConfigService::class);
-                $serie          = $previewDocument->rps_series
+                $serie = $previewDocument->rps_series
                                   ?? $configService->resolveSerie($previewDocument->company_id);
 
                 $previewNumber = NfseSequence::peekNextNumber(
@@ -43,30 +45,37 @@ class PrintNfsePreviewAction
                 );
 
                 // Atribui temporariamente em uma copia do model para nao contaminar o registro persistido.
-                $previewDocument->rps_number  = (string) $previewNumber;
-                $previewDocument->rps_series  = $serie;
+                $previewDocument->rps_number = (string) $previewNumber;
+                $previewDocument->rps_series = $serie;
             }
 
             // Monta o payload igual ao de envio real
-            $buildAction = new BuildNfsePayloadAction();
-            $payload     = $buildAction->execute($previewDocument);
+            $buildAction = new BuildNfsePayloadAction;
+            $payload = $buildAction->execute($previewDocument);
 
             if ($payload === null) {
                 $this->setError($buildAction->getMessage());
+
                 return null;
             }
 
             unset($payload['servico']['valor_recebido']);
 
             $configService = app(NfseConfigService::class);
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams(
+            $sdkParams = $configService->buildSdkParams(
                 $fiscalDocument->company_id,
                 NfseConfigService::OPERATION_PREVIEW,
-            ));
+            );
+
+            if (app(NfseEmissionCityResolver::class)->resolve($previewDocument) === NfseConfigService::PINHALZINHO_SC_IBGE_CODE) {
+                $sdkParams['version'] = NfseConfigService::API_VERSION_V1;
+            }
+
+            $sdk = new Nfse($sdkParams);
 
             Log::debug('PrintNfsePreviewAction: enviando payload para geração do preview', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'payload'            => $payload,
+                'payload' => $payload,
             ]);
 
             $resp = $sdk->preview($payload);
@@ -76,10 +85,11 @@ class PrintNfsePreviewAction
                 $this->setError($msgErro, (array) ($resp->erros ?? []));
                 Log::warning('PrintNfsePreviewAction: falha na geração do preview', [
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'codigo'             => $resp->codigo ?? null,
-                    'mensagem'           => $msgErro,
-                    'resp'               => $resp,
+                    'codigo' => $resp->codigo ?? null,
+                    'mensagem' => $msgErro,
+                    'resp' => $resp,
                 ]);
+
                 return null;
             }
 
@@ -88,8 +98,8 @@ class PrintNfsePreviewAction
 
                 Log::warning('PrintNfsePreviewAction: preview sem PDF na resposta', [
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'codigo'             => $resp->codigo ?? null,
-                    'resp'               => $resp,
+                    'codigo' => $resp->codigo ?? null,
+                    'resp' => $resp,
                 ]);
 
                 return null;
@@ -97,8 +107,8 @@ class PrintNfsePreviewAction
 
             Log::info('PrintNfsePreviewAction: preview gerado com sucesso', [
                 'fiscal_document_id' => $fiscalDocument->id,
-                'rps_number'         => $previewDocument->rps_number,
-                'pdf_gerado'         => ! empty($resp->pdf ?? null),
+                'rps_number' => $previewDocument->rps_number,
+                'pdf_gerado' => ! empty($resp->pdf ?? null),
             ]);
 
             $this->setSuccess();
@@ -108,16 +118,16 @@ class PrintNfsePreviewAction
             ];
 
         } catch (\Exception $e) {
-            $msgErro = 'Erro ao gerar preview da NFS-e: ' . $e->getMessage();
+            $msgErro = 'Erro ao gerar preview da NFS-e: '.$e->getMessage();
             $this->setError($msgErro);
 
             Log::error('PrintNfsePreviewAction: exceção capturada', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
-                'company_id'         => $fiscalDocument->company_id,
-                'exception'          => $e->getMessage(),
-                'erro_classe'        => get_class($e),
-                'trace'              => $e->getTraceAsString(),
+                'company_id' => $fiscalDocument->company_id,
+                'exception' => $e->getMessage(),
+                'erro_classe' => get_class($e),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
