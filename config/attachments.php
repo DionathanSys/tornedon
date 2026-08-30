@@ -45,7 +45,7 @@ return [
             'allowed_mimes' => ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
             'max_size' => 20480, // 20MB
         ],
-        
+
         AttachmentType::GENERIC->value => [
             'mode' => 'multiple',
             'allowed_mimes' => [], // All

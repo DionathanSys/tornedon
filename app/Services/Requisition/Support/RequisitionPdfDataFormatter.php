@@ -59,12 +59,12 @@ class RequisitionPdfDataFormatter
 
         if ($requisition->payment_method || $requisition->payment_condition) {
             $paymentMode = ($requisition->payment_method?->description() ?? 'N/A')
-                . ' - '
-                . ($requisition->payment_condition?->description() ?? 'N/A');
+                .' - '
+                .($requisition->payment_condition?->description() ?? 'N/A');
         }
 
         return [
-            'title' => '#' . $requisition->number,
+            'title' => '#'.$requisition->number,
             'status' => $requisition->status?->description() ?? '-',
             'sale_date' => $this->formatDate($requisition->sale_date),
             'header_lines' => $headerLines,
@@ -87,7 +87,7 @@ class RequisitionPdfDataFormatter
 
     private function formatMoney($value): string
     {
-        return 'R$ ' . number_format((float) $value, 2, ',', '.');
+        return 'R$ '.number_format((float) $value, 2, ',', '.');
     }
 
     private function formatQuantity($value): string
@@ -101,7 +101,7 @@ class RequisitionPdfDataFormatter
             return null;
         }
 
-        $logoDisk = Storage::disk('public');
+        $logoDisk = Storage::disk(config('uploads.logo_disk'));
 
         if (! $logoDisk->exists($requisition->company->logo_path)) {
             return null;
@@ -109,7 +109,7 @@ class RequisitionPdfDataFormatter
 
         $logoMime = $logoDisk->mimeType($requisition->company->logo_path) ?: 'image/png';
 
-        return 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($requisition->company->logo_path));
+        return 'data:'.$logoMime.';base64,'.base64_encode((string) $logoDisk->get($requisition->company->logo_path));
     }
 
     /**

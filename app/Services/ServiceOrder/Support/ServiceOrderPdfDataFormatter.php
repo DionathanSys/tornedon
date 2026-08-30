@@ -229,7 +229,7 @@ class ServiceOrderPdfDataFormatter
             return null;
         }
 
-        $logoDisk = Storage::disk('public');
+        $logoDisk = Storage::disk(config('uploads.logo_disk'));
 
         if (! $logoDisk->exists($serviceOrder->company->logo_path)) {
             return null;

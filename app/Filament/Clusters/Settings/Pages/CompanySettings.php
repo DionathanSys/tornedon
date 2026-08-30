@@ -28,7 +28,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
 
     // protected static ?string $cluster = SettingsCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Configurações';
+    protected static string|UnitEnum|null $navigationGroup = 'Configurações';
 
     protected static ?string $navigationLabel = 'Identidade da Empresa';
 
@@ -45,16 +45,17 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
 
         if (! $company) {
             $this->form->fill([]);
+
             return;
         }
 
         $this->form->fill([
-            'name'             => $company->name,
-            'email'            => $company->email,
-            'phone'            => $company->phone,
-            'document_number'  => $company->document_number,
-            'logo_path'        => $company->logo_path ? [$company->logo_path] : [],
-            'certificate'      => $company->certificate ? [$company->certificate] : [],
+            'name' => $company->name,
+            'email' => $company->email,
+            'phone' => $company->phone,
+            'document_number' => $company->document_number,
+            'logo_path' => $company->logo_path ? [$company->logo_path] : [],
+            'certificate' => $company->certificate ? [$company->certificate] : [],
         ]);
     }
 
@@ -69,10 +70,11 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                         Forms\Components\FileUpload::make('logo_path')
                             ->label('Logo')
                             ->image()
-                            ->disk('public')
-                            ->directory(fn() => 'logos/' . (Filament::getTenant()?->id ?? 'tmp'))
+                            ->disk(config('uploads.logo_disk'))
+                            ->visibility('private')
+                            ->directory(fn () => 'logos/'.(Filament::getTenant()?->id ?? 'tmp'))
                             ->getUploadedFileNameForStorageUsing(
-                                fn(TemporaryUploadedFile $file): string => 'logo_' . now()->format('YmdHis') . '.' . $file->getClientOriginalExtension()
+                                fn (TemporaryUploadedFile $file): string => 'logo_'.now()->format('YmdHis').'.'.$file->getClientOriginalExtension()
                             )
                             ->imagePreviewHeight('80')
                             ->maxSize(2048)
@@ -112,7 +114,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                         Forms\Components\FileUpload::make('certificate')
                             ->label('Certificado A1')
                             ->disk('local')
-                            ->directory(fn () => 'certificates/' . (Filament::getTenant()?->id ?? 'tmp'))
+                            ->directory(fn () => 'certificates/'.(Filament::getTenant()?->id ?? 'tmp'))
                             ->acceptedFileTypes([
                                 'application/x-pkcs12',
                                 'application/x-pkcs7-certificates',
@@ -123,7 +125,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                             ->openable()
                             ->previewable(false)
                             ->getUploadedFileNameForStorageUsing(
-                                fn (TemporaryUploadedFile $file): string => 'certificate_' . now()->format('YmdHis') . '.' . strtolower($file->getClientOriginalExtension() ?: 'pfx')
+                                fn (TemporaryUploadedFile $file): string => 'certificate_'.now()->format('YmdHis').'.'.strtolower($file->getClientOriginalExtension() ?: 'pfx')
                             )
                             ->helperText('Envie um arquivo .pfx ou .p12. A senha do certificado é configurada na tela "Configurações NF-e".')
                             ->columnSpanFull()
@@ -145,6 +147,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                 ->body('Empresa não identificada.')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -182,11 +185,11 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
             }
 
             $company->update([
-                'name'            => $data['name'],
-                'email'           => $data['email'] ?? null,
-                'phone'           => $data['phone'] ?? null,
+                'name' => $data['name'],
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
                 'document_number' => $documentNumber,
-                'updated_by'      => Auth::id(),
+                'updated_by' => Auth::id(),
             ]);
 
             Log::info('CompanySettings: configuracoes da empresa salvas com sucesso', [
@@ -211,7 +214,7 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
 
             Notification::make()
                 ->title('Erro ao salvar')
-                ->body('Ocorreu um erro: ' . $e->getMessage())
+                ->body('Ocorreu um erro: '.$e->getMessage())
                 ->danger()
                 ->send();
         }

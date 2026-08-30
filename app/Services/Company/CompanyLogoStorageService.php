@@ -15,7 +15,7 @@ class CompanyLogoStorageService
             return;
         }
 
-        $disk = Storage::disk('public');
+        $disk = Storage::disk(config('uploads.logo_disk'));
 
         if (filled($currentLogoPath) && $currentLogoPath !== $logoPath && $disk->exists($currentLogoPath)) {
             $disk->delete($currentLogoPath);

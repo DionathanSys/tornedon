@@ -17,7 +17,7 @@ class InvoicePdfDataFormatter
             ['label' => 'Cliente', 'value' => $invoice->customer?->name ?? '-'],
         ];
 
-        $paymentMode = ($invoice->payment_method?->description() ?? 'N/A') . ' - ' . ($invoice->payment_condition?->description() ?? 'N/A');
+        $paymentMode = ($invoice->payment_method?->description() ?? 'N/A').' - '.($invoice->payment_condition?->description() ?? 'N/A');
 
         $summaryLines = collect([
             $invoice->discount_amount > 0
@@ -49,10 +49,10 @@ class InvoicePdfDataFormatter
 
         $serviceOrders = $invoice->serviceOrders->map(function ($serviceOrder) {
             return [
-                'number' => '#' . $serviceOrder->number,
+                'number' => '#'.$serviceOrder->number,
                 'status' => $serviceOrder->status?->description() ?? '-',
                 'items' => $serviceOrder->items->map(function ($item) {
-                    return ($item->service?->name ?? '-') . ' (' . $this->formatQuantity($item->quantity) . ')';
+                    return ($item->service?->name ?? '-').' ('.$this->formatQuantity($item->quantity).')';
                 })->all(),
                 'total' => $this->formatMoney($serviceOrder->total_amount),
             ];
@@ -60,10 +60,10 @@ class InvoicePdfDataFormatter
 
         $requisitions = $invoice->requisitions->map(function ($requisition) {
             return [
-                'number' => '#' . $requisition->number,
+                'number' => '#'.$requisition->number,
                 'status' => $requisition->status?->description() ?? '-',
                 'items' => $requisition->items->map(function ($item) {
-                    return ($item->product?->name ?? '-') . ' (' . $this->formatQuantity($item->quantity) . ')';
+                    return ($item->product?->name ?? '-').' ('.$this->formatQuantity($item->quantity).')';
                 })->all(),
                 'total' => $this->formatMoney($requisition->total_amount),
             ];
@@ -78,17 +78,17 @@ class InvoicePdfDataFormatter
             });
 
             return [
-                'number' => '#' . $productionOrder->production_order_number,
+                'number' => '#'.$productionOrder->production_order_number,
                 'status' => $productionOrder->status?->description() ?? '-',
                 'items' => $productionOrder->items->map(function ($item) {
-                    return ($item->product?->name ?? '-') . ' (' . $this->formatQuantity($item->quantity) . ')';
+                    return ($item->product?->name ?? '-').' ('.$this->formatQuantity($item->quantity).')';
                 })->all(),
                 'total' => $this->formatMoney($lineTotal),
             ];
         })->all();
 
         return [
-            'title' => 'Fatura #' . $invoice->invoice_number,
+            'title' => 'Fatura #'.$invoice->invoice_number,
             'status' => $invoice->status?->description() ?? '-',
             'invoice_date' => $this->formatDate($invoice->invoice_date),
             'header_lines' => $headerLines,
@@ -114,7 +114,7 @@ class InvoicePdfDataFormatter
 
     private function formatMoney($value): string
     {
-        return 'R$ ' . number_format((float) $value, 2, ',', '.');
+        return 'R$ '.number_format((float) $value, 2, ',', '.');
     }
 
     private function formatQuantity($value): string
@@ -128,7 +128,7 @@ class InvoicePdfDataFormatter
             return '-';
         }
 
-        return '#' . str_pad((string) $value, 5, '0', STR_PAD_LEFT);
+        return '#'.str_pad((string) $value, 5, '0', STR_PAD_LEFT);
     }
 
     private function resolveCompanyLogo(Invoice $invoice): ?string
@@ -137,7 +137,7 @@ class InvoicePdfDataFormatter
             return null;
         }
 
-        $logoDisk = Storage::disk('public');
+        $logoDisk = Storage::disk(config('uploads.logo_disk'));
 
         if (! $logoDisk->exists($invoice->company->logo_path)) {
             return null;
@@ -145,6 +145,6 @@ class InvoicePdfDataFormatter
 
         $logoMime = $logoDisk->mimeType($invoice->company->logo_path) ?: 'image/png';
 
-        return 'data:' . $logoMime . ';base64,' . base64_encode((string) $logoDisk->get($invoice->company->logo_path));
+        return 'data:'.$logoMime.';base64,'.base64_encode((string) $logoDisk->get($invoice->company->logo_path));
     }
 }

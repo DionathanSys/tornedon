@@ -60,7 +60,7 @@ class QuotePdfDataFormatter
             return null;
         }
 
-        $disk = Storage::disk('public');
+        $disk = Storage::disk(config('uploads.logo_disk'));
 
         if (! $disk->exists($quote->company->logo_path)) {
             return null;
