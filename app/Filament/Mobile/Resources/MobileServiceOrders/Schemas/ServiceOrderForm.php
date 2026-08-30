@@ -5,20 +5,20 @@ namespace App\Filament\Mobile\Resources\MobileServiceOrders\Schemas;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ServiceOrder\Priority;
-use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
-use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CaptureServiceOrderSignatureAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
+use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
-use App\Services\Payment\CustomerPaymentDefaultsResolver;
-use App\Support\ServiceOrderTravelData;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Partner\PartnerService;
+use App\Services\Payment\CustomerPaymentDefaultsResolver;
+use App\Support\ServiceOrderTravelData;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -29,6 +29,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire as ComponentsLivewire;
@@ -38,7 +39,6 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
@@ -87,11 +87,11 @@ class ServiceOrderForm
                                             })
                                             ->disabledOn('edit')
                                             ->getSearchResultsUsing(
-                                                fn(string $search): array => (new PartnerService())
+                                                fn (string $search): array => (new PartnerService)
                                                     ->searchForSelect($search, Filament::getTenant()->id, 'customer')
                                             )
                                             ->getOptionLabelUsing(
-                                                fn($value): ?string => (new PartnerService())
+                                                fn ($value): ?string => (new PartnerService)
                                                     ->getLabelForSelect((int) $value, ['document_number' => false])
                                             ),
                                         Select::make('equipment_id')
@@ -99,26 +99,26 @@ class ServiceOrderForm
                                             ->columnSpanFull()
                                             ->searchable()
                                             ->visibleOn('edit')
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
+                                            ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
                                             ->getSearchResultsUsing(
-                                                fn(string $search, Get $get): array => (new EquipmentService())
+                                                fn (string $search, Get $get): array => (new EquipmentService)
                                                     ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'))
                                             )
                                             ->getOptionLabelUsing(
-                                                fn($value): ?string => (new EquipmentService())
+                                                fn ($value): ?string => (new EquipmentService)
                                                     ->getLabelForSelect((int) $value, ['document_number' => false, 'owner'])
                                             )
-                                            ->disabled(fn($get) => ! $get('customer_id')),
+                                            ->disabled(fn ($get) => ! $get('customer_id')),
                                         DatePicker::make('order_date')
                                             ->label('Data da Ordem')
-                                            ->columnSpan(fn($operation) => $operation === 'create' ? 1 : ['md' => 2, 'lg' => 2])
+                                            ->columnSpan(fn ($operation) => $operation === 'create' ? 1 : ['md' => 2, 'lg' => 2])
                                             ->required()
                                             ->default(now())
                                             ->displayFormat('d/m/Y')
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                            ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         Section::make('Outras Informações')
                                             ->columnSpanFull()
-                                            ->contained(false) //fn($operation) => $operation !== 'edit')
+                                            ->contained(false) // fn($operation) => $operation !== 'edit')
                                             ->collapsible()
                                             ->visibleOn('edit')
                                             ->collapsed()
@@ -146,26 +146,26 @@ class ServiceOrderForm
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->visibleOn('edit')
                                                     ->displayFormat('d/m/Y')
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                                    ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('limit_date')
                                                     ->label('Data Limite')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->displayFormat('d/m/Y')
                                                     ->visible(false)
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                                    ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('warranty_expires_at')
                                                     ->label('Garantia Válida Até')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->visibleOn('edit')
                                                     ->displayFormat('d/m/Y')
-                                                    ->default(fn() => CompanyPreference::get('default_warranty_days'))
-                                                    ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                                    ->default(fn () => CompanyPreference::get('default_warranty_days'))
+                                                    ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                                 DatePicker::make('completion_date')
                                                     ->label('Data de Conclusão')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
                                                     ->displayFormat('d/m/Y')
                                                     ->visibleOn('edit')
-                                                    ->disabled(fn($record) => ! $record?->state()?->canEdit()),
+                                                    ->disabled(fn ($record) => ! $record?->state()?->canEdit()),
                                             ]),
                                     ]),
                                 Section::make('Atendimento')
@@ -178,24 +178,24 @@ class ServiceOrderForm
                                             ->label('Técnico')
                                             ->columnSpanFull()
                                             ->required(false)
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                            ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('follow_up_responsible_name')
                                             ->label('Representante do cliente')
                                             ->columnSpanFull()
                                             ->maxLength(255)
                                             ->autocomplete(false)
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                            ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                         TextInput::make('location')
                                             ->label('Local do Atendimento')
                                             ->columnSpanFull()
                                             ->maxLength(255)
                                             ->autocomplete(false)
-                                            ->default(fn() => Filament::getTenant()->service_provision_location)
-                                            ->formatStateUsing(fn($state) => $state ?? Filament::getTenant()->service_provision_location)
+                                            ->default(fn () => Filament::getTenant()->service_provision_location)
+                                            ->formatStateUsing(fn ($state) => $state ?? Filament::getTenant()->service_provision_location)
                                             ->helperText('Cidade - UF')
-                                            ->disabled(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                            ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                                     ]),
-                                ComponentsLivewire::make(ItemsRelationManager::class, fn(ServiceOrder $record) => [
+                                ComponentsLivewire::make(ItemsRelationManager::class, fn (ServiceOrder $record) => [
                                     'ownerRecord' => $record,
                                     'pageClass' => EditMobileServiceOrder::class,
                                 ])
@@ -222,7 +222,7 @@ class ServiceOrderForm
                                         TextInput::make('technician_observations')
                                             ->label('Observações do Técnico')
                                             ->columnSpanFull()
-                                            ->datalist(fn() => [
+                                            ->datalist(fn () => [
                                                 'Checar disponibilidade de peças',
                                                 'Entrar em contato com o cliente para alinhamento',
                                                 'Agendar visita técnica',
@@ -252,22 +252,22 @@ class ServiceOrderForm
                                             ->label('Valor do KM')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
+                                            ->afterStateUpdated(fn ($state, Set $set, Get $get) => $set(
                                                 'travel_value',
                                                 ServiceOrderTravelData::format(
                                                     ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
                                                 )
                                             ))
-                                            ->default(fn() => CompanyPreference::get('default_value_km', default: 3.5))
-                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format(
+                                            ->default(fn () => CompanyPreference::get('default_value_km', default: 3.5))
+                                            ->formatStateUsing(fn ($state) => ServiceOrderTravelData::format(
                                                 filled($state) ? $state : CompanyPreference::get('default_value_km', default: 3.5)
                                             ))
-                                            ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
+                                            ->dehydrateStateUsing(fn ($state) => ServiceOrderTravelData::normalize($state)),
                                         Money::make('distance_km')
                                             ->label('Distância em KM')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(fn($state, Set $set, Get $get) => $set(
+                                            ->afterStateUpdated(fn ($state, Set $set, Get $get) => $set(
                                                 'travel_value',
                                                 ServiceOrderTravelData::format(
                                                     ServiceOrderTravelData::calculate($get('value_km'), $get('distance_km'))
@@ -276,16 +276,16 @@ class ServiceOrderForm
                                             ->suffix('km')
                                             ->prefix(null)
                                             ->default(0)
-                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format($state))
-                                            ->dehydrateStateUsing(fn($state) => ServiceOrderTravelData::normalize($state)),
+                                            ->formatStateUsing(fn ($state) => ServiceOrderTravelData::format($state))
+                                            ->dehydrateStateUsing(fn ($state) => ServiceOrderTravelData::normalize($state)),
                                         Money::make('travel_value')
                                             ->label('Valor de Deslocamento')
                                             ->columnSpan(['md' => 2, 'lg' => 4])
                                             ->disabled()
                                             ->dehydrated()
                                             ->default(0)
-                                            ->formatStateUsing(fn($state) => ServiceOrderTravelData::format($state))
-                                            ->dehydrateStateUsing(fn($state, Get $get) => ServiceOrderTravelData::calculate(
+                                            ->formatStateUsing(fn ($state) => ServiceOrderTravelData::format($state))
+                                            ->dehydrateStateUsing(fn ($state, Get $get) => ServiceOrderTravelData::calculate(
                                                 $get('value_km'),
                                                 $get('distance_km')
                                             )),
@@ -298,7 +298,7 @@ class ServiceOrderForm
                                     ->options(PaymentMethod::toSelectArray())
                                     ->native(false)
                                     ->searchable()
-                                    ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                    ->default(fn () => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
                                         Filament::getTenant()->id,
                                         null,
                                     )['payment_method']),
@@ -308,13 +308,13 @@ class ServiceOrderForm
                                     ->options(PaymentCondition::toGroupedSelectArray())
                                     ->native(false)
                                     ->searchable()
-                                    ->default(fn() => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
+                                    ->default(fn () => app(CustomerPaymentDefaultsResolver::class)->defaultsForCustomer(
                                         Filament::getTenant()->id,
                                         null,
                                     )['payment_condition']),
                                 DiscountAmountField::make('service_order')
                                     ->saved(false)
-                                    ->visible(fn($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
+                                    ->visible(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false),
                             ]),
                         Tab::make('Aprovação')
                             ->icon(Heroicon::CheckCircle)
@@ -357,6 +357,7 @@ class ServiceOrderForm
                                     ->contained(false)
                                     ->footerActionsAlignment(Alignment::End)
                                     ->footerActions([
+                                        CaptureServiceOrderSignatureAction::make(),
                                         Action::make('saveSignature')
                                             ->label('Salvar assinatura')
                                             ->icon(Heroicon::Bookmark)
@@ -399,7 +400,7 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->contained(false)
                                     ->schema([
-                                        ComponentsLivewire::make(AttachmentsRelationManager::class, fn(ServiceOrder $record) => [
+                                        ComponentsLivewire::make(AttachmentsRelationManager::class, fn (ServiceOrder $record) => [
                                             'ownerRecord' => $record,
                                             'pageClass' => EditMobileServiceOrder::class,
                                         ])
@@ -434,8 +435,8 @@ class ServiceOrderForm
                                                     ? (filled($observation) ? "{$label}: {$observation}" : $label)
                                                     : ($observation ?: 'Informação adicional');
                                             })
-                                            ->formatStateUsing(fn($state) => static::normalizeAdditionalInfoState($state))
-                                            ->dehydrateStateUsing(fn($state) => static::normalizeAdditionalInfoState($state))
+                                            ->formatStateUsing(fn ($state) => static::normalizeAdditionalInfoState($state))
+                                            ->dehydrateStateUsing(fn ($state) => static::normalizeAdditionalInfoState($state))
                                             ->columns(['md' => 4, 'lg' => 12])
                                             ->schema([
                                                 TextInput::make('type')
@@ -446,7 +447,7 @@ class ServiceOrderForm
                                                         'Rolamento de roda com folga',
                                                         'Embuchamento do eixo com folga',
                                                         'Mola dianteira substituída',
-                                                        'Pneus com desgaste irregular'
+                                                        'Pneus com desgaste irregular',
                                                     ])
                                                     ->required(),
                                                 TextInput::make('observation')
@@ -475,11 +476,11 @@ class ServiceOrderForm
 
         if ($isAssoc) {
             return collect($state)
-                ->map(fn($value, $key) => [
+                ->map(fn ($value, $key) => [
                     'type' => filled($key) ? (string) $key : null,
                     'observation' => is_scalar($value) ? (string) $value : null,
                 ])
-                ->filter(fn(array $item) => filled($item['type']) || filled($item['observation']))
+                ->filter(fn (array $item) => filled($item['type']) || filled($item['observation']))
                 ->values()
                 ->all();
         }
@@ -499,7 +500,7 @@ class ServiceOrderForm
                         : null,
                 ];
             })
-            ->filter(fn(array $item) => filled($item['type']) || filled($item['observation']))
+            ->filter(fn (array $item) => filled($item['type']) || filled($item['observation']))
             ->values()
             ->all();
     }

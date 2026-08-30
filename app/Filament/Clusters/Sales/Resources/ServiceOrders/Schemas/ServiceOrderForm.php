@@ -10,6 +10,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentReso
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CaptureServiceOrderSignatureAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ProductsRelationManager;
@@ -359,6 +360,7 @@ class ServiceOrderForm
                                     ->contained(false)
                                     ->footerActionsAlignment(Alignment::End)
                                     ->footerActions([
+                                        CaptureServiceOrderSignatureAction::make(),
                                         Action::make('saveSignature')
                                             ->label('Salvar assinatura')
                                             ->icon(Heroicon::Bookmark)
@@ -517,9 +519,9 @@ class ServiceOrderForm
         }
 
         if (filled($document->document_key)) {
-            return 'Chave ' . $document->document_key;
+            return 'Chave '.$document->document_key;
         }
 
-        return 'Documento #' . $document->id;
+        return 'Documento #'.$document->id;
     }
 }

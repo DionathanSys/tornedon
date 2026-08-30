@@ -15,39 +15,25 @@
     >
         <div
             class="rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20"
-            x-show="!isExpanded"
         >
             <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-950 dark:text-white">Assinatura do cliente</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        <span x-show="!isExpanded">Em telas com toque, o cliente pode assinar com o dedo. Em desktop, a assinatura também pode ser feita com o mouse ou caneta.</span>
-                        <span x-show="isExpanded">Gire o dispositivo para paisagem para aproveitar toda a área de assinatura.</span>
+                        Em telas com toque, o cliente pode assinar com o dedo. Em desktop, a assinatura também pode ser feita com o mouse ou caneta.
                     </p>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <span
-                        class="inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[11px] font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
-                        x-text="isTouchDevice ? 'Modo toque detectado' : 'Modo mouse/caneta'"
-                    ></span>
-                    <button
-                        type="button"
-                        class="fi-btn fi-btn-size-sm rounded-lg border border-primary-600 px-3 py-2 text-sm font-medium text-primary-700 transition hover:bg-primary-50 dark:border-primary-400 dark:text-primary-300 dark:hover:bg-primary-500/10"
-                        x-on:click="openFullscreen()"
-                    >
-                        Assinar em tela cheia
-                    </button>
-                </div>
+                <span
+                    class="inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[11px] font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
+                    x-text="isTouchDevice ? 'Modo toque detectado' : 'Modo mouse/caneta'"
+                ></span>
             </div>
 
             <div class="mb-2 inline-flex items-center rounded-full border border-sky-400 bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-900 shadow-sm dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-200">
                 Assine dentro da caixa abaixo
             </div>
 
-            <div
-                class="flex min-h-0"
-            >
             <div
                 class="rounded-2xl border-2 border-sky-300 bg-sky-100 p-2 shadow-[0_0_0_4px_rgba(14,165,233,0.10)] transition duration-200 dark:border-sky-500/40 dark:bg-sky-950/20"
                 :class="isDrawing ? 'shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : ''"
@@ -56,7 +42,7 @@
                     <canvas
                         x-ref="canvas"
                         class="block w-full cursor-crosshair touch-none bg-white dark:bg-slate-950"
-                        :style="canvasStyle()"
+                        :style="`height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`"
                         x-on:pointerdown="supportsPointerEvents && start($event)"
                         x-on:pointermove="supportsPointerEvents && move($event)"
                         x-on:pointerup.window="supportsPointerEvents && end($event)"
@@ -71,7 +57,6 @@
                         x-on:touchcancel.window="!supportsPointerEvents && end($event)"
                     ></canvas>
                 </div>
-            </div>
             </div>
 
             <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
@@ -94,62 +79,6 @@
             </div>
         </div>
 
-        <dialog
-            x-ref="signatureDialog"
-            x-on:cancel.prevent="closeFullscreen()"
-            x-on:close="handleDialogClose()"
-            class="fixed inset-0 m-0 flex h-dvh max-h-none w-dvw max-w-none flex-col bg-slate-950 p-4 text-white backdrop:bg-slate-950/70 sm:p-6"
-        >
-            <div class="flex h-full flex-col">
-                <div class="mb-4 flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-base font-semibold">Assinatura do cliente</p>
-                        <p class="text-sm text-slate-300">Gire o dispositivo para paisagem para aproveitar toda a area de assinatura.</p>
-                    </div>
-                    <button
-                        type="button"
-                        class="fi-btn fi-btn-size-sm rounded-lg border border-slate-400 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-                        x-on:click="closeFullscreen()"
-                    >
-                        Concluir
-                    </button>
-                </div>
-
-                <div class="flex min-h-0 flex-1 rounded-2xl border-2 border-sky-400 bg-sky-100 p-3 shadow-[0_0_0_4px_rgba(14,165,233,0.20)]">
-                    <div class="flex min-h-0 flex-1 overflow-hidden rounded-xl border-4 border-sky-500 bg-white shadow-inner">
-                        <canvas
-                            x-ref="modalCanvas"
-                            class="min-h-0 flex-1 cursor-crosshair touch-none bg-white"
-                            :style="canvasStyle()"
-                            x-on:pointerdown="supportsPointerEvents && start($event)"
-                            x-on:pointermove="supportsPointerEvents && move($event)"
-                            x-on:pointerup.window="supportsPointerEvents && end($event)"
-                            x-on:pointercancel.window="supportsPointerEvents && end($event)"
-                            x-on:mousedown="!supportsPointerEvents && start($event)"
-                            x-on:mousemove="!supportsPointerEvents && move($event)"
-                            x-on:mouseup.window="!supportsPointerEvents && end($event)"
-                            x-on:mouseleave="!supportsPointerEvents && end($event)"
-                            x-on:touchstart.prevent="!supportsPointerEvents && start($event)"
-                            x-on:touchmove.prevent="!supportsPointerEvents && move($event)"
-                            x-on:touchend.window="!supportsPointerEvents && end($event)"
-                            x-on:touchcancel.window="!supportsPointerEvents && end($event)"
-                        ></canvas>
-                    </div>
-                </div>
-
-                <div class="mt-4 flex items-center justify-between gap-3">
-                    <span class="text-sm text-slate-300" x-text="isTouchDevice ? 'Assine com o dedo ou caneta.' : 'Assine com o mouse ou caneta.'"></span>
-                    <button
-                        type="button"
-                        class="fi-btn fi-btn-size-sm rounded-lg border border-slate-400 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                        x-on:click="clear()"
-                        x-bind:disabled="disabled || !hasSignature"
-                    >
-                        Limpar assinatura
-                    </button>
-                </div>
-            </div>
-        </dialog>
     </div>
 </x-dynamic-component>
 
@@ -164,7 +93,6 @@
                 hasSignature: false,
                 isTouchDevice: false,
                 supportsPointerEvents: false,
-                isExpanded: false,
                 activePointerId: null,
                 ctx: null,
                 resizeObserver: null,
@@ -173,7 +101,6 @@
                 canvasHeight: null,
                 drawingScale: 1,
                 pointerSequence: 0,
-                viewportResizeHandler: null,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
                     this.supportsPointerEvents = 'PointerEvent' in window;
@@ -199,57 +126,10 @@
                             this.resizeObserver.observe(this.$root);
                         }
 
-                        this.viewportResizeHandler = () => this.resetCanvasAfterLayout();
-                        window.addEventListener('resize', this.viewportResizeHandler);
-                        window.visualViewport?.addEventListener('resize', this.viewportResizeHandler);
-                    });
-                },
-                destroy() {
-                    this.resizeObserver?.disconnect();
-                    window.removeEventListener('resize', this.viewportResizeHandler);
-                    window.visualViewport?.removeEventListener('resize', this.viewportResizeHandler);
-                },
-                canvasStyle() {
-                    const height = this.isExpanded ? '100%' : this.height;
-
-                    return `height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`;
-                },
-                canvas() {
-                    return this.isExpanded ? this.$refs.modalCanvas : this.$refs.canvas;
-                },
-                openFullscreen() {
-                    const snapshot = this.hasSignature ? this.canvas().toDataURL('image/png') : this.state;
-
-                    this.isExpanded = true;
-                    this.$nextTick(() => {
-                        this.$refs.signatureDialog.showModal();
-                        this.resetCanvasAfterLayout(snapshot);
-                    });
-                },
-                closeFullscreen() {
-                    const snapshot = this.hasSignature ? this.canvas().toDataURL('image/png') : this.state;
-
-                    this.$refs.signatureDialog.close();
-                    this.isExpanded = false;
-                    this.resetCanvasAfterLayout(snapshot);
-                },
-                handleDialogClose() {
-                    if (!this.isExpanded) {
-                        return;
-                    }
-
-                    this.isExpanded = false;
-                    this.resetCanvasAfterLayout();
-                },
-                resetCanvasAfterLayout(snapshot = undefined) {
-                    snapshot ??= this.hasSignature ? this.canvas()?.toDataURL('image/png') : this.state;
-
-                    window.requestAnimationFrame(() => {
-                        this.resetCanvas(snapshot);
                     });
                 },
                 ensureCanvasReady() {
-                    const canvas = this.canvas();
+                    const canvas = this.$refs.canvas;
                     const rect = canvas.getBoundingClientRect();
                     const width = rect.width;
                     const height = rect.height;
@@ -265,7 +145,7 @@
                     this.setupCanvas(width, height);
                 },
                 resetCanvas(snapshot = null) {
-                    const canvas = this.canvas();
+                    const canvas = this.$refs.canvas;
                     const rect = canvas.getBoundingClientRect();
                     const width = rect.width;
                     const height = rect.height;
@@ -279,7 +159,7 @@
                     this.setupCanvas(width, height, snapshot);
                 },
                 setupCanvas(width, height, snapshotOverride = undefined) {
-                    const canvas = this.canvas();
+                    const canvas = this.$refs.canvas;
                     const ratio = Math.max(window.devicePixelRatio || 1, 1);
                     const pixelWidth = Math.max(Math.floor(width * ratio), 1);
                     const pixelHeight = Math.max(Math.floor(height * ratio), 1);
@@ -294,7 +174,7 @@
 
                     const snapshot = snapshotOverride !== undefined
                         ? snapshotOverride
-                        : (this.hasSignature ? this.canvas().toDataURL('image/png') : null);
+                        : (this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null);
 
                     canvas.width = pixelWidth;
                     canvas.height = pixelHeight;
@@ -315,7 +195,7 @@
                     }
                 },
                 coordinates(event) {
-                    const canvas = this.canvas();
+                    const canvas = this.$refs.canvas;
                     const rect = canvas.getBoundingClientRect();
                     const point = this.resolvePoint(event);
                     const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
@@ -375,7 +255,7 @@
                     const point = this.coordinates(event);
 
                     if (event.pointerId !== undefined) {
-                        this.canvas().setPointerCapture?.(event.pointerId);
+                        this.$refs.canvas.setPointerCapture?.(event.pointerId);
                     }
 
                     this.ctx.beginPath();
@@ -406,7 +286,7 @@
                     }
 
                     if (event?.pointerId !== undefined) {
-                        this.canvas().releasePointerCapture?.(event.pointerId);
+                        this.$refs.canvas.releasePointerCapture?.(event.pointerId);
                     }
 
                     this.isDrawing = false;
@@ -428,7 +308,7 @@
                     this.resetCanvas(null);
                 },
                 syncState() {
-                    this.lastSerializedState = this.hasSignature ? this.canvas().toDataURL('image/png') : null;
+                    this.lastSerializedState = this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null;
                     this.state = this.lastSerializedState;
                 },
                 restoreImage(source) {
@@ -439,7 +319,7 @@
                     const image = new Image();
 
                     image.onload = () => {
-                        const canvas = this.canvas();
+                        const canvas = this.$refs.canvas;
 
                         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
                         this.ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -452,7 +332,7 @@
                     this.ensureCanvasReady();
 
                     if (!this.state) {
-                        const canvas = this.canvas();
+                        const canvas = this.$refs.canvas;
 
                         this.ctx?.clearRect(0, 0, canvas.width, canvas.height);
                         this.hasSignature = false;
