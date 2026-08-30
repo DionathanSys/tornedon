@@ -12,7 +12,6 @@
         })"
         x-init="init()"
         class="space-y-3"
-        x-on:keydown.escape.window="isExpanded && closeFullscreen()"
     >
         <div
             class="rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20"
@@ -95,12 +94,13 @@
             </div>
         </div>
 
-        <template x-teleport="body">
-            <div
-                x-cloak
-                x-show="isExpanded"
-                class="fixed inset-0 z-[9999] flex flex-col bg-slate-950 p-4 text-white sm:p-6"
-            >
+        <dialog
+            x-ref="signatureDialog"
+            x-on:cancel.prevent="closeFullscreen()"
+            x-on:close="handleDialogClose()"
+            class="fixed inset-0 m-0 flex h-dvh max-h-none w-dvw max-w-none flex-col bg-slate-950 p-4 text-white backdrop:bg-slate-950/70 sm:p-6"
+        >
+            <div class="flex h-full flex-col">
                 <div class="mb-4 flex items-center justify-between gap-4">
                     <div>
                         <p class="text-base font-semibold">Assinatura do cliente</p>
@@ -149,7 +149,7 @@
                     </button>
                 </div>
             </div>
-        </template>
+        </dialog>
     </div>
 </x-dynamic-component>
 
@@ -221,13 +221,25 @@
                     const snapshot = this.hasSignature ? this.canvas().toDataURL('image/png') : this.state;
 
                     this.isExpanded = true;
-                    this.resetCanvasAfterLayout(snapshot);
+                    this.$nextTick(() => {
+                        this.$refs.signatureDialog.showModal();
+                        this.resetCanvasAfterLayout(snapshot);
+                    });
                 },
                 closeFullscreen() {
                     const snapshot = this.hasSignature ? this.canvas().toDataURL('image/png') : this.state;
 
+                    this.$refs.signatureDialog.close();
                     this.isExpanded = false;
                     this.resetCanvasAfterLayout(snapshot);
+                },
+                handleDialogClose() {
+                    if (!this.isExpanded) {
+                        return;
+                    }
+
+                    this.isExpanded = false;
+                    this.resetCanvasAfterLayout();
                 },
                 resetCanvasAfterLayout(snapshot = undefined) {
                     snapshot ??= this.hasSignature ? this.canvas()?.toDataURL('image/png') : this.state;
