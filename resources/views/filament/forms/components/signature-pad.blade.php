@@ -12,20 +12,34 @@
         })"
         x-init="init()"
         class="space-y-3"
+        x-on:keydown.escape.window="isExpanded && closeFullscreen()"
     >
-        <div class="rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20">
+        <div
+            class="rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20"
+            :class="isExpanded ? 'fixed inset-0 z-[100] flex flex-col overflow-hidden rounded-none border-0 p-4 sm:p-6' : ''"
+        >
             <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <!-- <div>
+                <div>
                     <p class="text-sm font-medium text-gray-950 dark:text-white">Assinatura do cliente</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        Em telas com toque, o cliente pode assinar com o dedo. Em desktop, a assinatura também pode ser feita com o mouse ou caneta.
+                        <span x-show="!isExpanded">Em telas com toque, o cliente pode assinar com o dedo. Em desktop, a assinatura também pode ser feita com o mouse ou caneta.</span>
+                        <span x-show="isExpanded">Gire o dispositivo para paisagem para aproveitar toda a área de assinatura.</span>
                     </p>
-                </div> -->
+                </div>
 
-                <span
-                    class="inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[11px] font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
-                    x-text="isTouchDevice ? 'Modo toque detectado' : 'Modo mouse/caneta'"
-                ></span>
+                <div class="flex items-center gap-2">
+                    <span
+                        class="inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[11px] font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
+                        x-text="isTouchDevice ? 'Modo toque detectado' : 'Modo mouse/caneta'"
+                    ></span>
+                    <button
+                        type="button"
+                        class="fi-btn fi-btn-size-sm rounded-lg border border-primary-600 px-3 py-2 text-sm font-medium text-primary-700 transition hover:bg-primary-50 dark:border-primary-400 dark:text-primary-300 dark:hover:bg-primary-500/10"
+                        x-on:click="isExpanded ? closeFullscreen() : openFullscreen()"
+                    >
+                        <span x-text="isExpanded ? 'Concluir' : 'Assinar em tela cheia'"></span>
+                    </button>
+                </div>
             </div>
 
             <div class="mb-2 inline-flex items-center rounded-full border border-sky-400 bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-900 shadow-sm dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-200">
@@ -33,14 +47,19 @@
             </div>
 
             <div
-                class="rounded-2xl border-2 border-sky-300 bg-sky-100 p-2 shadow-[0_0_0_4px_rgba(14,165,233,0.10)] transition duration-200 dark:border-sky-500/40 dark:bg-sky-950/20"
-                :class="isDrawing ? 'shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : ''"
+                class="flex min-h-0"
+                :class="isExpanded ? 'flex-1' : ''"
             >
-                <div class="overflow-hidden rounded-xl border-4 border-sky-600 bg-white shadow-inner dark:border-sky-400 dark:bg-slate-950">
+            <div
+                class="rounded-2xl border-2 border-sky-300 bg-sky-100 p-2 shadow-[0_0_0_4px_rgba(14,165,233,0.10)] transition duration-200 dark:border-sky-500/40 dark:bg-sky-950/20"
+                :class="[isExpanded ? 'flex w-full min-h-0 flex-1' : '', isDrawing ? 'shadow-[0_0_0_8px_rgba(14,165,233,0.24)]' : '']"
+            >
+                <div class="overflow-hidden rounded-xl border-4 border-sky-600 bg-white shadow-inner dark:border-sky-400 dark:bg-slate-950" :class="isExpanded ? 'flex min-h-0 flex-1' : ''">
                     <canvas
                         x-ref="canvas"
                         class="block w-full cursor-crosshair touch-none bg-white dark:bg-slate-950"
-                        :style="`height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`"
+                        :class="isExpanded ? 'min-h-0 flex-1' : ''"
+                        :style="canvasStyle()"
                         x-on:pointerdown="supportsPointerEvents && start($event)"
                         x-on:pointermove="supportsPointerEvents && move($event)"
                         x-on:pointerup.window="supportsPointerEvents && end($event)"
@@ -55,6 +74,7 @@
                         x-on:touchcancel.window="!supportsPointerEvents && end($event)"
                     ></canvas>
                 </div>
+            </div>
             </div>
 
             <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
@@ -90,6 +110,7 @@
                 hasSignature: false,
                 isTouchDevice: false,
                 supportsPointerEvents: false,
+                isExpanded: false,
                 activePointerId: null,
                 ctx: null,
                 resizeObserver: null,
@@ -98,6 +119,7 @@
                 canvasHeight: null,
                 drawingScale: 1,
                 pointerSequence: 0,
+                viewportResizeHandler: null,
                 init() {
                     this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || (navigator.maxTouchPoints ?? 0) > 0;
                     this.supportsPointerEvents = 'PointerEvent' in window;
@@ -122,6 +144,35 @@
 
                             this.resizeObserver.observe(this.$root);
                         }
+
+                        this.viewportResizeHandler = () => this.resetCanvasAfterLayout();
+                        window.addEventListener('resize', this.viewportResizeHandler);
+                        window.visualViewport?.addEventListener('resize', this.viewportResizeHandler);
+                    });
+                },
+                destroy() {
+                    this.resizeObserver?.disconnect();
+                    window.removeEventListener('resize', this.viewportResizeHandler);
+                    window.visualViewport?.removeEventListener('resize', this.viewportResizeHandler);
+                },
+                canvasStyle() {
+                    const height = this.isExpanded ? '100%' : this.height;
+
+                    return `height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`;
+                },
+                openFullscreen() {
+                    this.isExpanded = true;
+                    this.resetCanvasAfterLayout();
+                },
+                closeFullscreen() {
+                    this.isExpanded = false;
+                    this.resetCanvasAfterLayout();
+                },
+                resetCanvasAfterLayout() {
+                    const snapshot = this.hasSignature ? this.$refs.canvas.toDataURL('image/png') : null;
+
+                    window.requestAnimationFrame(() => {
+                        this.resetCanvas(snapshot);
                     });
                 },
                 ensureCanvasReady() {
