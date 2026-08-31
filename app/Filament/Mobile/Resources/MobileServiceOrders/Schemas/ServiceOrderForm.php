@@ -11,6 +11,7 @@ use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
+use App\Forms\Components\SignaturePreview;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
@@ -26,7 +27,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire as ComponentsLivewire;
 use Filament\Schemas\Components\Section;
@@ -37,7 +37,6 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\HtmlString;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ServiceOrderForm
@@ -343,14 +342,10 @@ class ServiceOrderForm
                             ->visibleOn('edit')
                             ->icon(Heroicon::PencilSquare)
                             ->schema([
-                                TextEntry::make('customer_signature')
+                                SignaturePreview::make('customer_signature')
                                     ->hiddenLabel()
                                     ->columnSpanFull()
-                                    ->state(fn (ServiceOrder $record): HtmlString => new HtmlString(
-                                        '<img src="'.e($record->customer_signature).'" alt="Assinatura do cliente" class="max-h-96 w-full object-contain">'
-                                    ))
-                                    ->html()
-                                    ->visible(fn (ServiceOrder $record): bool => filled($record->customer_signature)),
+                                    ->dehydrated(false),
                             ]),
                         Tab::make('Anexos')
                             ->visibleOn([Operation::Edit])

@@ -91,8 +91,15 @@
 
 @once
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('signaturePadField', (config) => ({
+        (() => {
+        const registerSignaturePadField = () => {
+            if (!window.Alpine || window.signaturePadFieldRegistered) {
+                return;
+            }
+
+            window.signaturePadFieldRegistered = true;
+
+            window.Alpine.data('signaturePadField', (config) => ({
                 state: config.state,
                 disabled: config.disabled,
                 height: config.height ?? '220px',
@@ -352,6 +359,13 @@
                     this.lastSerializedState = this.state;
                 },
             }));
-        });
+        };
+
+        if (window.Alpine) {
+            registerSignaturePadField();
+        } else {
+            document.addEventListener('alpine:init', registerSignaturePadField, { once: true });
+        }
+        })();
     </script>
 @endonce
