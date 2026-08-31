@@ -70,7 +70,7 @@
             </div>
             @endunless
 
-            <div @class(['mt-3 flex flex-wrap items-center gap-2' => ! $isMinimal, 'mt-2 flex flex-wrap items-center gap-2' => $isMinimal])>
+            <div @class(['mt-3 flex flex-wrap items-center gap-2' => ! $isMinimal, 'mt-4 flex flex-wrap items-center gap-2' => $isMinimal])>
                 <button
                     type="button"
                     class="fi-btn fi-btn-size-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
