@@ -41,7 +41,10 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
         ];
 
         foreach ($payload['servico']['itens'] as &$item) {
-            unset($item['codigo_nbs'], $item['codigo_cnae'], $item['exigibilidade_iss'], $item['valor_iss']);
+            unset($item['codigo_cnae'], $item['exigibilidade_iss'], $item['valor_iss']);
+
+            $item['codigo'] = preg_replace('/\D/', '', $item['codigo']);
+            $item['regime_tributacao'] = $taxRegime;
 
             // O IPM exige a tag mesmo quando a alíquota aplicável é zero.
             $item['valor_aliquota'] = $item['valor_aliquota'] ?? 0;

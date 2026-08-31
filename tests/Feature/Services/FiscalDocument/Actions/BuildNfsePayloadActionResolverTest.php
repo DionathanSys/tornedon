@@ -81,6 +81,9 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertSame('123456789', data_get($payload, 'servico.codigo_nbs'));
         $this->assertSame('4212908', data_get($payload, 'servico.endereco_local_prestacao.codigo_municipio_prestacao'));
         $this->assertSame('1', data_get($payload, 'servico.tributos_municipais.tipo_operacao'));
+        $this->assertSame('0101', data_get($payload, 'servico.itens.0.codigo'));
+        $this->assertSame('123456789', data_get($payload, 'servico.itens.0.codigo_nbs'));
+        $this->assertSame('0', data_get($payload, 'servico.itens.0.regime_tributacao'));
         $this->assertArrayNotHasKey('exigibilidade_iss', data_get($payload, 'servico.itens.0'));
     }
 
