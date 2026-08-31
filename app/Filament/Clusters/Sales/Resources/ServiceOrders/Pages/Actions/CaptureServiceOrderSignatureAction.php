@@ -20,8 +20,8 @@ final class CaptureServiceOrderSignatureAction
             ->label('Coletar em tela cheia')
             ->icon(Heroicon::PencilSquare)
             ->color('primary')
-            ->fillForm(fn (ServiceOrder $record): array => [
-                'customer_signature' => $record->customer_signature,
+            ->fillForm([
+                'customer_signature' => null,
             ])
             ->schema([
                 SignaturePad::make('customer_signature')

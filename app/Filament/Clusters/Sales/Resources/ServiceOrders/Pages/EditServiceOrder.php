@@ -6,6 +6,7 @@ use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CaptureServiceOrderSignatureAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
@@ -56,6 +57,8 @@ class EditServiceOrder extends EditRecord
                     ->hiddenLabel()
                     ->icon(Heroicon::Bookmark),
             ])->buttonGroup(),
+            CaptureServiceOrderSignatureAction::make()
+                ->label('Assinatura'),
             ActionGroup::make([
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()

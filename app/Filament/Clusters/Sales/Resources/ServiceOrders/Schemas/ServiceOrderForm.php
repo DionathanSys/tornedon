@@ -10,19 +10,16 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentReso
 use App\Filament\Clusters\Sales\Resources\Components\DiscountAmountField;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
-use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CaptureServiceOrderSignatureAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ProductsRelationManager;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ReceivedAssetsRelationManager;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
-use App\Forms\Components\SignaturePad;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Support\ServiceOrderTravelData;
-use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -32,8 +29,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire as ComponentsLivewire;
 use Filament\Schemas\Components\Section;
@@ -42,9 +37,9 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ServiceOrderForm
@@ -349,51 +344,14 @@ class ServiceOrderForm
                             ->visibleOn('edit')
                             ->icon(Heroicon::PencilSquare)
                             ->schema([
-                                Section::make('Assinatura do Cliente')
-                                    ->description('Use esta área para coletar a assinatura diretamente na tela em celulares, tablets ou notebooks com toque.')
-                                    ->columns([
-                                        'sm' => 1,
-                                        'md' => 4,
-                                        'lg' => 12,
-                                    ])
+                                TextEntry::make('customer_signature')
+                                    ->hiddenLabel()
                                     ->columnSpanFull()
-                                    ->contained(false)
-                                    ->footerActionsAlignment(Alignment::End)
-                                    ->footerActions([
-                                        CaptureServiceOrderSignatureAction::make(),
-                                        Action::make('saveSignature')
-                                            ->label('Salvar assinatura')
-                                            ->icon(Heroicon::Bookmark)
-                                            ->color('primary')
-                                            ->action(function ($livewire, Section $component): void {
-                                                $livewire->saveFormComponentOnly($component);
-                                                $livewire->refreshFormData(['customer_signature', 'customer_signed_at']);
-
-                                                Notification::make()
-                                                    ->success()
-                                                    ->title('Assinatura salva com sucesso.')
-                                                    ->send();
-                                            }),
-                                    ])
-                                    ->schema([
-                                        SignaturePad::make('customer_signature')
-                                            ->hiddenLabel()
-                                            ->canvasHeight('300px')
-                                            ->columnSpan(['md' => 2, 'lg' => 6]),
-                                        DateTimePicker::make('customer_signed_at')
-                                            ->label('Última assinatura')
-                                            ->seconds(false)
-                                            ->columnStart(1)
-                                            ->displayFormat('d/m/Y H:i')
-                                            ->columnSpan(['md' => 1, 'lg' => 3])
-                                            ->readOnly()
-                                            ->dehydrated(false),
-                                        Callout::make('Ajuda')
-                                            ->info()
-                                            ->columnStart(1)
-                                            ->columnSpan(['md' => 2, 'lg' => 6])
-                                            ->description('Assine dentro da caixa azul. Use "Limpar" para remover o desenho atual apenas do formulário e clique em "Salvar assinatura" para gravar a nova assinatura ou confirmar a remoção.'),
-                                    ]),
+                                    ->state(fn (ServiceOrder $record): HtmlString => new HtmlString(
+                                        '<img src="'.e($record->customer_signature).'" alt="Assinatura do cliente" class="max-h-96 w-full object-contain">'
+                                    ))
+                                    ->html()
+                                    ->visible(fn (ServiceOrder $record): bool => filled($record->customer_signature)),
                             ]),
                         Tab::make('Remessa')
                             ->visibleOn([Operation::Edit])
