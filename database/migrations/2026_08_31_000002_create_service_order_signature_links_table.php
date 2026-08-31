@@ -23,12 +23,10 @@ return new class extends Migration
         $this->addIndexIfMissing(
             ['service_order_id', 'expires_at'],
             'so_sig_links_order_expiry_idx',
-            'service_order_signature_links_service_order_id_expires_at_index',
         );
         $this->addIndexIfMissing(
             ['service_order_id', 'used_at', 'revoked_at'],
             'so_sig_links_order_state_idx',
-            'service_order_signature_links_service_order_id_used_at_revoked_at_index',
         );
     }
 
@@ -58,14 +56,26 @@ return new class extends Migration
         );
     }
 
-    private function addIndexIfMissing(array $columns, string $index, string $legacyIndex): void
+    private function addIndexIfMissing(array $columns, string $index): void
     {
-        $indexExists = DB::connection()->getDriverName() === 'mysql'
-            && DB::table('information_schema.statistics')
+        $indexExists = false;
+
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $indexes = DB::table('information_schema.statistics')
+                ->select(['index_name', 'column_name', 'seq_in_index'])
                 ->whereRaw('table_schema = DATABASE()')
                 ->where('table_name', self::TABLE)
-                ->whereIn('index_name', [$index, $legacyIndex])
-                ->exists();
+                ->get()
+                ->groupBy('index_name');
+
+            $indexExists = $indexes->contains(function ($indexColumns) use ($columns): bool {
+                return $indexColumns
+                    ->sortBy('seq_in_index')
+                    ->pluck('column_name')
+                    ->values()
+                    ->all() === $columns;
+            });
+        }
 
         if ($indexExists) {
             return;
