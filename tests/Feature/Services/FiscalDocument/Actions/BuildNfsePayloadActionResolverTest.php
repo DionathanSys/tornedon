@@ -56,17 +56,11 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertSame('01.01', data_get($payload, 'servico.codigo'));
     }
 
-    public function test_it_resolves_the_ipm_builder_for_pinhalzinho_without_nbs_or_iss_exigibility(): void
+    public function test_it_resolves_the_ipm_builder_for_pinhalzinho_with_the_required_service_wrapper(): void
     {
         $document = $this->createDocument(NfseModel::MUNICIPAL);
         $company = $document->company;
-        $document->items->first()->update([
-            'nbs_code' => null,
-            'iss_exigibility' => null,
-            'iss_rate' => null,
-        ]);
-        FiscalProfile::query()->where('company_id', $company->id)->update(['iss_rate_default' => null]);
-
+        $document->items->first()->update(['iss_rate' => 0]);
         CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', '0', $company->id);
         CompanyPreference::set('integranotas.nfse_municipal_city_code', '4212908', $company->id);
 
@@ -83,7 +77,10 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertArrayNotHasKey('senha_prefeitura', $payload);
         $this->assertSame('4212908', data_get($payload, 'servico.codigo_municipio'));
         $this->assertSame(0, data_get($payload, 'servico.itens.0.valor_aliquota'));
-        $this->assertArrayNotHasKey('codigo_nbs', data_get($payload, 'servico'));
+        $this->assertSame('0101', data_get($payload, 'servico.codigo'));
+        $this->assertSame('123456789', data_get($payload, 'servico.codigo_nbs'));
+        $this->assertSame('4212908', data_get($payload, 'servico.endereco_local_prestacao.codigo_municipio_prestacao'));
+        $this->assertSame('1', data_get($payload, 'servico.tributos_municipais.tipo_operacao'));
         $this->assertArrayNotHasKey('exigibilidade_iss', data_get($payload, 'servico.itens.0'));
     }
 

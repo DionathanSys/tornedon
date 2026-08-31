@@ -30,13 +30,15 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
             return null;
         }
 
-        // O IPM não utiliza NBS, exigibilidade ISS ou os wrappers nacionais.
-        unset(
-            $payload['servico']['codigo_nbs'],
-            $payload['servico']['discriminacao'],
-            $payload['servico']['valor_servicos'],
-            $payload['servico']['valor_base_calculo'],
-        );
+        // A API v1 da IntegraNotas para Pinhalzinho valida os campos nacionais
+        // no wrapper de serviço, embora mantenha os itens no layout municipal.
+        $payload['servico']['codigo'] = preg_replace('/\D/', '', $payload['servico']['codigo']);
+        $payload['servico']['endereco_local_prestacao'] = [
+            'codigo_municipio_prestacao' => NfseConfigService::PINHALZINHO_SC_IBGE_CODE,
+        ];
+        $payload['servico']['tributos_municipais'] = [
+            'tipo_operacao' => '1',
+        ];
 
         foreach ($payload['servico']['itens'] as &$item) {
             unset($item['codigo_nbs'], $item['codigo_cnae'], $item['exigibilidade_iss'], $item['valor_iss']);
@@ -50,10 +52,5 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
         $payload['regime_tributacao'] = $taxRegime;
 
         return $payload;
-    }
-
-    protected function requiresNbs(): bool
-    {
-        return false;
     }
 }
