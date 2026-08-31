@@ -31,6 +31,7 @@ final class CaptureServiceOrderSignatureAction
                     ->canvasHeight('70vh')
                     ->columnSpanFull(),
             ])
+            ->disabledSchema(false)
             ->modalWidth(Width::Screen)
             ->stickyModalFooter()
             ->closeModalByClickingAway(false)
@@ -47,6 +48,8 @@ final class CaptureServiceOrderSignatureAction
                         ->send();
 
                     $action->halt();
+
+                    return;
                 }
 
                 $record->refresh();
@@ -67,6 +70,8 @@ final class CaptureServiceOrderSignatureAction
                         ->send();
 
                     $action->halt();
+
+                    return;
                 }
 
                 Notification::make()

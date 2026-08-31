@@ -1,7 +1,7 @@
 @php
     $statePath = $getStatePath();
-    $isDisabled = $isDisabled();
     $isMinimal = $isMinimal();
+    $isDisabled = $isMinimal ? false : $isDisabled();
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
@@ -263,6 +263,10 @@
 
                     event.preventDefault();
                     this.ensureCanvasReady();
+
+                    if (!this.ctx) {
+                        return;
+                    }
 
                     this.pointerSequence += 1;
                     this.activePointerId = this.resolvePointerId(event);

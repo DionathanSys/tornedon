@@ -346,13 +346,12 @@ class ServiceOrderForm
                                 Placeholder::make('customer_signature_preview')
                                     ->hiddenLabel()
                                     ->columnSpanFull()
-                                    ->content(function (Get $get): ?HtmlString {
-                                        $signature = $get('customer_signature');
-
-                                        return filled($signature)
-                                            ? new HtmlString('<img src="'.e($signature).'" alt="Assinatura do cliente" class="max-h-96 w-full object-contain">')
+                                    ->content(function (ServiceOrder $record): ?HtmlString {
+                                        return filled($record->customer_signature)
+                                            ? new HtmlString('<img src="'.e($record->customer_signature).'" alt="Assinatura do cliente" class="max-h-96 w-full object-contain">')
                                             : null;
-                                    }),
+                                    })
+                                    ->html(),
                             ]),
                         Tab::make('Anexos')
                             ->visibleOn([Operation::Edit])
