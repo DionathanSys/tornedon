@@ -26,6 +26,7 @@ final class CaptureServiceOrderSignatureAction
             ->schema([
                 SignaturePad::make('customer_signature')
                     ->hiddenLabel()
+                    ->disabled(false)
                     ->minimal()
                     ->canvasHeight('70vh')
                     ->columnSpanFull(),
