@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 
-use App\Enum\ServiceOrder\State;
 use App\Forms\Components\SignaturePad;
 use App\Models\ServiceOrder;
 use App\Services\ServiceOrder\ServiceOrderService;
@@ -21,20 +20,17 @@ final class CaptureServiceOrderSignatureAction
             ->label('Coletar em tela cheia')
             ->icon(Heroicon::PencilSquare)
             ->color('primary')
-            ->visible(fn (ServiceOrder $record): bool => $record->status === State::OPEN)
             ->fillForm(fn (ServiceOrder $record): array => [
                 'customer_signature' => $record->customer_signature,
             ])
             ->schema([
                 SignaturePad::make('customer_signature')
                     ->hiddenLabel()
-                    ->canvasHeight('calc(100dvh - 15rem)')
+                    ->minimal()
+                    ->canvasHeight('calc(100dvh - 8rem)')
                     ->columnSpanFull(),
             ])
-            ->modalHeading('Assinatura do cliente')
-            ->modalDescription('Gire o dispositivo para paisagem para aproveitar toda a area de assinatura.')
             ->modalWidth(Width::Screen)
-            ->stickyModalHeader()
             ->stickyModalFooter()
             ->closeModalByClickingAway(false)
             ->closeModalByEscaping(false)

@@ -1,6 +1,7 @@
 @php
     $statePath = $getStatePath();
     $isDisabled = $isDisabled();
+    $isMinimal = $isMinimal();
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
@@ -11,11 +12,14 @@
             height: @js($getCanvasHeight()),
         })"
         x-init="init()"
-        class="space-y-3"
+        class="{{ $isMinimal ? 'space-y-2' : 'space-y-3' }}"
     >
         <div
-            class="rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20"
+            @class([
+                'rounded-2xl border-2 border-sky-400 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-md ring-2 ring-sky-100 dark:border-sky-500/50 dark:from-slate-900 dark:via-slate-950 dark:to-sky-950/30 dark:ring-sky-500/20' => ! $isMinimal,
+            ])
         >
+            @unless ($isMinimal)
             <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-950 dark:text-white">Assinatura do cliente</p>
@@ -33,6 +37,7 @@
             <div class="mb-2 inline-flex items-center rounded-full border border-sky-400 bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-900 shadow-sm dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-200">
                 Assine dentro da caixa abaixo
             </div>
+            @endunless
 
             <div
                 class="rounded-2xl border-2 border-sky-300 bg-sky-100 p-2 shadow-[0_0_0_4px_rgba(14,165,233,0.10)] transition duration-200 dark:border-sky-500/40 dark:bg-sky-950/20"
@@ -59,11 +64,13 @@
                 </div>
             </div>
 
+            @unless ($isMinimal)
             <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
                 Toque, clique e arraste dentro da area azul para assinar.
             </div>
+            @endunless
 
-            <div class="mt-3 flex flex-wrap items-center gap-2">
+            <div @class(['mt-3 flex flex-wrap items-center gap-2' => ! $isMinimal, 'mt-2 flex flex-wrap items-center gap-2' => $isMinimal])>
                 <button
                     type="button"
                     class="fi-btn fi-btn-size-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"

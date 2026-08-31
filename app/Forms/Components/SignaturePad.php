@@ -10,6 +10,8 @@ class SignaturePad extends Field
 
     protected string $canvasHeight = '220px';
 
+    protected bool $minimal = false;
+
     public function canvasHeight(string $height): static
     {
         $this->canvasHeight = $height;
@@ -20,5 +22,17 @@ class SignaturePad extends Field
     public function getCanvasHeight(): string
     {
         return $this->canvasHeight;
+    }
+
+    public function minimal(bool $minimal = true): static
+    {
+        $this->minimal = $minimal;
+
+        return $this;
+    }
+
+    public function isMinimal(): bool
+    {
+        return $this->minimal;
     }
 }
