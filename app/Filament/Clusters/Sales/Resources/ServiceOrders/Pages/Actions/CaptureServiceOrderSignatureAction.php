@@ -27,7 +27,7 @@ final class CaptureServiceOrderSignatureAction
                 SignaturePad::make('customer_signature')
                     ->hiddenLabel()
                     ->minimal()
-                    ->canvasHeight('calc(100dvh - 8rem)')
+                    ->canvasHeight('70vh')
                     ->columnSpanFull(),
             ])
             ->modalWidth(Width::Screen)
