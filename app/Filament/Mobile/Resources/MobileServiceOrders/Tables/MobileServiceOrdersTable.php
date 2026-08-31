@@ -10,6 +10,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CancelServ
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\GenerateServiceOrderSignatureLinkAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
@@ -133,6 +134,8 @@ class MobileServiceOrdersTable
                 PreviewServiceOrderPdfAction::make()
                     ->iconButton(),
                 DownloadServiceOrderPdfAction::make()
+                    ->iconButton(),
+                GenerateServiceOrderSignatureLinkAction::make()
                     ->iconButton(),
                 CloseServiceOrderAction::make()
                     ->iconButton(),

@@ -7,6 +7,8 @@ use App\Http\Controllers\FiscalDocumentCorrectionLetterController;
 use App\Http\Controllers\FiscalDocumentXmlExportDownloadController;
 use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\PdfPreviewController;
+use App\Http\Controllers\PublicServiceOrderSignatureController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -24,11 +26,20 @@ Route::get('/', function () {
 */
 Route::post('/webhook/nfe', [NfeWebhookController::class, 'handle'])
     ->name('webhook.nfe')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, 'auth', 'verified']);
+    ->withoutMiddleware([VerifyCsrfToken::class, 'auth', 'verified']);
 
 Route::post('/error-tickets/create', [ErrorTicketController::class, 'create'])
     ->name('error-tickets.create')
     ->middleware(['web', 'auth']);
+
+Route::get('/assinar-os/{token}', [PublicServiceOrderSignatureController::class, 'show'])
+    ->where('token', '[a-f0-9]{64}')
+    ->name('service-orders.signature.show');
+
+Route::post('/assinar-os/{token}', [PublicServiceOrderSignatureController::class, 'store'])
+    ->where('token', '[a-f0-9]{64}')
+    ->name('service-orders.signature.store')
+    ->middleware('throttle:20,1');
 
 Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispatchAttachmentController::class, 'show'])
     ->name('email-dispatch.attachment')

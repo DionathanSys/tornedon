@@ -9,6 +9,7 @@ enum AuditSource: string
     case COMMAND = 'command';
     case INTEGRATION = 'integration';
     case SYSTEM = 'system';
+    case PUBLIC = 'public';
 
     public function description(): string
     {
@@ -18,6 +19,7 @@ enum AuditSource: string
             self::COMMAND => 'Comando',
             self::INTEGRATION => 'Integração',
             self::SYSTEM => 'Sistema',
+            self::PUBLIC => 'Link público',
         };
     }
 
@@ -29,6 +31,7 @@ enum AuditSource: string
             self::COMMAND => 'gray',
             self::INTEGRATION => 'success',
             self::SYSTEM => 'gray',
+            self::PUBLIC => 'success',
         };
     }
 

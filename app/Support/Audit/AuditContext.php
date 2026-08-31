@@ -22,7 +22,9 @@ class AuditContext
         ?AuditSource $source = null,
         array $metadata = [],
     ): self {
-        $resolvedUserId = $actorUserId ?? Auth::id();
+        $resolvedUserId = $source === AuditSource::PUBLIC
+            ? null
+            : ($actorUserId ?? Auth::id());
         $resolvedSource = $source ?? self::detectSource($resolvedUserId);
         $user = $resolvedUserId ? User::query()->find($resolvedUserId) : null;
         $resolvedMetadata = $metadata;
@@ -40,7 +42,11 @@ class AuditContext
         return new self(
             companyId: $companyId,
             actorUserId: $shouldPersistActorUser ? $resolvedUserId : null,
-            actorName: $user?->name ?? ($resolvedSource === AuditSource::WEB ? 'Usuário removido' : 'Sistema'),
+            actorName: $user?->name ?? match ($resolvedSource) {
+                AuditSource::WEB => 'Usuário removido',
+                AuditSource::PUBLIC => 'Signatário externo',
+                default => 'Sistema',
+            },
             source: $resolvedSource,
             metadata: $resolvedMetadata,
         );

@@ -20,45 +20,48 @@ class ServiceOrderValidator
     private static function commonRules(): array
     {
         return [
-            'quote_id'                  => 'nullable|integer|exists:quotes,id',
-            'completion_date'           => 'nullable|date',
-            'solution'                  => 'nullable|string',
-            'equipment_id'              => 'nullable|integer|exists:equipments,id',
-            'location'                  => 'nullable|string|max:255',
-            'customer_observations'     => 'nullable|string',
-            'general_observations'      => 'nullable|string',
-            'internal_observations'     => 'nullable|string',
-            'items_received'            => 'nullable|string',
-            'technician_observations'   => 'nullable|string',
-            'estimated_hours'           => 'nullable|numeric|min:0',
-            'actual_hours'              => 'nullable|numeric|min:0',
-            'value_km'                  => 'nullable|numeric|min:0',
-            'distance_km'               => 'nullable|numeric|min:0',
-            'travel_value'              => 'nullable|numeric|min:0',
-            'discount_amount'           => 'nullable|numeric|min:0',
-            'payment_method'            => ['nullable', Rule::enum(PaymentMethod::class)],
+            'quote_id' => 'nullable|integer|exists:quotes,id',
+            'completion_date' => 'nullable|date',
+            'solution' => 'nullable|string',
+            'equipment_id' => 'nullable|integer|exists:equipments,id',
+            'location' => 'nullable|string|max:255',
+            'customer_observations' => 'nullable|string',
+            'general_observations' => 'nullable|string',
+            'internal_observations' => 'nullable|string',
+            'items_received' => 'nullable|string',
+            'technician_observations' => 'nullable|string',
+            'estimated_hours' => 'nullable|numeric|min:0',
+            'actual_hours' => 'nullable|numeric|min:0',
+            'value_km' => 'nullable|numeric|min:0',
+            'distance_km' => 'nullable|numeric|min:0',
+            'travel_value' => 'nullable|numeric|min:0',
+            'discount_amount' => 'nullable|numeric|min:0',
+            'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'follow_up_responsible_name' => 'nullable|string|max:255',
-            'technician_id'             => 'nullable|integer',
-            'supervisor_id'             => 'nullable|integer',
-            'salesperson_id'            => 'nullable|integer',
-            'warranty_expires_at'       => 'nullable|date',
-            'requires_approval'         => 'nullable|boolean',
-            'approved_by_customer'      => 'nullable|boolean',
-            'approved_at'               => 'nullable|date',
-            'customer_signature'        => 'nullable|string|starts_with:data:image/png;base64,|max:2500000',
-            'customer_signed_at'        => 'nullable|date',
-            'customer_rating'           => 'nullable|numeric|min:0|max:5',
-            'customer_feedback'         => 'nullable|string',
-            'invoice_id'                => 'nullable|integer|exists:invoices,id',
-            'additional_info'           => 'nullable|array',
+            'technician_id' => 'nullable|integer',
+            'supervisor_id' => 'nullable|integer',
+            'salesperson_id' => 'nullable|integer',
+            'warranty_expires_at' => 'nullable|date',
+            'requires_approval' => 'nullable|boolean',
+            'approved_by_customer' => 'nullable|boolean',
+            'approved_at' => 'nullable|date',
+            'customer_signature' => 'nullable|string|starts_with:data:image/png;base64,|max:2500000',
+            'customer_signed_at' => 'nullable|date',
+            'customer_signed_by_name' => 'nullable|string|max:255',
+            'customer_signature_metadata' => 'nullable|array',
+            'customer_rating' => 'nullable|numeric|min:0|max:5',
+            'customer_feedback' => 'nullable|string',
+            'invoice_id' => 'nullable|integer|exists:invoices,id',
+            'additional_info' => 'nullable|array',
         ];
     }
 
     /**
      * Valida dados para criação de ordem de serviço.
      *
-     * @param array $data Dados a validar
+     * @param  array  $data  Dados a validar
      * @return array Retorna dados validados
+     *
      * @throws ValidationException Se a validação falhar
      */
     public static function validateCreate(array $data): array
@@ -66,21 +69,21 @@ class ServiceOrderValidator
         $data = ServiceOrderTravelData::normalizePayload($data);
 
         $rules = array_merge(self::commonRules(), [
-            'number'                    => [
+            'number' => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('service_orders', 'number')->where('company_id', $data['company_id'] ?? null),
             ],
-            'company_id'                => 'required|integer|exists:companies,id',
-            'customer_id'               => 'required|integer|exists:partners,id',
-            'order_date'                => 'required|date',
-            'scheduled_date'            => 'nullable|date|after_or_equal:order_date',
-            'limit_date'                => 'nullable|date|after_or_equal:order_date',
-            'priority'                  => ['required', Rule::enum(Priority::class)],
-            'type'                      => ['required', Rule::enum(Type::class)],
-            'payment_condition'         => 'nullable|string|max:100',
-            'status'                    => ['required', Rule::enum(State::class)],
+            'company_id' => 'required|integer|exists:companies,id',
+            'customer_id' => 'required|integer|exists:partners,id',
+            'order_date' => 'required|date',
+            'scheduled_date' => 'nullable|date|after_or_equal:order_date',
+            'limit_date' => 'nullable|date|after_or_equal:order_date',
+            'priority' => ['required', Rule::enum(Priority::class)],
+            'type' => ['required', Rule::enum(Type::class)],
+            'payment_condition' => 'nullable|string|max:100',
+            'status' => ['required', Rule::enum(State::class)],
         ]);
 
         return Validator::make($data, $rules, self::messages())->validate();
@@ -89,10 +92,11 @@ class ServiceOrderValidator
     /**
      * Valida dados para atualização de ordem de serviço.
      *
-     * @param array $data Dados a validar
-     * @param int|null $serviceOrderId ID da ordem de serviço sendo atualizada
-     * @param int|null $companyId ID da empresa
+     * @param  array  $data  Dados a validar
+     * @param  int|null  $serviceOrderId  ID da ordem de serviço sendo atualizada
+     * @param  int|null  $companyId  ID da empresa
      * @return array Retorna dados validados
+     *
      * @throws ValidationException Se a validação falhar
      */
     public static function validateUpdate(array $data, ?int $serviceOrderId = null, ?int $companyId = null): array
@@ -100,13 +104,13 @@ class ServiceOrderValidator
         $data = ServiceOrderTravelData::normalizePayload($data);
 
         $rules = array_merge(self::commonRules(), [
-            'customer_id'               => 'sometimes|required|integer|exists:partners,id',
-            'order_date'                => 'sometimes|required|date',
-            'scheduled_date'            => 'nullable|date',
-            'limit_date'                => 'nullable|date',
-            'priority'                  => ['sometimes', 'required', Rule::enum(Priority::class)],
-            'type'                      => ['sometimes', 'required', Rule::enum(Type::class)],
-            'payment_condition'         => ['nullable', Rule::enum(PaymentCondition::class)],
+            'customer_id' => 'sometimes|required|integer|exists:partners,id',
+            'order_date' => 'sometimes|required|date',
+            'scheduled_date' => 'nullable|date',
+            'limit_date' => 'nullable|date',
+            'priority' => ['sometimes', 'required', Rule::enum(Priority::class)],
+            'type' => ['sometimes', 'required', Rule::enum(Type::class)],
+            'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
         ]);
 
         // Adiciona validação de number apenas se o campo estiver presente nos dados
@@ -131,53 +135,53 @@ class ServiceOrderValidator
     private static function messages(): array
     {
         return [
-            'number.required'               => 'É obrigatório informar o número da ordem de serviço',
-            'number.unique'                 => 'Já existe uma ordem de serviço com este número',
-            'number.max'                    => 'O número da OS não pode ter mais de 50 caracteres',
-            'customer_id.required'          => 'É obrigatório informar o cliente',
-            'customer_id.exists'            => 'O cliente informado não existe',
-            'company_id.required'           => 'É obrigatório informar a empresa',
-            'company_id.exists'             => 'A empresa informada não existe',
-            'order_date.required'           => 'É obrigatório informar a data da ordem',
-            'order_date.date'               => 'A data da ordem deve ser uma data válida',
-            'scheduled_date.date'           => 'A data agendada deve ser uma data válida',
+            'number.required' => 'É obrigatório informar o número da ordem de serviço',
+            'number.unique' => 'Já existe uma ordem de serviço com este número',
+            'number.max' => 'O número da OS não pode ter mais de 50 caracteres',
+            'customer_id.required' => 'É obrigatório informar o cliente',
+            'customer_id.exists' => 'O cliente informado não existe',
+            'company_id.required' => 'É obrigatório informar a empresa',
+            'company_id.exists' => 'A empresa informada não existe',
+            'order_date.required' => 'É obrigatório informar a data da ordem',
+            'order_date.date' => 'A data da ordem deve ser uma data válida',
+            'scheduled_date.date' => 'A data agendada deve ser uma data válida',
             'scheduled_date.after_or_equal' => 'A data agendada deve ser igual ou posterior à data da ordem',
-            'limit_date.date'               => 'A data limite deve ser uma data válida',
-            'limit_date.after_or_equal'     => 'A data limite deve ser igual ou posterior à data da ordem',
-            'completion_date.date'          => 'A data de conclusão deve ser uma data válida',
-            'status.required'               => 'É obrigatório informar o status',
-            'status.in'                     => 'O status informado é inválido',
-            'priority.required'             => 'É obrigatório informar a prioridade',
-            'priority.max'                  => 'A prioridade não pode ter mais de 20 caracteres',
-            'type.required'                 => 'É obrigatório informar o tipo de serviço',
-            'type.in'                       => 'O tipo de serviço informado é inválido',
-            'equipment_id.exists'           => 'O equipamento informado não existe',
-            'location.max'                  => 'O local não pode ter mais de 255 caracteres',
+            'limit_date.date' => 'A data limite deve ser uma data válida',
+            'limit_date.after_or_equal' => 'A data limite deve ser igual ou posterior à data da ordem',
+            'completion_date.date' => 'A data de conclusão deve ser uma data válida',
+            'status.required' => 'É obrigatório informar o status',
+            'status.in' => 'O status informado é inválido',
+            'priority.required' => 'É obrigatório informar a prioridade',
+            'priority.max' => 'A prioridade não pode ter mais de 20 caracteres',
+            'type.required' => 'É obrigatório informar o tipo de serviço',
+            'type.in' => 'O tipo de serviço informado é inválido',
+            'equipment_id.exists' => 'O equipamento informado não existe',
+            'location.max' => 'O local não pode ter mais de 255 caracteres',
             'follow_up_responsible_name.max' => 'O nome do responsável pelo acompanhamento não pode ter mais de 255 caracteres',
-            'estimated_hours.numeric'       => 'As horas estimadas devem ser um número',
-            'estimated_hours.min'           => 'As horas estimadas não podem ser negativas',
-            'actual_hours.numeric'          => 'As horas reais devem ser um número',
-            'actual_hours.min'              => 'As horas reais não podem ser negativas',
-            'value_km.numeric'              => 'O valor do KM deve ser um número',
-            'value_km.min'                  => 'O valor do KM não pode ser negativo',
-            'distance_km.numeric'           => 'A distância em KM deve ser um número',
-            'distance_km.min'               => 'A distância em KM não pode ser negativa',
-            'travel_value.numeric'          => 'O valor de deslocamento deve ser um número',
-            'travel_value.min'              => 'O valor de deslocamento não pode ser negativo',
-            'discount_amount.numeric'       => 'O desconto deve ser um número',
-            'discount_amount.min'           => 'O desconto não pode ser negativo',
-            'warranty_expires_at.date'      => 'A data de expiração da garantia deve ser uma data válida',
-            'requires_approval.boolean'     => 'O campo requer aprovação deve ser verdadeiro ou falso',
-            'approved_by_customer.boolean'  => 'O campo aprovado pelo cliente deve ser verdadeiro ou falso',
-            'approved_at.date'              => 'A data de aprovação deve ser uma data válida',
+            'estimated_hours.numeric' => 'As horas estimadas devem ser um número',
+            'estimated_hours.min' => 'As horas estimadas não podem ser negativas',
+            'actual_hours.numeric' => 'As horas reais devem ser um número',
+            'actual_hours.min' => 'As horas reais não podem ser negativas',
+            'value_km.numeric' => 'O valor do KM deve ser um número',
+            'value_km.min' => 'O valor do KM não pode ser negativo',
+            'distance_km.numeric' => 'A distância em KM deve ser um número',
+            'distance_km.min' => 'A distância em KM não pode ser negativa',
+            'travel_value.numeric' => 'O valor de deslocamento deve ser um número',
+            'travel_value.min' => 'O valor de deslocamento não pode ser negativo',
+            'discount_amount.numeric' => 'O desconto deve ser um número',
+            'discount_amount.min' => 'O desconto não pode ser negativo',
+            'warranty_expires_at.date' => 'A data de expiração da garantia deve ser uma data válida',
+            'requires_approval.boolean' => 'O campo requer aprovação deve ser verdadeiro ou falso',
+            'approved_by_customer.boolean' => 'O campo aprovado pelo cliente deve ser verdadeiro ou falso',
+            'approved_at.date' => 'A data de aprovação deve ser uma data válida',
             'customer_signature.starts_with' => 'A assinatura do cliente deve estar no formato PNG base64.',
-            'customer_signature.max'         => 'A assinatura do cliente excede o tamanho máximo permitido.',
-            'customer_signed_at.date'        => 'A data da assinatura do cliente deve ser uma data válida',
-            'customer_rating.numeric'       => 'A avaliação do cliente deve ser um número',
-            'customer_rating.min'           => 'A avaliação do cliente deve ser no mínimo 0',
-            'customer_rating.max'           => 'A avaliação do cliente deve ser no máximo 5',
-            'invoice_id.exists'             => 'A fatura informada não existe',
-            'additional_info.array'         => 'As informações adicionais devem ser um array',
+            'customer_signature.max' => 'A assinatura do cliente excede o tamanho máximo permitido.',
+            'customer_signed_at.date' => 'A data da assinatura do cliente deve ser uma data válida',
+            'customer_rating.numeric' => 'A avaliação do cliente deve ser um número',
+            'customer_rating.min' => 'A avaliação do cliente deve ser no mínimo 0',
+            'customer_rating.max' => 'A avaliação do cliente deve ser no máximo 5',
+            'invoice_id.exists' => 'A fatura informada não existe',
+            'additional_info.array' => 'As informações adicionais devem ser um array',
         ];
     }
 }

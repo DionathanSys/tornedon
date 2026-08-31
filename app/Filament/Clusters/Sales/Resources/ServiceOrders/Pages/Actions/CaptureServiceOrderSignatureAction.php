@@ -38,6 +38,12 @@ final class CaptureServiceOrderSignatureAction
             ->closeModalByEscaping(false)
             ->modalSubmitActionLabel('Salvar assinatura')
             ->modalCancelActionLabel('Cancelar')
+            ->extraModalFooterActions(fn (): array => [
+                Action::make('clearSignature')
+                    ->label('Limpar assinatura')
+                    ->color('gray')
+                    ->alpineClickHandler("window.dispatchEvent(new CustomEvent('clear-customer-signature'))"),
+            ])
             ->action(function (ServiceOrder $record, array $data, Action $action): void {
                 $tenant = Filament::getTenant();
 
@@ -61,6 +67,8 @@ final class CaptureServiceOrderSignatureAction
                     'customer_signed_at' => blank($signature)
                         ? null
                         : ($signature !== $record->customer_signature ? now() : $record->customer_signed_at),
+                    'customer_signed_by_name' => null,
+                    'customer_signature_metadata' => null,
                 ], Auth::id());
 
                 if ($service->hasError() || $updated === null) {

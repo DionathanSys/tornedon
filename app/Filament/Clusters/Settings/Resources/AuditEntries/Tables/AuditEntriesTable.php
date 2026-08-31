@@ -14,9 +14,7 @@ use App\Models\Invoice;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -40,16 +38,16 @@ class AuditEntriesTable
                 TextColumn::make('source')
                     ->label('Origem')
                     ->badge()
-                    ->formatStateUsing(fn($state): string => $state?->description() ?? (string) $state)
-                    ->color(fn($state): string => $state?->color() ?? 'gray'),
+                    ->formatStateUsing(fn ($state): string => $state?->description() ?? (string) $state)
+                    ->color(fn ($state): string => $state?->color() ?? 'gray'),
                 TextColumn::make('auditable_type')
                     ->label('Entidade')
-                    ->formatStateUsing(fn(?string $state): string => AuditEntry::resolveAuditableTypeLabel($state))
+                    ->formatStateUsing(fn (?string $state): string => AuditEntry::resolveAuditableTypeLabel($state))
                     ->toggleable(),
                 TextColumn::make('action')
                     ->label('Ação')
                     ->badge()
-                    ->formatStateUsing(fn(string $state): string => str($state)->replace('_', ' ')->headline()->value())
+                    ->formatStateUsing(fn (string $state): string => str($state)->replace('_', ' ')->headline()->value())
                     ->sortable(),
                 TextColumn::make('summary')
                     ->label('Resumo')
@@ -68,8 +66,8 @@ class AuditEntriesTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'] ?? null, fn(Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '>=', $date))
-                            ->when($data['until'] ?? null, fn(Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '<=', $date));
+                            ->when($data['from'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '>=', $date))
+                            ->when($data['until'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereDate('occurred_at', '<=', $date));
                     }),
                 SelectFilter::make('auditable_type')
                     ->label('Entidade')
@@ -119,9 +117,9 @@ class AuditEntriesTable
                 Action::make('details')
                     ->label('Detalhes')
                     ->icon('heroicon-o-eye')
-                    ->modalHeading(fn(AuditEntry $record): string => "Auditoria #{$record->id}")
+                    ->modalHeading(fn (AuditEntry $record): string => "Auditoria #{$record->id}")
                     ->modalSubmitAction(false)
-                    ->schema(fn(Schema $schema) => AuditEntryInfolist::configure($schema)),
+                    ->schema(fn (Schema $schema) => AuditEntryInfolist::configure($schema)),
             ])
             ->toolbarActions([]);
     }
@@ -134,7 +132,7 @@ class AuditEntriesTable
 
         $json = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        return '<pre class="text-xs whitespace-pre-wrap">' . e($json ?: '-') . '</pre>';
+        return '<pre class="text-xs whitespace-pre-wrap">'.e($json ?: '-').'</pre>';
     }
 
     /**
@@ -189,6 +187,7 @@ class AuditEntriesTable
             'installment_deleted' => 'Parcela excluída',
             'transfer_created' => 'Transferência criada',
             'transfer_reversed' => 'Transferência estornada',
+            'signed' => 'Assinado pelo cliente',
         ];
     }
 }

@@ -16,6 +16,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateS
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedDetailedServiceOrdersPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ExportSelectedServiceOrdersPdfAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\GenerateServiceOrderSignatureLinkAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
@@ -219,6 +220,7 @@ class ServiceOrdersTable
                     DuplicateServiceOrderAction::make(),
                     PreviewServiceOrderPdfAction::make(),
                     DownloadServiceOrderPdfAction::make(),
+                    GenerateServiceOrderSignatureLinkAction::make(),
                     CloseServiceOrderAction::make(),
                     TransferServiceOrderAction::make(),
                     InvoiceServiceOrderAction::make(),

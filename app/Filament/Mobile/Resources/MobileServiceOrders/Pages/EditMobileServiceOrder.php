@@ -8,6 +8,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CloseServi
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\CreateServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DownloadServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\DuplicateServiceOrderAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\GenerateServiceOrderSignatureLinkAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
@@ -49,6 +50,8 @@ class EditMobileServiceOrder extends EditRecord
                     ->formId('form'),
                 CaptureServiceOrderSignatureAction::make()
                     ->label('Assinatura')
+                    ->size(Size::ExtraSmall),
+                GenerateServiceOrderSignatureLinkAction::make()
                     ->size(Size::ExtraSmall),
                 DuplicateServiceOrderAction::make()
                     ->hiddenLabel()
@@ -127,16 +130,26 @@ class EditMobileServiceOrder extends EditRecord
         unset($data['discount_amount']);
         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
 
+        if (! array_key_exists('customer_signature', $data)) {
+            return $data;
+        }
+
         $currentSignature = $this->record->customer_signature;
         $newSignature = $data['customer_signature'] ?? null;
 
         if (blank($newSignature)) {
             $data['customer_signature'] = null;
             $data['customer_signed_at'] = null;
+            $data['customer_signed_by_name'] = null;
+            $data['customer_signature_metadata'] = null;
         } elseif ($newSignature !== $currentSignature) {
             $data['customer_signed_at'] = now();
+            $data['customer_signed_by_name'] = null;
+            $data['customer_signature_metadata'] = null;
         } else {
             $data['customer_signed_at'] = $this->record->customer_signed_at;
+            $data['customer_signed_by_name'] = $this->record->customer_signed_by_name;
+            $data['customer_signature_metadata'] = $this->record->customer_signature_metadata;
         }
 
         return $data;

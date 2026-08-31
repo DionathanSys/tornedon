@@ -77,6 +77,8 @@ class ServiceOrder extends Model
         'approved_at',
         'customer_signature',
         'customer_signed_at',
+        'customer_signed_by_name',
+        'customer_signature_metadata',
         'customer_rating',
         'customer_feedback',
         'invoice_id',
@@ -106,6 +108,7 @@ class ServiceOrder extends Model
         'approved_by_customer' => 'boolean',
         'approved_at' => 'datetime',
         'customer_signed_at' => 'datetime',
+        'customer_signature_metadata' => 'array',
         'customer_rating' => 'decimal:1',
         'items_received' => 'string',
         'additional_info' => 'array',
@@ -172,6 +175,11 @@ class ServiceOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ServiceOrderItem::class);
+    }
+
+    public function signatureLinks(): HasMany
+    {
+        return $this->hasMany(ServiceOrderSignatureLink::class);
     }
 
     public function warrantyClaims(): HasMany

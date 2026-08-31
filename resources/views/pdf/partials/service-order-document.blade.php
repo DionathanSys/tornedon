@@ -170,6 +170,9 @@
     @if (filled($pdfData['customer_signed_at']))
     <div class="signature-date">Assinado em {{ $pdfData['customer_signed_at'] }}</div>
     @endif
+    @if (filled($pdfData['customer_signed_by_name']))
+    <div class="signature-responsible">Assinado por: {{ $pdfData['customer_signed_by_name'] }}</div>
+    @endif
     @else
     <div class="signature-line">{{ $pdfData['follow_up_responsible_name'] ?: 'Assinatura do Cliente' }}</div>
     @endif

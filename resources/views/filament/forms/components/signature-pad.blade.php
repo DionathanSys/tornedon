@@ -12,6 +12,7 @@
             height: @js($getCanvasHeight()),
         })"
         x-init="init()"
+        x-on:clear-customer-signature.window="clear()"
         class="{{ $isMinimal ? 'space-y-2' : 'space-y-3' }}"
     >
         <div
@@ -65,28 +66,10 @@
             </div>
 
             @unless ($isMinimal)
-            <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
-                Toque, clique e arraste dentro da area azul para assinar.
-            </div>
+                <div class="mt-2 text-center text-xs font-medium text-sky-700 dark:text-sky-300">
+                    Toque, clique e arraste dentro da area azul para assinar.
+                </div>
             @endunless
-
-            <div
-                @class(['mt-3 flex flex-wrap items-center gap-2' => ! $isMinimal, 'mt-4 flex flex-wrap items-center gap-2' => $isMinimal])
-                @if ($isMinimal) style="margin-top: 24px;" @endif
-            >
-                <button
-                    type="button"
-                    class="fi-btn fi-btn-size-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                    x-on:click="clear()"
-                    x-bind:disabled="disabled || !hasSignature"
-                >
-                    Limpar assinatura
-                </button>
-
-                <span class="text-xs text-gray-500 dark:text-gray-400" x-show="disabled">
-                    A assinatura está bloqueada porque esta ordem de serviço não pode mais ser editada.
-                </span>
-            </div>
         </div>
 
     </div>
