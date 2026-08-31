@@ -350,7 +350,7 @@ class ServiceOrderForm
                                     ->columnSpanFull()
                                     ->content(function (ServiceOrder $record): ?HtmlString {
                                         return filled($record->customer_signature)
-                                            ? new HtmlString('<img src="'.e($record->customer_signature).'" alt="Assinatura do cliente" class="max-h-48 w-full object-contain">')
+                                            ? new HtmlString('<img src="'.e($record->customer_signature).'" alt="Assinatura do cliente" style="display:block; width:auto; max-width:50%; max-height:12rem; margin:0 auto; object-fit:contain;">')
                                             : null;
                                     })
                                     ->html(),
