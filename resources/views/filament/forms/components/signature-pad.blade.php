@@ -47,7 +47,7 @@
                     <canvas
                         x-ref="canvas"
                         class="block w-full cursor-crosshair touch-none bg-white dark:bg-slate-950"
-                        :style="`height: ${height}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));`"
+                        style="height: {{ $getCanvasHeight() }}; background-image: linear-gradient(to bottom, rgba(255,255,255,1), rgba(240,249,255,1));"
                         x-on:pointerdown="supportsPointerEvents && start($event)"
                         x-on:pointermove="supportsPointerEvents && move($event)"
                         x-on:pointerup.window="supportsPointerEvents && end($event)"
