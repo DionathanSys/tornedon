@@ -60,7 +60,10 @@ class BuildNfsePayloadActionResolverTest extends TestCase
     {
         $document = $this->createDocument(NfseModel::MUNICIPAL);
         $company = $document->company;
-        $document->items->first()->update(['iss_rate' => 0]);
+        $document->items->first()->update([
+            'iss_rate' => 0,
+            'municipal_tax_code' => '170501',
+        ]);
         CompanyPreference::set('integranotas.nfse_ipm_regime_tributacao', '0', $company->id);
         CompanyPreference::set('integranotas.nfse_municipal_city_code', '4212908', $company->id);
 
@@ -77,11 +80,12 @@ class BuildNfsePayloadActionResolverTest extends TestCase
         $this->assertArrayNotHasKey('senha_prefeitura', $payload);
         $this->assertSame('4212908', data_get($payload, 'servico.codigo_municipio'));
         $this->assertSame(0, data_get($payload, 'servico.itens.0.valor_aliquota'));
-        $this->assertSame('0101', data_get($payload, 'servico.codigo'));
+        $this->assertSame('170501', data_get($payload, 'servico.codigo'));
         $this->assertSame('123456789', data_get($payload, 'servico.codigo_nbs'));
         $this->assertSame('4212908', data_get($payload, 'servico.endereco_local_prestacao.codigo_municipio_prestacao'));
         $this->assertSame('1', data_get($payload, 'servico.tributos_municipais.tipo_operacao'));
-        $this->assertSame('0101', data_get($payload, 'servico.itens.0.codigo'));
+        $this->assertSame('170501', data_get($payload, 'servico.itens.0.codigo'));
+        $this->assertSame('170501', data_get($payload, 'servico.itens.0.codigo_tributacao_municipio'));
         $this->assertSame('123456789', data_get($payload, 'servico.itens.0.codigo_nbs'));
         $this->assertSame('0', data_get($payload, 'servico.itens.0.regime_tributacao'));
         $this->assertArrayNotHasKey('exigibilidade_iss', data_get($payload, 'servico.itens.0'));

@@ -30,9 +30,6 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
             return null;
         }
 
-        // A API v1 da IntegraNotas para Pinhalzinho valida os campos nacionais
-        // no wrapper de serviço, embora mantenha os itens no layout municipal.
-        $payload['servico']['codigo'] = preg_replace('/\D/', '', $payload['servico']['codigo']);
         $payload['servico']['endereco_local_prestacao'] = [
             'codigo_municipio_prestacao' => NfseConfigService::PINHALZINHO_SC_IBGE_CODE,
         ];
@@ -40,10 +37,23 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
             'tipo_operacao' => '1',
         ];
 
-        foreach ($payload['servico']['itens'] as &$item) {
+        foreach ($payload['servico']['itens'] as $index => &$item) {
+            $codigoMunicipal = preg_replace('/\D/', '', (string) ($fiscalDocument->items->values()->get($index)?->municipal_tax_code ?? ''));
+
+            if (strlen($codigoMunicipal) !== 6) {
+                $this->setError(sprintf(
+                    'NFS-e de Pinhalzinho/SC requer código de tributação municipal de 6 dígitos no item %d.',
+                    $index + 1,
+                ));
+
+                return null;
+            }
+
             unset($item['codigo_cnae'], $item['exigibilidade_iss'], $item['valor_iss']);
 
-            $item['codigo'] = preg_replace('/\D/', '', $item['codigo']);
+            // O IPM usa o código integral informado no item nos três campos de serviço.
+            $item['codigo'] = $codigoMunicipal;
+            $item['codigo_tributacao_municipio'] = $codigoMunicipal;
             $item['regime_tributacao'] = $taxRegime;
 
             // O IPM exige a tag mesmo quando a alíquota aplicável é zero.
@@ -51,6 +61,7 @@ class BuildNfsePinhalzinhoIpmPayloadAction extends BuildNfseMunicipalPayloadActi
         }
         unset($item);
 
+        $payload['servico']['codigo'] = $payload['servico']['itens'][0]['codigo'];
         $payload['servico']['codigo_municipio'] = NfseConfigService::PINHALZINHO_SC_IBGE_CODE;
         $payload['regime_tributacao'] = $taxRegime;
 
