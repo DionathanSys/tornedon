@@ -16,6 +16,7 @@ use App\Services\Financial\CashMovementService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class ResolveBankStatementLineService
@@ -498,10 +499,12 @@ class ResolveBankStatementLineService
             });
         } catch (ValidationException $e) {
             $this->setError('Falha ao desfazer conciliação.', $e->errors(), 422);
+            $this->recordReversalFailure($line, $userId, $reason, $this->getErrors());
 
             return null;
         } catch (\Throwable $e) {
             $this->setError('Erro ao desfazer conciliação.', ['exception' => [$e->getMessage()]]);
+            $this->recordReversalFailure($line, $userId, $reason, $this->getErrors(), $e);
 
             return null;
         }
@@ -692,5 +695,74 @@ class ResolveBankStatementLineService
         }
 
         return array_merge($metadata, ['decision' => $decision]);
+    }
+
+    /**
+     * Keep the failure visible after the reconciliation transaction is rolled back.
+     *
+     * @param  array<string, mixed>  $errors
+     */
+    private function recordReversalFailure(
+        BankStatementLine $line,
+        ?int $userId,
+        string $reason,
+        array $errors,
+        ?\Throwable $exception = null,
+    ): void {
+        $context = [
+            'bank_statement_line_id' => $line->id,
+            'bank_statement_import_id' => $line->bank_statement_import_id,
+            'company_id' => $line->company_id,
+            'user_id' => $userId,
+            'reason' => $reason,
+            'reconciliation_status' => $line->reconciliation_status?->value,
+            'cash_movement_id' => $line->cash_movement_id,
+            'decision' => data_get($line->metadata, 'decision'),
+            'errors' => $errors,
+            'error_code' => $this->getErrorCode(),
+        ];
+
+        if ($exception) {
+            Log::error('Falha inesperada ao desfazer conciliação bancária.', [
+                ...$context,
+                'exception' => $exception,
+            ]);
+        } else {
+            Log::warning('Falha de validação ao desfazer conciliação bancária.', $context);
+        }
+
+        try {
+            $currentLine = BankStatementLine::query()
+                ->with('import')
+                ->find($line->id);
+
+            if (! $currentLine?->import) {
+                return;
+            }
+
+            app(AuditRecorder::class)->recordModelEvent(
+                $currentLine->import,
+                'bank_statement_import.reconciliation_reversal_failed',
+                "Falha ao desfazer conciliação da linha #{$currentLine->id}",
+                null,
+                null,
+                $userId,
+                null,
+                [
+                    'bank_statement_line_id' => $currentLine->id,
+                    'reason' => $reason,
+                    'reconciliation_status' => $currentLine->reconciliation_status?->value,
+                    'cash_movement_id' => $currentLine->cash_movement_id,
+                    'decision' => data_get($currentLine->metadata, 'decision'),
+                    'errors' => $errors,
+                    'error_code' => $this->getErrorCode(),
+                ],
+            );
+        } catch (\Throwable $auditException) {
+            Log::error('Falha ao registrar auditoria da reversão de conciliação.', [
+                ...$context,
+                'exception' => $auditException,
+            ]);
+        }
     }
 }

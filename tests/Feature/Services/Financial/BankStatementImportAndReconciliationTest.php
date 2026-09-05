@@ -633,6 +633,34 @@ OFX;
         $this->assertDatabaseHas('cash_movements', ['id' => $movement->id]);
     }
 
+    public function test_it_audits_a_failed_reconciliation_reversal(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVERSE-FAILED');
+
+        $reversed = $this->resolveService->reverseReconciliation(
+            $line,
+            $this->user->id,
+            'Tentativa de desfazimento para validar o erro.',
+        );
+
+        $this->assertNull($reversed);
+        $this->assertStringContainsString(
+            'Somente linhas conciliadas podem ter a conciliação desfeita.',
+            $this->resolveService->getMessageUser(),
+        );
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => BankStatementImport::class,
+            'auditable_id' => $line->bank_statement_import_id,
+            'event' => 'bank_statement_import.reconciliation_reversal_failed',
+            'action' => 'reconciliation_reversal_failed',
+        ]);
+        $this->assertSame(
+            'pending',
+            $line->fresh()->reconciliation_status->value,
+        );
+    }
+
     public function test_it_resolves_a_review_by_reopening_a_line_without_financial_effect(): void
     {
         $line = $this->importLine('CREDIT', '100.00', 'REVIEW-REOPEN');

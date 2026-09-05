@@ -182,6 +182,8 @@ class AuditEntriesTable
             'line_ignored' => 'Linha ignorada',
             'movement_reconciled' => 'Movimento conciliado',
             'manual_movement_created' => 'Movimento manual criado',
+            'reconciliation_reversed' => 'Conciliação desfeita',
+            'reconciliation_reversal_failed' => 'Falha ao desfazer conciliação',
             'payment_registered' => 'Pagamento registrado',
             'installment_updated' => 'Parcela atualizada',
             'installment_deleted' => 'Parcela excluída',
