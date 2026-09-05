@@ -8,6 +8,7 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Operation\Pages\OperationDashboard;
 use App\Filament\Operation\Pages\Requisitions\RequisitionDetail;
+use App\Filament\Operation\Pages\Requisitions\RequisitionList;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
 use App\Models\Company;
@@ -40,10 +41,85 @@ class OperationPanelTest extends TestCase
 
         $response
             ->assertOk()
+            ->assertSee('Nova OS')
+            ->assertSee('Nova Requisição')
             ->assertSee('Acesso rápido')
             ->assertSee('Ordens de Serviço')
             ->assertSee('Requisições')
             ->assertDontSee('Equipamentos');
+
+        Livewire::test(OperationDashboard::class)
+            ->assertActionExists('createServiceOrder')
+            ->assertActionExists('createRequisition');
+    }
+
+    public function test_operation_dashboard_allows_switching_between_companies(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $otherCompany = $this->createCompany($user, 'Outra Empresa');
+
+        $user->companies()->attach($otherCompany, [
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $response = $this->get(OperationDashboard::getUrl(tenant: $company));
+
+        $response
+            ->assertOk()
+            ->assertSee('Empresa atual')
+            ->assertSee($company->name)
+            ->assertSee($otherCompany->name)
+            ->assertSee('/operation/'.$otherCompany->getRouteKey(), false);
+    }
+
+    public function test_operation_lists_expose_their_create_actions(): void
+    {
+        [, $company] = $this->authenticateTenant();
+
+        Livewire::test(ServiceOrderQueue::class)
+            ->assertActionExists('createServiceOrder')
+            ->assertActionVisible('createServiceOrder');
+
+        $this->get(ServiceOrderQueue::getUrl(tenant: $company))
+            ->assertOk()
+            ->assertSee('Nova OS');
+
+        Livewire::test(RequisitionList::class)
+            ->assertActionExists('createRequisition')
+            ->assertActionVisible('createRequisition');
+
+        $this->get(RequisitionList::getUrl(tenant: $company))
+            ->assertOk()
+            ->assertSee('Nova Requisição');
+    }
+
+    public function test_operation_create_actions_use_the_current_company(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $customer = $this->createCustomer($user, 'Cliente Operação');
+
+        Livewire::test(ServiceOrderQueue::class)
+            ->callAction('createServiceOrder', data: [
+                'customer_id' => $customer->id,
+            ])
+            ->assertHasNoActionErrors();
+
+        $serviceOrder = ServiceOrder::query()->latest('id')->firstOrFail();
+
+        $this->assertSame($company->id, $serviceOrder->company_id);
+        $this->assertSame(State::OPEN, $serviceOrder->status);
+
+        Livewire::test(RequisitionList::class)
+            ->callAction('createRequisition', data: [
+                'customer_id' => $customer->id,
+            ])
+            ->assertHasNoActionErrors();
+
+        $requisition = Requisition::query()->latest('id')->firstOrFail();
+
+        $this->assertSame($company->id, $requisition->company_id);
+        $this->assertSame(RequisitionStatus::OPEN, $requisition->status);
     }
 
     public function test_service_order_queue_is_scoped_to_the_current_tenant(): void

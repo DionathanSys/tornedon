@@ -55,7 +55,7 @@ final class CreateServiceOrderAction
 
                 return $data;
             })
-            ->using(function (array $data, string $model, CreateAction $action): Model {
+            ->using(function (array $data, ?string $model, CreateAction $action): Model {
                 $service = app(ServiceOrderService::class);
                 $serviceOrder = $service->create($data, Auth::id());
 

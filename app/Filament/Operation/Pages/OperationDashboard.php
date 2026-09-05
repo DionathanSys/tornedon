@@ -3,6 +3,8 @@
 namespace App\Filament\Operation\Pages;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Operation\Actions\CreateRequisitionAction;
+use App\Filament\Operation\Actions\CreateServiceOrderAction;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Models\ServiceOrder;
 use BackedEnum;
@@ -28,6 +30,14 @@ class OperationDashboard extends Dashboard
     public array $myStats = [];
 
     public array $recentOrders = [];
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateServiceOrderAction::make(),
+            CreateRequisitionAction::make(),
+        ];
+    }
 
     public function mount(): void
     {

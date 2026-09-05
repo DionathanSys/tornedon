@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operation\Pages\Requisitions;
 
+use App\Filament\Operation\Actions\CreateRequisitionAction;
 use App\Models\Requisition;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -33,6 +34,13 @@ class RequisitionList extends Page
     public int $closedCount = 0;
 
     public int $allCount = 0;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateRequisitionAction::make(),
+        ];
+    }
 
     public function mount(): void
     {

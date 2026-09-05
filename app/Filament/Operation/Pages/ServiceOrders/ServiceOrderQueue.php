@@ -3,6 +3,7 @@
 namespace App\Filament\Operation\Pages\ServiceOrders;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Operation\Actions\CreateServiceOrderAction;
 use App\Models\ServiceOrder;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -34,6 +35,13 @@ class ServiceOrderQueue extends Page
     public int $closedCount = 0;
 
     public int $allCount = 0;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateServiceOrderAction::make(),
+        ];
+    }
 
     public function mount(): void
     {
