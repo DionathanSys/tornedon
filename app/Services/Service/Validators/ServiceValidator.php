@@ -30,6 +30,10 @@ class ServiceValidator
             'nbs_code' => 'nullable|string|max:50',
             'cnae_code' => 'nullable|string|max:50',
             'municipal_tax_code' => 'nullable|string|max:50',
+            'ncm_code' => 'nullable|string|max:10',
+            'cfop_code' => 'nullable|string|max:5',
+            'origin_code' => 'nullable|string|max:2',
+            'unit_of_measure' => 'nullable|string|max:10',
             'iss_exigibility' => ['nullable', Rule::in($issValues)],
             'additional_info' => 'nullable|array',
         ];

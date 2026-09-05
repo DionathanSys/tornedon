@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Services\Pages;
 
+use App\Filament\Clusters\Sales\Resources\Services\Pages\Actions\DuplicateServiceAction;
 use App\Filament\Clusters\Sales\Resources\Services\ServiceResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
@@ -28,6 +29,8 @@ class EditService extends EditRecord
                 ->url(ServiceResource::getUrl('create'))
                 ->icon(Heroicon::Plus)
                 ->color('primary')
+                ->size(Size::Small),
+            DuplicateServiceAction::make()
                 ->size(Size::Small),
             DeleteAction::make()
                 ->size(Size::Small)
