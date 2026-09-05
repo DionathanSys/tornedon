@@ -28,7 +28,7 @@ class OperationPanelProvider extends PanelProvider
         return $panel
             ->maxContentWidth(Width::Full)
             ->id('operation')
-            ->path('operacao')
+            ->path('operation')
             ->login()
             ->profile()
             ->tenant(Company::class)

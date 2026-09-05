@@ -32,7 +32,11 @@ class OperationPanelTest extends TestCase
 
         $this->assertTrue($user->fresh()->canAccessTenant($company));
 
-        $response = $this->get(OperationDashboard::getUrl(['tenant' => $company]));
+        $url = OperationDashboard::getUrl(['tenant' => $company]);
+
+        $this->assertStringContainsString('/operation/', $url);
+
+        $response = $this->get($url);
 
         $response
             ->assertOk()
