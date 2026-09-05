@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Settings\Resources\EmailDispatches\Tables;
 use App\Enum\Email\DocumentNotificationType;
 use App\Enum\Email\EmailDispatchStatus;
 use App\Models\EmailDispatch;
+use App\Models\User;
 use App\Services\Email\DocumentNotificationService;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\KeyValueEntry;
@@ -174,7 +175,7 @@ class EmailDispatchesTable
                     ->label('Excluir')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
-                    ->visible(fn (): bool => (bool) Auth::user()?->is_admin)
+                    ->visible(fn (): bool => ($user = Auth::user()) instanceof User && $user->canManageFiscalOperations())
                     ->requiresConfirmation()
                     ->modalHeading('Excluir registro de envio')
                     ->modalDescription('Esta ação remove permanentemente o dispatch e anexos locais relacionados.')

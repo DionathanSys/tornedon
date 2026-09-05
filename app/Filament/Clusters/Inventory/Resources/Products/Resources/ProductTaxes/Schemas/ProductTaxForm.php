@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Inventory\Resources\Products\Resources\ProductTa
 
 use App\Enum\Product\Origin;
 use App\Filament\Components\NcmCodeInput;
+use App\Models\User;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
@@ -80,7 +81,7 @@ class ProductTaxForm
                             ->keyLabel('Chave')
                             ->valueLabel('Valor')
                             ->addActionLabel('Adicionar campo')
-                            ->deletable(fn() => Auth::user()->is_admin)
+                            ->deletable(fn () => ($user = Auth::user()) instanceof User && $user->canManageFiscalSequences())
                             ->reorderable(),
                         KeyValue::make('ipi')
                             ->label('IPI')
@@ -88,7 +89,7 @@ class ProductTaxForm
                             ->keyLabel('Chave')
                             ->valueLabel('Valor')
                             ->addActionLabel('Adicionar campo')
-                            ->deletable(fn() => Auth::user()->is_admin)
+                            ->deletable(fn () => ($user = Auth::user()) instanceof User && $user->canManageFiscalSequences())
                             ->reorderable(),
                         KeyValue::make('pis')
                             ->label('PIS')
@@ -96,7 +97,7 @@ class ProductTaxForm
                             ->keyLabel('Chave')
                             ->valueLabel('Valor')
                             ->addActionLabel('Adicionar campo')
-                            ->deletable(fn() => Auth::user()->is_admin)
+                            ->deletable(fn () => ($user = Auth::user()) instanceof User && $user->canManageFiscalSequences())
                             ->reorderable(),
                         KeyValue::make('cofins')
                             ->label('COFINS')
@@ -104,7 +105,7 @@ class ProductTaxForm
                             ->keyLabel('Chave')
                             ->valueLabel('Valor')
                             ->addActionLabel('Adicionar campo')
-                            ->deletable(fn() => Auth::user()->is_admin)
+                            ->deletable(fn () => ($user = Auth::user()) instanceof User && $user->canManageFiscalSequences())
                             ->reorderable(),
                     ]),
                 Hidden::make('created_by'),
@@ -113,4 +114,4 @@ class ProductTaxForm
     }
 }
 
-//TODO: Implementar controle de permissão para deletar campos de impostos, permitindo apenas para usuários masters.
+// TODO: Implementar controle de permissão para deletar campos de impostos, permitindo apenas para usuários masters.

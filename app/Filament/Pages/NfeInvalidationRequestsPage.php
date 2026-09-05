@@ -2,16 +2,16 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\NfeInvalidationRequest;
+use App\Models\User;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\Actions\ProcessNfeInvalidationRequestAction;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Pages\Page;
-use UnitEnum;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class NfeInvalidationRequestsPage extends Page
 {
@@ -33,7 +33,9 @@ class NfeInvalidationRequestsPage extends Page
 
     public static function canAccess(): bool
     {
-        return (bool) Auth::user()?->is_admin;
+        $user = Auth::user();
+
+        return $user instanceof User && $user->canManageFiscalSequences();
     }
 
     public function mount(): void
@@ -120,6 +122,7 @@ class NfeInvalidationRequestsPage extends Page
 
                     if (! $ok) {
                         notify::error(message: $service->getMessage());
+
                         return;
                     }
 
@@ -138,6 +141,7 @@ class NfeInvalidationRequestsPage extends Page
             return false;
         }
 
-        return (bool) $user->is_admin || (int) $this->requestRecord->requested_by === (int) $user->id;
+        return $user instanceof User && ($user->canManageFiscalSequences()
+            || (int) $this->requestRecord->requested_by === (int) $user->id);
     }
 }

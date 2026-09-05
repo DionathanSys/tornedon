@@ -2,9 +2,11 @@
 
 namespace App\Filament\Management\Resources\Companies\RelationManagers;
 
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -24,6 +26,15 @@ abstract class SequenceRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Sequências';
 
     protected static string|BackedEnum|null $icon = Heroicon::Hashtag;
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        $user = Filament::auth()->user();
+
+        return $user instanceof User
+            && $user->canManageFiscalSequences()
+            && parent::canViewForRecord($ownerRecord, $pageClass);
+    }
 
     public function form(Schema $schema): Schema
     {

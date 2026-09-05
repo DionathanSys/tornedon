@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Filament\Management;
 
+use App\Enum\User\ManagementRole;
 use App\Filament\Management\Pages\CnpjProviderSettingsPage;
 use App\Filament\Management\Resources\Companies\CompanyResource;
 use App\Filament\Management\Resources\Companies\Pages\EditCompany;
@@ -10,8 +11,11 @@ use App\Filament\Management\Resources\Users\UserResource;
 use App\Models\Company;
 use App\Models\ProductSequence;
 use App\Models\User;
+use App\Policies\UserPolicy;
+use App\Services\Management\UserAdministrationService;
 use Filament\Facades\Filament;
 use Filament\Resources\RelationManagers\RelationGroup;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -130,6 +134,73 @@ class ManagementPanelAccessTest extends TestCase
             'id' => $otherSequence->id,
             'company_id' => $otherCompany->id,
             'last_number' => 987,
+        ]);
+    }
+
+    public function test_inactive_admin_cannot_access_management_or_admin_panels(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+            'is_active' => false,
+        ]);
+
+        $this->assertFalse($admin->canAccessPanel(Filament::getPanel('management')));
+        $this->assertFalse($admin->canAccessPanel(Filament::getPanel('admin')));
+    }
+
+    public function test_management_admin_cannot_access_sensitive_configuration_or_change_admin_roles(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => false,
+            'management_role' => ManagementRole::MANAGEMENT_ADMIN,
+        ]);
+        $superAdmin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin);
+        Filament::setCurrentPanel('management');
+
+        $this->assertTrue($admin->canAccessPanel(Filament::getPanel('management')));
+        $this->assertFalse(CnpjProviderSettingsPage::canAccess());
+        $this->get(CnpjProviderSettingsPage::getUrl())->assertForbidden();
+        $this->assertFalse((new UserPolicy)->update($admin, $superAdmin));
+
+        $this->expectException(AuthorizationException::class);
+        app(UserAdministrationService::class)->assertCanCreate($admin, ManagementRole::MANAGEMENT_ADMIN->value);
+    }
+
+    public function test_management_admin_cannot_see_fiscal_sequence_managers(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => false,
+            'management_role' => ManagementRole::MANAGEMENT_ADMIN,
+        ]);
+        $company = Company::query()->create([
+            'name' => 'Empresa operacional',
+            'address' => [],
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin);
+        Filament::setCurrentPanel('management');
+
+        $relationGroup = CompanyResource::getRelations()[0];
+        $managers = $relationGroup
+            ->ownerRecord($company)
+            ->pageClass(EditCompany::class)
+            ->getManagers();
+
+        $this->assertCount(0, $managers);
+    }
+
+    public function test_last_super_admin_cannot_be_demoted(): void
+    {
+        $superAdmin = User::factory()->create(['is_admin' => true]);
+        $actor = User::factory()->make(['is_admin' => true, 'is_active' => true]);
+
+        $this->expectException(AuthorizationException::class);
+        app(UserAdministrationService::class)->assertCanUpdate($actor, $superAdmin, [
+            'management_role' => null,
         ]);
     }
 }

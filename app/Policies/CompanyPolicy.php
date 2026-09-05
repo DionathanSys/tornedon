@@ -14,7 +14,7 @@ class CompanyPolicy
 
     public function view(User $user, Company $company): bool
     {
-        return (bool) $user->is_admin || $user->belongsToCompany($company->id);
+        return $user->canManageUsers() || $user->belongsToCompany($company->id);
     }
 
     public function create(User $user): bool
@@ -24,7 +24,7 @@ class CompanyPolicy
 
     public function update(User $user, Company $company): bool
     {
-        return (bool) $user->is_admin || $user->belongsToCompany($company->id);
+        return $user->canManageUsers() || $user->belongsToCompany($company->id);
     }
 
     public function delete(User $user, Company $company): bool

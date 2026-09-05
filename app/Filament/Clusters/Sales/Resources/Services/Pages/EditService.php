@@ -12,7 +12,6 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -30,12 +29,14 @@ class EditService extends EditRecord
                     ->label('Serviço')
                     ->url(ServiceResource::getUrl('create'))
                     ->icon(Heroicon::Plus)
-                    ->color('primary')
-                    ->size(Size::Small),
+                    ->color('primary'),
                 DuplicateServiceAction::make()
-                    ->iconButton(),
+                    ->hiddenLabel()
+                    ->tooltip('Duplicar serviço'),
                 DeleteAction::make()
-                    ->iconButton()
+                    ->hiddenLabel()
+                    ->icon(Heroicon::Trash)
+                    ->tooltip('Excluir serviço')
                     ->using(function (Model $record): bool {
                         Log::debug('EditService: Iniciando soft delete de serviço', [
                             'metodo' => __METHOD__.'@'.__LINE__,

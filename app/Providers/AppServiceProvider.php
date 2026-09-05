@@ -26,6 +26,7 @@ use App\Models\ProductionOrder;
 use App\Models\Quote;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
+use App\Models\User;
 use App\Policies\AuditEntryPolicy;
 use App\Observers\FiscalDocumentObserver;
 use App\Observers\InvoiceObserver;
@@ -33,6 +34,7 @@ use App\Observers\ProductionOrderObserver;
 use App\Observers\RequisitionObserver;
 use App\Observers\ServiceOrderObserver;
 use App\Policies\CompanyPolicy;
+use App\Policies\UserPolicy;
 use App\Policies\ServiceOrderPolicy;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\Providers\ResendEmailProvider;
@@ -104,6 +106,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AuditEntry::class, AuditEntryPolicy::class);
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
 
         ServiceOrder::observe(ServiceOrderObserver::class);
         Requisition::observe(RequisitionObserver::class);

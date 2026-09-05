@@ -31,12 +31,14 @@ class EditService extends EditRecord
                     ->label('Serviço')
                     ->url(ServiceResource::getUrl('create'))
                     ->icon(Heroicon::Plus)
-                    ->color('primary')
-                    ->size(Size::Small),
+                    ->color('primary'),
                 DuplicateServiceAction::make()
-                    ->iconButton(),
+                    ->hiddenLabel()
+                    ->tooltip('Duplicar serviço'),
                 DeleteAction::make()
-                    ->iconButton()
+                    ->hiddenLabel()
+                    ->icon(Heroicon::Trash)
+                    ->tooltip('Excluir serviço')
                     ->using(function (Model $record): bool {
                         Log::debug('EditService: Iniciando soft delete de serviço', [
                             'metodo' => __METHOD__.'@'.__LINE__,

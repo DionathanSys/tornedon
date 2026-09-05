@@ -2,7 +2,9 @@
 
 namespace App\Services\Cnpj;
 
+use App\Models\CnpjProviderSecret;
 use App\Models\SystemSetting;
+use Illuminate\Database\QueryException;
 
 class CnpjProviderSettingsRepository
 {
@@ -31,6 +33,20 @@ class CnpjProviderSettingsRepository
             $this->all(),
             static fn (array $provider): bool => (bool) ($provider['enabled'] ?? false),
         ));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function forManagement(): array
+    {
+        return array_map(static fn (array $provider): array => [
+            'name' => $provider['name'],
+            'label' => $provider['label'],
+            'enabled' => $provider['enabled'],
+            'timeout' => $provider['timeout'],
+            'rate_limit' => $provider['rate_limit'],
+        ], $this->all());
     }
 
     /**
@@ -132,23 +148,54 @@ class CnpjProviderSettingsRepository
     {
         $labels = $this->labels();
         $name = (string) ($provider['name'] ?? '');
-        $headers = is_array($provider['headers'] ?? null) ? $provider['headers'] : [];
+        $configuredSettings = (array) config("cnpj.provider_settings.{$name}", []);
 
         return [
             'name' => $name,
             'label' => $labels[$name] ?? (string) ($provider['label'] ?? $name),
             'enabled' => (bool) ($provider['enabled'] ?? false),
-            'base_url' => trim((string) ($provider['base_url'] ?? '')),
+            'base_url' => trim((string) ($configuredSettings['base_url'] ?? '')),
             'timeout' => max(1, (int) ($provider['timeout'] ?? 15)),
-            'headers' => collect($headers)
-                ->mapWithKeys(fn (mixed $value, mixed $key): array => [trim((string) $key) => trim((string) $value)])
-                ->filter(fn (string $value, string $key): bool => $key !== '' && $value !== '')
-                ->all(),
+            'headers' => $this->headersFor($name, $configuredSettings),
             'rate_limit' => [
                 'max_attempts' => max(1, (int) data_get($provider, 'rate_limit.max_attempts', 5)),
                 'decay_seconds' => max(1, (int) data_get($provider, 'rate_limit.decay_seconds', 60)),
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuredSettings
+     * @return array<string, string>
+     */
+    private function headersFor(string $provider, array $configuredSettings): array
+    {
+        try {
+            $secret = CnpjProviderSecret::query()
+                ->where('provider', $provider)
+                ->first();
+        } catch (QueryException $e) {
+            if (! str_contains($e->getMessage(), 'no such table') && ! str_contains($e->getMessage(), 'Base table or view not found')) {
+                throw $e;
+            }
+
+            $secret = null;
+        }
+
+        $headers = $secret?->value ?? ($configuredSettings['headers'] ?? []);
+
+        if ($headers instanceof \ArrayObject) {
+            $headers = $headers->getArrayCopy();
+        }
+
+        if (! is_array($headers)) {
+            return [];
+        }
+
+        return collect($headers)
+            ->mapWithKeys(fn (mixed $value, mixed $key): array => [trim((string) $key) => trim((string) $value)])
+            ->filter(fn (string $value, string $key): bool => $key !== '' && $value !== '')
+            ->all();
     }
 
     /**
