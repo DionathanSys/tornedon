@@ -90,6 +90,56 @@ class Company extends Model
         return $this->hasMany(CompanyCardStatement::class);
     }
 
+    public function productSequence(): HasOne
+    {
+        return $this->hasOne(ProductSequence::class);
+    }
+
+    public function serviceSequence(): HasOne
+    {
+        return $this->hasOne(ServiceSequence::class);
+    }
+
+    public function quoteSequence(): HasOne
+    {
+        return $this->hasOne(QuoteSequence::class);
+    }
+
+    public function requisitionSequence(): HasOne
+    {
+        return $this->hasOne(RequisitionSequence::class);
+    }
+
+    public function serviceOrderSequence(): HasOne
+    {
+        return $this->hasOne(ServiceOrderSequence::class);
+    }
+
+    public function productionOrderSequence(): HasOne
+    {
+        return $this->hasOne(ProductionOrderSequence::class);
+    }
+
+    public function productionRequestSequence(): HasOne
+    {
+        return $this->hasOne(ProductionRequestSequence::class);
+    }
+
+    public function invoiceSequence(): HasOne
+    {
+        return $this->hasOne(InvoiceSequence::class);
+    }
+
+    public function nfeSequences(): HasMany
+    {
+        return $this->hasMany(NfeSequence::class);
+    }
+
+    public function nfseSequences(): HasMany
+    {
+        return $this->hasMany(NfseSequence::class);
+    }
+
     public function serviceProvisionLocation(): Attribute
     {
         return Attribute::make(

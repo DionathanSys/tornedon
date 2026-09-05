@@ -439,16 +439,50 @@ class ResolveBankStatementLineService
                     : null;
                 $type = $decision['type'] ?? 'cash_movement';
                 if ($type === 'account_payable_installment') {
-                    $payment = AccountPayableInstallmentPayment::query()->lockForUpdate()->find($decision['payment_id'] ?? null);
+                    $paymentId = $decision['payment_id'] ?? $movement?->origin_id;
+                    $payment = AccountPayableInstallmentPayment::query()
+                        ->where('company_id', $line->company_id)
+                        ->lockForUpdate()
+                        ->find($paymentId);
 
-                    if (! $payment || ! $this->payableService->deleteInstallmentPayment($payment)) {
-                        $this->throwNestedServiceFailure($this->payableService->getMessageUser());
+                    if (! $payment) {
+                        throw ValidationException::withMessages([
+                            'payment' => [sprintf(
+                                'Pagamento da conta a pagar não encontrado%s. A conciliação não foi desfeita.',
+                                $paymentId !== null ? " (ID {$paymentId})" : '',
+                            )],
+                        ]);
+                    }
+
+                    if (! $this->payableService->deleteInstallmentPayment($payment)) {
+                        $this->throwNestedServiceFailure(
+                            $this->payableService->getMessageUser()
+                                ?: $this->payableService->getMessage()
+                                ?: 'Não foi possível desfazer o pagamento vinculado.',
+                        );
                     }
                 } elseif ($type === 'account_receivable_installment') {
-                    $payment = AccountReceivableInstallmentPayment::query()->lockForUpdate()->find($decision['payment_id'] ?? null);
+                    $paymentId = $decision['payment_id'] ?? $movement?->origin_id;
+                    $payment = AccountReceivableInstallmentPayment::query()
+                        ->where('company_id', $line->company_id)
+                        ->lockForUpdate()
+                        ->find($paymentId);
 
-                    if (! $payment || ! $this->receivableService->deleteInstallmentPayment($payment)) {
-                        $this->throwNestedServiceFailure($this->receivableService->getMessageUser());
+                    if (! $payment) {
+                        throw ValidationException::withMessages([
+                            'payment' => [sprintf(
+                                'Recebimento da conta a receber não encontrado%s. A conciliação não foi desfeita.',
+                                $paymentId !== null ? " (ID {$paymentId})" : '',
+                            )],
+                        ]);
+                    }
+
+                    if (! $this->receivableService->deleteInstallmentPayment($payment)) {
+                        $this->throwNestedServiceFailure(
+                            $this->receivableService->getMessageUser()
+                                ?: $this->receivableService->getMessage()
+                                ?: 'Não foi possível desfazer o recebimento vinculado.',
+                        );
                     }
                 } elseif ($type === 'manual') {
                     if (! $movement) {

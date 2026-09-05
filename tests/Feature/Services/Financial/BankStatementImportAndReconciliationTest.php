@@ -661,6 +661,40 @@ OFX;
         );
     }
 
+    public function test_it_explains_when_a_receivable_payment_from_reconciliation_is_missing(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVERSE-MISSING-PAYMENT');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, [
+            'origin_type' => AccountReceivableInstallmentPayment::class,
+            'origin_id' => 233,
+        ]);
+        $line->update([
+            'cash_movement_id' => $movement->id,
+            'reconciliation_status' => 'reconciled',
+            'reconciled_at' => now(),
+            'metadata' => array_merge($line->metadata ?? [], [
+                'decision' => [
+                    'type' => 'account_receivable_installment',
+                    'payment_id' => 233,
+                ],
+            ]),
+        ]);
+
+        $reversed = $this->resolveService->reverseReconciliation(
+            $line,
+            $this->user->id,
+            'Baixa ausente para validar o diagnóstico.',
+        );
+
+        $this->assertNull($reversed);
+        $this->assertStringContainsString(
+            'Recebimento da conta a receber não encontrado (ID 233).',
+            $this->resolveService->getMessageUser(),
+        );
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+        $this->assertDatabaseHas('cash_movements', ['id' => $movement->id]);
+    }
+
     public function test_it_resolves_a_review_by_reopening_a_line_without_financial_effect(): void
     {
         $line = $this->importLine('CREDIT', '100.00', 'REVIEW-REOPEN');
