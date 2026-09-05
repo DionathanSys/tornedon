@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mobile\Resources\Services\Pages;
 
+use App\Filament\Clusters\Sales\Resources\Services\Pages\Actions\DuplicateServiceAction;
 use App\Filament\Mobile\Resources\Services\ServiceResource;
 use App\Notification\NotifyService as notify;
 use App\Services\Service\ServiceService;
@@ -32,11 +33,13 @@ class EditService extends EditRecord
                     ->icon(Heroicon::Plus)
                     ->color('primary')
                     ->size(Size::Small),
+                DuplicateServiceAction::make()
+                    ->iconButton(),
                 DeleteAction::make()
-                    ->size(Size::Small)
+                    ->iconButton()
                     ->using(function (Model $record): bool {
                         Log::debug('EditService: Iniciando soft delete de serviço', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_id' => $record->id,
                         ]);
 
@@ -45,7 +48,7 @@ class EditService extends EditRecord
 
                         if ($service->hasError()) {
                             Log::error('EditService: Erro ao deletar serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'error_code' => $service->getErrorCode(),
                                 'message' => $service->getMessage(),
                                 'service_id' => $record->id,
@@ -55,21 +58,22 @@ class EditService extends EditRecord
                                 message: $service->getMessageUser(),
                                 errorCode: $service->getErrorCode()
                             );
+
                             return false;
                         }
 
                         Log::info('EditService: Serviço deletado com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_id' => $record->id,
                         ]);
 
                         return $result;
                     }),
                 ForceDeleteAction::make()
-                    ->size(Size::Small)
+                    ->hiddenLabel()
                     ->using(function (Model $record): bool {
                         Log::debug('EditService: Iniciando force delete de serviço', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_id' => $record->id,
                         ]);
 
@@ -78,7 +82,7 @@ class EditService extends EditRecord
 
                         if ($service->hasError()) {
                             Log::error('EditService: Erro ao force delete serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'error_code' => $service->getErrorCode(),
                                 'message' => $service->getMessage(),
                                 'service_id' => $record->id,
@@ -88,11 +92,12 @@ class EditService extends EditRecord
                                 message: $service->getMessageUser(),
                                 errorCode: $service->getErrorCode()
                             );
+
                             return false;
                         }
 
                         Log::info('EditService: Serviço force deleted com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_id' => $record->id,
                         ]);
 
@@ -102,7 +107,7 @@ class EditService extends EditRecord
                 RestoreAction::make()
                     ->using(function (Model $record): bool {
                         Log::debug('EditService: Iniciando restore de serviço', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_id' => $record->id,
                         ]);
 
@@ -111,7 +116,7 @@ class EditService extends EditRecord
 
                         if ($service->hasError()) {
                             Log::error('EditService: Erro ao restore serviço', [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'error_code' => $service->getErrorCode(),
                                 'message' => $service->getMessage(),
                                 'service_id' => $record->id,
@@ -121,11 +126,12 @@ class EditService extends EditRecord
                                 message: $service->getMessageUser(),
                                 errorCode: $service->getErrorCode()
                             );
+
                             return false;
                         }
 
                         Log::info('EditService: Serviço restored com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'service_id' => $record->id,
                         ]);
 
@@ -144,7 +150,7 @@ class EditService extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         Log::debug('EditService: Mutando dados antes de salvar', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_id' => $this->record->id,
             'data' => $data,
         ]);
@@ -155,7 +161,7 @@ class EditService extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         Log::debug('EditService: Iniciando atualização de serviço', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_id' => $record->id,
             'data' => $data,
         ]);
@@ -165,7 +171,7 @@ class EditService extends EditRecord
 
         if ($service->hasError() || $updatedService === null) {
             Log::error('EditService: Erro ao atualizar serviço', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $service->getErrorCode(),
                 'message' => $service->getMessage(),
                 'errors' => $service->getErrors(),
@@ -181,7 +187,7 @@ class EditService extends EditRecord
         }
 
         Log::info('EditService: Serviço atualizado com sucesso', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'service_id' => $updatedService->id,
         ]);
 
