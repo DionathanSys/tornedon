@@ -23,7 +23,7 @@ class PartnerFactory extends Factory
         return [
             'name' => $this->faker->name,
             'document_type' => 'CPF',
-            'document_number' => $this->faker->cpf(false),
+            'document_number' => $this->faker->unique()->numerify('###########'),
             'is_active' => true,
             'created_by' => User::factory(),
         ];
