@@ -11,6 +11,7 @@ use App\Filament\Operation\Pages\Requisitions\RequisitionDetail;
 use App\Filament\Operation\Pages\Requisitions\RequisitionList;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
+use App\Livewire\OperationMenu;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\Requisition;
@@ -43,6 +44,10 @@ class OperationPanelTest extends TestCase
             ->assertOk()
             ->assertSee('Nova OS')
             ->assertSee('Nova Requisição')
+            ->assertSee('Menu')
+            ->assertSee('Mudar empresa')
+            ->assertSee('Nova ordem')
+            ->assertSee('Nova requisição')
             ->assertSee('Acesso rápido')
             ->assertSee('Ordens de Serviço')
             ->assertSee('Requisições')
@@ -65,12 +70,18 @@ class OperationPanelTest extends TestCase
 
         $response = $this->get(OperationDashboard::getUrl(tenant: $company));
 
-        $response
-            ->assertOk()
-            ->assertSee('Empresa atual')
-            ->assertSee($company->name)
-            ->assertSee($otherCompany->name)
-            ->assertSee('/operation/'.$otherCompany->getRouteKey(), false);
+        $response->assertOk();
+
+        Livewire::test(OperationMenu::class)
+            ->callAction('switchTenant', data: [
+                'tenant_id' => $otherCompany->getKey(),
+            ])
+            ->assertRedirect(Filament::getUrl($otherCompany));
+
+        Livewire::test(OperationMenu::class)
+            ->assertActionExists('switchTenant')
+            ->assertActionExists('createServiceOrder')
+            ->assertActionExists('createRequisition');
     }
 
     public function test_operation_lists_expose_their_create_actions(): void

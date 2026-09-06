@@ -41,10 +41,6 @@ class OperationPanelProvider extends PanelProvider
                 in: app_path('Filament/Operation/Pages'),
                 for: 'App\\Filament\\Operation\\Pages',
             )
-            ->renderHook(
-                PanelsRenderHook::PAGE_START,
-                fn () => new HtmlString(view('filament.operation.tenant-switcher')->render()),
-            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

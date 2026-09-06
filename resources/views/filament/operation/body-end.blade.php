@@ -45,6 +45,48 @@
         color: #fff;
     }
 
+    .op-bottom-nav__menu,
+    .op-menu,
+    .op-menu .fi-dropdown,
+    .op-menu .fi-dropdown-trigger {
+        min-width: 0;
+        height: 100%;
+    }
+
+    .op-menu__trigger {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        border: 0;
+        border-radius: 0.95rem;
+        padding: 0.55rem 0.25rem;
+        background: transparent;
+        color: #64748b;
+        font: inherit;
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .op-menu__trigger:hover,
+    .op-menu__trigger:focus-visible {
+        background: #f1f5f9;
+        color: #18181b;
+        outline: none;
+    }
+
+    .op-menu__trigger svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        stroke-width: 2.2;
+    }
+
     .op-bottom-nav__badge {
         position: absolute;
         top: -2px;
@@ -121,6 +163,10 @@
                 <span>{{ $item['label'] }}</span>
             </a>
         @endforeach
+
+        <div class="op-bottom-nav__menu">
+            @livewire(\App\Livewire\OperationMenu::class)
+        </div>
     @endif
 </nav>
 
