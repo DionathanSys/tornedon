@@ -9,6 +9,7 @@ use App\Services\Quote\QuoteNumberGenerator;
 use App\Services\Quote\States\QuoteState;
 use App\Services\Quote\States\StateResolver;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Quote extends Model // implements HasMedia
 {
+    use HasFactory;
+
     // use InteractsWithMedia;
 
     private ?array $resolvedCommercialAmounts = null;

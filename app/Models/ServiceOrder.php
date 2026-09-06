@@ -11,6 +11,7 @@ use App\Models\Concerns\HasAttachments;
 use App\Services\ServiceOrder\StateResolver;
 use App\Services\ServiceOrder\States\ServiceOrderState;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ServiceOrder extends Model
 {
-    use HasAttachments;
+    use HasAttachments, HasFactory;
 
     private ?array $resolvedItemsAmounts = null;
 

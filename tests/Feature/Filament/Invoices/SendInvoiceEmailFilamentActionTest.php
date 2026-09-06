@@ -29,7 +29,7 @@ class SendInvoiceEmailFilamentActionTest extends TestCase
         $user = User::factory()->create();
 
         $company = Company::query()->create([
-            'name' => 'Empresa Filament ' . str()->uuid(),
+            'name' => sprintf('Empresa Filament %s', str()->uuid()),
             'document_number' => '98765432000199',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
             'email' => 'empresa-filament@example.com',
@@ -38,13 +38,16 @@ class SendInvoiceEmailFilamentActionTest extends TestCase
         ]);
 
         $customer = Partner::query()->create([
-            'name' => 'Cliente Filament ' . str()->uuid(),
+            'name' => sprintf('Cliente Filament %s', str()->uuid()),
             'document_type' => 'CPF',
-            'document_number' => preg_replace('/\D/', '', (string) fake()->unique()->cpf(false)),
+            'document_number' => fake()->unique()->numerify('###########'),
             'created_by' => $user->id,
         ]);
 
-        $user->companies()->attach($company);
+        $user->companies()->attach($company, [
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
 
         $invoice = Invoice::query()->create([
             'customer_id' => $customer->id,

@@ -86,13 +86,6 @@ class FiscalEmissionPreflightServiceTest extends TestCase
             issuePurpose: IssuePurpose::DEVOLUCAO,
         );
 
-        FiscalDocumentTaxDetail::query()->create([
-            'company_id' => $document->company_id,
-            'fiscal_document_id' => $document->id,
-            'freight_data' => ['modalidade_frete' => FreightModality::SEM_FRETE->value],
-            'fiscal_metadata' => ['intermediario' => ['indicador' => null]],
-        ]);
-
         $originDocument = FiscalDocument::query()->create([
             'customer_id' => $document->customer_id,
             'company_id' => $document->company_id,
@@ -173,7 +166,7 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         $this->assertSame('national_nfse', $result->scenarioCode);
         $this->assertSame('nfse:nacional', $result->channelCode);
         $this->assertSame('nacional:default', $result->payloadBuilderKey);
-        $this->assertSame("nfse:{$document->company_id}:1:2:nacional", $result->queueGroupKey);
+        $this->assertSame("nfse:{$document->company_id}:1:2", $result->queueGroupKey);
         $this->assertSame(1, $result->candidateNumber);
     }
 
@@ -289,6 +282,13 @@ class FiscalEmissionPreflightServiceTest extends TestCase
                 ],
             ],
             'created_by' => $user->id,
+        ]);
+
+        FiscalDocumentTaxDetail::query()->create([
+            'company_id' => $company->id,
+            'fiscal_document_id' => $document->id,
+            'freight_data' => ['modalidade_frete' => FreightModality::SEM_FRETE->value],
+            'fiscal_metadata' => ['intermediario' => ['indicador' => null]],
         ]);
 
         return [$user, $document];

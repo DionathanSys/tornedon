@@ -9,6 +9,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -56,6 +57,45 @@ class CompanySettingsPageTest extends TestCase
         );
 
         Storage::disk('local')->assertExists('certificates/' . $company->id . '/new_certificate.p12');
+    }
+
+    public function test_existing_logo_preview_uses_the_authenticated_application_url(): void
+    {
+        [, $company] = $this->createAuthenticatedTenant();
+        $path = 'logos/'.$company->id.'/logo.png';
+
+        Storage::fake('r2');
+        config(['uploads.logo_disk' => 'r2']);
+        Storage::disk('r2')->put($path, 'logo');
+        $company->update(['logo_path' => $path]);
+
+        $livewire = Livewire::test(CompanySettings::class);
+        $fileUpload = $livewire->instance()->getForm('form')->getComponent('logo_path');
+        $uploadedFile = array_values($fileUpload->getUploadedFiles())[0];
+
+        $this->assertStringStartsWith('/companies/'.$company->id.'/logo', $uploadedFile['url']);
+        $this->get($uploadedFile['url'])->assertOk();
+    }
+
+    public function test_company_logo_preview_requires_membership_in_the_company(): void
+    {
+        [, $company] = $this->createAuthenticatedTenant();
+        $path = 'logos/'.$company->id.'/logo.png';
+
+        Storage::fake('r2');
+        config(['uploads.logo_disk' => 'r2']);
+        Storage::disk('r2')->put($path, 'logo');
+        $company->update(['logo_path' => $path]);
+
+        $url = URL::temporarySignedRoute(
+            'companies.logo',
+            now()->addMinutes(5),
+            ['company' => $company],
+            absolute: false,
+        );
+        $this->actingAs(User::factory()->create());
+
+        $this->get($url)->assertForbidden();
     }
 
     /**

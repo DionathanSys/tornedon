@@ -20,6 +20,13 @@ class StoreFiscalDocumentAttachmentsActionTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['attachments.default_disk' => 'local']);
+    }
+
     public function test_it_stores_danfe_and_xml_as_fiscal_document_attachments(): void
     {
         Storage::fake('local');

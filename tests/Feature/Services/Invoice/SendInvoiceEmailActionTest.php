@@ -256,7 +256,7 @@ class SendInvoiceEmailActionTest extends TestCase
         $customer = Partner::query()->create([
             'name' => 'Cliente Teste '.str()->uuid(),
             'document_type' => 'CPF',
-            'document_number' => preg_replace('/\D/', '', (string) fake()->unique()->cpf(false)),
+            'document_number' => fake()->unique()->numerify('###########'),
             'created_by' => $owner->id,
         ]);
 

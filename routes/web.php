@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\CompanyLogoController;
 use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\ErrorTicketController;
 use App\Http\Controllers\FiscalDocumentCorrectionLetterController;
@@ -48,6 +49,10 @@ Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispat
 Route::get('/attachments/{attachment:public_id}/download', [AttachmentController::class, 'download'])
     ->name('attachments.download')
     ->middleware(['web', 'auth']);
+
+Route::get('/companies/{company}/logo', [CompanyLogoController::class, 'show'])
+    ->name('companies.logo')
+    ->middleware(['auth', 'signed:relative']);
 
 Route::get('/pdf-preview/{token}', [PdfPreviewController::class, 'show'])
     ->name('pdf-preview.show')
