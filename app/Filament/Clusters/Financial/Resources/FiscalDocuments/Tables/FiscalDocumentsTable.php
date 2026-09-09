@@ -3,8 +3,6 @@
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Tables;
 
 use App\Enum\FiscalDocument\DocumentModel;
-use App\Enum\FiscalDocument\NfeStatus;
-use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\CreatePurchaseClosingBulkAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
@@ -22,8 +20,8 @@ use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class FiscalDocumentsTable
 {
@@ -47,8 +45,8 @@ class FiscalDocumentsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn(Status $state): string => $state->description())
-                    ->color(fn(Status $state): string => $state->color())
+                    ->formatStateUsing(fn (Status $state): string => $state->description())
+                    ->color(fn (Status $state): string => $state->color())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('issued_at')
@@ -91,15 +89,25 @@ class FiscalDocumentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('customer_id')
+                    ->label('Parceiro')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('document_type')
                     ->label('Tipo de Documento')
                     ->options(DocumentModel::toSelectArray()),
-                SelectFilter::make('nfe_status')
-                    ->label('Status NF-e')
-                    ->options(NfeStatus::toSelectArray()),
-                SelectFilter::make('nfse_status')
-                    ->label('Status NFS-e')
-                    ->options(NfeStatus::toSelectArray()),
+                DateRangeFilter::make('issued_at')
+                    ->label('Data de Emissão')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar(),
+                DateRangeFilter::make('movement_at')
+                    ->label('Data de Entrada')
+                    ->autoApply()
+                    ->firstDayOfWeek(0)
+                    ->alwaysShowCalendar(),
                 Filter::make('confirmed')
                     ->label('Confirmado')
                     ->toggle(),
@@ -112,13 +120,14 @@ class FiscalDocumentsTable
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->color('warning')
                         ->requiresConfirmation()
-                        ->visible(fn($record): bool => GeneratePurchaseReturnAction::isVisible($record))
+                        ->visible(fn ($record): bool => GeneratePurchaseReturnAction::isVisible($record))
                         ->action(function ($record): void {
                             $service = app(PurchaseReturnFiscalDocumentService::class);
                             $returnDocument = $service->generateFromEntry($record, Auth::id());
 
                             if ($service->hasError() || $returnDocument === null) {
                                 notify::error(message: $service->getMessageUser());
+
                                 return;
                             }
 
@@ -126,9 +135,9 @@ class FiscalDocumentsTable
 
                             redirect(SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument]));
                         }),
-                ])->icon(Heroicon::Bars3)
+                ])->icon(Heroicon::Bars3),
 
-                    ], RecordActionsPosition::BeforeCells)
+            ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 BulkActionGroup::make([
                     CreatePurchaseClosingBulkAction::make(),
