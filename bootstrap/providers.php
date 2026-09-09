@@ -6,4 +6,5 @@ return [
     App\Providers\Filament\ManagementPanelProvider::class,
     App\Providers\Filament\MobilePanelProvider::class,
     App\Providers\Filament\ShopPanelProvider::class,
+    App\Providers\Filament\OperationPanelProvider::class,
 ];

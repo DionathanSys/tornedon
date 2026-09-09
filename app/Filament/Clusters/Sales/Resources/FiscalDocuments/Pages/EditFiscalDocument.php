@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Actions\ConfigurePurchaseReturnSettlementAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Models\FiscalDocument;
+use App\Models\User;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\Actions\ReconcileNfseRpsSequenceAction;
 use App\Services\FiscalDocument\FiscalDocumentService;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
@@ -155,7 +157,7 @@ class EditFiscalDocument extends EditRecord
                     ->label('Consultar SEFAZ')
                     ->icon(Heroicon::MagnifyingGlass)
                     ->color('warning')
-                    ->visible(fn (FiscalDocument $record) => ($record->isNfe() && $record->isNfeInProcessing()) || Auth::user()->is_admin)
+                    ->visible(fn (FiscalDocument $record) => ($record->isNfe() && $record->isNfeInProcessing()) || (($user = Auth::user()) instanceof User && $user->canManageFiscalOperations()))
                     ->action(function (FiscalDocument $record): void {
                         $service = app(NfeDocumentService::class);
                         $service->consultar($record, Auth::id());
@@ -176,7 +178,7 @@ class EditFiscalDocument extends EditRecord
                     ->color('gray')
                     ->visible(fn (FiscalDocument $record) => $record->isNfe() && ! $record->isNfeAuthorized())
                     ->modalHeading('Preview da NF-e')
-                    ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                    ->modalContent(function (FiscalDocument $record): Htmlable {
                         $service = app(NfeDocumentService::class);
                         $data = $service->preview($record, Auth::id());
 
@@ -433,7 +435,7 @@ class EditFiscalDocument extends EditRecord
                     ->color('gray')
                     ->visible(fn (FiscalDocument $record) => $record->isNfse())
                     ->modalHeading('Preview da NFS-e')
-                    ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                    ->modalContent(function (FiscalDocument $record): Htmlable {
                         $service = app(NfseDocumentService::class);
                         $data = $service->preview($record, Auth::id());
 

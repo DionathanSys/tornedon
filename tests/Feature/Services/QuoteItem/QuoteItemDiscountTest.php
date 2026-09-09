@@ -63,7 +63,7 @@ class QuoteItemDiscountTest extends TestCase
 
         $this->assertNull($item);
         $this->assertTrue($serviceLayer->hasError());
-        $this->assertStringContainsString('preco minimo de venda', strtolower($serviceLayer->getMessageUser()));
+        $this->assertStringContainsString('preço mínimo de venda', strtolower($serviceLayer->getMessageUser()));
     }
 
     private function makeQuoteContext(bool $acceptCustomerDiscount, float $customerDiscountPercentage, float $price, ?float $minSalePrice): array

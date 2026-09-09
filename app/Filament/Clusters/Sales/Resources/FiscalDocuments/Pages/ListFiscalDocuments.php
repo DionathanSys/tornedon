@@ -7,8 +7,10 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsPdfAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsXmlAction;
+use App\Models\User;
 use App\Notification\NotifyService as notify;
 use App\Services\Fiscal\NfeConfigService;
+use CloudDfe\SdkPHP\Nfe;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\CodeEditor;
@@ -99,7 +101,7 @@ class ListFiscalDocuments extends ListRecords
             ])
             ->modalSubmitActionLabel('Gerar preview')
             ->modalWidth('7xl')
-            ->visible(fn (): bool => (bool) Auth::user()?->is_admin)
+            ->visible(fn (): bool => ($user = Auth::user()) instanceof User && $user->canManageFiscalOperations())
             ->action(function (array $data) {
                 $payload = json_decode((string) ($data['payload'] ?? ''), true);
 
@@ -120,7 +122,7 @@ class ListFiscalDocuments extends ListRecords
                 try {
                     $companyId = (int) $tenant->id;
                     $configService = app(NfeConfigService::class);
-                    $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($companyId));
+                    $sdk = new Nfe($configService->buildSdkParams($companyId));
                     $resp = $sdk->preview($payload);
 
                     if (! ($resp->sucesso ?? false) || empty($resp->pdf ?? null)) {

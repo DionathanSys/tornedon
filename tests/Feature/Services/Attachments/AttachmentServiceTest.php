@@ -27,10 +27,15 @@ class AttachmentServiceTest extends TestCase
     {
         parent::setUp();
 
+        config(['attachments.default_disk' => 'local']);
         $this->service = app(AttachmentService::class);
 
         $company = Company::factory()->create();
-        $this->user = User::factory()->create(['company_id' => $company->id]);
+        $this->user = User::factory()->create();
+        $this->user->companies()->attach($company, [
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
 
         $this->actingAs($this->user);
 

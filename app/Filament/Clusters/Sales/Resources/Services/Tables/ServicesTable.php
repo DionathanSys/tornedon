@@ -2,7 +2,7 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Services\Tables;
 
-use App\Enum\Product\Unit;
+use App\Filament\Clusters\Sales\Resources\Services\Pages\Actions\DuplicateServiceAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\Size;
@@ -117,6 +117,8 @@ class ServicesTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                DuplicateServiceAction::make()
+                    ->iconButton(),
                 EditAction::make()
                     ->iconButton(),
             ])

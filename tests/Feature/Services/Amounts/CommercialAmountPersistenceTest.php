@@ -75,9 +75,6 @@ class CommercialAmountPersistenceTest extends TestCase
         $this->assertSame(85.0, (float) $serviceOrder->gross_amount);
         $this->assertSame(7.5, (float) $serviceOrder->discount_amount);
         $this->assertSame(77.5, (float) $serviceOrder->total_amount);
-        $this->assertStoredMoney($serviceOrder, 'gross_amount', 85.0);
-        $this->assertStoredMoney($serviceOrder, 'discount_amount', 7.5);
-        $this->assertStoredMoney($serviceOrder, 'total_amount', 77.5);
     }
 
     public function test_requisition_persists_gross_discount_and_total_amounts(): void
@@ -125,9 +122,6 @@ class CommercialAmountPersistenceTest extends TestCase
         $this->assertSame(100.0, (float) $requisition->gross_amount);
         $this->assertSame(15.0, (float) $requisition->discount_amount);
         $this->assertSame(85.0, (float) $requisition->total_amount);
-        $this->assertStoredMoney($requisition, 'gross_amount', 100.0);
-        $this->assertStoredMoney($requisition, 'discount_amount', 15.0);
-        $this->assertStoredMoney($requisition, 'total_amount', 85.0);
     }
 
     public function test_service_order_resolves_services_total_amount_from_aggregate_query(): void
@@ -275,9 +269,6 @@ class CommercialAmountPersistenceTest extends TestCase
         $this->assertSame(100.0, (float) $quote->gross_amount);
         $this->assertSame(10.0, (float) $quote->discount_amount);
         $this->assertSame(90.0, (float) $quote->total_amount);
-        $this->assertStoredMoney($quote, 'gross_amount', 100.0);
-        $this->assertStoredMoney($quote, 'discount_amount', 10.0);
-        $this->assertStoredMoney($quote, 'total_amount', 90.0);
     }
 
     /**

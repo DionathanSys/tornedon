@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Company extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'document_number',
@@ -88,6 +91,56 @@ class Company extends Model
     public function companyCardStatements(): HasMany
     {
         return $this->hasMany(CompanyCardStatement::class);
+    }
+
+    public function productSequence(): HasOne
+    {
+        return $this->hasOne(ProductSequence::class);
+    }
+
+    public function serviceSequence(): HasOne
+    {
+        return $this->hasOne(ServiceSequence::class);
+    }
+
+    public function quoteSequence(): HasOne
+    {
+        return $this->hasOne(QuoteSequence::class);
+    }
+
+    public function requisitionSequence(): HasOne
+    {
+        return $this->hasOne(RequisitionSequence::class);
+    }
+
+    public function serviceOrderSequence(): HasOne
+    {
+        return $this->hasOne(ServiceOrderSequence::class);
+    }
+
+    public function productionOrderSequence(): HasOne
+    {
+        return $this->hasOne(ProductionOrderSequence::class);
+    }
+
+    public function productionRequestSequence(): HasOne
+    {
+        return $this->hasOne(ProductionRequestSequence::class);
+    }
+
+    public function invoiceSequence(): HasOne
+    {
+        return $this->hasOne(InvoiceSequence::class);
+    }
+
+    public function nfeSequences(): HasMany
+    {
+        return $this->hasMany(NfeSequence::class);
+    }
+
+    public function nfseSequences(): HasMany
+    {
+        return $this->hasMany(NfseSequence::class);
     }
 
     public function serviceProvisionLocation(): Attribute

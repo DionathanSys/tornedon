@@ -32,6 +32,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h2 class="text-base font-semibold">Data de referência</h2>
+                    <p class="mobile-os-dashboard-muted mt-1 text-sm">{{ $this->getSelectedDateLabel() }}</p>
                 </div>
 
                 <label class="block">

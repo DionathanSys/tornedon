@@ -633,6 +633,68 @@ OFX;
         $this->assertDatabaseHas('cash_movements', ['id' => $movement->id]);
     }
 
+    public function test_it_audits_a_failed_reconciliation_reversal(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVERSE-FAILED');
+
+        $reversed = $this->resolveService->reverseReconciliation(
+            $line,
+            $this->user->id,
+            'Tentativa de desfazimento para validar o erro.',
+        );
+
+        $this->assertNull($reversed);
+        $this->assertStringContainsString(
+            'Somente linhas conciliadas podem ter a conciliação desfeita.',
+            $this->resolveService->getMessageUser(),
+        );
+        $this->assertDatabaseHas('audit_entries', [
+            'company_id' => $this->company->id,
+            'auditable_type' => BankStatementImport::class,
+            'auditable_id' => $line->bank_statement_import_id,
+            'event' => 'bank_statement_import.reconciliation_reversal_failed',
+            'action' => 'reconciliation_reversal_failed',
+        ]);
+        $this->assertSame(
+            'pending',
+            $line->fresh()->reconciliation_status->value,
+        );
+    }
+
+    public function test_it_explains_when_a_receivable_payment_from_reconciliation_is_missing(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'REVERSE-MISSING-PAYMENT');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, [
+            'origin_type' => AccountReceivableInstallmentPayment::class,
+            'origin_id' => 233,
+        ]);
+        $line->update([
+            'cash_movement_id' => $movement->id,
+            'reconciliation_status' => 'reconciled',
+            'reconciled_at' => now(),
+            'metadata' => array_merge($line->metadata ?? [], [
+                'decision' => [
+                    'type' => 'account_receivable_installment',
+                    'payment_id' => 233,
+                ],
+            ]),
+        ]);
+
+        $reversed = $this->resolveService->reverseReconciliation(
+            $line,
+            $this->user->id,
+            'Baixa ausente para validar o diagnóstico.',
+        );
+
+        $this->assertNull($reversed);
+        $this->assertStringContainsString(
+            'Recebimento da conta a receber não encontrado (ID 233).',
+            $this->resolveService->getMessageUser(),
+        );
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+        $this->assertDatabaseHas('cash_movements', ['id' => $movement->id]);
+    }
+
     public function test_it_resolves_a_review_by_reopening_a_line_without_financial_effect(): void
     {
         $line = $this->importLine('CREDIT', '100.00', 'REVIEW-REOPEN');

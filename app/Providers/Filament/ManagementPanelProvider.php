@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\EnsureActiveUser;
 use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -62,6 +63,7 @@ class ManagementPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                EnsureActiveUser::class,
             ])
             ->databaseNotifications(position: DatabaseNotificationsPosition::Sidebar)
             ->unsavedChangesAlerts()

@@ -23,7 +23,6 @@ use App\Models\Partner;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\PurchaseReturnCredit;
-use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -93,10 +92,12 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
 
     public function test_it_replaces_open_payable_with_new_boleto_using_remaining_balance(): void
     {
+        $replacementDueDate = now()->addMonth()->toDateString();
+
         [$user, $originDocument, $returnDocument, $returnItem, $originPayable] = $this->createScenario(
             PurchaseReturnSettlementMode::REPLACE_PAYABLE,
             40,
-            ['replacement_due_date' => '2026-05-20']
+            ['replacement_due_date' => $replacementDueDate]
         );
 
         $result = app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
@@ -113,7 +114,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertNotNull($replacementPayable);
         $this->assertSame(AccountPayableStatus::PENDING, $replacementPayable->status);
         $this->assertEquals(60.0, (float) $replacementPayable->due_amount);
-        $this->assertSame('2026-05-20', $replacementPayable->due_date?->format('Y-m-d'));
+        $this->assertSame($replacementDueDate, $replacementPayable->due_date?->format('Y-m-d'));
         $this->assertDatabaseCount('purchase_return_credits', 0);
         $this->assertDatabaseHas('stock_movements', [
             'source_type' => 'fiscal_document_item',

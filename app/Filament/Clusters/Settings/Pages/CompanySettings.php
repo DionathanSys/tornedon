@@ -15,6 +15,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use UnitEnum;
 
@@ -73,6 +75,36 @@ class CompanySettings extends Page implements Forms\Contracts\HasForms
                             ->disk(config('uploads.logo_disk'))
                             ->visibility('private')
                             ->directory(fn () => 'logos/'.(Filament::getTenant()?->id ?? 'tmp'))
+                            ->getUploadedFileUsing(function (string $file): ?array {
+                                /** @var Company|null $company */
+                                $company = Filament::getTenant();
+
+                                if (! $company || $file !== $company->logo_path) {
+                                    return null;
+                                }
+
+                                try {
+                                    $disk = Storage::disk(config('uploads.logo_disk'));
+
+                                    if (! $disk->exists($file)) {
+                                        return null;
+                                    }
+
+                                    return [
+                                        'name' => basename($file),
+                                        'size' => $disk->size($file),
+                                        'type' => $disk->mimeType($file),
+                                        'url' => URL::temporarySignedRoute(
+                                            'companies.logo',
+                                            now()->addMinutes(config('filament.temporary_file_url_expiry_minutes', 30))->endOfHour(),
+                                            ['company' => $company],
+                                            absolute: false,
+                                        ),
+                                    ];
+                                } catch (\Throwable) {
+                                    return null;
+                                }
+                            })
                             ->getUploadedFileNameForStorageUsing(
                                 fn (TemporaryUploadedFile $file): string => 'logo_'.now()->format('YmdHis').'.'.$file->getClientOriginalExtension()
                             )

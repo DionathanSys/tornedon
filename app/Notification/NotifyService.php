@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 class NotifyService
 {
     protected Collection|EloquentCollection $recipients;
+
     protected ?string $errorCode = null;
 
     public function __construct(
@@ -31,6 +32,7 @@ class NotifyService
     public function withErrorCode(?string $errorCode): self
     {
         $this->errorCode = $errorCode;
+
         return $this;
     }
 
@@ -157,8 +159,16 @@ class NotifyService
     public static function debug(string $title = 'Debug', string $message = ''): void
     {
         $admins = User::query()
-            ->where('is_admin', true)
             ->where('is_active', true)
+            ->where(function ($query): void {
+                $query
+                    ->whereIn('management_role', ['super_admin', 'management_admin'])
+                    ->orWhere(function ($legacyQuery): void {
+                        $legacyQuery
+                            ->whereNull('management_role')
+                            ->where('is_admin', true);
+                    });
+            })
             ->get();
 
         (new self('info', $title, $message, $admins))

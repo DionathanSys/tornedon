@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Cnpj;
 
+use App\Models\CnpjProviderSecret;
 use App\Services\Cnpj\CnpjProviderSettingsRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -77,8 +78,8 @@ class CnpjProviderSettingsRepositoryTest extends TestCase
 
         $this->assertSame('receitaws', $providers[0]['name']);
         $this->assertTrue($providers[0]['enabled']);
-        $this->assertSame('https://receita.custom', $providers[0]['base_url']);
-        $this->assertSame(['Authorization' => 'Bearer token'], $providers[0]['headers']);
+        $this->assertSame('https://receita.test', $providers[0]['base_url']);
+        $this->assertSame([], $providers[0]['headers']);
         $this->assertSame(9, $providers[0]['rate_limit']['max_attempts']);
         $this->assertSame(45, $providers[0]['rate_limit']['decay_seconds']);
 
@@ -88,6 +89,31 @@ class CnpjProviderSettingsRepositoryTest extends TestCase
         $this->assertTrue($providers[2]['enabled']);
         $this->assertSame('cnpj_ws', $providers[3]['name']);
         $this->assertFalse($providers[3]['enabled']);
+    }
+
+    public function test_management_configuration_does_not_expose_endpoint_or_headers(): void
+    {
+        $providers = app(CnpjProviderSettingsRepository::class)->forManagement();
+
+        $this->assertArrayNotHasKey('base_url', $providers[0]);
+        $this->assertArrayNotHasKey('headers', $providers[0]);
+    }
+
+    public function test_provider_headers_are_read_from_encrypted_storage(): void
+    {
+        CnpjProviderSecret::query()->create([
+            'provider' => 'receitaws',
+            'value' => ['Authorization' => 'Bearer token'],
+        ]);
+
+        $providers = app(CnpjProviderSettingsRepository::class)->all();
+        $receita = collect($providers)->firstWhere('name', 'receitaws');
+
+        $this->assertSame(['Authorization' => 'Bearer token'], $receita['headers']);
+        $this->assertStringNotContainsString(
+            'Bearer token',
+            (string) CnpjProviderSecret::query()->where('provider', 'receitaws')->firstOrFail()->getRawOriginal('value'),
+        );
     }
 }
 

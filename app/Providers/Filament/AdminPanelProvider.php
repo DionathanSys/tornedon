@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\EnsureActiveUser;
 use App\Models\Company;
 use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
@@ -67,6 +68,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                EnsureActiveUser::class,
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,

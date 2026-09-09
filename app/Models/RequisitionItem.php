@@ -19,7 +19,6 @@ class RequisitionItem extends Model
         });
     }
 
-
     protected $fillable = [
         'requisition_id',
         'product_id',
@@ -86,7 +85,7 @@ class RequisitionItem extends Model
         return Attribute::make(
             get: fn ($value, array $attributes): float => round(
                 array_key_exists('gross_amount', $attributes)
-                    ? (float) $attributes['gross_amount']
+                    ? ((float) $attributes['gross_amount']) / 100
                     : ((float) ($this->quantity ?? 0) * (float) ($this->unit_price ?? 0)),
                 2
             ),

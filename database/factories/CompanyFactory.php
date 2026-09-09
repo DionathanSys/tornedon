@@ -24,6 +24,7 @@ class CompanyFactory extends Factory
             'name' => $this->faker->company,
             'email' => $this->faker->companyEmail,
             'phone' => $this->faker->phoneNumber,
+            'address' => [],
             'is_active' => true,
             'created_by' => User::factory(),
         ];

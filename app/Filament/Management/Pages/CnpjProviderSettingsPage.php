@@ -2,9 +2,11 @@
 
 namespace App\Filament\Management\Pages;
 
+use App\Models\User;
 use App\Services\Cnpj\CnpjConsultationService;
 use App\Services\Cnpj\CnpjProviderSettingsRepository;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Notifications\Notification;
@@ -35,10 +37,19 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public ?array $data = [];
 
+    public static function canAccess(): bool
+    {
+        $user = Filament::auth()->user();
+
+        return $user instanceof User && $user->canManageProviders();
+    }
+
     public function mount(CnpjProviderSettingsRepository $repository): void
     {
+        abort_unless(static::canAccess(), 403);
+
         $this->form->fill([
-            'providers' => $repository->all(),
+            'providers' => $repository->forManagement(),
             'consultation' => $this->defaultConsultationState(),
         ]);
     }
@@ -68,11 +79,6 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
                                     ->label('Habilitado')
                                     ->inline(false)
                                     ->default(false),
-                                Forms\Components\TextInput::make('base_url')
-                                    ->label('Base URL')
-                                    ->url()
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
                                 Forms\Components\TextInput::make('timeout')
                                     ->label('Timeout (segundos)')
                                     ->numeric()
@@ -89,12 +95,6 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
                                     ->numeric()
                                     ->minValue(1)
                                     ->default(60),
-                                Forms\Components\KeyValue::make('headers')
-                                    ->label('Headers')
-                                    ->keyLabel('Header')
-                                    ->valueLabel('Valor')
-                                    ->addActionLabel('Adicionar header')
-                                    ->columnSpanFull(),
                             ])
                             ->columns(3)
                             ->columnSpanFull(),
@@ -130,6 +130,8 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public function save(CnpjProviderSettingsRepository $repository): void
     {
+        abort_unless(static::canAccess(), 403);
+
         try {
             $repository->save((array) ($this->data['providers'] ?? []));
         } catch (Throwable $e) {
@@ -142,7 +144,7 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
             return;
         }
 
-        $this->data['providers'] = $repository->all();
+        $this->data['providers'] = $repository->forManagement();
         $this->form->fill($this->data);
 
         Notification::make()
@@ -153,6 +155,8 @@ class CnpjProviderSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public function consult(CnpjConsultationService $service): void
     {
+        abort_unless(static::canAccess(), 403);
+
         $cnpj = trim((string) data_get($this->data, 'consultation.cnpj', ''));
 
         if ($cnpj === '') {

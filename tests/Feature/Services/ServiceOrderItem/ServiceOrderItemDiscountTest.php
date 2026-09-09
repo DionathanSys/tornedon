@@ -97,7 +97,7 @@ class ServiceOrderItemDiscountTest extends TestCase
 
         $this->assertNull($updated);
         $this->assertTrue($serviceLayer->hasError());
-        $this->assertStringContainsString('preco minimo de venda', strtolower($serviceLayer->getMessageUser()));
+        $this->assertStringContainsString('preço mínimo de venda', strtolower($serviceLayer->getMessageUser()));
     }
 
     private function makeServiceOrderContext(bool $acceptCustomerDiscount, float $customerDiscountPercentage, float $price, ?float $minSalePrice): array

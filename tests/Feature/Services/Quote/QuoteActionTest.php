@@ -5,6 +5,7 @@ namespace Tests\Feature\Services\Quote;
 use App\Enum\Quote\Status;
 use App\Models\Company;
 use App\Models\Quote;
+use App\Models\QuoteItem;
 use App\Models\User;
 use App\Services\Quote\QuoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,6 +59,13 @@ class QuoteActionTest extends TestCase
         $quote = Quote::factory()->create([
             'company_id' => $this->company->id,
             'status' => Status::DRAFT,
+        ]);
+        QuoteItem::factory()->create([
+            'quote_id' => $quote->id,
+            'product_id' => null,
+            'unit_of_measure' => 'UN',
+            'quantity' => 1,
+            'unit_price' => 100,
         ]);
 
         $this->service->sendForApproval($quote, $this->user->id);

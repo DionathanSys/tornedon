@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mobile\Resources\Services\Tables;
 
+use App\Filament\Clusters\Sales\Resources\Services\Pages\Actions\DuplicateServiceAction;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Support\Enums\Size;
@@ -97,7 +98,10 @@ class ServicesTable
             ->persistFiltersInSession()
             ->deferFilters(false)
             ->defaultSort('created_at', 'desc')
-            ->recordActions([])
+            ->recordActions([
+                DuplicateServiceAction::make()
+                    ->iconButton(),
+            ])
             ->toolbarActions([
                 CreateAction::make()
                     ->icon(Heroicon::Plus)

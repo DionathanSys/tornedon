@@ -5,10 +5,21 @@ namespace App\Filament\Management\Resources\Companies;
 use App\Filament\Management\Resources\Companies\Pages\CreateCompany;
 use App\Filament\Management\Resources\Companies\Pages\EditCompany;
 use App\Filament\Management\Resources\Companies\Pages\ListCompanies;
+use App\Filament\Management\Resources\Companies\RelationManagers\InvoiceSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\NfeSequencesRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\NfseSequencesRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\ProductionOrderSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\ProductionRequestSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\ProductSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\QuoteSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\RequisitionSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\ServiceOrderSequenceRelationManager;
+use App\Filament\Management\Resources\Companies\RelationManagers\ServiceSequenceRelationManager;
 use App\Models\Company;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -112,6 +123,24 @@ class CompanyResource extends Resource
                     ->sortable(),
             ])
             ->defaultSort('name');
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RelationGroup::make('Sequências', [
+                NfeSequencesRelationManager::class,
+                NfseSequencesRelationManager::class,
+                ProductSequenceRelationManager::class,
+                ServiceSequenceRelationManager::class,
+                QuoteSequenceRelationManager::class,
+                RequisitionSequenceRelationManager::class,
+                ServiceOrderSequenceRelationManager::class,
+                ProductionOrderSequenceRelationManager::class,
+                ProductionRequestSequenceRelationManager::class,
+                InvoiceSequenceRelationManager::class,
+            ]),
+        ];
     }
 
     public static function getPages(): array

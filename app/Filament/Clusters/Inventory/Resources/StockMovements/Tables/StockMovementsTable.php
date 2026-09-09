@@ -4,21 +4,22 @@ namespace App\Filament\Clusters\Inventory\Resources\StockMovements\Tables;
 
 use App\Enum\StockMovement\Type;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource as FinancialFiscalDocumentResource;
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\CheckProductStockBulkAction;
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\FixProductStockBulkAction;
+use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\CreateStockMovementFromModalAction;
 use App\Filament\Clusters\Manufacturing\Resources\ProductionOrders\ProductionOrderResource;
 use App\Filament\Clusters\Sales\Resources\Quotes\QuoteResource;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
-use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\CheckProductStockBulkAction;
-use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\Bulk\FixProductStockBulkAction;
-use App\Filament\Clusters\Inventory\Resources\StockMovements\Actions\CreateStockMovementFromModalAction;
 use App\Models\FiscalDocument;
 use App\Models\Product;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Notification\NotifyService as notify;
 use App\Services\StockMovement\StockMovementService;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Tables\Columns\TextColumn;
@@ -35,9 +36,9 @@ class StockMovementsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn(): Builder => StockMovement::query()
+            ->modifyQueryUsing(fn (): Builder => StockMovement::query()
                 ->where('company_id', Filament::getTenant()->id))
-            ->recordUrl(fn(StockMovement $record): ?string => static::resolveRecordUrl($record))
+            ->recordUrl(fn (StockMovement $record): ?string => static::resolveRecordUrl($record))
             ->openRecordUrlInNewTab()
             ->columns([
                 TextColumn::make('created_at')
@@ -55,27 +56,27 @@ class StockMovementsTable
                     ->sortable(),
                 TextColumn::make('type')
                     ->label('Tipo de Mov.')
-                    ->formatStateUsing(fn($state) => $state->label())
-                    ->color(fn($state) => $state->color())
+                    ->formatStateUsing(fn ($state) => $state->label())
+                    ->color(fn ($state) => $state->color())
                     ->badge()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('operational_quantity')
                     ->label('Qtde. Operação')
                     ->numeric(3, ',', '.')
-                    ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->operational_unit ?? $record->base_unit ?? 'UN'))
+                    ->formatStateUsing(fn ($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.').' '.($record->operational_unit ?? $record->base_unit ?? 'UN'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('base_quantity')
                     ->label('Qtde. Estoque')
                     ->numeric(3, ',', '.')
-                    ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->base_unit ?? 'UN'))
+                    ->formatStateUsing(fn ($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.').' '.($record->base_unit ?? 'UN'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('quantity')
                     ->label('Qtde. (Deprecated)')
                     ->numeric(3, ',', '.')
-                    ->formatStateUsing(fn($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.') . ' ' . ($record->base_unit ?? 'UN'))
+                    ->formatStateUsing(fn ($state, StockMovement $record) => number_format($state ?? $record->quantity, 3, ',', '.').' '.($record->base_unit ?? 'UN'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('unit_price')
@@ -94,11 +95,11 @@ class StockMovementsTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reference_type')
                     ->label('Referência')
-                    ->formatStateUsing(fn($state) => $state ? ucfirst($state) : '-')
+                    ->formatStateUsing(fn ($state) => $state ? ucfirst($state) : '-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('source_type')
                     ->label('Origem')
-                    ->formatStateUsing(fn($state) => $state ? ucfirst($state) : '-')
+                    ->formatStateUsing(fn ($state) => $state ? ucfirst($state) : '-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('observations')
                     ->label('Observações')
@@ -112,14 +113,14 @@ class StockMovementsTable
             ->filters([
                 SelectFilter::make('type')
                     ->label('Tipo de Mov.')
-                    ->options(collect(Type::cases())->mapWithKeys(fn($type) => [$type->value => $type->label()])->toArray()),
+                    ->options(collect(Type::cases())->mapWithKeys(fn ($type) => [$type->value => $type->label()])->toArray()),
                 DateRangeFilter::make('created_at')
                     ->label('Período de Movimentação'),
                 SelectFilter::make('product_id')
                     ->label('Produto')
                     ->searchable()
                     ->preload()
-                    ->getSearchResultsUsing(fn(string $search): array => Product::query()
+                    ->getSearchResultsUsing(fn (string $search): array => Product::query()
                         ->where('company_id', Filament::getTenant()->id)
                         ->where(function (Builder $query) use ($search): void {
                             $query->where('product_code', 'like', "%{$search}%")
@@ -129,11 +130,11 @@ class StockMovementsTable
                         ->limit(50)
                         ->pluck('product_code', 'id')
                         ->all())
-                    ->getOptionLabelUsing(fn($value): ?string => Product::query()
+                    ->getOptionLabelUsing(fn ($value): ?string => Product::query()
                         ->where('company_id', Filament::getTenant()->id)
                         ->whereKey($value)
                         ->get()
-                        ->map(fn(Product $product): string => trim("[{$product->product_code}] {$product->name}"))
+                        ->map(fn (Product $product): string => trim("[{$product->product_code}] {$product->name}"))
                         ->first())
                     ->native(false),
 
@@ -156,7 +157,7 @@ class StockMovementsTable
                 DeleteAction::make('delete-stock-movement')
                     ->iconButton()
                     ->requiresConfirmation()
-                    ->visible(fn(): bool => (bool) Auth::user()?->is_admin)
+                    ->visible(fn (): bool => ($user = Auth::user()) instanceof User && $user->canManageFiscalOperations())
                     ->using(function (StockMovement $record): bool {
                         $service = app(StockMovementService::class);
                         $result = $service->delete($record);

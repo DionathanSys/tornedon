@@ -2,6 +2,7 @@
 
 namespace App\Filament\Management\Resources\Users;
 
+use App\Enum\User\ManagementRole;
 use App\Filament\Management\Resources\Users\Pages\CreateUser;
 use App\Filament\Management\Resources\Users\Pages\EditUser;
 use App\Filament\Management\Resources\Users\Pages\ListUsers;
@@ -9,6 +10,7 @@ use App\Models\Company;
 use App\Models\User;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -66,9 +68,12 @@ class UserResource extends Resource
                     Toggle::make('is_active')
                         ->label('Ativo')
                         ->default(true),
-                    Toggle::make('is_admin')
-                        ->label('Administrador global')
-                        ->default(false),
+                    Select::make('management_role')
+                        ->label('Papel administrativo')
+                        ->options(ManagementRole::toSelectArray())
+                        ->placeholder('Usuário comum')
+                        ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
+                        ->dehydrated(fn (): bool => auth()->user()?->isSuperAdmin() ?? false),
                 ]),
         ]);
     }
@@ -89,9 +94,10 @@ class UserResource extends Resource
                     ->label('Empresas')
                     ->badge()
                     ->separator(','),
-                IconColumn::make('is_admin')
-                    ->label('Admin')
-                    ->boolean(),
+                TextColumn::make('management_role')
+                    ->label('Papel')
+                    ->state(fn (User $record): string => $record->managementRole()?->description() ?? 'Usuário comum')
+                    ->badge(),
                 IconColumn::make('is_active')
                     ->label('Ativo')
                     ->boolean(),
