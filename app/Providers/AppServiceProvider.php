@@ -27,15 +27,15 @@ use App\Models\Quote;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Models\User;
-use App\Policies\AuditEntryPolicy;
 use App\Observers\FiscalDocumentObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\ProductionOrderObserver;
 use App\Observers\RequisitionObserver;
 use App\Observers\ServiceOrderObserver;
+use App\Policies\AuditEntryPolicy;
 use App\Policies\CompanyPolicy;
-use App\Policies\UserPolicy;
 use App\Policies\ServiceOrderPolicy;
+use App\Policies\UserPolicy;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\Providers\ResendEmailProvider;
 use Illuminate\Database\Eloquent\Model;
@@ -90,16 +90,20 @@ class AppServiceProvider extends ServiceProvider
                 ], true);
         });
 
+        Gate::define('viewLogViewer', static function (User $user): bool {
+            return $user->isActive() && $user->isSuperAdmin();
+        });
+
         Livewire::component('app.filament.relation-managers.attachments-relation-manager', AttachmentsRelationManager::class);
         Livewire::component('app.forms.components.livewire.auto-submit-table-select-livewire-component', AutoSubmitTableSelectLivewireComponent::class);
         Livewire::component('app.filament.shop.resources.production-requests.widgets.production-request-overview', ProductionRequestOverview::class);
 
         // Mapa de aliases para relacionamentos polimórficos de StockMovement
         Relation::morphMap([
-            'requisition' => \App\Models\Requisition::class,
-            'quote' => \App\Models\Quote::class,
-            'service_order' => \App\Models\ServiceOrder::class,
-            'production_order' => \App\Models\ProductionOrder::class,
+            'requisition' => Requisition::class,
+            'quote' => Quote::class,
+            'service_order' => ServiceOrder::class,
+            'production_order' => ProductionOrder::class,
         ]);
 
         // Registrar policies
