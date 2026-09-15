@@ -158,7 +158,7 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
 
         return Company::query()->create([
             'name' => 'Empresa Refresh '.Str::uuid(),
-            'document_number' => '12345678000199',
+            'document_number' => '22345678000188',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
             'email' => Str::uuid().'@example.com',
             'certificate' => 'certificados/teste.pfx',
@@ -182,6 +182,10 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
         <CNPJ>12345678000199</CNPJ>
         <xNome>Fornecedor Teste</xNome>
       </emit>
+      <dest>
+        <CNPJ>22345678000188</CNPJ>
+        <xNome>Empresa Destinataria</xNome>
+      </dest>
       <det nItem="1">
         <prod>
           <cProd>P001</cProd>

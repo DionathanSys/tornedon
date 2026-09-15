@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services\Fiscal\Sefaz;
 
+use App\Models\Company;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\Fiscal\Sefaz\CompanySefazCertificateService;
 use App\Services\Fiscal\Sefaz\SefazDfeDistributionService;
@@ -67,6 +68,44 @@ class SefazDfeDistributionServiceTest extends TestCase
         $this->assertSame('35260412345678000199550010000003211000000321', $result->documents[0]->accessKey);
     }
 
+    public function test_it_filters_own_issued_documents_and_full_xml_for_other_recipients(): void
+    {
+        $service = new SefazDfeDistributionService(
+            app(NfeConfigService::class),
+            app(CompanySefazCertificateService::class),
+        );
+        $company = new Company(['document_number' => '12345678000199']);
+
+        $responseXml = $this->makeSoapResponse('138', 'Documentos localizados', '000000000000004', '000000000000004', [
+            [
+                'nsu' => '000000000000001',
+                'schema' => 'resNFe_v1.01.xsd',
+                'xml' => '<resNFe><CNPJ>12345678000199</CNPJ></resNFe>',
+            ],
+            [
+                'nsu' => '000000000000002',
+                'schema' => 'resNFe_v1.01.xsd',
+                'xml' => '<resNFe><CNPJ>22345678000188</CNPJ></resNFe>',
+            ],
+            [
+                'nsu' => '000000000000003',
+                'schema' => 'procNFe_v4.00.xsd',
+                'xml' => $this->fullXml('12345678000199', '22345678000188'),
+            ],
+            [
+                'nsu' => '000000000000004',
+                'schema' => 'procNFe_v4.00.xsd',
+                'xml' => $this->fullXml('22345678000188', '12345678000199'),
+            ],
+        ]);
+
+        $result = $service->parseSoapResponse($responseXml, $company);
+
+        $this->assertCount(2, $result->documents);
+        $this->assertSame('000000000000002', $result->documents[0]->nsu);
+        $this->assertSame('000000000000004', $result->documents[1]->nsu);
+    }
+
     public function test_it_parses_empty_successful_distribution(): void
     {
         $service = new SefazDfeDistributionService(
@@ -119,7 +158,7 @@ class SefazDfeDistributionServiceTest extends TestCase
             app(CompanySefazCertificateService::class),
         );
 
-        $responseXml = <<<XML
+        $responseXml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
     <soap:Body>
@@ -213,6 +252,20 @@ XML;
         </nfeDistDFeInteresseResponse>
     </soap:Body>
 </soap:Envelope>
+XML;
+    }
+
+    private function fullXml(string $issuerDocument, string $recipientDocument): string
+    {
+        return <<<XML
+<procNFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <NFe>
+        <infNFe>
+            <emit><CNPJ>{$issuerDocument}</CNPJ></emit>
+            <dest><CNPJ>{$recipientDocument}</CNPJ></dest>
+        </infNFe>
+    </NFe>
+</procNFe>
 XML;
     }
 }

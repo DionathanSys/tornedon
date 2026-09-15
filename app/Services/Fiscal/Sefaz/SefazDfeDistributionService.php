@@ -15,14 +15,21 @@ use RuntimeException;
 class SefazDfeDistributionService
 {
     private const SOAP_NAMESPACE = 'http://schemas.xmlsoap.org/soap/envelope/';
+
     private const WSDL_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe';
+
     private const NFE_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe';
+
     private const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse';
+
+    private readonly SefazDfeDocumentClassifier $documentClassifier;
 
     public function __construct(
         private readonly NfeConfigService $nfeConfigService,
         private readonly CompanySefazCertificateService $certificateService,
+        ?SefazDfeDocumentClassifier $documentClassifier = null,
     ) {
+        $this->documentClassifier = $documentClassifier ?? new SefazDfeDocumentClassifier(new SefazDistributionDocumentParser);
     }
 
     public function distribute(Company $company, string $mode, string $value): DfeDistributionResult
@@ -43,7 +50,7 @@ class SefazDfeDistributionService
             $certificate['private_key_pem'],
         );
 
-        return $this->parseSoapResponse($responseXml);
+        return $this->parseSoapResponse($responseXml, $company);
     }
 
     public function buildSoapRequestXml(int $environment, string $cnpj, string $mode, string $value, string $authorUfCode): string
@@ -96,9 +103,9 @@ class SefazDfeDistributionService
         return $document->saveXML() ?: '';
     }
 
-    public function parseSoapResponse(string $responseXml): DfeDistributionResult
+    public function parseSoapResponse(string $responseXml, ?Company $company = null): DfeDistributionResult
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         if (! $document->loadXML($responseXml)) {
             throw new RuntimeException('A SEFAZ retornou um XML inválido na consulta DF-e.');
         }
@@ -139,12 +146,18 @@ class SefazDfeDistributionService
                 continue;
             }
 
-            $documents[] = new DfeDistributionDocument(
+            $distributedDocument = new DfeDistributionDocument(
                 nsu: $nsu,
                 schema: $schema,
                 xml: $xml,
                 accessKey: $this->extractAccessKey($xml),
             );
+
+            if ($company instanceof Company && ! $this->documentClassifier->isTakenBy($company, $distributedDocument)) {
+                continue;
+            }
+
+            $documents[] = $distributedDocument;
         }
 
         return new DfeDistributionResult(
@@ -181,8 +194,8 @@ class SefazDfeDistributionService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: text/xml; charset=utf-8',
-                'SOAPAction: "' . self::SOAP_ACTION . '"',
-                'Content-Length: ' . strlen($requestXml),
+                'SOAPAction: "'.self::SOAP_ACTION.'"',
+                'Content-Length: '.strlen($requestXml),
             ],
             CURLOPT_POSTFIELDS => $requestXml,
             CURLOPT_SSLCERT => $certFile,
@@ -203,7 +216,7 @@ class SefazDfeDistributionService
         @unlink($keyFile);
 
         if ($response === false) {
-            throw new RuntimeException('Falha técnica ao consultar DF-e na SEFAZ: ' . $errorMessage);
+            throw new RuntimeException('Falha técnica ao consultar DF-e na SEFAZ: '.$errorMessage);
         }
 
         if ($httpCode >= 400) {

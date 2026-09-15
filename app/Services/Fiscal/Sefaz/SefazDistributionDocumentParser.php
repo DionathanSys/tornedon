@@ -12,8 +12,10 @@ class SefazDistributionDocumentParser
     /**
      * @return array{
      *     is_full_xml:bool,
+     *     is_summary_xml:bool,
      *     document_key:?string,
      *     issuer_document:?string,
+     *     recipient_document:?string,
      *     issuer_name:?string,
      *     document_number:?string,
      *     document_series:?string,
@@ -25,13 +27,15 @@ class SefazDistributionDocumentParser
      */
     public function parse(DfeDistributionDocument $document): array
     {
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
 
-        if (! @ $dom->loadXML($document->xml)) {
+        if (! @$dom->loadXML($document->xml)) {
             return [
                 'is_full_xml' => false,
+                'is_summary_xml' => false,
                 'document_key' => $document->accessKey,
                 'issuer_document' => null,
+                'recipient_document' => null,
                 'issuer_name' => null,
                 'document_number' => null,
                 'document_series' => null,
@@ -51,10 +55,17 @@ class SefazDistributionDocumentParser
 
         $isFullXml = in_array($rootName, ['procNFe', 'nfeProc', 'NFe'], true)
             || $xpath->query('//*[local-name()="infNFe"]')->length > 0;
+        $isSummaryXml = $rootName === 'resNFe';
 
         $issuerDocument = $this->firstText($xpath, '//*[local-name()="emit"]/*[local-name()="CNPJ"]')
-            ?? $this->firstText($xpath, '//*[local-name()="CNPJ"]')
             ?? $this->firstText($xpath, '//*[local-name()="emit"]/*[local-name()="CPF"]');
+
+        if ($issuerDocument === null && $isSummaryXml) {
+            $issuerDocument = $this->firstText($xpath, './*[local-name()="CNPJ"]', $root);
+        }
+
+        $recipientDocument = $this->firstText($xpath, '//*[local-name()="dest"]/*[local-name()="CNPJ"]')
+            ?? $this->firstText($xpath, '//*[local-name()="dest"]/*[local-name()="CPF"]');
 
         $issuedAt = $this->firstText($xpath, '//*[local-name()="dhEmi"]')
             ?? $this->firstText($xpath, '//*[local-name()="dEmi"]');
@@ -72,10 +83,12 @@ class SefazDistributionDocumentParser
 
         return [
             'is_full_xml' => $isFullXml,
+            'is_summary_xml' => $isSummaryXml,
             'document_key' => $documentKey,
             'issuer_document' => $this->normalizeDocument($issuerDocument),
+            'recipient_document' => $this->normalizeDocument($recipientDocument),
             'issuer_name' => $this->firstText($xpath, '//*[local-name()="emit"]/*[local-name()="xNome"]')
-                ?? $this->firstText($xpath, '//*[local-name()="xNome"]'),
+                ?? ($isSummaryXml ? $this->firstText($xpath, './*[local-name()="xNome"]', $root) : null),
             'document_number' => $this->firstText($xpath, '//*[local-name()="nNF"]'),
             'document_series' => $this->firstText($xpath, '//*[local-name()="serie"]'),
             'issued_at' => $issuedAt,

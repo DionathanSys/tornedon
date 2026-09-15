@@ -23,10 +23,10 @@ class SefazUploadedXmlServiceTest extends TestCase
 
         $user = User::factory()->create();
         $company = Company::query()->create([
-            'name' => 'Empresa Upload ' . Str::uuid(),
+            'name' => 'Empresa Upload '.Str::uuid(),
             'document_number' => '22345678000188',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
-            'email' => Str::uuid() . '@example.com',
+            'email' => Str::uuid().'@example.com',
             'certificate' => 'certificados/teste.pfx',
             'is_active' => true,
             'created_by' => $user->id,
@@ -47,9 +47,39 @@ class SefazUploadedXmlServiceTest extends TestCase
         Storage::disk('local')->assertExists($record->full_xml_path);
     }
 
+    public function test_it_ignores_uploaded_xml_issued_by_the_company(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $company = Company::query()->create([
+            'name' => 'Empresa Upload Propria '.Str::uuid(),
+            'document_number' => '22345678000188',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'email' => Str::uuid().'@example.com',
+            'certificate' => 'certificados/teste.pfx',
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        try {
+            app(SefazUploadedXmlService::class)->register(
+                $company,
+                $this->ownIssuedXml(),
+                'own-issued.xml',
+            );
+
+            $this->fail('O XML emitido pela própria empresa deveria ser ignorado.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Não foi possível registrar o XML enviado na inbox de DF-e.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('sefaz_distribution_documents', 0);
+    }
+
     private function fullXml(): string
     {
-        return <<<XML
+        return <<<'XML'
 <procNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
   <NFe>
     <infNFe Id="NFe42260445790457000185557000000000201122876237" versao="4.00">
@@ -62,6 +92,10 @@ class SefazUploadedXmlServiceTest extends TestCase
         <CNPJ>12345678000199</CNPJ>
         <xNome>Fornecedor XML</xNome>
       </emit>
+      <dest>
+        <CNPJ>22345678000188</CNPJ>
+        <xNome>Empresa Destinataria</xNome>
+      </dest>
       <det nItem="1">
         <prod>
           <cProd>ITEM-01</cProd>
@@ -79,6 +113,20 @@ class SefazUploadedXmlServiceTest extends TestCase
           <vNF>100.00</vNF>
         </ICMSTot>
       </total>
+    </infNFe>
+  </NFe>
+</procNFe>
+XML;
+    }
+
+    private function ownIssuedXml(): string
+    {
+        return <<<'XML'
+<procNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35260412345678000199550010000003211000000321" versao="4.00">
+      <emit><CNPJ>22345678000188</CNPJ><xNome>Minha Empresa</xNome></emit>
+      <dest><CNPJ>12345678000199</CNPJ><xNome>Outro Destinatario</xNome></dest>
     </infNFe>
   </NFe>
 </procNFe>

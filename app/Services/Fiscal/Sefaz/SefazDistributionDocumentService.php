@@ -22,6 +22,7 @@ class SefazDistributionDocumentService
 {
     public function __construct(
         private readonly SefazDistributionDocumentParser $parser,
+        private readonly SefazDfeDocumentClassifier $documentClassifier,
         private readonly SefazDfeStorageService $storageService,
         private readonly AuditRecorder $auditRecorder,
         private readonly SefazItemMappingService $itemMappingService,
@@ -33,6 +34,11 @@ class SefazDistributionDocumentService
         string $rawResponsePath,
     ): ?SefazDistributionDocument {
         $parsed = $this->parser->parse($document);
+
+        if (! $this->documentClassifier->isTakenBy($company, $document, $parsed)) {
+            return null;
+        }
+
         $documentKey = $parsed['document_key'] ?? $document->accessKey;
 
         if (! is_string($documentKey) || strlen($documentKey) !== 44) {

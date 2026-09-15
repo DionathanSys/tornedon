@@ -174,6 +174,10 @@ class SefazItemMappingServiceTest extends TestCase
         <CNPJ>12345678000199</CNPJ>
         <xNome>Fornecedor Mapeado</xNome>
       </emit>
+      <dest>
+        <CNPJ>22345678000188</CNPJ>
+        <xNome>Empresa Destinataria</xNome>
+      </dest>
       <det nItem="1">
         <prod>
           <cProd>ITEM-XML-01</cProd>

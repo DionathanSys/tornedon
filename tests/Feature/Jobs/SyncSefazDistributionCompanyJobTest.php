@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Jobs;
 
-use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\ImportStatus;
+use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Jobs\ManifestSefazDistributionDocumentJob;
 use App\Jobs\SyncSefazDistributionCompanyJob;
 use App\Models\Company;
@@ -46,7 +46,7 @@ class SyncSefazDistributionCompanyJobTest extends TestCase
                     new DfeDistributionDocument(
                         nsu: '000000000000050',
                         schema: 'resNFe_v1.01.xsd',
-                        xml: '<resNFe xmlns="http://www.portalfiscal.inf.br/nfe"><chNFe>35260412345678000199550010000003211000000321</chNFe><CNPJ>12345678000199</CNPJ><xNome>Fornecedor Teste</xNome><dhEmi>2026-04-19T10:00:00-03:00</dhEmi><vNF>150.99</vNF><nNF>321</nNF><serie>1</serie></resNFe>',
+                        xml: '<resNFe xmlns="http://www.portalfiscal.inf.br/nfe"><chNFe>35260412345678000199550010000003211000000321</chNFe><CNPJ>22345678000188</CNPJ><xNome>Fornecedor Teste</xNome><dhEmi>2026-04-19T10:00:00-03:00</dhEmi><vNF>150.99</vNF><nNF>321</nNF><serie>1</serie></resNFe>',
                         accessKey: '35260412345678000199550010000003211000000321',
                     ),
                 ],
@@ -81,10 +81,10 @@ class SyncSefazDistributionCompanyJobTest extends TestCase
         $user = User::factory()->create();
 
         return Company::query()->create([
-            'name' => 'Empresa Sync ' . Str::uuid(),
+            'name' => 'Empresa Sync '.Str::uuid(),
             'document_number' => '12345678000199',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
-            'email' => Str::uuid() . '@example.com',
+            'email' => Str::uuid().'@example.com',
             'certificate' => 'certificados/teste.pfx',
             'is_active' => true,
             'created_by' => $user->id,
