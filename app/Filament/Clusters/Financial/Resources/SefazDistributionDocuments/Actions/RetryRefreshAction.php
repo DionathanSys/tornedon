@@ -8,17 +8,20 @@ use App\Models\SefazDistributionDocument;
 use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class RetryRefreshAction
 {
     public static function make(): Action
     {
         return Action::make('retryRefresh')
-            ->label('Reprocessar busca do XML completo')
+            ->label('Buscar XML novamente na SEFAZ')
             ->icon('heroicon-o-arrow-path-rounded-square')
             ->color('info')
             ->requiresConfirmation()
-            ->visible(fn(SefazDistributionDocument $record): bool => ! $record->full_xml_available
+            ->visible(fn (SefazDistributionDocument $record): bool => (! $record->full_xml_available
+                    || ! is_string($record->full_xml_path)
+                    || ! Storage::disk('local')->exists($record->full_xml_path))
                 && $record->nsu !== null
                 && in_array($record->manifestation_status, [
                     ManifestationStatus::ACCEPTED,

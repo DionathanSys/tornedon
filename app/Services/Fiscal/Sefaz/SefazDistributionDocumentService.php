@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\FiscalDocument;
 use App\Models\Partner;
+use App\Models\Product;
 use App\Models\SefazDistributionDocument;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
@@ -282,7 +283,8 @@ class SefazDistributionDocumentService
 
     public function markRefreshFailure(SefazDistributionDocument $document, string $message): void
     {
-        if ($document->full_xml_available) {
+        if ($document->full_xml_available
+            && $this->storageService->absolutePath($document->full_xml_path) !== null) {
             return;
         }
 
@@ -617,7 +619,7 @@ class SefazDistributionDocumentService
                 }
 
                 $mappedProductId = $mapping->product_id;
-                $partnerProduct = \App\Models\Product::query()->find($mappedProductId);
+                $partnerProduct = Product::query()->find($mappedProductId);
                 $item['product_id'] = $mappedProductId;
                 $item['product_name'] = $partnerProduct?->name;
                 $item['product_unit'] = $mapping->product_unit;

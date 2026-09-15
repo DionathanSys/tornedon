@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Jobs;
 
-use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\ImportStatus;
+use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
 use App\Jobs\RefreshSefazDistributionDocumentJob;
 use App\Models\Company;
@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionResult;
 use App\Services\Fiscal\Sefaz\SefazDfeDistributionService;
+use App\Services\Fiscal\Sefaz\SefazDfeStorageService;
+use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -36,7 +38,7 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
             'status' => Status::MANIFESTED_WAITING_FULL_XML,
             'manifestation_status' => ManifestationStatus::ACCEPTED,
             'full_xml_available' => false,
-            'summary_xml_path' => 'sefaz/distribution/company-' . $company->id . '/summary.xml',
+            'summary_xml_path' => 'sefaz/distribution/company-'.$company->id.'/summary.xml',
             'last_seen_at' => now(),
         ]);
 
@@ -65,8 +67,8 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
         $job = new RefreshSefazDistributionDocumentJob($document->id, 1);
         $job->handle(
             app(SefazDfeDistributionService::class),
-            app(\App\Services\Fiscal\Sefaz\SefazDistributionDocumentService::class),
-            app(\App\Services\Fiscal\Sefaz\SefazDfeStorageService::class),
+            app(SefazDistributionDocumentService::class),
+            app(SefazDfeStorageService::class),
         );
 
         $document->refresh();
@@ -77,6 +79,69 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
         $this->assertNotNull($document->import_ready_at);
         $this->assertCount(1, $document->items_json ?? []);
         $this->assertNotNull($document->full_xml_path);
+        Storage::disk('local')->assertExists($document->full_xml_path);
+    }
+
+    public function test_job_recovers_full_xml_when_the_stored_file_is_missing(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany();
+        $document = SefazDistributionDocument::query()->create([
+            'company_id' => $company->id,
+            'document_key' => '35260412345678000199550010000003211000000321',
+            'nsu' => '000000000000050',
+            'schema' => 'procNFe_v4.00.xsd',
+            'document_type' => 'nfe',
+            'status' => Status::FULL_XML_AVAILABLE,
+            'manifestation_status' => ManifestationStatus::ACCEPTED,
+            'full_xml_available' => true,
+            'full_xml_path' => 'sefaz/distribution/company-'.$company->id.'/missing.xml',
+            'import_status' => ImportStatus::READY_TO_IMPORT,
+            'last_seen_at' => now(),
+        ]);
+
+        $this->assertFalse(Storage::disk('local')->exists($document->full_xml_path));
+
+        $service = Mockery::mock(SefazDfeDistributionService::class);
+        $service->shouldReceive('distribute')
+            ->once()
+            ->withArgs(function (Company $actualCompany, string $mode, string $value) use ($company): bool {
+                return $actualCompany->is($company)
+                    && $mode === 'numero_nsu'
+                    && $value === '000000000000050';
+            })
+            ->andReturn(new DfeDistributionResult(
+                success: true,
+                statusCode: '138',
+                statusMessage: 'Documento localizado',
+                ultNsu: '000000000000050',
+                maxNsu: '000000000000050',
+                rawXml: '<retDistDFeInt/>',
+                documents: [
+                    new DfeDistributionDocument(
+                        nsu: '000000000000050',
+                        schema: 'procNFe_v4.00.xsd',
+                        xml: $this->fullXml(),
+                        accessKey: '35260412345678000199550010000003211000000321',
+                    ),
+                ],
+            ));
+
+        $this->app->instance(SefazDfeDistributionService::class, $service);
+
+        $job = new RefreshSefazDistributionDocumentJob($document->id, 1);
+        $job->handle(
+            app(SefazDfeDistributionService::class),
+            app(SefazDistributionDocumentService::class),
+            app(SefazDfeStorageService::class),
+        );
+
+        $document->refresh();
+
+        $this->assertTrue($document->full_xml_available);
+        $this->assertSame(Status::FULL_XML_AVAILABLE, $document->status);
+        $this->assertNotSame('sefaz/distribution/company-'.$company->id.'/missing.xml', $document->full_xml_path);
         Storage::disk('local')->assertExists($document->full_xml_path);
     }
 
@@ -92,10 +157,10 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
         $user = User::factory()->create();
 
         return Company::query()->create([
-            'name' => 'Empresa Refresh ' . Str::uuid(),
+            'name' => 'Empresa Refresh '.Str::uuid(),
             'document_number' => '12345678000199',
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
-            'email' => Str::uuid() . '@example.com',
+            'email' => Str::uuid().'@example.com',
             'certificate' => 'certificados/teste.pfx',
             'is_active' => true,
             'created_by' => $user->id,
@@ -104,7 +169,7 @@ class RefreshSefazDistributionDocumentJobTest extends TestCase
 
     private function fullXml(): string
     {
-        return <<<XML
+        return <<<'XML'
 <procNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
   <NFe>
     <infNFe Id="NFe35260412345678000199550010000003211000000321" versao="4.00">

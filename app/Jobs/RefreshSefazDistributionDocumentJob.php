@@ -3,9 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\SefazDistributionDocument;
-use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use App\Services\Fiscal\Sefaz\SefazDfeDistributionService;
 use App\Services\Fiscal\Sefaz\SefazDfeStorageService;
+use App\Services\Fiscal\Sefaz\SefazDistributionDocumentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,17 +21,17 @@ class RefreshSefazDistributionDocumentJob implements ShouldBeUnique, ShouldQueue
     private const MAX_ATTEMPTS = 6;
 
     public int $tries = 1;
+
     public int $uniqueFor = 3600;
 
     public function __construct(
         private readonly int $distributionDocumentId,
         private readonly int $attemptNumber = 1,
-    ) {
-    }
+    ) {}
 
     public function uniqueId(): string
     {
-        return 'sefaz-dfe-refresh-' . $this->distributionDocumentId;
+        return 'sefaz-dfe-refresh-'.$this->distributionDocumentId;
     }
 
     public function handle(
@@ -40,7 +40,10 @@ class RefreshSefazDistributionDocumentJob implements ShouldBeUnique, ShouldQueue
         SefazDfeStorageService $storageService,
     ): void {
         $document = SefazDistributionDocument::query()->with('company')->find($this->distributionDocumentId);
-        if (! $document || ! $document->company || $document->full_xml_available || ! $document->nsu) {
+        $hasStoredFullXml = $document?->full_xml_available
+            && $storageService->absolutePath($document->full_xml_path) !== null;
+
+        if (! $document || ! $document->company || $hasStoredFullXml || ! $document->nsu) {
             return;
         }
 
@@ -65,6 +68,7 @@ class RefreshSefazDistributionDocumentJob implements ShouldBeUnique, ShouldQueue
             if ($this->attemptNumber < self::MAX_ATTEMPTS) {
                 dispatch(new self($this->distributionDocumentId, $this->attemptNumber + 1))
                     ->delay(now()->addMinutes(min(30, $this->attemptNumber * 5)));
+
                 return;
             }
 
