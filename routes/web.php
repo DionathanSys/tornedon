@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\BankSlipWebhookController;
 use App\Http\Controllers\CompanyLogoController;
 use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\ErrorTicketController;
@@ -27,6 +28,10 @@ Route::get('/', function () {
 */
 Route::post('/webhook/nfe', [NfeWebhookController::class, 'handle'])
     ->name('webhook.nfe')
+    ->withoutMiddleware([VerifyCsrfToken::class, 'auth', 'verified']);
+
+Route::post('/webhook/bank-slips/{connection}', [BankSlipWebhookController::class, 'handle'])
+    ->name('webhook.bank-slips')
     ->withoutMiddleware([VerifyCsrfToken::class, 'auth', 'verified']);
 
 Route::post('/error-tickets/create', [ErrorTicketController::class, 'create'])

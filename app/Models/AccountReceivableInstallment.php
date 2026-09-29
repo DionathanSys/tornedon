@@ -8,6 +8,7 @@ use App\Models\Concerns\SkipsGeneratedColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AccountReceivableInstallment extends Model
 {
@@ -28,7 +29,8 @@ class AccountReceivableInstallment extends Model
         'due_amount',
         'received_amount',
         'balance_amount',
-        'bank_account_id',
+        'financial_account_id',
+        'auto_bank_slip_issuance',
         'chart_account_id',
         'financial_category_id',
         'cost_center_id',
@@ -49,11 +51,17 @@ class AccountReceivableInstallment extends Model
         'due_amount' => MoneyCast::class,
         'received_amount' => MoneyCast::class,
         'balance_amount' => MoneyCast::class,
+        'auto_bank_slip_issuance' => 'boolean',
     ];
 
     public function accountReceivable(): BelongsTo
     {
         return $this->belongsTo(AccountReceivable::class);
+    }
+
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class);
     }
 
     public function company(): BelongsTo
@@ -84,5 +92,15 @@ class AccountReceivableInstallment extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(AccountReceivableInstallmentPayment::class, 'account_receivable_installment_id');
+    }
+
+    public function bankSlips(): HasMany
+    {
+        return $this->hasMany(BankSlip::class, 'account_receivable_installment_id');
+    }
+
+    public function latestBankSlip(): HasOne
+    {
+        return $this->hasOne(BankSlip::class, 'account_receivable_installment_id')->latestOfMany();
     }
 }

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -51,6 +50,16 @@ class Company extends Model
     public function preferences(): HasMany
     {
         return $this->hasMany(CompanyPreference::class);
+    }
+
+    public function entitlements(): HasMany
+    {
+        return $this->hasMany(CompanyEntitlement::class);
+    }
+
+    public function bankAccountConnections(): HasMany
+    {
+        return $this->hasMany(BankAccountConnection::class);
     }
 
     public function fiscalProfile(): HasOne
@@ -151,7 +160,7 @@ class Company extends Model
                 $city = $address['city'] ?? '';
                 $state = $address['state'] ?? '';
 
-                if (!$city && !$state) {
+                if (! $city && ! $state) {
                     return '';
                 }
 
@@ -162,10 +171,6 @@ class Company extends Model
 
     /**
      * Busca uma preferência desta empresa
-     *
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
      */
     public function getPreference(string $key, mixed $default = null): mixed
     {
@@ -174,10 +179,6 @@ class Company extends Model
 
     /**
      * Define uma preferência desta empresa
-     *
-     * @param string $key
-     * @param mixed $value
-     * @return CompanyPreference
      */
     public function setPreference(string $key, mixed $value): CompanyPreference
     {
@@ -186,9 +187,6 @@ class Company extends Model
 
     /**
      * Remove uma preferência desta empresa
-     *
-     * @param string $key
-     * @return bool
      */
     public function removePreference(string $key): bool
     {

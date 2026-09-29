@@ -18,6 +18,8 @@ class AccountReceivableInstallmentPayment extends Model
         'discount_amount',
         'bank_account_id',
         'financial_account_id',
+        'bank_slip_id',
+        'bank_slip_event_id',
         'description',
         'notes',
     ];
@@ -43,5 +45,15 @@ class AccountReceivableInstallmentPayment extends Model
     public function financialAccount(): BelongsTo
     {
         return $this->belongsTo(FinancialAccount::class, 'financial_account_id');
+    }
+
+    public function bankSlip(): BelongsTo
+    {
+        return $this->belongsTo(BankSlip::class);
+    }
+
+    public function bankSlipEvent(): BelongsTo
+    {
+        return $this->belongsTo(BankSlipEvent::class);
     }
 }

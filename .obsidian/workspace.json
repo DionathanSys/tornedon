@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/levantamento-conciliacao-bancaria.md",
+                "file": "docs/deploy-script.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "levantamento-conciliacao-bancaria"
+              "title": "deploy-script"
             }
           }
         ]
@@ -187,6 +187,8 @@
   },
   "active": "f7c4caca2f95ccf5",
   "lastOpenFiles": [
+    "docs/TEMPORARY_PARTNER_MIGRATION_IMPORT.md",
+    "docs/levantamento-conciliacao-bancaria.md",
     "storage/framework/views/48b3c2297ff8ffa4ae6e0d3f6c65df1e.php",
     "storage/framework/views/3b5f4077e1ccef482c78e4c1eb9455b3.php",
     "storage/framework/views/9994520b217a11360fa029b638119374.php",
@@ -197,7 +199,6 @@
     "storage/framework/views/8bae4344dbc9eba95c555b849caa960d.php",
     "storage/framework/views/b6d7855dcb2771489de6a73f769f5699.php",
     "storage/framework/views/030ff1df98576c3a7b13019f9783e2fa.php",
-    "storage/framework/views/dbc73f298bfb14105ca9e4e763547e11.php",
     "como-preencher-dre.md",
     "notas.md"
   ]

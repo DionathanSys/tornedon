@@ -86,6 +86,11 @@ class FinancialAccount extends Model
         return $this->hasMany(BankStatementImport::class);
     }
 
+    public function bankAccountConnections(): HasMany
+    {
+        return $this->hasMany(BankAccountConnection::class);
+    }
+
     public function companyCreditCardsAsDefault(): HasMany
     {
         return $this->hasMany(CompanyCreditCard::class, 'default_financial_account_id');

@@ -245,6 +245,34 @@ class CompanyPreference extends Model
         return self::set('default_receivable_financial_category_id', $categoryId, $companyId);
     }
 
+    public static function getBankSlipAutoIssuanceDefault(?int $companyId = null): bool
+    {
+        return (bool) self::get(
+            'bank_slip_auto_issuance_default',
+            $companyId,
+            (bool) config('banking.default_auto_issuance', false),
+        );
+    }
+
+    public static function setBankSlipAutoIssuanceDefault(bool $enabled, ?int $companyId = null): CompanyPreference
+    {
+        return self::set('bank_slip_auto_issuance_default', $enabled, $companyId);
+    }
+
+    public static function shouldCancelBankSlipsWhenInvoiceCancelled(?int $companyId = null): bool
+    {
+        return (bool) self::get(
+            'cancel_bank_slips_when_invoice_cancelled',
+            $companyId,
+            (bool) config('banking.cancel_on_invoice_cancellation', false),
+        );
+    }
+
+    public static function setCancelBankSlipsWhenInvoiceCancelled(bool $enabled, ?int $companyId = null): CompanyPreference
+    {
+        return self::set('cancel_bank_slips_when_invoice_cancelled', $enabled, $companyId);
+    }
+
     /**
      * Obtém o prazo de validade padrão de orçamentos (em dias)
      */

@@ -3,6 +3,8 @@
 namespace App\Services\AccountReceivable\Validators;
 
 use App\Enum\AccountReceivable\Status;
+use App\Models\BankSlip;
+use App\Models\BankSlipEvent;
 use App\Models\ChartAccount;
 use App\Models\CostCenter;
 use App\Models\FinancialAccount;
@@ -56,7 +58,8 @@ class AccountReceivableInstallmentValidator
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'received_amount' => ['nullable', 'numeric', 'min:0'],
             'balance_amount' => ['nullable', 'numeric', 'min:0'],
-            'bank_account_id' => self::bankAccountRule(true),
+            'financial_account_id' => self::financialAccountRule($data, false),
+            'auto_bank_slip_issuance' => ['nullable', 'boolean'],
             'chart_account_id' => self::companyOwnedRule($data, ChartAccount::class, 'Conta do plano não encontrada.'),
             'financial_category_id' => self::financialCategoryRule($data, 'receivable', true),
             'cost_center_id' => self::companyOwnedRule($data, CostCenter::class, 'Centro de custo não encontrado.'),
@@ -74,7 +77,7 @@ class AccountReceivableInstallmentValidator
             array_unshift($rules[$field], 'sometimes');
         }
 
-        foreach (['competence_date', 'received_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'received_amount', 'balance_amount', 'bank_account_id', 'chart_account_id', 'financial_category_id', 'cost_center_id', 'result_center_id', 'description', 'notes'] as $field) {
+        foreach (['competence_date', 'received_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'received_amount', 'balance_amount', 'financial_account_id', 'auto_bank_slip_issuance', 'chart_account_id', 'financial_category_id', 'cost_center_id', 'result_center_id', 'description', 'notes'] as $field) {
             array_unshift($rules[$field], 'sometimes');
         }
 
@@ -92,7 +95,9 @@ class AccountReceivableInstallmentValidator
             'fine_amount' => ['nullable', 'numeric', 'min:0'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'bank_account_id' => self::bankAccountRule(false),
-            'financial_account_id' => self::financialAccountRule($data),
+            'financial_account_id' => self::financialAccountRule($data, true),
+            'bank_slip_id' => self::companyOwnedRule($data, BankSlip::class, 'Boleto nao encontrado para a empresa.'),
+            'bank_slip_event_id' => self::companyOwnedRule($data, BankSlipEvent::class, 'Evento de boleto nao encontrado para a empresa.'),
             'description' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ];
@@ -149,10 +154,10 @@ class AccountReceivableInstallmentValidator
         return $rules;
     }
 
-    private static function financialAccountRule(array $data): array
+    private static function financialAccountRule(array $data, bool $required): array
     {
         $companyId = (int) ($data['company_id'] ?? 0);
-        $rules = ['required_without:bank_account_id', 'nullable', 'integer'];
+        $rules = [$required ? 'required' : 'nullable', 'integer'];
 
         $rules[] = function (string $attribute, mixed $value, \Closure $fail) use ($companyId): void {
             if ($value === null || $value === '') {
@@ -220,8 +225,7 @@ class AccountReceivableInstallmentValidator
             'amount.required' => 'O valor do recebimento e obrigatorio.',
             'amount.numeric' => 'O valor do recebimento deve ser numerico.',
             'amount.gt' => 'O valor do recebimento deve ser maior que zero.',
-            'bank_account_id.exists' => 'Conta bancaria nao encontrada.',
-            'financial_account_id.required_without' => 'A conta financeira e obrigatoria.',
+            'financial_account_id.required' => 'A conta financeira e obrigatoria.',
             'status.required' => 'O status e obrigatorio.',
             'status.in' => 'Status de parcela invalido.',
         ];

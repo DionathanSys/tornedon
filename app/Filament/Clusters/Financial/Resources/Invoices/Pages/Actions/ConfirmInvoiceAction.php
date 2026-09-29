@@ -120,14 +120,16 @@ final class ConfirmInvoiceAction
                                     ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
 
                                 Select::make('financial_account_id')
-                                    ->label('Conta Financeira para baixa')
+                                    ->label('Conta Financeira da cobrança/baixa')
                                     ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()?->id ?? 0))
                                     ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()?->id ?? 0))
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
-                                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received'))
-                                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
+                                    ->visible(fn (Get $get): bool => (bool) $get('mark_as_received')
+                                        || (string) $get('payment_method') === Method::BANK_SLIP->value)
+                                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')
+                                        || (string) $get('payment_method') === Method::BANK_SLIP->value),
                             ]),
 
                         Tab::make('NF-e')

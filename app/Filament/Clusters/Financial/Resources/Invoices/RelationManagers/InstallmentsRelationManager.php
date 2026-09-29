@@ -43,7 +43,7 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->limit(40)
-                    ->tooltip(fn($state, $record) => $record->description)
+                    ->tooltip(fn ($state, $record) => $record->description)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
@@ -75,8 +75,8 @@ class InstallmentsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
-                    ->color(fn($state) => $state?->color() ?? 'gray')
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_date')
@@ -90,6 +90,23 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Categoria')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('financialAccount.name')
+                    ->label('Conta financeira')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('latestBankSlip.status')
+                    ->label('Boleto')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('latestBankSlip.pdf_url')
+                    ->label('PDF boleto')
+                    ->url(fn (?string $state): ?string => filled($state) ? $state : null, shouldOpenInNewTab: true)
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Abrir PDF' : '-')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observações')
                     ->limit(40)

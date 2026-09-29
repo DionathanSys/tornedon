@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "41f0ba3b6171e1a69ce08238e65aac78",
+    "content-hash": "b74394bccbeff1aa628615d95902d720",
     "packages": [
         {
             "name": "archtechx/helpers",
@@ -2601,6 +2601,60 @@
                 }
             ],
             "time": "2026-05-23T22:00:21+00:00"
+        },
+        {
+            "name": "integrabancos/sdk-php",
+            "version": "v1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/integrabancos/sdk-php.git",
+                "reference": "8c98be85746f43b8434b0ae8bcbfb0daca68e24b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/integrabancos/sdk-php/zipball/8c98be85746f43b8434b0ae8bcbfb0daca68e24b",
+                "reference": "8c98be85746f43b8434b0ae8bcbfb0daca68e24b",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "ext-openssl": "*",
+                "php": ">=5.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "IntegraBancos\\SdkPHP\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0-or-later",
+                "GPL-3.0-or-later",
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Roberto L. Machado",
+                    "email": "linux.rlm@gmail.com"
+                },
+                {
+                    "name": "Cleiton Perin",
+                    "email": "cperin20@gmail.com"
+                },
+                {
+                    "name": "Gabriel Arantd Felipe",
+                    "email": "grantd.ctt@gmail.com"
+                }
+            ],
+            "description": "SDK PHP para integração com a API IntegraBancos.",
+            "homepage": "https://github.com/integrabancos/sdk-php",
+            "support": {
+                "issues": "https://github.com/integrabancos/sdk-php/issues",
+                "source": "https://github.com/integrabancos/sdk-php/tree/v1.0.1"
+            },
+            "time": "2026-09-08T13:39:27+00:00"
         },
         {
             "name": "kirschbaum-development/eloquent-power-joins",

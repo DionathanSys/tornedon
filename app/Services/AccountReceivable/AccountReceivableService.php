@@ -8,6 +8,7 @@ use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CardPaymentProfile;
+use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\Actions\CreateAccountReceivableAction;
 use App\Services\AccountReceivable\Actions\DeleteAccountReceivableAction;
 use App\Services\AccountReceivable\Actions\Installment\CreateAccountReceivableInstallmentAction;
@@ -260,6 +261,8 @@ class AccountReceivableService
                     'discount_amount' => (float) ($extra['discount_amount'] ?? 0),
                     'bank_account_id' => $extra['bank_account_id'] ?? null,
                     'financial_account_id' => $extra['financial_account_id'] ?? null,
+                    'bank_slip_id' => $extra['bank_slip_id'] ?? null,
+                    'bank_slip_event_id' => $extra['bank_slip_event_id'] ?? null,
                     'description' => $extra['description']
                         ?? InstallmentDescription::forReceivableInstallment($installment),
                     'notes' => $extra['notes'] ?? null,
@@ -788,6 +791,8 @@ class AccountReceivableService
     {
         $totalAmount = round((float) array_sum(array_column($installments, 'due_amount')), 2);
 
+        unset($data['financial_account_id'], $data['auto_bank_slip_issuance']);
+
         return [
             ...$data,
             'status' => Status::PENDING->value,
@@ -877,7 +882,10 @@ class AccountReceivableService
             'due_amount' => $amount,
             'received_amount' => 0,
             'balance_amount' => $amount,
-            'bank_account_id' => $installmentData['bank_account_id'] ?? null,
+            'financial_account_id' => $this->resolveInstallmentFinancialAccountId($installmentData, $companyId),
+            'auto_bank_slip_issuance' => array_key_exists('auto_bank_slip_issuance', $installmentData)
+                ? (bool) $installmentData['auto_bank_slip_issuance']
+                : null,
             'chart_account_id' => $this->classificationService->resolveChartAccountIdFromCategoryId($categoryId, $companyId, 'receivable'),
             'financial_category_id' => $categoryId,
             'cost_center_id' => $this->classificationService->assertCostCenterBelongsToCompany(
@@ -892,6 +900,29 @@ class AccountReceivableService
                 ?? InstallmentDescription::fallbackForReceivable($accountReceivable, $installmentData['sequence_number'] ?? null),
             'notes' => $installmentData['notes'] ?? $installmentData['description'] ?? null,
         ];
+    }
+
+    private function resolveInstallmentFinancialAccountId(array $installmentData, int $companyId): ?int
+    {
+        $financialAccountId = $installmentData['financial_account_id'] ?? null;
+
+        if ($financialAccountId === null || $financialAccountId === '') {
+            return null;
+        }
+
+        $account = FinancialAccount::query()
+            ->where('company_id', $companyId)
+            ->whereKey((int) $financialAccountId)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $account) {
+            throw ValidationException::withMessages([
+                'financial_account_id' => ['Conta financeira nao encontrada ou inativa para a empresa informada.'],
+            ]);
+        }
+
+        return $account->id;
     }
 
     /**
