@@ -58,6 +58,8 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
             'default_payment_method' => CompanyPreference::getDefaultPaymentMethod($companyId),
             'default_payment_condition' => CompanyPreference::getDefaultPaymentCondition($companyId),
             'default_receivable_financial_category_id' => CompanyPreference::getDefaultReceivableFinancialCategoryId($companyId),
+            'bank_slip_auto_issuance_default' => CompanyPreference::getBankSlipAutoIssuanceDefault($companyId),
+            'cancel_bank_slips_when_invoice_cancelled' => CompanyPreference::shouldCancelBankSlipsWhenInvoiceCancelled($companyId),
             'default_quote_validity_days' => CompanyPreference::getDefaultQuoteValidityDays($companyId) ?? 30,
             'default_profit_margin' => CompanyPreference::getDefaultProfitMargin($companyId),
             'default_value_km' => CompanyPreference::get('default_value_km', $companyId, 3.5),
@@ -141,6 +143,20 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                     ])
                     ->columns(['md' => 2, 'lg' => 3])
+                    ->collapsible(),
+
+                Section::make('Boletos bancarios')
+                    ->description('Defina o comportamento padrao para faturas com pagamento por boleto.')
+                    ->icon('heroicon-o-building-library')
+                    ->schema([
+                        Forms\Components\Toggle::make('bank_slip_auto_issuance_default')
+                            ->label('Emitir boletos automaticamente')
+                            ->helperText('A emissao acontece em segundo plano apos a confirmacao da fatura.'),
+                        Forms\Components\Toggle::make('cancel_bank_slips_when_invoice_cancelled')
+                            ->label('Cancelar boletos ao cancelar a fatura')
+                            ->helperText('O cancelamento sera enviado ao provider de forma assincrona.'),
+                    ])
+                    ->columns(['md' => 2, 'lg' => 2])
                     ->collapsible(),
 
                 Section::make('Vendas e Orçamentos')
@@ -318,6 +334,15 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                 isset($data['default_receivable_financial_category_id']) && filled($data['default_receivable_financial_category_id'])
                     ? (int) $data['default_receivable_financial_category_id']
                     : null,
+                $companyId,
+            );
+
+            CompanyPreference::setBankSlipAutoIssuanceDefault(
+                (bool) ($data['bank_slip_auto_issuance_default'] ?? false),
+                $companyId,
+            );
+            CompanyPreference::setCancelBankSlipsWhenInvoiceCancelled(
+                (bool) ($data['cancel_bank_slips_when_invoice_cancelled'] ?? false),
                 $companyId,
             );
 

@@ -4,7 +4,7 @@
 
 - Status geral: Implementacao parcial em andamento
 - Fase atual: Fases 4 e 5, com preparacao para homologacao
-- Progresso estimado: 70%
+- Progresso estimado: 75%
 - Ultima atualizacao: 2026-09-28
 - Responsavel pela atualizacao: equipe de desenvolvimento
 
@@ -17,7 +17,7 @@
 - [ ] Fase 5 - Cancelamento e sincronizacao (cancelamento entregue; sincronizacao pendente)
 - [ ] Fase 6 - Homologacao e liberacao gradual
 
-Estado detalhado: Fase 1 concluida; Fase 2 parcial, sem telas administrativas e fake provider; Fase 3 concluida no fluxo de dominio e adapter; Fase 4 funcional para ingestao, idempotencia e baixa, mas bloqueada pela assinatura de producao; Fase 5 parcial, com cancelamento entregue e consulta/sincronizacao/atualizacao ainda pendentes; Fase 6 nao iniciada.
+Estado detalhado: Fase 1 concluida; Fase 2 parcial, com telas administrativas entregues e fake provider pendente; Fase 3 concluida no fluxo de dominio e adapter; Fase 4 funcional para ingestao, idempotencia e baixa, mas bloqueada pela assinatura de producao; Fase 5 parcial, com cancelamento entregue e consulta/sincronizacao/atualizacao ainda pendentes; Fase 6 nao iniciada.
 
 ### Regra de atualizacao
 
@@ -719,6 +719,7 @@ O usuario comum nao deve informar credenciais nem escolher o adapter.
 - [x] Implementar armazenamento criptografado de credenciais.
 - [x] Implementar resolucao administrativa do provider.
 - [x] Criar contrato e DTOs do provider.
+- [x] Criar telas administrativas para bancos, providers, conexoes e direitos de emissao.
 - [ ] Criar fake provider para testes.
 
 ### Fase 3 - Emissao automatica

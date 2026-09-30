@@ -4,9 +4,13 @@ namespace Tests\Feature\Filament\Management;
 
 use App\Enum\User\ManagementRole;
 use App\Filament\Management\Pages\CnpjProviderSettingsPage;
+use App\Filament\Management\Resources\BankAccountConnections\BankAccountConnectionResource;
+use App\Filament\Management\Resources\Banks\BankResource;
+use App\Filament\Management\Resources\BillingProviders\BillingProviderResource;
 use App\Filament\Management\Resources\Companies\CompanyResource;
 use App\Filament\Management\Resources\Companies\Pages\EditCompany;
 use App\Filament\Management\Resources\Companies\RelationManagers\ProductSequenceRelationManager;
+use App\Filament\Management\Resources\CompanyEntitlements\CompanyEntitlementResource;
 use App\Filament\Management\Resources\Users\UserResource;
 use App\Models\Company;
 use App\Models\ProductSequence;
@@ -45,6 +49,10 @@ class ManagementPanelAccessTest extends TestCase
         $this->get(CompanyResource::getUrl('index'))->assertOk();
         $this->get(UserResource::getUrl('index'))->assertOk();
         $this->get(CnpjProviderSettingsPage::getUrl())->assertOk();
+        $this->get(BankResource::getUrl('index'))->assertOk();
+        $this->get(BillingProviderResource::getUrl('index'))->assertOk();
+        $this->get(BankAccountConnectionResource::getUrl('index'))->assertOk();
+        $this->get(CompanyEntitlementResource::getUrl('index'))->assertOk();
     }
 
     public function test_admin_can_open_company_edit_and_see_all_sequence_managers(): void
@@ -162,6 +170,11 @@ class ManagementPanelAccessTest extends TestCase
         $this->assertTrue($admin->canAccessPanel(Filament::getPanel('management')));
         $this->assertFalse(CnpjProviderSettingsPage::canAccess());
         $this->get(CnpjProviderSettingsPage::getUrl())->assertForbidden();
+        $this->assertFalse(BankResource::canViewAny());
+        $this->assertFalse(BillingProviderResource::canViewAny());
+        $this->assertFalse(BankAccountConnectionResource::canViewAny());
+        $this->assertFalse(CompanyEntitlementResource::canViewAny());
+        $this->get(BankAccountConnectionResource::getUrl('index'))->assertForbidden();
         $this->assertFalse((new UserPolicy)->update($admin, $superAdmin));
 
         $this->expectException(AuthorizationException::class);
