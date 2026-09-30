@@ -26,7 +26,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
     {
         $bankSlip->loadMissing('connection.bank', 'installment.accountReceivable.customer');
 
-        return $this->sendProviderRequest($bankSlip, fn (): array => $this->client->generate(
+        return $this->sendProviderRequest($bankSlip, 'register', fn (): array => $this->client->generate(
             $this->chargePayload($bankSlip)
         ));
     }
@@ -35,7 +35,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
     {
         $bankSlip->loadMissing('connection.bank', 'installment.accountReceivable.customer');
 
-        return $this->sendProviderRequest($bankSlip, fn (): array => $this->client->update(
+        return $this->sendProviderRequest($bankSlip, 'update', fn (): array => $this->client->update(
             $this->updatePayload($bankSlip)
         ));
     }
@@ -48,12 +48,12 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             'motivo' => 'Cancelamento solicitado pela empresa.',
         ];
 
-        return $this->sendProviderRequest($bankSlip, fn (): array => $this->client->cancel($payload));
+        return $this->sendProviderRequest($bankSlip, 'cancel', fn (): array => $this->client->cancel($payload));
     }
 
     public function query(BankSlip $bankSlip): BankSlipProviderResult
     {
-        return $this->sendProviderRequest($bankSlip, fn (): array => $this->client->query([
+        return $this->sendProviderRequest($bankSlip, 'query', fn (): array => $this->client->query([
             'identificacao' => $bankSlip->provider_identification,
         ]));
     }
@@ -128,30 +128,45 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         return $payload;
     }
 
-    private function sendProviderRequest(BankSlip $bankSlip, \Closure $request): BankSlipProviderResult
+    private function sendProviderRequest(BankSlip $bankSlip, string $operation, \Closure $request): BankSlipProviderResult
     {
         try {
             $payloadResponse = $request();
         } catch (\InvalidArgumentException $exception) {
+            $message = IntegraBancosExceptionFormatter::message($exception);
+
+            Log::warning('IntegraBancos: requisicao rejeitada antes do envio', [
+                ...$this->failureContext($bankSlip, $operation),
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
+                'exception_message' => $message,
+                'exception_details' => IntegraBancosExceptionFormatter::details($exception),
+            ]);
+
             return new BankSlipProviderResult(
                 successful: false,
                 retryable: false,
                 httpStatus: 0,
-                errors: [$exception->getMessage()],
-                message: $exception->getMessage(),
+                errors: [$message],
+                message: $message,
             );
         } catch (\Throwable $exception) {
-            Log::warning('IntegraBancos: falha de transporte', [
-                'connection_id' => $this->connection->id,
-                'message' => $exception->getMessage(),
+            $message = IntegraBancosExceptionFormatter::message($exception);
+
+            Log::error('IntegraBancos: falha na comunicacao com o provider', [
+                ...$this->failureContext($bankSlip, $operation),
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
+                'exception_message' => $message,
+                'exception_details' => IntegraBancosExceptionFormatter::details($exception),
             ]);
 
             return new BankSlipProviderResult(
                 successful: false,
                 retryable: true,
                 httpStatus: 0,
-                errors: [$exception->getMessage()],
-                message: 'Falha de comunicacao com a IntegraBancos.',
+                errors: [$message],
+                message: $message,
             );
         }
 
@@ -163,6 +178,15 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             'mensagem',
         ]);
         $successful = $this->responseIsSuccessful($payloadResponse, $statusCode);
+
+        if (! $successful) {
+            Log::warning('IntegraBancos: provider recusou a operacao', [
+                ...$this->failureContext($bankSlip, $operation),
+                'status_code' => $statusCode,
+                'status_message' => $statusMessage,
+                'response' => IntegraBancosExceptionFormatter::sanitizeData($payloadResponse),
+            ]);
+        }
 
         return new BankSlipProviderResult(
             successful: $successful,
@@ -201,6 +225,29 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             errors: $successful ? [] : [$statusMessage ?: 'Provider recusou a operacao.'],
             message: $successful ? null : ($statusMessage ?: 'Provider recusou a operacao.'),
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function failureContext(BankSlip $bankSlip, string $operation): array
+    {
+        return [
+            'operation' => $operation,
+            'endpoint' => $operation === 'query'
+                ? '/charge/{identificacao}'
+                : '/charge',
+            'connection_id' => $this->connection->id,
+            'bank_slip_id' => $bankSlip->id,
+            'provider_identification' => $bankSlip->provider_identification,
+            'environment' => $this->connection->environment,
+            'is_production' => $this->isProduction(),
+        ];
+    }
+
+    private function isProduction(): bool
+    {
+        return in_array(strtolower((string) $this->connection->environment), ['production', 'prod'], true);
     }
 
     /**

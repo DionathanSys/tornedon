@@ -3,9 +3,11 @@
 namespace App\Services\Financial\Banking\Providers;
 
 use App\Models\BankAccountConnection;
+use Illuminate\Support\Facades\Log;
 use IntegraBancos\SdkPHP\Auth;
 use IntegraBancos\SdkPHP\Boleto;
 use RuntimeException;
+use Throwable;
 
 final class IntegraBancosSdkClient implements IntegraBancosClientInterface
 {
@@ -61,16 +63,40 @@ final class IntegraBancosSdkClient implements IntegraBancosClientInterface
         }
 
         $refreshToken = (string) ($credentials['refresh_token'] ?? '');
-        $response = Auth::getAccessToken(
-            [
-                'client_id' => $credentials['client_id'] ?? null,
-                'client_secret' => $credentials['client_secret'] ?? null,
-                'username' => $credentials['username'] ?? $credentials['login'] ?? null,
-                'password' => $credentials['password'] ?? null,
-            ],
-            $refreshToken !== '' ? $refreshToken : null,
-            $this->isProduction(),
-        );
+        $authCredentials = [
+            'client_id' => $credentials['client_id'] ?? null,
+            'client_secret' => $credentials['client_secret'] ?? null,
+            'username' => $credentials['username'] ?? $credentials['login'] ?? null,
+            'password' => $credentials['password'] ?? null,
+        ];
+
+        try {
+            $response = Auth::getAccessToken(
+                $authCredentials,
+                $refreshToken !== '' ? $refreshToken : null,
+                $this->isProduction(),
+            );
+        } catch (Throwable $exception) {
+            Log::error('IntegraBancos: falha na autenticacao OAuth', [
+                'connection_id' => $this->connection->id,
+                'environment' => $this->connection->environment,
+                'is_production' => $this->isProduction(),
+                'grant_type' => $refreshToken !== '' ? 'refresh_token' : 'password',
+                'credentials_present' => [
+                    'client_id' => filled($authCredentials['client_id']),
+                    'client_secret' => filled($authCredentials['client_secret']),
+                    'username' => filled($authCredentials['username']),
+                    'password' => filled($authCredentials['password']),
+                    'refresh_token' => $refreshToken !== '',
+                ],
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
+                'exception_message' => IntegraBancosExceptionFormatter::message($exception),
+                'exception_details' => IntegraBancosExceptionFormatter::details($exception),
+            ]);
+
+            throw $exception;
+        }
         $tokenData = $this->toArray($response);
         $accessToken = (string) ($tokenData['access_token'] ?? '');
 
@@ -86,6 +112,14 @@ final class IntegraBancosSdkClient implements IntegraBancosClientInterface
 
         $this->connection->forceFill(['credentials' => $credentials])->save();
 
+        Log::info('IntegraBancos: autenticacao OAuth concluida', [
+            'connection_id' => $this->connection->id,
+            'environment' => $this->connection->environment,
+            'grant_type' => $refreshToken !== '' ? 'refresh_token' : 'password',
+            'expires_in' => $tokenData['expires_in'] ?? null,
+            'refresh_token_received' => filled($credentials['refresh_token'] ?? null),
+        ]);
+
         return $accessToken;
     }
 
@@ -98,7 +132,7 @@ final class IntegraBancosSdkClient implements IntegraBancosClientInterface
     {
         try {
             return now()->parse((string) $value)->isFuture();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
     }
