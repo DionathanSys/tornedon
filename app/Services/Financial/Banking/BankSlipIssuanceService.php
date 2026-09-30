@@ -55,15 +55,17 @@ final class BankSlipIssuanceService
         return $scheduled;
     }
 
-    public function prepareBankSlip(AccountReceivableInstallment $installment): ?BankSlip
-    {
-        $bankSlip = DB::transaction(function () use ($installment): ?BankSlip {
+    public function prepareBankSlip(
+        AccountReceivableInstallment $installment,
+        bool $requireAutomaticIssuance = true,
+    ): ?BankSlip {
+        $bankSlip = DB::transaction(function () use ($installment, $requireAutomaticIssuance): ?BankSlip {
             $installment = AccountReceivableInstallment::query()
                 ->with('accountReceivable')
                 ->lockForUpdate()
                 ->find($installment->id);
 
-            if (! $installment || $installment->auto_bank_slip_issuance !== true) {
+            if (! $installment || ($requireAutomaticIssuance && $installment->auto_bank_slip_issuance !== true)) {
                 return null;
             }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationM
 
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -111,6 +112,9 @@ class InstallmentsRelationManager extends RelationManager
             ->defaultSort('sequence_number')
             ->headerActions([])
             ->recordActions([
+                IssueBankSlipAction::make()
+                    ->tooltip('Emitir boleto')
+                    ->iconButton(),
                 RegisterInstallmentPaymentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {

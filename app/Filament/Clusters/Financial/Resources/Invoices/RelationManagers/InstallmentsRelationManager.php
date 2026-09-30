@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -25,6 +26,7 @@ class InstallmentsRelationManager extends RelationManager
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
 
     #[On('invoice-confirmed')]
+    #[On('refresh-installments')]
     public function refreshInstallments(): void
     {
         $this->resetTable();
@@ -116,6 +118,9 @@ class InstallmentsRelationManager extends RelationManager
             ->defaultSort('account_receivable_id')
             ->headerActions([])
             ->recordActions([
+                IssueBankSlipAction::make()
+                    ->tooltip('Emitir boleto')
+                    ->iconButton(),
                 RegisterInstallmentPaymentAction::make()
                     ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {

@@ -224,6 +224,19 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+        'banking-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['banking'],
+            'balance' => 'simple',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -236,6 +249,9 @@ return [
             'emails-supervisor' => [
                 'maxProcesses' => 3,
             ],
+            'banking-supervisor' => [
+                'maxProcesses' => 2,
+            ],
         ],
 
         'local' => [
@@ -243,6 +259,9 @@ return [
                 'maxProcesses' => 3,
             ],
             'emails-supervisor' => [
+                'maxProcesses' => 1,
+            ],
+            'banking-supervisor' => [
                 'maxProcesses' => 1,
             ],
         ],
@@ -254,6 +273,9 @@ return [
                 'balanceCooldown' => 3,
             ],
             'emails-supervisor' => [
+                'maxProcesses' => 1,
+            ],
+            'banking-supervisor' => [
                 'maxProcesses' => 1,
             ],
         ],
