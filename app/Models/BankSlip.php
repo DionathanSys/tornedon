@@ -77,4 +77,12 @@ class BankSlip extends Model
         return $success === false
             || (is_string($success) && in_array(strtolower($success), ['false', '0', 'nao', 'não'], true));
     }
+
+    public function getPdfUrlAttribute(?string $value): ?string
+    {
+        return $value
+            ?: data_get($this->provider_payload, 'pdf')
+            ?: data_get($this->provider_payload, 'dados.pdf')
+            ?: data_get($this->provider_payload, 'data.pdf');
+    }
 }

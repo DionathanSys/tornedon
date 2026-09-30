@@ -118,6 +118,11 @@ class BankSlipResource extends Resource
                     ->multiple(),
             ])
             ->recordActions([
+                Action::make('open_pdf')
+                    ->label('Abrir PDF')
+                    ->icon(Heroicon::DocumentArrowDown)
+                    ->visible(fn (BankSlip $record): bool => filled($record->pdf_url))
+                    ->url(fn (BankSlip $record): ?string => $record->pdf_url, shouldOpenInNewTab: true),
                 Action::make('query_provider')
                     ->label('Consultar no provider')
                     ->icon(Heroicon::ArrowPath)

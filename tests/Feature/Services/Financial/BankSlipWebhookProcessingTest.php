@@ -366,6 +366,20 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertTrue($bankSlip->providerResponseFailed());
     }
 
+    public function test_exposes_pdf_from_nested_provider_payload_when_column_is_empty(): void
+    {
+        $this->bankSlip->update([
+            'provider_payload' => [
+                'sucesso' => true,
+                'dados' => [
+                    'pdf' => 'https://bank.test/boletos/001.pdf',
+                ],
+            ],
+        ]);
+
+        $this->assertSame('https://bank.test/boletos/001.pdf', $this->bankSlip->fresh()->pdf_url);
+    }
+
     public function test_queries_provider_and_updates_boleto_documents(): void
     {
         $client = Mockery::mock(IntegraBancosClientInterface::class);
@@ -374,12 +388,18 @@ class BankSlipWebhookProcessingTest extends TestCase
             ->with(['identificacao' => 'BS-TEST-001'])
             ->andReturn([
                 'sucesso' => true,
-                'codigo' => 2,
-                'mensagem' => 'Registrado',
-                'identificacao' => 'BS-TEST-001',
-                'pdf' => 'https://bank.test/boletos/001-atualizado.pdf',
-                'linha_digitavel' => '00190500954014481606906809350314337370000000100',
-                'codigo_barras' => '00193373700000001000500940144816060680935031',
+                'codigo' => 10,
+                'mensagem' => 'Cobranca gerada.',
+                'dados' => [
+                    'identificacao' => 'BS-TEST-001',
+                    'pdf' => 'https://bank.test/boletos/001-atualizado.pdf',
+                    'linha_digitavel' => '00190500954014481606906809350314337370000000100',
+                    'codigo_barras' => '00193373700000001000500940144816060680935031',
+                    'status' => [
+                        'codigo' => 2,
+                        'mensagem' => 'Gerado com sucesso',
+                    ],
+                ],
             ]);
         app()->instance(IntegraBancosClientInterface::class, $client);
 
@@ -389,6 +409,7 @@ class BankSlipWebhookProcessingTest extends TestCase
 
         $this->assertSame(BankSlipStatus::REGISTERED, $bankSlip->status);
         $this->assertSame('2', $bankSlip->provider_status_code);
+        $this->assertSame('Gerado com sucesso', $bankSlip->provider_status_message);
         $this->assertSame('https://bank.test/boletos/001-atualizado.pdf', $bankSlip->pdf_url);
         $this->assertNotNull($bankSlip->last_synchronized_at);
     }

@@ -172,8 +172,12 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
 
         $statusCode = $this->responseStatusCode($payloadResponse);
         $statusMessage = $this->responseValue($payloadResponse, [
+            'dados.status.mensagem',
+            'dados.status.message',
             'status.mensagem',
             'status.message',
+            'data.status.mensagem',
+            'data.status.message',
             'message',
             'mensagem',
             'error_description',
@@ -202,29 +206,48 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             providerIdentification: $this->responseValue($payloadResponse, [
                 'identificacao',
                 'identification',
+                'dados.identificacao',
+                'dados.identification',
                 'data.identificacao',
+                'data.identification',
             ]) ?: $bankSlip->provider_identification,
             providerChargeId: $this->responseValue($payloadResponse, [
                 'id',
                 'charge_id',
                 'cobranca.id',
+                'dados.id',
+                'dados.charge_id',
+                'dados.cobranca.id',
                 'data.id',
+                'data.charge_id',
+                'data.cobranca.id',
             ]),
             pdfUrl: $this->responseValue($payloadResponse, [
                 'pdf',
                 'pdf_url',
                 'url_pdf',
+                'dados.pdf',
+                'dados.pdf_url',
+                'dados.url_pdf',
                 'data.pdf',
+                'data.pdf_url',
+                'data.url_pdf',
             ]),
             digitableLine: $this->responseValue($payloadResponse, [
                 'linha_digitavel',
                 'linhaDigitavel',
+                'dados.linha_digitavel',
+                'dados.linhaDigitavel',
                 'data.linha_digitavel',
+                'data.linhaDigitavel',
             ]),
             barcode: $this->responseValue($payloadResponse, [
                 'codigo_barras',
                 'barcode',
+                'dados.codigo_barras',
+                'dados.barcode',
                 'data.codigo_barras',
+                'data.barcode',
             ]),
             statusCode: $statusCode,
             statusMessage: $statusMessage,
@@ -304,8 +327,12 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
 
     private function responseStatusCode(array $payload): ?string
     {
-        $status = data_get($payload, 'status.codigo')
+        $status = data_get($payload, 'dados.status.codigo')
+            ?? data_get($payload, 'status.codigo')
+            ?? data_get($payload, 'data.status.codigo')
             ?? data_get($payload, 'status.code')
+            ?? data_get($payload, 'dados.status.code')
+            ?? data_get($payload, 'data.status.code')
             ?? data_get($payload, 'codigo')
             ?? data_get($payload, 'status_code')
             ?? data_get($payload, 'status');

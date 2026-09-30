@@ -6,7 +6,11 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Jobs\QueryBankSlipJob;
+use App\Models\AccountReceivableInstallment;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -120,6 +124,25 @@ class InstallmentsRelationManager extends RelationManager
             ->recordActions([
                 IssueBankSlipAction::make()
                     ->tooltip('Emitir boleto')
+                    ->iconButton(),
+                Action::make('queryBankSlip')
+                    ->label('Consultar boleto')
+                    ->icon(Heroicon::ArrowPath)
+                    ->visible(fn (AccountReceivableInstallment $record): bool => filled($record->latestBankSlip?->provider_identification))
+                    ->action(function (AccountReceivableInstallment $record): void {
+                        $bankSlip = $record->latestBankSlip;
+
+                        if (! $bankSlip) {
+                            return;
+                        }
+
+                        QueryBankSlipJob::dispatch($bankSlip->id);
+
+                        Notification::make()
+                            ->title('Consulta do boleto enfileirada.')
+                            ->success()
+                            ->send();
+                    })
                     ->iconButton(),
                 RegisterInstallmentPaymentAction::make()
                     ->iconButton()

@@ -177,10 +177,20 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
     private function providerDocumentAttributes(BankSlipEvent $event, BankSlip $bankSlip): array
     {
         return [
-            'pdf_url' => data_get($event->payload, 'pdf') ?: $bankSlip->pdf_url,
-            'digitable_line' => data_get($event->payload, 'linha_digitavel') ?: $bankSlip->digitable_line,
+            'pdf_url' => data_get($event->payload, 'pdf')
+                ?? data_get($event->payload, 'dados.pdf')
+                ?? data_get($event->payload, 'data.pdf')
+                ?: $bankSlip->pdf_url,
+            'digitable_line' => data_get($event->payload, 'linha_digitavel')
+                ?? data_get($event->payload, 'dados.linha_digitavel')
+                ?? data_get($event->payload, 'data.linha_digitavel')
+                ?: $bankSlip->digitable_line,
             'barcode' => data_get($event->payload, 'codigo_barras')
+                ?? data_get($event->payload, 'dados.codigo_barras')
+                ?? data_get($event->payload, 'data.codigo_barras')
                 ?? data_get($event->payload, 'barcode')
+                ?? data_get($event->payload, 'dados.barcode')
+                ?? data_get($event->payload, 'data.barcode')
                 ?? $bankSlip->barcode,
         ];
     }
