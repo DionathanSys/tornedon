@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\BankSlips;
 
 use App\Enum\Financial\BankSlipStatus;
 use App\Filament\Clusters\Financial\Resources\BankSlips\Pages\ListBankSlips;
+use App\Jobs\QueryBankSlipJob;
 use App\Jobs\RegisterBankSlipJob;
 use App\Models\BankSlip;
 use BackedEnum;
@@ -117,6 +118,19 @@ class BankSlipResource extends Resource
                     ->multiple(),
             ])
             ->recordActions([
+                Action::make('query_provider')
+                    ->label('Consultar no provider')
+                    ->icon(Heroicon::ArrowPath)
+                    ->color('info')
+                    ->visible(fn (BankSlip $record): bool => filled($record->provider_identification))
+                    ->action(function (BankSlip $record): void {
+                        QueryBankSlipJob::dispatch($record->id);
+
+                        Notification::make()
+                            ->title('Consulta do boleto enfileirada.')
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('view_details')
                     ->label('Ver detalhes')
                     ->icon(Heroicon::InformationCircle)

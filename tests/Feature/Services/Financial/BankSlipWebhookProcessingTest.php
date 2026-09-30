@@ -8,6 +8,7 @@ use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Jobs\ProcessBankSlipWebhookJob;
+use App\Jobs\QueryBankSlipJob;
 use App\Jobs\RegisterBankSlipJob;
 use App\Jobs\ScheduleBankSlipCancellationJob;
 use App\Jobs\ScheduleBankSlipIssuanceJob;
@@ -223,6 +224,20 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertDatabaseCount('bank_slip_events', 1);
     }
 
+    public function test_webhook_endpoint_returns_http_200_when_signature_is_rejected(): void
+    {
+        $connection = BankAccountConnection::query()->findOrFail($this->bankSlip->bank_account_connection_id);
+
+        $response = $this->postJson(route('webhook.bank-slips', ['connection' => $connection]), [
+            'cnpj_cpf' => $this->company->document_number,
+            'assinatura' => 'invalid-signature',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson(['ok' => false]);
+    }
+
     public function test_processes_generation_webhook_payload_without_event_id(): void
     {
         config(['app.debug' => true]);
@@ -349,6 +364,33 @@ class BankSlipWebhookProcessingTest extends TestCase
         );
         $this->assertStringContainsString('JSON com erros nos campos.', (string) $bankSlip->last_error);
         $this->assertTrue($bankSlip->providerResponseFailed());
+    }
+
+    public function test_queries_provider_and_updates_boleto_documents(): void
+    {
+        $client = Mockery::mock(IntegraBancosClientInterface::class);
+        $client->shouldReceive('query')
+            ->once()
+            ->with(['identificacao' => 'BS-TEST-001'])
+            ->andReturn([
+                'sucesso' => true,
+                'codigo' => 2,
+                'mensagem' => 'Registrado',
+                'identificacao' => 'BS-TEST-001',
+                'pdf' => 'https://bank.test/boletos/001-atualizado.pdf',
+                'linha_digitavel' => '00190500954014481606906809350314337370000000100',
+                'codigo_barras' => '00193373700000001000500940144816060680935031',
+            ]);
+        app()->instance(IntegraBancosClientInterface::class, $client);
+
+        (new QueryBankSlipJob($this->bankSlip->id))->handle(app(BankSlipProviderRegistry::class));
+
+        $bankSlip = $this->bankSlip->fresh();
+
+        $this->assertSame(BankSlipStatus::REGISTERED, $bankSlip->status);
+        $this->assertSame('2', $bankSlip->provider_status_code);
+        $this->assertSame('https://bank.test/boletos/001-atualizado.pdf', $bankSlip->pdf_url);
+        $this->assertNotNull($bankSlip->last_synchronized_at);
     }
 
     private function createPaymentEvent(string $providerEventId, float $amount): BankSlipEvent
