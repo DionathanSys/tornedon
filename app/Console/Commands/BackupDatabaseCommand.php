@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\DatabaseBackupFailedMail;
 use App\Services\DatabaseBackupService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class BackupDatabaseCommand extends Command
@@ -38,7 +40,11 @@ class BackupDatabaseCommand extends Command
                 $this->components->twoColumnDetail('Conexão', $plan['connection']);
                 $this->components->twoColumnDetail('Driver', $plan['driver']);
                 $this->components->twoColumnDetail('Banco', $plan['database']);
-                $this->components->twoColumnDetail('Destino', $plan['final_path']);
+                $this->components->twoColumnDetail(
+                    'Destino',
+                    $plan['disk'] !== '' ? $plan['disk'].'://'.$plan['storage_path'] : $plan['final_path']
+                );
+                $this->components->twoColumnDetail('Disco', $plan['disk'] !== '' ? $plan['disk'] : 'filesystem local');
                 $this->components->twoColumnDetail('Compressão', $plan['should_compress'] ? 'sim' : 'não');
                 $this->components->twoColumnDetail('Retenção', $plan['keep_days'].' dia(s)');
 
@@ -64,9 +70,35 @@ class BackupDatabaseCommand extends Command
                 'message' => $exception->getMessage(),
             ]);
 
+            $this->sendFailureAlert($connection, $exception);
+
             $this->components->error($exception->getMessage());
 
             return self::FAILURE;
+        }
+    }
+
+    private function sendFailureAlert(?string $connection, Throwable $exception): void
+    {
+        $recipient = trim((string) config('backup.database.alert_email', ''));
+
+        if ($recipient === '') {
+            return;
+        }
+
+        try {
+            $mailer = trim((string) config('backup.database.alert_mailer', ''));
+            $mail = $mailer !== '' ? Mail::mailer($mailer) : Mail::mailer();
+
+            $mail->to($recipient)->send(new DatabaseBackupFailedMail(
+                connectionName: $connection ?: (string) config('database.default'),
+                failureMessage: $exception->getMessage(),
+                failedAt: now()->toDateTimeString(),
+            ));
+        } catch (Throwable $notificationException) {
+            Log::error('Não foi possível enviar o alerta de falha do backup', [
+                'message' => $notificationException->getMessage(),
+            ]);
         }
     }
 }

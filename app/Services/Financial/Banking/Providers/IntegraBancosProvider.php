@@ -176,7 +176,14 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             'status.message',
             'message',
             'mensagem',
+            'error_description',
+            'detail',
         ]);
+        $errorDetails = $this->responseErrors($payloadResponse);
+
+        if (filled($errorDetails)) {
+            $statusMessage = trim(implode(' | ', array_filter([$statusMessage, $errorDetails])));
+        }
         $successful = $this->responseIsSuccessful($payloadResponse, $statusCode);
 
         if (! $successful) {
@@ -265,7 +272,24 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
 
     private function responseIsSuccessful(array $payload, ?string $statusCode): bool
     {
-        $error = data_get($payload, 'error') ?? data_get($payload, 'erro') ?? data_get($payload, 'errors');
+        $success = $payload['sucesso'] ?? null;
+
+        if (is_bool($success)) {
+            return $success;
+        }
+
+        if (is_string($success) && in_array(strtolower($success), ['true', '1', 'sim'], true)) {
+            return true;
+        }
+
+        if (is_string($success) && in_array(strtolower($success), ['false', '0', 'nao', 'não'], true)) {
+            return false;
+        }
+
+        $error = data_get($payload, 'error')
+            ?? data_get($payload, 'erro')
+            ?? data_get($payload, 'errors')
+            ?? data_get($payload, 'erros');
 
         if (filled($error)) {
             return false;
@@ -282,6 +306,8 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
     {
         $status = data_get($payload, 'status.codigo')
             ?? data_get($payload, 'status.code')
+            ?? data_get($payload, 'codigo')
+            ?? data_get($payload, 'status_code')
             ?? data_get($payload, 'status');
 
         return is_scalar($status) && filled($status) ? (string) $status : null;
@@ -304,6 +330,33 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         return null;
     }
 
+    private function responseErrors(array $payload): ?string
+    {
+        $errors = data_get($payload, 'erros') ?? data_get($payload, 'errors');
+
+        if (! is_array($errors) || $errors === []) {
+            return null;
+        }
+
+        return collect($errors)
+            ->map(function (mixed $error): ?string {
+                if (is_scalar($error)) {
+                    return (string) $error;
+                }
+
+                if (! is_array($error)) {
+                    return null;
+                }
+
+                $field = filled($error['campo'] ?? null) ? (string) $error['campo'].': ' : '';
+                $message = (string) ($error['erro'] ?? $error['mensagem'] ?? $error['message'] ?? '');
+
+                return filled($message) ? $field.$message : null;
+            })
+            ->filter()
+            ->implode('; ') ?: null;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -320,6 +373,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         }
 
         return [
+            'numero' => (string) $bankSlip->id,
             'identificacao' => $bankSlip->provider_identification,
             'codigo_banco' => (string) $bankSlip->connection?->bank?->code,
             'pagamento' => [

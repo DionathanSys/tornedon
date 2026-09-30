@@ -8,6 +8,7 @@ use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Jobs\ProcessBankSlipWebhookJob;
+use App\Jobs\RegisterBankSlipJob;
 use App\Jobs\ScheduleBankSlipCancellationJob;
 use App\Jobs\ScheduleBankSlipIssuanceJob;
 use App\Models\AccountReceivable;
@@ -27,6 +28,7 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Financial\Banking\BankSlipIssuanceService;
+use App\Services\Financial\Banking\BankSlipProviderRegistry;
 use App\Services\Financial\Banking\BankSlipWebhookService;
 use App\Services\Financial\Banking\Providers\IntegraBancosClientInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -283,7 +285,8 @@ class BankSlipWebhookProcessingTest extends TestCase
         $client->shouldReceive('generate')
             ->once()
             ->with(Mockery::on(function (array $payload): bool {
-                return $payload['identificacao'] === 'BS-TEST-001'
+                return $payload['numero'] === (string) $this->bankSlip->id
+                    && $payload['identificacao'] === 'BS-TEST-001'
                     && $payload['codigo_banco'] === '999'
                     && $payload['pagamento']['valor'] === '1000.00'
                     && $payload['pagamento']['data_vencimento'] === '2026-10-01'
@@ -314,6 +317,38 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertSame(BankSlipStatus::REGISTERED, $this->bankSlip->fresh()->status);
         $this->assertSame('charge-001', $this->bankSlip->fresh()->provider_charge_id);
         $this->assertSame('https://bank.test/boletos/001.pdf', $this->bankSlip->fresh()->pdf_url);
+    }
+
+    public function test_marks_slip_as_failed_when_provider_returns_success_false(): void
+    {
+        $client = Mockery::mock(IntegraBancosClientInterface::class);
+        $client->shouldReceive('generate')
+            ->once()
+            ->andReturn([
+                'sucesso' => false,
+                'codigo' => 1,
+                'mensagem' => 'JSON com erros nos campos.',
+                'erros' => [[
+                    'campo' => 'numero',
+                    'erro' => 'A propriedade numero é obrigatória',
+                ]],
+            ]);
+        app()->instance(IntegraBancosClientInterface::class, $client);
+
+        $this->bankSlip->update(['status' => BankSlipStatus::UPDATE_PENDING->value]);
+
+        (new RegisterBankSlipJob($this->bankSlip->id))->handle(app(BankSlipProviderRegistry::class));
+
+        $bankSlip = $this->bankSlip->fresh();
+
+        $this->assertSame(BankSlipStatus::REGISTRATION_FAILED, $bankSlip->status);
+        $this->assertSame('1', $bankSlip->provider_status_code);
+        $this->assertSame(
+            'JSON com erros nos campos. | numero: A propriedade numero é obrigatória',
+            $bankSlip->provider_status_message,
+        );
+        $this->assertStringContainsString('JSON com erros nos campos.', (string) $bankSlip->last_error);
+        $this->assertTrue($bankSlip->providerResponseFailed());
     }
 
     private function createPaymentEvent(string $providerEventId, float $amount): BankSlipEvent

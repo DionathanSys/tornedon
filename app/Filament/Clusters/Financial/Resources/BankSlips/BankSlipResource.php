@@ -138,12 +138,18 @@ class BankSlipResource extends Resource
                     ->label('Tentar registro novamente')
                     ->icon(Heroicon::ArrowPath)
                     ->color('warning')
-                    ->visible(fn (BankSlip $record): bool => in_array($record->status, [
+                    ->visible(fn (BankSlip $record): bool => $record->providerResponseFailed() || in_array($record->status, [
                         BankSlipStatus::PENDING_REGISTRATION,
                         BankSlipStatus::REGISTRATION_FAILED,
                         BankSlipStatus::UPDATE_PENDING,
                     ], true))
                     ->action(function (BankSlip $record): void {
+                        if ($record->providerResponseFailed()) {
+                            $record->update([
+                                'status' => BankSlipStatus::REGISTRATION_FAILED->value,
+                            ]);
+                        }
+
                         RegisterBankSlipJob::dispatch($record->id);
 
                         Notification::make()

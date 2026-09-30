@@ -30,7 +30,7 @@ final class IssueBankSlipAction
 
                 $status = $record->latestBankSlip?->status;
 
-                return $status === null || in_array($status, [
+                return $status === null || $record->latestBankSlip?->providerResponseFailed() || in_array($status, [
                     BankSlipStatus::REGISTRATION_FAILED,
                     BankSlipStatus::CANCELED,
                     BankSlipStatus::PAYMENT_RETURNED,

@@ -69,4 +69,12 @@ class BankSlip extends Model
     {
         return $this->hasMany(AccountReceivableInstallmentPayment::class);
     }
+
+    public function providerResponseFailed(): bool
+    {
+        $success = data_get($this->provider_payload, 'sucesso');
+
+        return $success === false
+            || (is_string($success) && in_array(strtolower($success), ['false', '0', 'nao', 'não'], true));
+    }
 }
