@@ -101,7 +101,18 @@ final class IntegraBancosSdkClient implements IntegraBancosClientInterface
         $accessToken = (string) ($tokenData['access_token'] ?? '');
 
         if ($accessToken === '') {
-            throw new RuntimeException('Resposta OAuth da IntegraBancos sem access_token.');
+            $message = IntegraBancosExceptionFormatter::dataMessage($tokenData);
+
+            Log::error('IntegraBancos: resposta OAuth sem access_token', [
+                'connection_id' => $this->connection->id,
+                'environment' => $this->connection->environment,
+                'is_production' => $this->isProduction(),
+                'response_keys' => array_keys($tokenData),
+                'response_message' => $message,
+                'response' => IntegraBancosExceptionFormatter::sanitizeData($tokenData),
+            ]);
+
+            throw new RuntimeException('Falha na autenticacao OAuth: '.$message);
         }
 
         $credentials['access_token'] = $accessToken;

@@ -30,4 +30,22 @@ class IntegraBancosExceptionFormatterTest extends TestCase
         $this->assertStringNotContainsString('access-token', $message.$details);
         $this->assertStringNotContainsString('"password":"password"', $message.$details);
     }
+
+    public function test_formats_oauth_response_without_exposing_tokens(): void
+    {
+        $response = [
+            'error' => 'invalid_grant',
+            'error_description' => 'Usuário ou senha inválidos.',
+            'access_token' => 'access-token',
+            'refresh_token' => 'refresh-token',
+        ];
+
+        $message = IntegraBancosExceptionFormatter::dataMessage($response);
+        $details = json_encode(IntegraBancosExceptionFormatter::sanitizeData($response));
+
+        $this->assertStringContainsString('invalid_grant', $message);
+        $this->assertStringContainsString('Usuário ou senha inválidos.', $message);
+        $this->assertStringNotContainsString('access-token', $message.$details);
+        $this->assertStringNotContainsString('refresh-token', $message.$details);
+    }
 }

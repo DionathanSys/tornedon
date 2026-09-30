@@ -25,10 +25,27 @@ final class IntegraBancosExceptionFormatter
 
     public static function message(Throwable $exception): string
     {
-        $details = self::details($exception);
+        return self::formatDetails(self::details($exception), $exception->getMessage());
+    }
+
+    public static function dataMessage(mixed $data): string
+    {
+        $details = self::sanitize($data);
+
+        return self::formatDetails(
+            is_array($details) ? $details : [],
+            'Resposta OAuth sem detalhes legíveis.',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    private static function formatDetails(array $details, string $fallback): string
+    {
         $parts = [];
 
-        foreach (['message', 'error', 'response', 'json_error'] as $key) {
+        foreach (['message', 'error', 'error_description', 'detail', 'mensagem', 'response', 'json_error'] as $key) {
             if (! array_key_exists($key, $details) || blank($details[$key])) {
                 continue;
             }
@@ -46,7 +63,7 @@ final class IntegraBancosExceptionFormatter
             $parts[] = 'http_code: '.(string) $details['http_code'];
         }
 
-        return self::truncate(implode(' | ', $parts) ?: $exception->getMessage());
+        return self::truncate(implode(' | ', $parts) ?: $fallback);
     }
 
     public static function sanitizeData(mixed $value): mixed
