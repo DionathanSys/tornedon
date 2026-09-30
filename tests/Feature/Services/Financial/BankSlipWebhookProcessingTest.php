@@ -414,6 +414,40 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertNotNull($bankSlip->last_synchronized_at);
     }
 
+    public function test_manually_prepares_boleto_for_receivable_without_invoice(): void
+    {
+        $receivable = $this->bankSlip->installment()->first()->accountReceivable;
+        $receivable->update([
+            'invoice_id' => null,
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+        ]);
+        $this->bankSlip->delete();
+
+        $installment = $receivable->installments()->first();
+        $installment->update(['financial_account_id' => null]);
+
+        CompanyEntitlement::create([
+            'company_id' => $this->company->id,
+            'feature' => 'bank_slip_issuance',
+            'enabled' => true,
+        ]);
+
+        $updatedInstallment = app(AccountReceivableService::class)->updateInstallment($installment, [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+
+        $bankSlip = app(BankSlipIssuanceService::class)->prepareBankSlip(
+            $updatedInstallment,
+            requireAutomaticIssuance: false,
+        );
+
+        $this->assertNotNull($bankSlip);
+        $this->assertNull($receivable->fresh()->invoice_id);
+        $this->assertSame($this->financialAccount->id, $bankSlip->connection->financial_account_id);
+        $this->assertSame($installment->id, $bankSlip->account_receivable_installment_id);
+        $this->assertSame(BankSlipStatus::PENDING_REGISTRATION, $bankSlip->status);
+    }
+
     private function createPaymentEvent(string $providerEventId, float $amount): BankSlipEvent
     {
         return BankSlipEvent::create([

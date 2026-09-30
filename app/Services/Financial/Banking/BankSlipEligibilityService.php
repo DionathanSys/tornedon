@@ -6,10 +6,30 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivableInstallment;
 use App\Models\BankAccountConnection;
 use App\Models\CompanyEntitlement;
+use App\Models\FinancialAccount;
 use Illuminate\Validation\ValidationException;
 
 final class BankSlipEligibilityService
 {
+    /**
+     * @return array<int, string>
+     */
+    public function financialAccountOptions(int $companyId): array
+    {
+        return FinancialAccount::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereHas('bankAccountConnections', function ($query): void {
+                $query
+                    ->where('status', 'active')
+                    ->whereHas('bank', fn ($bankQuery) => $bankQuery->where('is_active', true))
+                    ->whereHas('billingProvider', fn ($providerQuery) => $providerQuery->where('is_active', true));
+            })
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
     public function resolveConnection(AccountReceivableInstallment $installment): BankAccountConnection
     {
         $installment->loadMissing('accountReceivable.customer', 'financialAccount');

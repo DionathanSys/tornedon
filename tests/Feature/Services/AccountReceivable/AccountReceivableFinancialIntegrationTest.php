@@ -33,11 +33,17 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
     use RefreshDatabase;
 
     private AccountReceivableService $service;
+
     private User $user;
+
     private Company $company;
+
     private Partner $customer;
+
     private FinancialAccount $financialAccount;
+
     private FinancialCategory $receivableCategory;
+
     private FinancialCategory $payableOnlyCategory;
 
     protected function setUp(): void
@@ -429,6 +435,28 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         $this->assertSame(
             'Cliente Avulso | Doc. Sem documento | Parcela 01',
             $receivable->installments()->sole()->description
+        );
+    }
+
+    public function test_create_standalone_bank_slip_receivable_copies_financial_account_to_installment(): void
+    {
+        $receivable = $this->service->create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => null,
+            'due_date' => '2026-04-10',
+            'due_amount' => 180,
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+            'financial_account_id' => $this->financialAccount->id,
+            'installment_count' => 1,
+            'financial_category_id' => $this->receivableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($receivable, $this->service->getMessage());
+        $this->assertNull($receivable->invoice_id);
+        $this->assertSame(
+            $this->financialAccount->id,
+            $receivable->installments()->sole()->financial_account_id,
         );
     }
 

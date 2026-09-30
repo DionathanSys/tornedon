@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas;
 
+use App\Domain\DTO\Financial\CardReceivableCalculationDTO;
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
@@ -14,6 +15,7 @@ use App\Models\AccountReceivable;
 use App\Models\CardPaymentProfile;
 use App\Models\CostCenter;
 use App\Models\ResultCenter;
+use App\Services\Financial\Banking\BankSlipEligibilityService;
 use App\Services\Financial\CardReceivableCalculatorService;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
@@ -228,6 +230,19 @@ class AccountReceivableForm
                             ->native(false)
                             ->searchable()
                             ->live(),
+                        Select::make('financial_account_id')
+                            ->label('Conta financeira do boleto')
+                            ->columnSpan(['md' => 2])
+                            ->options(fn (): array => app(BankSlipEligibilityService::class)
+                                ->financialAccountOptions((int) Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->required(fn (Get $get): bool => $get('payment_method') === PaymentMethod::BANK_SLIP->value)
+                            ->visible(fn (Get $get): bool => $get('payment_method') === PaymentMethod::BANK_SLIP->value)
+                            ->visibleOn('create')
+                            ->dehydrated(fn (Get $get): bool => $get('payment_method') === PaymentMethod::BANK_SLIP->value)
+                            ->helperText('A conta precisa possuir conexão bancária ativa para emissão.'),
                         Select::make('card_payment_profile_id')
                             ->label('Perfil de Cartão')
                             ->columnSpan(['md' => 2])
@@ -329,7 +344,7 @@ class AccountReceivableForm
         return $preview->expectedSettlementDate;
     }
 
-    private static function resolveCardCalculationPreview(callable $get): ?\App\Domain\DTO\Financial\CardReceivableCalculationDTO
+    private static function resolveCardCalculationPreview(callable $get): ?CardReceivableCalculationDTO
     {
         $profileId = (int) ($get('card_payment_profile_id') ?? 0);
 
