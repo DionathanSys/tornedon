@@ -267,8 +267,15 @@ return new class extends Migration
             Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
                 $table->foreignId('bank_slip_id')
                     ->nullable()
-                    ->after('financial_account_id')
-                    ->constrained('bank_slips')
+                    ->after('financial_account_id');
+            });
+        }
+
+        if (! $this->foreignKeyColumnExists('account_receivable_installment_payments', 'bank_slip_id')) {
+            Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
+                $table->foreign('bank_slip_id', 'arip_bank_slip_fk')
+                    ->references('id')
+                    ->on('bank_slips')
                     ->nullOnDelete();
             });
         }
@@ -277,9 +284,21 @@ return new class extends Migration
             Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
                 $table->foreignId('bank_slip_event_id')
                     ->nullable()
-                    ->after('bank_slip_id')
-                    ->constrained('bank_slip_events')
+                    ->after('bank_slip_id');
+            });
+        }
+
+        if (! $this->foreignKeyColumnExists('account_receivable_installment_payments', 'bank_slip_event_id')) {
+            Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
+                $table->foreign('bank_slip_event_id', 'arip_bank_slip_event_fk')
+                    ->references('id')
+                    ->on('bank_slip_events')
                     ->nullOnDelete();
+            });
+        }
+
+        if (! $this->indexExists('account_receivable_installment_payments', 'arip_bank_slip_event_unique')) {
+            Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
                 $table->unique('bank_slip_event_id', 'arip_bank_slip_event_unique');
             });
         }
@@ -294,14 +313,14 @@ return new class extends Migration
         if (Schema::hasColumn('account_receivable_installment_payments', 'bank_slip_event_id')) {
             Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
                 $table->dropUnique('arip_bank_slip_event_unique');
-                $table->dropForeign(['bank_slip_event_id']);
+                $table->dropForeign('arip_bank_slip_event_fk');
                 $table->dropColumn('bank_slip_event_id');
             });
         }
 
         if (Schema::hasColumn('account_receivable_installment_payments', 'bank_slip_id')) {
             Schema::table('account_receivable_installment_payments', function (Blueprint $table): void {
-                $table->dropForeign(['bank_slip_id']);
+                $table->dropForeign('arip_bank_slip_fk');
                 $table->dropColumn('bank_slip_id');
             });
         }
@@ -318,6 +337,33 @@ return new class extends Migration
             ->where('TABLE_NAME', $tableName)
             ->where('CONSTRAINT_NAME', $foreignKeyName)
             ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
+    }
+
+    private function foreignKeyColumnExists(string $tableName, string $columnName): bool
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            return false;
+        }
+
+        return DB::table('information_schema.KEY_COLUMN_USAGE')
+            ->where('CONSTRAINT_SCHEMA', DB::getDatabaseName())
+            ->where('TABLE_NAME', $tableName)
+            ->where('COLUMN_NAME', $columnName)
+            ->whereNotNull('REFERENCED_TABLE_NAME')
+            ->exists();
+    }
+
+    private function indexExists(string $tableName, string $indexName): bool
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            return false;
+        }
+
+        return DB::table('information_schema.STATISTICS')
+            ->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->where('TABLE_NAME', $tableName)
+            ->where('INDEX_NAME', $indexName)
             ->exists();
     }
 };
