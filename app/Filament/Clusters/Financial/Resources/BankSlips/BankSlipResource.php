@@ -17,6 +17,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class BankSlipResource extends Resource
@@ -69,6 +70,23 @@ class BankSlipResource extends Resource
                     ->formatStateUsing(fn (?BankSlipStatus $state): string => $state?->description() ?? '-')
                     ->color(fn (?BankSlipStatus $state): string => $state?->color() ?? 'gray')
                     ->sortable(),
+                TextColumn::make('provider_status_code')
+                    ->label('Código provider')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('provider_status_message')
+                    ->label('Mensagem provider')
+                    ->limit(60)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('last_error')
+                    ->label('Erro')
+                    ->color('danger')
+                    ->limit(80)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('connection.bank.name')
                     ->label('Banco')
                     ->placeholder('-'),
@@ -99,6 +117,23 @@ class BankSlipResource extends Resource
                     ->multiple(),
             ])
             ->recordActions([
+                Action::make('view_details')
+                    ->label('Ver detalhes')
+                    ->icon(Heroicon::InformationCircle)
+                    ->modalHeading('Detalhes do boleto')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(function (BankSlip $record): HtmlString {
+                        $details = json_encode([
+                            'status' => $record->status?->description(),
+                            'provider_status_code' => $record->provider_status_code,
+                            'provider_status_message' => $record->provider_status_message,
+                            'last_error' => $record->last_error,
+                            'provider_payload' => $record->provider_payload,
+                        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+
+                        return new HtmlString('<pre style="white-space: pre-wrap; font-size: 12px;">'.e($details).'</pre>');
+                    }),
                 Action::make('retry_registration')
                     ->label('Tentar registro novamente')
                     ->icon(Heroicon::ArrowPath)
