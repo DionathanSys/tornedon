@@ -161,7 +161,7 @@ class BankAccountConnectionResource extends Resource
         ]);
     }
 
-    public static function credentialsFromFormData(array $data, array $existing = []): array
+    public static function credentialsFromFormData(array &$data, array $existing = []): array
     {
         foreach ([
             'client_id',

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Filament\Management;
 
+use App\Enum\Financial\FinancialAccountType;
 use App\Enum\User\ManagementRole;
 use App\Filament\Management\Pages\CnpjProviderSettingsPage;
 use App\Filament\Management\Resources\BankAccountConnections\BankAccountConnectionResource;
@@ -12,7 +13,11 @@ use App\Filament\Management\Resources\Companies\Pages\EditCompany;
 use App\Filament\Management\Resources\Companies\RelationManagers\ProductSequenceRelationManager;
 use App\Filament\Management\Resources\CompanyEntitlements\CompanyEntitlementResource;
 use App\Filament\Management\Resources\Users\UserResource;
+use App\Models\Bank;
+use App\Models\BankAccountConnection;
+use App\Models\BillingProvider;
 use App\Models\Company;
+use App\Models\FinancialAccount;
 use App\Models\ProductSequence;
 use App\Models\User;
 use App\Policies\UserPolicy;
@@ -53,6 +58,61 @@ class ManagementPanelAccessTest extends TestCase
         $this->get(BillingProviderResource::getUrl('index'))->assertOk();
         $this->get(BankAccountConnectionResource::getUrl('index'))->assertOk();
         $this->get(CompanyEntitlementResource::getUrl('index'))->assertOk();
+    }
+
+    public function test_bank_connection_credentials_are_removed_from_form_data_and_stored_encrypted(): void
+    {
+        $company = Company::factory()->create();
+        $financialAccount = FinancialAccount::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Conta corrente',
+            'type' => FinancialAccountType::BANK->value,
+            'is_active' => true,
+        ]);
+        $bank = Bank::query()->create([
+            'code' => '001',
+            'name' => 'Banco de teste',
+            'is_active' => true,
+        ]);
+        $provider = BillingProvider::query()->firstOrFail();
+        $formData = [
+            'company_id' => $company->id,
+            'financial_account_id' => $financialAccount->id,
+            'bank_id' => $bank->id,
+            'billing_provider_id' => $provider->id,
+            'environment' => 'sandbox',
+            'status' => 'active',
+            'credential_client_id' => 'client-id',
+            'credential_client_secret' => 'client-secret',
+            'credential_username' => 'user@example.com',
+            'credential_password' => 'password',
+            'credential_x_api_key' => 'api-key',
+            'credential_secret_key' => 'secret-key',
+        ];
+
+        $credentials = BankAccountConnectionResource::credentialsFromFormData($formData);
+
+        $this->assertSame([
+            'client_id' => 'client-id',
+            'client_secret' => 'client-secret',
+            'username' => 'user@example.com',
+            'password' => 'password',
+            'x_api_key' => 'api-key',
+            'secret_key' => 'secret-key',
+        ], $credentials);
+        $this->assertArrayNotHasKey('credential_client_id', $formData);
+        $this->assertArrayNotHasKey('credential_client_secret', $formData);
+        $this->assertArrayNotHasKey('credential_username', $formData);
+        $this->assertArrayNotHasKey('credential_password', $formData);
+        $this->assertArrayNotHasKey('credential_x_api_key', $formData);
+        $this->assertArrayNotHasKey('credential_secret_key', $formData);
+
+        $connection = BankAccountConnection::query()->create([
+            ...$formData,
+            'credentials' => $credentials,
+        ]);
+
+        $this->assertSame($credentials, $connection->fresh()->credentials);
     }
 
     public function test_admin_can_open_company_edit_and_see_all_sequence_managers(): void
