@@ -906,7 +906,7 @@ class AccountReceivableService
     {
         $financialAccountId = $installmentData['financial_account_id'] ?? null;
 
-        if ($financialAccountId === null || $financialAccountId === '') {
+        if ($financialAccountId === null || $financialAccountId === '' || (int) $financialAccountId <= 0) {
             return null;
         }
 

@@ -120,16 +120,16 @@ final class ConfirmInvoiceAction
                                     ->required(fn (Get $get): bool => (bool) $get('mark_as_received')),
 
                                 Select::make('financial_account_id')
-                                    ->label('Conta Financeira da cobrança/baixa')
+                                    ->label('Conta Financeira da cobrança/baixa (opcional)')
                                     ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()?->id ?? 0))
                                     ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()?->id ?? 0))
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
+                                    ->nullable()
                                     ->visible(fn (Get $get): bool => (bool) $get('mark_as_received')
                                         || (string) $get('payment_method') === Method::BANK_SLIP->value)
-                                    ->required(fn (Get $get): bool => (bool) $get('mark_as_received')
-                                        || (string) $get('payment_method') === Method::BANK_SLIP->value),
+                                    ->helperText('Opcional. Sem conta, o boleto deverá ser emitido manualmente e o recebimento não criará movimento de caixa.'),
                             ]),
 
                         Tab::make('NF-e')

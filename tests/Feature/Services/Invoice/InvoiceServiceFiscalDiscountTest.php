@@ -20,6 +20,7 @@ use App\Enum\ServiceOrder\Priority as ServiceOrderPriority;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type as ServiceOrderType;
 use App\Enum\Tax\TaxRegime;
+use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\CompanyPreference;
 use App\Models\Equipment;
@@ -831,6 +832,65 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertSame('Informação adicional definida na confirmação', $item->additional_information);
         $this->assertSame($category->id, $invoice->fresh()->financial_category_id);
         $this->assertSame($category->id, $invoice->fresh()->installments()->first()?->financial_category_id);
+    }
+
+    public function test_confirm_bank_slip_invoice_does_not_require_financial_account(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+        $category = FinancialCategory::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Recebiveis Boleto Sem Conta',
+            'is_active' => true,
+            'allow_receivable' => true,
+            'allow_cash_movement' => true,
+        ]);
+
+        $serviceOrder = ServiceOrder::query()->create([
+            'number' => 'SO-CONFIRM-NO-ACCOUNT',
+            'customer_id' => $customer->id,
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED->value,
+            'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value,
+            'created_by' => $user->id,
+        ]);
+        $serviceModel = Service::query()->create([
+            'company_id' => $company->id,
+            'created_by' => $user->id,
+            'service_code' => 'SRV-CONFIRM-NO-ACCOUNT',
+            'name' => 'Servico sem conta financeira',
+            'price' => 180,
+            'tax_rate' => 5,
+            'nbs_code' => '123456789',
+            'cnae_code' => '6201500',
+            'municipal_tax_code' => '01.01',
+            'is_active' => true,
+        ]);
+        ServiceOrderItem::query()->create([
+            'service_order_id' => $serviceOrder->id,
+            'service_id' => $serviceModel->id,
+            'quantity' => 1,
+            'unit_price' => 180,
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(InvoiceService::class);
+        $result = $service->confirm($invoice->fresh(), [
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+            'payment_condition' => PaymentCondition::DAYS_30->value,
+            'financial_category_id' => $category->id,
+            'mark_as_received' => true,
+            'received_at' => now()->toDateString(),
+        ], $user->id);
+
+        $this->assertNotNull($result, $service->getMessage());
+        $this->assertSame(1, $result['payments_count']);
+        $this->assertNull($invoice->fresh()->installments()->first()?->financial_account_id);
+        $this->assertFalse((bool) $invoice->fresh()->auto_bank_slip_issuance);
+        $this->assertSame(0, CashMovement::query()->count());
     }
 
     /**

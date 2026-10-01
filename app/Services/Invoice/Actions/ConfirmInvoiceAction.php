@@ -72,12 +72,6 @@ class ConfirmInvoiceAction
 
             $autoBankSlipIssuance = $this->resolveAutoBankSlipIssuance($paymentMethod, $data);
 
-            if ($paymentMethod === PaymentMethod::BANK_SLIP && blank($data['financial_account_id'] ?? null)) {
-                $this->setError('Selecione a conta financeira usada para emitir os boletos da fatura.');
-
-                return null;
-            }
-
             $this->invoice->update([
                 'payment_method' => $paymentMethod->value,
                 'payment_condition' => $paymentCondition?->value,
@@ -416,6 +410,7 @@ class ConfirmInvoiceAction
                 : null,
             'financial_category_id' => $this->invoice->financial_category_id,
             'financial_account_id' => $paymentMethod === PaymentMethod::BANK_SLIP
+                && filled($data['financial_account_id'] ?? null)
                 ? (int) ($data['financial_account_id'] ?? 0)
                 : null,
             'auto_bank_slip_issuance' => $paymentMethod === PaymentMethod::BANK_SLIP
@@ -457,13 +452,9 @@ class ConfirmInvoiceAction
             return 0;
         }
 
-        $financialAccountId = $data['financial_account_id'] ?? null;
-
-        if (! $financialAccountId) {
-            $this->setError('Selecione uma conta financeira para registrar o recebimento automático.');
-
-            return null;
-        }
+        $financialAccountId = filled($data['financial_account_id'] ?? null)
+            ? (int) $data['financial_account_id']
+            : null;
 
         $paymentDate = (string) ($data['received_at'] ?? now()->toDateString());
         $service = app(AccountReceivableService::class);
@@ -484,7 +475,7 @@ class ConfirmInvoiceAction
                     $amount,
                     $paymentDate,
                     [
-                        'financial_account_id' => (int) $financialAccountId,
+                        'financial_account_id' => $financialAccountId,
                         'description' => sprintf(
                             'Recebimento automático na confirmação da fatura %s',
                             Str::padLeft($this->invoice->invoice_number, 5, '0')
@@ -578,6 +569,7 @@ class ConfirmInvoiceAction
                 'installment_number' => $i,
                 'installments_count' => $installmentsCount,
                 'financial_account_id' => $paymentMethod === PaymentMethod::BANK_SLIP
+                    && filled($data['financial_account_id'] ?? null)
                     ? (int) ($data['financial_account_id'] ?? 0)
                     : null,
                 'auto_bank_slip_issuance' => $paymentMethod === PaymentMethod::BANK_SLIP
@@ -647,6 +639,10 @@ class ConfirmInvoiceAction
     {
         if ($paymentMethod !== PaymentMethod::BANK_SLIP) {
             return null;
+        }
+
+        if (blank($data['financial_account_id'] ?? null)) {
+            return false;
         }
 
         return (bool) ($data['auto_bank_slip_issuance']

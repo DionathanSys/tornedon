@@ -95,7 +95,7 @@ class AccountReceivableInstallmentValidator
             'fine_amount' => ['nullable', 'numeric', 'min:0'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'bank_account_id' => self::bankAccountRule(false),
-            'financial_account_id' => self::financialAccountRule($data, true),
+            'financial_account_id' => self::financialAccountRule($data, false),
             'bank_slip_id' => self::companyOwnedRule($data, BankSlip::class, 'Boleto nao encontrado para a empresa.'),
             'bank_slip_event_id' => self::companyOwnedRule($data, BankSlipEvent::class, 'Evento de boleto nao encontrado para a empresa.'),
             'description' => ['nullable', 'string', 'max:255'],
