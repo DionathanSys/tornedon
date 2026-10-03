@@ -9,6 +9,7 @@ use App\Models\ChartAccount;
 use App\Models\CostCenter;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
+use App\Models\PixCharge;
 use App\Models\ResultCenter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
@@ -60,6 +61,7 @@ class AccountReceivableInstallmentValidator
             'balance_amount' => ['nullable', 'numeric', 'min:0'],
             'financial_account_id' => self::financialAccountRule($data, false),
             'auto_bank_slip_issuance' => ['nullable', 'boolean'],
+            'auto_pix_charge_issuance' => ['nullable', 'boolean'],
             'chart_account_id' => self::companyOwnedRule($data, ChartAccount::class, 'Conta do plano não encontrada.'),
             'financial_category_id' => self::financialCategoryRule($data, 'receivable', true),
             'cost_center_id' => self::companyOwnedRule($data, CostCenter::class, 'Centro de custo não encontrado.'),
@@ -77,7 +79,7 @@ class AccountReceivableInstallmentValidator
             array_unshift($rules[$field], 'sometimes');
         }
 
-        foreach (['competence_date', 'received_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'received_amount', 'balance_amount', 'financial_account_id', 'auto_bank_slip_issuance', 'chart_account_id', 'financial_category_id', 'cost_center_id', 'result_center_id', 'description', 'notes'] as $field) {
+        foreach (['competence_date', 'received_date', 'original_amount', 'interest_amount', 'fine_amount', 'discount_amount', 'received_amount', 'balance_amount', 'financial_account_id', 'auto_bank_slip_issuance', 'auto_pix_charge_issuance', 'chart_account_id', 'financial_category_id', 'cost_center_id', 'result_center_id', 'description', 'notes'] as $field) {
             array_unshift($rules[$field], 'sometimes');
         }
 
@@ -98,6 +100,7 @@ class AccountReceivableInstallmentValidator
             'financial_account_id' => self::financialAccountRule($data, false),
             'bank_slip_id' => self::companyOwnedRule($data, BankSlip::class, 'Boleto nao encontrado para a empresa.'),
             'bank_slip_event_id' => self::companyOwnedRule($data, BankSlipEvent::class, 'Evento de boleto nao encontrado para a empresa.'),
+            'pix_charge_id' => self::companyOwnedRule($data, PixCharge::class, 'Cobrança PIX não encontrada para a empresa.'),
             'description' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ];

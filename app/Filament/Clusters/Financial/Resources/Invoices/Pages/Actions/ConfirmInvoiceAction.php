@@ -56,6 +56,12 @@ final class ConfirmInvoiceAction
                                     ->helperText('Quando marcado, a NF-e e/ou NFS-e criada será enviada imediatamente para processamento.')
                                     ->default(false),
 
+                                Checkbox::make('auto_pix_charge_issuance')
+                                    ->label('Gerar cobrança PIX automaticamente')
+                                    ->helperText('Cria a cobrança PIX após a confirmação e disponibiliza o QR Code e o copia e cola.')
+                                    ->default(fn (): bool => (bool) config('pix.default_auto_issuance', false))
+                                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::PIX->value),
+
                                 Select::make('payment_method')
                                     ->label('Forma de Pagamento')
                                     ->options(Method::toSelectArray())
@@ -128,8 +134,8 @@ final class ConfirmInvoiceAction
                                     ->native(false)
                                     ->nullable()
                                     ->visible(fn (Get $get): bool => (bool) $get('mark_as_received')
-                                        || (string) $get('payment_method') === Method::BANK_SLIP->value)
-                                    ->helperText('Opcional. Sem conta, o boleto deverá ser emitido manualmente e o recebimento não criará movimento de caixa.'),
+                                        || in_array((string) $get('payment_method'), [Method::BANK_SLIP->value, Method::PIX->value], true))
+                                    ->helperText('Obrigatória para emissão automática de boleto ou cobrança PIX e para criar movimento de caixa na baixa.'),
                             ]),
 
                         Tab::make('NF-e')

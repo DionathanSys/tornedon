@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b74394bccbeff1aa628615d95902d720",
+    "content-hash": "1b5163e0570be9e8eaa366eb15c19583",
     "packages": [
         {
             "name": "archtechx/helpers",
@@ -2604,16 +2604,16 @@
         },
         {
             "name": "integrabancos/sdk-php",
-            "version": "v1.0.1",
+            "version": "v1.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/integrabancos/sdk-php.git",
-                "reference": "8c98be85746f43b8434b0ae8bcbfb0daca68e24b"
+                "reference": "b491df1d9b8ee9d9cdbd64502e1da2277c6e2e47"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/integrabancos/sdk-php/zipball/8c98be85746f43b8434b0ae8bcbfb0daca68e24b",
-                "reference": "8c98be85746f43b8434b0ae8bcbfb0daca68e24b",
+                "url": "https://api.github.com/repos/integrabancos/sdk-php/zipball/b491df1d9b8ee9d9cdbd64502e1da2277c6e2e47",
+                "reference": "b491df1d9b8ee9d9cdbd64502e1da2277c6e2e47",
                 "shasum": ""
             },
             "require": {
@@ -2652,9 +2652,9 @@
             "homepage": "https://github.com/integrabancos/sdk-php",
             "support": {
                 "issues": "https://github.com/integrabancos/sdk-php/issues",
-                "source": "https://github.com/integrabancos/sdk-php/tree/v1.0.1"
+                "source": "https://github.com/integrabancos/sdk-php/tree/v1.0.2"
             },
-            "time": "2026-09-08T13:39:27+00:00"
+            "time": "2026-09-30T13:55:24+00:00"
         },
         {
             "name": "kirschbaum-development/eloquent-power-joins",

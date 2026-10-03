@@ -263,6 +263,7 @@ class AccountReceivableService
                     'financial_account_id' => $extra['financial_account_id'] ?? null,
                     'bank_slip_id' => $extra['bank_slip_id'] ?? null,
                     'bank_slip_event_id' => $extra['bank_slip_event_id'] ?? null,
+                    'pix_charge_id' => $extra['pix_charge_id'] ?? null,
                     'description' => $extra['description']
                         ?? InstallmentDescription::forReceivableInstallment($installment),
                     'notes' => $extra['notes'] ?? null,

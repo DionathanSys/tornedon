@@ -20,6 +20,7 @@ class AccountReceivableInstallmentPayment extends Model
         'financial_account_id',
         'bank_slip_id',
         'bank_slip_event_id',
+        'pix_charge_id',
         'description',
         'notes',
     ];
@@ -55,5 +56,10 @@ class AccountReceivableInstallmentPayment extends Model
     public function bankSlipEvent(): BelongsTo
     {
         return $this->belongsTo(BankSlipEvent::class);
+    }
+
+    public function pixCharge(): BelongsTo
+    {
+        return $this->belongsTo(PixCharge::class);
     }
 }

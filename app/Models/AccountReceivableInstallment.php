@@ -31,6 +31,7 @@ class AccountReceivableInstallment extends Model
         'balance_amount',
         'financial_account_id',
         'auto_bank_slip_issuance',
+        'auto_pix_charge_issuance',
         'chart_account_id',
         'financial_category_id',
         'cost_center_id',
@@ -52,6 +53,7 @@ class AccountReceivableInstallment extends Model
         'received_amount' => MoneyCast::class,
         'balance_amount' => MoneyCast::class,
         'auto_bank_slip_issuance' => 'boolean',
+        'auto_pix_charge_issuance' => 'boolean',
     ];
 
     public function accountReceivable(): BelongsTo
@@ -102,5 +104,15 @@ class AccountReceivableInstallment extends Model
     public function latestBankSlip(): HasOne
     {
         return $this->hasOne(BankSlip::class, 'account_receivable_installment_id')->latestOfMany();
+    }
+
+    public function pixCharges(): HasMany
+    {
+        return $this->hasMany(PixCharge::class, 'account_receivable_installment_id');
+    }
+
+    public function latestPixCharge(): HasOne
+    {
+        return $this->hasOne(PixCharge::class, 'account_receivable_installment_id')->latestOfMany();
     }
 }
