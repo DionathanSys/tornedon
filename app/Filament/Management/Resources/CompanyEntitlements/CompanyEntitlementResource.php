@@ -64,7 +64,7 @@ class CompanyEntitlementResource extends Resource
                     Select::make('feature')
                         ->label('Recurso')
                         ->options([
-                            'bank_slip_issuance' => 'Emissao de boletos',
+                            'bank_slip_issuance' => 'Emissão de boletos',
                             'pix_charge_issuance' => 'Emissão de cobranças PIX',
                         ])
                         ->required(),

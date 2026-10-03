@@ -191,8 +191,8 @@ class PixChargeProcessingTest extends TestCase
                 'sucesso' => true,
                 'identificacao' => 'PX-registered',
                 'id' => 'pix-provider-1',
-                'qrcode' => 'qr-code-data',
-                'pix_copia_cola' => '000201copy-paste',
+                'encodedImage' => 'qr-code-data',
+                'payload' => '000201copy-paste',
                 'status' => ['codigo' => '2', 'mensagem' => 'Gerado'],
             ]);
         app()->instance(IntegraBancosPixClientInterface::class, $client);
@@ -207,6 +207,26 @@ class PixChargeProcessingTest extends TestCase
         $this->assertSame('pix-provider-1', $charge->provider_charge_id);
         $this->assertSame('qr-code-data', $charge->qr_code);
         $this->assertSame('000201copy-paste', $charge->pix_copy_paste);
+    }
+
+    public function test_reads_qr_data_from_a_persisted_provider_payload_when_columns_are_empty(): void
+    {
+        $charge = PixCharge::create([
+            'company_id' => $this->company->id,
+            'account_receivable_installment_id' => $this->installment->id,
+            'bank_account_connection_id' => BankAccountConnection::query()->firstOrFail()->id,
+            'status' => PixChargeStatus::REGISTERED,
+            'provider_identification' => 'PX-PAYLOAD',
+            'amount' => 100,
+            'due_date' => '2026-10-01',
+            'provider_payload' => [
+                'encodedImage' => 'persisted-qr-image',
+                'payload' => 'persisted-copy-paste',
+            ],
+        ]);
+
+        $this->assertSame('persisted-qr-image', $charge->qr_code);
+        $this->assertSame('persisted-copy-paste', $charge->pix_copy_paste);
     }
 
     public function test_query_registers_one_idempotent_receivable_payment_when_pix_is_paid(): void

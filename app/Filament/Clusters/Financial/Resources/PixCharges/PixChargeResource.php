@@ -80,10 +80,9 @@ class PixChargeResource extends Resource
                     ->placeholder('-'),
                 TextColumn::make('qr_code')
                     ->label('QR Code')
-                    ->copyable()
-                    ->copyMessage('QR Code copiado')
-                    ->limit(50)
-                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Disponível' : '-')
+                    ->badge()
+                    ->color(fn (?string $state): string => filled($state) ? 'success' : 'gray')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('provider_status_message')
@@ -141,6 +140,32 @@ class PixChargeResource extends Resource
                             ->title('Registro da cobrança PIX enfileirado.')
                             ->success()
                             ->send();
+                    }),
+                Action::make('view_qr_code')
+                    ->label('Visualizar QR Code')
+                    ->icon(Heroicon::QrCode)
+                    ->visible(fn (PixCharge $record): bool => filled($record->qr_code)
+                        || filled($record->pix_copy_paste))
+                    ->modalHeading('QR Code PIX')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(function (PixCharge $record): HtmlString {
+                        $qrCode = (string) $record->qr_code;
+                        $imageSource = str_starts_with($qrCode, 'data:')
+                            ? $qrCode
+                            : 'data:image/png;base64,'.$qrCode;
+                        $image = filled($qrCode)
+                            ? '<img src="'.e($imageSource).'" alt="QR Code PIX" style="display:block; width:280px; height:280px; margin:0 auto; image-rendering:auto;">'
+                            : '<p>QR Code indisponível.</p>';
+                        $copyPaste = e((string) $record->pix_copy_paste);
+
+                        return new HtmlString(
+                            '<div style="display:grid; gap:16px;">'
+                            .$image
+                            .'<div><strong>Copia e cola</strong><textarea readonly style="display:block; width:100%; min-height:96px; margin-top:8px;" onclick="this.select()">'
+                            .$copyPaste
+                            .'</textarea></div></div>'
+                        );
                     }),
                 Action::make('view_details')
                     ->label('Ver detalhes')

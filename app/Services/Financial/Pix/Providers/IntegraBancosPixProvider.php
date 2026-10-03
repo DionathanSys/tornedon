@@ -102,12 +102,15 @@ final class IntegraBancosPixProvider implements PixProviderInterface
             ]),
             qrCode: $this->responseValue($payload, [
                 'qrcode', 'qr_code', 'qrCode', 'dados.qrcode', 'dados.qr_code',
-                'data.qrcode', 'data.qr_code',
+                'data.qrcode', 'data.qr_code', 'encodedImage', 'encoded_image',
+                'dados.encodedImage', 'dados.encoded_image',
+                'data.encodedImage', 'data.encoded_image',
             ]),
             pixCopyPaste: $this->responseValue($payload, [
                 'pix_copia_cola', 'pix_copy_paste', 'pixCopiaCola',
-                'dados.pix_copia_cola', 'dados.pix_copy_paste',
-                'data.pix_copia_cola', 'data.pix_copy_paste',
+                'payload', 'dados.pix_copia_cola', 'dados.pix_copy_paste',
+                'dados.payload', 'data.pix_copia_cola', 'data.pix_copy_paste',
+                'data.payload',
             ]),
             statusCode: $statusCode,
             statusMessage: $statusMessage,

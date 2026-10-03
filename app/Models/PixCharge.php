@@ -61,4 +61,38 @@ class PixCharge extends Model
         return $success === false
             || (is_string($success) && in_array(strtolower($success), ['false', '0', 'nao', 'não'], true));
     }
+
+    public function getQrCodeAttribute(?string $value): ?string
+    {
+        if (filled($value)) {
+            return $value;
+        }
+
+        foreach (['encodedImage', 'encoded_image', 'qrcode', 'qr_code', 'qrCode'] as $path) {
+            $fallback = data_get($this->provider_payload, $path);
+
+            if (is_scalar($fallback) && filled($fallback)) {
+                return (string) $fallback;
+            }
+        }
+
+        return null;
+    }
+
+    public function getPixCopyPasteAttribute(?string $value): ?string
+    {
+        if (filled($value)) {
+            return $value;
+        }
+
+        foreach (['payload', 'pix_copia_cola', 'pix_copy_paste', 'pixCopiaCola'] as $path) {
+            $fallback = data_get($this->provider_payload, $path);
+
+            if (is_scalar($fallback) && filled($fallback)) {
+                return (string) $fallback;
+            }
+        }
+
+        return null;
+    }
 }
