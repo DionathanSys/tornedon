@@ -65,21 +65,45 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         $payloadDocument = preg_replace('/\D+/', '', (string) ($payload['cnpj_cpf'] ?? '')) ?: '';
         $companyDocument = preg_replace('/\D+/', '', (string) $connection->company?->document_number) ?: '';
         $signature = trim((string) ($payload['assinatura'] ?? ''));
-        $configuredSignature = trim((string) data_get($connection->settings, 'webhook_signature', ''));
+        $credentials = (array) ($connection->credentials ?? []);
+        $encryptionKey = (string) ($credentials['secret_key'] ?? data_get($connection->settings, 'secret_key', ''));
 
         if (
             $payloadDocument === ''
             || $companyDocument === ''
             || ! hash_equals($companyDocument, $payloadDocument)
             || $signature === ''
-            || $configuredSignature === ''
+            || $encryptionKey === ''
         ) {
             return false;
         }
 
-        // The provider documentation does not publish the signature algorithm yet.
-        // Plain comparison is supported only for an explicitly configured test value.
-        return (bool) config('app.debug') && hash_equals($configuredSignature, $signature);
+        $decoded = base64_decode($signature, true);
+
+        if ($decoded === false || strlen($decoded) <= 48) {
+            return false;
+        }
+
+        $iv = substr($decoded, 0, 16);
+        $encryptedTimestamp = substr($decoded, 48);
+        $providedMac = substr($decoded, 16, 32);
+        $expectedMac = hash_hmac('sha256', $encryptedTimestamp, $encryptionKey, true);
+
+        if (! hash_equals($providedMac, $expectedMac)) {
+            return false;
+        }
+
+        $timestamp = openssl_decrypt(
+            $encryptedTimestamp,
+            'aes-128-cbc',
+            $encryptionKey,
+            OPENSSL_RAW_DATA,
+            $iv,
+        );
+
+        return is_string($timestamp)
+            && ctype_digit($timestamp)
+            && abs(time() - (int) $timestamp) <= 300;
     }
 
     public function normalizeWebhook(array $payload): BankSlipWebhookEvent

@@ -40,6 +40,8 @@ class BankSlipWebhookProcessingTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const TEST_WEBHOOK_ENCRYPTION_KEY = '12345678901234567890123456789012';
+
     private User $user;
 
     private Company $company;
@@ -144,10 +146,12 @@ class BankSlipWebhookProcessingTest extends TestCase
             'financial_account_id' => $this->financialAccount->id,
             'bank_id' => $bank->id,
             'billing_provider_id' => $provider->id,
-            'credentials' => ['access_token' => 'test-token'],
+            'credentials' => [
+                'access_token' => 'test-token',
+                'secret_key' => self::TEST_WEBHOOK_ENCRYPTION_KEY,
+            ],
             'settings' => [
                 'base_url' => 'https://bank.test',
-                'webhook_signature' => 'test-signature',
             ],
             'status' => 'active',
         ]);
@@ -201,7 +205,7 @@ class BankSlipWebhookProcessingTest extends TestCase
             'evento' => 'ATUALIZACAO',
             'identificacao' => $this->bankSlip->provider_identification,
             'cnpj_cpf' => '12345678000188',
-            'assinatura' => 'test-signature',
+            'assinatura' => $this->webhookSignature(),
             'status' => ['codigo' => '2', 'mensagem' => 'Registrado'],
         ];
         $service = app(BankSlipWebhookService::class);
@@ -212,8 +216,11 @@ class BankSlipWebhookProcessingTest extends TestCase
             'financial_account_id' => $this->financialAccount->id,
             'bank_id' => $connection->bank_id,
             'billing_provider_id' => $connection->billing_provider_id,
-            'credentials' => ['access_token' => 'test-token'],
-            'settings' => ['webhook_signature' => 'test-signature'],
+            'credentials' => [
+                'access_token' => 'test-token',
+                'secret_key' => self::TEST_WEBHOOK_ENCRYPTION_KEY,
+            ],
+            'settings' => [],
             'status' => 'active',
         ]);
         $secondEvent = $service->ingest($secondConnection, $payload, (string) json_encode($payload));
@@ -255,7 +262,7 @@ class BankSlipWebhookProcessingTest extends TestCase
             'qrcode' => 'ZGF...c9PQ==',
             'linha_digitavel' => '00000.00000 00000.000000 00000.000000 0 00000000000000',
             'pix_copia_cola' => null,
-            'assinatura' => 'test-signature',
+            'assinatura' => $this->webhookSignature(),
         ];
         $connection = BankAccountConnection::query()->findOrFail($this->bankSlip->bank_account_connection_id);
         $event = app(BankSlipWebhookService::class)->ingest(
@@ -269,6 +276,52 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertSame($payload['pdf'], $this->bankSlip->fresh()->pdf_url);
         $this->assertSame($payload['linha_digitavel'], $this->bankSlip->fresh()->digitable_line);
         $this->assertSame($payload['qrcode'], data_get($this->bankSlip->fresh()->provider_payload, 'qrcode'));
+    }
+
+    public function test_processes_integrabancos_paid_payload_and_updates_receivable(): void
+    {
+        $this->bankSlip->update(['amount' => 35]);
+        $installment = $this->bankSlip->installment()->firstOrFail();
+        $installment->update([
+            'original_amount' => 35,
+            'due_amount' => 35,
+            'received_amount' => 0,
+            'balance_amount' => 35,
+        ]);
+
+        $payload = [
+            'identificacao' => $this->bankSlip->provider_identification,
+            'valor' => '35.00',
+            'status' => [
+                'codigo' => 3,
+                'mensagem' => 'Pago/Liquidado',
+            ],
+            'detalhes' => [],
+            'cnpj_cpf' => $this->company->document_number,
+            'evento' => 'ATUALIZACAO',
+            'assinatura' => $this->webhookSignature(),
+        ];
+        $connection = $this->bankSlip->connection()->firstOrFail();
+
+        $event = app(BankSlipWebhookService::class)->ingest(
+            $connection,
+            $payload,
+            (string) json_encode($payload),
+        );
+
+        $this->assertNotNull($event);
+
+        (new ProcessBankSlipWebhookJob($event->id))->handle(app(AccountReceivableService::class));
+
+        $installment = $installment->fresh();
+        $receivable = $installment->accountReceivable()->firstOrFail()->fresh();
+
+        $this->assertSame(0.0, (float) $installment->balance_amount);
+        $this->assertSame(AccountReceivableStatus::RECEIVED, $installment->status);
+        $this->assertTrue((bool) $receivable->paid);
+        $this->assertSame(35.0, (float) $receivable->paid_amount);
+        $this->assertSame(BankSlipStatus::PAID, $this->bankSlip->fresh()->status);
+        $this->assertNotNull($event->fresh()->processed_at);
     }
 
     public function test_cancels_active_slip_when_company_preference_is_enabled(): void
@@ -462,5 +515,23 @@ class BankSlipWebhookProcessingTest extends TestCase
             'payload' => ['status' => ['codigo' => '3']],
             'received_at' => now(),
         ]);
+    }
+
+    private function webhookSignature(): string
+    {
+        $iv = random_bytes(16);
+        $encryptedTimestamp = openssl_encrypt(
+            (string) time(),
+            'aes-128-cbc',
+            self::TEST_WEBHOOK_ENCRYPTION_KEY,
+            OPENSSL_RAW_DATA,
+            $iv,
+        );
+
+        $this->assertIsString($encryptedTimestamp);
+
+        return base64_encode($iv
+            .hash_hmac('sha256', $encryptedTimestamp, self::TEST_WEBHOOK_ENCRYPTION_KEY, true)
+            .$encryptedTimestamp);
     }
 }
