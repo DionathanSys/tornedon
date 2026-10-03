@@ -36,6 +36,10 @@ final class PixChargeIssuanceService
 
         foreach ($invoice->accountReceivables as $receivable) {
             foreach ($receivable->installments as $installment) {
+                if ($installment->auto_pix_charge_issuance === null) {
+                    $installment->update(['auto_pix_charge_issuance' => true]);
+                }
+
                 if ($installment->auto_pix_charge_issuance !== true) {
                     continue;
                 }

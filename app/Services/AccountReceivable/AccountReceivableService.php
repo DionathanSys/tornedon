@@ -792,7 +792,7 @@ class AccountReceivableService
     {
         $totalAmount = round((float) array_sum(array_column($installments, 'due_amount')), 2);
 
-        unset($data['financial_account_id'], $data['auto_bank_slip_issuance']);
+        unset($data['financial_account_id'], $data['auto_bank_slip_issuance'], $data['auto_pix_charge_issuance']);
 
         return [
             ...$data,
@@ -886,6 +886,9 @@ class AccountReceivableService
             'financial_account_id' => $this->resolveInstallmentFinancialAccountId($installmentData, $companyId),
             'auto_bank_slip_issuance' => array_key_exists('auto_bank_slip_issuance', $installmentData)
                 ? (bool) $installmentData['auto_bank_slip_issuance']
+                : null,
+            'auto_pix_charge_issuance' => array_key_exists('auto_pix_charge_issuance', $installmentData)
+                ? (bool) $installmentData['auto_pix_charge_issuance']
                 : null,
             'chart_account_id' => $this->classificationService->resolveChartAccountIdFromCategoryId($categoryId, $companyId, 'receivable'),
             'financial_category_id' => $categoryId,

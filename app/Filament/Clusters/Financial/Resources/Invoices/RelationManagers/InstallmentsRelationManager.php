@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssuePixChargeAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use App\Jobs\QueryBankSlipJob;
 use App\Models\AccountReceivableInstallment;
@@ -124,6 +125,9 @@ class InstallmentsRelationManager extends RelationManager
             ->recordActions([
                 IssueBankSlipAction::make()
                     ->tooltip('Emitir boleto')
+                    ->iconButton(),
+                IssuePixChargeAction::make()
+                    ->tooltip('Emitir PIX')
                     ->iconButton(),
                 Action::make('queryBankSlip')
                     ->label('Consultar boleto')

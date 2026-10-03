@@ -7,7 +7,6 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\CreateAcc
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\ListAccountReceivables;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables\AccountReceivablesTable;
 use App\Models\AccountReceivable;
@@ -28,7 +27,7 @@ class AccountReceivableResource extends Resource
 
     // protected static ?string $cluster = FinancialCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Conta à Receber';
 
@@ -49,6 +48,7 @@ class AccountReceivableResource extends Resource
     public static function getRelations(): array
     {
         return [
+            InstallmentsRelationManager::class,
         ];
     }
 

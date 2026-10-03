@@ -22,10 +22,12 @@ use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\PixCharge;
 use App\Models\User;
+use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Financial\Pix\PixChargeIssuanceService;
 use App\Services\Financial\Pix\PixProviderRegistry;
 use App\Services\Financial\Pix\Providers\IntegraBancosPixClientInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Tests\TestCase;
 
@@ -141,6 +143,38 @@ class PixChargeProcessingTest extends TestCase
             'feature' => 'pix_charge_issuance',
             'enabled' => true,
         ]);
+    }
+
+    public function test_persists_automatic_pix_issuance_on_new_installments(): void
+    {
+        $service = app(AccountReceivableService::class);
+        $receivable = $service->create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-10-01',
+            'due_amount' => 100,
+            'payment_method' => PaymentMethod::PIX->value,
+            'auto_pix_charge_issuance' => true,
+            'installment_count' => 1,
+        ], $this->user->id);
+
+        $this->assertNotNull($receivable, $service->getMessage());
+        $this->assertTrue((bool) $receivable->fresh()->installments()->sole()->auto_pix_charge_issuance);
+    }
+
+    public function test_backfills_missing_automatic_flag_when_scheduling_an_invoice(): void
+    {
+        Queue::fake();
+
+        $invoice = $this->installment->accountReceivable->invoice;
+        $invoice->update(['auto_pix_charge_issuance' => true]);
+        $this->installment->update(['auto_pix_charge_issuance' => null]);
+
+        $scheduled = app(PixChargeIssuanceService::class)->scheduleForInvoice($invoice->fresh());
+
+        $this->assertSame(1, $scheduled);
+        $this->assertTrue((bool) $this->installment->fresh()->auto_pix_charge_issuance);
+        Queue::assertPushed(RegisterPixChargeJob::class, 1);
     }
 
     public function test_registers_pix_charge_with_provider_payload_and_qr_data(): void
