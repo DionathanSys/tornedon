@@ -9,6 +9,7 @@ use App\Http\Controllers\FiscalDocumentCorrectionLetterController;
 use App\Http\Controllers\FiscalDocumentXmlExportDownloadController;
 use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\PdfPreviewController;
+use App\Http\Controllers\PublicPixChargeController;
 use App\Http\Controllers\PublicServiceOrderSignatureController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -62,6 +63,11 @@ Route::get('/companies/{company}/logo', [CompanyLogoController::class, 'show'])
 Route::get('/pdf-preview/{token}', [PdfPreviewController::class, 'show'])
     ->name('pdf-preview.show')
     ->middleware(['web', 'auth', 'signed']);
+
+Route::get('/pix/cobrancas/{pixCharge}/pagamento', [PublicPixChargeController::class, 'show'])
+    ->whereNumber('pixCharge')
+    ->name('pix-charges.public.show')
+    ->middleware(['signed', 'throttle:60,1']);
 
 Route::get('/fiscal-documents/{fiscalDocument}/correction-letters/{sequencial}/{type}', [FiscalDocumentCorrectionLetterController::class, 'download'])
     ->name('fiscal-documents.correction-letters.download')

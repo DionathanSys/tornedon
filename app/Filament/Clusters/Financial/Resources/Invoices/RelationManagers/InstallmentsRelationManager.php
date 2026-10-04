@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssuePixChargeAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Filament\Support\Actions\PixPaymentLinkAction;
 use App\Jobs\QueryBankSlipJob;
 use App\Models\AccountReceivableInstallment;
 use BackedEnum;
@@ -114,6 +115,13 @@ class InstallmentsRelationManager extends RelationManager
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Abrir PDF' : '-')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('latestPixCharge.status')
+                    ->label('PIX')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('notes')
                     ->label('Observações')
                     ->limit(40)
@@ -128,6 +136,9 @@ class InstallmentsRelationManager extends RelationManager
                     ->iconButton(),
                 IssuePixChargeAction::make()
                     ->tooltip('Emitir PIX')
+                    ->iconButton(),
+                PixPaymentLinkAction::make()
+                    ->tooltip('Link de pagamento PIX')
                     ->iconButton(),
                 Action::make('queryBankSlip')
                     ->label('Consultar boleto')

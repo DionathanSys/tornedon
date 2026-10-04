@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssuePixChargeAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Filament\Support\Actions\PixPaymentLinkAction;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
@@ -89,6 +90,13 @@ class InstallmentsRelationManager extends RelationManager
                     ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('latestPixCharge.status')
+                    ->label('PIX')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('received_date')
                     ->label('Data Receb.')
                     ->date('d/m/Y')
@@ -118,6 +126,9 @@ class InstallmentsRelationManager extends RelationManager
                     ->iconButton(),
                 IssuePixChargeAction::make()
                     ->tooltip('Emitir PIX')
+                    ->iconButton(),
+                PixPaymentLinkAction::make()
+                    ->tooltip('Link de pagamento PIX')
                     ->iconButton(),
                 RegisterInstallmentPaymentAction::make()
                     ->iconButton()

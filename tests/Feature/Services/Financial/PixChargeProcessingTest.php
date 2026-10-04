@@ -24,6 +24,7 @@ use App\Models\PixCharge;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Financial\Pix\PixChargeIssuanceService;
+use App\Services\Financial\Pix\PixChargePublicLinkService;
 use App\Services\Financial\Pix\PixProviderRegistry;
 use App\Services\Financial\Pix\Providers\IntegraBancosPixClientInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -262,5 +263,57 @@ class PixChargeProcessingTest extends TestCase
             'amount' => 10000,
         ]);
         $this->assertSame(0.0, (float) $this->installment->fresh()->balance_amount);
+    }
+
+    public function test_public_link_displays_qr_code_and_copy_paste_for_registered_charge(): void
+    {
+        $charge = $this->createRegisteredCharge();
+        $link = app(PixChargePublicLinkService::class)->generate($charge);
+
+        $this->get($link['url'])
+            ->assertOk()
+            ->assertSee('QR Code para pagamento PIX')
+            ->assertSee('000201copy-paste')
+            ->assertSee('R$ 100,00');
+    }
+
+    public function test_public_link_stops_exposing_payment_data_when_charge_is_paid(): void
+    {
+        $charge = $this->createRegisteredCharge();
+        $link = app(PixChargePublicLinkService::class)->generate($charge);
+
+        $charge->update(['status' => PixChargeStatus::PAID]);
+
+        $this->get($link['url'])
+            ->assertStatus(410)
+            ->assertSee('Esta cobrança PIX já foi paga.')
+            ->assertDontSee('000201copy-paste');
+    }
+
+    public function test_public_link_expires_after_sixty_minutes(): void
+    {
+        $charge = $this->createRegisteredCharge();
+        $link = app(PixChargePublicLinkService::class)->generate($charge);
+
+        $this->travel(61)->minutes();
+
+        $this->get($link['url'])->assertForbidden();
+
+        $this->travelBack();
+    }
+
+    private function createRegisteredCharge(): PixCharge
+    {
+        return PixCharge::create([
+            'company_id' => $this->company->id,
+            'account_receivable_installment_id' => $this->installment->id,
+            'bank_account_connection_id' => BankAccountConnection::query()->firstOrFail()->id,
+            'status' => PixChargeStatus::REGISTERED,
+            'provider_identification' => 'PX-PUBLIC-LINK',
+            'amount' => 100,
+            'due_date' => '2026-10-01',
+            'qr_code' => 'public-qr-image',
+            'pix_copy_paste' => '000201copy-paste',
+        ]);
     }
 }

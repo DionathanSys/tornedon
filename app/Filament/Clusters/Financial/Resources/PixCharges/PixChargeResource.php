@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\PixCharges;
 
 use App\Enum\Financial\PixChargeStatus;
 use App\Filament\Clusters\Financial\Resources\PixCharges\Pages\ListPixCharges;
+use App\Filament\Support\Actions\PixPaymentLinkAction;
 use App\Jobs\QueryPixChargeJob;
 use App\Jobs\RegisterPixChargeJob;
 use App\Models\PixCharge;
@@ -111,6 +112,7 @@ class PixChargeResource extends Resource
                     ->multiple(),
             ])
             ->recordActions([
+                PixPaymentLinkAction::make(),
                 Action::make('query_provider')
                     ->label('Consultar no provider')
                     ->icon(Heroicon::ArrowPath)
