@@ -9,9 +9,11 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use App\Filament\Support\Actions\PixPaymentLinkAction;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Livewire\Attributes\On;
 
@@ -120,7 +122,7 @@ class InstallmentsRelationManager extends RelationManager
             ])
             ->defaultSort('sequence_number')
             ->headerActions([])
-            ->recordActions([
+            ->recordActions(ActionGroup::make([
                 IssueBankSlipAction::make()
                     ->tooltip('Emitir boleto')
                     ->iconButton(),
@@ -128,7 +130,10 @@ class InstallmentsRelationManager extends RelationManager
                     ->tooltip('Emitir PIX')
                     ->iconButton(),
                 PixPaymentLinkAction::make()
-                    ->tooltip('Link de pagamento PIX')
+                    ->tooltip('Copiar link PIX')
+                    ->iconButton(),
+                PixPaymentLinkAction::open()
+                    ->tooltip('Abrir pagamento PIX')
                     ->iconButton(),
                 RegisterInstallmentPaymentAction::make()
                     ->iconButton()
@@ -147,7 +152,7 @@ class InstallmentsRelationManager extends RelationManager
                         $livewire->dispatch('refresh-installments');
                         $livewire->dispatch('refresh-payments');
                     }),
-            ])
+            ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }

@@ -9,12 +9,14 @@ use App\Jobs\RegisterBankSlipJob;
 use App\Models\BankSlip;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -117,7 +119,7 @@ class BankSlipResource extends Resource
                         ->all())
                     ->multiple(),
             ])
-            ->recordActions([
+            ->recordActions(ActionGroup::make([
                 Action::make('open_pdf')
                     ->label('Abrir PDF')
                     ->icon(Heroicon::DocumentArrowDown)
@@ -176,7 +178,7 @@ class BankSlipResource extends Resource
                             ->success()
                             ->send();
                     }),
-            ])
+            ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Nenhum boleto encontrado');
     }

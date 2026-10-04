@@ -12,10 +12,12 @@ use App\Jobs\QueryBankSlipJob;
 use App\Models\AccountReceivableInstallment;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Livewire\Attributes\On;
 
@@ -130,7 +132,7 @@ class InstallmentsRelationManager extends RelationManager
             ])
             ->defaultSort('account_receivable_id')
             ->headerActions([])
-            ->recordActions([
+            ->recordActions(ActionGroup::make([
                 IssueBankSlipAction::make()
                     ->tooltip('Emitir boleto')
                     ->iconButton(),
@@ -138,7 +140,10 @@ class InstallmentsRelationManager extends RelationManager
                     ->tooltip('Emitir PIX')
                     ->iconButton(),
                 PixPaymentLinkAction::make()
-                    ->tooltip('Link de pagamento PIX')
+                    ->tooltip('Copiar link PIX')
+                    ->iconButton(),
+                PixPaymentLinkAction::open()
+                    ->tooltip('Abrir pagamento PIX')
                     ->iconButton(),
                 Action::make('queryBankSlip')
                     ->label('Consultar boleto')
@@ -174,7 +179,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-page');
                     }),
-            ])
+            ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }

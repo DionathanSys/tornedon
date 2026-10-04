@@ -10,12 +10,14 @@ use App\Jobs\RegisterPixChargeJob;
 use App\Models\PixCharge;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -111,8 +113,9 @@ class PixChargeResource extends Resource
                         ->all())
                     ->multiple(),
             ])
-            ->recordActions([
+            ->recordActions(ActionGroup::make([
                 PixPaymentLinkAction::make(),
+                PixPaymentLinkAction::open(),
                 Action::make('query_provider')
                     ->label('Consultar no provider')
                     ->icon(Heroicon::ArrowPath)
@@ -188,7 +191,7 @@ class PixChargeResource extends Resource
 
                         return new HtmlString('<pre style="white-space: pre-wrap; font-size: 12px;">'.e($details).'</pre>');
                     }),
-            ])
+            ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Nenhuma cobrança PIX encontrada');
     }
