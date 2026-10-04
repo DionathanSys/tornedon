@@ -11,15 +11,15 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Filament\Notifications\Notification;
 
 class AttachmentsRelationManager extends RelationManager
 {
@@ -33,8 +33,8 @@ class AttachmentsRelationManager extends RelationManager
     {
         $owner = $this->getOwnerRecord();
         // Option to filter allowed types if the trait provides the method
-        $allowedTypes = method_exists($owner, 'allowedAttachmentTypes') 
-            ? $owner->allowedAttachmentTypes() 
+        $allowedTypes = method_exists($owner, 'allowedAttachmentTypes')
+            ? $owner->allowedAttachmentTypes()
             : array_column(AttachmentType::cases(), 'value');
 
         // Create options array
@@ -50,7 +50,7 @@ class AttachmentsRelationManager extends RelationManager
                     ->options($typeOptions)
                     ->required()
                     ->native(false),
-                    
+
                 FileUpload::make('file')
                     ->label('Arquivo(s)')
                     ->storeFiles(false)
@@ -94,16 +94,16 @@ class AttachmentsRelationManager extends RelationManager
                         $service = app(AttachmentService::class);
                         $owner = $this->getOwnerRecord();
                         $type = $data['type'];
-                        
+
                         $files = is_array($data['file']) ? $data['file'] : [$data['file']];
                         $lastAttachment = null;
-                        
+
                         foreach ($files as $file) {
                             if ($file instanceof TemporaryUploadedFile) {
                                 $lastAttachment = $service->upload($owner, $file, $type);
                             }
                         }
-                        
+
                         // Action expects the created model instance
                         return $lastAttachment;
                     })
@@ -111,7 +111,14 @@ class AttachmentsRelationManager extends RelationManager
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->iconButton(),
+                    ->iconButton()
+                    ->modalHeading(fn (Attachment $record): string => "Visualizar anexo: {$record->original_name}")
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(fn (Attachment $record): View => view('filament.actions.attachment-preview', [
+                        'record' => $record,
+                    ]))
+                    ->modalWidth('7xl'),
                 Action::make('download')
                     ->label('Baixar')
                     ->iconButton()

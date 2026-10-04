@@ -154,4 +154,32 @@ class AttachmentServiceTest extends TestCase
         $this->assertNotNull($response);
         $this->assertEquals('attachment; filename=downloadable.pdf', $response->headers->get('content-disposition'));
     }
+
+    public function test_authenticated_user_can_preview_supported_attachment_inline()
+    {
+        $file = UploadedFile::fake()->create('preview.pdf', 100, 'application/pdf');
+        $attachment = $this->service->upload($this->owner, $file, AttachmentType::GENERIC);
+
+        $response = $this->get(route('attachments.preview', [
+            'attachment' => $attachment->public_id,
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'inline; filename=preview.pdf')
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_attachment_preview_view_contains_supported_attachment()
+    {
+        $file = UploadedFile::fake()->create('modal-preview.pdf', 100, 'application/pdf');
+        $attachment = $this->service->upload($this->owner, $file, AttachmentType::GENERIC);
+
+        $html = view('filament.actions.attachment-preview', [
+            'record' => $attachment,
+        ])->render();
+
+        $this->assertStringContainsString('<iframe', $html);
+        $this->assertStringContainsString('/attachments/'.$attachment->public_id.'/preview', $html);
+    }
 }

@@ -26,7 +26,7 @@ class AttachmentService
     {
         $typeValue = $type instanceof \App\Enums\AttachmentType ? $type->value : $type;
         $idempotencyKey = $options['idempotency_key'] ?? null;
-        
+
         // 1. Check idempotency if provided
         if ($idempotencyKey) {
             $existing = $owner->attachments()
@@ -46,22 +46,22 @@ class AttachmentService
         $companyId = $owner->company_id ?? Auth::user()?->company_id;
 
         $pathContext = "attachments/{$companyId}/" . class_basename($owner) . "/{$owner->getKey()}/{$typeValue}/" . date('Y/m');
-        
+
         $originalName   = $file->getClientOriginalName();
         $extension      = $file->getClientOriginalExtension();
         $mimeType       = $file->getClientMimeType();
         $sizeBytes      = $file->getSize();
-        
+
         // 2. Upload file
         $storedPath = $file->store($pathContext, ['disk' => $disk]);
         $storedName = basename($storedPath);
-        
+
         // Optional checksum calculation (if configured or needed)
         // $checksum = hash_file('sha256', $file->getRealPath());
         $checksum = null;
 
         return DB::transaction(function () use ($owner, $typeValue, $idempotencyKey, $mode, $disk, $storedPath, $originalName, $storedName, $extension, $mimeType, $sizeBytes, $checksum, $options, $companyId) {
-            
+
             $nextVersion = 1;
 
             if ($mode === 'single_latest') {
@@ -71,14 +71,14 @@ class AttachmentService
                     ->where('type', $typeValue)
                     ->where('is_current', true)
                     ->get();
-                
+
                 if ($currentAttachments->isNotEmpty()) {
                     // Update the existing current versions to not be current anymore
                     // We also find the max version to increment
                     $maxVersion = $owner->attachments()
                         ->where('type', $typeValue)
                         ->max('version');
-                    
+
                     $nextVersion = ($maxVersion ?? 0) + 1;
 
                     foreach ($currentAttachments as $current) {
@@ -134,15 +134,15 @@ class AttachmentService
     public function delete(Attachment $attachment, array $options = []): bool
     {
         $force = $options['force'] ?? false;
-        
+
         if ($force) {
             Storage::disk($attachment->disk)->delete($attachment->path);
             return $attachment->forceDelete();
         }
-        
+
         $attachment->deleted_by = Auth::id();
         $attachment->save();
-        
+
         return $attachment->delete();
     }
 
@@ -162,5 +162,28 @@ class AttachmentService
         $name = $asName ?? $attachment->original_name;
 
         return Storage::disk($attachment->disk)->download($attachment->path, $name);
+    }
+
+    /**
+     * Prepare an inline response for attachments supported by the browser.
+     */
+    public function previewResponse(Attachment $attachment): ?StreamedResponse
+    {
+        if (! $attachment->isPreviewable()) {
+            return null;
+        }
+
+        $disk = Storage::disk($attachment->disk);
+
+        if (! $disk->exists($attachment->path)) {
+            return null;
+        }
+
+        return $disk->response($attachment->path, $attachment->original_name, [
+            'Cache-Control' => 'private, no-store',
+            'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'self';",
+            'Content-Type' => strtolower(trim((string) $attachment->mime_type)),
+            'X-Content-Type-Options' => 'nosniff',
+        ], 'inline');
     }
 }
