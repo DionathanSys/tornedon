@@ -56,6 +56,10 @@ Route::get('/attachments/{attachment:public_id}/download', [AttachmentController
     ->name('attachments.download')
     ->middleware(['web', 'auth']);
 
+Route::get('/attachments/{attachment:public_id}/preview', [AttachmentController::class, 'preview'])
+    ->name('attachments.preview')
+    ->middleware(['web', 'auth']);
+
 Route::get('/companies/{company}/logo', [CompanyLogoController::class, 'show'])
     ->name('companies.logo')
     ->middleware(['auth', 'signed:relative']);

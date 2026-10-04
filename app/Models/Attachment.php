@@ -62,24 +62,65 @@ class Attachment extends Model
     {
         return $this->belongsTo(Company::class);
     }
-    
+
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
-    
+
     public function deleter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'deleted_by');
     }
-    
+
     public function scopeCurrent(Builder $query): Builder
     {
         return $query->where('is_current', true);
     }
-    
+
     public function getUrlAttribute(): string
     {
         return url("/attachments/{$this->public_id}/download");
+    }
+
+    public function getPreviewUrlAttribute(): string
+    {
+        return url("/attachments/{$this->public_id}/preview");
+    }
+
+    public function isPreviewable(): bool
+    {
+        return $this->isPreviewableImage()
+            || $this->isPreviewablePdf()
+            || $this->isPreviewableText();
+    }
+
+    public function isPreviewableImage(): bool
+    {
+        return in_array($this->normalizedMimeType(), [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+        ], true);
+    }
+
+    public function isPreviewablePdf(): bool
+    {
+        return $this->normalizedMimeType() === 'application/pdf';
+    }
+
+    public function isPreviewableText(): bool
+    {
+        return in_array($this->normalizedMimeType(), [
+            'application/xml',
+            'text/plain',
+            'text/xml',
+        ], true);
+    }
+
+    private function normalizedMimeType(): string
+    {
+        return strtolower(trim((string) $this->mime_type));
     }
 }
