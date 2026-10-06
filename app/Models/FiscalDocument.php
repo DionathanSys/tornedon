@@ -57,6 +57,7 @@ class FiscalDocument extends Model
         'additional_taxpayer_information',
         'additional_purchase_information',
         'return_financial_data',
+        'financial_control_mode',
         'pending',
         'confirmed',
         'canceled',
@@ -110,7 +111,9 @@ class FiscalDocument extends Model
         'emission_requested_at' => 'datetime',
         'nfse_status' => NfeStatus::class,
         'return_financial_processed_at' => 'datetime',
+        'return_financial_reversed_at' => 'datetime',
         'return_stock_processed_at' => 'datetime',
+        'return_stock_reversed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

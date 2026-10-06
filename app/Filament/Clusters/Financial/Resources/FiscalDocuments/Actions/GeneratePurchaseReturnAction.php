@@ -6,8 +6,8 @@ use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Models\FiscalDocument;
-use App\Models\FiscalDocumentItemOrigin;
 use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\PurchaseReturnBalanceService;
 use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
@@ -25,20 +25,21 @@ class GeneratePurchaseReturnAction
             ->requiresConfirmation()
             ->modalHeading('Gerar NF-e de devolução')
             ->modalDescription('Será criado um documento fiscal de saída em rascunho, vinculado a esta nota de entrada.')
-            ->visible(fn(FiscalDocument $record): bool => static::isVisible($record))
+            ->visible(fn (FiscalDocument $record): bool => static::isVisible($record))
             ->action(function (FiscalDocument $record): void {
                 $service = app(PurchaseReturnFiscalDocumentService::class);
                 $returnDocument = $service->generateFromEntry($record, Auth::id());
 
                 if ($service->hasError() || $returnDocument === null) {
                     Log::warning('GeneratePurchaseReturnAction: falha ao gerar nota de devolução', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'origin_fiscal_document_id' => $record->id,
                         'message' => $service->getMessage(),
                         'error_code' => $service->getErrorCode(),
                     ]);
 
                     notify::error(message: $service->getMessageUser());
+
                     return;
                 }
 
@@ -55,9 +56,7 @@ class GeneratePurchaseReturnAction
             && $record->operation_type === OperationType::ENTRADA
             && $record->status !== Status::CANCELLED
             && ! $record->canceled
-            && ! FiscalDocumentItemOrigin::query()
-                ->where('origin_fiscal_document_id', $record->id)
-                ->exists();
+            && app(PurchaseReturnBalanceService::class)->hasAvailableBalance($record);
 
         return $visible;
     }

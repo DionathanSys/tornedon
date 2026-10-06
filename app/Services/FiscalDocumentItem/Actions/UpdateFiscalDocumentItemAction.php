@@ -3,7 +3,9 @@
 namespace App\Services\FiscalDocumentItem\Actions;
 
 use App\Models\FiscalDocumentItem;
+use App\Models\FiscalDocumentItemOrigin;
 use App\Models\Product;
+use App\Services\FiscalDocument\PurchaseReturnBalanceService;
 use App\Services\FiscalDocument\Validators\Items\FiscalDocumentItemValidatorResolver;
 use App\Services\Product\ProductUnitConversionService;
 use App\Traits\HandlesActionResponse;
@@ -44,10 +46,12 @@ class UpdateFiscalDocumentItemAction
             $validated = $this->applyTaxableConversion($validated);
             $validated = $this->normalizeManualTaxData($validated);
             $validated = $this->normalizeForPersistence($validated);
+            $this->validatePurchaseReturnItem($validated);
             $validated['updated_by'] = $this->updatedBy;
 
             $this->fiscalDocumentItem->update($validated);
             $this->fiscalDocumentItem->refresh();
+            $this->syncPurchaseReturnLink();
 
             Log::info('Item de documento fiscal atualizado com sucesso', [
                 'metodo' => __METHOD__.'@'.__LINE__,
@@ -145,6 +149,61 @@ class UpdateFiscalDocumentItemAction
         }
 
         return $persistable;
+    }
+
+    private function validatePurchaseReturnItem(array $data): void
+    {
+        $document = $this->fiscalDocumentItem->fiscalDocument()->first();
+
+        if (! $document?->isPurchaseReturn()) {
+            return;
+        }
+
+        $link = FiscalDocumentItemOrigin::query()
+            ->with('originItem')
+            ->where('return_fiscal_document_item_id', $this->fiscalDocumentItem->id)
+            ->first();
+
+        if (! $link || ! $link->originItem) {
+            throw ValidationException::withMessages([
+                'item' => 'O item da devolução não possui vínculo válido com a nota de compra.',
+            ]);
+        }
+
+        if (array_key_exists('product_id', $data) && (int) $data['product_id'] !== (int) $link->originItem->product_id) {
+            throw ValidationException::withMessages([
+                'product_id' => 'O produto de um item de devolução não pode ser alterado.',
+            ]);
+        }
+
+        $requestedQuantity = (float) ($data['quantity'] ?? $this->fiscalDocumentItem->quantity);
+        $balanceService = app(PurchaseReturnBalanceService::class);
+
+        if (! $balanceService->isWithinAvailableBalance($link->originItem, $requestedQuantity, $document->id)) {
+            throw ValidationException::withMessages([
+                'quantity' => sprintf(
+                    'A quantidade informada excede o saldo disponível da nota de compra (%.4f).',
+                    $balanceService->availableQuantity($link->originItem, $document->id),
+                ),
+            ]);
+        }
+    }
+
+    private function syncPurchaseReturnLink(): void
+    {
+        $document = $this->fiscalDocumentItem->fiscalDocument()->first();
+
+        if (! $document?->isPurchaseReturn()) {
+            return;
+        }
+
+        FiscalDocumentItemOrigin::query()
+            ->where('return_fiscal_document_item_id', $this->fiscalDocumentItem->id)
+            ->update([
+                'linked_quantity' => (float) $this->fiscalDocumentItem->quantity,
+                'linked_value' => (float) $this->fiscalDocumentItem->total_price,
+                'updated_at' => now(),
+            ]);
     }
 
     private function ensureProductCode(array $data): array

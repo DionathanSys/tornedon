@@ -19,7 +19,7 @@ class ProcessPurchaseReturnFinancialImpactAction
     use HandlesActionResponse;
 
     public function __construct(
-        private readonly AccountPayableService $accountPayableService = new AccountPayableService(),
+        private readonly AccountPayableService $accountPayableService = new AccountPayableService,
     ) {}
 
     /**
@@ -38,16 +38,34 @@ class ProcessPurchaseReturnFinancialImpactAction
 
         if (! $returnDocument->isPurchaseReturn()) {
             $this->setSuccess();
+
             return $result;
         }
 
         if ($returnDocument->hasProcessedReturnFinancial()) {
             $this->setSuccess();
+
             return $result;
         }
 
         if (! $returnDocument->hasReturnFinancialConfiguration()) {
             $this->setSuccess();
+
+            return $result;
+        }
+
+        $mode = PurchaseReturnSettlementMode::tryFrom((string) data_get($returnDocument->return_financial_data, 'mode'));
+
+        if ($mode === null) {
+            $this->setError('A modalidade financeira da devolução é inválida.');
+
+            return $result;
+        }
+
+        if ($mode === PurchaseReturnSettlementMode::NONE) {
+            $this->markAsProcessedWithoutFinancialImpact($returnDocument, $userId);
+            $this->setSuccess();
+
             return $result;
         }
 
@@ -56,10 +74,10 @@ class ProcessPurchaseReturnFinancialImpactAction
 
         if (! $originDocument) {
             $this->setError('Nota fiscal de origem da devolução não encontrada.');
+
             return $result;
         }
 
-        $mode = PurchaseReturnSettlementMode::from((string) data_get($returnDocument->return_financial_data, 'mode'));
         $returnAmount = (float) $returnDocument->items->sum(fn ($item) => (float) $item->total_price);
 
         try {
@@ -69,15 +87,40 @@ class ProcessPurchaseReturnFinancialImpactAction
                     ->orderBy('due_date')
                     ->get();
 
+                if ($payables->isEmpty()) {
+                    $result['warnings'][] = 'A nota de compra não possui conta a pagar controlada pelo sistema. Nenhum impacto financeiro foi criado.';
+
+                    $this->markAsProcessed($returnDocument, $result, $userId);
+
+                    return;
+                }
+
+                $financialData = is_array($returnDocument->return_financial_data)
+                    ? $returnDocument->return_financial_data
+                    : [];
+
+                $financialData['origin_payables_snapshot'] = $mode === PurchaseReturnSettlementMode::SUPPLIER_CREDIT
+                    ? []
+                    : $payables
+                        ->reject(fn (AccountPayable $payable): bool => $payable->status === AccountPayableStatus::PAID)
+                        ->map(fn (AccountPayable $payable): array => [
+                            'id' => $payable->id,
+                            'status' => $payable->status?->value ?? $payable->status,
+                            'type' => $payable->type,
+                            'description' => $payable->description,
+                            'due_amount' => (float) $payable->due_amount,
+                            'paid_amount' => (float) ($payable->paid_amount ?? 0),
+                            'paid' => (bool) $payable->paid,
+                            'paid_date' => $payable->paid_date?->toDateString(),
+                        ])
+                        ->values()
+                        ->all();
+
                 $result = match ($mode) {
                     PurchaseReturnSettlementMode::CANCEL_PAYABLE => $this->cancelOriginPayables($returnDocument, $payables),
                     PurchaseReturnSettlementMode::SUPPLIER_CREDIT => $this->generateSupplierCredit($returnDocument, $originDocument, $payables, $returnAmount, $userId),
                     PurchaseReturnSettlementMode::REPLACE_PAYABLE => $this->replaceOriginPayables($returnDocument, $originDocument, $payables, $returnAmount, $userId),
                 };
-
-                $financialData = is_array($returnDocument->return_financial_data)
-                    ? $returnDocument->return_financial_data
-                    : [];
 
                 $financialData['processed_result'] = [
                     'credits' => $result['credits'],
@@ -94,7 +137,7 @@ class ProcessPurchaseReturnFinancialImpactAction
                 ])->save();
             });
         } catch (\Throwable $e) {
-            $this->setError('Erro ao processar impacto financeiro da devolução: ' . $e->getMessage());
+            $this->setError('Erro ao processar impacto financeiro da devolução: '.$e->getMessage());
 
             Log::error('ProcessPurchaseReturnFinancialImpactAction: excecao', [
                 'fiscal_document_id' => $returnDocument->id,
@@ -125,6 +168,50 @@ class ProcessPurchaseReturnFinancialImpactAction
         return $originLink?->originDocument;
     }
 
+    private function markAsProcessedWithoutFinancialImpact(FiscalDocument $returnDocument, int $userId): void
+    {
+        $data = is_array($returnDocument->return_financial_data)
+            ? $returnDocument->return_financial_data
+            : [];
+
+        $data['processed_result'] = [
+            'credits' => 0,
+            'replacement_payables' => 0,
+            'updated_payables' => 0,
+            'warnings' => [],
+            'skipped' => true,
+            'processed_at' => now()->toAtomString(),
+        ];
+
+        $returnDocument->forceFill([
+            'return_financial_data' => $data,
+            'return_financial_processed_at' => now(),
+            'return_financial_processed_by' => $userId,
+        ])->save();
+    }
+
+    private function markAsProcessed(FiscalDocument $returnDocument, array $result, int $userId): void
+    {
+        $data = is_array($returnDocument->return_financial_data)
+            ? $returnDocument->return_financial_data
+            : [];
+
+        $data['processed_result'] = [
+            'credits' => $result['credits'],
+            'replacement_payables' => $result['replacement_payables'],
+            'updated_payables' => $result['updated_payables'],
+            'warnings' => $result['warnings'],
+            'skipped' => true,
+            'processed_at' => now()->toAtomString(),
+        ];
+
+        $returnDocument->forceFill([
+            'return_financial_data' => $data,
+            'return_financial_processed_at' => now(),
+            'return_financial_processed_by' => $userId,
+        ])->save();
+    }
+
     private function cancelOriginPayables(FiscalDocument $returnDocument, $payables): array
     {
         $updated = 0;
@@ -137,6 +224,7 @@ class ProcessPurchaseReturnFinancialImpactAction
 
             if ($payable->status === AccountPayableStatus::PAID) {
                 $warnings[] = "Conta a pagar #{$payable->id} já está paga e foi mantida.";
+
                 continue;
             }
 
@@ -280,6 +368,6 @@ class ProcessPurchaseReturnFinancialImpactAction
             return $suffix;
         }
 
-        return $current . ' | ' . $suffix;
+        return $current.' | '.$suffix;
     }
 }

@@ -7,6 +7,7 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Models\Company;
 use App\Models\FiscalDocument;
+use App\Models\NfseSequence;
 use App\Models\Partner;
 use App\Services\FiscalDocument\Actions\ConsultNfeAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
@@ -56,10 +57,43 @@ class FiscalDocumentRejectionFlowTest extends TestCase
         $this->assertNotEmpty($document->errors_messages);
     }
 
+    public function test_consult_nfe_marks_canceled_document_and_does_not_retry_it(): void
+    {
+        $document = $this->createFiscalDocument(DocumentModel::NFE);
+        $document->update([
+            'status' => Status::CONFIRMED->value,
+            'nfe_status' => NfeStatus::AUTHORIZED->value,
+            'document_key' => 'NFE-KEY-CANCELED-001',
+        ]);
+
+        $sdkMock = Mockery::mock('overload:CloudDfe\\SdkPHP\\Nfe');
+        $sdkMock->shouldReceive('consulta')
+            ->once()
+            ->andReturn((object) [
+                'sucesso' => true,
+                'status' => 'cancelada',
+                'mensagem' => 'NF-e cancelada na SEFAZ',
+                'protocolo' => '135260000000001',
+                'xml_cancelado' => 'xml-cancelado-base64',
+            ]);
+
+        $action = app(ConsultNfeAction::class);
+        $result = $action->execute($document->fresh());
+
+        $this->assertTrue($result, $action->getMessage() ?? implode('; ', $action->getErrors()));
+
+        $document->refresh();
+
+        $this->assertSame(NfeStatus::CANCELED, $document->nfe_status);
+        $this->assertSame(Status::CANCELLED, $document->status);
+        $this->assertNotNull($document->canceled_at);
+        $this->assertSame('xml-cancelado-base64', data_get($document->nfe_payload, 'xml_cancelado_base64'));
+    }
+
     public function test_consult_nfse_marks_rejected_document_as_pending_for_retry(): void
     {
         $document = $this->createFiscalDocument(DocumentModel::NFSE);
-        \App\Models\NfseSequence::query()->create([
+        NfseSequence::query()->create([
             'company_id' => $document->company_id,
             'serie' => '1',
             'last_number' => 1,
@@ -97,7 +131,7 @@ class FiscalDocumentRejectionFlowTest extends TestCase
     public function test_consult_nfse_marks_reconciliation_when_rejected_document_is_not_highest_rps(): void
     {
         $document = $this->createFiscalDocument(DocumentModel::NFSE);
-        \App\Models\NfseSequence::query()->create([
+        NfseSequence::query()->create([
             'company_id' => $document->company_id,
             'serie' => '1',
             'last_number' => 2,

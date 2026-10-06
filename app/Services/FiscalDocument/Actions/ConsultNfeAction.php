@@ -8,7 +8,10 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Fiscal\IntegranotasRateLimiter;
+use App\Services\Fiscal\NfeConfigService;
 use App\Traits\HandlesActionResponse;
+use CloudDfe\SdkPHP\Nfe;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -37,11 +40,11 @@ class ConsultNfeAction
                 return false;
             }
 
-            $configService = app(\App\Services\Fiscal\NfeConfigService::class);
+            $configService = app(NfeConfigService::class);
             $companyId = (int) $fiscalDocument->company_id;
-            $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($companyId));
+            $sdk = new Nfe($configService->buildSdkParams($companyId));
 
-            $resp = app(\App\Services\Fiscal\IntegranotasRateLimiter::class)->run(
+            $resp = app(IntegranotasRateLimiter::class)->run(
                 token: $configService->resolveToken($companyId),
                 bucket: 'key',
                 key: (string) $fiscalDocument->document_key,
@@ -66,8 +69,28 @@ class ConsultNfeAction
 
             $updates = [];
             $payloadUpdates = [];
+            $responseStatus = mb_strtolower(trim((string) ($resp->status ?? $resp->situacao ?? $resp->situacao_nfe ?? '')));
+            $responseMessage = mb_strtolower((string) ($resp->mensagem ?? ''));
+            $isCanceled = in_array($responseStatus, ['cancelado', 'cancelada', 'canceled'], true)
+                || str_contains($responseMessage, 'cancelad');
 
-            if ($resp->sucesso ?? false) {
+            if ($isCanceled) {
+                $payload = is_array($fiscalDocument->nfe_payload) ? $fiscalDocument->nfe_payload : [];
+                if (! empty($resp->xml_cancelado)) {
+                    $payload['xml_cancelado_base64'] = $resp->xml_cancelado;
+                }
+
+                $updates['nfe_status'] = NfeStatus::CANCELED->value;
+                $updates['status'] = Status::CANCELLED->value;
+                $updates['canceled_at'] = now();
+                $payloadUpdates['nfe_payload'] = $payload;
+
+                Log::info('ConsultNfeAction: NF-e cancelada', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'protocolo' => $resp->protocolo ?? null,
+                    'chave' => $fiscalDocument->document_key,
+                ]);
+            } elseif ($resp->sucesso ?? false) {
                 // Autorizada
                 $payload = is_array($fiscalDocument->nfe_payload) ? $fiscalDocument->nfe_payload : [];
                 if (! empty($resp->xml)) {
@@ -123,11 +146,49 @@ class ConsultNfeAction
             }
             $fiscalDocument->refresh();
 
+            if (($updates['nfe_status'] ?? null) === NfeStatus::CANCELED->value
+                && $fiscalDocument->isPurchaseReturn()) {
+                $stockResult = app(ReversePurchaseReturnStockAction::class)->execute(
+                    $fiscalDocument,
+                    (int) ($fiscalDocument->updated_by ?? $fiscalDocument->created_by ?? 1),
+                );
+
+                if ($stockResult['errors'] !== []) {
+                    Log::warning('ConsultNfeAction: falha ao estornar estoque da devolução cancelada', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'errors' => $stockResult['errors'],
+                    ]);
+                }
+
+                $financialResult = app(ReversePurchaseReturnFinancialImpactAction::class)->execute(
+                    $fiscalDocument,
+                    (int) ($fiscalDocument->updated_by ?? $fiscalDocument->created_by ?? 1),
+                );
+
+                if ($financialResult['errors'] !== [] || $financialResult['warnings'] !== []) {
+                    Log::warning('ConsultNfeAction: reversão financeira da devolução pendente', [
+                        'fiscal_document_id' => $fiscalDocument->id,
+                        'errors' => $financialResult['errors'],
+                        'warnings' => $financialResult['warnings'],
+                    ]);
+                }
+            }
+
             if (($updates['nfe_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
                 $audit->recordModelEvent(
                     $fiscalDocument,
                     'fiscal_document.nfe_authorized',
                     'NF-e autorizada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::JOB,
+                );
+            } elseif (($updates['nfe_status'] ?? null) === NfeStatus::CANCELED->value) {
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfe_canceled',
+                    'NF-e cancelada',
                     $before,
                     $audit->snapshot($fiscalDocument),
                     null,
@@ -199,11 +260,13 @@ class ConsultNfeAction
 
             }
 
+            if (($updates['nfe_status'] ?? null) !== NfeStatus::REJECTED->value) {
+                $this->setSuccess();
+            }
+
             if ($this->hasError()) {
                 return false;
             }
-
-            $this->setSuccess();
 
             return true;
 

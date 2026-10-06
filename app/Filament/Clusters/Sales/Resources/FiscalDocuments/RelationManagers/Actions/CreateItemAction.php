@@ -25,7 +25,8 @@ final class CreateItemAction
             ->label('Adicionar Item')
             ->icon(Heroicon::Plus)
             ->size(Size::Small)
-            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent())
+            ->visible(fn (RelationManager $livewire): bool => ! $livewire->getOwnerRecord()->isNfeSent()
+                && ! $livewire->getOwnerRecord()->isPurchaseReturn())
             ->modalHeading('Adicionar Item à Nota Fiscal')
             ->schema(fn (RelationManager $livewire): array => SchemaFormItemsNfe::make(
                 showTaxesTab: SchemaFormItemsNfe::shouldShowTaxesTab($livewire->getOwnerRecord())
@@ -35,6 +36,12 @@ final class CreateItemAction
 
                 if (filled($fiscalDocument->invoice_id)) {
                     notify::error(message: 'Itens de documentos fiscais originados por fatura não podem ser adicionados manualmente.');
+
+                    return null;
+                }
+
+                if ($fiscalDocument->isPurchaseReturn()) {
+                    notify::error(message: 'Itens de uma devolução de compra devem ser originados da nota de entrada.');
 
                     return null;
                 }

@@ -3,6 +3,7 @@
 namespace App\Services\FiscalDocument;
 
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\Status;
 use App\Jobs\ProcessQueuedNfeEmissionJob;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Actions\CancelNfeAction;
@@ -106,7 +107,7 @@ class NfeDocumentService
             $requestedAt = now();
 
             $doc->update([
-                'status' => \App\Enum\FiscalDocument\Status::PENDING->value,
+                'status' => Status::PENDING->value,
                 'nfe_status' => NfeStatus::QUEUED->value,
                 'emission_requested_at' => $requestedAt,
                 'emission_group_key' => $preflight->queueGroupKey,
@@ -243,7 +244,7 @@ class NfeDocumentService
         $this->resetResponse();
 
         try {
-            $preflightService = app(\App\Services\FiscalDocument\FiscalEmissionPreflightService::class);
+            $preflightService = app(FiscalEmissionPreflightService::class);
             $preflight = $preflightService->validateForSend($doc);
 
             if ($preflight === null || $preflightService->hasError()) {
@@ -311,7 +312,7 @@ class NfeDocumentService
 
         try {
             $action = new CancelNfeAction;
-            $result = $action->execute($doc, $justificativa);
+            $result = $action->execute($doc, $justificativa, $userId);
 
             if (! $result || $action->hasError()) {
                 $this->setError($action->getMessage(), $action->getErrors());

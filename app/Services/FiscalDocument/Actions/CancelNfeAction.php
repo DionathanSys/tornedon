@@ -9,6 +9,7 @@ use App\Models\FiscalDocument;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
 use App\Traits\HandlesActionResponse;
+use CloudDfe\SdkPHP\Nfe;
 use Illuminate\Support\Facades\Log;
 
 class CancelNfeAction
@@ -17,7 +18,8 @@ class CancelNfeAction
 
     public function execute(
         FiscalDocument $fiscalDocument,
-        string $justificativa = 'Cancelamento solicitado da NF-e'
+        string $justificativa = 'Cancelamento solicitado da NF-e',
+        ?int $userId = null,
     ): bool {
         try {
             $audit = app(AuditRecorder::class);
@@ -43,10 +45,10 @@ class CancelNfeAction
             }
 
             $configService = app(NfeConfigService::class);
-            $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($fiscalDocument->company_id));
+            $sdk = new Nfe($configService->buildSdkParams($fiscalDocument->company_id));
 
             $resp = $sdk->cancela([
-                'chave'         => $fiscalDocument->document_key,
+                'chave' => $fiscalDocument->document_key,
                 'justificativa' => $justificativa,
             ]);
 
@@ -66,17 +68,44 @@ class CancelNfeAction
                 }
 
                 $fiscalDocument->update([
-                    'nfe_status'    => NfeStatus::CANCELED->value,
+                    'nfe_status' => NfeStatus::CANCELED->value,
                     'nfe_protocolo' => $resp->protocolo ?? $fiscalDocument->nfe_protocolo,
-                    'status'        => Status::CANCELLED->value,
-                    'canceled_at'   => now(),
+                    'status' => Status::CANCELLED->value,
+                    'canceled_at' => now(),
                 ]);
-                
+
                 app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
                     'nfe_payload' => $payload,
                 ]);
-                
+
                 $fiscalDocument->refresh();
+
+                if ($fiscalDocument->isPurchaseReturn()) {
+                    $stockResult = app(ReversePurchaseReturnStockAction::class)->execute(
+                        $fiscalDocument,
+                        $userId ?? $fiscalDocument->updated_by ?? $fiscalDocument->created_by ?? 1,
+                    );
+
+                    if ($stockResult['errors'] !== []) {
+                        Log::warning('CancelNfeAction: estorno de estoque da devolução pendente', [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'errors' => $stockResult['errors'],
+                        ]);
+                    }
+
+                    $financialResult = app(ReversePurchaseReturnFinancialImpactAction::class)->execute(
+                        $fiscalDocument,
+                        $userId ?? $fiscalDocument->updated_by ?? $fiscalDocument->created_by ?? 1,
+                    );
+
+                    if ($financialResult['errors'] !== [] || $financialResult['warnings'] !== []) {
+                        Log::warning('CancelNfeAction: reversão financeira da devolução pendente', [
+                            'fiscal_document_id' => $fiscalDocument->id,
+                            'errors' => $financialResult['errors'],
+                            'warnings' => $financialResult['warnings'],
+                        ]);
+                    }
+                }
 
                 $audit->recordModelEvent(
                     $fiscalDocument,

@@ -9,6 +9,8 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Enum\Product\OriginSalePrice;
+use App\Enum\Product\Unit;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
@@ -19,6 +21,7 @@ use App\Models\Partner;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
+use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -190,6 +193,49 @@ class PurchaseReturnFiscalDocumentServiceTest extends TestCase
         $this->assertSame('0.1000', data_get($returnItem?->tax_data, 'imposto.ibs_cbs.grupo_ibs_cbs.ibs_estadual.aliquota'));
     }
 
+    public function test_it_generates_the_remaining_quantity_on_a_second_return(): void
+    {
+        [$user, $company, $supplier] = $this->createBaseContext();
+        $originDocument = $this->createEntryDocument($company, $supplier, $user);
+        $originItem = $this->createEntryItem($originDocument, $company, $user);
+
+        $service = app(PurchaseReturnFiscalDocumentService::class);
+        $firstReturn = $service->generateFromEntry($originDocument, $user->id);
+
+        $this->assertNotNull($firstReturn, $service->getMessage());
+
+        $firstItem = $firstReturn->items()->firstOrFail();
+        $itemService = app(FiscalDocumentItemService::class);
+        $updatedItem = $itemService->update($firstItem, [
+            'quantity' => 1,
+            'taxable_quantity' => 1,
+            'taxable_unit_price' => 50,
+            'unit_price' => 50,
+            'total_price' => 50,
+        ], $user->id);
+
+        $this->assertNotNull($updatedItem, $itemService->getMessage());
+
+        $secondReturn = $service->generateFromEntry($originDocument->fresh('items'), $user->id);
+
+        $this->assertNotNull($secondReturn, $service->getMessage());
+        $secondItem = $secondReturn->items()->firstOrFail();
+
+        $this->assertEquals(1.0, (float) $secondItem->quantity);
+        $this->assertEquals(50.0, (float) $secondItem->total_price);
+        $this->assertSame(2, FiscalDocumentItemOrigin::query()
+            ->where('origin_fiscal_document_id', $originDocument->id)
+            ->count());
+        $this->assertEquals(2.0, (float) FiscalDocumentItemOrigin::query()
+            ->where('origin_fiscal_document_item_id', $originItem->id)
+            ->sum('linked_quantity'));
+
+        $thirdReturn = $service->generateFromEntry($originDocument->fresh('items'), $user->id);
+
+        $this->assertNull($thirdReturn);
+        $this->assertSame('Todos os itens da nota de entrada já foram devolvidos.', $service->getMessage());
+    }
+
     private function createBaseContext(): array
     {
         $user = User::factory()->create();
@@ -262,8 +308,8 @@ class PurchaseReturnFiscalDocumentServiceTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-RET-001',
             'name' => 'Produto devolvido',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 50,
             'is_active' => true,
         ]);

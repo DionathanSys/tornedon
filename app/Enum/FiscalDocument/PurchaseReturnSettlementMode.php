@@ -4,6 +4,7 @@ namespace App\Enum\FiscalDocument;
 
 enum PurchaseReturnSettlementMode: string
 {
+    case NONE = 'none';
     case CANCEL_PAYABLE = 'cancel_payable';
     case SUPPLIER_CREDIT = 'supplier_credit';
     case REPLACE_PAYABLE = 'replace_payable';
@@ -11,6 +12,7 @@ enum PurchaseReturnSettlementMode: string
     public function description(): string
     {
         return match ($this) {
+            self::NONE => 'Sem impacto financeiro (não controlar pelo sistema)',
             self::CANCEL_PAYABLE => 'Cancelar boleto/titulo em aberto',
             self::SUPPLIER_CREDIT => 'Manter pagamento e gerar crédito do fornecedor',
             self::REPLACE_PAYABLE => 'Cancelar titulo atual e gerar novo boleto',

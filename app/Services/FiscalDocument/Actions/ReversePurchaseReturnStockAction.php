@@ -10,21 +10,21 @@ use App\Services\Product\ProductUnitConversionService;
 use App\Services\StockMovement\StockMovementService;
 use Illuminate\Support\Facades\Log;
 
-class ProcessPurchaseReturnStockAction
+class ReversePurchaseReturnStockAction
 {
     public function __construct(
         private readonly StockMovementService $stockMovementService = new StockMovementService,
     ) {}
 
     /**
-     * @return array{stock_movements:int,errors:string[]}
+     * @return array{reversed_movements:int,errors:string[]}
      */
     public function execute(FiscalDocument $document, int $userId): array
     {
         $document->loadMissing(['items.product', 'items.product.stock']);
 
         $result = [
-            'stock_movements' => 0,
+            'reversed_movements' => 0,
             'errors' => [],
         ];
 
@@ -33,21 +33,27 @@ class ProcessPurchaseReturnStockAction
         }
 
         foreach ($document->items as $item) {
-            if (! $item->product_id) {
+            if (! $item->product_id || ! $item->product?->has_stock_control) {
                 continue;
             }
 
-            $product = $item->product;
-
-            if (! $product || ! $product->has_stock_control) {
-                continue;
-            }
-
-            if (StockMovement::query()
+            $originalMovement = StockMovement::query()
                 ->where('source_type', 'fiscal_document_item')
                 ->where('source_id', $item->id)
                 ->where('type', MovementType::RETURN->value)
-                ->exists()) {
+                ->first();
+
+            if (! $originalMovement) {
+                continue;
+            }
+
+            $alreadyReversed = StockMovement::query()
+                ->where('source_type', 'fiscal_document_item_return_reversal')
+                ->where('source_id', $item->id)
+                ->where('type', MovementType::EXIT->value)
+                ->exists();
+
+            if ($alreadyReversed) {
                 continue;
             }
 
@@ -57,48 +63,51 @@ class ProcessPurchaseReturnStockAction
                 ->first();
 
             if (! $stock) {
-                $result['errors'][] = "Produto #{$product->product_code} sem estoque cadastrado. Movimentação ignorada.";
+                $result['errors'][] = "Produto #{$item->product?->product_code} sem estoque cadastrado para estorno.";
 
                 continue;
             }
 
-            $movementData = $this->resolveMovementData($product, $item, $stock->id, $document->company_id);
+            $movementData = $this->resolveMovementData($item->product, $item, $stock->id, $document->company_id);
 
             if ($movementData === null) {
-                $invalidUnit = (string) ($item->unit_of_measure ?: $item->taxable_unit ?: $product->unit?->value);
-                $result['errors'][] = "Produto {$product->product_code} com unidade {$invalidUnit} não cadastrada. Movimentação ignorada.";
+                $result['errors'][] = "Produto {$item->product?->product_code} com unidade inválida para estorno.";
 
                 continue;
             }
 
             $movement = $this->stockMovementService->create(array_merge($movementData, [
-                'type' => MovementType::RETURN->value,
+                'type' => MovementType::EXIT->value,
                 'unit_price' => (float) $item->unit_price,
-                'reason' => "Devolução de compra NF #{$document->document_number} - Produto: {$product->product_code}",
-                'source_type' => 'fiscal_document_item',
+                'reason' => "Estorno da devolução de compra NF #{$document->document_number} - Produto: {$item->product?->product_code}",
+                'source_type' => 'fiscal_document_item_return_reversal',
                 'source_id' => $item->id,
+                'additional_info' => [
+                    'reversal_of_stock_movement_id' => $originalMovement->id,
+                    'return_fiscal_document_id' => $document->id,
+                ],
             ]), $userId);
 
             if ($this->stockMovementService->hasError() || ! $movement) {
-                $result['errors'][] = "Erro ao registrar devolução para produto {$product->product_code}: "
+                $result['errors'][] = "Erro ao estornar devolução do produto {$item->product?->product_code}: "
                     .$this->stockMovementService->getMessage();
 
                 continue;
             }
 
-            $result['stock_movements']++;
+            $result['reversed_movements']++;
         }
 
         if ($result['errors'] === []) {
             $document->forceFill([
-                'return_stock_processed_at' => now(),
-                'return_stock_processed_by' => $userId,
+                'return_stock_reversed_at' => now(),
+                'return_stock_reversed_by' => $userId,
             ])->save();
         }
 
-        Log::info('ProcessPurchaseReturnStockAction: processamento concluido', [
+        Log::info('ReversePurchaseReturnStockAction: estorno concluído', [
             'fiscal_document_id' => $document->id,
-            'stock_movements' => $result['stock_movements'],
+            'reversed_movements' => $result['reversed_movements'],
             'errors' => $result['errors'],
         ]);
 

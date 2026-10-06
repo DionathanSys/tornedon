@@ -18,6 +18,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,7 @@ final class ConfirmEntryAction
                             'confirmed_at' => now(),
                             'confirmed_by' => $userId,
                             'updated_by' => $userId,
+                            'financial_control_mode' => self::resolveFinancialControlMode($data),
                         ]);
 
                         Log::info('ConfirmEntryAction: Processamento concluído', [
@@ -170,7 +172,7 @@ final class ConfirmEntryAction
                 ->native(false)
                 ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
                 ->live()
-                ->afterStateUpdated(function (?string $state, \Filament\Schemas\Components\Utilities\Set $set) use ($record): void {
+                ->afterStateUpdated(function (?string $state, Set $set) use ($record): void {
                     if (! $state) {
                         return;
                     }
@@ -225,5 +227,16 @@ final class ConfirmEntryAction
                     && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
                 ->columnSpanFull(),
         ];
+    }
+
+    private static function resolveFinancialControlMode(array $data): string
+    {
+        if (! (bool) ($data['generate_account_payable_now'] ?? false)) {
+            return 'none';
+        }
+
+        return ($data['payment_method'] ?? null) === PaymentMethod::CREDIT_CARD->value
+            ? 'credit_card'
+            : 'account_payable';
     }
 }

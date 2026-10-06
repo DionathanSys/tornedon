@@ -13,6 +13,8 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
+use App\Services\FiscalDocument\Actions\ReversePurchaseReturnFinancialImpactAction;
+use App\Services\FiscalDocument\Actions\ReversePurchaseReturnStockAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -179,6 +181,33 @@ class NfeWebhookController extends Controller
 
         $doc->update($updates);
         $doc->refresh();
+
+        if ($status === 'cancelado' && $doc->isPurchaseReturn()) {
+            $stockResult = app(ReversePurchaseReturnStockAction::class)->execute(
+                $doc,
+                (int) ($doc->updated_by ?? $doc->created_by ?? 1),
+            );
+
+            if ($stockResult['errors'] !== []) {
+                Log::warning('NfeWebhookController: falha ao estornar estoque da devolução cancelada', [
+                    'fiscal_document_id' => $doc->id,
+                    'errors' => $stockResult['errors'],
+                ]);
+            }
+
+            $financialResult = app(ReversePurchaseReturnFinancialImpactAction::class)->execute(
+                $doc,
+                (int) ($doc->updated_by ?? $doc->created_by ?? 1),
+            );
+
+            if ($financialResult['errors'] !== [] || $financialResult['warnings'] !== []) {
+                Log::warning('NfeWebhookController: reversão financeira da devolução pendente', [
+                    'fiscal_document_id' => $doc->id,
+                    'errors' => $financialResult['errors'],
+                    'warnings' => $financialResult['warnings'],
+                ]);
+            }
+        }
 
         $audit->recordModelEvent(
             $doc,

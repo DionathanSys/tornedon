@@ -25,6 +25,8 @@ use App\Models\ProductStock;
 use App\Models\PurchaseReturnCredit;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
+use App\Services\FiscalDocument\Actions\ReversePurchaseReturnFinancialImpactAction;
+use App\Services\FiscalDocument\Actions\ReversePurchaseReturnStockAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -123,8 +125,140 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         ]);
     }
 
-    private function createScenario(PurchaseReturnSettlementMode $mode, float $returnAmount, array $overrides = []): array
+    public function test_it_processes_stock_without_financial_entries_when_financial_control_is_disabled(): void
     {
+        [$user, $originDocument, $returnDocument, $returnItem] = $this->createScenario(
+            PurchaseReturnSettlementMode::NONE,
+            100,
+            [],
+            false,
+        );
+
+        $result = app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame(1, $result['stock_movements']);
+        $this->assertSame(0, $result['credits']);
+        $this->assertDatabaseCount('account_payables', 0);
+        $this->assertNotNull($returnDocument->fresh()->return_financial_processed_at);
+        $this->assertDatabaseHas('stock_movements', [
+            'source_type' => 'fiscal_document_item',
+            'source_id' => $returnItem->id,
+            'type' => StockMovementType::RETURN->value,
+        ]);
+    }
+
+    public function test_it_reverses_return_stock_once_after_the_return_is_canceled(): void
+    {
+        [$user, $originDocument, $returnDocument] = $this->createScenario(
+            PurchaseReturnSettlementMode::NONE,
+            100,
+            [],
+            false,
+        );
+
+        app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $reverseAction = app(ReversePurchaseReturnStockAction::class);
+        $firstReverse = $reverseAction->execute($returnDocument->fresh(), $user->id);
+        $secondReverse = $reverseAction->execute($returnDocument->fresh(), $user->id);
+
+        $stock = ProductStock::query()->firstOrFail();
+
+        $this->assertSame(1, $firstReverse['reversed_movements']);
+        $this->assertSame([], $firstReverse['errors']);
+        $this->assertSame(0, $secondReverse['reversed_movements']);
+        $this->assertSame([], $secondReverse['errors']);
+        $this->assertEquals(0.0, (float) $stock->quantity_total);
+        $this->assertDatabaseCount('stock_movements', 2);
+        $this->assertNotNull($returnDocument->fresh()->return_stock_reversed_at);
+        $this->assertDatabaseHas('stock_movements', [
+            'source_type' => 'fiscal_document_item_return_reversal',
+            'type' => StockMovementType::EXIT->value,
+        ]);
+    }
+
+    public function test_it_restores_canceled_origin_payable_when_return_is_canceled(): void
+    {
+        [$user, $originDocument, $returnDocument, $returnItem, $originPayable] = $this->createScenario(
+            PurchaseReturnSettlementMode::CANCEL_PAYABLE,
+            100,
+        );
+
+        app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $result = app(ReversePurchaseReturnFinancialImpactAction::class)->execute(
+            $returnDocument->fresh(),
+            $user->id,
+        );
+
+        $originPayable->refresh();
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame([], $result['warnings']);
+        $this->assertSame(1, $result['restored_payables']);
+        $this->assertSame(AccountPayableStatus::PENDING, $originPayable->status);
+        $this->assertSame('Titulo original da compra', $originPayable->description);
+        $this->assertNotNull($returnDocument->fresh()->return_financial_reversed_at);
+    }
+
+    public function test_it_cancels_unused_supplier_credit_when_return_is_canceled(): void
+    {
+        [$user, $originDocument, $returnDocument] = $this->createScenario(
+            PurchaseReturnSettlementMode::SUPPLIER_CREDIT,
+            100,
+        );
+
+        app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $result = app(ReversePurchaseReturnFinancialImpactAction::class)->execute(
+            $returnDocument->fresh(),
+            $user->id,
+        );
+
+        $credit = PurchaseReturnCredit::query()->firstOrFail();
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame([], $result['warnings']);
+        $this->assertSame(1, $result['canceled_credits']);
+        $this->assertSame(PurchaseReturnCreditStatus::CANCELLED, $credit->status);
+        $this->assertNotNull($returnDocument->fresh()->return_financial_reversed_at);
+    }
+
+    public function test_it_cancels_replacement_payable_and_restores_origin_when_return_is_canceled(): void
+    {
+        [$user, $originDocument, $returnDocument, $returnItem, $originPayable] = $this->createScenario(
+            PurchaseReturnSettlementMode::REPLACE_PAYABLE,
+            40,
+        );
+
+        app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $result = app(ReversePurchaseReturnFinancialImpactAction::class)->execute(
+            $returnDocument->fresh(),
+            $user->id,
+        );
+
+        $originPayable->refresh();
+        $replacementPayable = AccountPayable::query()
+            ->where('fiscal_document_id', $returnDocument->id)
+            ->firstOrFail();
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame([], $result['warnings']);
+        $this->assertSame(1, $result['restored_payables']);
+        $this->assertSame(1, $result['canceled_replacement_payables']);
+        $this->assertSame(AccountPayableStatus::PENDING, $originPayable->status);
+        $this->assertSame(AccountPayableStatus::CANCELLED, $replacementPayable->status);
+        $this->assertNotNull($returnDocument->fresh()->return_financial_reversed_at);
+    }
+
+    private function createScenario(
+        PurchaseReturnSettlementMode $mode,
+        float $returnAmount,
+        array $overrides = [],
+        bool $withOriginPayable = true,
+    ): array {
         $user = User::factory()->create();
 
         $company = Company::query()->create([
@@ -205,7 +339,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $originPayable = AccountPayable::query()->create([
+        $originPayable = $withOriginPayable ? AccountPayable::query()->create([
             'supplier_id' => $supplier->id,
             'company_id' => $company->id,
             'fiscal_document_id' => $originDocument->id,
@@ -219,7 +353,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
             'document_number' => $originDocument->document_number,
             'paid' => false,
             'payment_method' => 'boleto',
-        ]);
+        ]) : null;
 
         $returnDocument = FiscalDocument::query()->create([
             'customer_id' => $supplier->id,

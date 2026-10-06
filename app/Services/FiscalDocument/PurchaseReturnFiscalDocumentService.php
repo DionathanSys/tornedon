@@ -10,10 +10,12 @@ use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
+use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\FiscalDocumentItemOrigin;
 use App\Services\Fiscal\FiscalDecisionService;
+use App\Services\FiscalDocumentItem\FiscalDocumentItemService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,9 +30,32 @@ class PurchaseReturnFiscalDocumentService
 
         try {
             return DB::transaction(function () use ($originDocument, $userId): ?FiscalDocument {
-                $originDocument->loadMissing('items');
+                $originDocument = FiscalDocument::query()
+                    ->whereKey($originDocument->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $originDocument instanceof FiscalDocument) {
+                    $this->setError('Nota de entrada não encontrada.');
+
+                    return null;
+                }
+
+                $originDocument->load('items');
 
                 if (! $this->validateOriginDocument($originDocument)) {
+                    return null;
+                }
+
+                $balanceService = app(PurchaseReturnBalanceService::class);
+                $availableQuantities = $balanceService->availableQuantities($originDocument);
+                $availableItems = $originDocument->items
+                    ->filter(fn (FiscalDocumentItem $item): bool => ($availableQuantities->get($item->id) ?? 0) > 0.0001)
+                    ->values();
+
+                if ($availableItems->isEmpty()) {
+                    $this->setError('Todos os itens da nota de entrada já foram devolvidos.');
+
                     return null;
                 }
 
@@ -53,12 +78,17 @@ class PurchaseReturnFiscalDocumentService
 
                 $returnDocument->loadMissing('company', 'customer.address');
 
-                $itemPayloads = $originDocument->items
+                $itemPayloads = $availableItems
                     ->values()
-                    ->map(fn (FiscalDocumentItem $item, int $index): array => $this->buildReturnItemData($item, $returnDocument, $index + 1))
+                    ->map(fn (FiscalDocumentItem $item, int $index): array => $this->buildReturnItemData(
+                        $item,
+                        $returnDocument,
+                        $index + 1,
+                        (float) $availableQuantities->get($item->id),
+                    ))
                     ->all();
 
-                $itemService = app(\App\Services\FiscalDocumentItem\FiscalDocumentItemService::class);
+                $itemService = app(FiscalDocumentItemService::class);
                 $createdItems = $itemService->createMany($itemPayloads, $userId);
 
                 if ($itemService->hasError() || $createdItems === null) {
@@ -76,7 +106,7 @@ class PurchaseReturnFiscalDocumentService
                     fn (FiscalDocumentItem $item): int => (int) $item->item_number
                 );
 
-                foreach ($originDocument->items->values() as $index => $originItem) {
+                foreach ($availableItems->values() as $index => $originItem) {
                     $returnItem = $createdItemsByNumber->get($index + 1);
 
                     if (! $returnItem instanceof FiscalDocumentItem) {
@@ -90,13 +120,15 @@ class PurchaseReturnFiscalDocumentService
                         'origin_fiscal_document_item_id' => $originItem->id,
                         'return_fiscal_document_id' => $returnDocument->id,
                         'return_fiscal_document_item_id' => $returnItem->id,
-                        'linked_quantity' => (float) $originItem->quantity,
-                        'linked_value' => (float) $originItem->total_price,
+                        'linked_quantity' => (float) $returnItem->quantity,
+                        'linked_value' => (float) $returnItem->total_price,
                         'origin_document_key' => $originDocument->document_key,
                         'metadata' => [
                             'origin_item_number' => $originItem->item_number,
                             'return_item_number' => $returnItem->item_number,
-                            'generation_mode' => 'purchase_return_full',
+                            'generation_mode' => (float) $returnItem->quantity < (float) $originItem->quantity
+                                ? 'purchase_return_remaining'
+                                : 'purchase_return_full',
                         ],
                     ]);
                 }
@@ -142,7 +174,7 @@ class PurchaseReturnFiscalDocumentService
             return false;
         }
 
-        if ($originDocument->status === \App\Enum\FiscalDocument\Status::CANCELLED || $originDocument->canceled) {
+        if ($originDocument->status === Status::CANCELLED || $originDocument->canceled) {
             $this->setError('Não é possível gerar devolução para uma nota de entrada cancelada.');
 
             return false;
@@ -150,16 +182,6 @@ class PurchaseReturnFiscalDocumentService
 
         if ($originDocument->items->isEmpty()) {
             $this->setError('A nota de entrada não possui itens para gerar devolução.');
-
-            return false;
-        }
-
-        $alreadyLinked = FiscalDocumentItemOrigin::query()
-            ->where('origin_fiscal_document_id', $originDocument->id)
-            ->exists();
-
-        if ($alreadyLinked) {
-            $this->setError('Já existe uma nota de devolução vinculada a esta nota de entrada.');
 
             return false;
         }
@@ -203,16 +225,23 @@ class PurchaseReturnFiscalDocumentService
         ];
     }
 
-    private function buildReturnItemData(FiscalDocumentItem $originItem, FiscalDocument $returnDocument, int $itemNumber): array
-    {
+    private function buildReturnItemData(
+        FiscalDocumentItem $originItem,
+        FiscalDocument $returnDocument,
+        int $itemNumber,
+        float $quantity,
+    ): array {
         $fiscalSnapshot = is_array($originItem->fiscal_snapshot) ? $originItem->fiscal_snapshot : [];
         $originTaxData = is_array($originItem->tax_data) ? $originItem->tax_data : [];
         $taxData = $originTaxData;
 
+        $originQuantity = max((float) $originItem->quantity, 0.0001);
+        $quantityRatio = min(max($quantity / $originQuantity, 0), 1);
+        $totalPrice = round((float) $originItem->total_price * $quantityRatio, 2);
         $decision = $this->resolveReturnFiscalDecision($returnDocument, $originItem);
 
         if ($decision instanceof FiscalDecisionDTO) {
-            $taxData = $decision->toTaxData((float) $originItem->total_price);
+            $taxData = $decision->toTaxData($totalPrice);
             $originIbsCbs = data_get($originTaxData, 'imposto.ibs_cbs');
 
             if ($this->isCompleteIbsCbs($originIbsCbs)) {
@@ -221,7 +250,7 @@ class PurchaseReturnFiscalDocumentService
         } elseif (($taxData['imposto'] ?? null) === null && $fiscalSnapshot !== []) {
             $taxData = array_replace_recursive(
                 $taxData,
-                FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData((float) $originItem->total_price)
+                FiscalDecisionDTO::fromArray($fiscalSnapshot)->toTaxData($totalPrice)
             );
         }
 
@@ -246,17 +275,19 @@ class PurchaseReturnFiscalDocumentService
             'cest_code' => $originItem->cest_code,
             'barcode' => $originItem->barcode,
             'cfop_code' => $decision?->cfop ?: $originItem->cfop_code ?: ($fiscalSnapshot['cfop'] ?? null),
-            'quantity' => (float) $originItem->quantity,
+            'quantity' => $quantity,
             'unit_of_measure' => $originItem->unit_of_measure,
             'taxable_unit' => $originItem->taxable_unit,
-            'taxable_quantity' => $originItem->taxable_quantity !== null ? (float) $originItem->taxable_quantity : null,
+            'taxable_quantity' => $originItem->taxable_quantity !== null
+                ? round((float) $originItem->taxable_quantity * $quantityRatio, 4)
+                : null,
             'taxable_unit_price' => $originItem->taxable_unit_price !== null ? (float) $originItem->taxable_unit_price : null,
             'unit_price' => (float) $originItem->unit_price,
-            'total_price' => (float) $originItem->total_price,
-            'discount_amount' => $originItem->discount_amount !== null ? (float) $originItem->discount_amount : null,
-            'freight_amount' => $originItem->freight_amount !== null ? (float) $originItem->freight_amount : null,
-            'insurance_amount' => $originItem->insurance_amount !== null ? (float) $originItem->insurance_amount : null,
-            'other_expenses_amount' => $originItem->other_expenses_amount !== null ? (float) $originItem->other_expenses_amount : null,
+            'total_price' => $totalPrice,
+            'discount_amount' => $originItem->discount_amount !== null ? round((float) $originItem->discount_amount * $quantityRatio, 2) : null,
+            'freight_amount' => $originItem->freight_amount !== null ? round((float) $originItem->freight_amount * $quantityRatio, 2) : null,
+            'insurance_amount' => $originItem->insurance_amount !== null ? round((float) $originItem->insurance_amount * $quantityRatio, 2) : null,
+            'other_expenses_amount' => $originItem->other_expenses_amount !== null ? round((float) $originItem->other_expenses_amount * $quantityRatio, 2) : null,
             'included_in_total' => (bool) $originItem->included_in_total,
             'tax_data' => $taxData !== [] ? $taxData : null,
             'fiscal_snapshot' => $fiscalSnapshot,

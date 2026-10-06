@@ -110,7 +110,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "\\",
+                "query": "difere",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -131,12 +131,12 @@
               "title": "Marcadores"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "e2f395d1b7b0fd73",
@@ -242,7 +242,7 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "6bf41a3e2104df73",
+  "active": "b0b1c65d03b39764",
   "lastOpenFiles": [
     "Excalidraw/Drawing 2026-08-25 17.37.53.excalidraw.md",
     "Sem título 1.md",
