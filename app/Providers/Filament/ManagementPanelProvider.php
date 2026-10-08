@@ -20,6 +20,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Wiremodel\FilamentClarityTheme\ClarityThemePlugin;
 
 class ManagementPanelProvider extends PanelProvider
 {
@@ -27,7 +28,11 @@ class ManagementPanelProvider extends PanelProvider
     {
         return $panel
             ->maxContentWidth(Width::Full)
-            ->topbar()
+            ->plugin(ClarityThemePlugin::make())
+            ->topbar(false)
+            ->sidebarCollapsibleOnDesktop()
+            ->font('Figtree', url: 'https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap')
+            ->sidebarWidth('270px')
             ->id('management')
             ->path('management')
             ->login()

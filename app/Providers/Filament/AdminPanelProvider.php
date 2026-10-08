@@ -23,6 +23,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Wiremodel\FilamentClarityTheme\ClarityThemePlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -31,8 +32,11 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->maxContentWidth(Width::Full)
-            ->topbar()
-            ->topNavigation()
+            ->plugin(ClarityThemePlugin::make())
+            ->topbar(false)
+            ->sidebarCollapsibleOnDesktop()
+            ->font('Figtree', url: 'https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap')
+            ->sidebarWidth('270px')
             ->id('admin')
             ->path('admin')
             ->login()

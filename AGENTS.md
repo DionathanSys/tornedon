@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Trust These Sources First
-- `README.md` is partially stale: it still says Laravel 10 / PHP 8.1+, but `composer.json` is the real source of truth (`laravel/framework:^12.0`, `php:^8.2`, `filament/filament:^5.0`).
+- `README.md` is partially stale: it still says Laravel 10 / PHP 8.1+, but `composer.json` is the real source of truth (`laravel/framework:^12.0`, `php:^8.4`, `filament/filament:^5.0`).
 - The `README.md` links to docs such as `docs/DEVELOPMENT-GUIDE.md` and `docs/CODING-STANDARDS.md`, but those files do not exist in this checkout. Prefer `composer.json`, `package.json`, `phpunit.xml`, `routes/`, `app/Providers/`, and `config/` over prose.
 
 ## Dev Commands
