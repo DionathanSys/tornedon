@@ -117,6 +117,7 @@ final class ConfirmInvoiceAction
                                 Checkbox::make('mark_as_received')
                                     ->label('Marcar valores da fatura como já recebidos')
                                     ->helperText('Quando marcado, os pagamentos das parcelas do contas a receber serão registrados automaticamente ao confirmar a fatura.')
+                                    ->live()
                                     ->default(fn (Invoice $record): bool => $record->payment_condition?->isCash() ?? false),
 
                                 DatePicker::make('received_at')
