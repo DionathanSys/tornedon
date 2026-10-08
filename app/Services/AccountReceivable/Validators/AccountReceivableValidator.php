@@ -5,7 +5,9 @@ namespace App\Services\AccountReceivable\Validators;
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
-use App\Models\CardPaymentProfile;
+use App\Models\AccountReceivable;
+use App\Models\CardInstitution;
+use App\Models\FinancialAccount;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +26,8 @@ class AccountReceivableValidator
             'manual_counterparty_name' => 'nullable|string|max:255',
             'is_manual_counterparty' => 'nullable|boolean',
             'paid' => 'nullable|boolean',
+            'auto_register_receipt_on_due_date' => 'nullable|boolean',
+            'auto_receipt_financial_account_id' => 'nullable|integer',
             'type' => 'nullable|string|max:50',
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'card_payment_profile_id' => 'nullable|integer|exists:card_payment_profiles,id',
@@ -74,7 +78,7 @@ class AccountReceivableValidator
             'company_id' => 'required|integer|exists:companies,id',
             'invoice_id' => 'nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
-            'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
+            'status' => ['required', Rule::in(array_map(fn ($s) => $s->value, Status::cases()))],
         ]);
 
         return self::makeValidator($data, $rules)->validate();
@@ -85,12 +89,27 @@ class AccountReceivableValidator
      */
     public static function validateUpdate(array $data, int $id): array
     {
+        $record = AccountReceivable::findOrFail($id);
+        // Use the persisted tenant for all cross-record validation.
+        $data['company_id'] = $record->company_id;
+        $defaults = [
+            'customer_id' => $record->customer_id,
+            'manual_counterparty_name' => $record->manual_counterparty_name,
+            'payment_method' => $record->payment_method?->value,
+            'card_payment_profile_id' => $record->card_payment_profile_id,
+            'payment_date' => $record->payment_date?->toDateString(),
+            'auto_register_receipt_on_due_date' => $record->auto_register_receipt_on_due_date,
+            'auto_receipt_financial_account_id' => $record->auto_receipt_financial_account_id,
+        ];
+        $data = [...$defaults, ...$data];
         $rules = array_merge(self::commonRules(), [
             'customer_id' => 'sometimes|nullable|integer|exists:partners,id',
+            'due_date' => 'sometimes|required|date',
+            'due_amount' => 'sometimes|required|numeric|min:0',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'invoice_id' => 'sometimes|nullable|integer|exists:invoices,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
-            'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
+            'status' => ['sometimes', 'required', Rule::in(array_map(fn ($s) => $s->value, Status::cases()))],
         ]);
 
         return self::makeValidator($data, $rules)->validate();
@@ -101,6 +120,16 @@ class AccountReceivableValidator
         $validator = Validator::make($data, $rules, self::messages());
 
         $validator->after(function ($validator) use ($data): void {
+            if ((bool) ($data['auto_register_receipt_on_due_date'] ?? false)) {
+                $account = FinancialAccount::query()
+                    ->where('company_id', (int) ($data['company_id'] ?? 0))
+                    ->where('is_active', true)
+                    ->find((int) ($data['auto_receipt_financial_account_id'] ?? 0));
+
+                if (! $account) {
+                    $validator->errors()->add('auto_receipt_financial_account_id', 'Selecione uma conta financeira ativa da empresa para a baixa automática.');
+                }
+            }
             $isManualCounterparty = (bool) ($data['is_manual_counterparty'] ?? false);
             $customerId = $data['customer_id'] ?? null;
             $manualCounterpartyName = trim((string) ($data['manual_counterparty_name'] ?? ''));
@@ -121,7 +150,7 @@ class AccountReceivableValidator
             }
 
             if (blank($data['card_payment_profile_id'] ?? null)) {
-                $validator->errors()->add('card_payment_profile_id', 'O perfil de cartao e obrigatorio para recebimentos em cartao de credito.');
+                $validator->errors()->add('card_payment_profile_id', 'A instituição de cartão é obrigatória para recebimentos em cartão.');
             }
 
             if (blank($data['payment_date'] ?? null)) {
@@ -135,17 +164,18 @@ class AccountReceivableValidator
                 return;
             }
 
-            $profile = CardPaymentProfile::query()
+            $profile = CardInstitution::query()
                 ->where('company_id', $companyId)
                 ->find($profileId);
 
             if (! $profile) {
-                $validator->errors()->add('card_payment_profile_id', 'Perfil de cartao nao encontrado para a empresa informada.');
+                $validator->errors()->add('card_payment_profile_id', 'Instituição de cartão não encontrada para a empresa informada.');
+
                 return;
             }
 
             if (! $profile->active) {
-                $validator->errors()->add('card_payment_profile_id', 'O perfil de cartao selecionado esta inativo.');
+                $validator->errors()->add('card_payment_profile_id', 'A instituição de cartão selecionada está inativa.');
             }
         });
 

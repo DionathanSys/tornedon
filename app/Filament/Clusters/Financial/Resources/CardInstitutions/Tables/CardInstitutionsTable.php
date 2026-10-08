@@ -1,22 +1,24 @@
 <?php
 
-namespace App\Filament\Clusters\Financial\Resources\CardPaymentProfiles\Tables;
+namespace App\Filament\Clusters\Financial\Resources\CardInstitutions\Tables;
 
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 
-class CardPaymentProfilesTable
+class CardInstitutionsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Perfil')
+                    ->label('Instituição')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('brand')
@@ -27,14 +29,9 @@ class CardPaymentProfilesTable
                     ->label('Adquirente')
                     ->placeholder('-')
                     ->toggleable(),
-                TextColumn::make('fee_percent')
-                    ->label('Taxa %')
-                    ->numeric(decimalPlaces: 4)
-                    ->sortable(),
-                TextColumn::make('fee_fixed')
-                    ->label('Taxa fixa')
-                    ->money('BRL')
-                    ->sortable(),
+                ToggleColumn::make('is_default')
+                    ->label('Padrão')
+                    ->disabled(fn ($record): bool => ! $record->active),
                 TextColumn::make('settlement_days')
                     ->label('D+X')
                     ->sortable(),
@@ -47,7 +44,11 @@ class CardPaymentProfilesTable
                 DeleteAction::make()->iconButton(),
             ])
             ->toolbarActions([
-                CreateAction::make()->label('Perfil de Cartao'),
+                CreateAction::make()->label('Instituição de cartão')
+                    ->mutateDataUsing(fn (array $data): array => [
+                        ...$data,
+                        'company_id' => Filament::getTenant()->id,
+                    ]),
             ])
             ->defaultSort('name');
     }

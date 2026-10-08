@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Invoice;
 
+use App\Enum\Financial\FinancialAccountType;
 use App\Enum\FiscalDocument\BuyerPresenceIndicator;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\FreightModality;
@@ -20,10 +21,12 @@ use App\Enum\ServiceOrder\Priority as ServiceOrderPriority;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type as ServiceOrderType;
 use App\Enum\Tax\TaxRegime;
+use App\Models\CardInstitution;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\CompanyPreference;
 use App\Models\Equipment;
+use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Models\FiscalProfile;
 use App\Models\Invoice;
@@ -891,6 +894,60 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertNull($invoice->fresh()->installments()->first()?->financial_account_id);
         $this->assertFalse((bool) $invoice->fresh()->auto_bank_slip_issuance);
         $this->assertSame(0, CashMovement::query()->count());
+    }
+
+    public function test_card_confirmation_schedules_receipt_without_marking_customer_payment_as_bank_receipt(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+        $category = FinancialCategory::create([
+            'company_id' => $company->id, 'name' => 'Repasse cartão',
+            'is_active' => true, 'allow_receivable' => true, 'allow_cash_movement' => true,
+        ]);
+        $account = FinancialAccount::create([
+            'company_id' => $company->id, 'name' => 'Banco',
+            'type' => FinancialAccountType::BANK->value,
+            'is_active' => true, 'opening_balance' => 0, 'created_by' => $user->id,
+        ]);
+        $institution = CardInstitution::create([
+            'company_id' => $company->id, 'name' => 'Stone', 'settlement_days' => 30, 'is_default' => true,
+        ]);
+        $serviceOrder = ServiceOrder::create([
+            'number' => 'SO-CARD-CONFIRM', 'customer_id' => $customer->id, 'company_id' => $company->id,
+            'invoice_id' => $invoice->id, 'order_date' => '2026-05-04',
+            'status' => ServiceOrderState::CLOSED->value, 'priority' => ServiceOrderPriority::NORMAL->value,
+            'type' => ServiceOrderType::MAINTENANCE->value, 'created_by' => $user->id,
+        ]);
+        $serviceModel = Service::create([
+            'company_id' => $company->id, 'created_by' => $user->id, 'service_code' => 'SRV-CARD-CONFIRM',
+            'name' => 'Serviço cartão', 'price' => 180, 'tax_rate' => 5, 'nbs_code' => '123456789',
+            'cnae_code' => '6201500', 'municipal_tax_code' => '01.01', 'is_active' => true,
+        ]);
+        ServiceOrderItem::create([
+            'service_order_id' => $serviceOrder->id, 'service_id' => $serviceModel->id,
+            'quantity' => 1, 'unit_price' => 180, 'created_by' => $user->id,
+        ]);
+        $service = app(InvoiceService::class);
+        $result = $service->confirm($invoice->fresh(), [
+            'payment_method' => PaymentMethod::CREDIT_CARD->value,
+            'payment_condition' => PaymentCondition::CASH->value,
+            'card_payment_profile_id' => $institution->id, 'payment_date' => '2026-05-04',
+            'financial_category_id' => $category->id, 'auto_register_receipt_on_due_date' => true,
+            'auto_receipt_financial_account_id' => $account->id,
+        ], $user->id);
+
+        $this->assertNotNull($result, json_encode($service->getErrors()));
+        $this->assertSame(0, $result['payments_count']);
+        $receivable = $invoice->fresh()->accountReceivables()->first();
+        $this->assertFalse($receivable->paid);
+        $this->assertTrue($receivable->auto_register_receipt_on_due_date);
+        $this->assertSame($account->id, $receivable->auto_receipt_financial_account_id);
+        $this->assertSame('2026-06-03', $receivable->installments()->first()->due_date->toDateString());
+        $this->assertDatabaseCount('cash_movements', 0);
+
+        $this->artisan('account-receivables:process-auto-receipts', ['--date' => '2026-06-03'])->assertExitCode(0);
+        $this->assertTrue($receivable->fresh()->paid);
+        $this->assertDatabaseCount('cash_movements', 1);
     }
 
     /**

@@ -36,6 +36,8 @@ class EditProductionRequest extends EditRecord
         $data['is_manual_counterparty'] = blank($data['customer_id'] ?? null) && filled($data['manual_counterparty_name'] ?? null);
         $data['card_payment_profile_id'] = data_get($data, 'additional_info.card_payment_profile_id');
         $data['payment_date'] = data_get($data, 'additional_info.payment_date');
+        $data['auto_register_receipt_on_due_date'] = (bool) data_get($data, 'additional_info.auto_register_receipt_on_due_date', false);
+        $data['auto_receipt_financial_account_id'] = data_get($data, 'additional_info.auto_receipt_financial_account_id');
 
         return $data;
     }
@@ -97,8 +99,11 @@ class EditProductionRequest extends EditRecord
 
         $additionalInfo['card_payment_profile_id'] = $data['card_payment_profile_id'] ?? null;
         $additionalInfo['payment_date'] = $data['payment_date'] ?? null;
+        $additionalInfo['auto_register_receipt_on_due_date'] = (bool) ($data['auto_register_receipt_on_due_date'] ?? false);
+        $additionalInfo['auto_receipt_financial_account_id'] = $data['auto_receipt_financial_account_id'] ?? null;
 
         unset($data['card_payment_profile_id'], $data['payment_date'], $data['is_manual_counterparty']);
+        unset($data['auto_register_receipt_on_due_date'], $data['auto_receipt_financial_account_id']);
 
         if (filled($data['customer_id'] ?? null)) {
             $data['manual_counterparty_name'] = null;

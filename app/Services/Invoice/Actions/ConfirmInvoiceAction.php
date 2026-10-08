@@ -14,7 +14,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Jobs\ScheduleBankSlipIssuanceJob;
 use App\Jobs\SchedulePixChargeIssuanceJob;
 use App\Models\AccountReceivable;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\CompanyPreference;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
@@ -379,7 +379,7 @@ class ConfirmInvoiceAction
             $paymentMethod === PaymentMethod::CREDIT_CARD
             && blank($data['card_payment_profile_id'] ?? null)
         ) {
-            $this->setError('Selecione o perfil de recebimento para confirmar a fatura em cartão de crédito.');
+            $this->setError('Selecione a instituição de cartão para confirmar a fatura.');
 
             return null;
         }
@@ -408,6 +408,8 @@ class ConfirmInvoiceAction
                 Str::padLeft($this->invoice->invoice_number, 5, '0')
             ),
             'paid' => false,
+            'auto_register_receipt_on_due_date' => (bool) ($data['auto_register_receipt_on_due_date'] ?? false),
+            'auto_receipt_financial_account_id' => $data['auto_receipt_financial_account_id'] ?? null,
             'payment_method' => $paymentMethod->value,
             'card_payment_profile_id' => $paymentMethod === PaymentMethod::CREDIT_CARD
                 ? (int) ($data['card_payment_profile_id'] ?? 0)
@@ -608,7 +610,7 @@ class ConfirmInvoiceAction
         Carbon $baseDate,
         int $installmentNumber,
         ?Carbon $cardPaymentDate,
-        ?CardPaymentProfile $cardPaymentProfile,
+        ?CardInstitution $cardPaymentProfile,
     ): Carbon {
         if ($paymentMethod === PaymentMethod::CREDIT_CARD && $cardPaymentDate && $cardPaymentProfile) {
             $firstDueDate = $cardPaymentDate->copy()->addDays((int) $cardPaymentProfile->settlement_days);
@@ -675,21 +677,21 @@ class ConfirmInvoiceAction
         return (bool) ($data['auto_pix_charge_issuance'] ?? config('pix.default_auto_issuance', false));
     }
 
-    private function resolveCardProfile(int $profileId): ?CardPaymentProfile
+    private function resolveCardProfile(int $profileId): ?CardInstitution
     {
         if ($profileId <= 0) {
-            $this->setError('Selecione o perfil de recebimento para confirmar a fatura em cartao de credito.');
+            $this->setError('Selecione a instituição de cartão para confirmar a fatura.');
 
             return null;
         }
 
-        $profile = CardPaymentProfile::query()
+        $profile = CardInstitution::query()
             ->where('company_id', $this->invoice->company_id)
             ->where('active', true)
             ->find($profileId);
 
         if (! $profile) {
-            $this->setError('Perfil de cartao invalido para a empresa da fatura.');
+            $this->setError('Instituição de cartão inválida para a empresa da fatura.');
 
             return null;
         }

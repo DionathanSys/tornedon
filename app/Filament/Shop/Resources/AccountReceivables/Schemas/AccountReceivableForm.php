@@ -4,10 +4,11 @@ namespace App\Filament\Shop\Resources\AccountReceivables\Schemas;
 
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\FinancialCategory;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -97,8 +98,9 @@ class AccountReceivableForm
                 ->live()
                 ->columnSpan(['md' => 2, 'lg' => 3]),
             Select::make('card_payment_profile_id')
-                ->label('Perfil de Cartão')
-                ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
+                ->label('Instituição de cartão')
+                ->options(fn (): array => CardInstitution::optionsForCompany(Filament::getTenant()->id))
+                ->default(fn (): ?int => CardInstitution::defaultIdForCompany(Filament::getTenant()->id))
                 ->searchable()
                 ->preload()
                 ->native(false)
@@ -115,6 +117,7 @@ class AccountReceivableForm
         ];
 
         $complementComponents = [
+            ...AutoReceiptFields::components(),
             SelectFinancialCategory::make('financial_category_id', 'receivable')
                 ->label('Categoria Financeira')
                 ->default(fn (): ?int => self::defaultFinancialCategoryId())

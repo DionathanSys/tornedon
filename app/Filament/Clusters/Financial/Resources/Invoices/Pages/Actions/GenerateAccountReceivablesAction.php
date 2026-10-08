@@ -4,9 +4,10 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
+use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\CompanyPreference;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
@@ -41,8 +42,9 @@ final class GenerateAccountReceivablesAction
                     ->required(),
 
                 Select::make('card_payment_profile_id')
-                    ->label('Perfil de Recebimento no Cartao')
-                    ->options(fn (): array => CardPaymentProfile::query()
+                    ->label('Instituição de cartão')
+                    ->default(fn (): ?int => CardInstitution::defaultIdForCompany((int) Filament::getTenant()?->id))
+                    ->options(fn (): array => CardInstitution::query()
                         ->where('company_id', Filament::getTenant()?->id)
                         ->where('active', true)
                         ->orderBy('name')
@@ -53,7 +55,7 @@ final class GenerateAccountReceivablesAction
                     ->native(false)
                     ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
                     ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
-                    ->helperText('O vencimento financeiro seguira o prazo D+X configurado neste perfil.'),
+                    ->helperText('O vencimento financeiro seguirá o prazo de repasse da instituição.'),
 
                 DatePicker::make('payment_date')
                     ->label('Data da Venda/Pagamento no Cartao')
@@ -74,6 +76,7 @@ final class GenerateAccountReceivablesAction
                     ->default(fn (Invoice $record): ?int => $record->financial_category_id
                         ?? CompanyPreference::getDefaultReceivableFinancialCategoryId(Filament::getTenant()?->id))
                     ->helperText('Será aplicada às parcelas e aos recebimentos financeiros gerados para esta fatura.'),
+                ...AutoReceiptFields::components(),
             ])
             ->action(function (Invoice $record, array $data, EditInvoice $livewire): void {
                 $service = app(InvoiceService::class);

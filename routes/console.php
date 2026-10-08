@@ -14,6 +14,11 @@ Schedule::command('account-payables:process-auto-payments')
     ->withoutOverlapping()
     ->description('Baixa automaticamente parcelas a pagar vencendo no dia');
 
+Schedule::command('account-receivables:process-auto-receipts')
+    ->dailyAt('00:15')
+    ->withoutOverlapping()
+    ->description('Baixa automaticamente o saldo das parcelas a receber vencendo no dia');
+
 if ((bool) config('backup.database.enabled', true)) {
     Schedule::command('backup:database')
         ->dailyAt((string) config('backup.database.schedule_at', '02:00'))

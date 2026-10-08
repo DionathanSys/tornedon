@@ -6,6 +6,7 @@ use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\CardInstitution;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
@@ -172,6 +173,33 @@ class ProductionRequestServiceTest extends TestCase
         $this->assertSame(CashMovementDirection::INFLOW, $movement->direction);
         $this->assertSame(40.0, (float) $movement->amount);
         $this->assertSame($this->financialAccount->id, $movement->financial_account_id);
+    }
+
+    public function test_card_request_preserves_institution_and_receipt_settings_until_delivery(): void
+    {
+        $institution = CardInstitution::create([
+            'company_id' => $this->company->id, 'name' => 'Stone', 'settlement_days' => 15,
+        ]);
+        $request = $this->createRequest([
+            'payment_method' => PaymentMethod::CREDIT_CARD->value,
+            'payment_condition' => null,
+            'additional_info' => [
+                'card_payment_profile_id' => $institution->id,
+                'payment_date' => '2026-07-05',
+                'auto_register_receipt_on_due_date' => true,
+                'auto_receipt_financial_account_id' => $this->financialAccount->id,
+            ],
+        ]);
+        $this->attachItem($request, 100, 1);
+        $this->assertSame($institution->id, data_get($request->fresh()->additional_info, 'card_payment_profile_id'));
+        $delivered = $this->service->deliver($request->fresh(), [], $this->user->id);
+        $this->assertNotNull($delivered, json_encode($this->service->getErrors()));
+        $receivable = $delivered->accountReceivable;
+        $this->assertTrue($receivable->auto_register_receipt_on_due_date);
+        $this->assertFalse($receivable->paid);
+        $this->assertSame('2026-07-20', $receivable->installments()->first()->due_date->toDateString());
+        $this->artisan('account-receivables:process-auto-receipts', ['--date' => '2026-07-20'])->assertExitCode(0);
+        $this->assertTrue($receivable->fresh()->paid);
     }
 
     /**

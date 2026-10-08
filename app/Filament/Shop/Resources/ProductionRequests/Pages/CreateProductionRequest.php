@@ -77,8 +77,11 @@ class CreateProductionRequest extends Page implements Forms\Contracts\HasForms
         $additionalInfo = $data['additional_info'] ?? [];
         $additionalInfo['card_payment_profile_id'] = $data['card_payment_profile_id'] ?? null;
         $additionalInfo['payment_date'] = $data['payment_date'] ?? null;
+        $additionalInfo['auto_register_receipt_on_due_date'] = (bool) ($data['auto_register_receipt_on_due_date'] ?? false);
+        $additionalInfo['auto_receipt_financial_account_id'] = $data['auto_receipt_financial_account_id'] ?? null;
 
         unset($data['card_payment_profile_id'], $data['payment_date'], $data['is_manual_counterparty']);
+        unset($data['auto_register_receipt_on_due_date'], $data['auto_receipt_financial_account_id']);
 
         if (filled($data['customer_id'] ?? null)) {
             $data['manual_counterparty_name'] = null;

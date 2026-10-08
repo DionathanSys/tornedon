@@ -7,7 +7,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ProductionRequest\Status;
 use App\Models\AccountReceivableInstallment;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\FinancialAccount;
 use App\Models\Product;
 use App\Models\ProductionRequest;
@@ -226,6 +226,11 @@ class ProductionRequestService
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
             'financial_category_id' => ['nullable', 'integer', 'exists:financial_categories,id'],
             'observations' => ['nullable', 'string'],
+            'additional_info' => ['nullable', 'array'],
+            'additional_info.card_payment_profile_id' => ['nullable', 'integer'],
+            'additional_info.payment_date' => ['nullable', 'date'],
+            'additional_info.auto_register_receipt_on_due_date' => ['nullable', 'boolean'],
+            'additional_info.auto_receipt_financial_account_id' => ['nullable', 'integer'],
         ];
 
         $validated = validator($data, $rules)->validate();
@@ -265,6 +270,8 @@ class ProductionRequestService
             'document_number' => $request->number,
             'description' => sprintf('Referente ao pedido para producao %s', $request->number),
             'paid' => false,
+            'auto_register_receipt_on_due_date' => (bool) data_get($request->additional_info, 'auto_register_receipt_on_due_date', false),
+            'auto_receipt_financial_account_id' => data_get($request->additional_info, 'auto_receipt_financial_account_id'),
             'payment_method' => $paymentMethod?->value,
             'payment_condition' => $condition?->value,
             'card_payment_profile_id' => data_get($request->additional_info, 'card_payment_profile_id'),
@@ -289,18 +296,18 @@ class ProductionRequestService
 
             if ($profileId <= 0) {
                 throw ValidationException::withMessages([
-                    'card_payment_profile_id' => ['Informe o perfil de recebimento em cartao.'],
+                    'card_payment_profile_id' => ['Informe a instituição de cartão.'],
                 ]);
             }
 
-            $profile = CardPaymentProfile::query()
+            $profile = CardInstitution::query()
                 ->where('company_id', $request->company_id)
                 ->where('active', true)
                 ->find($profileId);
 
             if (! $profile) {
                 throw ValidationException::withMessages([
-                    'card_payment_profile_id' => ['Perfil de cartao invalido para a empresa informada.'],
+                    'card_payment_profile_id' => ['Instituição de cartão inválida para a empresa informada.'],
                 ]);
             }
 

@@ -16,13 +16,14 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use Livewire\Component;
 
 final class RegisterInstallmentPaymentAction
 {
     public static function make(): Action
     {
         return Action::make('register_payment')
-            ->label('Registrar recebimento')
+            ->label('Registrar recebimento / antecipação')
             ->icon('heroicon-o-currency-dollar')
             ->color('success')
             ->schema(fn (Schema $schema) => $schema
@@ -45,7 +46,8 @@ final class RegisterInstallmentPaymentAction
                     Money::make('amount')
                         ->label('Valor recebido')
                         ->columnSpan(1)
-                        ->default(fn (AccountReceivableInstallment $record) => $record->due_amount)
+                        ->default(fn (AccountReceivableInstallment $record) => $record->balance_amount)
+                        ->helperText('Informe o valor recebido. Para antecipação parcial, o restante permanece em aberto até o repasse.')
                         ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('interest_amount')
@@ -117,7 +119,7 @@ final class RegisterInstallmentPaymentAction
                     ->success()
                     ->send();
             })
-            ->after(function (\Livewire\Component $livewire): void {
+            ->after(function (Component $livewire): void {
                 $livewire->dispatch('refresh-installments');
                 $livewire->dispatch('refresh-payments');
             });

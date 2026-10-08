@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class CardReceivableCalculatorServiceTest extends TestCase
 {
-    public function test_calculates_fee_net_and_expected_settlement_date(): void
+    public function test_calculates_settlement_date_without_applying_legacy_fees(): void
     {
         $profile = new CardPaymentProfile([
             'id' => 10,
@@ -21,12 +21,13 @@ class CardReceivableCalculatorServiceTest extends TestCase
             'active' => true,
         ]);
 
-        $service = new CardReceivableCalculatorService();
+        $service = new CardReceivableCalculatorService;
         $result = $service->calculateFromProfile($profile, 1000, '2026-05-04');
 
         $this->assertSame(1000.0, $result->grossAmount);
-        $this->assertSame(35.30, $result->feeAmount);
-        $this->assertSame(964.70, $result->netAmount);
+        $this->assertSame(0.0, $result->feeAmount);
+        $this->assertSame(1000.0, $result->netAmount);
+        $this->assertArrayNotHasKey('fee_percent', $result->snapshot);
         $this->assertSame(30, $result->settlementDays);
         $this->assertSame('2026-06-03', $result->expectedSettlementDate);
         $this->assertSame(10, $result->snapshot['profile_id']);

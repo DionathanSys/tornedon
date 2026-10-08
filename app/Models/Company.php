@@ -84,7 +84,12 @@ class Company extends Model
 
     public function cardPaymentProfiles(): HasMany
     {
-        return $this->hasMany(CardPaymentProfile::class);
+        return $this->cardInstitutions();
+    }
+
+    public function cardInstitutions(): HasMany
+    {
+        return $this->hasMany(CardInstitution::class);
     }
 
     public function companyCreditCards(): HasMany

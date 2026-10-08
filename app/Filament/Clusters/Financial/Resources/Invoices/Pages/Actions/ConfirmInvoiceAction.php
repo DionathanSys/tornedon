@@ -4,9 +4,10 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
+use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\CompanyPreference;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
@@ -66,13 +67,19 @@ final class ConfirmInvoiceAction
                                     ->label('Forma de Pagamento')
                                     ->options(Method::toSelectArray())
                                     ->default(fn (Invoice $record): ?string => $record->payment_method?->value)
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        if ($state === Method::CREDIT_CARD->value) {
+                                            $set('mark_as_received', false);
+                                        }
+                                    })
                                     ->native(false)
                                     ->live()
                                     ->required(),
 
                                 Select::make('card_payment_profile_id')
-                                    ->label('Perfil de Recebimento no Cartão')
-                                    ->options(fn (): array => CardPaymentProfile::query()
+                                    ->label('Instituição de cartão')
+                                    ->default(fn (): ?int => CardInstitution::defaultIdForCompany((int) Filament::getTenant()?->id))
+                                    ->options(fn (): array => CardInstitution::query()
                                         ->where('company_id', Filament::getTenant()?->id)
                                         ->where('active', true)
                                         ->orderBy('name')
@@ -83,7 +90,7 @@ final class ConfirmInvoiceAction
                                     ->native(false)
                                     ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
                                     ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
-                                    ->helperText('Define as taxas e o prazo D+X aplicados no contas a receber.'),
+                                    ->helperText('Define o prazo de repasse usado no vencimento das contas a receber.'),
 
                                 DatePicker::make('payment_date')
                                     ->label('Data da Venda/Pagamento no Cartão')
@@ -98,15 +105,17 @@ final class ConfirmInvoiceAction
                                     ->default(fn (Invoice $record): ?string => $record->payment_condition?->value)
                                     ->native(false)
                                     ->live()
-                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
                                         $condition = Condition::tryFrom((string) $state);
 
-                                        if ($condition?->isCash()) {
+                                        if ($condition?->isCash() && $get('payment_method') !== Method::CREDIT_CARD->value) {
                                             $set('mark_as_received', true);
                                         }
                                     })
                                     ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
-                                    ->helperText('Em cartao, informe apenas se precisar parcelar comercialmente. O primeiro vencimento seguira o prazo D+X do perfil da operadora.'),
+                                    ->helperText('Em cartão, o primeiro vencimento segue o prazo da instituição; as demais parcelas vencem a cada 30 dias.'),
+
+                                ...AutoReceiptFields::components(),
 
                                 SelectFinancialCategory::make('financial_category_id', 'receivable')
                                     ->label('Categoria Financeira')
@@ -116,9 +125,9 @@ final class ConfirmInvoiceAction
 
                                 Checkbox::make('mark_as_received')
                                     ->label('Marcar valores da fatura como já recebidos')
-                                    ->helperText('Quando marcado, os pagamentos das parcelas do contas a receber serão registrados automaticamente ao confirmar a fatura.')
+                                    ->helperText('No cartão, marque apenas se o repasse da instituição já entrou na conta da empresa.')
                                     ->live()
-                                    ->default(fn (Invoice $record): bool => $record->payment_condition?->isCash() ?? false),
+                                    ->default(fn (Invoice $record): bool => $record->payment_method !== Method::CREDIT_CARD && ($record->payment_condition?->isCash() ?? false)),
 
                                 DatePicker::make('received_at')
                                     ->label('Data do recebimento')

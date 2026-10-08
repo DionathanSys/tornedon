@@ -5,9 +5,10 @@ namespace App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\ProductionRequest\Status;
+use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\CompanyPreference;
 use App\Models\FinancialCategory;
 use App\Models\ProductionRequest;
@@ -99,8 +100,9 @@ class ProductionRequestForm
                 ->required()
                 ->columnSpan(['md' => 2, 'lg' => 3]),
             Select::make('card_payment_profile_id')
-                ->label('Perfil de Recebimento no Cartão')
-                ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()?->id ?? 0))
+                ->label('Instituição de cartão')
+                ->options(fn (): array => CardInstitution::optionsForCompany(Filament::getTenant()?->id ?? 0))
+                ->default(fn (): ?int => CardInstitution::defaultIdForCompany(Filament::getTenant()?->id ?? 0))
                 ->native(false)
                 ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                 ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
@@ -115,6 +117,7 @@ class ProductionRequestForm
         ];
 
         return $schema
+            // Automatic receipt settings are copied to the receivable on delivery.
             ->columns(['sm' => 1, 'md' => 4, 'lg' => 12])
             ->components([
                 ...($includeOrderData ? ($useSections ? [
@@ -131,8 +134,8 @@ class ProductionRequestForm
                         ->columnSpanFull()
                         ->collapsible()
                         ->persistCollapsed()
-                        ->schema($financialFields),
-                ] : $financialFields),
+                        ->schema([...$financialFields, ...AutoReceiptFields::components()]),
+                ] : [...$financialFields, ...AutoReceiptFields::components()]),
                 Hidden::make('company_id'),
             ]);
     }

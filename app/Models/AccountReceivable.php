@@ -39,6 +39,8 @@ class AccountReceivable extends Model
         'settlement_days_snapshot',
         'expected_settlement_date',
         'card_rule_snapshot',
+        'auto_register_receipt_on_due_date',
+        'auto_receipt_financial_account_id',
     ];
 
     protected $casts = [
@@ -58,6 +60,7 @@ class AccountReceivable extends Model
         'settlement_days_snapshot' => 'integer',
         'card_rule_snapshot' => 'array',
         'paid' => 'boolean',
+        'auto_register_receipt_on_due_date' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -88,7 +91,12 @@ class AccountReceivable extends Model
 
     public function cardPaymentProfile(): BelongsTo
     {
-        return $this->belongsTo(CardPaymentProfile::class);
+        return $this->cardInstitution();
+    }
+
+    public function cardInstitution(): BelongsTo
+    {
+        return $this->belongsTo(CardInstitution::class, 'card_payment_profile_id');
     }
 
     public function installments(): HasMany

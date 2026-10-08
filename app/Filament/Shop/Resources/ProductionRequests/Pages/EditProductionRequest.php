@@ -339,6 +339,8 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             'is_manual_counterparty' => blank($this->record->customer_id) && filled($this->record->manual_counterparty_name),
             'card_payment_profile_id' => data_get($this->record->additional_info, 'card_payment_profile_id'),
             'payment_date' => data_get($this->record->additional_info, 'payment_date'),
+            'auto_register_receipt_on_due_date' => (bool) data_get($this->record->additional_info, 'auto_register_receipt_on_due_date', false),
+            'auto_receipt_financial_account_id' => data_get($this->record->additional_info, 'auto_receipt_financial_account_id'),
         ]);
     }
 
@@ -372,8 +374,11 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $additionalInfo = $data['additional_info'] ?? [];
         $additionalInfo['card_payment_profile_id'] = $data['card_payment_profile_id'] ?? null;
         $additionalInfo['payment_date'] = $data['payment_date'] ?? null;
+        $additionalInfo['auto_register_receipt_on_due_date'] = (bool) ($data['auto_register_receipt_on_due_date'] ?? false);
+        $additionalInfo['auto_receipt_financial_account_id'] = $data['auto_receipt_financial_account_id'] ?? null;
 
         unset($data['card_payment_profile_id'], $data['payment_date'], $data['is_manual_counterparty']);
+        unset($data['auto_register_receipt_on_due_date'], $data['auto_receipt_financial_account_id']);
 
         if (filled($data['customer_id'] ?? null)) {
             $data['manual_counterparty_name'] = null;

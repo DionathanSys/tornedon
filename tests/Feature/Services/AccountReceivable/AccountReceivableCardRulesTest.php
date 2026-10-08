@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Services\AccountReceivable;
 
-use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Invoice\Status as InvoiceStatus;
+use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\CardPaymentProfile;
 use App\Models\Company;
@@ -99,8 +99,9 @@ class AccountReceivableCardRulesTest extends TestCase
         $fresh = $receivable->fresh();
         $this->assertSame(1000.0, (float) $fresh->due_amount);
         $this->assertSame(1000.0, (float) $fresh->gross_amount);
-        $this->assertSame(30.40, (float) $fresh->card_fee_amount);
-        $this->assertSame(969.60, (float) $fresh->net_amount);
+        $this->assertSame(0.0, (float) $fresh->card_fee_amount);
+        $this->assertSame(1000.0, (float) $fresh->net_amount);
+        $this->assertSame('2026-06-03', $fresh->installments()->first()->due_date->toDateString());
         $this->assertSame('2026-06-03', $fresh->expected_settlement_date?->toDateString());
         $this->assertSame($profile->id, (int) $fresh->card_payment_profile_id);
         $this->assertSame($profile->id, (int) data_get($fresh->card_rule_snapshot, 'profile_id'));

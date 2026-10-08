@@ -9,10 +9,11 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivable;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\CostCenter;
 use App\Models\ResultCenter;
 use App\Services\Financial\Banking\BankSlipEligibilityService;
@@ -244,9 +245,10 @@ class AccountReceivableForm
                             ->dehydrated(fn (Get $get): bool => $get('payment_method') === PaymentMethod::BANK_SLIP->value)
                             ->helperText('A conta precisa possuir conexão bancária ativa para emissão.'),
                         Select::make('card_payment_profile_id')
-                            ->label('Perfil de Cartão')
+                            ->label('Instituição de cartão')
                             ->columnSpan(['md' => 2])
-                            ->options(fn (): array => CardPaymentProfile::optionsForCompany(Filament::getTenant()->id))
+                            ->options(fn (): array => CardInstitution::optionsForCompany(Filament::getTenant()->id))
+                            ->default(fn (): ?int => CardInstitution::defaultIdForCompany(Filament::getTenant()->id))
                             ->searchable()
                             ->preload()
                             ->native(false)
@@ -260,17 +262,6 @@ class AccountReceivableForm
                             ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->required(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value)
                             ->live(onBlur: true),
-                        TextEntry::make('card_fee_preview')
-                            ->label('Taxa calculada')
-                            ->state(fn (callable $get): string => static::buildCardFeePreview($get))
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->columnStart(1)
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
-                        TextEntry::make('card_net_preview')
-                            ->label('Liquido previsto')
-                            ->state(fn (callable $get): string => static::buildCardNetPreview($get))
-                            ->columnSpan(['md' => 1, 'lg' => 2])
-                            ->visible(fn (callable $get): bool => (string) ($get('payment_method') ?? '') === PaymentMethod::CREDIT_CARD->value),
                         TextEntry::make('card_settlement_preview')
                             ->label('Previsão de recebimento')
                             ->state(fn (callable $get): string => static::buildCardSettlementPreview($get))
@@ -284,6 +275,7 @@ class AccountReceivableForm
                             ->columnStart(1)
                             ->maxLength(255)
                             ->helperText('Usada como sugestão para as parcelas quando nenhuma descrição individual for informada.'),
+                        ...AutoReceiptFields::components(),
                         Toggle::make('paid')
                             ->label('Recebido')
                             ->inline(false)
@@ -311,28 +303,6 @@ class AccountReceivableForm
             ]);
     }
 
-    private static function buildCardFeePreview(callable $get): string
-    {
-        $preview = static::resolveCardCalculationPreview($get);
-
-        if ($preview === null) {
-            return '-';
-        }
-
-        return 'R$ '.number_format((float) $preview->feeAmount, 2, ',', '.');
-    }
-
-    private static function buildCardNetPreview(callable $get): string
-    {
-        $preview = static::resolveCardCalculationPreview($get);
-
-        if ($preview === null) {
-            return '-';
-        }
-
-        return 'R$ '.number_format((float) $preview->netAmount, 2, ',', '.');
-    }
-
     private static function buildCardSettlementPreview(callable $get): string
     {
         $preview = static::resolveCardCalculationPreview($get);
@@ -352,7 +322,7 @@ class AccountReceivableForm
             return null;
         }
 
-        $profile = CardPaymentProfile::query()->find($profileId);
+        $profile = CardInstitution::query()->where('company_id', Filament::getTenant()?->id)->active()->find($profileId);
 
         if (! $profile) {
             return null;

@@ -7,7 +7,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
-use App\Models\CardPaymentProfile;
+use App\Models\CardInstitution;
 use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\Actions\CreateAccountReceivableAction;
 use App\Services\AccountReceivable\Actions\DeleteAccountReceivableAction;
@@ -156,11 +156,19 @@ class AccountReceivableService
             return DB::transaction(function () use ($accountReceivable, $data, $updatedBy) {
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountReceivable);
+                $originalFirstDueDate = $accountReceivable->due_date->copy();
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
-                $data['customer_id'] = $this->normalizeCounterpartyId($data['customer_id'] ?? null);
-                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
+                $data['customer_id'] = $this->normalizeCounterpartyId(array_key_exists('customer_id', $data) ? $data['customer_id'] : $accountReceivable->customer_id);
+                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName(array_key_exists('manual_counterparty_name', $data) ? $data['manual_counterparty_name'] : $accountReceivable->manual_counterparty_name);
                 unset($data['is_manual_counterparty']);
+                $cardTermsChanged = $this->cardTermsChanged($accountReceivable, $data);
                 $data = $this->applyCardRulesForUpdate($accountReceivable, $data);
+                $data['company_id'] = $accountReceivable->company_id;
+                $data['auto_register_receipt_on_due_date'] = $data['auto_register_receipt_on_due_date']
+                    ?? $accountReceivable->auto_register_receipt_on_due_date;
+                if (! array_key_exists('auto_receipt_financial_account_id', $data)) {
+                    $data['auto_receipt_financial_account_id'] = $accountReceivable->auto_receipt_financial_account_id;
+                }
 
                 $action = new UpdateAccountReceivableAction($updatedBy, $accountReceivable);
                 $updated = $action->execute($data);
@@ -184,6 +192,24 @@ class AccountReceivableService
                     ]);
 
                     return null;
+                }
+
+                if ($cardTermsChanged && isset($data['expected_settlement_date']) && $updated->payment_method === PaymentMethod::CREDIT_CARD) {
+                    $installments = $updated->installments()->orderBy('sequence_number')->lockForUpdate()->get();
+                    $daysOffset = (int) $originalFirstDueDate->diffInDays(Carbon::parse($data['expected_settlement_date']), false);
+                    $totalCents = (int) round((float) $data['due_amount'] * 100);
+                    $count = $installments->count();
+
+                    foreach ($installments as $index => $installment) {
+                        $amountCents = intdiv($totalCents, $count)
+                            + ($index === $count - 1 ? $totalCents % $count : 0);
+                        $installment->update([
+                            'due_date' => $installment->due_date->copy()->addDays($daysOffset)->toDateString(),
+                            'original_amount' => $amountCents / 100,
+                            'due_amount' => $amountCents / 100,
+                            'balance_amount' => $amountCents / 100,
+                        ]);
+                    }
                 }
 
                 $syncAction = new SyncAccountReceivableStatusFromInstallmentsAction($updated);
@@ -246,9 +272,19 @@ class AccountReceivableService
 
         try {
             return DB::transaction(function () use ($installment, $amount, $paymentDate, $extra) {
+                $installment = AccountReceivableInstallment::query()->lockForUpdate()->findOrFail($installment->id);
                 $audit = app(AuditRecorder::class);
                 $userId = $extra['user_id'] ?? auth()->id();
                 $installment->loadMissing('accountReceivable');
+                if ($installment->accountReceivable->payment_method === PaymentMethod::CREDIT_CARD) {
+                    $available = round((float) $installment->balance_amount
+                        + (float) ($extra['interest_amount'] ?? 0)
+                        + (float) ($extra['fine_amount'] ?? 0)
+                        - (float) ($extra['discount_amount'] ?? 0), 2);
+                    if (round($amount, 2) > $available) {
+                        throw ValidationException::withMessages(['amount' => ['O recebimento não pode exceder o saldo em aberto da parcela.']]);
+                    }
+                }
                 $before = $audit->snapshot($installment->accountReceivable);
                 $paymentAction = new RegisterAccountReceivableInstallmentPaymentAction($installment);
                 $payment = $paymentAction->execute([
@@ -975,6 +1011,8 @@ class AccountReceivableService
 
         return [
             ...$data,
+            'card_payment_profile_id' => $profile->id,
+            'due_date' => $calculation->expectedSettlementDate,
             'due_amount' => $calculation->grossAmount,
             'gross_amount' => $calculation->grossAmount,
             'card_fee_percent_snapshot' => $calculation->feePercent,
@@ -987,12 +1025,32 @@ class AccountReceivableService
         ];
     }
 
+    private function cardTermsChanged(AccountReceivable $accountReceivable, array $data): bool
+    {
+        return (isset($data['payment_method']) && $data['payment_method'] !== $accountReceivable->payment_method?->value)
+            || (isset($data['card_payment_profile_id']) && (int) $data['card_payment_profile_id'] !== (int) $accountReceivable->card_payment_profile_id)
+            || (isset($data['payment_date']) && $data['payment_date'] !== $accountReceivable->payment_date?->toDateString())
+            || (isset($data['due_amount']) && round((float) $data['due_amount'], 2) !== round((float) $accountReceivable->due_amount, 2));
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function applyCardRulesForUpdate(AccountReceivable $accountReceivable, array $data): array
     {
+        // Editing receipt settings must not recalculate historical terms or fees.
+        if (! $this->cardTermsChanged($accountReceivable, $data)) {
+            return $data;
+        }
+
+        if (($accountReceivable->payment_method === PaymentMethod::CREDIT_CARD
+            || ($data['payment_method'] ?? null) === PaymentMethod::CREDIT_CARD->value)
+            && $accountReceivable->payments()->exists()) {
+            throw ValidationException::withMessages([
+                'card_payment_profile_id' => ['Não é possível alterar as condições de cartão após registrar recebimentos.'],
+            ]);
+        }
         $currentMethod = $accountReceivable->payment_method?->value;
         $nextMethod = (string) ($data['payment_method'] ?? $currentMethod ?? '');
 
@@ -1031,6 +1089,7 @@ class AccountReceivableService
             ...$data,
             'card_payment_profile_id' => $profile->id,
             'payment_date' => $paymentDate,
+            'due_date' => $calculation->expectedSettlementDate,
             'due_amount' => $calculation->grossAmount,
             'gross_amount' => $calculation->grossAmount,
             'card_fee_percent_snapshot' => $calculation->feePercent,
@@ -1043,27 +1102,27 @@ class AccountReceivableService
         ];
     }
 
-    private function resolveCardProfile(int $companyId, int $profileId): CardPaymentProfile
+    private function resolveCardProfile(int $companyId, int $profileId): CardInstitution
     {
         if ($companyId <= 0 || $profileId <= 0) {
             throw ValidationException::withMessages([
-                'card_payment_profile_id' => ['Perfil de cartao invalido para o recebimento em cartao.'],
+                'card_payment_profile_id' => ['Instituição de cartão inválida para o recebimento.'],
             ]);
         }
 
-        $profile = CardPaymentProfile::query()
+        $profile = CardInstitution::query()
             ->where('company_id', $companyId)
             ->find($profileId);
 
         if (! $profile) {
             throw ValidationException::withMessages([
-                'card_payment_profile_id' => ['Perfil de cartao nao encontrado para a empresa informada.'],
+                'card_payment_profile_id' => ['Instituição de cartão não encontrada para a empresa informada.'],
             ]);
         }
 
         if (! $profile->active) {
             throw ValidationException::withMessages([
-                'card_payment_profile_id' => ['O perfil de cartao selecionado esta inativo.'],
+                'card_payment_profile_id' => ['A instituição de cartão selecionada está inativa.'],
             ]);
         }
 
