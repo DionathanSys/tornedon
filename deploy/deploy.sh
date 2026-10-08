@@ -41,6 +41,21 @@ run_in_root() {
     (cd "$ROOT_DIR" && "$@")
 }
 
+prepare_dependencies() {
+    log "Removendo caches de providers e configuracao antes de instalar dependencias"
+
+    # Artisan cannot boot if these caches reference packages absent from vendor.
+    if ! rm -f -- "${ROOT_DIR}/bootstrap/cache/packages.php" \
+        "${ROOT_DIR}/bootstrap/cache/services.php" \
+        "${ROOT_DIR}/bootstrap/cache/config.php"; then
+        log "Nao foi possivel remover os caches. Ajuste as permissoes de bootstrap/cache para o usuario ${DEPLOY_USER} e execute o deploy novamente."
+        return 1
+    fi
+
+    log "Instalando dependencias de producao do Composer"
+    run_in_root "$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction
+}
+
 check_database_connection() {
     local db_check_output
 
@@ -48,11 +63,16 @@ check_database_connection() {
 
     if db_check_output="$(
         cd "$ROOT_DIR" && "$PHP_BIN" -r '
-            require "vendor/autoload.php";
+            try {
+                require "vendor/autoload.php";
 
-            $app = require "bootstrap/app.php";
-            $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-            $kernel->bootstrap();
+                $app = require "bootstrap/app.php";
+                $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+                $kernel->bootstrap();
+            } catch (Throwable $e) {
+                fwrite(STDERR, "Falha ao inicializar o Laravel antes de testar o banco: " . $e->getMessage() . "\n");
+                exit(1);
+            }
 
             $defaultConnection = config("database.default");
             $connectionConfig = config("database.connections." . $defaultConnection, []);
@@ -91,7 +111,7 @@ check_database_connection() {
     fi
 
     printf '%s\n' "${db_check_output}" >&2
-    log "Abortando deploy antes do modo de manutencao porque o banco nao respondeu."
+    log "Abortando deploy antes do modo de manutencao: falha na inicializacao do Laravel ou na conexao com o banco."
     return 1
 }
 
@@ -239,6 +259,7 @@ log "Atualizando o codigo da branch ${APP_BRANCH}"
 run_in_root "$GIT_BIN" pull origin "$APP_BRANCH"
 
 normalize_permissions
+prepare_dependencies
 
 if [[ "${RUN_MIGRATIONS}" == "1" ]]; then
     check_database_connection
@@ -249,9 +270,6 @@ if [[ "${MAINTENANCE_MODE}" == "1" ]]; then
     run_in_root "$PHP_BIN" "$ARTISAN" down
     MAINTENANCE_STARTED=1
 fi
-
-# log "Instalando dependencias do Composer"
-# run_in_root "$COMPOSER_BIN" install --no-dev --optimize-autoloader
 
 if [[ "${BUILD_FRONTEND}" == "1" ]]; then
     log "Instalando dependencias do frontend"
