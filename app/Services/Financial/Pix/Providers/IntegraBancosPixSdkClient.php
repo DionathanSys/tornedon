@@ -24,7 +24,7 @@ final class IntegraBancosPixSdkClient implements IntegraBancosPixClientInterface
 
     public function query(array $payload): array
     {
-        return $this->toArray($this->client()->consultar($payload));
+        return $this->toArray($this->client()->consultarPix($payload));
     }
 
     private function client(): Pix

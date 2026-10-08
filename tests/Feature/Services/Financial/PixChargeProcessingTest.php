@@ -233,7 +233,7 @@ class PixChargeProcessingTest extends TestCase
     public function test_query_registers_one_idempotent_receivable_payment_when_pix_is_paid(): void
     {
         $client = Mockery::mock(IntegraBancosPixClientInterface::class);
-        $client->shouldReceive('query')->once()->with(Mockery::on(fn (array $payload): bool => $payload['identificacao'] === 'PX-TEST'))
+        $client->shouldReceive('query')->once()->with(['codigo_banco' => '999', 'identificacao' => 'PX-TEST'])
             ->andReturn([
                 'sucesso' => true,
                 'identificacao' => 'PX-TEST',

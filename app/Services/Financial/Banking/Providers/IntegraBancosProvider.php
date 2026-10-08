@@ -53,7 +53,10 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
 
     public function query(BankSlip $bankSlip): BankSlipProviderResult
     {
+        $bankSlip->loadMissing('connection.bank');
+
         return $this->sendProviderRequest($bankSlip, 'query', fn (): array => $this->client->query([
+            'codigo_banco' => (string) $bankSlip->connection?->bank?->code,
             'identificacao' => $bankSlip->provider_identification,
         ]));
     }

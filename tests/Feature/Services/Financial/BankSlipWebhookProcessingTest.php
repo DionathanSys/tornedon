@@ -438,7 +438,7 @@ class BankSlipWebhookProcessingTest extends TestCase
         $client = Mockery::mock(IntegraBancosClientInterface::class);
         $client->shouldReceive('query')
             ->once()
-            ->with(['identificacao' => 'BS-TEST-001'])
+            ->with(['codigo_banco' => '999', 'identificacao' => 'BS-TEST-001'])
             ->andReturn([
                 'sucesso' => true,
                 'codigo' => 10,

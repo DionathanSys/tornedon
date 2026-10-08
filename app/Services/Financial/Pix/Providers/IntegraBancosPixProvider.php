@@ -36,6 +36,7 @@ final class IntegraBancosPixProvider implements PixProviderInterface
         $charge->loadMissing('connection.bank');
 
         return $this->sendProviderRequest($charge, 'query', fn (): array => $this->client->query([
+            'codigo_banco' => (string) $charge->connection?->bank?->code,
             'identificacao' => $charge->provider_identification,
         ]));
     }
