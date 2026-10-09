@@ -6,6 +6,7 @@ use App\Enum\Requisition\Status;
 use App\Models\Requisition;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,22 @@ class RequisitionDetail extends Page
     public ?array $requisition = null;
 
     public string $record_id = '';
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('back')->label('Voltar')->icon('heroicon-o-arrow-left')->color('gray')
+                ->url(fn (): string => RequisitionList::getUrl(tenant: Filament::getTenant())),
+            Action::make('close')->label('Encerrar')->icon('heroicon-o-check-circle')->color('success')
+                ->visible(fn (): bool => $this->tenantRequisition()?->status === Status::OPEN)
+                ->requiresConfirmation()->modalHeading('Encerrar esta requisição?')
+                ->action(fn () => $this->close()),
+            Action::make('cancel')->label('Cancelar')->icon('heroicon-o-x-circle')->color('danger')
+                ->visible(fn (): bool => $this->tenantRequisition()?->status === Status::OPEN)
+                ->requiresConfirmation()->modalHeading('Cancelar esta requisição?')
+                ->action(fn () => $this->cancel()),
+        ];
+    }
 
     public function mount(int|string $record): void
     {

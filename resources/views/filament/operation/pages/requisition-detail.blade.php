@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <style>
-        .op-detail { display: grid; gap: 0.85rem; padding-bottom: 5rem; }
+        .op-detail { display: grid; gap: 0.85rem; }
         .op-card { border: 1px solid rgba(228,228,231,0.6); border-radius: 1rem; padding: 0.85rem; background: #fff; }
         .op-card__head { color: #fff; background: linear-gradient(135deg, #18181b, #334155); border-radius: 1rem; padding: 0.85rem; }
         .op-card__title { margin: 0; font-size: 1.05rem; font-weight: 850; }
@@ -23,11 +23,6 @@
         .op-item__stock--consumed { background: #dcfce7; color: #166534; }
         .op-item__stock--pending { background: #fef3c7; color: #92400e; }
         .op-item__meta { font-size: 0.72rem; color: #64748b; margin-top: 0.15rem; }
-        .op-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 60; display: grid; grid-template-columns: 1fr; gap: 0.4rem; padding: 0.65rem max(0.75rem, env(safe-area-inset-left)) max(0.65rem, env(safe-area-inset-bottom)); border-top: 1px solid rgba(228,228,231,0.5); background: rgba(248,250,252,0.96); backdrop-filter: blur(14px); }
-        .op-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; border: 0; border-radius: 0.8rem; font-size: 0.75rem; font-weight: 800; text-decoration: none; }
-        .op-btn--secondary { background: #e2e8f0; color: #334155; }
-        .op-btn--success { background: #16a34a; color: #fff; }
-        .op-btn--danger { background: #dc2626; color: #fff; }
         .op-empty { border-radius: 1rem; padding: 1.5rem; background: #fff; color: #64748b; text-align: center; font-size: 0.82rem; }
     </style>
 
@@ -87,17 +82,7 @@
             @endif
         </div>
 
-        <div class="op-actions" style="grid-template-columns: 1fr 1fr;">
-            <a href="{{ $requisition['list_url'] }}" class="op-btn op-btn--secondary" wire:navigate>Voltar</a>
-            @if ($requisition['is_open'])
-                <button type="button" wire:click="close" wire:confirm="Encerrar esta requisição?" class="op-btn op-btn--success" wire:loading.attr="disabled">Encerrar</button>
-                <button type="button" wire:click="cancel" wire:confirm="Cancelar esta requisição?" class="op-btn op-btn--danger" wire:loading.attr="disabled" style="grid-column: 1 / -1;">Cancelar</button>
-            @endif
-        </div>
     @else
         <div class="op-empty">Requisição não encontrada.</div>
-        <div class="op-actions">
-            <a href="{{ \App\Filament\Operation\Pages\Requisitions\RequisitionList::getUrl() }}" class="op-btn op-btn--secondary" wire:navigate>Voltar</a>
-        </div>
     @endif
 </x-filament-panels::page>

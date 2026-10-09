@@ -13,8 +13,10 @@ use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
 use App\Livewire\OperationMenu;
 use App\Models\Company;
+use App\Models\Equipment;
 use App\Models\Partner;
 use App\Models\Requisition;
+use App\Models\Service;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -171,6 +173,140 @@ class OperationPanelTest extends TestCase
             ->assertSee('Ordem de serviço não encontrada.');
     }
 
+    public function test_service_order_detail_adds_and_edits_services_and_refreshes_totals(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-ITEMS');
+        $service = Service::factory()->create(['company_id' => $company->id, 'created_by' => $user->id, 'price' => 150]);
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->set('formData.customer_observations', 'Anotação ainda não salva')
+            ->callAction('addService', data: [
+                'service_id' => $service->id,
+                'quantity' => '2',
+                'unit_price' => '150,00',
+                'discount_percentage' => '0,00',
+                'discount_amount' => '0,00',
+                'observations' => 'Serviço de manutenção',
+            ])
+            ->assertHasNoActionErrors()
+            ->assertSet('formData.customer_observations', 'Anotação ainda não salva')
+            ->assertSet('order.total', 'R$ 300,00');
+
+        $item = $order->items()->sole();
+        $this->assertSame($service->id, $item->service_id);
+        $this->assertSame('Serviço de manutenção', $item->observations);
+
+        $page->callAction('editService', data: [
+            'quantity' => '3',
+            'unit_price' => '150,00',
+            'discount_percentage' => '10,00',
+            'discount_amount' => '45,00',
+            'observations' => 'Serviço atualizado',
+        ], arguments: ['item' => $item->id])
+            ->assertHasNoActionErrors()
+            ->assertSet('order.total', 'R$ 405,00');
+
+        $this->assertSame('Serviço atualizado', $item->fresh()->observations);
+        $this->assertSame(405.0, (float) $item->fresh()->total_amount);
+
+        $page->callAction('editService', data: ['observations' => 'Somente observação'], arguments: ['item' => $item->id])
+            ->assertHasNoActionErrors()
+            ->assertSet('order.total', 'R$ 405,00');
+
+        $page->callAction('editService', data: [
+            'quantity' => '1,50', 'discount_percentage' => '0,00', 'discount_amount' => '0,00',
+        ], arguments: ['item' => $item->id])->assertHasNoActionErrors()
+            ->assertSet('order.total', 'R$ 225,00');
+    }
+
+    public function test_service_order_detail_saves_attendance_equipment_and_technician(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-ATTENDANCE');
+        $equipment = Equipment::query()->create([
+            'company_id' => $company->id, 'owner_id' => $order->customer_id,
+            'name' => 'Equipamento do cliente', 'created_by' => $user->id,
+        ]);
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->set('formData.technician_id', $user->id)
+            ->set('formData.equipment_id', $equipment->id)
+            ->set('formData.customer_observations', 'Falha relatada pelo cliente')
+            ->set('formData.items_received', 'Equipamento e cabo')
+            ->set('formData.general_observations', 'Verificar conexões')
+            ->call('save')->assertHasNoFormErrors();
+
+        $order->refresh();
+        $this->assertSame($user->id, $order->technician_id);
+        $this->assertSame($equipment->id, $order->equipment_id);
+        $this->assertSame('Falha relatada pelo cliente', $order->customer_observations);
+        $this->assertSame('Equipamento e cabo', $order->items_received);
+        $this->assertSame('Verificar conexões', $order->general_observations);
+    }
+
+    public function test_service_order_detail_rejects_services_from_another_company(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SERVICE-SCOPE');
+        $otherCompany = $this->createCompany($user, 'Outra Empresa');
+        $service = Service::factory()->create(['company_id' => $otherCompany->id, 'created_by' => $user->id]);
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->callAction('addService', data: [
+                'service_id' => $service->id, 'quantity' => '1', 'unit_price' => '150,00',
+            ])->assertHasActionErrors(['service_id']);
+
+        $this->assertSame(0, $order->items()->count());
+    }
+
+    public function test_service_order_detail_rejects_unrelated_equipment_and_technicians(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SELECTION-SCOPE');
+        $otherCustomer = $this->createCustomer($user, 'Outro cliente');
+        $equipment = Equipment::query()->create([
+            'company_id' => $company->id, 'owner_id' => $otherCustomer->id,
+            'name' => 'Equipamento de outro cliente', 'created_by' => $user->id,
+        ]);
+        $otherUser = User::factory()->create();
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->set('formData.equipment_id', $equipment->id)
+            ->set('formData.technician_id', $otherUser->id)
+            ->call('save')->assertHasFormErrors(['equipment_id', 'technician_id']);
+
+        $this->assertNull($order->fresh()->equipment_id);
+        $this->assertSame($user->id, $order->fresh()->technician_id);
+    }
+
+    public function test_service_order_detail_does_not_allow_service_changes_when_closed(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-CLOSED');
+        $order->update(['status' => State::CLOSED]);
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->assertActionHidden('addService')
+            ->assertActionHidden('editService');
+    }
+
+    public function test_service_order_detail_cannot_edit_an_item_from_another_order(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-OWN-ITEM');
+        $otherOrder = $this->createServiceOrder($user, $company, 'OS-OP-OTHER-ITEM');
+        $service = Service::factory()->create(['company_id' => $company->id, 'created_by' => $user->id]);
+        $item = $otherOrder->items()->create([
+            'service_id' => $service->id, 'quantity' => 1, 'unit_price' => 150, 'created_by' => $user->id,
+        ]);
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->mountAction('editService', arguments: ['item' => $item->id])->assertStatus(404);
+
+        $this->assertSame(150.0, (float) $item->fresh()->unit_price);
+    }
+
     public function test_requisition_detail_can_cancel_an_open_requisition(): void
     {
         [$user, $company] = $this->authenticateTenant();
@@ -188,7 +324,7 @@ class OperationPanelTest extends TestCase
         ]);
 
         Livewire::test(RequisitionDetail::class, ['record' => $requisition->id])
-            ->call('cancel');
+            ->callAction('cancel')->assertHasNoActionErrors();
 
         $this->assertSame(RequisitionStatus::CANCELLED, $requisition->fresh()->status);
     }

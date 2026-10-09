@@ -65,8 +65,8 @@
         background: #f8fafc;
     }
 
-    .fi-main {
-        padding-bottom: 0;
+    .fi-main.fi-main {
+        padding-bottom: calc(4.5rem + env(safe-area-inset-bottom) + 1.5rem);
     }
 </style>
 
