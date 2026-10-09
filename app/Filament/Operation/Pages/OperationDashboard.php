@@ -5,6 +5,7 @@ namespace App\Filament\Operation\Pages;
 use App\Enum\ServiceOrder\State;
 use App\Filament\Operation\Actions\CreateRequisitionAction;
 use App\Filament\Operation\Actions\CreateServiceOrderAction;
+use App\Filament\Operation\Concerns\HasOperationActions;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Models\ServiceOrder;
 use BackedEnum;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 
 class OperationDashboard extends Dashboard
 {
+    use HasOperationActions;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;
 
     protected static ?string $navigationLabel = 'Início';
@@ -31,7 +34,7 @@ class OperationDashboard extends Dashboard
 
     public array $recentOrders = [];
 
-    protected function getHeaderActions(): array
+    protected function getOperationActions(): array
     {
         return [
             CreateServiceOrderAction::make(),

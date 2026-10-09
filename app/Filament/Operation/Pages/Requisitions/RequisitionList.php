@@ -3,6 +3,7 @@
 namespace App\Filament\Operation\Pages\Requisitions;
 
 use App\Filament\Operation\Actions\CreateRequisitionAction;
+use App\Filament\Operation\Concerns\HasOperationActions;
 use App\Models\Requisition;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -11,6 +12,8 @@ use Filament\Support\Icons\Heroicon;
 
 class RequisitionList extends Page
 {
+    use HasOperationActions;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocument;
 
     protected static ?string $navigationLabel = 'Requisições';
@@ -35,7 +38,7 @@ class RequisitionList extends Page
 
     public int $allCount = 0;
 
-    protected function getHeaderActions(): array
+    protected function getOperationActions(): array
     {
         return [
             CreateRequisitionAction::make(),

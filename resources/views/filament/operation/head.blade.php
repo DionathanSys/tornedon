@@ -66,7 +66,39 @@
     }
 
     .fi-main.fi-main {
-        padding-bottom: calc(4.5rem + env(safe-area-inset-bottom) + 1.5rem);
+        padding-bottom: calc(var(--op-nav-offset, calc(4.5rem + env(safe-area-inset-bottom))) + var(--op-actions-height, 0px) + 1.5rem);
+    }
+
+    .op-action-bar {
+        position: fixed;
+        right: 0;
+        bottom: var(--op-nav-offset, calc(4.5rem + env(safe-area-inset-bottom)));
+        left: 0;
+        z-index: 49;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem max(0.75rem, env(safe-area-inset-right)) 0.75rem max(0.75rem, env(safe-area-inset-left));
+        border-top: 1px solid #e4e4e7;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(16px);
+    }
+
+    html.dark .op-action-bar {
+        border-color: #3f3f46;
+        background: rgba(24, 24, 27, 0.96);
+    }
+
+    @media (min-width: 768px) {
+        .op-action-bar {
+            right: 1rem;
+            left: 1rem;
+            max-width: 48rem;
+            margin-inline: auto;
+            border: 1px solid #e4e4e7;
+            border-radius: 1rem;
+        }
     }
 </style>
 

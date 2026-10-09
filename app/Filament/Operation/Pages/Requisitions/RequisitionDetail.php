@@ -3,6 +3,7 @@
 namespace App\Filament\Operation\Pages\Requisitions;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Operation\Concerns\HasOperationActions;
 use App\Models\Requisition;
 use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 
 class RequisitionDetail extends Page
 {
+    use HasOperationActions;
+
     protected static ?string $title = 'Detalhe da Requisição';
 
     protected static ?string $slug = 'requisicoes/{record}';
@@ -25,7 +28,7 @@ class RequisitionDetail extends Page
 
     public string $record_id = '';
 
-    protected function getHeaderActions(): array
+    protected function getOperationActions(): array
     {
         return [
             Action::make('back')->label('Voltar')->icon('heroicon-o-arrow-left')->color('gray')

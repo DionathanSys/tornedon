@@ -92,11 +92,6 @@
             @if ($order['can_edit'])
                 <form wire:submit="save">
                     {{ $this->form }}
-                    <div style="margin-top: 0.85rem;">
-                        <x-filament::button type="submit" icon="heroicon-o-check" wire:loading.attr="disabled" wire:target="save">
-                            Salvar
-                        </x-filament::button>
-                    </div>
                 </form>
             @else
                 <x-filament::section heading="Registro do Atendimento" collapsible collapsed>

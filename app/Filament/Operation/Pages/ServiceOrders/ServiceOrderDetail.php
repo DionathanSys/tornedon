@@ -5,6 +5,7 @@ namespace App\Filament\Operation\Pages\ServiceOrders;
 use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\Schemas\ServiceItemForm;
+use App\Filament\Operation\Concerns\HasOperationActions;
 use App\Models\Equipment;
 use App\Models\Service;
 use App\Models\ServiceOrder;
@@ -30,7 +31,7 @@ use Illuminate\Validation\Rule;
 
 class ServiceOrderDetail extends Page
 {
-    use ParsesMoneyValues;
+    use HasOperationActions, ParsesMoneyValues;
 
     protected static ?string $title = 'Detalhe da OS';
 
@@ -48,7 +49,7 @@ class ServiceOrderDetail extends Page
 
     public array $formData = [];
 
-    protected function getHeaderActions(): array
+    protected function getOperationActions(): array
     {
         return [
             Action::make('back')->label('Voltar')->icon('heroicon-o-arrow-left')->color('gray')

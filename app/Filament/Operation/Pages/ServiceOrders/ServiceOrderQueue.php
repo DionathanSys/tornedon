@@ -4,6 +4,7 @@ namespace App\Filament\Operation\Pages\ServiceOrders;
 
 use App\Enum\ServiceOrder\State;
 use App\Filament\Operation\Actions\CreateServiceOrderAction;
+use App\Filament\Operation\Concerns\HasOperationActions;
 use App\Models\ServiceOrder;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -12,6 +13,8 @@ use Filament\Support\Icons\Heroicon;
 
 class ServiceOrderQueue extends Page
 {
+    use HasOperationActions;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
     protected static ?string $navigationLabel = 'Ordens';
@@ -36,7 +39,7 @@ class ServiceOrderQueue extends Page
 
     public int $allCount = 0;
 
-    protected function getHeaderActions(): array
+    protected function getOperationActions(): array
     {
         return [
             CreateServiceOrderAction::make(),
