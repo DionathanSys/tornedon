@@ -82,7 +82,7 @@
             @if ($requisition['observations'])
                 <section class="op-card">
                     <div class="op-section-title">Observações</div>
-                    <p style="font-size: 0.82rem; color: #334155;">{{ $requisition['observations'] }}</p>
+                    <p class="op-body-text">{{ $requisition['observations'] }}</p>
                 </section>
             @endif
         </div>

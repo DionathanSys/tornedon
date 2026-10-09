@@ -39,7 +39,7 @@
                 </div>
                 <div class="op-kpi">
                     <p class="op-kpi__label">Abertas</p>
-                    <p class="op-kpi__value" style="color: #2563eb;">{{ $todayStats['open'] ?? 0 }}</p>
+                    <p class="op-kpi__value op-kpi__value--blue">{{ $todayStats['open'] ?? 0 }}</p>
                 </div>
                 <div class="op-kpi">
                     <p class="op-kpi__label">Encerradas</p>
@@ -61,7 +61,7 @@
                 </div>
                 <div class="op-kpi">
                     <p class="op-kpi__label">Agendadas Hoje</p>
-                    <p class="op-kpi__value" style="color: #d97706;">{{ $myStats['scheduled_today'] ?? 0 }}</p>
+                    <p class="op-kpi__value op-kpi__value--amber">{{ $myStats['scheduled_today'] ?? 0 }}</p>
                 </div>
             </div>
         </section>

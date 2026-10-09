@@ -69,3 +69,5 @@
         padding-bottom: 0;
     }
 </style>
+
+@include('filament.operation.theme')

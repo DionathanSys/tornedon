@@ -108,14 +108,14 @@
                 @if ($order['solution'])
                     <section class="op-card">
                         <div class="op-section-title">Solução Aplicada</div>
-                        <p style="font-size: 0.82rem; color: #334155;">{{ $order['solution'] }}</p>
+                        <p class="op-body-text">{{ $order['solution'] }}</p>
                     </section>
                 @endif
 
                 @if ($order['technician_observations'])
                     <section class="op-card">
                         <div class="op-section-title">Observações do Técnico</div>
-                        <p style="font-size: 0.82rem; color: #334155;">{{ $order['technician_observations'] }}</p>
+                        <p class="op-body-text">{{ $order['technician_observations'] }}</p>
                     </section>
                 @endif
             @endif

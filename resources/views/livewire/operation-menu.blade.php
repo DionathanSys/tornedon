@@ -65,6 +65,16 @@
             </x-filament::dropdown.list.item>
         </x-filament::dropdown.list>
 
+        @if (filament()->hasDarkMode() && (! filament()->hasDarkModeForced()))
+            <x-filament::dropdown.header :icon="\Filament\Support\Icons\Heroicon::OutlinedSwatch">
+                Aparência
+            </x-filament::dropdown.header>
+
+            <x-filament::dropdown.list>
+                <x-filament-panels::theme-switcher />
+            </x-filament::dropdown.list>
+        @endif
+
         @if ($panelLinks->isNotEmpty())
             <x-filament::dropdown.header :icon="\Filament\Support\Icons\Heroicon::OutlinedSquares2x2">
                 Outros painéis
