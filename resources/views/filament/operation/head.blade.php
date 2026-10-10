@@ -126,3 +126,4 @@
 </style>
 
 @include('filament.operation.theme')
+@include('filament.operation.modals.styles')

@@ -90,9 +90,15 @@ class OperationPanelTest extends TestCase
     {
         [, $company] = $this->authenticateTenant();
 
-        Livewire::test(ServiceOrderQueue::class)
+        $creationModal = Livewire::test(ServiceOrderQueue::class)
             ->assertActionExists('createServiceOrder')
-            ->assertActionVisible('createServiceOrder');
+            ->assertActionVisible('createServiceOrder')
+            ->mountAction('createServiceOrder')
+            ->assertActionMounted('createServiceOrder');
+
+        $this->assertFalse($creationModal->instance()->getMountedAction()->canCreateAnother());
+        $this->assertCount(2, $creationModal->instance()->getMountedAction()->getVisibleModalFooterActions());
+        $this->assertStringContainsString('Abrir ordem de serviço', $creationModal->instance()->getMountedAction()->getModalHeading()->render());
 
         $this->get(ServiceOrderQueue::getUrl(tenant: $company))
             ->assertOk()
