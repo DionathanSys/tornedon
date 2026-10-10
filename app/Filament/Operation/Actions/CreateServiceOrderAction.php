@@ -23,7 +23,7 @@ final class CreateServiceOrderAction
             ->hiddenLabel(false)
             ->createAnother(false)
             ->modalWidth(Width::Large)
-            ->extraModalWindowAttributes(['class' => 'op-create-order-modal'])
+            ->extraModalWindowAttributes(['class' => 'op-operation-modal op-create-order-modal'])
             ->modalHeading(fn (): HtmlString => new HtmlString(view('filament.operation.modals.create-service-order-heading')->render()))
             ->modalDescription('Um novo atendimento começa pelo cliente.')
             ->schema(fn (Schema $schema): Schema => $schema->components([

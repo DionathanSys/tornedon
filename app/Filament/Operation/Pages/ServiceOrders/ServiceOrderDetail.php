@@ -26,7 +26,10 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rule;
 
 class ServiceOrderDetail extends Page
@@ -62,7 +65,6 @@ class ServiceOrderDetail extends Page
                 ->visible(fn (): bool => $this->tenantOrder()?->status === State::OPEN)
                 ->requiresConfirmation()->modalHeading('Encerrar esta ordem de serviço?')
                 ->action(fn () => $this->close()),
-            $this->addServiceAction(),
             Action::make('cancel')->label('Cancelar')->icon('heroicon-o-x-circle')->color('danger')
                 ->visible(fn (): bool => $this->tenantOrder()?->status === State::OPEN)
                 ->requiresConfirmation()->modalHeading('Cancelar esta ordem de serviço?')
@@ -109,6 +111,17 @@ class ServiceOrderDetail extends Page
     {
         return Action::make('addService')->label('Adicionar serviço')->icon('heroicon-o-plus')
             ->visible(fn (): bool => $this->tenantOrder()?->status === State::OPEN)
+            ->modalWidth(Width::ExtraLarge)
+            ->extraModalWindowAttributes(['class' => 'op-operation-modal op-service-item-modal'])
+            ->modalHeading(fn (): HtmlString => new HtmlString(view('filament.operation.modals.heading', [
+                'icon' => Heroicon::OutlinedWrenchScrewdriver,
+                'eyebrow' => 'Serviços da ordem',
+                'title' => 'Adicionar serviço',
+            ])->render()))
+            ->modalDescription('Selecione o serviço e ajuste os valores para esta OS.')
+            ->modalSubmitActionLabel('Adicionar serviço')
+            ->modalSubmitAction(fn (Action $action): Action => $action->icon(Heroicon::Plus))
+            ->modalCancelActionLabel('Voltar')
             ->schema($this->serviceItemSchema())
             ->action(function (array $data, Action $action): void {
                 $this->persistServiceItem($data, $action);
@@ -119,6 +132,16 @@ class ServiceOrderDetail extends Page
     {
         return Action::make('editService')->label('Editar serviço')->icon('heroicon-o-pencil-square')
             ->visible(fn (): bool => $this->tenantOrder()?->status === State::OPEN)
+            ->modalWidth(Width::ExtraLarge)
+            ->extraModalWindowAttributes(['class' => 'op-operation-modal op-service-item-modal'])
+            ->modalHeading(fn (): HtmlString => new HtmlString(view('filament.operation.modals.heading', [
+                'icon' => Heroicon::OutlinedPencilSquare,
+                'eyebrow' => 'Serviços da ordem',
+                'title' => 'Editar serviço',
+            ])->render()))
+            ->modalDescription('Atualize a quantidade, os valores ou as observações do serviço.')
+            ->modalSubmitActionLabel('Salvar serviço')
+            ->modalCancelActionLabel('Voltar')
             ->schema($this->serviceItemSchema())
             ->fillForm(function (array $arguments): array {
                 $item = $this->tenantOrder()?->items()->with('service')->find($arguments['item'] ?? null);
@@ -145,6 +168,7 @@ class ServiceOrderDetail extends Page
     private function serviceItemSchema(): array
     {
         $values = ItemValueGroup::make([
+            'columns' => 2,
             'serviceIdField' => 'service_id',
             'preserveDiscountOnValueChange' => true,
             'enforceEffectiveMinSalePrice' => true,
@@ -156,10 +180,19 @@ class ServiceOrderDetail extends Page
                     ->mutateStateForValidationUsing(fn ($state): float => self::parseMoneyValue($state))
                     ->dehydrateStateUsing(fn ($state): float => self::parseMoneyValue($state));
             }
+
+            if ($field->getName() === 'unit_price') {
+                $field->label('Preço unitário');
+            }
+
+            if ($field->getName() === 'total_amount') {
+                $field->label('Total do serviço')->columnSpanFull();
+            }
         }
 
         return [
-            Select::make('service_id')->label('Serviço')->required()->searchable()
+            Select::make('service_id')->label('Qual serviço será realizado?')->required()->searchable()
+                ->placeholder('Buscar serviço por nome ou código')
                 ->getSearchResultsUsing(fn (string $search): array => Service::query()
                     ->where('company_id', Filament::getTenant()?->getKey())
                     ->where(fn ($query) => $query->where('name', 'like', "%{$search}%")
@@ -173,7 +206,8 @@ class ServiceOrderDetail extends Page
                 }),
             Hidden::make('item.min_sale_price')->saved(false)->default(0),
             $values,
-            Textarea::make('observations')->label('Observações')->maxLength(1000),
+            Textarea::make('observations')->label('Observações')->maxLength(1000)->rows(2)
+                ->placeholder('Detalhes específicos deste serviço, se necessário'),
         ];
     }
 

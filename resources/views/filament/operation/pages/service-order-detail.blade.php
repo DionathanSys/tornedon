@@ -68,9 +68,6 @@
 
             <section class="op-card">
                 <div class="op-section-title">Serviços ({{ count($order['items']) }})</div>
-                @if ($order['is_open'])
-                    <div style="margin-bottom: 0.75rem;">{{ $this->addServiceAction }}</div>
-                @endif
                 <div class="op-items">
                     @forelse ($order['items'] as $item)
                         <div class="op-item" wire:key="service-order-item-{{ $item['id'] }}">
@@ -104,6 +101,8 @@
                 </x-filament::section>
             @endif
         </div>
+
+        @include('filament.operation.floating-action', ['action' => $this->addServiceAction])
 
     @else
         <div class="op-empty">Ordem de serviço não encontrada.</div>

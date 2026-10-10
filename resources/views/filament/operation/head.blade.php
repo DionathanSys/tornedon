@@ -77,7 +77,7 @@
     .op-fab.op-fab {
         position: fixed;
         right: max(1.25rem, env(safe-area-inset-right));
-        bottom: calc(4.5rem + env(safe-area-inset-bottom) + 1rem);
+        bottom: calc(var(--op-bottom-space, calc(4.5rem + env(safe-area-inset-bottom))) + 1rem);
         z-index: 49;
         width: 3.5rem;
         height: 3.5rem;
@@ -126,7 +126,7 @@
     html.dark .op-record-actions .op-record-action--primary { background: #e4e4e7; color: #18181b; }
 
     @media (min-width: 768px) {
-        .op-fab.op-fab { bottom: 6.5rem; }
+        .op-fab.op-fab { bottom: calc(var(--op-bottom-space, 5.5rem) + 1rem); }
     }
 </style>
 

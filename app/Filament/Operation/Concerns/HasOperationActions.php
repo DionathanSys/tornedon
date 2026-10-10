@@ -19,10 +19,7 @@ trait HasOperationActions
     {
         if ($this->hasFloatingOperationAction()) {
             return view('filament.operation.floating-action', [
-                'action' => $this->cachedOperationActions[0]
-                    ->icon('heroicon-o-plus')->iconButton()
-                    ->tooltip($this->cachedOperationActions[0]->getLabel())
-                    ->extraAttributes(['class' => 'op-fab']),
+                'action' => $this->cachedOperationActions[0],
             ]);
         }
 
