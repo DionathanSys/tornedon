@@ -94,5 +94,9 @@
         @endif
     </x-filament::dropdown>
 
-    <x-filament-actions::modals />
+    @teleport('body')
+        <div class="op-menu-modals">
+            <x-filament-actions::modals />
+        </div>
+    @endteleport
 </div>

@@ -22,6 +22,7 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -83,7 +84,9 @@ class OperationPanelTest extends TestCase
         Livewire::test(OperationMenu::class)
             ->assertActionExists('switchTenant')
             ->assertActionExists('createServiceOrder')
-            ->assertActionExists('createRequisition');
+            ->assertActionExists('createRequisition')
+            ->assertSee('x-teleport="body"', false)
+            ->assertSee('op-menu-modals', false);
     }
 
     public function test_operation_lists_expose_their_create_actions(): void
@@ -98,7 +101,12 @@ class OperationPanelTest extends TestCase
 
         $this->assertFalse($creationModal->instance()->getMountedAction()->canCreateAnother());
         $this->assertCount(2, $creationModal->instance()->getMountedAction()->getVisibleModalFooterActions());
-        $this->assertStringContainsString('Abrir ordem de serviço', $creationModal->instance()->getMountedAction()->getModalHeading()->render());
+        $heading = Blade::render('{{ $heading }}', [
+            'heading' => $creationModal->instance()->getMountedAction()->getModalHeading(),
+        ]);
+        $this->assertStringContainsString('Abrir ordem de serviço', $heading);
+        $this->assertStringContainsString('<span class="op-create-order-heading">', $heading);
+        $this->assertStringNotContainsString('&lt;span', $heading);
 
         $this->get(ServiceOrderQueue::getUrl(tenant: $company))
             ->assertOk()

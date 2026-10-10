@@ -9,6 +9,11 @@
 >
 
 <style>
+    .fi-modal > .fi-modal-close-overlay,
+    .fi-modal > .fi-modal-window-ctn {
+        z-index: 60;
+    }
+
     @media (display-mode: standalone) {
         .fi-modal,
         .fi-modal-close-overlay {

@@ -11,6 +11,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 final class CreateServiceOrderAction
 {
@@ -23,7 +24,7 @@ final class CreateServiceOrderAction
             ->createAnother(false)
             ->modalWidth(Width::Large)
             ->extraModalWindowAttributes(['class' => 'op-create-order-modal'])
-            ->modalHeading(fn () => view('filament.operation.modals.create-service-order-heading'))
+            ->modalHeading(fn (): HtmlString => new HtmlString(view('filament.operation.modals.create-service-order-heading')->render()))
             ->modalDescription('Um novo atendimento começa pelo cliente.')
             ->schema(fn (Schema $schema): Schema => $schema->components([
                 SelectPartner::make('customer_id', 'customer')
