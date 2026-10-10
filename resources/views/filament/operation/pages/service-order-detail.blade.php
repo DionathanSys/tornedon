@@ -1,9 +1,9 @@
 <x-operation.page :title="$order ? 'OS #'.$order['number'] : 'Detalhe da OS'" :subtitle="$order ? $order['type'].' · '.$order['priority'].' · '.$order['order_date'] : null">
     @if ($order)
         <div class="grid grid-cols-3 gap-3">
-            <x-mary-stat title="Valor" :value="$order['total']" />
-            <x-mary-stat title="Status" :value="$order['status_label']" />
-            <x-mary-stat title="Local" :value="$order['location']" />
+            <x-operation.stat title="Valor" :value="$order['total']" />
+            <x-operation.stat title="Status" :value="$order['status_label']" />
+            <x-operation.stat title="Local" :value="$order['location']" />
         </div>
         <x-operation.panel title="Cliente" :subtitle="$order['customer_doc']">
             <p class="font-semibold">{{ $order['customer_name'] }}</p>
@@ -86,7 +86,7 @@
                 <x-mary-input label="Desconto (%)" wire:model.blur="serviceData.discount_percentage" suffix="%" inputmode="decimal" />
                 <x-mary-input label="Desconto (R$)" wire:model.blur="serviceData.discount_amount" prefix="R$" inputmode="decimal" />
             </div>
-            <x-mary-stat title="Total do serviço" :value="$this->serviceTotal" icon="o-banknotes" class="bg-base-200" />
+            <x-operation.stat title="Total do serviço" :value="$this->serviceTotal" icon="o-banknotes" class="bg-base-200" />
             <x-mary-textarea label="Observações" wire:model="serviceData.observations" placeholder="Detalhes específicos deste serviço" rows="2" />
             <x-slot:actions>
                 <x-mary-button label="Voltar" @click="$wire.showServiceModal = false" />

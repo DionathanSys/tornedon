@@ -2,17 +2,17 @@
     <section class="space-y-4">
         <h2 class="text-lg font-semibold">Hoje</h2>
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <x-mary-stat title="OS no dia" :value="$todayStats['total'] ?? 0" icon="o-clipboard-document-list" />
-            <x-mary-stat title="Abertas" :value="$todayStats['open'] ?? 0" icon="o-clock" color="text-info" />
-            <x-mary-stat title="Encerradas" :value="$todayStats['closed'] ?? 0" icon="o-check-circle" color="text-success" />
-            <x-mary-stat title="Faturamento" :value="$todayStats['revenue'] ?? 'R$ 0,00'" />
+            <x-operation.stat title="OS no dia" :value="$todayStats['total'] ?? 0" icon="o-clipboard-document-list" />
+            <x-operation.stat title="Abertas" :value="$todayStats['open'] ?? 0" icon="o-clock" color="text-info" />
+            <x-operation.stat title="Encerradas" :value="$todayStats['closed'] ?? 0" icon="o-check-circle" color="text-success" />
+            <x-operation.stat title="Faturamento" :value="$todayStats['revenue'] ?? 'R$ 0,00'" />
         </div>
     </section>
     <section class="space-y-4">
         <h2 class="text-lg font-semibold">Minhas Ordens</h2>
         <div class="grid grid-cols-2 gap-3">
-            <x-mary-stat title="Pendentes" :value="$myStats['pending'] ?? 0" icon="o-inbox" />
-            <x-mary-stat title="Agendadas hoje" :value="$myStats['scheduled_today'] ?? 0" icon="o-calendar-days" color="text-warning" />
+            <x-operation.stat title="Pendentes" :value="$myStats['pending'] ?? 0" icon="o-inbox" />
+            <x-operation.stat title="Agendadas hoje" :value="$myStats['scheduled_today'] ?? 0" icon="o-calendar-days" color="text-warning" />
         </div>
     </section>
     <x-operation.panel title="Acesso rápido">

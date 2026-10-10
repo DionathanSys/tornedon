@@ -6,12 +6,12 @@
             <x-mary-icon :name="$icon" class="h-5 w-5" />
         </div>
     </x-slot:avatar>
-    <x-slot:value class="text-sm sm:text-base">{{ $title }}</x-slot:value>
+    <x-slot:value class="!whitespace-normal break-words text-sm sm:text-base">{{ $title }}</x-slot:value>
     <x-slot:sub-value class="!whitespace-normal">
-        <p class="mt-1 truncate font-medium text-base-content/80">{{ $subtitle }}</p>
+        <p class="mt-1 break-words font-medium text-base-content/80">{{ $subtitle }}</p>
         <div class="mt-2 space-y-1 text-xs text-base-content/60 sm:text-sm">
             @foreach ($details as $detail)
-                <p class="truncate">{{ $detail }}</p>
+                <p class="break-words">{{ $detail }}</p>
             @endforeach
         </div>
     </x-slot:sub-value>

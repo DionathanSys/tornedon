@@ -15,8 +15,42 @@
 }
 
 .operation-ui {
+    --text-xs: 0.6875rem;
+    --text-sm: 0.75rem;
+    --text-base: 0.8125rem;
+    --text-lg: 0.875rem;
+    --text-xl: 1rem;
+    --text-2xl: 1.125rem;
     color: var(--color-base-content);
     font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: var(--text-base);
+    line-height: 1.5;
+}
+
+.operation-ui .input,
+.operation-ui .select,
+.operation-ui .textarea {
+    font-size: var(--text-base);
+}
+
+.operation-ui .btn,
+.operation-ui .fieldset-legend {
+    font-size: var(--text-sm);
+}
+
+.operation-ui .badge-sm {
+    font-size: var(--text-xs);
+}
+
+.operation-stat .truncate {
+    min-width: 0;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.operation-stat .whitespace-nowrap {
+    white-space: normal;
 }
 
 .operation-ui .modal {

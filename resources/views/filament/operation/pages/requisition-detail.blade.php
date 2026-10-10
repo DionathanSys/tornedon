@@ -1,8 +1,8 @@
 <x-operation.page :title="$requisition ? $requisition['number'] : 'Detalhe da requisição'">
     @if ($requisition)
         <div class="grid grid-cols-2 gap-3">
-            <x-mary-stat title="Total" :value="$requisition['total']" />
-            <x-mary-stat title="Status" :value="$requisition['status']" />
+            <x-operation.stat title="Total" :value="$requisition['total']" />
+            <x-operation.stat title="Status" :value="$requisition['status']" />
         </div>
         <x-operation.panel title="Cliente e equipamento">
             <p class="font-semibold">{{ $requisition['customer_name'] }}</p>
