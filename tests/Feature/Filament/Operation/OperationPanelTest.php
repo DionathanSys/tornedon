@@ -26,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class OperationPanelTest extends TestCase
@@ -169,6 +170,124 @@ class OperationPanelTest extends TestCase
             ->call('create')->assertHasErrors(['customerId']);
 
         $this->assertSame(0, ServiceOrder::query()->count());
+    }
+
+    public static function operationLists(): array
+    {
+        return [
+            'ordens' => [ServiceOrderQueue::class, 'orders'],
+            'requisicoes' => [RequisitionList::class, 'requisitions'],
+        ];
+    }
+
+    #[DataProvider('operationLists')]
+    public function test_list_date_filters_include_bounds_and_combine_with_status_and_search(string $pageClass, string $recordsProperty): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $otherCompany = $this->createCompany($user, 'Outra empresa');
+        $this->createDatedListRecord($pageClass, $user, $company, 'DATE-BEFORE', '2026-03-09');
+        $this->createDatedListRecord($pageClass, $user, $company, 'DATE-FIRST', '2026-03-10');
+        $this->createDatedListRecord($pageClass, $user, $company, 'DATE-LAST', '2026-03-20', 'closed');
+        $this->createDatedListRecord($pageClass, $user, $company, 'DATE-AFTER', '2026-03-21');
+        $this->createDatedListRecord($pageClass, $user, $company, 'DATE-CANCELLED', '2026-03-15', 'cancelled');
+        $this->createDatedListRecord($pageClass, $user, $otherCompany, 'DATE-FOREIGN', '2026-03-15');
+
+        $page = Livewire::test($pageClass)
+            ->set('dateFilter', ['from' => '2026-03-10', 'until' => '2026-03-20'])
+            ->call('applyDateFilters')->assertHasNoErrors()
+            ->assertSet('openCount', 1)->assertSet('closedCount', 1)->assertSet('allCount', 2)
+            ->assertSee('DATE-FIRST')->assertDontSee('DATE-LAST')
+            ->assertDontSee('DATE-BEFORE')->assertDontSee('DATE-AFTER')
+            ->assertDontSee('DATE-CANCELLED')->assertDontSee('DATE-FOREIGN')
+            ->call('setTab', 'all')->assertSee('DATE-FIRST')->assertSee('DATE-LAST');
+
+        $page->set('search', 'DATE-FIRST')->assertSet($recordsProperty, fn ($records): bool => count($records) === 1 && $records[0]['number'] === 'DATE-FIRST')
+            ->call('setTab', 'closed')->assertSet($recordsProperty, []);
+
+        $page->set('search', '')->call('setTab', 'all')
+            ->set('dateFilter', ['from' => null, 'until' => '2026-03-10'])
+            ->call('applyDateFilters')->assertHasNoErrors()->assertSet('allCount', 2)
+            ->assertSee('DATE-BEFORE')->assertSee('DATE-FIRST')->assertDontSee('DATE-LAST');
+
+        $page->set('dateFilter', ['from' => '2026-03-20', 'until' => null])
+            ->call('applyDateFilters')->assertHasNoErrors()->assertSet('allCount', 2)
+            ->assertSee('DATE-LAST')->assertSee('DATE-AFTER')->assertDontSee('DATE-FIRST');
+    }
+
+    #[DataProvider('operationLists')]
+    public function test_list_date_filters_persist_by_user_company_and_list_and_can_be_cleared(string $pageClass, string $recordsProperty): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $otherCompany = $this->createCompany($user, 'Outra empresa');
+        $user->companies()->attach($otherCompany, ['role' => 'admin', 'is_active' => true]);
+
+        Livewire::test($pageClass)->set('dateFilter', ['from' => '2026-03-10', 'until' => '2026-03-20'])->call('applyDateFilters')->assertHasNoErrors();
+        Livewire::test($pageClass)->assertSet('dateFrom', '2026-03-10')->assertSet('dateUntil', '2026-03-20')->assertSee('10/03/2026 até 20/03/2026');
+
+        $otherList = $pageClass === ServiceOrderQueue::class ? RequisitionList::class : ServiceOrderQueue::class;
+        Livewire::test($otherList)->assertSet('dateFrom', null)->assertSet('dateUntil', null);
+
+        Filament::setTenant($otherCompany);
+        Livewire::test($pageClass)->assertSet('dateFrom', null)->assertSet('dateUntil', null)
+            ->set('dateFilter', ['from' => '2026-04-01', 'until' => '2026-04-15'])->call('applyDateFilters')->assertHasNoErrors();
+
+        Filament::setTenant($company);
+        Livewire::test($pageClass)->assertSet('dateFrom', '2026-03-10')->call('clearDateFilters')
+            ->assertSet('dateFrom', null)->assertSet('dateUntil', null);
+        Livewire::test($pageClass)->assertSet('dateFilter', ['from' => null, 'until' => null]);
+
+        Filament::setTenant($otherCompany);
+        Livewire::test($pageClass)->assertSet('dateFrom', '2026-04-01')->assertSet('dateUntil', '2026-04-15');
+
+        $otherUser = User::factory()->create();
+        $otherUser->companies()->attach($otherCompany, ['role' => 'admin', 'is_active' => true]);
+        $this->actingAs($otherUser);
+        Auth::setUser($otherUser);
+        Livewire::test($pageClass)->assertSet('dateFrom', null)->assertSet('dateUntil', null);
+    }
+
+    #[DataProvider('operationLists')]
+    public function test_lists_paginate_fifteen_records_without_a_sixty_record_limit_and_reset_page_when_filtering(string $pageClass, string $recordsProperty): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+
+        for ($i = 1; $i <= 61; $i++) {
+            $this->createDatedListRecord($pageClass, $user, $company, sprintf('PAGE-%03d', $i), '2026-03-15');
+        }
+
+        $page = Livewire::test($pageClass)->assertSet('allCount', 61)
+            ->assertSet($recordsProperty, fn ($records): bool => count($records) === 15)
+            ->assertSee('1–15 de 61 registros')->assertSee('Página 1 de 5');
+        $firstIds = array_column($page->get($recordsProperty), 'id');
+
+        $page->call('nextPage')->assertSet('paginators.page', 2)
+            ->assertSet($recordsProperty, fn ($records): bool => count($records) === 15)->assertSee('16–30 de 61 registros');
+        $this->assertSame([], array_values(array_intersect($firstIds, array_column($page->get($recordsProperty), 'id'))));
+
+        $page->call('setPage', 5)->assertSet($recordsProperty, fn ($records): bool => count($records) === 1)
+            ->assertSee('PAGE-001')->assertSee('61–61 de 61 registros')
+            ->set('search', 'PAGE-061')->assertSet('paginators.page', 1)->assertSee('PAGE-061')
+            ->assertSet($recordsProperty, fn ($records): bool => count($records) === 1);
+
+        $page->set('search', '')->call('setPage', 2)->call('setTab', 'all')->assertSet('paginators.page', 1)
+            ->call('setPage', 2)->set('dateFilter', ['from' => '2026-03-15', 'until' => '2026-03-15'])
+            ->call('applyDateFilters')->assertSet('paginators.page', 1)
+            ->call('setPage', 2)->call('clearDateFilters')->assertSet('paginators.page', 1);
+    }
+
+    #[DataProvider('operationLists')]
+    public function test_invalid_date_filters_preserve_the_last_applied_period(string $pageClass, string $recordsProperty): void
+    {
+        $this->authenticateTenant();
+
+        Livewire::test($pageClass)->set('dateFilter', ['from' => '2026-03-10', 'until' => '2026-03-20'])
+            ->call('applyDateFilters')->assertHasNoErrors()
+            ->set('dateFilter', ['from' => '2026-03-21', 'until' => '2026-03-10'])
+            ->call('applyDateFilters')->assertHasErrors(['dateFilter.until'])
+            ->assertSet('dateFrom', '2026-03-10')->assertSet('dateUntil', '2026-03-20');
+
+        Livewire::test($pageClass)->assertSet('dateFrom', '2026-03-10')->assertSet('dateUntil', '2026-03-20')
+            ->set('dateFilter.from', '2026-02-30')->call('applyDateFilters')->assertHasErrors(['dateFilter.from']);
     }
 
     public function test_operation_creator_preserves_quick_customer_registration(): void
@@ -504,5 +623,15 @@ class OperationPanelTest extends TestCase
             'created_by' => $user->id,
             'updated_by' => $user->id,
         ]);
+    }
+
+    private function createDatedListRecord(string $pageClass, User $user, Company $company, string $number, string $date, string $status = 'open'): ServiceOrder|Requisition
+    {
+        $customer = $this->createCustomer($user, 'Cliente '.$number);
+        $data = ['number' => $number, 'company_id' => $company->id, 'customer_id' => $customer->id, 'created_by' => $user->id, 'updated_by' => $user->id];
+
+        return $pageClass === ServiceOrderQueue::class
+            ? ServiceOrder::query()->create([...$data, 'order_date' => $date, 'status' => constant(State::class.'::'.strtoupper($status)), 'priority' => Priority::NORMAL, 'type' => Type::MAINTENANCE])
+            : Requisition::query()->create([...$data, 'sale_date' => $date, 'delivery_date' => $date, 'status' => RequisitionStatus::from($status)]);
     }
 }

@@ -3,14 +3,21 @@
 namespace App\Filament\Operation\Pages\ServiceOrders;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Operation\Concerns\HasDateFilters;
 use App\Filament\Operation\OperationPage;
 use App\Models\ServiceOrder;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Livewire\WithPagination;
 
 class ServiceOrderQueue extends OperationPage
 {
+    use HasDateFilters, WithPagination;
+
+    protected ?LengthAwarePaginator $pagination = null;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
     protected static ?string $navigationLabel = 'Ordens';
@@ -37,17 +44,18 @@ class ServiceOrderQueue extends OperationPage
 
     public function mount(): void
     {
+        $this->restoreDateFilters();
         $this->loadOrders();
     }
 
     public function updatedActiveTab(): void
     {
-        $this->loadOrders();
+        $this->resetPage();
     }
 
     public function updatedSearch(): void
     {
-        $this->loadOrders();
+        $this->resetPage();
     }
 
     public function setTab(string $tab): void
@@ -57,7 +65,7 @@ class ServiceOrderQueue extends OperationPage
         }
 
         $this->activeTab = $tab;
-        $this->loadOrders();
+        $this->resetPage();
     }
 
     public function loadOrders(): void
@@ -69,6 +77,7 @@ class ServiceOrderQueue extends OperationPage
             $this->openCount = 0;
             $this->closedCount = 0;
             $this->allCount = 0;
+            $this->pagination = new LengthAwarePaginator([], 0, 15, $this->getPage());
 
             return;
         }
@@ -83,6 +92,8 @@ class ServiceOrderQueue extends OperationPage
                 'items',
                 'requisition.items',
             ]);
+
+        $this->applyDateRange($baseQuery, 'order_date');
 
         $this->openCount = (clone $baseQuery)->where('status', State::OPEN->value)->count();
         $this->closedCount = (clone $baseQuery)->where('status', State::CLOSED->value)->count();
@@ -105,12 +116,12 @@ class ServiceOrderQueue extends OperationPage
             });
         }
 
-        $this->orders = $query
+        $this->pagination = $query
             ->orderByDesc('order_date')
             ->orderByDesc('created_at')
-            ->limit(60)
-            ->get()
-            ->map(fn (ServiceOrder $order) => [
+            ->orderByDesc('id')
+            ->paginate(15, ['*'], 'page', $this->getPage())
+            ->through(fn (ServiceOrder $order) => [
                 'id' => $order->id,
                 'number' => $order->number,
                 'customer' => $order->customer?->name ?? '-',
@@ -126,7 +137,21 @@ class ServiceOrderQueue extends OperationPage
                     ['record' => $order->id],
                     tenant: $tenant,
                 ),
-            ])
-            ->toArray();
+            ]);
+        $this->orders = $this->pagination->items();
+    }
+
+    protected function refreshList(): void
+    {
+        $this->loadOrders();
+    }
+
+    protected function getViewData(): array
+    {
+        if (! $this->pagination) {
+            $this->loadOrders();
+        }
+
+        return ['pagination' => $this->pagination];
     }
 }

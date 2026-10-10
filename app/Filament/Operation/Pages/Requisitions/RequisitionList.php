@@ -2,14 +2,21 @@
 
 namespace App\Filament\Operation\Pages\Requisitions;
 
+use App\Filament\Operation\Concerns\HasDateFilters;
 use App\Filament\Operation\OperationPage;
 use App\Models\Requisition;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Livewire\WithPagination;
 
 class RequisitionList extends OperationPage
 {
+    use HasDateFilters, WithPagination;
+
+    protected ?LengthAwarePaginator $pagination = null;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocument;
 
     protected static ?string $navigationLabel = 'Requisições';
@@ -36,17 +43,18 @@ class RequisitionList extends OperationPage
 
     public function mount(): void
     {
+        $this->restoreDateFilters();
         $this->loadRequisitions();
     }
 
     public function updatedActiveTab(): void
     {
-        $this->loadRequisitions();
+        $this->resetPage();
     }
 
     public function updatedSearch(): void
     {
-        $this->loadRequisitions();
+        $this->resetPage();
     }
 
     public function setTab(string $tab): void
@@ -56,7 +64,7 @@ class RequisitionList extends OperationPage
         }
 
         $this->activeTab = $tab;
-        $this->loadRequisitions();
+        $this->resetPage();
     }
 
     public function loadRequisitions(): void
@@ -68,6 +76,7 @@ class RequisitionList extends OperationPage
             $this->openCount = 0;
             $this->closedCount = 0;
             $this->allCount = 0;
+            $this->pagination = new LengthAwarePaginator([], 0, 15, $this->getPage());
 
             return;
         }
@@ -75,7 +84,10 @@ class RequisitionList extends OperationPage
         $baseQuery = Requisition::query()
             ->where('company_id', $tenant->getKey())
             ->where('status', '!=', 'cancelled')
-            ->with(['customer:id,name', 'serviceOrder:id,number', 'equipment:id,name']);
+            ->with(['customer:id,name', 'serviceOrder:id,number', 'equipment:id,name'])
+            ->withCount('items');
+
+        $this->applyDateRange($baseQuery, 'sale_date');
 
         $this->openCount = (clone $baseQuery)->where('status', 'open')->count();
         $this->closedCount = (clone $baseQuery)->where('status', 'closed')->count();
@@ -98,12 +110,12 @@ class RequisitionList extends OperationPage
             });
         }
 
-        $this->requisitions = $query
+        $this->pagination = $query
             ->orderByDesc('sale_date')
             ->orderByDesc('created_at')
-            ->limit(60)
-            ->get()
-            ->map(fn (Requisition $req) => [
+            ->orderByDesc('id')
+            ->paginate(15, ['*'], 'page', $this->getPage())
+            ->through(fn (Requisition $req) => [
                 'id' => $req->id,
                 'number' => $req->number,
                 'customer' => $req->customer?->name ?? '-',
@@ -113,12 +125,26 @@ class RequisitionList extends OperationPage
                 'status_value' => $req->status?->value ?? '',
                 'sale_date' => $req->sale_date?->format('d/m/Y') ?? '-',
                 'total' => 'R$ '.number_format((float) $req->total_amount, 2, ',', '.'),
-                'items_count' => $req->items()->count(),
+                'items_count' => $req->items_count,
                 'url' => RequisitionDetail::getUrl(
                     ['record' => $req->id],
                     tenant: $tenant,
                 ),
-            ])
-            ->toArray();
+            ]);
+        $this->requisitions = $this->pagination->items();
+    }
+
+    protected function refreshList(): void
+    {
+        $this->loadRequisitions();
+    }
+
+    protected function getViewData(): array
+    {
+        if (! $this->pagination) {
+            $this->loadRequisitions();
+        }
+
+        return ['pagination' => $this->pagination];
     }
 }

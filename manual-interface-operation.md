@@ -32,6 +32,23 @@ padroniza a seleção única pesquisável com texto simples, sem a cápsula de
 seleção múltipla: cliente e serviço usam busca no servidor; técnico e equipamento
 usam busca local nas opções já limitadas à empresa e ao cliente.
 
+## Filtros e paginação das listagens
+
+OS e requisições têm o botão **Filtrar**, com data inicial/final, **Aplicar** e
+**Limpar**. O período considera `order_date` nas OS e `sale_date` nas requisições,
+inclui as duas datas e aceita um único limite. O período aplicado aparece junto
+à busca, funciona com as abas e atualiza seus contadores.
+
+`HasDateFilters` guarda apenas o período validado na sessão, separado por
+usuário, empresa e listagem. O filtro é restaurado ao voltar ou recarregar a
+página. Limpar remove o período da sessão daquela listagem; um intervalo
+inválido mantém o último período aplicado.
+
+As duas listagens usam paginação Livewire de **15 registros** e o componente
+Mary UI `operation.pagination`. Busca, troca de aba, aplicação e limpeza do
+período voltam para a primeira página. A ordenação inclui o ID para estabilizar
+a navegação entre registros com a mesma data.
+
 A barra dos registros mostra até três ações; as demais vão para **Mais**.
 Os botões de criação nas listagens e no Menu enviam o evento
 `operation-create-record` para `App\Livewire\OperationRecordCreator`, que mantém
