@@ -48,3 +48,23 @@ php artisan test tests/Feature/Filament/Operation/OperationPanelTest.php
 Ao alterar modais, confira também em navegador: abertura pelo Menu e pelo botão
 flutuante, busca e seleção, validação, envio, rolagem em tela curta, tema escuro
 e o último registro acima da barra inferior.
+
+## Deploy
+
+`public/build` não é versionado. O script `deploy/deploy.sh` gera o build por
+padrão, instalando também as dependências de desenvolvimento necessárias ao
+Vite (`npm ci --include=dev`). Ele valida o manifesto e o CSS do Operation antes
+de concluir. Use `BUILD_FRONTEND=0` apenas quando o build completo já tiver sido
+gerado e enviado para o servidor.
+
+Para corrigir uma instalação sem manifesto, execute na raiz da aplicação:
+
+```sh
+npm ci --include=dev
+npm run build
+php artisan view:clear
+```
+
+Devem existir `public/build/manifest.json` e os arquivos correspondentes em
+`public/build/assets/`. Se o PHP estiver em um contêiner, o diretório gerado
+precisa estar disponível no volume ou na imagem que atende a aplicação.

@@ -9,7 +9,7 @@ GIT_BIN="${GIT_BIN:-git}"
 APP_ENVIRONMENT="${APP_ENVIRONMENT:-production}"
 APP_BRANCH="${APP_BRANCH:-main}"
 MAINTENANCE_MODE="${MAINTENANCE_MODE:-1}"
-BUILD_FRONTEND="${BUILD_FRONTEND:-0}"
+BUILD_FRONTEND="${BUILD_FRONTEND:-1}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
 RESTART_QUEUES="${RESTART_QUEUES:-1}"
 RELOAD_SUPERVISOR="${RELOAD_SUPERVISOR:-0}"
@@ -273,11 +273,26 @@ fi
 
 if [[ "${BUILD_FRONTEND}" == "1" ]]; then
     log "Instalando dependencias do frontend"
-    run_in_root "$NPM_BIN" install
+    run_in_root "$NPM_BIN" ci --include=dev
 
     log "Gerando build de producao do frontend"
     run_in_root "$NPM_BIN" run build
 fi
+
+log "Validando os assets de producao do Vite"
+if [[ ! -f "${ROOT_DIR}/public/build/manifest.json" ]]; then
+    log "Manifesto Vite ausente. Execute npm ci --include=dev e npm run build na raiz da aplicacao, ou forneca public/build completo antes de usar BUILD_FRONTEND=0."
+    exit 1
+fi
+
+run_in_root "$PHP_BIN" -r '
+    $manifest = json_decode(file_get_contents("public/build/manifest.json"), true, 512, JSON_THROW_ON_ERROR);
+    $entry = $manifest["resources/css/operation.css"]["file"] ?? null;
+    if (! $entry || ! is_file("public/build/" . $entry)) {
+        fwrite(STDERR, "Build do Operation ausente ou desatualizado. Execute npm run build ou forneca public/build completo.\n");
+        exit(1);
+    }
+'
 
 log "Limpando caches do Laravel"
 run_in_root "$PHP_BIN" "$ARTISAN" optimize:clear
