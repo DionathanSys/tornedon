@@ -1,39 +1,32 @@
 @php
-    $availableActions = collect($actions)->filter(fn ($action) => $action->isVisible())->values();
-    $visibleActions = $availableActions->take(3);
-    $moreActions = $availableActions->slice(3);
-    $columns = $visibleActions->count() + ($moreActions->isNotEmpty() ? 1 : 0);
+    $visible = collect($actions)->take(3);
+    $more = collect($actions)->slice(3);
 @endphp
 
-<nav
-    class="op-bottom-nav op-record-actions op-record-actions--{{ $columns }}"
-    aria-label="Ações do registro"
-    x-data="{
-        observer: null,
-        updateSpacing() {
-            document.documentElement.style.setProperty('--op-bottom-space', `${window.innerHeight - this.$el.getBoundingClientRect().top}px`);
-        },
-        init() {
-            this.observer = new ResizeObserver(() => this.updateSpacing());
-            this.observer.observe(this.$el);
-            this.$nextTick(() => this.updateSpacing());
-        },
-        destroy() {
-            this.observer?.disconnect();
-            document.documentElement.style.removeProperty('--op-bottom-space');
-        },
-    }"
-    x-on:resize.window="updateSpacing()"
->
-    @foreach ($visibleActions as $action)
-        {{ $action }}
+<x-operation.bottom-bar :columns="$visible->count() + ($more->isNotEmpty() ? 1 : 0)" label="Ações do registro">
+    @foreach ($visible as $action)
+        @if (isset($action['url']))
+            <x-mary-button :label="$action['label']" :icon="$action['icon']" :link="$action['url']" class="btn-ghost operation-bar-button" />
+        @else
+            <x-mary-button :label="$action['label']" :icon="$action['icon']" :wire:click="($action['confirm'] ?? false) ? 'requestOperationConfirmation(\''.$action['method'].'\')' : $action['method']" :class="'operation-bar-button '.($action['primary'] ?? false ? 'btn-primary' : 'btn-ghost')" :spinner="$action['method']" />
+        @endif
     @endforeach
-
-    @if ($moreActions->isNotEmpty())
-        <div class="op-bottom-nav__menu">
-            {{ \Filament\Actions\ActionGroup::make($moreActions->all())
-                ->label('Mais')->icon('heroicon-o-ellipsis-horizontal')->color('gray')
-                ->button()->dropdownPlacement('top-end')->dropdownTeleport()->livewire($this) }}
-        </div>
+    @if ($more->isNotEmpty())
+        <x-mary-dropdown no-x-anchor top right>
+            <x-slot:trigger class="btn btn-ghost operation-bar-button">
+                <x-mary-icon name="o-ellipsis-horizontal" class="h-5 w-5" />
+                <span>Mais</span>
+            </x-slot:trigger>
+            @foreach ($more as $action)
+                <x-mary-menu-item :title="$action['label']" :icon="$action['icon']" :wire:click="($action['confirm'] ?? false) ? 'requestOperationConfirmation(\''.$action['method'].'\')' : $action['method']" />
+            @endforeach
+        </x-mary-dropdown>
     @endif
-</nav>
+</x-operation.bottom-bar>
+
+<x-mary-modal wire:model="showConfirmation" :title="$this->confirmationOperation === 'cancel' ? 'Cancelar registro?' : 'Encerrar registro?'" subtitle="Confirme para continuar." class="backdrop-blur-sm">
+    <x-slot:actions>
+        <x-mary-button label="Voltar" @click="$wire.showConfirmation = false" />
+        <x-mary-button label="Confirmar" :class="$this->confirmationOperation === 'cancel' ? 'btn-error' : 'btn-primary'" wire:click="confirmOperation" spinner="confirmOperation" />
+    </x-slot:actions>
+</x-mary-modal>

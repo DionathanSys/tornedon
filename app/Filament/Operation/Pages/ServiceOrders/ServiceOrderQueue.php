@@ -3,18 +3,14 @@
 namespace App\Filament\Operation\Pages\ServiceOrders;
 
 use App\Enum\ServiceOrder\State;
-use App\Filament\Operation\Actions\CreateServiceOrderAction;
-use App\Filament\Operation\Concerns\HasOperationActions;
+use App\Filament\Operation\OperationPage;
 use App\Models\ServiceOrder;
 use BackedEnum;
 use Filament\Facades\Filament;
-use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
-class ServiceOrderQueue extends Page
+class ServiceOrderQueue extends OperationPage
 {
-    use HasOperationActions;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
     protected static ?string $navigationLabel = 'Ordens';
@@ -38,18 +34,6 @@ class ServiceOrderQueue extends Page
     public int $closedCount = 0;
 
     public int $allCount = 0;
-
-    protected function getOperationActions(): array
-    {
-        return [
-            CreateServiceOrderAction::make(),
-        ];
-    }
-
-    protected function hasFloatingOperationAction(): bool
-    {
-        return true;
-    }
 
     public function mount(): void
     {
@@ -144,16 +128,5 @@ class ServiceOrderQueue extends Page
                 ),
             ])
             ->toArray();
-    }
-
-    public function getStatusBadgeClass(string $color): string
-    {
-        return match ($color) {
-            'info' => 'op-card__badge--info',
-            'success' => 'op-card__badge--success',
-            'warning' => 'op-card__badge--warning',
-            'danger' => 'op-card__badge--danger',
-            default => 'op-card__badge--gray',
-        };
     }
 }

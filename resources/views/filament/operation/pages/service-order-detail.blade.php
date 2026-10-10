@@ -1,110 +1,97 @@
-<x-filament-panels::page>
-    <style>
-        .op-detail { display: grid; gap: 0.85rem; }
-        .op-card { border: 1px solid rgba(228,228,231,0.6); border-radius: 1rem; padding: 0.85rem; background: #fff; }
-        .op-card__head { color: #fff; background: linear-gradient(135deg, #18181b, #334155); border-radius: 1rem; padding: 0.85rem; }
-        .op-card__title { margin: 0; font-size: 1.05rem; font-weight: 850; }
-        .op-card__sub { margin: 0.25rem 0 0; color: rgba(255,255,255,0.78); font-size: 0.78rem; }
-        .op-card__kpi-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin-top: 0.75rem; }
-        .op-card__kpi { border-radius: 0.75rem; padding: 0.5rem; background: rgba(255,255,255,0.1); }
-        .op-card__kpi span { display: block; font-size: 0.62rem; font-weight: 700; opacity: 0.7; text-transform: uppercase; }
-        .op-card__kpi strong { display: block; margin-top: 0.15rem; font-size: 0.78rem; }
-        .op-badge { display: inline-block; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.68rem; font-weight: 700; }
-        .op-badge--info { background: #dbeafe; color: #1d4ed8; }
-        .op-badge--success { background: #dcfce7; color: #166534; }
-        .op-badge--warning { background: #fef3c7; color: #92400e; }
-        .op-badge--danger { background: #fee2e2; color: #b91c1c; }
-        .op-badge--gray { background: #e5e7eb; color: #374151; }
-        .op-section { margin-top: 0.5rem; }
-        .op-section-title { font-size: 0.82rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; }
-        .op-field { display: grid; gap: 0.25rem; margin-bottom: 0.5rem; }
-        .op-field label { color: #64748b; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
-        .op-field p { margin: 0; font-size: 0.82rem; font-weight: 600; color: #0f172a; }
-        .op-items { display: grid; gap: 0.5rem; }
-        .op-item { border-radius: 0.75rem; padding: 0.65rem; background: #f8fafc; }
-        .op-item__name { font-size: 0.82rem; font-weight: 700; color: #0f172a; }
-        .op-item__meta { font-size: 0.72rem; color: #64748b; margin-top: 0.15rem; }
-        .op-empty { border-radius: 1rem; padding: 1.5rem; background: #fff; color: #64748b; text-align: center; font-size: 0.82rem; }
-    </style>
-
+<x-operation.page :title="$order ? 'OS #'.$order['number'] : 'Detalhe da OS'" :subtitle="$order ? $order['type'].' · '.$order['priority'].' · '.$order['order_date'] : null">
     @if ($order)
-        <div class="op-detail">
-            <section class="op-card__head">
-                <p class="op-card__title">OS #{{ $order['number'] }}</p>
-                <p class="op-card__sub">{{ $order['type'] }} &middot; {{ $order['priority'] }} &middot; {{ $order['order_date'] }}</p>
-                <div class="op-card__kpi-row">
-                    <div class="op-card__kpi">
-                        <span>Valor</span>
-                        <strong>{{ $order['total'] }}</strong>
-                    </div>
-                    <div class="op-card__kpi">
-                        <span>Status</span>
-                        <strong>{{ $order['status_label'] }}</strong>
-                    </div>
-                    <div class="op-card__kpi">
-                        <span>Local</span>
-                        <strong>{{ Str::limit($order['location'], 18) }}</strong>
-                    </div>
-                </div>
-            </section>
-
-            <section class="op-card">
-                <div class="op-section-title">Cliente e Equipamento</div>
-                <div class="op-field">
-                    <label>Cliente</label>
-                    <p>{{ $order['customer_name'] }} @if ($order['customer_doc'] !== '-') &middot; {{ $order['customer_doc'] }} @endif</p>
-                </div>
-                @if (! $order['can_edit'])
-                    <div class="op-field">
-                        <label>Equipamento</label>
-                        <p>{{ $order['equipment_name'] }} @if ($order['equipment_identifier'] !== '-') &middot; {{ $order['equipment_identifier'] }} @endif</p>
-                    </div>
-                    <div class="op-field">
-                        <label>Técnico</label>
-                        <p>{{ $order['technician_name'] }}</p>
-                    </div>
-                @endif
-            </section>
-
-            <section class="op-card">
-                <div class="op-section-title">Serviços ({{ count($order['items']) }})</div>
-                <div class="op-items">
-                    @forelse ($order['items'] as $item)
-                        <div class="op-item" wire:key="service-order-item-{{ $item['id'] }}">
-                            <p class="op-item__name">{{ $item['name'] }}</p>
-                            <p class="op-item__meta">{{ $item['quantity'] }} x {{ $item['unit_price'] }} = {{ $item['total'] }}</p>
-                            @if ($item['observations'])
-                                <p class="op-item__meta">{{ $item['observations'] }}</p>
-                            @endif
-                            @if ($order['is_open'])
-                                <div style="margin-top: 0.5rem;">{{ ($this->editServiceAction)(['item' => $item['id']]) }}</div>
-                            @endif
-                        </div>
-                    @empty
-                        <p class="op-item__meta">Nenhum serviço adicionado.</p>
-                    @endforelse
-                </div>
-            </section>
-
-            @if ($order['can_edit'])
-                <form wire:submit="save">
-                    {{ $this->form }}
-                </form>
-            @else
-                <x-filament::section heading="Registro do Atendimento" collapsible collapsed>
-                    @foreach (['customer_observations' => 'Observações do Cliente', 'items_received' => 'Itens recebidos', 'general_observations' => 'Observações gerais', 'solution' => 'Solução Aplicada', 'technician_observations' => 'Observações do Técnico'] as $field => $label)
-                        <div class="op-field">
-                            <label>{{ $label }}</label>
-                            <p>{{ $order[$field] ?: '-' }}</p>
-                        </div>
-                    @endforeach
-                </x-filament::section>
-            @endif
+        <div class="grid grid-cols-3 gap-3">
+            <x-mary-stat title="Valor" :value="$order['total']" />
+            <x-mary-stat title="Status" :value="$order['status_label']" />
+            <x-mary-stat title="Local" :value="$order['location']" />
         </div>
+        <x-mary-card title="Cliente" :subtitle="$order['customer_doc']" shadow>
+            <p class="font-semibold">{{ $order['customer_name'] }}</p>
+        </x-mary-card>
+        <x-mary-card :title="'Serviços ('.count($order['items']).')'" shadow>
+            <div class="space-y-3">
+                @forelse ($order['items'] as $item)
+                    <div class="rounded-box bg-base-200 p-4" wire:key="service-order-item-{{ $item['id'] }}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold">{{ $item['name'] }}</p>
+                                <p class="mt-1 text-sm text-base-content/60">{{ $item['quantity'] }} × {{ $item['unit_price'] }} = {{ $item['total'] }}</p>
+                            </div>
+                            @if ($order['is_open'])
+                                <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditService('.$item['id'].')'" aria-label="Editar serviço" tooltip="Editar serviço" />
+                            @endif
+                        </div>
+                        @if ($item['observations'])
+                            <p class="mt-2 text-sm text-base-content/60">{{ $item['observations'] }}</p>
+                        @endif
+                    </div>
+                @empty
+                    <p class="text-sm text-base-content/60">Nenhum serviço adicionado. Use o botão + para incluir.</p>
+                @endforelse
+            </div>
+        </x-mary-card>
 
-        @include('filament.operation.floating-action', ['action' => $this->addServiceAction])
+        @if ($order['can_edit'])
+            <x-mary-form wire:submit="save" no-separator>
+                <x-mary-card title="Responsáveis e equipamento" shadow>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-mary-select label="Técnico" wire:model="formData.technician_id" :options="$this->technicians" placeholder="Não atribuído" />
+                        <x-mary-select label="Equipamento" wire:model="formData.equipment_id" :options="$this->equipments" placeholder="Selecione o equipamento" />
+                    </div>
+                </x-mary-card>
+                <x-mary-collapse class="bg-base-100 rounded-box" separator>
+                    <x-slot:heading>Registro do Atendimento</x-slot:heading>
+                    <x-slot:content>
+                        <div class="space-y-4">
+                            <x-mary-textarea label="Observações do Cliente" wire:model="formData.customer_observations" rows="3" />
+                            <x-mary-textarea label="Itens recebidos" wire:model="formData.items_received" rows="3" />
+                            <x-mary-textarea label="Observações gerais" wire:model="formData.general_observations" rows="3" />
+                            <x-mary-textarea label="Solução Aplicada" wire:model="formData.solution" rows="3" />
+                            <x-mary-textarea label="Observações do Técnico" wire:model="formData.technician_observations" rows="3" />
+                        </div>
+                    </x-slot:content>
+                </x-mary-collapse>
+            </x-mary-form>
+        @else
+            <x-mary-card title="Responsáveis e equipamento" shadow>
+                <p>{{ $order['technician_name'] }} · {{ $order['equipment_name'] }} {{ $order['equipment_identifier'] }}</p>
+            </x-mary-card>
+            <x-mary-collapse class="bg-base-100 rounded-box" separator>
+                <x-slot:heading>Registro do Atendimento</x-slot:heading>
+                <x-slot:content>
+                    <div class="space-y-4">
+                        @foreach (['customer_observations' => 'Observações do Cliente', 'items_received' => 'Itens recebidos', 'general_observations' => 'Observações gerais', 'solution' => 'Solução Aplicada', 'technician_observations' => 'Observações do Técnico'] as $field => $label)
+                            <div><p class="text-sm text-base-content/60">{{ $label }}</p><p class="whitespace-pre-wrap">{{ $order[$field] ?: '-' }}</p></div>
+                        @endforeach
+                    </div>
+                </x-slot:content>
+            </x-mary-collapse>
+        @endif
 
+        @if ($order['is_open'])
+            <x-operation.fab label="Adicionar serviço" method="openAddService" />
+        @endif
     @else
-        <div class="op-empty">Ordem de serviço não encontrada.</div>
+        <x-mary-alert title="Ordem de serviço não encontrada." icon="o-exclamation-circle" class="alert-warning" />
     @endif
-</x-filament-panels::page>
+
+    {{ $this->getFooter() }}
+
+    <x-mary-modal wire:model="showServiceModal" :title="$editingItemId ? 'Editar serviço' : 'Adicionar serviço'" subtitle="Defina o serviço, a quantidade e os valores." box-class="max-w-2xl" class="backdrop-blur-sm">
+        <x-mary-form wire:submit="saveService" no-separator>
+            <x-mary-choices label="Serviço" wire:model.live="serviceData.service_id" :options="$services" search-function="searchServices" placeholder="Buscar nome ou código" no-result-text="Nenhum serviço encontrado" single searchable debounce="300ms" escape-values />
+            <div class="grid grid-cols-2 gap-4">
+                <x-mary-input label="Quantidade" wire:model.blur="serviceData.quantity" inputmode="decimal" />
+                <x-mary-input label="Preço unitário" wire:model.blur="serviceData.unit_price" prefix="R$" inputmode="decimal" :hint="$this->minimumServicePrice" />
+                <x-mary-input label="Desconto (%)" wire:model.blur="serviceData.discount_percentage" suffix="%" inputmode="decimal" />
+                <x-mary-input label="Desconto (R$)" wire:model.blur="serviceData.discount_amount" prefix="R$" inputmode="decimal" />
+            </div>
+            <x-mary-stat title="Total do serviço" :value="$this->serviceTotal" icon="o-banknotes" class="bg-base-200" />
+            <x-mary-textarea label="Observações" wire:model="serviceData.observations" placeholder="Detalhes específicos deste serviço" rows="2" />
+            <x-slot:actions>
+                <x-mary-button label="Voltar" @click="$wire.showServiceModal = false" />
+                <x-mary-button :label="$editingItemId ? 'Salvar serviço' : 'Adicionar serviço'" class="btn-primary" type="submit" spinner="saveService" />
+            </x-slot:actions>
+        </x-mary-form>
+    </x-mary-modal>
+</x-operation.page>

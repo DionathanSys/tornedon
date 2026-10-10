@@ -1,0 +1,79 @@
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source '../views/components/operation/**/*.blade.php';
+@source '../views/filament/operation/**/*.blade.php';
+@source '../views/livewire/operation-*.blade.php';
+@source '../../vendor/robsontenorio/mary/src/View/Components/**/*.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@plugin 'daisyui' {
+    themes: light --default, dark;
+    root: '.operation-ui';
+}
+
+.operation-ui {
+    color: var(--color-base-content);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.operation-ui .modal {
+    z-index: 70;
+}
+
+.operation-ui .modal-box {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
+    overflow-y: auto;
+}
+
+.operation-bottom-bar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(var(--operation-columns, 4), minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.5rem max(0.75rem, env(safe-area-inset-right)) calc(0.5rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+    border-top: 1px solid var(--color-base-300);
+    background: var(--color-base-100);
+}
+
+.operation-bottom-bar .operation-bar-button {
+    display: flex;
+    width: 100%;
+    min-height: 3.25rem;
+    height: auto;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.7rem;
+}
+
+.operation-fab {
+    position: fixed;
+    right: max(1.25rem, env(safe-area-inset-right));
+    bottom: calc(var(--operation-bottom-space, calc(4.75rem + env(safe-area-inset-bottom))) + 1rem);
+    z-index: 49;
+    width: 3.5rem;
+    height: 3.5rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+}
+
+.operation-main {
+    padding-bottom: calc(var(--operation-bottom-space, calc(5.75rem + env(safe-area-inset-bottom))) + 1.5rem);
+}
+
+@media (min-width: 768px) {
+    .operation-bottom-bar {
+        right: 1rem;
+        bottom: 1rem;
+        left: 1rem;
+        max-width: 28rem;
+        margin-inline: auto;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-box);
+        padding: 0.5rem;
+    }
+}

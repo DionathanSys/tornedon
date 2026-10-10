@@ -2,18 +2,14 @@
 
 namespace App\Filament\Operation\Pages\Requisitions;
 
-use App\Filament\Operation\Actions\CreateRequisitionAction;
-use App\Filament\Operation\Concerns\HasOperationActions;
+use App\Filament\Operation\OperationPage;
 use App\Models\Requisition;
 use BackedEnum;
 use Filament\Facades\Filament;
-use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
-class RequisitionList extends Page
+class RequisitionList extends OperationPage
 {
-    use HasOperationActions;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocument;
 
     protected static ?string $navigationLabel = 'Requisições';
@@ -37,18 +33,6 @@ class RequisitionList extends Page
     public int $closedCount = 0;
 
     public int $allCount = 0;
-
-    protected function getOperationActions(): array
-    {
-        return [
-            CreateRequisitionAction::make(),
-        ];
-    }
-
-    protected function hasFloatingOperationAction(): bool
-    {
-        return true;
-    }
 
     public function mount(): void
     {
@@ -136,15 +120,5 @@ class RequisitionList extends Page
                 ),
             ])
             ->toArray();
-    }
-
-    public function getStatusBadgeClass(string $status): string
-    {
-        return match ($status) {
-            'open' => 'op-card__badge--info',
-            'closed' => 'op-card__badge--success',
-            'invoiced' => 'op-card__badge--warning',
-            default => 'op-card__badge--gray',
-        };
     }
 }

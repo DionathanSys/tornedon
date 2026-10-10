@@ -2,82 +2,45 @@
 
 namespace App\Livewire;
 
-use App\Filament\Operation\Actions\CreateRequisitionAction;
-use App\Filament\Operation\Actions\CreateServiceOrderAction;
-use Filament\Actions\Action;
-use Filament\Actions\Concerns\InteractsWithActions;
-use Filament\Actions\Contracts\HasActions;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Concerns\InteractsWithSchemas;
-use Filament\Schemas\Contracts\HasSchemas;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
-class OperationMenu extends Component implements HasActions, HasSchemas
+class OperationMenu extends Component
 {
-    use InteractsWithActions;
-    use InteractsWithSchemas;
+    public bool $showTenantModal = false;
 
-    public function switchTenantAction(): Action
+    public int|string|null $tenantId = null;
+
+    public function openTenantModal(): void
     {
-        return Action::make('switchTenant')
-            ->label('Mudar empresa')
-            ->icon(Heroicon::ArrowsRightLeft)
-            ->modalHeading('Mudar empresa')
-            ->modalSubmitActionLabel('Mudar empresa')
-            ->schema(fn (Schema $schema): Schema => $schema->components([
-                Select::make('tenant_id')
-                    ->label('Empresa')
-                    ->options(fn (): array => collect($this->getAvailableTenants())
-                        ->mapWithKeys(fn (Model $tenant): array => [
-                            (string) $tenant->getKey() => Filament::getTenantName($tenant),
-                        ])
-                        ->all())
-                    ->default(fn (): mixed => Filament::getTenant()?->getKey())
-                    ->required()
-                    ->searchable()
-                    ->native(false)
-                    ->selectablePlaceholder(false),
-            ]))
-            ->action(function (array $data): void {
-                $tenant = collect($this->getAvailableTenants())
-                    ->first(fn (Model $availableTenant): bool => (string) $availableTenant->getKey() === (string) ($data['tenant_id'] ?? ''));
-
-                if (! $tenant) {
-                    throw ValidationException::withMessages([
-                        'tenant_id' => 'A empresa selecionada não está disponível para este usuário.',
-                    ]);
-                }
-
-                redirect()->to(Filament::getUrl($tenant));
-            });
+        $this->resetValidation();
+        $this->tenantId = Filament::getTenant()?->getKey();
+        $this->showTenantModal = true;
     }
 
-    public function createServiceOrderAction(): Action
+    public function switchTenant(): void
     {
-        return CreateServiceOrderAction::make();
+        $this->validate(['tenantId' => 'required']);
+        $tenant = collect($this->availableTenants())->first(fn (Model $company): bool => (string) $company->getKey() === (string) $this->tenantId);
+
+        if (! $tenant) {
+            $this->addError('tenantId', 'Esta empresa não está disponível para você.');
+
+            return;
+        }
+
+        $this->redirect(Filament::getUrl($tenant), navigate: true);
     }
 
-    public function createRequisitionAction(): Action
+    public function availableTenants(): array
     {
-        return CreateRequisitionAction::make();
+        return Filament::getUserTenants(Filament::auth()->user());
     }
 
     public function render(): View
     {
         return view('livewire.operation-menu');
-    }
-
-    /**
-     * @return array<Model>
-     */
-    private function getAvailableTenants(): array
-    {
-        return Filament::getUserTenants(Filament::auth()->user());
     }
 }

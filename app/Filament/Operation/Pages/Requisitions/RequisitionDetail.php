@@ -4,17 +4,17 @@ namespace App\Filament\Operation\Pages\Requisitions;
 
 use App\Enum\Requisition\Status;
 use App\Filament\Operation\Concerns\HasOperationActions;
+use App\Filament\Operation\OperationPage;
 use App\Models\Requisition;
-use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
-use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Locked;
+use Mary\Traits\Toast;
 
-class RequisitionDetail extends Page
+class RequisitionDetail extends OperationPage
 {
-    use HasOperationActions;
+    use HasOperationActions, Toast;
 
     protected static ?string $title = 'Detalhe da Requisição';
 
@@ -26,22 +26,19 @@ class RequisitionDetail extends Page
 
     public ?array $requisition = null;
 
+    #[Locked]
     public string $record_id = '';
 
     protected function getOperationActions(): array
     {
-        return [
-            Action::make('back')->label('Voltar')->icon('heroicon-o-arrow-left')->color('gray')
-                ->url(fn (): string => RequisitionList::getUrl(tenant: Filament::getTenant())),
-            Action::make('close')->label('Encerrar')->icon('heroicon-o-check-circle')->color('success')
-                ->visible(fn (): bool => $this->tenantRequisition()?->status === Status::OPEN)
-                ->requiresConfirmation()->modalHeading('Encerrar esta requisição?')
-                ->action(fn () => $this->close()),
-            Action::make('cancel')->label('Cancelar')->icon('heroicon-o-x-circle')->color('danger')
-                ->visible(fn (): bool => $this->tenantRequisition()?->status === Status::OPEN)
-                ->requiresConfirmation()->modalHeading('Cancelar esta requisição?')
-                ->action(fn () => $this->cancel()),
-        ];
+        $actions = [['label' => 'Voltar', 'icon' => 'o-arrow-left', 'url' => RequisitionList::getUrl(tenant: Filament::getTenant())]];
+
+        if ($this->tenantRequisition()?->status === Status::OPEN) {
+            $actions[] = ['label' => 'Encerrar', 'icon' => 'o-check-circle', 'method' => 'close', 'confirm' => true];
+            $actions[] = ['label' => 'Cancelar', 'icon' => 'o-x-circle', 'method' => 'cancel', 'confirm' => true];
+        }
+
+        return $actions;
     }
 
     public function mount(int|string $record): void
@@ -104,17 +101,6 @@ class RequisitionDetail extends Page
         ];
     }
 
-    public function getStatusBadgeClass(string $status): string
-    {
-        return match ($status) {
-            'open' => 'op-badge--info',
-            'closed' => 'op-badge--success',
-            'invoiced' => 'op-badge--warning',
-            'cancelled' => 'op-badge--danger',
-            default => 'op-badge--gray',
-        };
-    }
-
     public function close(): void
     {
         $requisition = $this->tenantRequisition();
@@ -127,15 +113,12 @@ class RequisitionDetail extends Page
         $closed = $service->close($requisition, (int) Auth::id(), false);
 
         if ($service->hasError() || $closed === null) {
-            notify::error(
-                message: $service->getMessageUser(),
-                errorCode: $service->getErrorCode(),
-            );
+            $this->error($service->getMessageUser());
 
             return;
         }
 
-        notify::success(message: $service->getMessage());
+        $this->success($service->getMessage());
         $this->loadRequisition();
     }
 
@@ -151,15 +134,12 @@ class RequisitionDetail extends Page
         $cancelled = $service->cancel($requisition, (int) Auth::id());
 
         if ($service->hasError() || $cancelled === null) {
-            notify::error(
-                message: $service->getMessageUser(),
-                errorCode: $service->getErrorCode(),
-            );
+            $this->error($service->getMessageUser());
 
             return;
         }
 
-        notify::success(message: $service->getMessage());
+        $this->success($service->getMessage());
         $this->loadRequisition();
     }
 

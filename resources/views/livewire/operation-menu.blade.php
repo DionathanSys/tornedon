@@ -1,102 +1,50 @@
 @php
-    $currentTenant = filament()->getTenant();
+    $tenant = filament()->getTenant();
     $user = filament()->auth()->user();
     $panelLinks = collect([
-        ['id' => 'admin', 'label' => 'Administração', 'icon' => \Filament\Support\Icons\Heroicon::BuildingOffice2],
-        ['id' => 'mobile', 'label' => 'Mobile', 'icon' => \Filament\Support\Icons\Heroicon::DevicePhoneMobile],
-        ['id' => 'shop', 'label' => 'Shop', 'icon' => \Filament\Support\Icons\Heroicon::ShoppingCart],
-        ['id' => 'management', 'label' => 'Gestão', 'icon' => \Filament\Support\Icons\Heroicon::Cog6Tooth],
-    ])->map(function (array $item) use ($currentTenant, $user): ?array {
+        ['id' => 'admin', 'label' => 'Administração', 'icon' => 'o-building-office-2'],
+        ['id' => 'mobile', 'label' => 'Mobile', 'icon' => 'o-device-phone-mobile'],
+        ['id' => 'shop', 'label' => 'Shop', 'icon' => 'o-shopping-cart'],
+        ['id' => 'management', 'label' => 'Gestão', 'icon' => 'o-cog-6-tooth'],
+    ])->map(function ($item) use ($tenant, $user) {
         $panel = filament()->getPanel($item['id'], isStrict: false);
-
-        if (! $panel || $panel->getId() === filament()->getId() || ! $user->canAccessPanel($panel)) {
-            return null;
-        }
-
-        $url = $panel->getUrl($panel->hasTenancy() ? $currentTenant : null);
-
-        return $url ? [...$item, 'url' => $url] : null;
-    })->filter()->values();
+        return $panel && $user->canAccessPanel($panel) ? [...$item, 'url' => $panel->getUrl($panel->hasTenancy() ? $tenant : null)] : null;
+    })->filter();
+    $companies = collect($this->availableTenants())->map(fn ($company) => ['id' => $company->getKey(), 'name' => filament()->getTenantName($company)])->all();
 @endphp
 
-<div class="op-menu">
-    <x-filament::dropdown placement="top-end" teleport>
-        <x-slot name="trigger">
-            <button
-                type="button"
-                class="op-menu__trigger"
-                aria-label="Abrir menu de operação"
-            >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <span>Menu</span>
-            </button>
-        </x-slot>
-
-        <x-filament::dropdown.header :icon="\Filament\Support\Icons\Heroicon::OutlinedEllipsisHorizontalCircle">
-            Operação
-        </x-filament::dropdown.header>
-
-        <x-filament::dropdown.list>
-            <x-filament::dropdown.list.item
-                tag="button"
-                :icon="\Filament\Support\Icons\Heroicon::OutlinedArrowsRightLeft"
-                x-on:click="close()"
-                wire:click="mountAction('switchTenant')"
-            >
-                Mudar empresa
-            </x-filament::dropdown.list.item>
-            <x-filament::dropdown.list.item
-                tag="button"
-                :icon="\Filament\Support\Icons\Heroicon::OutlinedPlus"
-                x-on:click="close()"
-                wire:click="mountAction('createServiceOrder')"
-            >
-                Nova ordem
-            </x-filament::dropdown.list.item>
-            <x-filament::dropdown.list.item
-                tag="button"
-                :icon="\Filament\Support\Icons\Heroicon::OutlinedPlus"
-                x-on:click="close()"
-                wire:click="mountAction('createRequisition')"
-            >
-                Nova requisição
-            </x-filament::dropdown.list.item>
-        </x-filament::dropdown.list>
-
-        @if (filament()->hasDarkMode() && (! filament()->hasDarkModeForced()))
-            <x-filament::dropdown.header :icon="\Filament\Support\Icons\Heroicon::OutlinedSwatch">
-                Aparência
-            </x-filament::dropdown.header>
-
-            <x-filament::dropdown.list>
-                <x-filament-panels::theme-switcher />
-            </x-filament::dropdown.list>
-        @endif
-
+<div>
+    <x-mary-dropdown no-x-anchor top right>
+        <x-slot:trigger class="operation-bar-button btn btn-ghost">
+            <x-mary-icon name="o-bars-3" class="h-5 w-5" />
+            <span>Menu</span>
+        </x-slot:trigger>
+        <x-mary-menu-item title="Mudar empresa" icon="o-arrows-right-left" wire:click="openTenantModal" />
+        <x-mary-menu-item title="Nova ordem" icon="o-plus" @click="$dispatch('operation-create-record', { kind: 'service-order' })" />
+        <x-mary-menu-item title="Nova requisição" icon="o-plus" @click="$dispatch('operation-create-record', { kind: 'requisition' })" />
+        <x-mary-menu-separator />
+        <x-mary-menu-item title="Tema claro" icon="o-sun" @click="$dispatch('theme-changed', 'light')" />
+        <x-mary-menu-item title="Tema escuro" icon="o-moon" @click="$dispatch('theme-changed', 'dark')" />
+        <x-mary-menu-item title="Tema do sistema" icon="o-computer-desktop" @click="$dispatch('theme-changed', 'system')" />
         @if ($panelLinks->isNotEmpty())
-            <x-filament::dropdown.header :icon="\Filament\Support\Icons\Heroicon::OutlinedSquares2x2">
-                Outros painéis
-            </x-filament::dropdown.header>
-
-            <x-filament::dropdown.list>
-                @foreach ($panelLinks as $panelLink)
-                    <x-filament::dropdown.list.item
-                        :href="$panelLink['url']"
-                        :icon="$panelLink['icon']"
-                        tag="a"
-                    >
-                        {{ $panelLink['label'] }}
-                    </x-filament::dropdown.list.item>
-                @endforeach
-            </x-filament::dropdown.list>
+            <x-mary-menu-separator />
+            @foreach ($panelLinks as $panelLink)
+                <x-mary-menu-item :title="$panelLink['label']" :icon="$panelLink['icon']" :link="$panelLink['url']" no-wire-navigate />
+            @endforeach
         @endif
-    </x-filament::dropdown>
+    </x-mary-dropdown>
 
     @teleport('body')
-        <div class="op-menu-modals">
-            <x-filament-actions::modals />
-        </div>
+        <x-operation.theme>
+            <x-mary-modal wire:model="showTenantModal" title="Mudar empresa" subtitle="Escolha a empresa em que deseja operar." class="backdrop-blur-sm">
+                <x-mary-form wire:submit="switchTenant" no-separator>
+                    <x-mary-select label="Empresa" wire:model="tenantId" :options="$companies" />
+                    <x-slot:actions>
+                        <x-mary-button label="Voltar" @click="$wire.showTenantModal = false" />
+                        <x-mary-button label="Mudar empresa" class="btn-primary" type="submit" spinner="switchTenant" />
+                    </x-slot:actions>
+                </x-mary-form>
+            </x-mary-modal>
+        </x-operation.theme>
     @endteleport
 </div>

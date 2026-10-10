@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Models\Company;
 use Filament\Enums\DatabaseNotificationsPosition;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -57,14 +58,14 @@ class OperationPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => new HtmlString(view('filament.operation.head', [
+                fn () => new HtmlString(Filament::getCurrentPanel()?->getId() === 'operation' ? view('filament.operation.head', [
                     'appName' => 'Tornedon Operação',
                     'manifest' => 'manifest-operation.webmanifest',
-                ])->render())
+                ])->render() : '')
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn () => new HtmlString(view('filament.operation.body-end')->render())
+                fn () => new HtmlString(Filament::getCurrentPanel()?->getId() === 'operation' ? view('filament.operation.body-end')->render() : '')
             )
             ->databaseNotifications(position: DatabaseNotificationsPosition::Sidebar);
     }

@@ -3,34 +3,32 @@
 namespace App\Filament\Operation\Concerns;
 
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
 
 trait HasOperationActions
 {
-    protected array $cachedOperationActions = [];
+    public bool $showConfirmation = false;
 
-    public function cacheHasOperationActions(): void
+    #[Locked]
+    public string $confirmationOperation = '';
+
+    public function requestOperationConfirmation(string $operation): void
     {
-        foreach ($this->getOperationActions() as $action) {
-            $this->cachedOperationActions[] = $this->cacheAction($action);
-        }
+        abort_unless(collect($this->getOperationActions())->contains(fn ($action): bool => ($action['method'] ?? null) === $operation && ($action['confirm'] ?? false)), 403);
+        $this->confirmationOperation = $operation;
+        $this->showConfirmation = true;
+    }
+
+    public function confirmOperation(): void
+    {
+        abort_unless($this->showConfirmation && in_array($this->confirmationOperation, ['close', 'cancel'], true), 403);
+        $this->{$this->confirmationOperation}();
+        $this->showConfirmation = false;
     }
 
     public function getFooter(): ?View
     {
-        if ($this->hasFloatingOperationAction()) {
-            return view('filament.operation.floating-action', [
-                'action' => $this->cachedOperationActions[0],
-            ]);
-        }
-
-        return view('filament.operation.actions', [
-            'actions' => $this->cachedOperationActions,
-        ]);
-    }
-
-    protected function hasFloatingOperationAction(): bool
-    {
-        return false;
+        return view('filament.operation.actions', ['actions' => $this->getOperationActions()]);
     }
 
     abstract protected function getOperationActions(): array;

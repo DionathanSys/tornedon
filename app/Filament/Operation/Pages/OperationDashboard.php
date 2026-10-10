@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 
 class OperationDashboard extends Dashboard
 {
+    protected static string $layout = 'components.operation.layout';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;
 
     protected static ?string $navigationLabel = 'Início';

@@ -12,7 +12,9 @@ use App\Filament\Operation\Pages\Requisitions\RequisitionList;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
 use App\Livewire\OperationMenu;
+use App\Livewire\OperationRecordCreator;
 use App\Models\Company;
+use App\Models\CompanyPartner;
 use App\Models\Equipment;
 use App\Models\Partner;
 use App\Models\Requisition;
@@ -22,7 +24,6 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -76,50 +77,37 @@ class OperationPanelTest extends TestCase
         $response->assertOk();
 
         Livewire::test(OperationMenu::class)
-            ->callAction('switchTenant', data: [
-                'tenant_id' => $otherCompany->getKey(),
-            ])
+            ->call('openTenantModal')
+            ->set('tenantId', $otherCompany->getKey())
+            ->call('switchTenant')
             ->assertRedirect(Filament::getUrl($otherCompany));
 
         Livewire::test(OperationMenu::class)
-            ->assertActionExists('switchTenant')
-            ->assertActionExists('createServiceOrder')
-            ->assertActionExists('createRequisition')
+            ->assertSee('Nova ordem')
+            ->assertSee('Nova requisição')
             ->assertSee('x-teleport="body"', false)
-            ->assertSee('op-menu-modals', false);
+            ->assertSee('modal-box', false);
     }
 
     public function test_operation_lists_expose_their_create_actions(): void
     {
         [, $company] = $this->authenticateTenant();
 
-        $creationModal = Livewire::test(ServiceOrderQueue::class)
-            ->assertActionExists('createServiceOrder')
-            ->assertActionVisible('createServiceOrder')
-            ->mountAction('createServiceOrder')
-            ->assertActionMounted('createServiceOrder');
-
-        $this->assertFalse($creationModal->instance()->getMountedAction()->canCreateAnother());
-        $this->assertCount(2, $creationModal->instance()->getMountedAction()->getVisibleModalFooterActions());
-        $heading = Blade::render('{{ $heading }}', [
-            'heading' => $creationModal->instance()->getMountedAction()->getModalHeading(),
-        ]);
-        $this->assertStringContainsString('Abrir ordem de serviço', $heading);
-        $this->assertStringContainsString('<span class="op-create-order-heading">', $heading);
-        $this->assertStringNotContainsString('&lt;span', $heading);
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')
+            ->assertSet('showModal', true)
+            ->assertSee('Nova ordem de serviço')
+            ->assertSee('modal-box', false)
+            ->assertDontSee('Criar outro');
 
         $this->get(ServiceOrderQueue::getUrl(tenant: $company))
             ->assertOk()
-            ->assertSee('op-fab', false)
+            ->assertSee('operation-fab', false)
             ->assertSee('Nova OS');
-
-        Livewire::test(RequisitionList::class)
-            ->assertActionExists('createRequisition')
-            ->assertActionVisible('createRequisition');
 
         $this->get(RequisitionList::getUrl(tenant: $company))
             ->assertOk()
-            ->assertSee('Nova Requisição');
+            ->assertSee('Nova requisição');
     }
 
     public function test_operation_create_actions_use_the_current_company(): void
@@ -127,22 +115,22 @@ class OperationPanelTest extends TestCase
         [$user, $company] = $this->authenticateTenant();
         $customer = $this->createCustomer($user, 'Cliente Operação');
 
-        Livewire::test(ServiceOrderQueue::class)
-            ->callAction('createServiceOrder', data: [
-                'customer_id' => $customer->id,
-            ])
-            ->assertHasNoActionErrors();
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')
+            ->set('customerId', $customer->id)
+            ->call('create')
+            ->assertHasNoErrors();
 
         $serviceOrder = ServiceOrder::query()->latest('id')->firstOrFail();
 
         $this->assertSame($company->id, $serviceOrder->company_id);
         $this->assertSame(State::OPEN, $serviceOrder->status);
 
-        Livewire::test(RequisitionList::class)
-            ->callAction('createRequisition', data: [
-                'customer_id' => $customer->id,
-            ])
-            ->assertHasNoActionErrors();
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'requisition')
+            ->set('customerId', $customer->id)
+            ->call('create')
+            ->assertHasNoErrors();
 
         $requisition = Requisition::query()->latest('id')->firstOrFail();
 
@@ -161,6 +149,53 @@ class OperationPanelTest extends TestCase
         Livewire::test(ServiceOrderQueue::class)
             ->assertSee('OS-OP-A')
             ->assertDontSee($otherOrder->number);
+    }
+
+    public function test_operation_creator_rejects_customers_outside_the_current_company(): void
+    {
+        [$user] = $this->authenticateTenant();
+        $otherCompany = $this->createCompany($user, 'Outra Empresa');
+        $customer = Partner::query()->create([
+            'name' => 'Cliente de outra empresa', 'document_type' => 'CPF',
+            'document_number' => fake()->numerify('###########'), 'created_by' => $user->id,
+        ]);
+        CompanyPartner::query()->create(['company_id' => $otherCompany->id, 'partner_id' => $customer->id, 'type' => ['customer'], 'is_active' => true]);
+
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')
+            ->call('searchCustomers', 'Cliente de outra empresa')
+            ->assertSet('customers', [])
+            ->set('customerId', $customer->id)
+            ->call('create')->assertHasErrors(['customerId']);
+
+        $this->assertSame(0, ServiceOrder::query()->count());
+    }
+
+    public function test_operation_creator_preserves_quick_customer_registration(): void
+    {
+        [, $company] = $this->authenticateTenant();
+
+        $creator = Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')
+            ->set('showNewCustomer', true)
+            ->set('newCustomer', [
+                'name' => 'Novo cliente Mary', 'document_type' => 'cpf',
+                'document_number' => '52998224725', 'state_tax_indicator' => '9', 'state_tax_id' => null,
+            ])
+            ->call('createCustomer')->assertHasNoErrors()
+            ->assertSet('showNewCustomer', false);
+
+        $customerId = $creator->get('customerId');
+        $this->assertNotNull($customerId);
+        $this->assertDatabaseHas('company_partner', ['company_id' => $company->id, 'partner_id' => $customerId, 'is_active' => true]);
+    }
+
+    public function test_operation_styles_are_not_loaded_on_other_panels(): void
+    {
+        [, $company] = $this->authenticateTenant();
+        $this->get(OperationDashboard::getUrl(tenant: $company))->assertOk()->assertSee('/build/assets/operation-', false);
+        Auth::logout();
+        $this->get('/admin/login')->assertOk()->assertDontSee('/build/assets/operation-', false);
     }
 
     public function test_service_order_detail_updates_through_the_service_layer(): void
@@ -186,7 +221,7 @@ class OperationPanelTest extends TestCase
             ->assertOk()
             ->assertDontSee('aria-label="Navegação principal"', false)
             ->assertSee('aria-label="Ações do registro"', false)
-            ->assertSee('op-record-actions--4', false)
+            ->assertSee('--operation-columns: 4', false)
             ->assertSee('Mais')
             ->assertSee('Voltar')
             ->assertSee('Salvar')
@@ -196,7 +231,7 @@ class OperationPanelTest extends TestCase
 
         $this->get(ServiceOrderDetail::getUrl(['record' => $order], tenant: $company))
             ->assertOk()
-            ->assertSee('op-record-actions--1', false)
+            ->assertSee('--operation-columns: 1', false)
             ->assertDontSee('aria-label="Navegação principal"', false);
     }
 
@@ -219,7 +254,8 @@ class OperationPanelTest extends TestCase
 
         $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
             ->set('formData.customer_observations', 'Anotação ainda não salva')
-            ->callAction('addService', data: [
+            ->call('openAddService')
+            ->set('serviceData', [
                 'service_id' => $service->id,
                 'quantity' => '2',
                 'unit_price' => '150,00',
@@ -227,7 +263,9 @@ class OperationPanelTest extends TestCase
                 'discount_amount' => '0,00',
                 'observations' => 'Serviço de manutenção',
             ])
-            ->assertHasNoActionErrors()
+            ->call('saveService')
+            ->assertHasNoErrors()
+            ->assertSet('showServiceModal', false)
             ->assertSet('formData.customer_observations', 'Anotação ainda não salva')
             ->assertSet('order.total', 'R$ 300,00');
 
@@ -235,26 +273,31 @@ class OperationPanelTest extends TestCase
         $this->assertSame($service->id, $item->service_id);
         $this->assertSame('Serviço de manutenção', $item->observations);
 
-        $page->callAction('editService', data: [
-            'quantity' => '3',
-            'unit_price' => '150,00',
-            'discount_percentage' => '10,00',
-            'discount_amount' => '45,00',
-            'observations' => 'Serviço atualizado',
-        ], arguments: ['item' => $item->id])
-            ->assertHasNoActionErrors()
+        $page->call('openEditService', $item->id)
+            ->set('serviceData', [
+                'service_id' => $service->id,
+                'quantity' => '3',
+                'unit_price' => '150,00',
+                'discount_percentage' => '10,00',
+                'discount_amount' => '45,00',
+                'observations' => 'Serviço atualizado',
+            ])
+            ->call('saveService')
+            ->assertHasNoErrors()
             ->assertSet('order.total', 'R$ 405,00');
 
         $this->assertSame('Serviço atualizado', $item->fresh()->observations);
         $this->assertSame(405.0, (float) $item->fresh()->total_amount);
 
-        $page->callAction('editService', data: ['observations' => 'Somente observação'], arguments: ['item' => $item->id])
-            ->assertHasNoActionErrors()
+        $page->call('openEditService', $item->id)->set('serviceData.observations', 'Somente observação')->call('saveService')
+            ->assertHasNoErrors()
             ->assertSet('order.total', 'R$ 405,00');
 
-        $page->callAction('editService', data: [
-            'quantity' => '1,50', 'discount_percentage' => '0,00', 'discount_amount' => '0,00',
-        ], arguments: ['item' => $item->id])->assertHasNoActionErrors()
+        $page->call('openEditService', $item->id)
+            ->set('serviceData.quantity', '1,50')
+            ->set('serviceData.discount_percentage', '0,00')
+            ->set('serviceData.discount_amount', '0,00')
+            ->call('saveService')->assertHasNoErrors()
             ->assertSet('order.total', 'R$ 225,00');
     }
 
@@ -273,7 +316,7 @@ class OperationPanelTest extends TestCase
             ->set('formData.customer_observations', 'Falha relatada pelo cliente')
             ->set('formData.items_received', 'Equipamento e cabo')
             ->set('formData.general_observations', 'Verificar conexões')
-            ->call('save')->assertHasNoFormErrors();
+            ->call('save')->assertHasNoErrors();
 
         $order->refresh();
         $this->assertSame($user->id, $order->technician_id);
@@ -281,6 +324,28 @@ class OperationPanelTest extends TestCase
         $this->assertSame('Falha relatada pelo cliente', $order->customer_observations);
         $this->assertSame('Equipamento e cabo', $order->items_received);
         $this->assertSame('Verificar conexões', $order->general_observations);
+    }
+
+    public function test_service_modal_recalculates_values_and_enforces_minimum_price(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-MINIMUM');
+        $service = Service::factory()->create(['company_id' => $company->id, 'created_by' => $user->id, 'price' => 150, 'min_sale_price' => 140]);
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->call('openAddService')->set('serviceData.service_id', $service->id)
+            ->assertSet('serviceData.unit_price', 150)
+            ->set('serviceData.quantity', 2)
+            ->set('serviceData.discount_percentage', 10)
+            ->assertSet('serviceData.discount_amount', 30)
+            ->call('saveService')->assertHasErrors(['serviceData.unit_price'])
+            ->assertSet('showServiceModal', true);
+
+        $this->assertSame(0, $order->items()->count());
+
+        $page->set('serviceData.discount_percentage', 5)->call('saveService')
+            ->assertHasNoErrors()->assertSet('showServiceModal', false)
+            ->assertSet('order.total', 'R$ 285,00');
     }
 
     public function test_service_order_detail_rejects_services_from_another_company(): void
@@ -291,9 +356,11 @@ class OperationPanelTest extends TestCase
         $service = Service::factory()->create(['company_id' => $otherCompany->id, 'created_by' => $user->id]);
 
         Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
-            ->callAction('addService', data: [
+            ->call('openAddService')
+            ->set('serviceData', [
                 'service_id' => $service->id, 'quantity' => '1', 'unit_price' => '150,00',
-            ])->assertHasActionErrors(['service_id']);
+                'discount_percentage' => 0, 'discount_amount' => 0,
+            ])->call('saveService')->assertHasErrors(['serviceData.service_id']);
 
         $this->assertSame(0, $order->items()->count());
     }
@@ -312,7 +379,7 @@ class OperationPanelTest extends TestCase
         Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
             ->set('formData.equipment_id', $equipment->id)
             ->set('formData.technician_id', $otherUser->id)
-            ->call('save')->assertHasFormErrors(['equipment_id', 'technician_id']);
+            ->call('save')->assertHasErrors(['formData.equipment_id', 'formData.technician_id']);
 
         $this->assertNull($order->fresh()->equipment_id);
         $this->assertSame($user->id, $order->fresh()->technician_id);
@@ -325,8 +392,8 @@ class OperationPanelTest extends TestCase
         $order->update(['status' => State::CLOSED]);
 
         Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
-            ->assertActionHidden('addService')
-            ->assertActionHidden('editService');
+            ->assertDontSee('aria-label="Adicionar serviço"', false)
+            ->call('openAddService')->assertStatus(403);
     }
 
     public function test_service_order_detail_cannot_edit_an_item_from_another_order(): void
@@ -340,7 +407,7 @@ class OperationPanelTest extends TestCase
         ]);
 
         Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
-            ->mountAction('editService', arguments: ['item' => $item->id])->assertStatus(404);
+            ->call('openEditService', $item->id)->assertStatus(404);
 
         $this->assertSame(150.0, (float) $item->fresh()->unit_price);
     }
@@ -362,7 +429,9 @@ class OperationPanelTest extends TestCase
         ]);
 
         Livewire::test(RequisitionDetail::class, ['record' => $requisition->id])
-            ->callAction('cancel')->assertHasNoActionErrors();
+            ->call('requestOperationConfirmation', 'cancel')
+            ->assertSet('showConfirmation', true)
+            ->call('confirmOperation')->assertHasNoErrors();
 
         $this->assertSame(RequisitionStatus::CANCELLED, $requisition->fresh()->status);
     }
@@ -402,12 +471,21 @@ class OperationPanelTest extends TestCase
 
     private function createCustomer(User $user, string $name): Partner
     {
-        return Partner::query()->create([
+        $partner = Partner::query()->create([
             'name' => $name,
             'document_type' => 'CPF',
             'document_number' => fake()->numerify('###########'),
             'created_by' => $user->id,
         ]);
+
+        CompanyPartner::query()->create([
+            'partner_id' => $partner->id,
+            'company_id' => Filament::getTenant()->getKey(),
+            'type' => ['customer'],
+            'is_active' => true,
+        ]);
+
+        return $partner;
     }
 
     private function createServiceOrder(User $user, Company $company, string $number): ServiceOrder
