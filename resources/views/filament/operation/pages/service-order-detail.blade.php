@@ -1,9 +1,8 @@
 <x-operation.page :title="$order ? 'OS #'.$order['number'] : 'Detalhe da OS'" :subtitle="$order ? $order['type'].' · '.$order['priority'].' · '.$order['order_date'] : null">
     @if ($order)
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
             <x-operation.stat title="Valor" :value="$order['total']" />
             <x-operation.stat title="Status" :value="$order['status_label']" />
-            <x-operation.stat title="Local" :value="$order['location']" />
         </div>
         <x-operation.panel title="Cliente" :subtitle="$order['customer_doc']">
             <p class="font-semibold">{{ $order['customer_name'] }}</p>
