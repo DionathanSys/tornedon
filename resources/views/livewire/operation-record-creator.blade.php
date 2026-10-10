@@ -16,7 +16,7 @@
             </x-mary-form>
         @else
             <x-mary-form wire:submit="create" no-separator>
-                <x-mary-choices label="Cliente" wire:model="customerId" :options="$customers" search-function="searchCustomers" placeholder="Buscar nome ou documento" no-result-text="Nenhum cliente encontrado" single searchable debounce="300ms" escape-values />
+                <x-operation.search-select label="Cliente" wire:model="customerId" :options="$customers" search-function="searchCustomers" placeholder="Buscar nome ou documento" debounce="300ms" />
                 <x-mary-button label="Novo cliente" icon="o-user-plus" class="btn-ghost btn-sm" @click="$wire.showNewCustomer = true" />
                 <p class="text-sm text-base-content/60">Os serviços e detalhes do atendimento são preenchidos na próxima tela.</p>
                 <x-slot:actions>

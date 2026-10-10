@@ -25,6 +25,13 @@ barra inferior, botão flutuante, filtros e status. Apenas a disposição da bar
 inferior, do botão flutuante e os limites de viewport têm CSS próprio; campos e
 modais usam os estilos da biblioteca.
 
+`page` organiza o conteúdo com espaçamento de grid, sobre o fundo do layout.
+`panel` padroniza o padding e o espaçamento interno dos cards. `record-item`
+usa o List Item do Mary UI, com separador entre registros. `search-select`
+padroniza a seleção única pesquisável com texto simples, sem a cápsula de
+seleção múltipla: cliente e serviço usam busca no servidor; técnico e equipamento
+usam busca local nas opções já limitadas à empresa e ao cliente.
+
 A barra dos registros mostra até três ações; as demais vão para **Mais**.
 Os botões de criação nas listagens e no Menu enviam o evento
 `operation-create-record` para `App\Livewire\OperationRecordCreator`, que mantém

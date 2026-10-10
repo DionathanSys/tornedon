@@ -4,13 +4,13 @@
             <x-mary-stat title="Total" :value="$requisition['total']" />
             <x-mary-stat title="Status" :value="$requisition['status']" />
         </div>
-        <x-mary-card title="Cliente e equipamento" shadow>
+        <x-operation.panel title="Cliente e equipamento">
             <p class="font-semibold">{{ $requisition['customer_name'] }}</p>
             <p class="text-sm text-base-content/60">{{ $requisition['customer_doc'] }}</p>
             <p class="mt-3">{{ $requisition['equipment_name'] }} {{ $requisition['equipment_identifier'] }}</p>
             <p class="mt-1 text-sm text-base-content/60">OS: {{ $requisition['service_order_number'] }} · {{ $requisition['sale_date'] }}</p>
-        </x-mary-card>
-        <x-mary-card :title="'Itens ('.count($requisition['items']).')'" shadow>
+        </x-operation.panel>
+        <x-operation.panel :title="'Itens ('.count($requisition['items']).')'">
             <div class="space-y-3">
                 @forelse ($requisition['items'] as $item)
                     <div class="rounded-box bg-base-200 p-4">
@@ -25,9 +25,9 @@
                     <p class="text-sm text-base-content/60">Nenhum item adicionado.</p>
                 @endforelse
             </div>
-        </x-mary-card>
+        </x-operation.panel>
         @if ($requisition['observations'])
-            <x-mary-card title="Observações" shadow><p class="whitespace-pre-wrap">{{ $requisition['observations'] }}</p></x-mary-card>
+            <x-operation.panel title="Observações"><p class="whitespace-pre-wrap">{{ $requisition['observations'] }}</p></x-operation.panel>
         @endif
     @else
         <x-mary-alert title="Requisição não encontrada." icon="o-exclamation-circle" class="alert-warning" />
