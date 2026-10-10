@@ -55,13 +55,14 @@ class ServiceOrderDetail extends Page
             Action::make('back')->label('Voltar')->icon('heroicon-o-arrow-left')->color('gray')
                 ->url(fn (): string => ServiceOrderQueue::getUrl(tenant: Filament::getTenant())),
             Action::make('save')->label('Salvar')->icon('heroicon-o-check')
+                ->extraAttributes(['class' => 'op-record-action--primary'])
                 ->visible(fn (): bool => in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true))
                 ->action(fn () => $this->save()),
-            $this->addServiceAction(),
             Action::make('close')->label('Encerrar')->icon('heroicon-o-check-circle')->color('success')
                 ->visible(fn (): bool => $this->tenantOrder()?->status === State::OPEN)
                 ->requiresConfirmation()->modalHeading('Encerrar esta ordem de serviço?')
                 ->action(fn () => $this->close()),
+            $this->addServiceAction(),
             Action::make('cancel')->label('Cancelar')->icon('heroicon-o-x-circle')->color('danger')
                 ->visible(fn (): bool => $this->tenantOrder()?->status === State::OPEN)
                 ->requiresConfirmation()->modalHeading('Cancelar esta ordem de serviço?')

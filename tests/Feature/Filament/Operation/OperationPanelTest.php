@@ -44,8 +44,8 @@ class OperationPanelTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Nova OS')
-            ->assertSee('Nova Requisição')
+            ->assertDontSee('Nova OS')
+            ->assertDontSee('Nova Requisição')
             ->assertSee('Menu')
             ->assertSee('Mudar empresa')
             ->assertSee('Nova ordem')
@@ -56,8 +56,8 @@ class OperationPanelTest extends TestCase
             ->assertDontSee('Equipamentos');
 
         Livewire::test(OperationDashboard::class)
-            ->assertActionExists('createServiceOrder')
-            ->assertActionExists('createRequisition');
+            ->assertActionDoesNotExist('createServiceOrder')
+            ->assertActionDoesNotExist('createRequisition');
     }
 
     public function test_operation_dashboard_allows_switching_between_companies(): void
@@ -96,6 +96,7 @@ class OperationPanelTest extends TestCase
 
         $this->get(ServiceOrderQueue::getUrl(tenant: $company))
             ->assertOk()
+            ->assertSee('op-fab', false)
             ->assertSee('Nova OS');
 
         Livewire::test(RequisitionList::class)
@@ -160,6 +161,29 @@ class OperationPanelTest extends TestCase
 
         $this->assertSame('Solução registrada pela operação', $order->fresh()->solution);
         $this->assertSame('Teste de observação', $order->fresh()->technician_observations);
+    }
+
+    public function test_service_order_record_replaces_navigation_with_three_actions_and_more(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-BOTTOM-ACTIONS');
+
+        $this->get(ServiceOrderDetail::getUrl(['record' => $order], tenant: $company))
+            ->assertOk()
+            ->assertDontSee('aria-label="Navegação principal"', false)
+            ->assertSee('aria-label="Ações do registro"', false)
+            ->assertSee('op-record-actions--4', false)
+            ->assertSee('Mais')
+            ->assertSee('Voltar')
+            ->assertSee('Salvar')
+            ->assertSee('Encerrar');
+
+        $order->update(['status' => State::INVOICED]);
+
+        $this->get(ServiceOrderDetail::getUrl(['record' => $order], tenant: $company))
+            ->assertOk()
+            ->assertSee('op-record-actions--1', false)
+            ->assertDontSee('aria-label="Navegação principal"', false);
     }
 
     public function test_service_order_detail_cannot_access_another_tenant_record(): void

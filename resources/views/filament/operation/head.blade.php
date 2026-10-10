@@ -66,39 +66,62 @@
     }
 
     .fi-main.fi-main {
-        padding-bottom: calc(var(--op-nav-offset, calc(4.5rem + env(safe-area-inset-bottom))) + var(--op-actions-height, 0px) + 1.5rem);
+        padding-bottom: calc(var(--op-bottom-space, calc(5.5rem + env(safe-area-inset-bottom))) + 1.5rem);
     }
 
-    .op-action-bar {
+    .op-fab.op-fab {
         position: fixed;
-        right: 0;
-        bottom: var(--op-nav-offset, calc(4.5rem + env(safe-area-inset-bottom)));
-        left: 0;
+        right: max(1.25rem, env(safe-area-inset-right));
+        bottom: calc(4.5rem + env(safe-area-inset-bottom) + 1rem);
         z-index: 49;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 0.75rem max(0.75rem, env(safe-area-inset-right)) 0.75rem max(0.75rem, env(safe-area-inset-left));
-        border-top: 1px solid #e4e4e7;
-        background: rgba(255, 255, 255, 0.96);
-        backdrop-filter: blur(16px);
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 50%;
+        background: #18181b;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     }
 
-    html.dark .op-action-bar {
-        border-color: #3f3f46;
-        background: rgba(24, 24, 27, 0.96);
+    .op-fab.op-fab .fi-icon { width: 1.5rem; height: 1.5rem; color: inherit; }
+    html.dark .op-fab.op-fab { background: #e4e4e7; color: #18181b; }
+
+    .op-record-actions .fi-btn {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 3rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        border: 0;
+        border-radius: 0.95rem;
+        padding: 0.55rem 0.25rem;
+        background: transparent;
+        color: #64748b;
+        box-shadow: none;
+        outline-offset: 2px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1;
     }
+
+    .op-record-actions .fi-btn .fi-icon { width: 1.25rem; height: 1.25rem; color: inherit; }
+    .op-record-actions.op-record-actions--1 { grid-template-columns: minmax(0, 1fr); }
+    .op-record-actions.op-record-actions--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .op-record-actions.op-record-actions--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .op-record-actions .fi-dropdown,
+    .op-record-actions .fi-dropdown-trigger { width: 100%; height: 100%; }
+    .op-record-actions .fi-btn-label { font-size: inherit; font-weight: inherit; }
+    .op-record-actions .fi-btn:hover { background: #f1f5f9; color: #18181b; }
+    .op-record-actions .op-record-action--primary { background: #18181b; color: #fff; }
+    html.dark .op-record-actions .fi-btn { color: #a1a1aa; }
+    html.dark .op-record-actions .fi-btn:hover { background: #27272a; color: #e4e4e7; }
+    html.dark .op-record-actions .op-record-action--primary { background: #e4e4e7; color: #18181b; }
 
     @media (min-width: 768px) {
-        .op-action-bar {
-            right: 1rem;
-            left: 1rem;
-            max-width: 48rem;
-            margin-inline: auto;
-            border: 1px solid #e4e4e7;
-            border-radius: 1rem;
-        }
+        .op-fab.op-fab { bottom: 6.5rem; }
     }
 </style>
 

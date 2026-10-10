@@ -117,13 +117,18 @@
     }
 </style>
 
-<nav class="op-bottom-nav" aria-label="Navegação principal">
-    @php
-        $currentPath = '/' . trim(request()->path(), '/');
-        $hideNavigation = str_ends_with($currentPath, '/create') || str_ends_with($currentPath, '/edit');
-    @endphp
+@php
+    $currentPath = '/' . trim(request()->path(), '/');
+    $pageClass = str(request()->route()?->getActionName() ?? '')->before('@')->toString();
+    $hideNavigation = str_ends_with($currentPath, '/create') || str_ends_with($currentPath, '/edit')
+        || in_array($pageClass, [
+            \App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail::class,
+            \App\Filament\Operation\Pages\Requisitions\RequisitionDetail::class,
+        ], true);
+@endphp
 
-    @if (! $hideNavigation)
+@if (! $hideNavigation)
+    <nav class="op-bottom-nav" aria-label="Navegação principal">
         @php
             $tenant = \Filament\Facades\Filament::getTenant();
             $items = [
@@ -167,8 +172,8 @@
         <div class="op-bottom-nav__menu">
             @livewire(\App\Livewire\OperationMenu::class)
         </div>
-    @endif
-</nav>
+    </nav>
+@endif
 
 <script>
     (() => {

@@ -46,6 +46,11 @@ class ServiceOrderQueue extends Page
         ];
     }
 
+    protected function hasFloatingOperationAction(): bool
+    {
+        return true;
+    }
+
     public function mount(): void
     {
         $this->loadOrders();

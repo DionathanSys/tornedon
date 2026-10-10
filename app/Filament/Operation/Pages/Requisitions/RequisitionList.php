@@ -45,6 +45,11 @@ class RequisitionList extends Page
         ];
     }
 
+    protected function hasFloatingOperationAction(): bool
+    {
+        return true;
+    }
+
     public function mount(): void
     {
         $this->loadRequisitions();
