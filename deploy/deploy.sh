@@ -287,10 +287,12 @@ fi
 
 run_in_root "$PHP_BIN" -r '
     $manifest = json_decode(file_get_contents("public/build/manifest.json"), true, 512, JSON_THROW_ON_ERROR);
-    $entry = $manifest["resources/css/operation.css"]["file"] ?? null;
-    if (! $entry || ! is_file("public/build/" . $entry)) {
-        fwrite(STDERR, "Build do Operation ausente ou desatualizado. Execute npm run build ou forneca public/build completo.\n");
-        exit(1);
+    foreach (["resources/css/operation.css", "resources/js/operation.js"] as $source) {
+        $entry = $manifest[$source]["file"] ?? null;
+        if (! $entry || ! is_file("public/build/" . $entry)) {
+            fwrite(STDERR, "Build do Operation ausente ou desatualizado: " . $source . ". Execute npm run build ou forneca public/build completo.\n");
+            exit(1);
+        }
     }
 '
 

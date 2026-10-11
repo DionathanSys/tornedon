@@ -10,6 +10,7 @@ serviços existentes continuam responsáveis pelas operações de negócio.
 - `resources/views/components/operation/layout.blade.php`: layout próprio, com
   Livewire e sem os assets de formulários/modais do Filament.
 - `resources/css/operation.css`: entrada Vite carregada apenas no Operation.
+- `resources/js/operation.js`: controlador de captura fullscreen, exclusivo do Operation.
 - `config/mary.php`: prefixo `mary-`, evitando colisões com componentes existentes.
 - Os temas claro/escuro usam os temas da daisyUI e a preferência `theme` já usada
   pelo aplicativo.
@@ -72,10 +73,18 @@ gerar outro. A coleta presencial usa o mesmo serviço de persistência e auditor
 sem precisar criar um link. Grava imagem PNG, nome, data e metadados do canal
 `operation_panel`; a substituição registra o antes/depois na auditoria.
 
-`operation.signature` reutiliza o motor de canvas já usado no aplicativo, com
-toque, mouse, limpeza e preservação do desenho ao redimensionar. O canvas é
-montado somente quando o modal Mary UI de coleta está aberto. A assinatura é
-salva separadamente do formulário de atendimento, preservando seus rascunhos.
+`operation.signature` coleta o nome primeiro e abre uma área dedicada em tela
+inteira. O controlador reutiliza o motor de traços do aplicativo, com toque,
+mouse e limpeza. Em retrato, o quadro gira -90° e a base fica na lateral direita;
+as coordenadas são convertidas para um bitmap horizontal. O tamanho desse bitmap
+fica fixo durante a coleta, e o layout se adapta sem distorcer ou apagar os traços.
+A linha-guia e os controles não entram no PNG salvo.
+
+O clique em **Iniciar assinatura** solicita fullscreen e tenta bloquear em
+retrato nos aparelhos compatíveis. A captura também funciona como overlay do
+viewport quando essas APIs não estão disponíveis. Cancelar, salvar ou remover o
+componente libera o bloqueio, sai do fullscreen da captura e restaura a rolagem.
+A assinatura é salva separadamente do atendimento, preservando seus rascunhos.
 
 As operações consultam a OS da empresa atual e não permitem coletar ou gerar
 links de OS cancelada. Um hash da assinatura conferida é validado sob bloqueio
@@ -88,6 +97,7 @@ composer install
 npm ci
 npm run build
 php artisan test tests/Feature/Filament/Operation/OperationPanelTest.php
+node --test tests/Frontend/operation-signature.test.mjs
 ```
 
 Ao alterar modais, confira também em navegador: abertura pelo Menu e pelo botão
