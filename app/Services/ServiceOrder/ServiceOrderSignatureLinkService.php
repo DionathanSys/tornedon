@@ -115,55 +115,89 @@ final class ServiceOrderSignatureLinkService
                 );
             }
 
-            $signedAt = now();
-            $metadata = [
-                'ip' => $request->ip(),
-                'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
-                'channel' => 'public_signature_link',
-            ];
-
-            $before = [
-                'customer_signature_present' => filled($serviceOrder->customer_signature),
-                'customer_signed_at' => $serviceOrder->customer_signed_at?->toIso8601String(),
-                'customer_signed_by_name' => $serviceOrder->customer_signed_by_name,
-            ];
-
-            $serviceOrder->forceFill([
-                'customer_signature' => $signature,
-                'customer_signed_at' => $signedAt,
-                'customer_signed_by_name' => $name,
-                'customer_signature_metadata' => $metadata,
-            ])->save();
-
-            $link->forceFill(['used_at' => $signedAt])->save();
-
-            app(AuditRecorder::class)->recordModelEvent(
-                $serviceOrder,
-                'service_order.customer_signed',
-                "Ordem de serviço #{$serviceOrder->number} assinada pelo cliente via link público",
-                $before,
-                [
-                    'customer_signature_present' => true,
-                    'customer_signed_at' => $signedAt->toIso8601String(),
-                    'customer_signed_by_name' => $name,
-                ],
-                source: AuditSource::PUBLIC,
-                metadata: [
-                    ...$metadata,
-                    'signature_link_id' => $link->id,
-                ],
-            );
-
-            return $serviceOrder->fresh([
-                'customer',
-                'company',
-                'equipment',
-                'technician',
-                'supervisor',
-                'salesperson',
-                'items.service',
-                'requisition.items.product',
-            ]);
+            return $this->persistSignature($serviceOrder, $name, $signature, $request, link: $link);
         });
+    }
+
+    public function signInPerson(
+        ServiceOrder $serviceOrder,
+        string $name,
+        string $signature,
+        int $signedBy,
+        Request $request,
+        bool $replace = false,
+        ?string $expectedSignatureHash = null,
+    ): ServiceOrder {
+        return DB::transaction(function () use ($serviceOrder, $name, $signature, $signedBy, $request, $replace, $expectedSignatureHash): ServiceOrder {
+            $order = ServiceOrder::query()->where('company_id', $serviceOrder->company_id)->whereKey($serviceOrder->getKey())->lockForUpdate()->first();
+
+            if (! $order) {
+                throw new ServiceOrderSignatureException('A ordem de serviço não está mais disponível.', 410);
+            }
+
+            if ($order->status === State::CANCELLED) {
+                throw new ServiceOrderSignatureException('Não é possível assinar uma ordem de serviço cancelada.');
+            }
+
+            $currentHash = filled($order->customer_signature) ? hash('sha256', $order->customer_signature) : null;
+
+            if ($currentHash !== $expectedSignatureHash) {
+                throw new ServiceOrderSignatureException('A assinatura da OS mudou. Reabra a coleta para conferir e tentar novamente.', 409);
+            }
+
+            if ($currentHash !== null && ! $replace) {
+                throw new ServiceOrderSignatureException('Confirme a substituição antes de salvar uma nova assinatura.', 409);
+            }
+
+            return $this->persistSignature($order, trim($name), $signature, $request, $signedBy);
+        });
+    }
+
+    private function persistSignature(ServiceOrder $order, string $name, string $signature, Request $request, ?int $signedBy = null, ?ServiceOrderSignatureLink $link = null): ServiceOrder
+    {
+        $replacing = filled($order->customer_signature);
+        $signedAt = now();
+        $metadata = [
+            'ip' => $request->ip(),
+            'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
+            'channel' => $link ? 'public_signature_link' : 'operation_panel',
+        ];
+        $before = [
+            'customer_signature_present' => $replacing,
+            'customer_signature_hash' => $replacing ? hash('sha256', $order->customer_signature) : null,
+            'customer_signed_at' => $order->customer_signed_at?->toIso8601String(),
+            'customer_signed_by_name' => $order->customer_signed_by_name,
+        ];
+        $data = [
+            'customer_signature' => $signature,
+            'customer_signed_at' => $signedAt,
+            'customer_signed_by_name' => $name,
+            'customer_signature_metadata' => $metadata,
+        ];
+
+        if ($signedBy !== null) {
+            $data['updated_by'] = $signedBy;
+        }
+
+        $order->forceFill($data)->save();
+        $link?->forceFill(['used_at' => $signedAt])->save();
+
+        app(AuditRecorder::class)->recordModelEvent(
+            $order,
+            $replacing ? 'service_order.customer_signature_replaced' : 'service_order.customer_signed',
+            'Ordem de serviço #'.$order->number.($replacing ? ' com assinatura substituída' : ' assinada pelo cliente').($link ? ' via link público' : ' no painel Operation'),
+            $before,
+            [
+                'customer_signature_present' => true,
+                'customer_signature_hash' => hash('sha256', $signature),
+                'customer_signed_at' => $signedAt->toIso8601String(),
+                'customer_signed_by_name' => $name,
+            ],
+            actorUserId: $signedBy,
+            source: $link ? AuditSource::PUBLIC : AuditSource::WEB,
+            metadata: $link ? [...$metadata, 'signature_link_id' => $link->id] : $metadata,
+        );
+
+        return $order->fresh(['customer', 'company', 'equipment', 'technician', 'supervisor', 'salesperson', 'items.service', 'requisition.items.product']);
     }
 }

@@ -1,6 +1,7 @@
 @php
-    $visible = collect($actions)->take(3);
-    $more = collect($actions)->slice(3);
+    $primary = collect($actions)->reject(fn ($action) => $action['more'] ?? false);
+    $visible = $primary->take(3);
+    $more = $primary->slice(3)->concat(collect($actions)->filter(fn ($action) => $action['more'] ?? false));
 @endphp
 
 <x-operation.bottom-bar :columns="$visible->count() + ($more->isNotEmpty() ? 1 : 0)" label="Ações do registro">

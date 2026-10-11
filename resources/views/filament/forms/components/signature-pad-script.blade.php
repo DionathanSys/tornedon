@@ -9,6 +9,7 @@
 
             const signaturePadField = (config) => ({
                 state: config.state,
+                destroyed: false,
                 disabled: config.disabled,
                 isTouchDevice: false,
                 isDrawing: false,
@@ -51,10 +52,15 @@
                 },
 
                 destroy() {
+                    this.destroyed = true;
                     this.resizeObserver?.disconnect();
                 },
 
                 ensureCanvasReady() {
+                    if (this.destroyed || !this.$refs.canvas) {
+                        return;
+                    }
+
                     const canvas = this.$refs.canvas;
                     const rect = canvas.getBoundingClientRect();
 
@@ -68,6 +74,10 @@
                 },
 
                 resetCanvas(snapshot = null) {
+                    if (this.destroyed || !this.$refs.canvas) {
+                        return;
+                    }
+
                     const canvas = this.$refs.canvas;
                     const rect = canvas.getBoundingClientRect();
 
@@ -242,6 +252,10 @@
                     const image = new Image();
 
                     image.onload = () => {
+                        if (this.destroyed || !this.$refs.canvas || !this.ctx) {
+                            return;
+                        }
+
                         const canvas = this.$refs.canvas;
 
                         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -253,6 +267,10 @@
                 },
 
                 restoreFromState() {
+                    if (this.destroyed || !this.$refs.canvas) {
+                        return;
+                    }
+
                     this.ensureCanvasReady();
 
                     if (!this.state) {

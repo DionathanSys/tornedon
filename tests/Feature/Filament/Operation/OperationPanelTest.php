@@ -13,6 +13,7 @@ use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
 use App\Livewire\OperationMenu;
 use App\Livewire\OperationRecordCreator;
+use App\Models\AuditEntry;
 use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\Equipment;
@@ -20,7 +21,9 @@ use App\Models\Partner;
 use App\Models\Requisition;
 use App\Models\Service;
 use App\Models\ServiceOrder;
+use App\Models\ServiceOrderSignatureLink;
 use App\Models\User;
+use App\Services\ServiceOrder\ServiceOrderSignatureLinkService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -350,7 +353,7 @@ class OperationPanelTest extends TestCase
 
         $this->get(ServiceOrderDetail::getUrl(['record' => $order], tenant: $company))
             ->assertOk()
-            ->assertSee('--operation-columns: 1', false)
+            ->assertSee('--operation-columns: 2', false)
             ->assertDontSee('aria-label="Navegação principal"', false);
     }
 
@@ -363,6 +366,152 @@ class OperationPanelTest extends TestCase
         Livewire::test(ServiceOrderDetail::class, ['record' => $otherOrder->id])
             ->assertSet('order', null)
             ->assertSee('Ordem de serviço não encontrada.');
+    }
+
+    public static function signatureStates(): array
+    {
+        return ['aberta' => [State::OPEN->value], 'encerrada' => [State::CLOSED->value], 'faturada' => [State::INVOICED->value]];
+    }
+
+    #[DataProvider('signatureStates')]
+    public function test_signature_actions_are_always_in_more(string $status): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGNATURE-MENU');
+        $order->update(['status' => State::from($status)]);
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->assertSee('Mais');
+        $actions = collect($page->instance()->getFooter()->getData()['actions']);
+        $this->assertTrue($actions->firstWhere('method', 'generateSignatureLink')['more']);
+        $this->assertTrue($actions->firstWhere('method', 'openSignatureCapture')['more']);
+    }
+
+    public function test_operation_generates_a_public_signature_link_and_replaces_the_previous_link(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGNATURE-LINK');
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call('generateSignatureLink')->assertSet('showSignatureLinkModal', true);
+        $firstUrl = $page->get('signatureLink')['url'];
+        $firstLink = $order->signatureLinks()->sole();
+        $this->assertSame($user->id, $firstLink->created_by);
+        $this->assertSame(now()->addDays(7)->toDateString(), $firstLink->expires_at->toDateString());
+        $this->get($firstUrl)->assertOk()->assertSee($order->number);
+
+        $page->call('generateSignatureLink');
+        $this->assertNotSame($firstUrl, $page->get('signatureLink')['url']);
+        $this->assertNotNull($firstLink->fresh()->revoked_at);
+        $this->get($firstUrl)->assertStatus(410);
+        $this->get($page->get('signatureLink')['url'])->assertOk();
+    }
+
+    public function test_operation_can_sign_immediately_and_preserves_unsaved_attendance(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGN-NOW');
+        $signature = 'data:image/png;base64,'.base64_encode('signature');
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->set('formData.customer_observations', 'Anotação ainda não salva')
+            ->call('openSignatureCapture')->assertSet('showSignatureModal', true)
+            ->set('signatureData', ['name' => ' Maria da Silva ', 'signature' => $signature])
+            ->call('saveCustomerSignature')->assertHasNoErrors()
+            ->assertSet('showSignatureModal', false)->assertSet('order.signature_present', true)
+            ->assertSet('formData.customer_observations', 'Anotação ainda não salva');
+
+        $order->refresh();
+        $this->assertSame($signature, $order->customer_signature);
+        $this->assertSame('Maria da Silva', $order->customer_signed_by_name);
+        $this->assertNotNull($order->customer_signed_at);
+        $this->assertSame($user->id, $order->updated_by);
+        $this->assertSame('operation_panel', $order->customer_signature_metadata['channel']);
+        $this->assertSame(0, $order->signatureLinks()->count());
+        $this->assertDatabaseHas('audit_entries', ['auditable_id' => $order->id, 'event' => 'service_order.customer_signed', 'actor_user_id' => $user->id, 'source' => 'web']);
+
+        $page->call('viewSignature')->assertSet('showSignatureViewModal', true)
+            ->assertSet('signaturePreview.image', $signature)->assertSet('signaturePreview.name', 'Maria da Silva');
+    }
+
+    public function test_operation_validates_signer_and_signature(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGN-VALIDATE');
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->call('openSignatureCapture')->call('saveCustomerSignature')->assertHasErrors(['signatureData.name', 'signatureData.signature'])
+            ->set('signatureData', ['name' => 'Maria', 'signature' => 'not-a-png'])
+            ->call('saveCustomerSignature')->assertHasErrors(['signatureData.signature']);
+
+        $this->assertNull($order->fresh()->customer_signature);
+    }
+
+    public function test_operation_requires_confirmation_to_replace_a_signature_and_records_the_change(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGN-REPLACE');
+        $oldSignature = 'data:image/png;base64,'.base64_encode('first-signature');
+        $newSignature = 'data:image/png;base64,'.base64_encode('second-signature');
+        $order->update(['customer_signature' => $oldSignature, 'customer_signed_by_name' => 'Primeiro signatário', 'customer_signed_at' => now()->subDay()]);
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->call('openSignatureCapture')->assertSet('showReplaceSignatureModal', true)->assertSet('showSignatureModal', false)
+            ->set('showSignatureModal', true)->set('signatureData', ['name' => 'Segundo signatário', 'signature' => $newSignature])
+            ->call('saveCustomerSignature')->assertHasErrors(['signatureData.signature']);
+        $this->assertSame($oldSignature, $order->fresh()->customer_signature);
+
+        $page->call('confirmSignatureReplacement')->assertSet('replaceSignature', true)
+            ->call('saveCustomerSignature')->assertHasNoErrors()->assertSet('showSignatureModal', false);
+
+        $this->assertSame($newSignature, $order->fresh()->customer_signature);
+        $this->assertSame('Segundo signatário', $order->fresh()->customer_signed_by_name);
+        $audit = AuditEntry::query()->where('auditable_id', $order->id)->where('event', 'service_order.customer_signature_replaced')->sole();
+        $this->assertSame($user->id, $audit->actor_user_id);
+        $this->assertSame('Primeiro signatário', $audit->diff['customer_signed_by_name']['before']);
+        $this->assertSame(hash('sha256', $newSignature), $audit->diff['customer_signature_hash']['after']);
+    }
+
+    public function test_operation_does_not_overwrite_a_signature_received_while_collecting(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGN-RACE');
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call('openSignatureCapture');
+        $signature = 'data:image/png;base64,'.base64_encode('public-signature');
+        $generated = app(ServiceOrderSignatureLinkService::class)->create($order, $user->id);
+        $this->post($generated['url'], ['customer_signed_by_name' => 'Cliente via link', 'customer_signature' => $signature, 'agreement' => '1'])->assertOk();
+
+        $page->set('signatureData', ['name' => 'Outra pessoa', 'signature' => 'data:image/png;base64,'.base64_encode('other-signature')])
+            ->call('saveCustomerSignature')->assertHasErrors(['signatureData.signature']);
+        $this->assertSame($signature, $order->fresh()->customer_signature);
+        $this->assertSame('Cliente via link', $order->fresh()->customer_signed_by_name);
+    }
+
+    public static function operationSignatureMethods(): array
+    {
+        return [['generateSignatureLink'], ['openSignatureCapture'], ['viewSignature']];
+    }
+
+    #[DataProvider('operationSignatureMethods')]
+    public function test_signature_actions_cannot_access_another_company(string $method): void
+    {
+        [$user] = $this->authenticateTenant();
+        $otherCompany = $this->createCompany($user, 'Outra empresa');
+        $order = $this->createServiceOrder($user, $otherCompany, 'OS-OP-SIGN-FOREIGN');
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call($method)->assertStatus(404);
+        $this->assertSame(0, ServiceOrderSignatureLink::query()->count());
+        $this->assertNull($order->fresh()->customer_signature);
+    }
+
+    public function test_cancelled_orders_cannot_generate_links_or_collect_signatures(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $order = $this->createServiceOrder($user, $company, 'OS-OP-SIGN-CANCELLED');
+        $order->update(['status' => State::CANCELLED]);
+
+        foreach (['generateSignatureLink', 'openSignatureCapture'] as $method) {
+            Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call($method)->assertStatus(403);
+        }
+
+        $this->assertNull($order->fresh()->customer_signature);
+        $this->assertSame(0, $order->signatureLinks()->count());
     }
 
     public function test_service_order_detail_adds_and_edits_services_and_refreshes_totals(): void

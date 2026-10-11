@@ -60,6 +60,27 @@ inteiro fica dentro de `<x-mary-modal>`, separado do formulário de atendimento.
 Inclusão/edição só são permitidas em OS aberta. As consultas e validações de
 cliente, serviço, técnico, equipamento e item preservam o escopo da empresa.
 
+## Assinatura da OS
+
+As ações **Assinar agora**, **Link para assinatura** e, quando já assinada,
+**Ver assinatura** e **Assinar novamente** ficam sempre no menu **Mais**, usando
+o marcador `more` nas ações. A substituição exige confirmação e uma nova coleta.
+
+O link reutiliza `ServiceOrderSignatureLinkService` e a página pública existente:
+validade de sete dias, uso único para assinar e revogação do link anterior ao
+gerar outro. A coleta presencial usa o mesmo serviço de persistência e auditoria,
+sem precisar criar um link. Grava imagem PNG, nome, data e metadados do canal
+`operation_panel`; a substituição registra o antes/depois na auditoria.
+
+`operation.signature` reutiliza o motor de canvas já usado no aplicativo, com
+toque, mouse, limpeza e preservação do desenho ao redimensionar. O canvas é
+montado somente quando o modal Mary UI de coleta está aberto. A assinatura é
+salva separadamente do formulário de atendimento, preservando seus rascunhos.
+
+As operações consultam a OS da empresa atual e não permitem coletar ou gerar
+links de OS cancelada. Um hash da assinatura conferida é validado sob bloqueio
+transacional para evitar substituir uma assinatura que mudou durante a coleta.
+
 ## Verificação
 
 ```sh
