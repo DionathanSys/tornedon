@@ -50,6 +50,14 @@ Mary UI `operation.pagination`. Busca, troca de aba, aplicação e limpeza do
 período voltam para a primeira página. A ordenação inclui o ID para estabilizar
 a navegação entre registros com a mesma data.
 
+O botão flutuante aceita arraste com mouse ou toque. Segurar por 600 ms, usar
+clique direito ou Shift+F10 abre suas opções; arrastar ou segurar não executa a
+ação principal. Na OS, esse menu também inclui as ações já disponíveis na barra.
+**Ocultar botão** deixa um pequeno controle de olho para reexibi-lo, e
+**Restaurar posição** volta ao canto padrão. Posição e visibilidade ficam no
+`localStorage`, separadas por usuário, empresa e tipo de tela. As coordenadas
+normalizadas se adaptam ao viewport, respeitando a barra inferior.
+
 A barra dos registros mostra até três ações; as demais vão para **Mais**.
 Os botões de criação nas listagens e no Menu enviam o evento
 `operation-create-record` para `App\Livewire\OperationRecordCreator`, que mantém
@@ -98,6 +106,7 @@ npm ci
 npm run build
 php artisan test tests/Feature/Filament/Operation/OperationPanelTest.php
 node --test tests/Frontend/operation-signature.test.mjs
+node --test tests/Frontend/operation-fab.test.mjs
 ```
 
 Ao alterar modais, confira também em navegador: abertura pelo Menu e pelo botão

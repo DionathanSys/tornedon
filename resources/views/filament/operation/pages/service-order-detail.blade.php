@@ -68,7 +68,7 @@
         @endif
 
         @if ($order['is_open'])
-            <x-operation.fab label="Adicionar serviço" method="openAddService" />
+            <x-operation.fab label="Adicionar serviço" method="openAddService" :actions="$this->getFooter()->getData()['actions']" />
         @endif
     @else
         <x-mary-alert title="Ordem de serviço não encontrada." icon="o-exclamation-circle" class="alert-warning" />
