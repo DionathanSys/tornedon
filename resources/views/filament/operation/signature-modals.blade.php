@@ -35,7 +35,7 @@
     </x-slot:actions>
 </x-mary-modal>
 
-<x-mary-modal wire:model="showSignatureModal" :title="$replaceSignature ? 'Assinar novamente' : 'Assinar agora'" :subtitle="'OS #'.($order['number'] ?? '')" box-class="max-w-2xl" class="backdrop-blur-sm" persistent>
+<x-mary-modal wire:model="showSignatureModal" :title="$replaceSignature ? 'Assinar novamente' : 'Assinar agora'" :subtitle="'OS #'.($order['number'] ?? '')" box-class="max-w-4xl" class="backdrop-blur-sm" persistent>
     @if ($showSignatureModal)
         <x-mary-form wire:submit="saveCustomerSignature" no-separator>
             <x-mary-input label="Nome de quem está assinando" wire:model="signatureData.name" placeholder="Nome completo do signatário" maxlength="255" required />
