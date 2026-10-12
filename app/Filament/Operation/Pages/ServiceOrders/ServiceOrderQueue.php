@@ -6,15 +6,21 @@ use App\Enum\ServiceOrder\State;
 use App\Filament\Operation\Concerns\HasDateFilters;
 use App\Filament\Operation\OperationPage;
 use App\Models\ServiceOrder;
+use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
+use App\Services\ServiceOrder\DuplicateServiceOrderWorkflow;
+use App\Services\ServiceOrder\ServiceOrderService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
+use Mary\Traits\Toast;
 
 class ServiceOrderQueue extends OperationPage
 {
-    use HasDateFilters, WithPagination;
+    use HasDateFilters, Toast, WithPagination;
 
     protected ?LengthAwarePaginator $pagination = null;
 
@@ -41,6 +47,94 @@ class ServiceOrderQueue extends OperationPage
     public int $closedCount = 0;
 
     public int $allCount = 0;
+
+    public bool $showRowActionModal = false;
+
+    #[Locked]
+    public ?int $selectedOrderId = null;
+
+    #[Locked]
+    public string $rowAction = '';
+
+    #[Locked]
+    public string $selectedOrderNumber = '';
+
+    public function requestRowAction(string $action, int $orderId): void
+    {
+        abort_unless(in_array($action, ['close', 'cancel', 'duplicate'], true), 403);
+        $order = $this->tenantOrder($orderId);
+        abort_unless($order, 404);
+
+        if ($action !== 'duplicate' && $order->status !== State::OPEN) {
+            $this->error('Esta ação está disponível somente para uma OS aberta.');
+            $this->loadOrders();
+
+            return;
+        }
+
+        $this->selectedOrderId = $order->id;
+        $this->selectedOrderNumber = $order->number;
+        $this->rowAction = $action;
+        $this->showRowActionModal = true;
+    }
+
+    public function confirmRowAction(): void
+    {
+        abort_unless($this->showRowActionModal && $this->selectedOrderId && in_array($this->rowAction, ['close', 'cancel', 'duplicate'], true), 403);
+        $order = $this->tenantOrder($this->selectedOrderId);
+        abort_unless($order, 404);
+
+        if ($this->rowAction !== 'duplicate' && $order->status !== State::OPEN) {
+            $this->error('A OS não está mais aberta. Atualize a listagem para conferir.');
+            $this->showRowActionModal = false;
+            $this->loadOrders();
+
+            return;
+        }
+
+        if ($this->rowAction === 'duplicate') {
+            $workflow = app(DuplicateServiceOrderWorkflow::class);
+            $duplicated = $workflow->execute($order, (int) Auth::id());
+
+            if (! $duplicated) {
+                $this->error($workflow->getMessageUser());
+
+                return;
+            }
+
+            $this->showRowActionModal = false;
+            $this->success($workflow->getMessage());
+            $this->redirect(ServiceOrderDetail::getUrl(['record' => $duplicated], tenant: Filament::getTenant()), navigate: true);
+
+            return;
+        }
+
+        if ($this->rowAction === 'close') {
+            $service = app(CloseServiceOrderWorkflow::class);
+            $success = $service->execute($order, (int) Auth::id(), false);
+        } else {
+            $service = app(ServiceOrderService::class);
+            $success = $service->cancel($order, (int) Auth::id()) !== null && ! $service->hasError();
+        }
+
+        if (! $success) {
+            $this->error($service->getMessageUser());
+
+            return;
+        }
+
+        $this->showRowActionModal = false;
+        $this->selectedOrderId = null;
+        $this->selectedOrderNumber = '';
+        $this->rowAction = '';
+        $this->success($service->getMessage());
+        $this->resetPage();
+    }
+
+    private function tenantOrder(int $id): ?ServiceOrder
+    {
+        return ServiceOrder::query()->where('company_id', Filament::getTenant()?->getKey())->whereKey($id)->first();
+    }
 
     public function mount(): void
     {
@@ -88,7 +182,7 @@ class ServiceOrderQueue extends OperationPage
             ->with([
                 'customer:id,name',
                 'technician:id,name',
-                'equipment:id,name',
+                'equipment:id,name,type,placa,serial_number',
                 'items',
                 'requisition.items',
             ]);
@@ -112,7 +206,7 @@ class ServiceOrderQueue extends OperationPage
             $query->where(function ($q) use ($search) {
                 $q->where('number', 'like', "%{$search}%")
                     ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('equipment', fn ($eq) => $eq->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('equipment', fn ($eq) => $eq->where(fn ($equipment) => $equipment->where('name', 'like', "%{$search}%")->orWhere('placa', 'like', "%{$search}%")->orWhere('serial_number', 'like', "%{$search}%")));
             });
         }
 
@@ -125,10 +219,11 @@ class ServiceOrderQueue extends OperationPage
                 'id' => $order->id,
                 'number' => $order->number,
                 'customer' => $order->customer?->name ?? '-',
-                'equipment' => $order->equipment?->name ?? '-',
+                'equipment' => $order->equipment?->identifier ?: '-',
                 'technician' => $order->technician?->name ?? 'Sem técnico',
                 'status' => $order->status?->description() ?? '-',
                 'status_color' => $order->status?->color() ?? 'gray',
+                'is_open' => $order->status === State::OPEN,
                 'priority' => $order->priority?->description() ?? '-',
                 'order_date' => $order->order_date?->format('d/m/Y'),
                 'scheduled_date' => $order->scheduled_date?->format('d/m/Y'),

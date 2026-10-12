@@ -20,5 +20,6 @@
         @if ($amount)
             <span class="whitespace-nowrap text-sm font-semibold">{{ $amount }}</span>
         @endif
+        {{ $slot }}
     </x-slot:actions>
 </x-mary-list-item>

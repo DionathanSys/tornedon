@@ -49,7 +49,7 @@ class AttachmentService
 
         $originalName   = $file->getClientOriginalName();
         $extension      = $file->getClientOriginalExtension();
-        $mimeType       = $file->getClientMimeType();
+        $mimeType       = $file->getMimeType() ?: $file->getClientMimeType();
         $sizeBytes      = $file->getSize();
 
         // 2. Upload file

@@ -50,6 +50,23 @@ Mary UI `operation.pagination`. Busca, troca de aba, aplicação e limpeza do
 período voltam para a primeira página. A ordenação inclui o ID para estabilizar
 a navegação entre registros com a mesma data.
 
+Cada OS da listagem tem um menu próprio com **Encerrar Ordem**, **Cancelar Ordem**
+e **Duplicar**. Encerramento/cancelamento exigem OS aberta e confirmação; os
+serviços existentes executam as transições. A duplicação usa
+`DuplicateServiceOrderWorkflow`, também compartilhado com o painel de vendas,
+criando uma nova OS aberta com os dados e serviços do original. A listagem
+mostra o `identifier` do equipamento (placa ou número de série) e permite
+pesquisar por ele.
+
+## Anexos da OS
+
+`OperationAttachments` aparece dentro do registro, separado do formulário
+**Registros do Atendimento**. Usa os tipos, limites e versionamento de
+`AttachmentService`, com envio múltiplo, visualização, download e remoção
+confirmada. O componente resolve a OS e cada anexo pela empresa atual e pelo
+vínculo ao registro. Visualização/download usam as rotas autenticadas existentes;
+os arquivos não ganham URLs públicas de armazenamento.
+
 O botão flutuante aceita arraste com mouse ou toque. Segurar por 600 ms, usar
 clique direito ou Shift+F10 abre suas opções; arrastar ou segurar não executa a
 ação principal. Na OS, esse menu também inclui as ações já disponíveis na barra.

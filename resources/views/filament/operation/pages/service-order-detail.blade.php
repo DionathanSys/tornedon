@@ -39,7 +39,7 @@
                     </div>
                 </x-operation.panel>
                 <x-mary-collapse class="bg-base-100 rounded-box border-base-300" separator>
-                    <x-slot:heading class="px-5 py-4 sm:px-6">Registro do Atendimento</x-slot:heading>
+                    <x-slot:heading class="px-5 py-4 sm:px-6">Registros do Atendimento</x-slot:heading>
                     <x-slot:content class="px-5 pb-5 pt-2 sm:px-6">
                         <div class="space-y-4">
                             <x-mary-textarea label="Observações do Cliente" wire:model="formData.customer_observations" rows="3" />
@@ -56,7 +56,7 @@
                 <p>{{ $order['technician_name'] }} · {{ $order['equipment_name'] }} {{ $order['equipment_identifier'] }}</p>
             </x-operation.panel>
             <x-mary-collapse class="bg-base-100 rounded-box" separator>
-                <x-slot:heading>Registro do Atendimento</x-slot:heading>
+                <x-slot:heading>Registros do Atendimento</x-slot:heading>
                 <x-slot:content>
                     <div class="space-y-4">
                         @foreach (['customer_observations' => 'Observações do Cliente', 'items_received' => 'Itens recebidos', 'general_observations' => 'Observações gerais', 'solution' => 'Solução Aplicada', 'technician_observations' => 'Observações do Técnico'] as $field => $label)
@@ -66,6 +66,8 @@
                 </x-slot:content>
             </x-mary-collapse>
         @endif
+
+        @livewire(\App\Livewire\OperationAttachments::class, ['orderId' => $order['id']], key('operation-attachments-'.$order['id']))
 
         @if ($order['is_open'])
             <x-operation.fab label="Adicionar serviço" method="openAddService" :actions="$this->getFooter()->getData()['actions']" />
