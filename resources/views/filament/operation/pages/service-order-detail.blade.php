@@ -7,6 +7,7 @@
         <x-operation.panel title="Cliente" :subtitle="$order['customer_doc']">
             <p class="font-semibold">{{ $order['customer_name'] }}</p>
         </x-operation.panel>
+        @include('filament.operation.pages.partials.operational-sheet')
         <x-operation.panel :title="'Serviços ('.count($order['items']).')'">
             <div class="space-y-3">
                 @forelse ($order['items'] as $item)

@@ -2,11 +2,14 @@
 
 namespace App\Services\ServiceOrder\Actions;
 
+use App\Enum\ServiceOrder\State;
 use App\Models\ServiceOrder;
 use App\Services\Audit\AuditRecorder;
+use App\Services\ServiceOrder\ServiceOrderDefectService;
 use App\Services\ServiceOrder\Validators\ServiceOrderValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -15,15 +18,12 @@ class UpdateServiceOrderAction
     use HandlesActionResponse;
 
     public function __construct(
-        private int          $updatedBy,
+        private int $updatedBy,
         private ServiceOrder $serviceOrder,
     ) {}
 
     /**
      * Atualiza uma ordem de serviço existente.
-     *
-     * @param  array  $data
-     * @return ServiceOrder|null
      */
     public function execute(array $data): ?ServiceOrder
     {
@@ -32,10 +32,10 @@ class UpdateServiceOrderAction
             $before = $audit->snapshot($this->serviceOrder);
 
             Log::debug('Iniciando atualização de ordem de serviço', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $this->serviceOrder->id,
-                'user_id'           => $this->updatedBy,
-                'data'              => $data,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $this->serviceOrder->id,
+                'user_id' => $this->updatedBy,
+                'data' => $data,
             ]);
 
             $validated = ServiceOrderValidator::validateUpdate(
@@ -49,7 +49,19 @@ class UpdateServiceOrderAction
 
             $validated['updated_by'] = $this->updatedBy;
 
-            $this->serviceOrder->update($validated);
+            DB::transaction(function () use ($validated): void {
+                if (array_intersect(['defects', 'reported_by_name', 'reported_by_role', 'entry_mileage'], array_keys($validated))) {
+                    $current = ServiceOrder::query()->lockForUpdate()->findOrFail($this->serviceOrder->id);
+                    if (! in_array($current->status, [State::OPEN, State::CLOSED], true)) {
+                        throw ValidationException::withMessages(['defects' => 'Esta OS não permite alterar a ficha operacional.']);
+                    }
+                }
+                if (array_key_exists('defects', $validated)) {
+                    app(ServiceOrderDefectService::class)->sync($this->serviceOrder, $validated['defects'], $this->updatedBy);
+                }
+                unset($validated['defects']);
+                $this->serviceOrder->update($validated);
+            });
             $this->serviceOrder->refresh();
 
             $audit->recordModelEvent(
@@ -62,25 +74,26 @@ class UpdateServiceOrderAction
             );
 
             Log::info('Ordem de serviço atualizada com sucesso', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $this->serviceOrder->id,
-                'number'            => $this->serviceOrder->number,
-                'user_id'           => $this->updatedBy,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $this->serviceOrder->id,
+                'number' => $this->serviceOrder->number,
+                'user_id' => $this->updatedBy,
             ]);
 
             $this->setSuccess();
+
             return $this->serviceOrder;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'message'           => $this->getMessage(),
-                'error_code'        => $this->getErrorCode(),
-                'service_order_id'  => $this->serviceOrder->id,
-                'errors'            => $e->errors(),
-                'data'              => $data,
-                'user_id'           => $this->updatedBy,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'service_order_id' => $this->serviceOrder->id,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $this->updatedBy,
             ]);
 
             return null;
@@ -88,28 +101,28 @@ class UpdateServiceOrderAction
             $this->setError('Erro ao atualizar ordem de serviço no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'message'           => $this->getMessage(),
-                'error_code'        => $this->getErrorCode(),
-                'service_order_id'  => $this->serviceOrder->id,
-                'message_error'     => $e->getMessage(),
-                'data'              => $data,
-                'user_id'           => $this->updatedBy,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'service_order_id' => $this->serviceOrder->id,
+                'message_error' => $e->getMessage(),
+                'data' => $data,
+                'user_id' => $this->updatedBy,
             ]);
 
             return null;
         } catch (\Exception $e) {
-                $this->setError('Erro inesperado ao atualizar ordem de serviço');
+            $this->setError('Erro inesperado ao atualizar ordem de serviço');
 
             Log::error($this->getMessage(), [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'message'           => $this->getMessage(),
-                'error_code'        => $this->getErrorCode(),
-                'service_order_id'  => $this->serviceOrder->id,
-                'message_error'     => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
-                'data'              => $data,
-                'user_id'           => $this->updatedBy,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'service_order_id' => $this->serviceOrder->id,
+                'message_error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $this->updatedBy,
             ]);
 
             return null;

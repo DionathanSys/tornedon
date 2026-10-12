@@ -9,9 +9,11 @@ use App\Filament\Operation\OperationPage;
 use App\Models\Equipment;
 use App\Models\Service;
 use App\Models\ServiceOrder;
+use App\Models\ServiceOrderDefect;
 use App\Models\User;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
+use App\Services\ServiceOrder\OperationalSheetPdfService;
 use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrder\ServiceOrderSignatureLinkService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
@@ -22,6 +24,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Mary\Traits\Toast;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ServiceOrderDetail extends OperationPage
 {
@@ -77,6 +80,9 @@ class ServiceOrderDetail extends OperationPage
     {
         $order = $this->tenantOrder();
         $actions = [['label' => 'Voltar', 'icon' => 'o-arrow-left', 'url' => ServiceOrderQueue::getUrl(tenant: Filament::getTenant())]];
+        if ($order) {
+            $actions[] = ['label' => 'Imprimir ficha operacional', 'icon' => 'o-printer', 'method' => 'printOperationalSheet', 'more' => true];
+        }
 
         if ($order && in_array($order->status, [State::OPEN, State::CLOSED], true)) {
             $actions[] = ['label' => 'Salvar', 'icon' => 'o-check', 'method' => 'save', 'primary' => true];
@@ -110,7 +116,7 @@ class ServiceOrderDetail extends OperationPage
 
     public function loadOrder(bool $preserveForm = false): void
     {
-        $order = $this->tenantOrder()?->load(['customer', 'technician', 'equipment', 'items.service', 'requisition.items']);
+        $order = $this->tenantOrder()?->load(['customer', 'technician', 'equipment', 'items.service', 'requisition.items', 'defects']);
 
         if (! $order) {
             $this->order = null;
@@ -136,6 +142,10 @@ class ServiceOrderDetail extends OperationPage
             'solution' => $order->solution ?? '',
             'technician_observations' => $order->technician_observations ?? '',
             'customer_observations' => $order->customer_observations ?? '',
+            'reported_by_name' => $order->reported_by_name,
+            'reported_by_role' => $order->reported_by_role,
+            'entry_mileage' => $order->entry_mileage,
+            'defects' => $order->defects->map(fn ($defect): array => $defect->only(['id', 'report', 'diagnosis', 'solution', 'status']))->all(),
             'items_received' => $order->items_received ?? '',
             'general_observations' => $order->general_observations ?? '',
             'items' => $order->items->map(fn ($item): array => [
@@ -156,7 +166,30 @@ class ServiceOrderDetail extends OperationPage
 
         if (! $preserveForm) {
             $this->formData = $order->only(['technician_id', 'equipment_id', 'customer_observations', 'items_received', 'general_observations', 'solution', 'technician_observations']);
+            $this->formData += $order->only(['reported_by_name', 'reported_by_role', 'entry_mileage']);
+            $this->formData['defects'] = $this->order['defects'];
         }
+    }
+
+    public function addDefect(): void
+    {
+        abort_unless(in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true), 403);
+        $this->formData['defects'][] = ['id' => null, 'report' => '', 'diagnosis' => '', 'solution' => '', 'status' => 'pending'];
+    }
+
+    public function removeDefect(int $index): void
+    {
+        abort_unless(in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true), 403);
+        unset($this->formData['defects'][$index]);
+        $this->formData['defects'] = array_values($this->formData['defects']);
+    }
+
+    public function printOperationalSheet(): StreamedResponse
+    {
+        $order = $this->tenantOrder();
+        abort_unless($order, 404);
+
+        return app(OperationalSheetPdfService::class)->download($order);
     }
 
     public function generateSignatureLink(): void
@@ -302,6 +335,16 @@ class ServiceOrderDetail extends OperationPage
             'formData.technician_id' => ['nullable', 'integer', Rule::in(array_column($this->technicians, 'id'))],
             'formData.equipment_id' => ['nullable', 'integer', Rule::exists('equipments', 'id')->where('company_id', $order->company_id)->where('owner_id', $order->customer_id)->whereNull('deleted_at')],
             'formData.customer_observations' => 'nullable|string',
+            'formData.reported_by_name' => 'nullable|string|max:255',
+            'formData.reported_by_role' => ['nullable', Rule::in(['owner', 'driver'])],
+            'formData.entry_mileage' => 'nullable|integer|min:0|max:4294967295',
+            'formData.defects' => 'present|array|max:100',
+            'formData.defects.*' => 'array:id,report,diagnosis,solution,status',
+            'formData.defects.*.id' => ['nullable', 'integer', 'distinct', Rule::exists('service_order_defects', 'id')->where('service_order_id', $order->id)],
+            'formData.defects.*.report' => 'required|string|max:10000',
+            'formData.defects.*.diagnosis' => 'nullable|string|max:10000',
+            'formData.defects.*.solution' => 'nullable|string|max:10000',
+            'formData.defects.*.status' => ['required', Rule::in(array_keys(ServiceOrderDefect::STATUSES))],
             'formData.items_received' => 'nullable|string',
             'formData.general_observations' => 'nullable|string',
             'formData.solution' => 'nullable|string',

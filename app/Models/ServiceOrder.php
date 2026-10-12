@@ -58,6 +58,9 @@ class ServiceOrder extends Model
         'equipment_id',
         'location',
         'customer_observations',
+        'reported_by_name',
+        'reported_by_role',
+        'entry_mileage',
         'general_observations',
         'internal_observations',
         'technician_observations',
@@ -91,6 +94,7 @@ class ServiceOrder extends Model
 
     protected $casts = [
         'order_date' => 'date',
+        'entry_mileage' => 'integer',
         'scheduled_date' => 'date',
         'limit_date' => 'date',
         'completion_date' => 'date',
@@ -176,6 +180,11 @@ class ServiceOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ServiceOrderItem::class);
+    }
+
+    public function defects(): HasMany
+    {
+        return $this->hasMany(ServiceOrderDefect::class)->orderBy('position')->orderBy('id');
     }
 
     public function signatureLinks(): HasMany

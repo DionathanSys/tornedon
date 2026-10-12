@@ -5,9 +5,11 @@ namespace App\Services\ServiceOrder\Actions;
 use App\Models\ServiceOrder;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Payment\CustomerPaymentDefaultsResolver;
+use App\Services\ServiceOrder\ServiceOrderDefectService;
 use App\Services\ServiceOrder\Validators\ServiceOrderValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -21,17 +23,14 @@ class CreateServiceOrderAction
 
     /**
      * Cria uma nova ordem de serviço.
-     *
-     * @param  array  $data
-     * @return ServiceOrder|null
      */
     public function execute(array $data): ?ServiceOrder
     {
         try {
             Log::debug('Iniciando criação de ordem de serviço', [
-                'metodo'  => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'user_id' => $this->createdBy,
-                'data'    => $data,
+                'data' => $data,
             ]);
 
             $data = app(CustomerPaymentDefaultsResolver::class)->resolve(
@@ -44,7 +43,16 @@ class CreateServiceOrderAction
             $validated = ServiceOrderValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy;
 
-            $serviceOrder = ServiceOrder::create($validated);
+            $serviceOrder = DB::transaction(function () use ($validated): ServiceOrder {
+                $defects = $validated['defects'] ?? [];
+                unset($validated['defects']);
+                $order = ServiceOrder::create($validated);
+                if ($defects !== []) {
+                    app(ServiceOrderDefectService::class)->sync($order, $defects, $this->createdBy);
+                }
+
+                return $order;
+            });
             $audit = app(AuditRecorder::class);
 
             $audit->recordModelEvent(
@@ -57,23 +65,24 @@ class CreateServiceOrderAction
             );
 
             Log::info('Ordem de serviço criada com sucesso', [
-                'metodo'            => __METHOD__ . '@' . __LINE__,
-                'service_order_id'  => $serviceOrder->id,
-                'number'            => $serviceOrder->number,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'service_order_id' => $serviceOrder->id,
+                'number' => $serviceOrder->number,
             ]);
 
             $this->setSuccess();
+
             return $serviceOrder;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'errors'     => $e->errors(),
-                'data'       => $data,
-                'user_id'    => $this->createdBy,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -81,13 +90,13 @@ class CreateServiceOrderAction
             $this->setError('Erro ao salvar ordem de serviço no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'error_message'    => $e->getMessage(),
-                'sql'        => $e->getSql(),
-                'data'       => $data,
-                'user_id'    => $this->createdBy,
+                'error_message' => $e->getMessage(),
+                'sql' => $e->getSql(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -95,13 +104,13 @@ class CreateServiceOrderAction
             $this->setError('Erro inesperado ao criar ordem de serviço');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'error_message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $this->createdBy,
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;

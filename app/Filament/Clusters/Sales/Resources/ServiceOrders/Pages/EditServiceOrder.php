@@ -16,6 +16,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\GenerateSe
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\InvoiceServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\OpenWarrantyClaimAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PreviewServiceOrderPdfAction;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\PrintOperationalSheetAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ReopenServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\TransferServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions\ViewInvoiceServiceOrderAction;
@@ -73,6 +74,7 @@ class EditServiceOrder extends EditRecord
                 DownloadServiceOrderPdfAction::make()
                     ->color('gray')
                     ->hiddenLabel(),
+                PrintOperationalSheetAction::make(),
                 OpenWarrantyClaimAction::make()
                     ->hiddenLabel(),
                 GenerateRepairReturnFiscalDocumentAction::make()
@@ -189,6 +191,7 @@ class EditServiceOrder extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $data['defects'] = $this->record->defects->map(fn ($defect): array => $defect->only(['id', 'report', 'diagnosis', 'solution', 'status']))->all();
         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
         $data = ServiceOrderTravelData::hydrate(
             $data,
