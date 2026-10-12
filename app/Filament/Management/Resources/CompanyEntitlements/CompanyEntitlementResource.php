@@ -8,6 +8,7 @@ use App\Filament\Management\Resources\CompanyEntitlements\Pages\ListCompanyEntit
 use App\Models\Company;
 use App\Models\CompanyEntitlement;
 use App\Models\User;
+use App\Support\ServiceOrderOperationalSheet;
 use BackedEnum;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
@@ -48,7 +49,7 @@ class CompanyEntitlementResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Direito de emissao')
+            Section::make('Direito da empresa')
                 ->columns(2)
                 ->schema([
                     Select::make('company_id')
@@ -66,6 +67,7 @@ class CompanyEntitlementResource extends Resource
                         ->options([
                             'bank_slip_issuance' => 'Emissão de boletos',
                             'pix_charge_issuance' => 'Emissão de cobranças PIX',
+                            ServiceOrderOperationalSheet::FEATURE => 'Ficha operacional da OS',
                         ])
                         ->required(),
                     Toggle::make('enabled')

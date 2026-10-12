@@ -7,6 +7,7 @@ use App\Models\ServiceOrder;
 use App\Services\Audit\AuditRecorder;
 use App\Services\ServiceOrder\ServiceOrderDefectService;
 use App\Services\ServiceOrder\Validators\ServiceOrderValidator;
+use App\Support\ServiceOrderOperationalSheet;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -44,13 +45,26 @@ class UpdateServiceOrderAction
                 $this->serviceOrder->company_id
             );
 
+            if (ServiceOrderOperationalSheet::enabled($this->serviceOrder->company_id)
+                && array_key_exists('equipment_id', $validated)
+                && $validated['equipment_id'] != $this->serviceOrder->equipment_id
+                && ! array_key_exists('entry_mileage', $validated)) {
+                $validated['entry_mileage'] = null;
+            }
+
             // Remove campos imutáveis
+            ServiceOrderOperationalSheet::validatePayload(
+                $validated,
+                $this->serviceOrder->company_id,
+                array_key_exists('equipment_id', $validated) ? $validated['equipment_id'] : $this->serviceOrder->equipment_id,
+                $validated['customer_id'] ?? $this->serviceOrder->customer_id,
+            );
             unset($validated['company_id']);
 
             $validated['updated_by'] = $this->updatedBy;
 
             DB::transaction(function () use ($validated): void {
-                if (array_intersect(['defects', 'reported_by_name', 'reported_by_role', 'entry_mileage'], array_keys($validated))) {
+                if (array_intersect(['defects', 'entry_mileage'], array_keys($validated))) {
                     $current = ServiceOrder::query()->lockForUpdate()->findOrFail($this->serviceOrder->id);
                     if (! in_array($current->status, [State::OPEN, State::CLOSED], true)) {
                         throw ValidationException::withMessages(['defects' => 'Esta OS não permite alterar a ficha operacional.']);

@@ -24,25 +24,20 @@
             <td><div class="label">Cliente</div>{{ $record->customer?->name ?? '—' }}</td>
             <td><div class="label">Veículo / equipamento</div>{{ $record->equipment?->name ?? '—' }} · {{ $record->equipment?->identifier ?? '—' }}<br>{{ $record->equipment?->mark }} {{ $record->equipment?->model }}</td>
         </tr>
-        <tr>
-            <td><div class="label">Quem relatou</div>{{ $record->reported_by_name ?: '—' }} @if($record->reported_by_role) ({{ ['owner' => 'Proprietário', 'driver' => 'Condutor'][$record->reported_by_role] ?? '—' }}) @endif</td>
-            <td><div class="label">Quilometragem na entrada</div>{{ $record->entry_mileage !== null ? number_format($record->entry_mileage, 0, ',', '.').' km' : '—' }}</td>
-        </tr>
+        @if($record->equipment?->isVehicle())
+            <tr><td colspan="2"><div class="label">Quilometragem na entrada</div>{{ $record->entry_mileage !== null ? number_format($record->entry_mileage, 0, ',', '.').' km' : '—' }}</td></tr>
+        @endif
         <tr>
             <td><div class="label">Técnico responsável</div>{{ $record->technician?->name ?? 'Não atribuído' }}</td>
             <td><div class="label">Itens recebidos</div><div class="text">{{ $record->items_received ?: '—' }}</div></td>
         </tr>
     </table>
-    <h2>Defeitos relatados e acompanhamento</h2>
+    <h2>Defeitos relatados</h2>
     @forelse($record->defects as $defect)
         <div class="defect">
-            <p class="label">{{ $loop->iteration }}. {{ \App\Models\ServiceOrderDefect::STATUSES[$defect->status] ?? $defect->status }}</p>
+            <p class="label">Defeito {{ $loop->iteration }}</p>
             <table>
-                <tr><td colspan="2"><div class="label">Relato do proprietário / condutor</div><div class="text">{{ $defect->report }}</div></td></tr>
-                <tr>
-                    <td><div class="label">Diagnóstico técnico</div>@if(filled($defect->diagnosis))<div class="text">{{ $defect->diagnosis }}</div>@else<div class="blank"></div>@endif</td>
-                    <td><div class="label">Providência / solução aplicada</div>@if(filled($defect->solution))<div class="text">{{ $defect->solution }}</div>@else<div class="blank"></div>@endif</td>
-                </tr>
+                <tr><td colspan="2"><div class="label">Defeito citado</div><div class="text">{{ $defect->report }}</div></td></tr>
             </table>
         </div>
     @empty

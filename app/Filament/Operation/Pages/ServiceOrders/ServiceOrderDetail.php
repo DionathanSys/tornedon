@@ -9,7 +9,6 @@ use App\Filament\Operation\OperationPage;
 use App\Models\Equipment;
 use App\Models\Service;
 use App\Models\ServiceOrder;
-use App\Models\ServiceOrderDefect;
 use App\Models\User;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
@@ -18,6 +17,7 @@ use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrder\ServiceOrderSignatureLinkService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Support\OperationMoney;
+use App\Support\ServiceOrderOperationalSheet;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -80,7 +80,7 @@ class ServiceOrderDetail extends OperationPage
     {
         $order = $this->tenantOrder();
         $actions = [['label' => 'Voltar', 'icon' => 'o-arrow-left', 'url' => ServiceOrderQueue::getUrl(tenant: Filament::getTenant())]];
-        if ($order) {
+        if ($order && $this->operationalSheetEnabled) {
             $actions[] = ['label' => 'Imprimir ficha operacional', 'icon' => 'o-printer', 'method' => 'printOperationalSheet', 'more' => true];
         }
 
@@ -116,7 +116,7 @@ class ServiceOrderDetail extends OperationPage
 
     public function loadOrder(bool $preserveForm = false): void
     {
-        $order = $this->tenantOrder()?->load(['customer', 'technician', 'equipment', 'items.service', 'requisition.items', 'defects']);
+        $order = $this->tenantOrder()?->load(['customer', 'technician', 'equipment', 'items.service', 'requisition.items']);
 
         if (! $order) {
             $this->order = null;
@@ -142,10 +142,6 @@ class ServiceOrderDetail extends OperationPage
             'solution' => $order->solution ?? '',
             'technician_observations' => $order->technician_observations ?? '',
             'customer_observations' => $order->customer_observations ?? '',
-            'reported_by_name' => $order->reported_by_name,
-            'reported_by_role' => $order->reported_by_role,
-            'entry_mileage' => $order->entry_mileage,
-            'defects' => $order->defects->map(fn ($defect): array => $defect->only(['id', 'report', 'diagnosis', 'solution', 'status']))->all(),
             'items_received' => $order->items_received ?? '',
             'general_observations' => $order->general_observations ?? '',
             'items' => $order->items->map(fn ($item): array => [
@@ -164,21 +160,57 @@ class ServiceOrderDetail extends OperationPage
             'signed_at' => $order->customer_signed_at?->format('d/m/Y H:i'),
         ];
 
+        if ($this->operationalSheetEnabled) {
+            $this->order['defects'] = $order->defects->map(fn ($defect): array => $defect->only(['id', 'report']))->all();
+            $this->order['entry_mileage'] = $order->equipment?->isVehicle() ? $order->entry_mileage : null;
+        }
+
         if (! $preserveForm) {
             $this->formData = $order->only(['technician_id', 'equipment_id', 'customer_observations', 'items_received', 'general_observations', 'solution', 'technician_observations']);
-            $this->formData += $order->only(['reported_by_name', 'reported_by_role', 'entry_mileage']);
-            $this->formData['defects'] = $this->order['defects'];
+            if ($this->operationalSheetEnabled) {
+                $this->formData['defects'] = $this->order['defects'];
+                if ($order->equipment?->isVehicle()) {
+                    $this->formData['entry_mileage'] = $order->entry_mileage;
+                }
+            }
+        }
+    }
+
+    #[Computed]
+    public function operationalSheetEnabled(): bool
+    {
+        return ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey());
+    }
+
+    #[Computed]
+    public function selectedEquipmentIsVehicle(): bool
+    {
+        return $this->operationalSheetEnabled && ServiceOrderOperationalSheet::isVehicle(
+            Filament::getTenant()?->getKey(), $this->formData['equipment_id'] ?? null, $this->tenantOrder()?->customer_id,
+        );
+    }
+
+    public function updatedFormData(mixed $value, ?string $key = null): void
+    {
+        if ($key === 'equipment_id') {
+            unset($this->formData['entry_mileage']);
+            if ($this->operationalSheetEnabled) {
+                $this->formData['entry_mileage'] = null;
+            }
+            unset($this->selectedEquipmentIsVehicle);
         }
     }
 
     public function addDefect(): void
     {
+        abort_unless($this->operationalSheetEnabled, 403);
         abort_unless(in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true), 403);
-        $this->formData['defects'][] = ['id' => null, 'report' => '', 'diagnosis' => '', 'solution' => '', 'status' => 'pending'];
+        $this->formData['defects'][] = ['id' => null, 'report' => ''];
     }
 
     public function removeDefect(int $index): void
     {
+        abort_unless($this->operationalSheetEnabled, 403);
         abort_unless(in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true), 403);
         unset($this->formData['defects'][$index]);
         $this->formData['defects'] = array_values($this->formData['defects']);
@@ -331,25 +363,29 @@ class ServiceOrderDetail extends OperationPage
             return;
         }
 
-        $data = $this->validate([
+        if (! $this->operationalSheetEnabled) {
+            abort_if((bool) array_intersect(['defects', 'entry_mileage'], array_keys($this->formData)), 403);
+        }
+
+        $rules = [
             'formData.technician_id' => ['nullable', 'integer', Rule::in(array_column($this->technicians, 'id'))],
             'formData.equipment_id' => ['nullable', 'integer', Rule::exists('equipments', 'id')->where('company_id', $order->company_id)->where('owner_id', $order->customer_id)->whereNull('deleted_at')],
             'formData.customer_observations' => 'nullable|string',
-            'formData.reported_by_name' => 'nullable|string|max:255',
-            'formData.reported_by_role' => ['nullable', Rule::in(['owner', 'driver'])],
-            'formData.entry_mileage' => 'nullable|integer|min:0|max:4294967295',
-            'formData.defects' => 'present|array|max:100',
-            'formData.defects.*' => 'array:id,report,diagnosis,solution,status',
-            'formData.defects.*.id' => ['nullable', 'integer', 'distinct', Rule::exists('service_order_defects', 'id')->where('service_order_id', $order->id)],
-            'formData.defects.*.report' => 'required|string|max:10000',
-            'formData.defects.*.diagnosis' => 'nullable|string|max:10000',
-            'formData.defects.*.solution' => 'nullable|string|max:10000',
-            'formData.defects.*.status' => ['required', Rule::in(array_keys(ServiceOrderDefect::STATUSES))],
             'formData.items_received' => 'nullable|string',
             'formData.general_observations' => 'nullable|string',
             'formData.solution' => 'nullable|string',
             'formData.technician_observations' => 'nullable|string',
-        ])['formData'];
+        ];
+        if ($this->operationalSheetEnabled) {
+            $rules += [
+                'formData.entry_mileage' => $this->selectedEquipmentIsVehicle ? 'nullable|integer|min:0|max:4294967295' : 'prohibited',
+                'formData.defects' => 'present|array|max:100',
+                'formData.defects.*' => 'array:id,report',
+                'formData.defects.*.id' => ['nullable', 'integer', 'distinct', Rule::exists('service_order_defects', 'id')->where('service_order_id', $order->id)],
+                'formData.defects.*.report' => 'required|string|max:10000',
+            ];
+        }
+        $data = $this->validate($rules)['formData'];
         $service = app(ServiceOrderService::class);
         $updated = $service->update($order, $data, (int) Auth::id());
 

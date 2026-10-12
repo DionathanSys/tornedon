@@ -7,6 +7,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Payment\CustomerPaymentDefaultsResolver;
 use App\Services\ServiceOrder\ServiceOrderDefectService;
 use App\Services\ServiceOrder\Validators\ServiceOrderValidator;
+use App\Support\ServiceOrderOperationalSheet;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,7 @@ class CreateServiceOrderAction
             ) + $data;
 
             $validated = ServiceOrderValidator::validateCreate($data);
+            ServiceOrderOperationalSheet::validatePayload($validated, (int) $validated['company_id'], $validated['equipment_id'] ?? null, $validated['customer_id']);
             $validated['created_by'] = $this->createdBy;
 
             $serviceOrder = DB::transaction(function () use ($validated): ServiceOrder {

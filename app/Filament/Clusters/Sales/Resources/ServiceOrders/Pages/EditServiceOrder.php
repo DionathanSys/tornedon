@@ -25,6 +25,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\CompanyPreference;
 use App\Notification\NotifyService as notify;
 use App\Services\ServiceOrder\ServiceOrderService;
+use App\Support\ServiceOrderOperationalSheet;
 use App\Support\ServiceOrderTravelData;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -138,7 +139,7 @@ class EditServiceOrder extends EditRecord
 
                         return $result;
                     }),
-            ])->button(),
+            ])->label('Mais')->button(),
         ];
     }
 
@@ -191,7 +192,13 @@ class EditServiceOrder extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['defects'] = $this->record->defects->map(fn ($defect): array => $defect->only(['id', 'report', 'diagnosis', 'solution', 'status']))->all();
+        if (ServiceOrderOperationalSheet::enabled($this->record->company_id)) {
+            $data['defects'] = $this->record->defects->map(fn ($defect): array => $defect->only(['id', 'report']))->all();
+        }
+        unset($data['reported_by_name'], $data['reported_by_role']);
+        if (! ServiceOrderOperationalSheet::enabled($this->record->company_id)) {
+            unset($data['entry_mileage']);
+        }
         $data['additional_info'] = ServiceOrderForm::normalizeAdditionalInfoState($data['additional_info'] ?? []);
         $data = ServiceOrderTravelData::hydrate(
             $data,

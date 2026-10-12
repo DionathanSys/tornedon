@@ -4,8 +4,8 @@ namespace App\Services\ServiceOrder;
 
 use App\Enum\ServiceOrder\State;
 use App\Models\ServiceOrder;
-use App\Models\ServiceOrderDefect;
 use App\Services\Audit\AuditRecorder;
+use App\Support\ServiceOrderOperationalSheet;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -15,18 +15,16 @@ class ServiceOrderDefectService
     public function sync(ServiceOrder $order, array $defects, int $userId): void
     {
         $order = ServiceOrder::query()->lockForUpdate()->findOrFail($order->id);
+        ServiceOrderOperationalSheet::validatePayload(['defects' => $defects], $order->company_id, $order->equipment_id, $order->customer_id);
         if (! in_array($order->status, [State::OPEN, State::CLOSED], true)) {
             throw ValidationException::withMessages(['defects' => 'Esta OS não permite alterar a ficha operacional.']);
         }
 
         $data = Validator::make(['defects' => $defects], [
             'defects' => ['array', 'max:100'],
-            'defects.*' => ['array:id,report,diagnosis,solution,status'],
+            'defects.*' => ['array:id,report'],
             'defects.*.id' => ['nullable', 'integer', 'distinct', Rule::exists('service_order_defects', 'id')->where('service_order_id', $order->id)],
             'defects.*.report' => ['required', 'string', 'max:10000'],
-            'defects.*.diagnosis' => ['nullable', 'string', 'max:10000'],
-            'defects.*.solution' => ['nullable', 'string', 'max:10000'],
-            'defects.*.status' => ['required', Rule::in(array_keys(ServiceOrderDefect::STATUSES))],
         ])->validate()['defects'];
 
         $before = $order->defects()->get()->map(fn ($defect): array => $defect->only(['id', 'report', 'diagnosis', 'solution', 'status', 'position']))->all();

@@ -7,7 +7,9 @@
         <x-operation.panel title="Cliente" :subtitle="$order['customer_doc']">
             <p class="font-semibold">{{ $order['customer_name'] }}</p>
         </x-operation.panel>
-        @include('filament.operation.pages.partials.operational-sheet')
+        @if($this->operationalSheetEnabled)
+            @include('filament.operation.pages.partials.operational-sheet')
+        @endif
         <x-operation.panel :title="'Serviços ('.count($order['items']).')'">
             <div class="space-y-3">
                 @forelse ($order['items'] as $item)
@@ -36,7 +38,10 @@
                 <x-operation.panel title="Responsáveis e equipamento">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-operation.search-select label="Técnico" wire:model="formData.technician_id" :options="$this->technicians" placeholder="Buscar técnico" offline />
-                        <x-operation.search-select label="Equipamento" wire:model="formData.equipment_id" :options="$this->equipments" placeholder="Buscar equipamento" offline />
+                        <x-operation.search-select label="Equipamento" wire:model.live="formData.equipment_id" :options="$this->equipments" placeholder="Buscar equipamento" offline />
+                        @if($this->selectedEquipmentIsVehicle)
+                            <x-mary-input label="Quilometragem na entrada" wire:model="formData.entry_mileage" type="number" min="0" max="4294967295" suffix="km" />
+                        @endif
                     </div>
                 </x-operation.panel>
                 <x-mary-collapse class="bg-base-100 rounded-box border-base-300" separator>
@@ -55,6 +60,9 @@
         @else
             <x-operation.panel title="Responsáveis e equipamento">
                 <p>{{ $order['technician_name'] }} · {{ $order['equipment_name'] }} {{ $order['equipment_identifier'] }}</p>
+                @if($this->operationalSheetEnabled && $order['entry_mileage'] !== null)
+                    <p>Quilometragem na entrada: {{ number_format($order['entry_mileage'], 0, ',', '.') }} km</p>
+                @endif
             </x-operation.panel>
             <x-mary-collapse class="bg-base-100 rounded-box" separator>
                 <x-slot:heading>Registros do Atendimento</x-slot:heading>
@@ -71,7 +79,7 @@
         @livewire(\App\Livewire\OperationAttachments::class, ['orderId' => $order['id']], key('operation-attachments-'.$order['id']))
 
         @if ($order['is_open'])
-            <x-operation.fab label="Adicionar serviço" method="openAddService" :actions="$this->getFooter()->getData()['actions']" />
+            <x-operation.fab label="Adicionar serviço" method="openAddService" :actions="array_values(array_filter($this->getFooter()->getData()['actions'], fn ($action) => ($action['method'] ?? null) !== 'printOperationalSheet'))" />
         @endif
     @else
         <x-mary-alert title="Ordem de serviço não encontrada." icon="o-exclamation-circle" class="alert-warning" />

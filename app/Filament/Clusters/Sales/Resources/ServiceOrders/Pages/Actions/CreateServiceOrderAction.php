@@ -12,6 +12,7 @@ use App\Models\Equipment;
 use App\Notification\NotifyService as notify;
 use App\Services\Equipment\EquipmentService;
 use App\Services\ServiceOrder\ServiceOrderService;
+use App\Support\ServiceOrderOperationalSheet;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -39,15 +40,25 @@ final class CreateServiceOrderAction
                 SelectPartner::make('customer_id', 'customer')
                     ->label('Cliente')
                     ->live()
-                    ->afterStateUpdated(fn (Set $set) => $set('equipment_id', null))
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('equipment_id', null);
+                        $set('entry_mileage', null);
+                    })
                     ->columnSpanFull(),
                 Select::make('equipment_id')->label('Veículo / equipamento')->searchable()->columnSpanFull()
+                    ->live()->afterStateUpdated(fn (Set $set) => $set('entry_mileage', null))
                     ->disabled(fn (Get $get): bool => ! $get('customer_id'))
                     ->getSearchResultsUsing(fn (string $search, Get $get): array => app(EquipmentService::class)
                         ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'), 20, ['owner' => false]))
-                    ->getOptionLabelUsing(fn ($value): ?string => Equipment::query()->where('company_id', Filament::getTenant()->id)->find($value)?->identifier)
+                    ->getOptionLabelUsing(function ($value): ?string {
+                        $equipment = Equipment::query()->where('company_id', Filament::getTenant()->id)->find($value);
+
+                        return $equipment ? trim($equipment->name.' '.$equipment->identifier) : null;
+                    })
                     ->rules(fn (Get $get): array => [Rule::exists('equipments', 'id')->where('company_id', Filament::getTenant()->id)->where('owner_id', $get('customer_id'))->whereNull('deleted_at')]),
-                Section::make('Entrada do veículo e defeitos relatados')->columns(3)->columnSpanFull()
+                ServiceOrderForm::entryMileageField()->columnSpanFull(),
+                Section::make('Defeitos relatados')->columnSpanFull()
+                    ->visible(fn (): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey()))
                     ->schema(ServiceOrderForm::operationalSheetFields()),
             ]))
             ->mutateDataUsing(function (array $data): array {

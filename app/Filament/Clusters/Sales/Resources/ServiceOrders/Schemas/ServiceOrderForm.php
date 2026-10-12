@@ -19,9 +19,9 @@ use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\CompanyPreference;
 use App\Models\Equipment;
 use App\Models\ServiceOrder;
-use App\Models\ServiceOrderDefect;
 use App\Services\Equipment\EquipmentService;
 use App\Services\Payment\CustomerPaymentDefaultsResolver;
+use App\Support\ServiceOrderOperationalSheet;
 use App\Support\ServiceOrderTravelData;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -78,6 +78,7 @@ class ServiceOrderForm
                                                     ->live()
                                                     ->afterStateUpdated(function ($state, Get $get, Set $set): void {
                                                         $set('equipment_id', null);
+                                                        $set('entry_mileage', null);
                                                         if (! $state) {
                                                             return;
                                                         }
@@ -102,18 +103,25 @@ class ServiceOrderForm
                                                     ->label('Veículo / equipamento')
                                                     ->columnSpan(['md' => 6, 'lg' => 8, 'xl' => 6])
                                                     ->searchable()
+                                                    ->live()
+                                                    ->afterStateUpdated(fn (Set $set) => $set('entry_mileage', null))
                                                     ->disabled(fn ($record, $operation) => $operation === 'edit' ? ! $record?->state()?->canEdit() : false)
                                                     ->getSearchResultsUsing(
                                                         fn (string $search, Get $get): array => (new EquipmentService)
                                                             ->searchForSelect($search, Filament::getTenant()->id, $get('customer_id'), 20, ['owner' => false])
                                                     )
-                                                    ->getOptionLabelUsing(fn ($value): ?string => Equipment::query()
-                                                        ->where('company_id', Filament::getTenant()->id)->find($value)?->identifier)
+                                                    ->getOptionLabelUsing(function ($value): ?string {
+                                                        $equipment = Equipment::query()->where('company_id', Filament::getTenant()->id)->find($value);
+
+                                                        return $equipment ? trim($equipment->name.' '.$equipment->identifier) : null;
+                                                    })
                                                     ->rules(fn (Get $get): array => [Rule::exists('equipments', 'id')
                                                         ->where('company_id', Filament::getTenant()->id)
                                                         ->where('owner_id', $get('customer_id'))->whereNull('deleted_at')])
                                                     ->disabled(fn (Get $get, ?ServiceOrder $record): bool => ! $get('customer_id') || ($record && ! $record->state()->canEdit()))
                                                     ->belowContent(fn ($get) => ! $get('customer_id') ? 'Selecione um cliente para carregar os equipamentos disponíveis' : null),
+                                                self::entryMileageField()->columnSpan(['md' => 2, 'lg' => 2])
+                                                    ->disabled(fn (?ServiceOrder $record): bool => $record && ! in_array($record->status, [State::OPEN, State::CLOSED], true)),
                                                 Select::make('priority')
                                                     ->label('Prioridade')
                                                     ->columnSpan(['md' => 2, 'lg' => 2])
@@ -170,9 +178,9 @@ class ServiceOrderForm
                                             ]),
 
                                     ]),
-                                Section::make('Entrada do veículo e defeitos relatados')
+                                Section::make('Defeitos relatados')
                                     ->description('Registre o relato do proprietário ou condutor para orientar a equipe de mecânicos.')
-                                    ->columns(3)
+                                    ->visible(fn (): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey()))
                                     ->columnSpanFull()
                                     ->disabled(fn (?ServiceOrder $record): bool => $record && ! in_array($record->status, [State::OPEN, State::CLOSED], true))
                                     ->schema(self::operationalSheetFields()),
@@ -433,20 +441,24 @@ class ServiceOrderForm
     public static function operationalSheetFields(): array
     {
         return [
-            TextInput::make('reported_by_name')->label('Nome de quem relatou')->maxLength(255),
-            Select::make('reported_by_role')->label('Quem informou os defeitos?')
-                ->options(['owner' => 'Proprietário', 'driver' => 'Condutor'])->native(false),
-            TextInput::make('entry_mileage')->label('Quilometragem na entrada')->numeric()->integer()->minValue(0)->maxValue(4294967295)->suffix('km'),
             Repeater::make('defects')->label('Defeitos relatados')->columnSpanFull()
+                ->dehydrated(fn (): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey()))
                 ->defaultItems(0)->maxItems(100)->addActionLabel('Adicionar defeito')
-                ->columns(2)->schema([
+                ->schema([
                     Hidden::make('id'),
-                    Textarea::make('report')->label('Relato do proprietário / condutor')->required()->maxLength(10000)->columnSpanFull()->rows(2),
-                    Textarea::make('diagnosis')->label('Diagnóstico técnico')->maxLength(10000)->rows(2),
-                    Textarea::make('solution')->label('Providência / solução aplicada')->maxLength(10000)->rows(2),
-                    Select::make('status')->label('Situação')->options(ServiceOrderDefect::STATUSES)->default('pending')->required()->native(false),
+                    Textarea::make('report')->label('Defeito citado')->required()->maxLength(10000)->columnSpanFull()->rows(3),
                 ]),
         ];
+    }
+
+    public static function entryMileageField(): TextInput
+    {
+        return TextInput::make('entry_mileage')->label('Quilometragem na entrada')
+            ->numeric()->integer()->minValue(0)->maxValue(4294967295)->suffix('km')
+            ->visible(fn (Get $get): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey())
+                && ServiceOrderOperationalSheet::isVehicle(Filament::getTenant()?->getKey(), $get('equipment_id'), $get('customer_id')))
+            ->dehydrated(fn (Get $get): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey())
+                && ServiceOrderOperationalSheet::isVehicle(Filament::getTenant()?->getKey(), $get('equipment_id'), $get('customer_id')));
     }
 
     public static function normalizeAdditionalInfoState(mixed $state): array
