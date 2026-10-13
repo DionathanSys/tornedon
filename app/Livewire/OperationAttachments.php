@@ -52,7 +52,8 @@ class OperationAttachments extends Component
         $order = $this->tenantOrder();
         $this->validate(['attachmentType' => ['required', Rule::in($order->allowedAttachmentTypes())]]);
         $config = config('attachments.types.'.$this->attachmentType, []);
-        $rules = ['required', 'file', 'max:'.($config['max_size'] ?? 20480)];
+        $maxSize = $config['max_size'] ?? 20480;
+        $rules = ['required', 'file', 'max:'.$maxSize];
 
         if ($config['allowed_mimes'] ?? []) {
             $rules[] = 'mimetypes:'.implode(',', $config['allowed_mimes']);
@@ -61,7 +62,7 @@ class OperationAttachments extends Component
         $this->validate(['files' => ['required', 'array', 'min:1', 'max:10'], 'files.*' => $rules], [
             'files.required' => 'Selecione pelo menos um arquivo.',
             'files.max' => 'Envie até 10 arquivos por vez.',
-            'files.*.max' => 'Um dos arquivos excede o limite de tamanho deste tipo de anexo.',
+            'files.*.max' => 'Um dos arquivos excede o limite de '.Number::fileSize($maxSize * 1024).' por arquivo deste tipo de anexo.',
             'files.*.mimetypes' => 'Um dos arquivos não corresponde ao tipo de anexo selecionado.',
         ]);
 
@@ -149,6 +150,22 @@ class OperationAttachments extends Component
                 'url' => $attachment->url, 'previewable' => $attachment->isPreviewable(),
             ])->all();
 
-        return view('livewire.operation-attachments', compact('types', 'attachments'));
+        $typeConfig = config('attachments.types.'.$this->attachmentType, []);
+        $maxSizeLabel = Number::fileSize(($typeConfig['max_size'] ?? 20480) * 1024);
+        $allowedMimes = $typeConfig['allowed_mimes'] ?? [];
+        $uploadHint = 'Até 10 arquivos por envio. Máximo de '.$maxSizeLabel.' por arquivo.';
+        if ($allowedMimes) {
+            $uploadHint .= ' Formatos: '.implode(', ', array_map(fn (string $mime): string => match ($mime) {
+                'image/jpeg' => 'JPEG', 'image/png' => 'PNG', 'image/webp' => 'WebP',
+                'application/xml', 'text/xml' => 'XML', 'application/pdf' => 'PDF',
+                'application/msword' => 'DOC',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'DOCX',
+                default => $mime,
+            }, array_unique($allowedMimes))).'.';
+        }
+
+        $uploadLimits = collect(config('attachments.types', []))->map(fn (array $config): int => ($config['max_size'] ?? 20480) * 1024)->all();
+
+        return view('livewire.operation-attachments', compact('types', 'attachments', 'uploadHint', 'allowedMimes', 'uploadLimits'));
     }
 }

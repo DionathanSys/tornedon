@@ -19,6 +19,7 @@ use App\Models\ServiceOrderItem;
 use App\Models\User;
 use App\Services\Attachments\AttachmentService;
 use App\Services\ServiceOrder\DuplicateServiceOrderWorkflow;
+use App\Services\ServiceOrder\ServiceOrderService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -200,6 +201,76 @@ class OperationServiceOrderFeaturesTest extends TestCase
     {
         $order = $this->order('OS-TITULO');
         Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->assertSee('Registros do Atendimento')->assertSee('Incluir anexos');
+    }
+
+    public function test_service_photo_upload_accepts_5_3_mb_and_rejects_files_above_10_mb(): void
+    {
+        $order = $this->order('OS-FOTO-GRANDE');
+        $image = UploadedFile::fake()->image('foto.jpg')->getContent();
+        $file = UploadedFile::fake()->createWithContent('foto-5-3mb.jpg', $image.str_repeat('x', 5428 * 1024));
+        $page = Livewire::test(OperationAttachments::class, ['orderId' => $order->id])
+            ->set('showUpload', true)->set('attachmentType', 'service_photo')
+            ->assertSee('10 MB por arquivo')->assertSee('JPEG, PNG, WebP')
+            ->set('files', [$file])->call('uploadAttachments')->assertHasNoErrors();
+        $this->assertSame('foto-5-3mb.jpg', $order->attachments()->sole()->original_name);
+
+        $oversized = UploadedFile::fake()->createWithContent('foto-11mb.jpg', $image.str_repeat('x', 11 * 1024 * 1024));
+        $page->set('showUpload', true)->set('files', [$oversized])->call('uploadAttachments')
+            ->assertHasErrors(['files.0' => 'max'])->assertSee('limite de 10 MB por arquivo');
+        $this->assertSame(1, $order->attachments()->count());
+    }
+
+    public function test_operation_pdf_preview_and_download_respect_optional_photos_and_reset_on_reopening(): void
+    {
+        $order = $this->order('OS-PDF');
+        $service = $this->mock(ServiceOrderService::class);
+        $service->shouldReceive('preview')->twice()
+            ->withArgs(fn ($actual, $userId, $includePhotos) => $actual->is($order) && $userId === $this->user->id && $includePhotos === false)
+            ->andReturn(['pdf' => base64_encode('%PDF-without-photos')]);
+        $service->shouldReceive('preview')->once()
+            ->withArgs(fn ($actual, $userId, $includePhotos) => $actual->is($order) && $userId === $this->user->id && $includePhotos === true)
+            ->andReturn(['pdf' => base64_encode('%PDF-with-photos')]);
+        $service->shouldReceive('pdf')->once()
+            ->withArgs(fn ($actual, $userId, $includePhotos) => $actual->is($order) && $userId === $this->user->id && $includePhotos === true)
+            ->andReturn(base64_encode('%PDF-with-photos'));
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->assertSee('PDF da ordem')->call('openServiceOrderPdf')
+            ->assertSet('showPdfModal', true)->assertSet('includeServicePhotos', false);
+        $plainUrl = $page->get('pdfPreviewUrl');
+        $this->assertNotNull($plainUrl);
+        $this->get($plainUrl)->assertOk()->assertSee('%PDF-without-photos', false);
+
+        $page->set('includeServicePhotos', true)->assertHasNoErrors();
+        $photosUrl = $page->get('pdfPreviewUrl');
+        $this->assertNotSame($plainUrl, $photosUrl);
+        $this->get($photosUrl)->assertOk()->assertSee('%PDF-with-photos', false);
+        $page->call('downloadServiceOrderPdf')->assertFileDownloaded('ordem-servico-'.$order->number.'.pdf')
+            ->set('showPdfModal', false)->call('openServiceOrderPdf')->assertSet('includeServicePhotos', false);
+    }
+
+    public function test_operation_pdf_failure_clears_the_previous_preview(): void
+    {
+        $order = $this->order('OS-PDF-FALHA');
+        $service = $this->mock(ServiceOrderService::class);
+        $service->shouldReceive('preview')->once()->andReturn(['pdf' => base64_encode('%PDF-test')]);
+        $service->shouldReceive('preview')->once()->andReturn(null);
+        $service->shouldReceive('getMessage')->once()->andReturn('Falha ao gerar PDF.');
+
+        Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call('openServiceOrderPdf')
+            ->set('includeServicePhotos', true)->assertSet('pdfPreviewUrl', null)->assertHasNoErrors();
+    }
+
+    public static function pdfActions(): array
+    {
+        return [['openServiceOrderPdf'], ['downloadServiceOrderPdf']];
+    }
+
+    #[DataProvider('pdfActions')]
+    public function test_operation_pdf_actions_reject_other_companies(string $action): void
+    {
+        $foreign = $this->order('OS-PDF-FORA', Company::factory()->create(['created_by' => $this->user->id]));
+        Livewire::test(ServiceOrderDetail::class, ['record' => $foreign->id])->call($action)->assertStatus(404);
     }
 
     private function order(string $number, ?Company $company = null): ServiceOrder

@@ -2,12 +2,32 @@
     <x-operation.panel :title="'Anexos ('.count($attachments).')'">
         <x-mary-button label="Incluir anexos" icon="o-paper-clip" class="btn-outline btn-sm" wire:click="$toggle('showUpload')" />
         @if ($showUpload)
-            <x-mary-form wire:submit="uploadAttachments" no-separator class="rounded-box border border-base-300 bg-base-200 p-4">
-                <x-mary-select label="Tipo de anexo" wire:model="attachmentType" :options="$types" />
-                <x-mary-file label="Arquivo(s)" wire:model="files" multiple hint="Selecione os arquivos. Os limites de tamanho e formato seguem o tipo de anexo." />
+            <x-mary-form wire:submit="uploadAttachments" x-on:submit.capture="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); }" x-data="operationPhotoUpload(@js($uploadLimits))" no-separator class="rounded-box border border-base-300 bg-base-200 p-4">
+                <x-mary-select label="Tipo de anexo" wire:model.live="attachmentType" :options="$types" x-bind:disabled="busy" />
+                <label class="block">
+                    <span class="mb-2 block text-sm font-semibold">Arquivo(s)</span>
+                    <input type="file" multiple accept="{{ implode(',', $allowedMimes) }}" x-on:change="selectFiles($event)" x-bind:disabled="busy" class="file-input file-input-bordered w-full" />
+                    <span class="mt-2 block text-sm text-base-content/60">{{ $uploadHint }}</span>
+                    @if ($attachmentType === 'service_photo')
+                        <span class="mt-1 block text-sm text-base-content/60">Fotos acima de 5 MB podem ser reduzidas antes do envio, com sua confirmação. O original no dispositivo é preservado.</span>
+                    @endif
+                </label>
+                <p x-show="busy" x-cloak class="text-sm" x-text="progress ? 'Enviando arquivos: ' + progress + '%' : 'Preparando arquivos...'" role="status"></p>
+                <template x-for="(message, index) in messages" :key="index">
+                    <p class="text-sm" x-text="message" role="status"></p>
+                </template>
+                @foreach ($files as $file)
+                    <p class="break-words text-sm">{{ $file->getClientOriginalName() }}</p>
+                @endforeach
+                @error('files') <p class="text-sm text-error">{{ $message }}</p> @enderror
+                @foreach ($errors->get('files.*') as $messages)
+                    @foreach ($messages as $message)
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @endforeach
+                @endforeach
                 <x-slot:actions>
-                    <x-mary-button label="Cancelar" @click="$wire.showUpload = false" />
-                    <x-mary-button label="Enviar anexos" icon="o-arrow-up-tray" class="btn-primary" type="submit" spinner="uploadAttachments" wire:loading.attr="disabled" wire:target="files,uploadAttachments" />
+                    <x-mary-button label="Cancelar" @click="$wire.showUpload = false" x-bind:disabled="busy" />
+                    <x-mary-button label="Enviar anexos" icon="o-arrow-up-tray" class="btn-primary" type="submit" spinner="uploadAttachments" x-bind:disabled="busy" wire:loading.attr="disabled" wire:target="files,uploadAttachments" />
                 </x-slot:actions>
             </x-mary-form>
         @endif

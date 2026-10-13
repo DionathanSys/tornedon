@@ -37,7 +37,7 @@ return [
         AttachmentType::SERVICE_PHOTO->value => [
             'mode' => 'multiple',
             'allowed_mimes' => ['image/jpeg', 'image/png', 'image/webp'],
-            'max_size' => 5120, // 5MB
+            'max_size' => 10240, // 10MB
         ],
 
         AttachmentType::CONTRACT->value => [

@@ -20,6 +20,9 @@ use App\Support\OperationMoney;
 use App\Support\ServiceOrderOperationalSheet;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -76,10 +79,20 @@ class ServiceOrderDetail extends OperationPage
     #[Locked]
     public array $signaturePreview = [];
 
+    public bool $showPdfModal = false;
+
+    public bool $includeServicePhotos = false;
+
+    #[Locked]
+    public ?string $pdfPreviewUrl = null;
+
     protected function getOperationActions(): array
     {
         $order = $this->tenantOrder();
         $actions = [['label' => 'Voltar', 'icon' => 'o-arrow-left', 'url' => ServiceOrderQueue::getUrl(tenant: Filament::getTenant())]];
+        if ($order) {
+            $actions[] = ['label' => 'PDF da ordem', 'icon' => 'o-document-text', 'method' => 'openServiceOrderPdf', 'more' => true];
+        }
         if ($order && $this->operationalSheetEnabled) {
             $actions[] = ['label' => 'Imprimir ficha operacional', 'icon' => 'o-printer', 'method' => 'printOperationalSheet', 'more' => true];
         }
@@ -222,6 +235,60 @@ class ServiceOrderDetail extends OperationPage
         abort_unless($order, 404);
 
         return app(OperationalSheetPdfService::class)->download($order);
+    }
+
+    public function openServiceOrderPdf(): void
+    {
+        $this->includeServicePhotos = false;
+        $this->showPdfModal = true;
+        $this->refreshServiceOrderPdf();
+    }
+
+    public function updatedIncludeServicePhotos(): void
+    {
+        if ($this->showPdfModal) {
+            $this->refreshServiceOrderPdf();
+        }
+    }
+
+    private function refreshServiceOrderPdf(): void
+    {
+        $order = $this->tenantOrder();
+        abort_unless($order, 404);
+        $this->pdfPreviewUrl = null;
+        $service = app(ServiceOrderService::class);
+        $data = $service->preview($order, (int) Auth::id(), $this->includeServicePhotos);
+
+        if (! ($data['pdf'] ?? null)) {
+            $this->error($service->getMessage() ?: 'Não foi possível gerar o PDF da ordem de serviço.');
+
+            return;
+        }
+
+        $token = (string) Str::uuid();
+        Cache::put('pdf_preview:'.$token, [
+            'pdf' => $data['pdf'],
+            'filename' => 'ordem-servico-'.$order->number.'.pdf',
+        ], now()->addMinutes(5));
+        $this->pdfPreviewUrl = URL::temporarySignedRoute('pdf-preview.show', now()->addMinutes(5), ['token' => $token]);
+    }
+
+    public function downloadServiceOrderPdf(): ?StreamedResponse
+    {
+        $order = $this->tenantOrder();
+        abort_unless($order, 404);
+        $service = app(ServiceOrderService::class);
+        $pdf = $service->pdf($order, (int) Auth::id(), $this->includeServicePhotos);
+
+        if (! $pdf) {
+            $this->error($service->getMessage() ?: 'Não foi possível gerar o PDF da ordem de serviço.');
+
+            return null;
+        }
+
+        return response()->streamDownload(function () use ($pdf): void {
+            echo base64_decode($pdf);
+        }, 'ordem-servico-'.$order->number.'.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function generateSignatureLink(): void

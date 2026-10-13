@@ -105,4 +105,16 @@
         </x-mary-form>
     </x-mary-modal>
     @include('filament.operation.signature-modals')
+    <x-mary-modal wire:model="showPdfModal" title="PDF da ordem de serviço" box-class="max-w-5xl" class="backdrop-blur-sm">
+        <x-mary-checkbox label="Incluir fotos do serviço no PDF" wire:model.live="includeServicePhotos" />
+        <p class="my-3 text-sm text-base-content/60">Inclui somente imagens dos anexos do tipo Foto do Serviço ao final do documento.</p>
+        <p wire:loading wire:target="openServiceOrderPdf,includeServicePhotos" class="text-sm text-base-content/60">Gerando PDF...</p>
+        @if ($showPdfModal && $pdfPreviewUrl)
+            <iframe src="{{ $pdfPreviewUrl }}" title="PDF da ordem de serviço" class="h-[65dvh] w-full rounded-box border border-base-300" wire:key="{{ $pdfPreviewUrl }}"></iframe>
+        @endif
+        <x-slot:actions>
+            <x-mary-button label="Fechar" @click="$wire.showPdfModal = false" />
+            <x-mary-button label="Baixar PDF" icon="o-arrow-down-tray" class="btn-primary" wire:click="downloadServiceOrderPdf" spinner="downloadServiceOrderPdf" wire:loading.attr="disabled" wire:target="includeServicePhotos,downloadServiceOrderPdf" />
+        </x-slot:actions>
+    </x-mary-modal>
 </x-operation.page>
