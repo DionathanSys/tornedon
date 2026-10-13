@@ -29,6 +29,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -179,6 +180,8 @@ class ServiceOrderForm
 
                                     ]),
                                 Section::make('Defeitos relatados')
+                                    ->collapsible()
+                                    ->collapsed()
                                     ->description('Registre o relato do proprietário ou condutor para orientar a equipe de mecânicos.')
                                     ->visible(fn (): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey()))
                                     ->columnSpanFull()
@@ -441,12 +444,13 @@ class ServiceOrderForm
     public static function operationalSheetFields(): array
     {
         return [
-            Repeater::make('defects')->label('Defeitos relatados')->columnSpanFull()
+            Repeater::make('defects')->hiddenLabel()->columnSpanFull()
+                ->table([TableColumn::make('Defeito citado')])->compact()
                 ->dehydrated(fn (): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey()))
                 ->defaultItems(0)->maxItems(100)->addActionLabel('Adicionar defeito')
                 ->schema([
                     Hidden::make('id'),
-                    Textarea::make('report')->label('Defeito citado')->required()->maxLength(10000)->columnSpanFull()->rows(3),
+                    Textarea::make('report')->label('Defeito citado')->hiddenLabel()->required()->maxLength(10000)->rows(1)->autosize(),
                 ]),
         ];
     }

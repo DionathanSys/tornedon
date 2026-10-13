@@ -58,6 +58,8 @@ final class CreateServiceOrderAction
                     ->rules(fn (Get $get): array => [Rule::exists('equipments', 'id')->where('company_id', Filament::getTenant()->id)->where('owner_id', $get('customer_id'))->whereNull('deleted_at')]),
                 ServiceOrderForm::entryMileageField()->columnSpanFull(),
                 Section::make('Defeitos relatados')->columnSpanFull()
+                    ->collapsible()
+                    ->collapsed()
                     ->visible(fn (): bool => ServiceOrderOperationalSheet::enabled(Filament::getTenant()?->getKey()))
                     ->schema(ServiceOrderForm::operationalSheetFields()),
             ]))
