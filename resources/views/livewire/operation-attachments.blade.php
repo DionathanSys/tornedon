@@ -2,16 +2,20 @@
     <x-operation.panel :title="'Anexos ('.count($attachments).')'">
         <x-mary-button label="Incluir anexos" icon="o-paper-clip" class="btn-outline btn-sm" wire:click="$toggle('showUpload')" />
         @if ($showUpload)
-            <x-mary-form wire:submit="uploadAttachments" x-on:submit.capture="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); }" x-data="operationPhotoUpload(@js($uploadLimits))" no-separator class="rounded-box border border-base-300 bg-base-200 p-4">
+            <x-mary-form wire:submit="uploadAttachments" x-on:submit.capture="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); }" :x-data="'operationPhotoUpload('.\Illuminate\Support\Js::from($uploadLimits)->toHtml().')'" no-separator class="rounded-box border border-base-300 bg-base-200 p-4">
                 <x-mary-select label="Tipo de anexo" wire:model.live="attachmentType" :options="$types" x-bind:disabled="busy" />
                 <label class="block">
                     <span class="mb-2 block text-sm font-semibold">Arquivo(s)</span>
-                    <input type="file" multiple accept="{{ implode(',', $allowedMimes) }}" x-on:change="selectFiles($event)" x-bind:disabled="busy" class="file-input file-input-bordered w-full" />
+                    <input type="file" multiple accept="{{ $attachmentType === 'service_photo' ? 'image/*' : implode(',', $allowedMimes) }}" x-on:change="selectFiles($event)" x-bind:disabled="busy" class="file-input file-input-bordered w-full" />
                     <span class="mt-2 block text-sm text-base-content/60">{{ $uploadHint }}</span>
                     @if ($attachmentType === 'service_photo')
                         <span class="mt-1 block text-sm text-base-content/60">Fotos acima de 5 MB podem ser reduzidas antes do envio, com sua confirmação. O original no dispositivo é preservado.</span>
                     @endif
                 </label>
+                @if ($attachmentType === 'service_photo')
+                    <input type="file" accept="image/*" capture="environment" x-ref="camera" x-on:change="selectFiles($event)" x-bind:disabled="busy" class="hidden" />
+                    <x-mary-button label="Tirar foto" icon="o-camera" class="btn-outline btn-sm" x-on:click="$refs.camera.click()" x-bind:disabled="busy" />
+                @endif
                 <p x-show="busy" x-cloak class="text-sm" x-text="progress ? 'Enviando arquivos: ' + progress + '%' : 'Preparando arquivos...'" role="status"></p>
                 <template x-for="(message, index) in messages" :key="index">
                     <p class="text-sm" x-text="message" role="status"></p>

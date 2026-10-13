@@ -2,11 +2,11 @@
 
 namespace App\Services\Attachments;
 
+use App\Enums\AttachmentType;
 use App\Models\Attachment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -16,20 +16,20 @@ class AttachmentService
     /**
      * Upload an attachment.
      *
-     * @param Model $owner The attachable model.
-     * @param UploadedFile|TemporaryUploadedFile $file The file to upload.
-     * @param string|\App\Enums\AttachmentType $type The attachment type.
-     * @param array $options Options for upload (e.g. idempotency_key, metadata).
-     * @return Attachment
+     * @param  Model  $owner  The attachable model.
+     * @param  UploadedFile|TemporaryUploadedFile  $file  The file to upload.
+     * @param  string|AttachmentType  $type  The attachment type.
+     * @param  array  $options  Options for upload (e.g. idempotency_key, metadata).
      */
     public function upload(Model $owner, UploadedFile|TemporaryUploadedFile $file, $type, array $options = []): Attachment
     {
-        $typeValue = $type instanceof \App\Enums\AttachmentType ? $type->value : $type;
+        $typeValue = $type instanceof AttachmentType ? $type->value : $type;
         $idempotencyKey = $options['idempotency_key'] ?? null;
 
         // 1. Check idempotency if provided
         if ($idempotencyKey) {
             $existing = $owner->attachments()
+                ->withTrashed()
                 ->where('type', $typeValue)
                 ->where('idempotency_key', $idempotencyKey)
                 ->first();
@@ -45,73 +45,104 @@ class AttachmentService
 
         $companyId = $owner->company_id ?? Auth::user()?->company_id;
 
-        $pathContext = "attachments/{$companyId}/" . class_basename($owner) . "/{$owner->getKey()}/{$typeValue}/" . date('Y/m');
+        $pathContext = "attachments/{$companyId}/".class_basename($owner)."/{$owner->getKey()}/{$typeValue}/".date('Y/m');
 
-        $originalName   = $file->getClientOriginalName();
-        $extension      = $file->getClientOriginalExtension();
-        $mimeType       = $file->getMimeType() ?: $file->getClientMimeType();
-        $sizeBytes      = $file->getSize();
+        $originalName = $file->getClientOriginalName();
+        $extension = $file->getClientOriginalExtension();
+        $mimeType = $file->getMimeType() ?: $file->getClientMimeType();
+        $sizeBytes = $file->getSize();
 
         // 2. Upload file
         $storedPath = $file->store($pathContext, ['disk' => $disk]);
+
+        if (! is_string($storedPath) || $storedPath === '') {
+            throw new \RuntimeException('Não foi possível armazenar o arquivo do anexo.');
+        }
+
         $storedName = basename($storedPath);
 
         // Optional checksum calculation (if configured or needed)
         // $checksum = hash_file('sha256', $file->getRealPath());
         $checksum = null;
 
-        return DB::transaction(function () use ($owner, $typeValue, $idempotencyKey, $mode, $disk, $storedPath, $originalName, $storedName, $extension, $mimeType, $sizeBytes, $checksum, $options, $companyId) {
+        try {
+            $attachment = $owner->getConnection()->transaction(function () use ($owner, $typeValue, $idempotencyKey, $mode, $disk, $storedPath, $originalName, $storedName, $extension, $mimeType, $sizeBytes, $checksum, $options, $companyId) {
+                // Serialize uploads even when the owner has no attachments yet.
+                $owner->newQuery()->whereKey($owner->getKey())->lockForUpdate()->firstOrFail();
 
-            $nextVersion = 1;
-
-            if ($mode === 'single_latest') {
-                // Get all current versions for this type/owner and lock them for update
-                $currentAttachments = $owner->attachments()
-                    ->lockForUpdate()
-                    ->where('type', $typeValue)
-                    ->where('is_current', true)
-                    ->get();
-
-                if ($currentAttachments->isNotEmpty()) {
-                    // Update the existing current versions to not be current anymore
-                    // We also find the max version to increment
-                    $maxVersion = $owner->attachments()
+                if ($idempotencyKey) {
+                    $existing = $owner->attachments()->withTrashed()
                         ->where('type', $typeValue)
-                        ->max('version');
+                        ->where('idempotency_key', $idempotencyKey)
+                        ->lockForUpdate()
+                        ->first();
 
-                    $nextVersion = ($maxVersion ?? 0) + 1;
+                    if ($existing) {
+                        return $existing;
+                    }
+                }
+
+                // The unique index also includes soft-deleted records. Use a locking
+                // read to see the latest committed version under MySQL REPEATABLE READ.
+                $maxVersion = $owner->attachments()->withTrashed()
+                    ->where('type', $typeValue)
+                    ->orderByDesc('version')
+                    ->lockForUpdate()
+                    ->value('version');
+                $nextVersion = ($maxVersion ?? 0) + 1;
+
+                if ($mode === 'single_latest') {
+                    $currentAttachments = $owner->attachments()
+                        ->where('type', $typeValue)
+                        ->where('is_current', true)
+                        ->lockForUpdate()
+                        ->get();
 
                     foreach ($currentAttachments as $current) {
                         $current->update(['is_current' => false]);
                     }
                 }
-            } else {
-                 $maxVersion = $owner->attachments()
-                        ->where('type', $typeValue)
-                        ->max('version');
-                 $nextVersion = ($maxVersion ?? 0) + 1;
-            }
 
-            // 3. Create database record
-            return $owner->attachments()->create([
-                // 'public_id' is auto-generated by HasUlids trait
-                'company_id'        => $companyId,
-                'type'              => $typeValue,
-                'idempotency_key'   => $idempotencyKey,
-                'version'           => $nextVersion,
-                'is_current'        => true,
-                'disk'              => $disk,
-                'path'              => $storedPath,
-                'original_name'     => $originalName,
-                'stored_name'       => $storedName,
-                'extension'         => $extension,
-                'mime_type'         => $mimeType,
-                'size_bytes'        => $sizeBytes,
-                'checksum_sha256'   => $checksum,
-                'metadata'          => $options['metadata'] ?? null,
-                'uploaded_by'       => Auth::id(),
-            ]);
-        });
+                return $owner->attachments()->create([
+                    // 'public_id' is auto-generated by HasUlids trait
+                    'company_id' => $companyId,
+                    'type' => $typeValue,
+                    'idempotency_key' => $idempotencyKey,
+                    'version' => $nextVersion,
+                    'is_current' => true,
+                    'disk' => $disk,
+                    'path' => $storedPath,
+                    'original_name' => $originalName,
+                    'stored_name' => $storedName,
+                    'extension' => $extension,
+                    'mime_type' => $mimeType,
+                    'size_bytes' => $sizeBytes,
+                    'checksum_sha256' => $checksum,
+                    'metadata' => $options['metadata'] ?? null,
+                    'uploaded_by' => Auth::id(),
+                ]);
+            }, attempts: 3);
+        } catch (\Throwable $exception) {
+            $this->discardStoredUpload($disk, $storedPath);
+
+            throw $exception;
+        }
+
+        // Another upload may have completed with the same idempotency key.
+        if ($attachment->disk !== $disk || $attachment->path !== $storedPath) {
+            $this->discardStoredUpload($disk, $storedPath);
+        }
+
+        return $attachment;
+    }
+
+    private function discardStoredUpload(string $disk, string $path): void
+    {
+        try {
+            Storage::disk($disk)->delete($path);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**
@@ -127,9 +158,7 @@ class AttachmentService
     /**
      * Delete an attachment.
      *
-     * @param Attachment $attachment
-     * @param array $options Options like `force` (bool) physical delete or logical delete.
-     * @return bool
+     * @param  array  $options  Options like `force` (bool) physical delete or logical delete.
      */
     public function delete(Attachment $attachment, array $options = []): bool
     {
@@ -137,6 +166,7 @@ class AttachmentService
 
         if ($force) {
             Storage::disk($attachment->disk)->delete($attachment->path);
+
             return $attachment->forceDelete();
         }
 
@@ -148,14 +178,10 @@ class AttachmentService
 
     /**
      * Prepare a download response for the attachment.
-     *
-     * @param Attachment $attachment
-     * @param string|null $asName
-     * @return StreamedResponse|null
      */
     public function downloadResponse(Attachment $attachment, ?string $asName = null): ?StreamedResponse
     {
-        if (!Storage::disk($attachment->disk)->exists($attachment->path)) {
+        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
             return null;
         }
 

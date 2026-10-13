@@ -3,14 +3,20 @@
 namespace Tests\Feature\Services\Attachments;
 
 use App\Enums\AttachmentType;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\Attachment;
 use App\Models\Company;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use App\Services\Attachments\AttachmentService;
+use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AttachmentServiceTest extends TestCase
@@ -94,6 +100,112 @@ class AttachmentServiceTest extends TestCase
         $this->assertTrue($attachment2->is_current);
         $this->assertEquals(1, $attachment1->version);
         $this->assertEquals(2, $attachment2->version);
+    }
+
+    public static function versionedAttachmentTypes(): array
+    {
+        return [
+            'multiple' => [AttachmentType::SERVICE_PHOTO],
+            'single_latest' => [AttachmentType::CONTRACT],
+        ];
+    }
+
+    #[DataProvider('versionedAttachmentTypes')]
+    public function test_version_keeps_increasing_when_latest_attachment_was_deleted(AttachmentType $type): void
+    {
+        $first = $this->service->upload($this->owner, UploadedFile::fake()->create('primeiro.pdf', 100), $type);
+        $second = $this->service->upload($this->owner, UploadedFile::fake()->create('segundo.pdf', 100), $type);
+        $this->service->delete($second);
+
+        $third = $this->service->upload($this->owner, UploadedFile::fake()->create('terceiro.pdf', 100), $type);
+
+        $this->assertSame(3, $third->version);
+        $this->assertTrue($third->is_current);
+        $this->assertSoftDeleted($second);
+        $this->assertSame($type === AttachmentType::SERVICE_PHOTO, $first->fresh()->is_current);
+    }
+
+    #[DataProvider('versionedAttachmentTypes')]
+    public function test_version_does_not_restart_when_all_attachments_were_deleted(AttachmentType $type): void
+    {
+        $first = $this->service->upload($this->owner, UploadedFile::fake()->create('primeiro.pdf', 100), $type);
+        $second = $this->service->upload($this->owner, UploadedFile::fake()->create('segundo.pdf', 100), $type);
+        $this->service->delete($first);
+        $this->service->delete($second);
+
+        $third = $this->service->upload($this->owner, UploadedFile::fake()->create('terceiro.pdf', 100), $type);
+
+        $this->assertSame(3, $third->version);
+        $this->assertSame(1, $this->owner->currentAttachments()->count());
+        $this->assertSame(3, $this->owner->attachments()->withTrashed()->count());
+    }
+
+    public function test_failed_upload_removes_new_file_and_rolls_back_previous_current_version(): void
+    {
+        $existing = $this->service->upload($this->owner, UploadedFile::fake()->create('primeiro.pdf', 100), AttachmentType::CONTRACT);
+        $before = Storage::disk('local')->allFiles();
+        Attachment::creating(function (): void {
+            throw new \RuntimeException('Falha simulada ao criar o anexo.');
+        });
+
+        try {
+            $this->service->upload($this->owner, UploadedFile::fake()->create('segundo.pdf', 100), AttachmentType::CONTRACT);
+            $this->fail('O upload deveria falhar.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Falha simulada ao criar o anexo.', $exception->getMessage());
+        }
+
+        $this->assertSame($before, Storage::disk('local')->allFiles());
+        $this->assertTrue($existing->fresh()->is_current);
+        $this->assertSame(1, $this->owner->attachments()->count());
+    }
+
+    public function test_repeating_idempotent_upload_after_deletion_does_not_reuse_the_unique_key(): void
+    {
+        $options = ['idempotency_key' => 'tx-deleted'];
+        $existing = $this->service->upload($this->owner, UploadedFile::fake()->create('original.pdf', 100), AttachmentType::GENERIC, $options);
+        $this->service->delete($existing);
+        $before = Storage::disk('local')->allFiles();
+
+        $repeated = $this->service->upload($this->owner, UploadedFile::fake()->create('repetido.pdf', 100), AttachmentType::GENERIC, $options);
+
+        $this->assertSame($existing->id, $repeated->id);
+        $this->assertTrue($repeated->trashed());
+        $this->assertSame($before, Storage::disk('local')->allFiles());
+        $this->assertSame(1, $this->owner->attachments()->withTrashed()->count());
+    }
+
+    public function test_admin_upload_after_deleting_a_photo_does_not_collide_with_deleted_version(): void
+    {
+        $deleted = $this->service->upload($this->owner, UploadedFile::fake()->image('antiga.jpg'), AttachmentType::SERVICE_PHOTO);
+        $this->service->delete($deleted);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($this->owner->company);
+
+        Livewire::test(AttachmentsRelationManager::class, ['ownerRecord' => $this->owner, 'pageClass' => EditServiceOrder::class])
+            ->callAction(TestAction::make('create')->table(), data: [
+                'type' => AttachmentType::SERVICE_PHOTO->value,
+                'file' => [UploadedFile::fake()->image('nova.jpg')],
+            ])->assertHasNoActionErrors();
+
+        $this->assertSame(2, $this->owner->currentAttachments()->sole()->version);
+    }
+
+    public function test_admin_upload_failure_shows_notification_instead_of_internal_server_error(): void
+    {
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($this->owner->company);
+        $service = $this->mock(AttachmentService::class);
+        $service->shouldReceive('upload')->once()->andThrow(new \RuntimeException('Detalhes internos da falha.'));
+
+        Livewire::test(AttachmentsRelationManager::class, ['ownerRecord' => $this->owner, 'pageClass' => EditServiceOrder::class])
+            ->callAction(TestAction::make('create')->table(), data: [
+                'type' => AttachmentType::SERVICE_PHOTO->value,
+                'file' => [UploadedFile::fake()->image('foto.jpg')],
+            ])->assertHasNoActionErrors()
+            ->assertNotified('Não foi possível enviar todos os anexos.');
+
+        $this->assertSame(0, $this->owner->attachments()->count());
     }
 
     public function test_idempotency_prevents_duplicate_uploads()

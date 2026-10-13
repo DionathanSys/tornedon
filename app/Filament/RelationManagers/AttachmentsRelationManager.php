@@ -11,8 +11,10 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
@@ -98,10 +100,22 @@ class AttachmentsRelationManager extends RelationManager
                         $files = is_array($data['file']) ? $data['file'] : [$data['file']];
                         $lastAttachment = null;
 
-                        foreach ($files as $file) {
-                            if ($file instanceof TemporaryUploadedFile) {
-                                $lastAttachment = $service->upload($owner, $file, $type);
+                        try {
+                            foreach ($files as $file) {
+                                if ($file instanceof TemporaryUploadedFile) {
+                                    $lastAttachment = $service->upload($owner, $file, $type);
+                                }
                             }
+                        } catch (\Throwable $exception) {
+                            report($exception);
+
+                            Notification::make()
+                                ->title('Não foi possível enviar todos os anexos.')
+                                ->body('Confira os arquivos já enviados antes de tentar novamente.')
+                                ->danger()
+                                ->send();
+
+                            throw new Halt;
                         }
 
                         // Action expects the created model instance

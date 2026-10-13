@@ -210,6 +210,11 @@ class OperationServiceOrderFeaturesTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('foto-5-3mb.jpg', $image.str_repeat('x', 5428 * 1024));
         $page = Livewire::test(OperationAttachments::class, ['orderId' => $order->id])
             ->set('showUpload', true)->set('attachmentType', 'service_photo')
+            ->assertDontSee('@js($uploadLimits)', false)
+            ->assertSee('operationPhotoUpload(', false)
+            ->assertSee('accept="image/*"', false)
+            ->assertSee('capture="environment"', false)
+            ->assertSee('Tirar foto')
             ->assertSee('10 MB por arquivo')->assertSee('JPEG, PNG, WebP')
             ->set('files', [$file])->call('uploadAttachments')->assertHasNoErrors();
         $this->assertSame('foto-5-3mb.jpg', $order->attachments()->sole()->original_name);
