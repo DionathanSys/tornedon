@@ -1,10 +1,15 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\Filament\AdminPanelProvider;
+use App\Providers\Filament\ManagementPanelProvider;
+use App\Providers\Filament\MobilePanelProvider;
+use App\Providers\Filament\OperationPanelProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\Filament\AdminPanelProvider::class,
-    App\Providers\Filament\ManagementPanelProvider::class,
-    App\Providers\Filament\MobilePanelProvider::class,
-    App\Providers\Filament\ShopPanelProvider::class,
-    App\Providers\Filament\OperationPanelProvider::class,
+    AppServiceProvider::class,
+    AdminPanelProvider::class,
+    ManagementPanelProvider::class,
+    MobilePanelProvider::class,
+    OperationPanelProvider::class,
 ];

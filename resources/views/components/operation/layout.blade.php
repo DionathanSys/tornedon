@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $livewire->getTitle() }} · Tornedon Operação</title>
+    @filamentStyles
+    {{ filament()->getTheme()->getHtml() }}
     @include('filament.operation.head')
     @livewireStyles
     <script data-navigate-once>
@@ -32,6 +34,8 @@
         {{ $slot }}
     </main>
     @include('filament.operation.body-end')
+    @livewire(\Filament\Livewire\Notifications::class)
+    @filamentScripts(withCore: true)
     @livewireScripts
 </body>
 </html>

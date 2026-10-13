@@ -2,6 +2,15 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Operation\Resources\AccountPayables\AccountPayableResource;
+use App\Filament\Operation\Resources\AccountReceivables\AccountReceivableResource;
+use App\Filament\Operation\Resources\CashMovements\CashMovementResource;
+use App\Filament\Operation\Resources\ProductionRequests\ProductionRequestResource;
+use App\Filament\Operation\Widgets\AccountsChart;
+use App\Filament\Operation\Widgets\ProductionRequestChart;
+use App\Filament\Operation\Widgets\RevenueChart;
+use App\Filament\Operation\Widgets\StatsOverview;
+use App\Http\Middleware\AuthorizeTenantPanel;
 use App\Models\Company;
 use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Facades\Filament;
@@ -38,6 +47,19 @@ class OperationPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Zinc,
             ])
+            ->resources([
+                ProductionRequestResource::class,
+                AccountReceivableResource::class,
+                AccountPayableResource::class,
+                CashMovementResource::class,
+            ])
+            ->widgets([
+                StatsOverview::class,
+                ProductionRequestChart::class,
+                RevenueChart::class,
+                AccountsChart::class,
+            ])
+            ->resourceCreatePageRedirect('edit')
             ->discoverPages(
                 in: app_path('Filament/Operation/Pages'),
                 for: 'App\\Filament\\Operation\\Pages',
@@ -56,6 +78,7 @@ class OperationPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->tenantMiddleware([AuthorizeTenantPanel::class], isPersistent: true)
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn () => new HtmlString(Filament::getCurrentPanel()?->getId() === 'operation' ? view('filament.operation.head', [

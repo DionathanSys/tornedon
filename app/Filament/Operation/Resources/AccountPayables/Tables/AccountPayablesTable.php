@@ -1,0 +1,107 @@
+<?php
+
+namespace App\Filament\Operation\Resources\AccountPayables\Tables;
+
+use App\Enum\AccountPayable\Status;
+use App\Models\FinancialCategory;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Layout\Grid;
+use Filament\Tables\Columns\Layout\Panel;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+
+class AccountPayablesTable
+{
+    public static function configure(Table $table): Table
+    {
+        return $table
+            ->contentGrid([
+                'md' => 2,
+            ])
+            ->columns([
+                Split::make([
+                    Stack::make([
+                        Grid::make([
+                            'default' => 2,
+                        ])->schema([
+                            TextColumn::make('counterparty_label')
+                                ->label('Fornecedor')
+                                ->searchable(query: function (Builder $query, string $search): Builder {
+                                    return $query->where(function (Builder $query) use ($search): void {
+                                        $query->whereHas('supplier', fn (Builder $supplierQuery) => $supplierQuery->where('name', 'like', "%{$search}%"))
+                                            ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                                    });
+                                })
+                                ->weight('bold')
+                                ->wrap(),
+                            TextColumn::make('status')
+                                ->label('Status')
+                                ->badge()
+                                ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                                ->color(fn ($state) => $state?->color() ?? 'gray')
+                                ->alignEnd(),
+                        ]),
+                        TextColumn::make('due_amount')
+                            ->label('Valor')
+                            ->money('BRL')
+                            ->weight('bold')
+                            ->color('danger')
+                            ->sortable(),
+                    ]),
+                ])->from('md'),
+                Panel::make([
+                    Stack::make([
+                        TextColumn::make('due_date')
+                            ->label('Vencimento')
+                            ->date('d/m/Y')
+                            ->sortable(),
+                        TextColumn::make('document_number')
+                            ->label('Documento')
+                            ->placeholder('-'),
+                        TextColumn::make('description')
+                            ->label('Descrição')
+                            ->placeholder('-')
+                            ->wrap(),
+                    ])->space(1),
+                ])->collapsible(),
+            ])
+            ->defaultSort('due_date')
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options(Status::toSelectArray())
+                    ->native(false),
+                SelectFilter::make('financial_category_id')
+                    ->label('Categoria')
+                    ->options(fn (): array => FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'payable'))
+                    ->query(fn (Builder $query, array $data): Builder => $query->when(
+                        $data['value'] ?? null,
+                        fn (Builder $query, int $categoryId): Builder => $query->whereHas(
+                            'installments',
+                            fn (Builder $installmentsQuery): Builder => $installmentsQuery->where('financial_category_id', $categoryId),
+                        ),
+                    ))
+                    ->searchable()
+                    ->native(false),
+            ])
+            ->recordActions([
+                EditAction::make()->iconButton(),
+            ])
+            ->recordActionsPosition(RecordActionsPosition::AfterContent)
+            ->toolbarActions([
+                CreateAction::make()
+                    ->label('Conta à Pagar')
+                    ->icon(Heroicon::Plus)
+                    ->size(Size::Small),
+            ]);
+    }
+}

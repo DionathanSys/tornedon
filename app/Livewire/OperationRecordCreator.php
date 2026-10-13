@@ -6,6 +6,7 @@ use App\Enum\Requisition\Status;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Operation\OperationModules;
 use App\Filament\Operation\Pages\Requisitions\RequisitionDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Models\Partner;
@@ -27,6 +28,12 @@ class OperationRecordCreator extends Component
 {
     use Toast;
 
+    private function authorizeModule(string $kind): void
+    {
+        abort_unless(in_array($kind, ['service-order', 'requisition'], true)
+            && OperationModules::allows($kind === 'service-order' ? 'service_orders' : 'requisitions'), 403);
+    }
+
     public bool $showModal = false;
 
     #[Locked]
@@ -43,6 +50,7 @@ class OperationRecordCreator extends Component
     #[On('operation-create-record')]
     public function open(string $kind): void
     {
+        $this->authorizeModule($kind);
         abort_unless(Filament::getTenant() && in_array($kind, ['service-order', 'requisition'], true), 403);
         $this->resetValidation();
         $this->kind = $kind;
@@ -55,6 +63,7 @@ class OperationRecordCreator extends Component
 
     public function searchCustomers(string $search = ''): void
     {
+        $this->authorizeModule($this->kind);
         $companyId = Filament::getTenant()?->getKey();
         abort_unless($companyId, 403);
         $options = app(PartnerService::class)->searchForSelect($search, $companyId, 'customer');
@@ -68,6 +77,7 @@ class OperationRecordCreator extends Component
 
     public function createCustomer(): void
     {
+        $this->authorizeModule($this->kind);
         abort_unless(Filament::getTenant(), 403);
         $data = $this->validate([
             'newCustomer.name' => 'required|string|max:60',
@@ -97,6 +107,7 @@ class OperationRecordCreator extends Component
 
     public function create(): void
     {
+        $this->authorizeModule($this->kind);
         $tenant = Filament::getTenant();
         abort_unless($tenant, 403);
         $this->validate(['customerId' => ['required', 'integer']]);

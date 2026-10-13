@@ -17,8 +17,12 @@
     </section>
     <x-operation.panel title="Acesso rápido">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <x-mary-button label="Ordens de Serviço" icon="o-clipboard-document-list" :link="\App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue::getUrl()" class="btn-outline justify-start" />
-            <x-mary-button label="Requisições" icon="o-clipboard-document" :link="\App\Filament\Operation\Pages\Requisitions\RequisitionList::getUrl()" class="btn-outline justify-start" />
+            @if (\App\Filament\Operation\OperationModules::allows('service_orders'))
+                <x-mary-button label="Ordens de Serviço" icon="o-clipboard-document-list" :link="\App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue::getUrl()" class="btn-outline justify-start" />
+            @endif
+            @if (\App\Filament\Operation\OperationModules::allows('requisitions'))
+                <x-mary-button label="Requisições" icon="o-clipboard-document" :link="\App\Filament\Operation\Pages\Requisitions\RequisitionList::getUrl()" class="btn-outline justify-start" />
+            @endif
         </div>
     </x-operation.panel>
     @if (count($recentOrders))

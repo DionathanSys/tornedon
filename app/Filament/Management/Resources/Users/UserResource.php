@@ -6,10 +6,12 @@ use App\Enum\User\ManagementRole;
 use App\Filament\Management\Resources\Users\Pages\CreateUser;
 use App\Filament\Management\Resources\Users\Pages\EditUser;
 use App\Filament\Management\Resources\Users\Pages\ListUsers;
+use App\Filament\Operation\OperationModules;
 use App\Models\Company;
 use App\Models\User;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -74,6 +76,38 @@ class UserResource extends Resource
                         ->placeholder('Usuário comum')
                         ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
                         ->dehydrated(fn (): bool => auth()->user()?->isSuperAdmin() ?? false),
+                ]),
+            Section::make('Acessos e navegação por empresa')
+                ->description('Quatro recursos permitidos aparecem na barra do Operation; os demais ficam no Menu. Empresas sem configuração mantêm o acesso padrão.')
+                ->schema([
+                    Repeater::make('company_access')
+                        ->label('Configurações')
+                        ->defaultItems(0)
+                        ->addActionLabel('Configurar empresa')
+                        ->schema([
+                            Select::make('company_id')
+                                ->label('Empresa')
+                                ->options(fn (): array => Company::query()->orderBy('name')->pluck('name', 'id')->all())
+                                ->required()
+                                ->distinct(),
+                            Toggle::make('operation_enabled')->label('Permitir acesso ao painel Operation')->default(true),
+                            CheckboxList::make('permissions')
+                                ->label('Recursos permitidos')
+                                ->options(OperationModules::permissions())
+                                ->default(array_keys(OperationModules::permissions()))
+                                ->bulkToggleable()
+                                ->columns(2),
+                            Repeater::make('order')
+                                ->label('Ordem dos recursos no Operation')
+                                ->helperText('Arraste para ordenar. Recursos bloqueados são ignorados; recursos omitidos vão para o final. Início também pode ser reordenado.')
+                                ->default(array_map(fn (string $module): array => ['module' => $module], array_keys(OperationModules::definitions())))
+                                ->schema([
+                                    Select::make('module')->label('Recurso')->options(OperationModules::labels())->required()->distinct(),
+                                ])
+                                ->reorderableWithButtons()
+                                ->itemLabel(fn (array $state): string => OperationModules::labels()[$state['module'] ?? ''] ?? 'Recurso'),
+                        ])
+                        ->collapsible(),
                 ]),
         ]);
     }

@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Filament\Operation\Resources\ProductionRequests\Pages;
+
+use App\Enum\ProductionRequest\Status;
+use App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas\ProductionRequestForm;
+use App\Filament\Operation\Concerns\HasOperationResourcePage;
+use App\Filament\Operation\Resources\ProductionRequests\ProductionRequestResource;
+use App\Models\CompanyPreference;
+use App\Notification\NotifyService as notify;
+use App\Services\ProductionRequest\ProductionRequestService;
+use Filament\Facades\Filament;
+use Filament\Forms;
+use Filament\Resources\Pages\Page;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+
+class CreateProductionRequest extends Page implements Forms\Contracts\HasForms
+{
+    use Forms\Concerns\InteractsWithForms;
+    use HasOperationResourcePage;
+
+    protected static string $resource = ProductionRequestResource::class;
+
+    protected string $view = 'filament.operation.resources.production-requests.pages.mobile-create';
+
+    protected static ?string $title = 'Novo pedido de produção';
+
+    public ?array $data = [];
+
+    public function mount(): void
+    {
+        $tenantId = Filament::getTenant()?->id;
+
+        $this->form->fill([
+            'is_manual_counterparty' => true,
+            'order_date' => now()->toDateString(),
+            'status' => Status::OPEN->value,
+            'payment_method' => CompanyPreference::getDefaultPaymentMethod($tenantId),
+            'payment_condition' => CompanyPreference::getDefaultPaymentCondition($tenantId),
+            'financial_category_id' => ProductionRequestForm::defaultReceivableFinancialCategoryId(),
+            'payment_date' => now()->toDateString(),
+        ]);
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return ProductionRequestForm::configure($schema, useSections: false)->statePath('data');
+    }
+
+    public function save(): void
+    {
+        $data = $this->form->getState();
+        $data['company_id'] = Filament::getTenant()->id;
+        $data['status'] = Status::OPEN->value;
+        $data['additional_info'] = $this->extractAdditionalInfo($data);
+
+        $service = app(ProductionRequestService::class);
+        $record = $service->create($data, Auth::id());
+
+        if ($service->hasError() || $record === null) {
+            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
+            return;
+        }
+
+        notify::success('Pedido criado com sucesso.');
+
+        $this->redirect(ProductionRequestResource::getUrl('edit', ['record' => $record->getKey()]), navigate: true);
+    }
+
+    public function getListUrl(): string
+    {
+        return ProductionRequestResource::getUrl();
+    }
+
+    private function extractAdditionalInfo(array &$data): array
+    {
+        $additionalInfo = $data['additional_info'] ?? [];
+        $additionalInfo['card_payment_profile_id'] = $data['card_payment_profile_id'] ?? null;
+        $additionalInfo['payment_date'] = $data['payment_date'] ?? null;
+        $additionalInfo['auto_register_receipt_on_due_date'] = (bool) ($data['auto_register_receipt_on_due_date'] ?? false);
+        $additionalInfo['auto_receipt_financial_account_id'] = $data['auto_receipt_financial_account_id'] ?? null;
+
+        unset($data['card_payment_profile_id'], $data['payment_date'], $data['is_manual_counterparty']);
+        unset($data['auto_register_receipt_on_due_date'], $data['auto_receipt_financial_account_id']);
+
+        if (filled($data['customer_id'] ?? null)) {
+            $data['manual_counterparty_name'] = null;
+        }
+
+        return $additionalInfo;
+    }
+}

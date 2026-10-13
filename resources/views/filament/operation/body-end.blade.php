@@ -7,15 +7,16 @@
         \App\Filament\Operation\Pages\Requisitions\RequisitionDetail::class,
     ], true);
     $tenant = filament()->getTenant();
+    $navigation = \App\Filament\Operation\OperationModules::navigation();
 @endphp
 
 @if ($tenant)
     <x-operation.theme>
         @if (! $isRecord)
-            <x-operation.bottom-bar>
-                <x-mary-button label="Início" icon="o-home" :link="\App\Filament\Operation\Pages\OperationDashboard::getUrl(tenant: $tenant)" class="btn-ghost operation-bar-button" />
-                <x-mary-button label="Ordens" icon="o-clipboard-document-list" :link="\App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue::getUrl(tenant: $tenant)" class="btn-ghost operation-bar-button" />
-                <x-mary-button label="Requisições" icon="o-clipboard-document" :link="\App\Filament\Operation\Pages\Requisitions\RequisitionList::getUrl(tenant: $tenant)" class="btn-ghost operation-bar-button" />
+            <x-operation.bottom-bar :columns="min(count($navigation), 4) + 1">
+                @foreach (array_slice($navigation, 0, 4) as $item)
+                    <x-mary-button :label="$item['label']" :icon="$item['icon']" :link="$item['url']" class="btn-ghost operation-bar-button" />
+                @endforeach
                 @livewire(\App\Livewire\OperationMenu::class)
             </x-operation.bottom-bar>
         @endif

@@ -3,6 +3,8 @@
 namespace App\Filament\Operation\Pages;
 
 use App\Enum\ServiceOrder\State;
+use App\Filament\Operation\Concerns\AuthorizesOperationModule;
+use App\Filament\Operation\OperationModules;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Models\ServiceOrder;
 use BackedEnum;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\Auth;
 
 class OperationDashboard extends Dashboard
 {
+    use AuthorizesOperationModule;
+
     protected static string $layout = 'components.operation.layout';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;
@@ -40,7 +44,7 @@ class OperationDashboard extends Dashboard
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant) {
+        if (! $tenant || ! OperationModules::allows('service_orders')) {
             return;
         }
 

@@ -5,6 +5,7 @@ namespace App\Filament\Management\Resources\Users\Pages;
 use App\Enum\User\ManagementRole;
 use App\Filament\Management\Resources\Users\UserResource;
 use App\Models\User;
+use App\Services\Access\UserAccessConfigurationService;
 use App\Services\Management\UserAdministrationService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,10 @@ class CreateUser extends CreateRecord
      */
     protected array $companyIds = [];
 
+    protected array $accessRows = [];
+
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         /** @var User $actor */
@@ -30,7 +35,8 @@ class CreateUser extends CreateRecord
         $data['is_admin'] = $role === ManagementRole::SUPER_ADMIN->value
             || $role === ManagementRole::SUPER_ADMIN;
         $this->companyIds = array_map('intval', $data['companies'] ?? []);
-        unset($data['companies']);
+        $this->accessRows = app(UserAccessConfigurationService::class)->validate($data['company_access'] ?? [], $this->companyIds);
+        unset($data['companies'], $data['company_access']);
 
         return $data;
     }
@@ -43,6 +49,7 @@ class CreateUser extends CreateRecord
     protected function afterCreate(): void
     {
         $this->syncCompanies($this->record);
+        app(UserAccessConfigurationService::class)->save($this->record, $this->accessRows);
     }
 
     protected function getRedirectUrl(): string

@@ -4,24 +4,34 @@
     $panelLinks = collect([
         ['id' => 'admin', 'label' => 'Administração', 'icon' => 'o-building-office-2'],
         ['id' => 'mobile', 'label' => 'Mobile', 'icon' => 'o-device-phone-mobile'],
-        ['id' => 'shop', 'label' => 'Shop', 'icon' => 'o-shopping-cart'],
         ['id' => 'management', 'label' => 'Gestão', 'icon' => 'o-cog-6-tooth'],
     ])->map(function ($item) use ($tenant, $user) {
         $panel = filament()->getPanel($item['id'], isStrict: false);
         return $panel && $user->canAccessPanel($panel) ? [...$item, 'url' => $panel->getUrl($panel->hasTenancy() ? $tenant : null)] : null;
     })->filter();
     $companies = collect($this->availableTenants())->map(fn ($company) => ['id' => $company->getKey(), 'name' => filament()->getTenantName($company)])->all();
+    $overflow = array_slice(\App\Filament\Operation\OperationModules::navigation(), 4);
 @endphp
 
 <div>
-    <x-mary-dropdown no-x-anchor top right>
+    <x-mary-dropdown no-x-anchor top right scroll max-height="max-h-[calc(100dvh-8rem)]">
         <x-slot:trigger class="operation-bar-button btn btn-ghost">
             <x-mary-icon name="o-bars-3" class="h-5 w-5" />
             <span>Menu</span>
         </x-slot:trigger>
+        @foreach ($overflow as $item)
+            <x-mary-menu-item :title="$item['label']" :icon="$item['icon']" :link="$item['url']" />
+        @endforeach
+        @if (count($overflow))
+            <x-mary-menu-separator />
+        @endif
         <x-mary-menu-item title="Mudar empresa" icon="o-arrows-right-left" wire:click="openTenantModal" />
+        @if (\App\Filament\Operation\OperationModules::allows('service_orders'))
         <x-mary-menu-item title="Nova ordem" icon="o-plus" @click="$dispatch('operation-create-record', { kind: 'service-order' })" />
+        @endif
+        @if (\App\Filament\Operation\OperationModules::allows('requisitions'))
         <x-mary-menu-item title="Nova requisição" icon="o-plus" @click="$dispatch('operation-create-record', { kind: 'requisition' })" />
+        @endif
         <x-mary-menu-separator />
         <x-mary-menu-item title="Tema claro" icon="o-sun" @click="$dispatch('theme-changed', 'light')" />
         <x-mary-menu-item title="Tema escuro" icon="o-moon" @click="$dispatch('theme-changed', 'dark')" />

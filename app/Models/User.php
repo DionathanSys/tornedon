@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Enum\User\ManagementRole;
+use App\Services\Access\UserAccessService;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasTenants;
@@ -12,6 +13,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
@@ -73,6 +75,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
             return $this->canAccessManagementPanel();
         }
 
+        if ($panel->getId() === 'operation') {
+            return $this->getTenants($panel)->isNotEmpty();
+        }
+
         return true;
     }
 
@@ -130,12 +136,23 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->belongsToMany(Company::class);
     }
 
+    public function companyAccesses(): HasMany
+    {
+        return $this->hasMany(UserCompanyAccess::class);
+    }
+
     public function getTenants(Panel $panel): Collection
     {
-        return $this->companies()
+        $companies = $this->companies()
             ->where('companies.is_active', true)
             ->wherePivot('is_active', true)
             ->get();
+
+        if ($panel->getId() === 'operation') {
+            return $companies->filter(fn (Company $company): bool => app(UserAccessService::class)->canAccessPanel($this, $company, 'operation'));
+        }
+
+        return $companies;
     }
 
     public function canAccessTenant(Model $tenant): bool

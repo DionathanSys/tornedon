@@ -5,6 +5,7 @@ namespace App\Filament\Management\Resources\Users\Pages;
 use App\Enum\User\ManagementRole;
 use App\Filament\Management\Resources\Users\UserResource;
 use App\Models\User;
+use App\Services\Access\UserAccessConfigurationService;
 use App\Services\Management\UserAdministrationService;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -21,6 +22,10 @@ class EditUser extends EditRecord
      */
     protected array $companyIds = [];
 
+    protected array $accessRows = [];
+
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -34,6 +39,7 @@ class EditUser extends EditRecord
     {
         $data['companies'] = $this->record->companies()->pluck('companies.id')->map(fn (mixed $id): int => (int) $id)->all();
         $data['management_role'] = $this->record->managementRole()?->value;
+        $data['company_access'] = app(UserAccessConfigurationService::class)->formData($this->record);
 
         return $data;
     }
@@ -45,7 +51,8 @@ class EditUser extends EditRecord
         app(UserAdministrationService::class)->assertCanUpdate($actor, $this->record, $data);
 
         $this->companyIds = array_map('intval', $data['companies'] ?? []);
-        unset($data['companies']);
+        $this->accessRows = app(UserAccessConfigurationService::class)->validate($data['company_access'] ?? [], $this->companyIds);
+        unset($data['companies'], $data['company_access']);
 
         if (array_key_exists('management_role', $data)) {
             $role = $data['management_role'];
@@ -63,6 +70,7 @@ class EditUser extends EditRecord
     protected function afterSave(): void
     {
         $this->syncCompanies($this->record);
+        app(UserAccessConfigurationService::class)->save($this->record, $this->accessRows);
     }
 
     protected function getRedirectUrl(): string

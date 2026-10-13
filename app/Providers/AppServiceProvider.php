@@ -7,8 +7,8 @@ use App\Events\Quote\QuoteReopened;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Events\RequisitionItem\RequisitionItemDeleted;
 use App\Events\RequisitionItem\RequisitionItemUpdated;
+use App\Filament\Operation\Resources\ProductionRequests\Widgets\ProductionRequestOverview;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
-use App\Filament\Shop\Resources\ProductionRequests\Widgets\ProductionRequestOverview;
 use App\Forms\Components\Livewire\AutoSubmitTableSelectLivewireComponent;
 use App\Listeners\Quote\CreateProductionOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
@@ -96,7 +96,7 @@ class AppServiceProvider extends ServiceProvider
 
         Livewire::component('app.filament.relation-managers.attachments-relation-manager', AttachmentsRelationManager::class);
         Livewire::component('app.forms.components.livewire.auto-submit-table-select-livewire-component', AutoSubmitTableSelectLivewireComponent::class);
-        Livewire::component('app.filament.shop.resources.production-requests.widgets.production-request-overview', ProductionRequestOverview::class);
+        Livewire::component('app.filament.operation.resources.production-requests.widgets.production-request-overview', ProductionRequestOverview::class);
 
         // Mapa de aliases para relacionamentos polimórficos de StockMovement
         Relation::morphMap([
