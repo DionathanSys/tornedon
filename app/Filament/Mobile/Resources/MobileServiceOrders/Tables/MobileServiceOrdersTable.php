@@ -37,6 +37,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -74,7 +75,14 @@ class MobileServiceOrdersTable
                             ->placeholder('-'),
                         TextColumn::make('equipment.identifier')
                             ->label('Equipamento')
-                            ->searchable()
+                            ->searchable(
+                                query: fn (Builder $query, string $search): Builder => $query->whereHas(
+                                    'equipment',
+                                    fn (Builder $equipmentQuery): Builder => $equipmentQuery
+                                        ->where('company_id', Filament::getTenant()->id)
+                                        ->searchByIdentifier($search),
+                                ),
+                            )
                             ->placeholder('-')
                             ->color('gray'),
                     ]),
