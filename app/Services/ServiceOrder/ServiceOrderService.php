@@ -7,6 +7,7 @@ use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Enum\ServiceOrder\State;
 use App\Models\CompanyPartner;
 use App\Models\Equipment;
+use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
@@ -459,7 +460,7 @@ class ServiceOrderService
      *
      * @param  ServiceOrder|Collection  $records  Uma OS ou coleção de OS
      */
-    public function invoice(ServiceOrder|Collection $records, int $userId): ?\App\Models\Invoice
+    public function invoice(ServiceOrder|Collection $records, int $userId): ?Invoice
     {
         $this->resetResponse();
         $billing = app(ServiceOrderBillingService::class);
@@ -833,13 +834,13 @@ class ServiceOrderService
     /**
      * Gera o PDF da ordem de servico em base64.
      */
-    public function pdf(ServiceOrder $serviceOrder, int $userId): ?string
+    public function pdf(ServiceOrder $serviceOrder, int $userId, bool $includeServicePhotos = false): ?string
     {
         $this->resetResponse();
 
         try {
             $action = app(PrintServiceOrderPdfAction::class);
-            $pdf = $action->execute($serviceOrder);
+            $pdf = $action->execute($serviceOrder, $includeServicePhotos);
 
             if ($pdf === null || $action->hasError()) {
                 $this->setError($action->getMessage());
@@ -875,12 +876,12 @@ class ServiceOrderService
      *
      * @return array{pdf:string}|null
      */
-    public function preview(ServiceOrder $serviceOrder, int $userId): ?array
+    public function preview(ServiceOrder $serviceOrder, int $userId, bool $includeServicePhotos = false): ?array
     {
         $this->resetResponse();
 
         try {
-            $pdf = $this->pdf($serviceOrder, $userId);
+            $pdf = $this->pdf($serviceOrder, $userId, $includeServicePhotos);
 
             if ($pdf === null) {
                 return null;

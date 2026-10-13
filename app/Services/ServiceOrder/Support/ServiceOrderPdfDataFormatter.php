@@ -2,8 +2,10 @@
 
 namespace App\Services\ServiceOrder\Support;
 
+use App\Enums\AttachmentType;
 use App\Models\CompanyPreference;
 use App\Models\ServiceOrder;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ServiceOrderPdfDataFormatter
@@ -11,7 +13,7 @@ class ServiceOrderPdfDataFormatter
     /**
      * @return array<string, mixed>
      */
-    public function format(ServiceOrder $serviceOrder): array
+    public function format(ServiceOrder $serviceOrder, bool $includeServicePhotos = false): array
     {
         $requisition = $serviceOrder->requisition;
         $itemsTotal = round((float) $serviceOrder->services_total_amount, 2);
@@ -122,7 +124,50 @@ class ServiceOrderPdfDataFormatter
             'generated_at' => now()->format('d/m/Y H:i'),
             'company_logo' => $this->resolveCompanyLogo($serviceOrder),
             'company_name' => $serviceOrder->company?->name ?? '-',
+            'service_photos' => $includeServicePhotos ? $this->buildServicePhotos($serviceOrder) : [],
         ];
+    }
+
+    private function buildServicePhotos(ServiceOrder $serviceOrder): array
+    {
+        $photos = [];
+        $attachments = $serviceOrder->currentAttachmentsOfType(AttachmentType::SERVICE_PHOTO)
+            ->where('company_id', $serviceOrder->company_id)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($attachments as $attachment) {
+            try {
+                $disk = Storage::disk($attachment->disk);
+
+                if (! $disk->exists($attachment->path)) {
+                    continue;
+                }
+
+                $contents = $disk->get($attachment->path);
+                $dimensions = filled($contents) ? @getimagesizefromstring($contents) : false;
+
+                if (! $dimensions || ! in_array($dimensions['mime'], ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+                    continue;
+                }
+
+                $scale = min(680 / $dimensions[0], 800 / $dimensions[1], 1);
+                $photos[] = [
+                    'name' => $attachment->original_name,
+                    'src' => 'data:'.$dimensions['mime'].';base64,'.base64_encode($contents),
+                    'width' => (int) floor($dimensions[0] * $scale),
+                    'height' => (int) floor($dimensions[1] * $scale),
+                ];
+            } catch (\Exception $e) {
+                Log::warning('Não foi possível incluir foto do serviço no PDF.', [
+                    'service_order_id' => $serviceOrder->id,
+                    'attachment_id' => $attachment->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $photos;
     }
 
     private function formatDate($date): string

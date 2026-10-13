@@ -179,3 +179,12 @@
 </div>
 
 <div class="pdf-footer">Gerado em: {{ $pdfData['generated_at'] }}</div>
+
+@foreach ($pdfData['service_photos'] ?? [] as $photo)
+    <div class="service-photo-page" style="page-break-before: always; text-align: center;">
+        <div class="relation-title">Fotos do Serviço — {{ $pdfData['title'] }}</div>
+        <img src="{{ $photo['src'] }}" alt="{{ $photo['name'] }}"
+            style="width: {{ $photo['width'] }}px; height: {{ $photo['height'] }}px;">
+        <div style="margin-top: 8px; font-size: 11px; overflow-wrap: break-word;">{{ $photo['name'] }}</div>
+    </div>
+@endforeach

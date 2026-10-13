@@ -16,7 +16,7 @@ class PrintServiceOrderPdfAction
         private readonly ServiceOrderPdfDataFormatter $dataFormatter,
     ) {}
 
-    public function execute(ServiceOrder $serviceOrder): ?string
+    public function execute(ServiceOrder $serviceOrder, bool $includeServicePhotos = false): ?string
     {
         try {
             $serviceOrder->loadMissing([
@@ -30,7 +30,7 @@ class PrintServiceOrderPdfAction
                 'requisition.items.product',
             ]);
 
-            $pdfData = $this->dataFormatter->format($serviceOrder);
+            $pdfData = $this->dataFormatter->format($serviceOrder, $includeServicePhotos);
 
             $pdfBinary = Pdf::loadView('pdf.service-order', [
                 'record' => $serviceOrder,
@@ -39,6 +39,7 @@ class PrintServiceOrderPdfAction
 
             if ($pdfBinary === '') {
                 $this->setError('Não foi possível gerar o PDF da ordem de serviço.');
+
                 return null;
             }
 
@@ -46,13 +47,13 @@ class PrintServiceOrderPdfAction
 
             return base64_encode($pdfBinary);
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar PDF da ordem de serviço: ' . $e->getMessage());
-@
+            $this->setError('Erro ao montar PDF da ordem de serviço: '.$e->getMessage());
+
             Log::error('PrintServiceOrderPdfAction: excecao', [
-                'metodo'           => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
-                'exception'        => $e->getMessage(),
-                'trace'            => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;

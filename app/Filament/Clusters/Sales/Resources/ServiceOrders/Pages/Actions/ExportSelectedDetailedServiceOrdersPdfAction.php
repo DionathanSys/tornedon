@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\Actions;
 use App\Services\ServiceOrder\Support\ServiceOrderPdfDataFormatter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\BulkAction;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
@@ -19,7 +20,15 @@ final class ExportSelectedDetailedServiceOrdersPdfAction
             ->icon(Heroicon::DocumentDuplicate)
             ->color('gray')
             ->deselectRecordsAfterCompletion()
-            ->action(function (Collection $records): StreamedResponse {
+            ->modalHeading('Exportar PDF detalhado das ordens de serviço')
+            ->modalSubmitActionLabel('Exportar PDF')
+            ->schema([
+                Toggle::make('include_service_photos')
+                    ->label('Incluir fotos do serviço no PDF')
+                    ->helperText('Inclui somente imagens dos anexos do tipo Foto do Serviço após cada ordem.')
+                    ->default(false),
+            ])
+            ->action(function (Collection $records, array $data): StreamedResponse {
                 if ($records->isEmpty()) {
                     Notification::make()
                         ->title('Selecione ao menos uma ordem de serviço para exportar.')
@@ -45,7 +54,7 @@ final class ExportSelectedDetailedServiceOrdersPdfAction
                 $documents = $records
                     ->map(fn ($record): array => [
                         'record' => $record,
-                        'pdfData' => $formatter->format($record),
+                        'pdfData' => $formatter->format($record, (bool) ($data['include_service_photos'] ?? false)),
                     ])
                     ->values()
                     ->all();
@@ -54,7 +63,7 @@ final class ExportSelectedDetailedServiceOrdersPdfAction
                     'documents' => $documents,
                 ])->setPaper('a4')->output();
 
-                $fileName = 'ordens-servico-detalhadas-' . now()->format('Y-m-d_H-i-s') . '.pdf';
+                $fileName = 'ordens-servico-detalhadas-'.now()->format('Y-m-d_H-i-s').'.pdf';
 
                 return response()->streamDownload(function () use ($pdfBinary): void {
                     echo $pdfBinary;
