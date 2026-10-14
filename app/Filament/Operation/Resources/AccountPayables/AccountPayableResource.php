@@ -10,6 +10,7 @@ use App\Filament\Operation\Resources\AccountPayables\RelationManagers\Installmen
 use App\Filament\Operation\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Operation\Resources\AccountPayables\Schemas\AccountPayableForm;
 use App\Filament\Operation\Resources\AccountPayables\Tables\AccountPayablesTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\AccountPayable;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -51,6 +52,7 @@ class AccountPayableResource extends Resource
         return [
             InstallmentsRelationManager::class,
             PaymentsRelationManager::class,
+            AttachmentsRelationManager::class,
         ];
     }
 

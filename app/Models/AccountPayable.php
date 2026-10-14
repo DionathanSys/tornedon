@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AccountPayable extends Model
 {
+    use HasAttachments;
+
     protected $fillable = [
         'supplier_id',
         'manual_counterparty_name',

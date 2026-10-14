@@ -8,6 +8,7 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\ListRequisitions;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Schemas\RequisitionForm;
 use App\Filament\Clusters\Sales\Resources\Requisitions\Tables\RequisitionsTable;
 use App\Filament\Clusters\Sales\SalesCluster;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\Requisition;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -24,7 +25,7 @@ class RequisitionResource extends Resource
 
     // protected static ?string $cluster = SalesCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Vendas';
+    protected static string|UnitEnum|null $navigationGroup = 'Vendas';
 
     protected static ?string $modelLabel = 'Requisição';
 
@@ -40,6 +41,13 @@ class RequisitionResource extends Resource
     public static function table(Table $table): Table
     {
         return RequisitionsTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            AttachmentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

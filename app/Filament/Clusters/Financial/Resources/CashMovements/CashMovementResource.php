@@ -8,6 +8,7 @@ use App\Filament\Clusters\Financial\Resources\CashMovements\Pages\EditCashMoveme
 use App\Filament\Clusters\Financial\Resources\CashMovements\Pages\ListCashMovements;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Schemas\CashMovementForm;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Tables\CashMovementsTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\CashMovement;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -15,8 +16,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use UnitEnum;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class CashMovementResource extends Resource
 {
@@ -26,7 +27,7 @@ class CashMovementResource extends Resource
 
     // protected static ?string $cluster = FinancialCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Movimento Financeiro';
 
@@ -42,6 +43,13 @@ class CashMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return CashMovementsTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            AttachmentsRelationManager::class,
+        ];
     }
 
     public static function getEloquentQuery(): Builder

@@ -7,14 +7,13 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\CreateInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\AccountReceivablesRelationManager;
-use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InstallmentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
 use App\Filament\Clusters\Financial\Resources\Invoices\Tables\InvoicesTable;
 use App\Filament\Clusters\Financial\Resources\Invoices\Widgets\InvoicesStatsOverview;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\Invoice;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationGroup;
@@ -32,7 +31,7 @@ class InvoiceResource extends Resource
 
     // protected static ?string $cluster = FinancialCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Fatura';
 
@@ -61,6 +60,7 @@ class InvoiceResource extends Resource
                 RequisitionsRelationManager::class,
                 ServiceOrdersRelationManager::class,
             ]),
+            AttachmentsRelationManager::class,
         ];
     }
 
@@ -79,5 +79,4 @@ class InvoiceResource extends Resource
             InvoicesStatsOverview::class,
         ];
     }
-
 }

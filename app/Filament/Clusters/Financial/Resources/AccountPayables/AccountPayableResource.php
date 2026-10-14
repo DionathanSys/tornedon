@@ -10,6 +10,7 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\I
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas\AccountPayableForm;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Tables\AccountPayablesTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\AccountPayable;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationGroup;
@@ -29,7 +30,7 @@ class AccountPayableResource extends Resource
 
     // protected static ?string $cluster = FinancialCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $modelLabel = 'Conta à Pagar';
 
@@ -53,7 +54,8 @@ class AccountPayableResource extends Resource
             RelationGroup::make('Parcelas e Pagamentos', [
                 InstallmentsRelationManager::class,
                 PaymentsRelationManager::class,
-            ])
+            ]),
+            AttachmentsRelationManager::class,
         ];
     }
 

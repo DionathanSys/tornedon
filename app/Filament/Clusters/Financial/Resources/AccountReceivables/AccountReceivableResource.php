@@ -9,6 +9,7 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\ListAccou
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables\AccountReceivablesTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\AccountReceivable;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -49,6 +50,7 @@ class AccountReceivableResource extends Resource
     {
         return [
             InstallmentsRelationManager::class,
+            AttachmentsRelationManager::class,
         ];
     }
 

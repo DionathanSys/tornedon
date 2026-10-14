@@ -8,6 +8,7 @@ use App\Filament\Operation\Resources\CashMovements\Pages\EditCashMovement;
 use App\Filament\Operation\Resources\CashMovements\Pages\ListCashMovements;
 use App\Filament\Operation\Resources\CashMovements\Schemas\CashMovementForm;
 use App\Filament\Operation\Resources\CashMovements\Tables\CashMovementsTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\CashMovement;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -42,6 +43,13 @@ class CashMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return CashMovementsTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            AttachmentsRelationManager::class,
+        ];
     }
 
     public static function getEloquentQuery(): Builder

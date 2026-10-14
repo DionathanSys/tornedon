@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
+    use HasAttachments;
+
     private ?array $resolvedAmounts = null;
 
     protected $appends = [

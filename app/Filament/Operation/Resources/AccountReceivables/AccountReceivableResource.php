@@ -10,6 +10,7 @@ use App\Filament\Operation\Resources\AccountReceivables\RelationManagers\Install
 use App\Filament\Operation\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Operation\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Operation\Resources\AccountReceivables\Tables\AccountReceivablesTable;
+use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\AccountReceivable;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -53,6 +54,7 @@ class AccountReceivableResource extends Resource
         return [
             InstallmentsRelationManager::class,
             PaymentsRelationManager::class,
+            AttachmentsRelationManager::class,
         ];
     }
 
