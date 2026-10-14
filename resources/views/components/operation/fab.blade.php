@@ -1,10 +1,10 @@
-@props(['label', 'method' => null, 'kind' => null, 'actions' => []])
+@props(['label', 'method' => null, 'kind' => null, 'actions' => [], 'event' => 'operation-create-record'])
 @php
     $key = 'operation.fab.'.filament()->auth()->id().'.'.filament()->getTenant()?->getKey().'.'.($kind ?: $method);
 @endphp
 
 <div
-    x-data="operationFab({ key: @js($key), kind: @js($kind), method: @js($method) })"
+    x-data="operationFab({ key: @js($key), kind: @js($kind), method: @js($method), event: @js($event) })"
     @pointermove.window="pointerMove($event)"
     @pointerup.window="finishPointer($event)"
     @pointercancel.window="finishPointer($event, true)"

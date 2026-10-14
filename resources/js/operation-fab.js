@@ -138,7 +138,7 @@ export function operationFab(config) {
 
         activatePrimary() {
             this.closeMenu();
-            if (config.kind) this.$dispatch('operation-create-record', { kind: config.kind });
+            if (config.kind) this.$dispatch(config.event || 'operation-create-record', { kind: config.kind });
             else if (config.method) this.$wire[config.method]();
         },
 

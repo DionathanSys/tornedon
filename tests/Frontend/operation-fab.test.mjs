@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fabBounds, clampFabPosition, normalizeFabPosition, restoreFabPosition, fabMenuPosition } from '../../resources/js/operation-fab.js';
+import { fabBounds, clampFabPosition, normalizeFabPosition, restoreFabPosition, fabMenuPosition, operationFab } from '../../resources/js/operation-fab.js';
 
 test('button stays inside the viewport and above navigation', () => {
     const bounds = fabBounds(390, 844, 56, 770);
@@ -30,4 +30,18 @@ test('safe areas keep the moved button away from notches and system gestures', (
 test('menu opens above a low button and stays on screen near every edge', () => {
     assert.deepEqual(fabMenuPosition({ top: 700, bottom: 756, right: 368 }, 288, 200, 390, 770), { x: 80, y: 492 });
     assert.deepEqual(fabMenuPosition({ top: 8, bottom: 64, right: 64 }, 288, 200, 390, 770), { x: 8, y: 72 });
+});
+
+test('creation events distinguish migrated modules from service orders and requisitions', () => {
+    for (const [config, expected] of [
+        [{ kind: 'service-order' }, 'operation-create-record'],
+        [{ kind: 'production_requests', event: 'operation-create-module' }, 'operation-create-module'],
+    ]) {
+        const fab = operationFab(config);
+        let dispatched;
+        fab.closeMenu = () => {};
+        fab.$dispatch = (name, detail) => { dispatched = { name, detail }; };
+        fab.activatePrimary();
+        assert.deepEqual(dispatched, { name: expected, detail: { kind: config.kind } });
+    }
 });

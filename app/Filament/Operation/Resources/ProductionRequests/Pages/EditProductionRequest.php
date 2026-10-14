@@ -3,33 +3,35 @@
 namespace App\Filament\Operation\Resources\ProductionRequests\Pages;
 
 use App\Enum\ProductionRequest\Status;
-use App\Filament\Clusters\Sales\Resources\ProductionRequests\Schemas\ProductionRequestForm;
+use App\Filament\Operation\Concerns\HasModuleForm;
+use App\Filament\Operation\Concerns\HasOperationActions;
+use App\Filament\Operation\Concerns\HasOperationFeedback;
 use App\Filament\Operation\Concerns\HasOperationResourcePage;
+use App\Filament\Operation\OperationResourceSupport;
 use App\Filament\Operation\Resources\ProductionRequests\ProductionRequestResource;
 use App\Models\FinancialAccount;
 use App\Models\Product;
 use App\Models\ProductionRequest;
 use App\Models\ProductionRequestItem;
-use App\Notification\NotifyService as notify;
 use App\Services\ProductionRequest\ProductionRequestService;
 use Filament\Facades\Filament;
-use Filament\Forms;
 use Filament\Resources\Pages\Page;
-use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 
-class EditProductionRequest extends Page implements Forms\Contracts\HasForms
+class EditProductionRequest extends Page
 {
-    use Forms\Concerns\InteractsWithForms;
+    use HasModuleForm, HasOperationActions, HasOperationFeedback;
     use HasOperationResourcePage;
 
     protected static string $resource = ProductionRequestResource::class;
 
-    protected string $view = 'filament.operation.resources.production-requests.pages.mobile-detail';
+    protected string $view = 'filament.operation.resources.production-requests.pages.detail';
 
-    public ProductionRequest $record;
-
-    public ?array $data = [];
+    /** @var ProductionRequest */
+    #[Locked]
+    public $record;
 
     public array $itemData = [];
 
@@ -40,6 +42,16 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
     public ?int $editingItemId = null;
 
     public array $deliverData = [];
+
+    public bool $showDeleteItemModal = false;
+
+    #[Locked]
+    public ?int $deletingItemId = null;
+
+    public function moduleKey(): string
+    {
+        return 'production_requests';
+    }
 
     public function mount(int|string|ProductionRequest $record): void
     {
@@ -56,32 +68,27 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->resetDeliverForm();
     }
 
-    public function form(Schema $schema): Schema
-    {
-        return ProductionRequestForm::configure($schema, includeOrderData: false)->statePath('data');
-    }
-
     public function save(): void
     {
+        $this->reloadRecord();
         if ($this->record->status !== Status::OPEN) {
-            notify::error('Somente pedidos abertos podem ser editados.');
+            $this->error('Somente pedidos abertos podem ser editados.');
 
             return;
         }
 
-        $data = $this->form->getState();
+        $data = $this->moduleFormPayload();
         $data['company_id'] = $this->record->company_id;
         $data['customer_id'] = $this->record->customer_id;
         $data['manual_counterparty_name'] = $this->record->manual_counterparty_name;
         $data['order_date'] = $this->record->order_date?->toDateString();
         $data['observations'] = $this->record->observations;
-        $data['additional_info'] = $this->extractAdditionalInfo($data);
 
         $service = app(ProductionRequestService::class);
         $updated = $service->update($this->record, $data, Auth::id());
 
         if ($service->hasError() || $updated === null) {
-            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+            $this->serviceFailed($service);
 
             return;
         }
@@ -90,11 +97,14 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->loadRecordRelations();
         $this->fillMainForm();
 
-        notify::success('Pedido salvo com sucesso.');
+        $this->success('Pedido salvo com sucesso.');
     }
 
     public function toggleItemForm(): void
     {
+        $this->reloadRecord();
+        abort_unless($this->record->status === Status::OPEN, 403);
+        $this->resetValidation();
         if ($this->showItemForm && $this->editingItemId === null) {
             $this->showItemForm = false;
 
@@ -107,6 +117,9 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function editItem(int $itemId): void
     {
+        $this->reloadRecord();
+        abort_unless($this->record->status === Status::OPEN, 403);
+        $this->resetValidation();
         $item = $this->record->items()->whereKey($itemId)->firstOrFail();
 
         $this->editingItemId = $item->id;
@@ -153,18 +166,19 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function saveItem(bool $createAnother = false): void
     {
+        $this->reloadRecord();
         if ($this->record->status !== Status::OPEN) {
-            notify::error('Somente pedidos abertos podem receber itens.');
+            $this->error('Somente pedidos abertos podem receber itens.');
 
             return;
         }
 
-        $data = validator($this->itemData, [
-            'product_id' => ['required', 'integer'],
-            'unit_of_measure' => ['required', 'string', 'max:10'],
-            'quantity' => ['required'],
-            'unit_price' => ['required'],
-        ])->validate();
+        $data = $this->validate([
+            'itemData.product_id' => ['required', 'integer'],
+            'itemData.unit_of_measure' => ['required', 'string', 'max:10'],
+            'itemData.quantity' => ['required'],
+            'itemData.unit_price' => ['required'],
+        ])['itemData'];
 
         $product = Product::query()
             ->where('company_id', Filament::getTenant()->id)
@@ -173,12 +187,17 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             ->find((int) $data['product_id']);
 
         if (! $product) {
-            notify::error('Produto nao encontrado.');
+            $this->addError('itemData.product_id', 'Selecione um produto ativo desta empresa.');
 
             return;
         }
 
-        $quantity = $this->toDecimal($data['quantity']);
+        $quantity = OperationResourceSupport::normalizeNumber($data['quantity']);
+        if (! is_numeric($quantity) || $quantity <= 0) {
+            $this->addError('itemData.quantity', 'A quantidade deve ser maior que zero.');
+
+            return;
+        }
         $unitPrice = $this->packageUnitPrice($this->resolveTotalPackageQuantity($quantity));
 
         $payload = [
@@ -195,14 +214,14 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         if ($this->editingItemId) {
             $item = $this->record->items()->whereKey($this->editingItemId)->firstOrFail();
             $item->update($payload);
-            notify::success('Item atualizado com sucesso.');
+            $this->success('Item atualizado com sucesso.');
         } else {
             $this->record->items()->create([
                 ...$payload,
                 'created_by' => Auth::id(),
                 'sequence' => ((int) $this->record->items()->max('sequence')) + 1,
             ]);
-            notify::success('Item adicionado com sucesso.');
+            $this->success('Item adicionado com sucesso.');
         }
 
         $this->syncPackageUnitPrices();
@@ -221,22 +240,42 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function deleteItem(int $itemId): void
     {
+        abort_unless($this->showDeleteItemModal && $this->deletingItemId === $itemId, 403);
+        $this->reloadRecord();
         if ($this->record->status !== Status::OPEN) {
-            notify::error('Somente pedidos abertos podem excluir itens.');
+            $this->error('Somente pedidos abertos podem excluir itens.');
 
             return;
         }
 
-        $this->record->items()->whereKey($itemId)->delete();
+        $this->record->items()->whereKey($itemId)->firstOrFail()->delete();
         $this->syncPackageUnitPrices();
         $this->loadRecordRelations();
-        notify::success('Item excluido com sucesso.');
+        $this->showDeleteItemModal = false;
+        $this->success('Item excluído com sucesso.');
+    }
+
+    public function requestItemDelete(int $itemId): void
+    {
+        $this->reloadRecord();
+        abort_unless($this->record->status === Status::OPEN, 403);
+        $this->record->items()->whereKey($itemId)->firstOrFail();
+        $this->deletingItemId = $itemId;
+        $this->showDeleteItemModal = true;
+    }
+
+    public function confirmItemDelete(): void
+    {
+        abort_unless($this->deletingItemId !== null, 403);
+        $this->deleteItem($this->deletingItemId);
     }
 
     public function deliver(): void
     {
+        $this->reloadRecord();
+        $this->resetValidation();
         if ($this->record->status !== Status::OPEN) {
-            notify::error('Somente pedidos abertos podem ser entregues.');
+            $this->error('Somente pedidos abertos podem ser entregues.');
 
             return;
         }
@@ -247,16 +286,24 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function confirmDeliver(): void
     {
+        abort_unless($this->showDeliverConfirmation, 403);
+        $this->reloadRecord();
+        $this->resetValidation();
+        $data = $this->validate([
+            'deliverData.mark_as_received' => ['required', 'boolean'],
+            'deliverData.financial_account_id' => [($this->deliverData['mark_as_received'] ?? false) ? 'required' : 'nullable', Rule::in(array_keys($this->financialAccountOptions))],
+            'deliverData.received_at' => [($this->deliverData['mark_as_received'] ?? false) ? 'required' : 'nullable', 'date'],
+        ])['deliverData'];
         $service = app(ProductionRequestService::class);
         $delivered = $service->deliver($this->record, [
             'delivered_at' => now()->toDateString(),
-            'mark_as_received' => (bool) ($this->deliverData['mark_as_received'] ?? false),
-            'financial_account_id' => $this->deliverData['financial_account_id'] ?? null,
-            'received_at' => $this->deliverData['received_at'] ?? now()->toDateString(),
+            'mark_as_received' => (bool) ($data['mark_as_received'] ?? false),
+            'financial_account_id' => $data['financial_account_id'] ?? null,
+            'received_at' => $data['received_at'] ?? now()->toDateString(),
         ], Auth::id());
 
         if ($service->hasError() || $delivered === null) {
-            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+            $this->serviceFailed($service, 'deliverData');
 
             return;
         }
@@ -266,7 +313,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
         $this->fillMainForm();
         $this->resetDeliverForm();
         $this->showDeliverConfirmation = false;
-        notify::success('Pedido entregue com sucesso.');
+        $this->success('Pedido entregue com sucesso.');
     }
 
     public function cancelDeliverConfirmation(): void
@@ -277,17 +324,42 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     public function cancel(): void
     {
+        abort_unless($this->showConfirmation && $this->confirmationOperation === 'cancel', 403);
+        $this->reloadRecord();
         $service = app(ProductionRequestService::class);
 
         if (! $service->cancel($this->record, Auth::id())) {
-            notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+            $this->serviceFailed($service);
 
             return;
         }
 
         $this->record->refresh();
         $this->loadRecordRelations();
-        notify::success('Pedido cancelado com sucesso.');
+        $this->success('Pedido cancelado com sucesso.');
+    }
+
+    private function reloadRecord(): void
+    {
+        $this->record = ProductionRequest::query()->where('company_id', Filament::getTenant()->id)->findOrFail($this->record->id);
+        $this->loadRecordRelations();
+    }
+
+    public function hydrate(): void
+    {
+        $this->reloadRecord();
+    }
+
+    protected function getOperationActions(): array
+    {
+        $actions = [['label' => 'Lista', 'icon' => 'o-arrow-left', 'url' => $this->getListUrl()]];
+        if ($this->record->status === Status::OPEN) {
+            $actions[] = ['label' => 'Salvar', 'icon' => 'o-check', 'method' => 'save', 'primary' => true];
+            $actions[] = ['label' => 'Entregar', 'icon' => 'o-truck', 'method' => 'deliver'];
+            $actions[] = ['label' => 'Cancelar', 'icon' => 'o-x-circle', 'method' => 'cancel', 'more' => true, 'confirm' => true];
+        }
+
+        return $actions;
     }
 
     public function getListUrl(): string
@@ -336,14 +408,7 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
 
     private function fillMainForm(): void
     {
-        $this->form->fill([
-            ...$this->record->attributesToArray(),
-            'is_manual_counterparty' => blank($this->record->customer_id) && filled($this->record->manual_counterparty_name),
-            'card_payment_profile_id' => data_get($this->record->additional_info, 'card_payment_profile_id'),
-            'payment_date' => data_get($this->record->additional_info, 'payment_date'),
-            'auto_register_receipt_on_due_date' => (bool) data_get($this->record->additional_info, 'auto_register_receipt_on_due_date', false),
-            'auto_receipt_financial_account_id' => data_get($this->record->additional_info, 'auto_receipt_financial_account_id'),
-        ]);
+        $this->initializeModuleForm($this->record);
     }
 
     private function loadRecordRelations(): void
@@ -369,24 +434,6 @@ class EditProductionRequest extends Page implements Forms\Contracts\HasForms
             'financial_account_id' => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id),
             'received_at' => now()->toDateString(),
         ];
-    }
-
-    private function extractAdditionalInfo(array &$data): array
-    {
-        $additionalInfo = $data['additional_info'] ?? [];
-        $additionalInfo['card_payment_profile_id'] = $data['card_payment_profile_id'] ?? null;
-        $additionalInfo['payment_date'] = $data['payment_date'] ?? null;
-        $additionalInfo['auto_register_receipt_on_due_date'] = (bool) ($data['auto_register_receipt_on_due_date'] ?? false);
-        $additionalInfo['auto_receipt_financial_account_id'] = $data['auto_receipt_financial_account_id'] ?? null;
-
-        unset($data['card_payment_profile_id'], $data['payment_date'], $data['is_manual_counterparty']);
-        unset($data['auto_register_receipt_on_due_date'], $data['auto_receipt_financial_account_id']);
-
-        if (filled($data['customer_id'] ?? null)) {
-            $data['manual_counterparty_name'] = null;
-        }
-
-        return $additionalInfo;
     }
 
     private function toDecimal(mixed $value): float

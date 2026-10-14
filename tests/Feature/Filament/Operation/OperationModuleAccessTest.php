@@ -44,7 +44,8 @@ class OperationModuleAccessTest extends TestCase
                 $this->get($resource::getUrl($page, panel: 'operation', tenant: $company))
                     ->assertOk()
                     ->assertSee('operation-ui', false)
-                    ->assertSee('operation-resource', false)
+                    ->assertSee('operation-bar-button', false)
+                    ->assertDontSee('pr-mob-', false)
                     ->assertDontSee('shop-bottom-navigation', false);
             }
         }
@@ -103,7 +104,7 @@ class OperationModuleAccessTest extends TestCase
                 ->assertSee('Registro-'.$company->id.'-'.class_basename($model))
                 ->assertDontSee('Registro-'.$other->id.'-'.class_basename($model));
             $this->get($resource::getUrl('edit', ['record' => $records[0]], tenant: $company))
-                ->assertOk()->assertSee('operation-resource', false);
+                ->assertOk()->assertSee('operation-bar-button', false)->assertDontSee('pr-mob-', false);
             $this->get($resource::getUrl('edit', ['record' => $records[1]], tenant: $company))->assertNotFound();
         }
     }

@@ -25,9 +25,9 @@
     @endif
 </x-operation.bottom-bar>
 
-<x-mary-modal wire:model="showConfirmation" :title="$this->confirmationOperation === 'cancel' ? 'Cancelar registro?' : 'Encerrar registro?'" subtitle="Confirme para continuar." class="backdrop-blur-sm">
+<x-mary-modal wire:model="showConfirmation" :title="$this->confirmationTitle()" subtitle="Confirme para continuar." class="backdrop-blur-sm">
     <x-slot:actions>
         <x-mary-button label="Voltar" @click="$wire.showConfirmation = false" />
-        <x-mary-button label="Confirmar" :class="$this->confirmationOperation === 'cancel' ? 'btn-error' : 'btn-primary'" wire:click="confirmOperation" spinner="confirmOperation" />
+        <x-mary-button label="Confirmar" :class="$this->confirmationIsDestructive() ? 'btn-error' : 'btn-primary'" wire:click="confirmOperation" spinner="confirmOperation" />
     </x-slot:actions>
 </x-mary-modal>

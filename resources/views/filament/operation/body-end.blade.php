@@ -6,6 +6,7 @@
         \App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail::class,
         \App\Filament\Operation\Pages\Requisitions\RequisitionDetail::class,
     ], true);
+    $isRecord = $isRecord || (is_a($pageClass, \App\Filament\Operation\ModuleCreatePage::class, true) || is_a($pageClass, \App\Filament\Operation\ModuleEditPage::class, true) || $pageClass === \App\Filament\Operation\Resources\ProductionRequests\Pages\EditProductionRequest::class);
     $tenant = filament()->getTenant();
     $navigation = \App\Filament\Operation\OperationModules::navigation();
 @endphp
@@ -23,6 +24,7 @@
         <x-mary-toast />
     </x-operation.theme>
     @livewire(\App\Livewire\OperationRecordCreator::class)
+    @livewire(\App\Livewire\OperationModuleCreator::class)
 @endif
 
 <script data-navigate-once>
