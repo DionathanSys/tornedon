@@ -10,6 +10,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Livewire\Attributes\On;
@@ -113,18 +114,23 @@ class InstallmentsRelationManager extends RelationManager
             ->defaultSort('sequence_number')
             ->headerActions([])
             ->recordActions(ActionGroup::make([
-                RegisterInstallmentPaymentAction::make(),
+                RegisterInstallmentPaymentAction::make()
+                    ->tooltip('Registrar pagamento'),
                 EditInstallmentAction::make()
+                    ->tooltip('Editar parcela')
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                     }),
                 DeleteInstallmentAction::make()
+                    ->tooltip('Excluir parcela')
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                         $livewire->dispatch('refresh-payments');
                     }),
-            ])->icon(Heroicon::Bars3), position: RecordActionsPosition::BeforeColumns)
+            ])->icon(Heroicon::Bars3)->tooltip('Ações da parcela'), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(5)
             ->emptyStateHeading('Sem registros');
     }
 }
