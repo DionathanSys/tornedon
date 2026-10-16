@@ -6,9 +6,11 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\A
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Livewire\Attributes\On;
 
@@ -110,21 +112,18 @@ class InstallmentsRelationManager extends RelationManager
             ])
             ->defaultSort('sequence_number')
             ->headerActions([])
-            ->recordActions([
-                RegisterInstallmentPaymentAction::make()
-                    ->iconButton(),
+            ->recordActions(ActionGroup::make([
+                RegisterInstallmentPaymentAction::make(),
                 EditInstallmentAction::make()
-                    ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                     }),
                 DeleteInstallmentAction::make()
-                    ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                         $livewire->dispatch('refresh-payments');
                     }),
-            ])
+            ])->icon(Heroicon::Bars3), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }

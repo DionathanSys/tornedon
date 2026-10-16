@@ -124,35 +124,28 @@ class InstallmentsRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions(ActionGroup::make([
                 IssueBankSlipAction::make()
-                    ->tooltip('Emitir boleto')
-                    ->iconButton(),
+                    ->tooltip('Emitir boleto'),
                 IssuePixChargeAction::make()
-                    ->tooltip('Emitir PIX')
-                    ->iconButton(),
+                    ->tooltip('Emitir PIX'),
                 PixPaymentLinkAction::make()
-                    ->tooltip('Copiar link PIX')
-                    ->iconButton(),
+                    ->tooltip('Copiar link PIX'),
                 PixPaymentLinkAction::open()
-                    ->tooltip('Abrir pagamento PIX')
-                    ->iconButton(),
+                    ->tooltip('Abrir pagamento PIX'),
                 RegisterInstallmentPaymentAction::make()
-                    ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                         $livewire->dispatch('refresh-payments');
                     }),
                 EditInstallmentAction::make()
-                    ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                     }),
                 DeleteInstallmentAction::make()
-                    ->iconButton()
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-installments');
                         $livewire->dispatch('refresh-payments');
                     }),
-            ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
+            ])->icon(Heroicon::Bars3), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }
