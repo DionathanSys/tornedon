@@ -83,8 +83,10 @@ class ProcessPurchaseReturnFinancialImpactAction
         try {
             DB::transaction(function () use ($returnDocument, $originDocument, $mode, $returnAmount, $userId, &$result): void {
                 $payables = AccountPayable::query()
+                    ->where('company_id', $returnDocument->company_id)
                     ->where('fiscal_document_id', $originDocument->id)
-                    ->orderBy('due_date')
+                    ->orderBy('id')
+                    ->lockForUpdate()
                     ->get();
 
                 if ($payables->isEmpty()) {
@@ -112,12 +114,16 @@ class ProcessPurchaseReturnFinancialImpactAction
                             'paid_amount' => (float) ($payable->paid_amount ?? 0),
                             'paid' => (bool) $payable->paid,
                             'paid_date' => $payable->paid_date?->toDateString(),
+                            'installments' => $payable->installments()->get(['id', 'status'])->map(fn ($installment) => [
+                                'id' => $installment->id,
+                                'status' => $installment->status->value,
+                            ])->all(),
                         ])
                         ->values()
                         ->all();
 
                 $result = match ($mode) {
-                    PurchaseReturnSettlementMode::CANCEL_PAYABLE => $this->cancelOriginPayables($returnDocument, $payables),
+                    PurchaseReturnSettlementMode::CANCEL_PAYABLE => $this->cancelOriginPayables($returnDocument, $payables, $userId),
                     PurchaseReturnSettlementMode::SUPPLIER_CREDIT => $this->generateSupplierCredit($returnDocument, $originDocument, $payables, $returnAmount, $userId),
                     PurchaseReturnSettlementMode::REPLACE_PAYABLE => $this->replaceOriginPayables($returnDocument, $originDocument, $payables, $returnAmount, $userId),
                 };
@@ -137,6 +143,7 @@ class ProcessPurchaseReturnFinancialImpactAction
                 ])->save();
             });
         } catch (\Throwable $e) {
+            $result['credits'] = $result['replacement_payables'] = $result['updated_payables'] = 0;
             $this->setError('Erro ao processar impacto financeiro da devolução: '.$e->getMessage());
 
             Log::error('ProcessPurchaseReturnFinancialImpactAction: excecao', [
@@ -212,7 +219,7 @@ class ProcessPurchaseReturnFinancialImpactAction
         ])->save();
     }
 
-    private function cancelOriginPayables(FiscalDocument $returnDocument, $payables): array
+    private function cancelOriginPayables(FiscalDocument $returnDocument, $payables, int $userId): array
     {
         $updated = 0;
         $warnings = [];
@@ -228,14 +235,16 @@ class ProcessPurchaseReturnFinancialImpactAction
                 continue;
             }
 
-            $payable->update([
-                'status' => AccountPayableStatus::CANCELLED->value,
+            $cancelled = $this->accountPayableService->cancel($payable, 'Cancelamento por devolução de compra', $userId, [
                 'type' => 'purchase_return_cancelled',
                 'description' => $this->appendDescription(
                     $payable->description,
                     "Cancelada por devolução NF #{$returnDocument->document_number}"
                 ),
             ]);
+            if (! $cancelled) {
+                throw new \RuntimeException($this->accountPayableService->getMessageUser());
+            }
 
             $updated++;
         }
@@ -294,14 +303,16 @@ class ProcessPurchaseReturnFinancialImpactAction
                 continue;
             }
 
-            $payable->update([
-                'status' => AccountPayableStatus::CANCELLED->value,
+            $cancelled = $this->accountPayableService->cancel($payable, 'Substituição por devolução de compra', $userId, [
                 'type' => 'purchase_return_replaced',
                 'description' => $this->appendDescription(
                     $payable->description,
                     "Substituída por devolução NF #{$returnDocument->document_number}"
                 ),
             ]);
+            if (! $cancelled) {
+                throw new \RuntimeException($this->accountPayableService->getMessageUser());
+            }
 
             $updated++;
         }

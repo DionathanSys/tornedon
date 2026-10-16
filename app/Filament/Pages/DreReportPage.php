@@ -20,6 +20,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 use UnitEnum;
@@ -176,6 +177,10 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
             ->where('company_id', Filament::getTenant()->id)
             ->findOrFail((int) ($filters['dre_model_id'] ?? 0));
         $companyIds = array_values(array_filter(array_map('intval', (array) ($filters['company_ids'] ?? [Filament::getTenant()->id]))));
+        $allowedCompanyIds = array_map('intval', array_keys($this->companyOptions()));
+        if (! auth()->user()?->isActive() || $companyIds === [] || array_diff($companyIds, $allowedCompanyIds) !== []) {
+            throw new AuthorizationException('Você não possui acesso às empresas selecionadas.');
+        }
         $costCenterId = filled($filters['cost_center_id'] ?? null) ? (int) $filters['cost_center_id'] : null;
         $resultCenterId = filled($filters['result_center_id'] ?? null) ? (int) $filters['result_center_id'] : null;
 
@@ -365,6 +370,8 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     private function companyOptions(): array
     {
         return auth()->user()?->companies()
+            ->where('companies.is_active', true)
+            ->wherePivot('is_active', true)
             ->orderBy('name')
             ->pluck('name', 'companies.id')
             ->all() ?? [];

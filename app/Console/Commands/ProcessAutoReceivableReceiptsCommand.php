@@ -6,7 +6,9 @@ use App\Enum\AccountReceivable\Status;
 use App\Models\AccountReceivableInstallment;
 use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Support\Financial\DueDateReceiptLinks;
 use App\Support\Financial\InstallmentDescription;
+use App\Support\Financial\InstallmentPaymentGuard;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +42,7 @@ class ProcessAutoReceivableReceiptsCommand extends Command
                     try {
                         $received = DB::transaction(function () use ($candidate, $targetDate): bool {
                             // Serialize manual receipts and concurrent scheduler runs on this installment.
-                            $installment = AccountReceivableInstallment::query()->lockForUpdate()->findOrFail($candidate->id);
+                            $installment = InstallmentPaymentGuard::lock($candidate);
                             $receivable = $installment->accountReceivable;
 
                             if ((float) $installment->balance_amount <= 0 || ! $receivable->auto_register_receipt_on_due_date
@@ -58,6 +60,8 @@ class ProcessAutoReceivableReceiptsCommand extends Command
                             $payment = $service->registerInstallmentPayment($installment,
                                 (float) $installment->balance_amount, $targetDate, [
                                     'financial_account_id' => $account->id,
+                                    'origin' => 'due_date',
+                                    ...DueDateReceiptLinks::forInstallment($installment, $account->id),
                                     'description' => InstallmentDescription::forReceivableInstallment($installment),
                                     'notes' => 'Recebimento registrado automaticamente no vencimento.',
                                 ]);

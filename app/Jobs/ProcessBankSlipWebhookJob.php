@@ -6,6 +6,8 @@ use App\Enum\Financial\BankSlipStatus;
 use App\Models\BankSlip;
 use App\Models\BankSlipEvent;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Support\Financial\BankReceiptMatcher;
+use App\Support\Financial\InstallmentPaymentGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -128,7 +130,24 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $installment->refresh();
+        $installment = InstallmentPaymentGuard::lock($installment);
+        $connection = $bankSlip->connection;
+        if (! $connection || (int) $connection->company_id !== (int) $installment->company_id
+            || $installment->status->value === 'cancelled' || $installment->accountReceivable->status->value === 'cancelled') {
+            $this->markForReview($event, 'Conta, conexão ou parcela inválida para a liquidação.');
+
+            return;
+        }
+        $existing = BankReceiptMatcher::dueDatePayment(
+            $installment, 'bank_slip_id', $bankSlip->id, $amount, (int) ($bankSlip->financial_account_id ?? $connection->financial_account_id),
+        );
+        if ($existing) {
+            $existing->update(['bank_confirmed_at' => now(), 'bank_slip_event_id' => $event->id]);
+            $bankSlip->update(['status' => BankSlipStatus::PAID, 'paid_at' => now(), 'last_error' => null]);
+            $event->update(['processed_at' => now()]);
+
+            return;
+        }
         $balance = round((float) $installment->balance_amount, 2);
 
         if ($amount > $balance) {
@@ -142,7 +161,7 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
             $amount,
             $event->received_at?->toDateString() ?? now()->toDateString(),
             [
-                'financial_account_id' => $installment->financial_account_id,
+                'financial_account_id' => $bankSlip->financial_account_id ?? $connection->financial_account_id,
                 'bank_slip_id' => $bankSlip->id,
                 'bank_slip_event_id' => $event->id,
                 'description' => 'Pagamento incremental de boleto bancario',
@@ -154,6 +173,8 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
                 $receivableService->getMessage() ?: 'Nao foi possivel registrar o pagamento do boleto.'
             );
         }
+
+        $payment->update(['bank_confirmed_at' => now()]);
 
         $installment->refresh();
         $bankSlip->update([

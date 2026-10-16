@@ -6,6 +6,7 @@ use App\Casts\MoneyCast;
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\ProtectsFinancialHistory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class AccountReceivable extends Model
 {
     use HasAttachments;
+    use ProtectsFinancialHistory;
 
     protected $fillable = [
         'customer_id',

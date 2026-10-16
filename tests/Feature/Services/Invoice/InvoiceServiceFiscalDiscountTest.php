@@ -21,6 +21,7 @@ use App\Enum\ServiceOrder\Priority as ServiceOrderPriority;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Enum\ServiceOrder\Type as ServiceOrderType;
 use App\Enum\Tax\TaxRegime;
+use App\Models\AccountReceivable;
 use App\Models\CardInstitution;
 use App\Models\CashMovement;
 use App\Models\Company;
@@ -948,6 +949,53 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->artisan('account-receivables:process-auto-receipts', ['--date' => '2026-06-03'])->assertExitCode(0);
         $this->assertTrue($receivable->fresh()->paid);
         $this->assertDatabaseCount('cash_movements', 1);
+    }
+
+    public function test_receivable_failure_rolls_back_confirmation_and_fiscal_documents(): void
+    {
+        $user = User::factory()->create();
+        [$company, $customer, $invoice] = $this->createInvoiceContext($user);
+        $category = FinancialCategory::create([
+            'company_id' => $company->id, 'name' => 'Receitas',
+            'is_active' => true, 'allow_receivable' => true, 'allow_cash_movement' => true,
+        ]);
+        $order = ServiceOrder::create([
+            'number' => 'SO-ROLLBACK', 'customer_id' => $customer->id, 'company_id' => $company->id,
+            'invoice_id' => $invoice->id, 'order_date' => now()->toDateString(),
+            'status' => ServiceOrderState::CLOSED, 'priority' => ServiceOrderPriority::NORMAL,
+            'type' => ServiceOrderType::MAINTENANCE, 'created_by' => $user->id,
+        ]);
+        $item = Service::create([
+            'company_id' => $company->id, 'created_by' => $user->id, 'service_code' => 'SRV-ROLLBACK',
+            'name' => 'Serviço', 'price' => 180, 'tax_rate' => 5, 'nbs_code' => '123456789',
+            'cnae_code' => '6201500', 'municipal_tax_code' => '01.01', 'is_active' => true,
+        ]);
+        ServiceOrderItem::create([
+            'service_order_id' => $order->id, 'service_id' => $item->id,
+            'quantity' => 1, 'unit_price' => 180, 'created_by' => $user->id,
+        ]);
+        $before = $invoice->fresh()->getRawOriginal();
+        $attempted = false;
+        AccountReceivable::creating(function () use (&$attempted, $invoice): void {
+            $attempted = true;
+            $this->assertSame(1, $invoice->fiscalDocuments()->count());
+            throw new \RuntimeException('Falha simulada após gerar o documento fiscal.');
+        });
+
+        $service = app(InvoiceService::class);
+        $result = $service->confirm($invoice, [
+            'payment_method' => PaymentMethod::PIX->value,
+            'payment_condition' => PaymentCondition::CASH->value,
+            'financial_category_id' => $category->id,
+        ], $user->id);
+
+        $this->assertNull($result);
+        $this->assertTrue($attempted);
+        $this->assertTrue($service->hasError());
+        $this->assertSame($before, $invoice->fresh()->getRawOriginal());
+        $this->assertSame(0, $invoice->fiscalDocuments()->count());
+        $this->assertSame(0, $invoice->accountReceivables()->count());
+        $this->assertDatabaseCount('cash_movements', 0);
     }
 
     /**

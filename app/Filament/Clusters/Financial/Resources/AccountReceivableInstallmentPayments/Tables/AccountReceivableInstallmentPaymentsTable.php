@@ -53,6 +53,22 @@ class AccountReceivableInstallmentPaymentsTable
                     ->label('Valor Recebido')
                     ->money('BRL')
                     ->sortable(),
+                TextColumn::make('origin')
+                    ->label('Origem')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'due_date' => 'Automática no vencimento',
+                        'pix' => 'PIX',
+                        'bank_slip' => 'Boleto',
+                        'bank_statement' => 'Conciliação',
+                        default => 'Manual',
+                    })
+                    ->placeholder('Histórico sem identificação')
+                    ->toggleable(),
+                TextColumn::make('bank_confirmed_at')
+                    ->label('Confirmação bancária')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('Não registrada')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('interest_amount')
                     ->label('Juros')
                     ->money('BRL')

@@ -48,6 +48,15 @@ class AccountPayableInstallmentPaymentsTable
                     ->label('Valor Pago')
                     ->money('BRL')
                     ->sortable(),
+                TextColumn::make('origin')
+                    ->label('Origem')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'due_date' => 'Automática no vencimento',
+                        'bank_statement' => 'Conciliação',
+                        default => 'Manual',
+                    })
+                    ->placeholder('Histórico sem identificação')
+                    ->toggleable(),
                 TextColumn::make('interest_amount')
                     ->label('Juros')
                     ->money('BRL')

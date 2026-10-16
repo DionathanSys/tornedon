@@ -23,16 +23,18 @@ use App\Services\Financial\CardReceivableCalculatorService;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
+use App\Support\Financial\InstallmentPaymentGuard;
 use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AccountReceivableService
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     public function __construct(
         private readonly FinancialClassificationService $classificationService = new FinancialClassificationService,
@@ -45,7 +47,7 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            return $this->financialTransaction(function () use ($data, $createdBy) {
                 $audit = app(AuditRecorder::class);
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
@@ -153,7 +155,8 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($accountReceivable, $data, $updatedBy) {
+            return $this->financialTransaction(function () use ($accountReceivable, $data, $updatedBy) {
+                $accountReceivable = AccountReceivable::query()->lockForUpdate()->findOrFail($accountReceivable->id);
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountReceivable);
                 $originalFirstDueDate = $accountReceivable->due_date->copy();
@@ -271,26 +274,19 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($installment, $amount, $paymentDate, $extra) {
-                $installment = AccountReceivableInstallment::query()->lockForUpdate()->findOrFail($installment->id);
+            return $this->financialTransaction(function () use ($installment, $amount, $paymentDate, $extra) {
+                $installment = InstallmentPaymentGuard::lock($installment);
                 $audit = app(AuditRecorder::class);
                 $userId = $extra['user_id'] ?? auth()->id();
                 $installment->loadMissing('accountReceivable');
-                if ($installment->accountReceivable->payment_method === PaymentMethod::CREDIT_CARD) {
-                    $available = round((float) $installment->balance_amount
-                        + (float) ($extra['interest_amount'] ?? 0)
-                        + (float) ($extra['fine_amount'] ?? 0)
-                        - (float) ($extra['discount_amount'] ?? 0), 2);
-                    if (round($amount, 2) > $available) {
-                        throw ValidationException::withMessages(['amount' => ['O recebimento não pode exceder o saldo em aberto da parcela.']]);
-                    }
-                }
+                InstallmentPaymentGuard::validate($installment, $installment->accountReceivable, $amount, $extra);
                 $before = $audit->snapshot($installment->accountReceivable);
                 $paymentAction = new RegisterAccountReceivableInstallmentPaymentAction($installment);
                 $payment = $paymentAction->execute([
                     'account_receivable_installment_id' => $installment->id,
                     'company_id' => $installment->company_id,
                     'payment_date' => $paymentDate,
+                    'origin' => $extra['origin'] ?? (isset($extra['pix_charge_id']) ? 'pix' : (isset($extra['bank_slip_id']) ? 'bank_slip' : 'manual')),
                     'amount' => $amount,
                     'interest_amount' => (float) ($extra['interest_amount'] ?? 0),
                     'fine_amount' => (float) ($extra['fine_amount'] ?? 0),
@@ -403,7 +399,8 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($installment, $data) {
+            return $this->financialTransaction(function () use ($installment, $data) {
+                $installment = InstallmentPaymentGuard::lock($installment);
                 $audit = app(AuditRecorder::class);
                 $userId = auth()->id();
                 $installment->loadMissing('accountReceivable');
@@ -502,7 +499,8 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($installment) {
+            return $this->financialTransaction(function () use ($installment) {
+                $installment = InstallmentPaymentGuard::lock($installment);
                 $audit = app(AuditRecorder::class);
                 $userId = auth()->id();
                 $installment->loadMissing('accountReceivable');
@@ -588,7 +586,9 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($payment, $data) {
+            return $this->financialTransaction(function () use ($payment, $data) {
+                InstallmentPaymentGuard::lock($payment->installment);
+                $payment = AccountReceivableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
                 $userId = $data['user_id'] ?? auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
@@ -606,6 +606,10 @@ class AccountReceivableService
                     'notes' => $data['notes'] ?? $payment->notes,
                 ]);
 
+                InstallmentPaymentGuard::validate(
+                    $payment->installment, $payment->installment->accountReceivable,
+                    (float) $validated['amount'], $validated, $payment->id,
+                );
                 $payment->update($validated);
 
                 $installment = $payment->installment->fresh();
@@ -668,7 +672,9 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($payment) {
+            return $this->financialTransaction(function () use ($payment) {
+                InstallmentPaymentGuard::lock($payment->installment);
+                $payment = AccountReceivableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
                 $userId = auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
@@ -733,7 +739,9 @@ class AccountReceivableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($accountReceivable) {
+            return $this->financialTransaction(function () use ($accountReceivable) {
+                $accountReceivable = AccountReceivable::query()->lockForUpdate()->findOrFail($accountReceivable->id);
+                $accountReceivable->installments()->orderBy('id')->lockForUpdate()->get();
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountReceivable);
                 $action = new DeleteAccountReceivableAction($accountReceivable);
@@ -864,6 +872,7 @@ class AccountReceivableService
 
     private function recalculateReceivableInstallment(AccountReceivableInstallment $installment): void
     {
+        InstallmentPaymentGuard::validateExistingPayments($installment, $installment->accountReceivable);
         $installment->loadMissing('payments', 'accountReceivable');
 
         $received = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount), 2);

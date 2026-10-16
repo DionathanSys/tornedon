@@ -27,14 +27,15 @@ use App\Services\Product\ProductUnitConversionService;
 use App\Support\Fiscal\FiscalItemAmounts;
 use App\Support\Fiscal\NfsePrintSettings;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     /* ==============================
      |  Operações de Escrita
@@ -45,7 +46,7 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            return $this->financialTransaction(function () use ($data, $createdBy) {
                 if (empty($data['invoice_number']) && isset($data['company_id'])) {
                     $data['invoice_number'] = $this->generateNumber($data['company_id']);
                 }
@@ -107,7 +108,7 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice, $data, $updatedBy) {
+            return $this->financialTransaction(function () use ($invoice, $data, $updatedBy) {
                 $action = new UpdateInvoiceAction($updatedBy, $invoice);
                 $updated = $action->execute($data);
 
@@ -163,7 +164,7 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice, $deletedBy) {
+            return $this->financialTransaction(function () use ($invoice, $deletedBy) {
                 $action = new DeleteInvoiceAction($invoice, $deletedBy);
                 $result = $action->execute();
 
@@ -218,7 +219,8 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice, $data, $confirmedBy) {
+            return $this->financialTransaction(function () use ($invoice, $data, $confirmedBy) {
+                $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
                 $action = new Actions\ConfirmInvoiceAction($invoice, $confirmedBy);
                 $result = $action->execute($data);
 
@@ -277,7 +279,8 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice, $userId) {
+            return $this->financialTransaction(function () use ($invoice, $userId) {
+                $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
                 $action = new ReturnInvoiceToPendingAction($invoice, $userId);
                 $result = $action->execute();
 
@@ -321,7 +324,8 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice, $data, $userId) {
+            return $this->financialTransaction(function () use ($invoice, $data, $userId) {
+                $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
                 $action = new GenerateInvoiceAccountReceivablesAction($invoice, $userId);
                 $result = $action->execute($data);
 
@@ -370,7 +374,7 @@ class InvoiceService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($invoice, $fiscalData, $userId) {
+            return $this->financialTransaction(function () use ($invoice, $fiscalData, $userId) {
                 $documentType = ($fiscalData['document_type'] ?? DocumentModel::NFE->value);
 
                 $invoice->loadMissing([

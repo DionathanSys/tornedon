@@ -56,6 +56,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertDatabaseCount('stock_movements', 1);
         $this->assertDatabaseCount('purchase_return_credits', 1);
         $this->assertSame(AccountPayableStatus::PENDING, $originPayable->status);
+        $this->assertSame(AccountPayableStatus::PENDING, $originPayable->installments()->sole()->status);
         $this->assertNotNull($credit);
         $this->assertSame($returnDocument->id, $credit->return_fiscal_document_id);
         $this->assertSame(PurchaseReturnCreditStatus::OPEN, $credit->status);
@@ -83,6 +84,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
 
         $this->assertSame([], $result['errors']);
         $this->assertSame(AccountPayableStatus::CANCELLED, $originPayable->status);
+        $this->assertSame(AccountPayableStatus::CANCELLED, $originPayable->installments()->sole()->status);
         $this->assertStringContainsString('Cancelada por devolução', (string) $originPayable->description);
         $this->assertDatabaseCount('purchase_return_credits', 0);
         $this->assertDatabaseHas('stock_movements', [
@@ -354,6 +356,14 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
             'paid' => false,
             'payment_method' => 'boleto',
         ]) : null;
+
+        if ($originPayable) {
+            $originPayable->installments()->create([
+                'company_id' => $company->id, 'sequence_number' => '01',
+                'status' => AccountPayableStatus::PENDING, 'due_date' => '2026-05-10',
+                'original_amount' => 100, 'due_amount' => 100, 'paid_amount' => 0, 'balance_amount' => 100,
+            ]);
+        }
 
         $returnDocument = FiscalDocument::query()->create([
             'customer_id' => $supplier->id,

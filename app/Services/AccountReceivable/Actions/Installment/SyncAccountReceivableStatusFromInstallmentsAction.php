@@ -18,7 +18,13 @@ class SyncAccountReceivableStatusFromInstallmentsAction
     public function execute(): ?AccountReceivable
     {
         try {
-            $this->accountReceivable->loadMissing('installments');
+            $this->accountReceivable->refresh();
+            if ($this->accountReceivable->status === Status::CANCELLED) {
+                $this->setSuccess();
+
+                return $this->accountReceivable;
+            }
+            $this->accountReceivable->load('installments');
 
             $totalDue = round((float) $this->accountReceivable->installments->sum('due_amount'), 2);
             $totalReceived = round((float) $this->accountReceivable->installments->sum('received_amount'), 2);
@@ -50,7 +56,7 @@ class SyncAccountReceivableStatusFromInstallmentsAction
             $this->setError('Erro ao sincronizar status da conta a receber no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'account_receivable_id' => $this->accountReceivable->id,
@@ -61,7 +67,7 @@ class SyncAccountReceivableStatusFromInstallmentsAction
             $this->setError('Erro inesperado ao sincronizar status da conta a receber');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

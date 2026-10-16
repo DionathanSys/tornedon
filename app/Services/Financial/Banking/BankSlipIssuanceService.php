@@ -104,9 +104,10 @@ final class BankSlipIssuanceService
                 'company_id' => $installment->company_id,
                 'account_receivable_installment_id' => $installment->id,
                 'bank_account_connection_id' => $connection->id,
+                'financial_account_id' => $connection->financial_account_id,
                 'status' => BankSlipStatus::PENDING_REGISTRATION->value,
                 'provider_identification' => $this->buildProviderIdentification($installment),
-                'amount' => $installment->due_amount,
+                'amount' => $installment->balance_amount,
                 'due_date' => $installment->due_date,
             ]);
         });

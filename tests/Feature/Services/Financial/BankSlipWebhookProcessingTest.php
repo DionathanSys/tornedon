@@ -28,6 +28,7 @@ use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Services\Company\CompanyOperationalResetService;
 use App\Services\Financial\Banking\BankSlipIssuanceService;
 use App\Services\Financial\Banking\BankSlipProviderRegistry;
 use App\Services\Financial\Banking\BankSlipWebhookService;
@@ -249,10 +250,10 @@ class BankSlipWebhookProcessingTest extends TestCase
     {
         $connection = $this->bankSlip->connection;
         $identification = $this->bankSlip->provider_identification;
-        $plan = app(\App\Services\Company\CompanyOperationalResetService::class)->plan($this->company->id);
+        $plan = app(CompanyOperationalResetService::class)->plan($this->company->id);
         $this->assertSame([], $plan['blockers']);
         $this->assertSame(1000.0, $plan['banking']['bank_slips'][0]->amount);
-        app(\App\Services\Company\CompanyOperationalResetService::class)->execute($this->company->id);
+        app(CompanyOperationalResetService::class)->execute($this->company->id);
 
         $payload = [
             'evento_id' => 'payment-after-reset',
@@ -525,8 +526,13 @@ class BankSlipWebhookProcessingTest extends TestCase
             'financial_account_id' => $this->financialAccount->id,
         ]);
 
+        $payment = app(AccountReceivableService::class)->registerInstallmentPayment($updatedInstallment, 400, '2026-09-30', [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+        $this->assertNotNull($payment);
+
         $bankSlip = app(BankSlipIssuanceService::class)->prepareBankSlip(
-            $updatedInstallment,
+            $updatedInstallment->fresh(),
             requireAutomaticIssuance: false,
         );
 
@@ -535,6 +541,31 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertSame($this->financialAccount->id, $bankSlip->connection->financial_account_id);
         $this->assertSame($installment->id, $bankSlip->account_receivable_installment_id);
         $this->assertSame(BankSlipStatus::PENDING_REGISTRATION, $bankSlip->status);
+        $this->assertSame(600.0, $bankSlip->amount);
+        $this->assertSame($this->financialAccount->id, $bankSlip->financial_account_id);
+    }
+
+    public function test_boleto_confirmation_links_to_automatic_receipt_without_creating_another_movement(): void
+    {
+        $installment = $this->bankSlip->installment;
+        $installment->accountReceivable->update([
+            'auto_register_receipt_on_due_date' => true,
+            'auto_receipt_financial_account_id' => $this->financialAccount->id,
+        ]);
+        $this->artisan('account-receivables:process-auto-receipts', ['--date' => '2026-10-01'])->assertSuccessful();
+        $payment = $installment->payments()->sole();
+        $this->assertSame($this->bankSlip->id, $payment->bank_slip_id);
+        $this->assertNull($payment->bank_confirmed_at);
+        $event = $this->createPaymentEvent('automatic-confirmation', 1000);
+
+        (new ProcessBankSlipWebhookJob($event->id))->handle(app(AccountReceivableService::class));
+        (new ProcessBankSlipWebhookJob($event->id))->handle(app(AccountReceivableService::class));
+
+        $this->assertSame(BankSlipStatus::PAID, $this->bankSlip->fresh()->status);
+        $this->assertSame($event->id, $payment->fresh()->bank_slip_event_id);
+        $this->assertNotNull($payment->fresh()->bank_confirmed_at);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 1);
+        $this->assertDatabaseCount('cash_movements', 1);
     }
 
     private function createPaymentEvent(string $providerEventId, float $amount): BankSlipEvent

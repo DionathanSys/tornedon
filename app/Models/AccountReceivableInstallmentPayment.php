@@ -12,6 +12,8 @@ class AccountReceivableInstallmentPayment extends Model
         'account_receivable_installment_id',
         'company_id',
         'payment_date',
+        'origin',
+        'bank_confirmed_at',
         'amount',
         'interest_amount',
         'fine_amount',
@@ -27,6 +29,7 @@ class AccountReceivableInstallmentPayment extends Model
 
     protected $casts = [
         'payment_date' => 'date',
+        'bank_confirmed_at' => 'datetime',
         'amount' => MoneyCast::class,
         'interest_amount' => MoneyCast::class,
         'fine_amount' => MoneyCast::class,

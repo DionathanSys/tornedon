@@ -19,12 +19,18 @@ class SyncAccountPayableStatusFromInstallmentsAction
     {
         try {
             Log::debug('Iniciando sincronização de status da conta a pagar', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_payable_id' => $this->accountPayable->id,
                 'company_id' => $this->accountPayable->company_id,
             ]);
 
-            $this->accountPayable->loadMissing('installments');
+            $this->accountPayable->refresh();
+            if ($this->accountPayable->status === Status::CANCELLED) {
+                $this->setSuccess();
+
+                return $this->accountPayable;
+            }
+            $this->accountPayable->load('installments');
 
             $totalDue = round((float) $this->accountPayable->installments->sum('due_amount'), 2);
             $totalPaid = round((float) $this->accountPayable->installments->sum('paid_amount'), 2);
@@ -52,7 +58,7 @@ class SyncAccountPayableStatusFromInstallmentsAction
             $this->setSuccess();
 
             Log::info('Status da conta a pagar sincronizado com sucesso', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_payable_id' => $this->accountPayable->id,
                 'status' => $status,
                 'paid_amount' => $totalPaid,
@@ -64,7 +70,7 @@ class SyncAccountPayableStatusFromInstallmentsAction
             $this->setError('Erro ao sincronizar status da conta a pagar no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'account_payable_id' => $this->accountPayable->id,
@@ -75,7 +81,7 @@ class SyncAccountPayableStatusFromInstallmentsAction
             $this->setError('Erro inesperado ao sincronizar status da conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

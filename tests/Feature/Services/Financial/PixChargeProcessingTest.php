@@ -302,12 +302,78 @@ class PixChargeProcessingTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_paid_pix_after_manual_receipt_requires_review_without_duplicate_cash(): void
+    {
+        $charge = $this->createRegisteredCharge();
+        $payment = app(AccountReceivableService::class)->registerInstallmentPayment($this->installment, 100, '2026-10-01', [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+        $this->assertNotNull($payment);
+        $this->mockPaidQuery();
+
+        (new QueryPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
+
+        $this->assertSame(PixChargeStatus::NEEDS_REVIEW, $charge->fresh()->status);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 1);
+        $this->assertDatabaseCount('cash_movements', 1);
+    }
+
+    public function test_paid_pix_confirms_the_linked_automatic_receipt_without_new_cash(): void
+    {
+        $charge = $this->createRegisteredCharge();
+        $this->installment->accountReceivable->update([
+            'auto_register_receipt_on_due_date' => true,
+            'auto_receipt_financial_account_id' => $this->financialAccount->id,
+        ]);
+        $this->artisan('account-receivables:process-auto-receipts', ['--date' => '2026-10-01'])->assertSuccessful();
+        $payment = $this->installment->payments()->sole();
+        $this->assertSame('due_date', $payment->origin);
+        $this->assertSame($charge->id, $payment->pix_charge_id);
+        $this->assertNull($payment->bank_confirmed_at);
+        $this->mockPaidQuery();
+
+        (new QueryPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
+
+        $this->assertSame(PixChargeStatus::PAID, $charge->fresh()->status);
+        $this->assertNotNull($payment->fresh()->bank_confirmed_at);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 1);
+        $this->assertDatabaseCount('cash_movements', 1);
+    }
+
+    public function test_pix_liquidation_uses_the_charge_connection_instead_of_the_changed_installment_account(): void
+    {
+        $charge = $this->createRegisteredCharge();
+        $other = FinancialAccount::create([
+            'company_id' => $this->company->id, 'name' => 'Outra conta', 'type' => FinancialAccountType::BANK,
+            'opening_balance' => 0, 'is_active' => true,
+        ]);
+        $this->installment->update(['financial_account_id' => $other->id]);
+        $charge->connection->update(['financial_account_id' => $other->id]);
+        $this->mockPaidQuery();
+
+        (new QueryPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
+
+        $this->assertSame($this->financialAccount->id, $this->installment->payments()->sole()->financial_account_id);
+        $this->assertDatabaseHas('cash_movements', ['financial_account_id' => $this->financialAccount->id]);
+    }
+
+    private function mockPaidQuery(): void
+    {
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldReceive('query')->once()->andReturn([
+            'sucesso' => true, 'valor' => '100.00',
+            'status' => ['codigo' => '3', 'mensagem' => 'Pago/Liquidado'],
+        ]);
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+    }
+
     private function createRegisteredCharge(): PixCharge
     {
         return PixCharge::create([
             'company_id' => $this->company->id,
             'account_receivable_installment_id' => $this->installment->id,
             'bank_account_connection_id' => BankAccountConnection::query()->firstOrFail()->id,
+            'financial_account_id' => $this->financialAccount->id,
             'status' => PixChargeStatus::REGISTERED,
             'provider_identification' => 'PX-PUBLIC-LINK',
             'amount' => 100,

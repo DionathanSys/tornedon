@@ -92,6 +92,7 @@ class AccountReceivableInstallmentValidator
             'account_receivable_installment_id' => ['required', 'integer', 'exists:account_receivable_installments,id'],
             'company_id' => ['required', 'integer', 'exists:companies,id'],
             'payment_date' => ['required', 'date'],
+            'origin' => ['sometimes', 'nullable', Rule::in(['manual', 'due_date', 'bank_slip', 'pix', 'bank_statement'])],
             'amount' => ['required', 'numeric', 'gt:0'],
             'interest_amount' => ['nullable', 'numeric', 'min:0'],
             'fine_amount' => ['nullable', 'numeric', 'min:0'],

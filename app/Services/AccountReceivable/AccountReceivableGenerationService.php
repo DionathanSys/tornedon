@@ -11,14 +11,41 @@ use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class AccountReceivableGenerationService
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     public function generateFromFiscalDocument(FiscalDocument $fiscalDocument): bool
+    {
+        $this->resetResponse();
+
+        if ($fiscalDocument->isOperationalHistory()) {
+            return $this->generateFromLockedFiscalDocument($fiscalDocument);
+        }
+
+        try {
+            return $this->financialTransaction(function () use ($fiscalDocument) {
+                if ($fiscalDocument->invoice_id) {
+                    $invoice = Invoice::query()->lockForUpdate()->find($fiscalDocument->invoice_id);
+                    $fiscalDocument->setRelation('invoice', $invoice);
+                }
+
+                return $this->generateFromLockedFiscalDocument($fiscalDocument);
+            });
+        } catch (\Exception $exception) {
+            $this->setError('Erro ao gerar contas a receber: '.$exception->getMessage());
+            Log::error($this->getMessage(), ['fiscal_document_id' => $fiscalDocument->id]);
+
+            return false;
+        }
+    }
+
+    private function generateFromLockedFiscalDocument(FiscalDocument $fiscalDocument): bool
     {
         $this->resetResponse();
 
@@ -38,16 +65,19 @@ class AccountReceivableGenerationService
 
             if (! $invoice) {
                 $this->setError('Documento fiscal sem fatura vinculada.');
+
                 return false;
             }
 
             if (! $this->isFiscalDocumentAuthorized($fiscalDocument)) {
                 $this->setError('Documento fiscal ainda nao autorizado para gerar contas a receber.');
+
                 return false;
             }
 
             if ($invoice->status === InvoiceStatus::CANCELLED || $invoice->canceled) {
                 $this->setError('Nao e permitido gerar contas a receber para fatura cancelada.');
+
                 return false;
             }
 
@@ -55,7 +85,7 @@ class AccountReceivableGenerationService
                 $this->setSuccess('Contas a receber ja existentes para a fatura.');
 
                 Log::info('AccountReceivableGenerationService: contas a receber ja existem, geracao ignorada', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $invoice->id,
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);
@@ -86,13 +116,14 @@ class AccountReceivableGenerationService
                     $service->getStatus(),
                     $service->getErrorCode()
                 );
+
                 return false;
             }
 
             $this->setSuccess('Contas a receber geradas com sucesso.');
 
             Log::info('AccountReceivableGenerationService: contas a receber geradas', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $invoice->id,
                 'fiscal_document_id' => $fiscalDocument->id,
                 'account_receivable_id' => $accountReceivable->id,
@@ -102,10 +133,10 @@ class AccountReceivableGenerationService
 
             return true;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar contas a receber: ' . $e->getMessage());
+            $this->setError('Erro ao gerar contas a receber: '.$e->getMessage());
 
             Log::error('AccountReceivableGenerationService: falha ao gerar contas a receber', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
@@ -227,6 +258,7 @@ class AccountReceivableGenerationService
 
         if ($netValue <= 0) {
             $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
+
             return null;
         }
 
@@ -267,6 +299,7 @@ class AccountReceivableGenerationService
 
         if ($condition->installments() > 1) {
             $daysStep = max($condition->days(), 30);
+
             return $baseDate->copy()->addDays($daysStep * $installmentNumber);
         }
 

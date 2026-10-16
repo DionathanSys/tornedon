@@ -108,6 +108,7 @@ final class PixChargeIssuanceService
                 'company_id' => $installment->company_id,
                 'account_receivable_installment_id' => $installment->id,
                 'bank_account_connection_id' => $connection->id,
+                'financial_account_id' => $connection->financial_account_id,
                 'status' => PixChargeStatus::PENDING_REGISTRATION,
                 'provider_identification' => $this->buildProviderIdentification($installment),
                 'amount' => $installment->balance_amount,

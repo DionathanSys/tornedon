@@ -14,6 +14,7 @@ class BankSlip extends Model
         'company_id',
         'account_receivable_installment_id',
         'bank_account_connection_id',
+        'financial_account_id',
         'status',
         'provider_identification',
         'provider_charge_id',

@@ -19,32 +19,33 @@ class DeleteAccountPayableAction
     {
         try {
             Log::debug('Iniciando exclusão de conta a pagar', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_payable_id' => $this->accountPayable->id,
             ]);
 
-            if (!$this->validateCanDelete()) {
+            if (! $this->validateCanDelete()) {
                 return false;
             }
 
             $result = $this->accountPayable->delete();
 
             Log::info('Conta a pagar excluída com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_payable_id' => $this->accountPayable->id,
             ]);
 
             $this->setSuccess();
+
             return $result;
         } catch (QueryException $e) {
             $this->setError('Erro ao excluir conta a pagar. Ela pode estar vinculada a outros registros.');
 
             Log::error($this->getMessage(), [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'message'            => $this->getMessage(),
-                'error_code'         => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'account_payable_id' => $this->accountPayable->id,
-                'error_message'      => $e->getMessage(),
+                'error_message' => $e->getMessage(),
             ]);
 
             return false;
@@ -52,12 +53,12 @@ class DeleteAccountPayableAction
             $this->setError('Erro inesperado ao excluir conta a pagar');
 
             Log::error($this->getMessage(), [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'message'            => $this->getMessage(),
-                'error_code'         => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'account_payable_id' => $this->accountPayable->id,
-                'error_message'      => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -66,13 +67,13 @@ class DeleteAccountPayableAction
 
     private function validateCanDelete(): bool
     {
-        if ($this->accountPayable->paid) {
+        if ($this->accountPayable->paid || $this->accountPayable->installments()->whereHas('payments')->exists()) {
             $this->setError('Não é possível excluir uma conta que já foi paga');
 
             Log::warning($this->getMessage(), [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'message'            => $this->getMessage(),
-                'error_code'         => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'account_payable_id' => $this->accountPayable->id,
             ]);
 

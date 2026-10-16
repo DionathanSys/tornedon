@@ -8,6 +8,8 @@ use App\Models\PixCharge;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Financial\Pix\DTO\PixProviderResult;
 use App\Services\Financial\Pix\PixProviderRegistry;
+use App\Support\Financial\BankReceiptMatcher;
+use App\Support\Financial\InstallmentPaymentGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -126,7 +128,7 @@ final class QueryPixChargeJob implements ShouldBeUnique, ShouldQueue
             $amount = round($result->amount ?? (float) $charge->amount, 2);
             $expectedAmount = round((float) $charge->amount, 2);
 
-            if (abs($amount - $expectedAmount) > 0.01) {
+            if ((int) round($amount * 100) !== (int) round($expectedAmount * 100)) {
                 $charge->update([
                     'status' => PixChargeStatus::NEEDS_REVIEW,
                     'last_error' => sprintf(
@@ -139,13 +141,36 @@ final class QueryPixChargeJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
+            $installment = InstallmentPaymentGuard::lock($charge->installment);
+            $connection = $charge->connection;
+            if (! $connection || (int) $connection->company_id !== (int) $installment->company_id
+                || $installment->status->value === 'cancelled' || $installment->accountReceivable->status->value === 'cancelled') {
+                $charge->update(['status' => PixChargeStatus::NEEDS_REVIEW, 'last_error' => 'Conta, conexão ou parcela inválida para a liquidação.']);
+
+                return;
+            }
+            $existing = BankReceiptMatcher::dueDatePayment(
+                $installment, 'pix_charge_id', $charge->id, $amount, (int) ($charge->financial_account_id ?? $connection->financial_account_id),
+            );
+            if ($existing) {
+                $existing->update(['bank_confirmed_at' => now()]);
+                $charge->update(['status' => PixChargeStatus::PAID, 'paid_at' => now(), 'last_error' => null]);
+
+                return;
+            }
+            if ((int) round($amount * 100) > (int) round((float) $installment->balance_amount * 100)) {
+                $charge->update(['status' => PixChargeStatus::NEEDS_REVIEW, 'last_error' => 'Liquidação excede o saldo atual. Verifique baixas anteriores ou pagamento excedente.']);
+
+                return;
+            }
+
             $receivableService = app(AccountReceivableService::class);
             $payment = $receivableService->registerInstallmentPayment(
-                $charge->installment,
+                $installment,
                 $amount,
                 now()->toDateString(),
                 [
-                    'financial_account_id' => $charge->installment->financial_account_id,
+                    'financial_account_id' => $charge->financial_account_id ?? $connection->financial_account_id,
                     'pix_charge_id' => $charge->id,
                     'description' => 'Recebimento automático de cobrança PIX '.$charge->provider_identification,
                 ],
@@ -156,6 +181,8 @@ final class QueryPixChargeJob implements ShouldBeUnique, ShouldQueue
                     $receivableService->getMessage() ?: 'Falha ao registrar o recebimento da cobrança PIX.'
                 );
             }
+
+            $payment->update(['bank_confirmed_at' => now()]);
 
             $charge->update([
                 'status' => PixChargeStatus::PAID,

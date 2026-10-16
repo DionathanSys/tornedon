@@ -20,16 +20,18 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\InstallmentDescription;
+use App\Support\Financial\InstallmentPaymentGuard;
 use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AccountPayableService
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     public function __construct(
         private readonly FinancialClassificationService $classificationService = new FinancialClassificationService,
@@ -41,7 +43,7 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            return $this->financialTransaction(function () use ($data, $createdBy) {
                 $audit = app(AuditRecorder::class);
                 AccountPayableValidator::validateCreate([
                     ...$data,
@@ -242,6 +244,7 @@ class AccountPayableService
 
     private function recalculatePayableInstallment(AccountPayableInstallment $installment): void
     {
+        InstallmentPaymentGuard::validateExistingPayments($installment, $installment->accountPayable);
         $installment->loadMissing('payments', 'accountPayable');
 
         $paid = round((float) $installment->payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->amount), 2);
@@ -319,7 +322,8 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($accountPayable, $data, $updatedBy) {
+            return $this->financialTransaction(function () use ($accountPayable, $data, $updatedBy) {
+                $accountPayable = AccountPayable::query()->lockForUpdate()->findOrFail($accountPayable->id);
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountPayable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
@@ -410,16 +414,19 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($installment, $amount, $paymentDate, $extra) {
+            return $this->financialTransaction(function () use ($installment, $amount, $paymentDate, $extra) {
+                $installment = InstallmentPaymentGuard::lock($installment);
                 $audit = app(AuditRecorder::class);
                 $userId = $extra['user_id'] ?? auth()->id();
                 $installment->loadMissing('accountPayable');
                 $before = $audit->snapshot($installment->accountPayable);
+                InstallmentPaymentGuard::validate($installment, $installment->accountPayable, $amount, $extra);
                 $paymentAction = new RegisterAccountPayableInstallmentPaymentAction($installment);
                 $payment = $paymentAction->execute([
                     'account_payable_installment_id' => $installment->id,
                     'company_id' => $installment->company_id,
                     'payment_date' => $paymentDate,
+                    'origin' => $extra['origin'] ?? 'manual',
                     'amount' => $amount,
                     'interest_amount' => (float) ($extra['interest_amount'] ?? 0),
                     'fine_amount' => (float) ($extra['fine_amount'] ?? 0),
@@ -528,7 +535,8 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($installment, $data) {
+            return $this->financialTransaction(function () use ($installment, $data) {
+                $installment = InstallmentPaymentGuard::lock($installment);
                 $audit = app(AuditRecorder::class);
                 $userId = auth()->id();
                 $installment->loadMissing('accountPayable');
@@ -627,7 +635,8 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($installment) {
+            return $this->financialTransaction(function () use ($installment) {
+                $installment = InstallmentPaymentGuard::lock($installment);
                 $audit = app(AuditRecorder::class);
                 $userId = auth()->id();
                 $installment->loadMissing('accountPayable');
@@ -713,7 +722,9 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($payment, $data) {
+            return $this->financialTransaction(function () use ($payment, $data) {
+                InstallmentPaymentGuard::lock($payment->installment);
+                $payment = AccountPayableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
                 $userId = $data['user_id'] ?? auth()->id();
                 $payment->loadMissing('installment.accountPayable');
 
@@ -731,6 +742,10 @@ class AccountPayableService
                     'notes' => $data['notes'] ?? $payment->notes,
                 ]);
 
+                InstallmentPaymentGuard::validate(
+                    $payment->installment, $payment->installment->accountPayable,
+                    (float) $validated['amount'], $validated, $payment->id,
+                );
                 $payment->update($validated);
 
                 $installment = $payment->installment->fresh();
@@ -793,7 +808,9 @@ class AccountPayableService
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($payment) {
+            return $this->financialTransaction(function () use ($payment) {
+                InstallmentPaymentGuard::lock($payment->installment);
+                $payment = AccountPayableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
                 $userId = auth()->id();
                 $payment->loadMissing('installment.accountPayable');
 
@@ -853,12 +870,54 @@ class AccountPayableService
         }
     }
 
+    public function cancel(AccountPayable $accountPayable, string $reason, ?int $userId = null, array $attributes = []): bool
+    {
+        $this->resetResponse();
+
+        try {
+            return $this->financialTransaction(function () use ($accountPayable, $reason, $userId, $attributes) {
+                $accountPayable = AccountPayable::query()->lockForUpdate()->findOrFail($accountPayable->id);
+                $accountPayable->installments()->orderBy('id')->lockForUpdate()->get();
+                if ($accountPayable->status === Status::CANCELLED) {
+                    $this->setSuccess();
+
+                    return true;
+                }
+                if ($accountPayable->paid || (float) $accountPayable->paid_amount > 0 || $accountPayable->installments()->whereHas('payments')->exists()) {
+                    throw ValidationException::withMessages(['payments' => ['A conta possui pagamentos. Trate o estorno ou a compensação antes de cancelar.']]);
+                }
+
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($accountPayable);
+                $accountPayable->installments()->update(['status' => Status::CANCELLED->value]);
+                $accountPayable->update([
+                    ...array_intersect_key($attributes, array_flip(['type', 'description'])),
+                    'status' => Status::CANCELLED->value,
+                    'paid' => false,
+                ]);
+                $audit->recordModelEvent(
+                    $accountPayable, 'account_payable.cancelled', $reason,
+                    $before, $audit->snapshot($accountPayable->fresh()), $userId,
+                );
+                $this->setSuccess('Conta a pagar cancelada com sucesso.');
+
+                return true;
+            });
+        } catch (ValidationException $exception) {
+            $this->setError('Não foi possível cancelar a conta a pagar.', $exception->errors(), 422);
+
+            return false;
+        }
+    }
+
     public function delete(AccountPayable $accountPayable): bool
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($accountPayable) {
+            return $this->financialTransaction(function () use ($accountPayable) {
+                $accountPayable = AccountPayable::query()->lockForUpdate()->findOrFail($accountPayable->id);
+                $accountPayable->installments()->orderBy('id')->lockForUpdate()->get();
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountPayable);
                 $action = new DeleteAccountPayableAction($accountPayable);

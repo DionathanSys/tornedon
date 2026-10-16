@@ -8,6 +8,7 @@ use App\Enum\PurchaseReturnCredit\Status as PurchaseReturnCreditStatus;
 use App\Models\AccountPayable;
 use App\Models\FiscalDocument;
 use App\Models\PurchaseReturnCredit;
+use App\Services\AccountPayable\AccountPayableService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -66,14 +67,17 @@ class ReversePurchaseReturnFinancialImpactAction
                 }
 
                 if ($mode === PurchaseReturnSettlementMode::REPLACE_PAYABLE) {
-                    $this->cancelReplacementPayables($returnDocument, $result);
+                    $this->cancelReplacementPayables($returnDocument, $result, $userId);
                 }
 
                 if ($result['warnings'] === [] && $result['errors'] === []) {
                     $this->markReversed($returnDocument, $userId, $result);
+                } else {
+                    throw new \RuntimeException('A reversão financeira exige revisão; nenhuma alteração foi aplicada.');
                 }
             });
         } catch (\Throwable $e) {
+            $result['restored_payables'] = $result['canceled_replacement_payables'] = $result['canceled_credits'] = 0;
             $result['errors'][] = 'Erro ao reverter impacto financeiro: '.$e->getMessage();
             $this->setError($result['errors'][0]);
 
@@ -134,6 +138,7 @@ class ReversePurchaseReturnFinancialImpactAction
 
         foreach ($snapshots as $snapshot) {
             $payable = AccountPayable::query()
+                ->where('company_id', $returnDocument->company_id)
                 ->lockForUpdate()
                 ->find((int) ($snapshot['id'] ?? 0));
 
@@ -156,11 +161,16 @@ class ReversePurchaseReturnFinancialImpactAction
                 'paid' => (bool) ($snapshot['paid'] ?? false),
                 'paid_date' => $snapshot['paid_date'] ?? null,
             ]);
+            foreach ($snapshot['installments'] ?? [] as $installment) {
+                $payable->installments()->whereKey((int) $installment['id'])->update([
+                    'status' => $installment['status'],
+                ]);
+            }
             $result['restored_payables']++;
         }
     }
 
-    private function cancelReplacementPayables(FiscalDocument $returnDocument, array &$result): void
+    private function cancelReplacementPayables(FiscalDocument $returnDocument, array &$result, int $userId): void
     {
         $replacementPayables = AccountPayable::query()
             ->where('fiscal_document_id', $returnDocument->id)
@@ -176,10 +186,12 @@ class ReversePurchaseReturnFinancialImpactAction
             }
 
             if ($payable->status !== AccountPayableStatus::CANCELLED) {
-                $payable->update([
-                    'status' => AccountPayableStatus::CANCELLED->value,
+                $service = app(AccountPayableService::class);
+                if (! $service->cancel($payable, 'Cancelamento da devolução de compra', $userId, [
                     'description' => trim((string) $payable->description.' | Cancelado pela NF-e de devolução cancelada.'),
-                ]);
+                ])) {
+                    throw new \RuntimeException($service->getMessageUser());
+                }
                 $result['canceled_replacement_payables']++;
             }
         }

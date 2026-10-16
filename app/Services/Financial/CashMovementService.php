@@ -250,6 +250,12 @@ class CashMovementService
 
         try {
             return DB::transaction(function () use ($movement, $data, $userId) {
+                $movement = CashMovement::query()->lockForUpdate()->findOrFail($movement->id);
+                if ($movement->origin_type !== 'manual' || $movement->reversal_of_id !== null || $movement->reversed_at !== null || $movement->statementLines()->exists()) {
+                    throw ValidationException::withMessages([
+                        'movement' => ['Somente movimentos manuais não conciliados e não estornados podem ser editados.'],
+                    ]);
+                }
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($movement);
 
@@ -260,7 +266,10 @@ class CashMovementService
                 }
 
                 $accountId = (int) ($data['financial_account_id'] ?? $movement->financial_account_id);
-                $companyId = (int) ($data['company_id'] ?? $movement->company_id);
+                $companyId = (int) $movement->company_id;
+                if (isset($data['company_id']) && (int) $data['company_id'] !== $companyId) {
+                    throw ValidationException::withMessages(['company_id' => ['Não é possível alterar a empresa do movimento.']]);
+                }
                 $categoryId = (int) ($data['financial_category_id'] ?? $movement->financial_category_id);
                 $this->assertAmountIsPositive((float) ($data['amount'] ?? $movement->amount));
 
@@ -458,7 +467,14 @@ class CashMovementService
                     ]);
                 }
 
-                $companyId = (int) ($data['company_id'] ?? $movement->company_id);
+                if ($outflow->statementLines()->exists() || $inflow->statementLines()->exists()) {
+                    throw ValidationException::withMessages(['movement' => ['Desfaça a conciliação antes de editar a transferência.']]);
+                }
+
+                $companyId = (int) $movement->company_id;
+                if (isset($data['company_id']) && (int) $data['company_id'] !== $companyId) {
+                    throw ValidationException::withMessages(['company_id' => ['Não é possível alterar a empresa da transferência.']]);
+                }
                 $amount = (float) ($data['amount'] ?? $movement->amount);
                 $this->assertAmountIsPositive($amount);
 
@@ -693,12 +709,18 @@ class CashMovementService
                     )->id
                     : null;
 
-                $movement = CashMovement::query()->firstOrNew([
+                $movement = CashMovement::query()->lockForUpdate()->firstOrNew([
                     'origin_type' => $payment::class,
                     'origin_id' => $payment->id,
                 ]);
                 $before = $movement->exists ? $audit->snapshot($movement) : null;
                 $isNewMovement = ! $movement->exists;
+
+                if ($movement->exists && ($movement->reversed_at !== null || $movement->reversal_of_id !== null || $movement->statementLines()->exists())) {
+                    throw ValidationException::withMessages([
+                        'movement' => ['Desfaça a conciliação ou trate o estorno antes de alterar a baixa.'],
+                    ]);
+                }
 
                 $movement->fill([
                     'company_id' => $payment->company_id,
@@ -781,6 +803,7 @@ class CashMovementService
                 $movement = CashMovement::query()
                     ->where('origin_type', $originType)
                     ->where('origin_id', $originId)
+                    ->lockForUpdate()
                     ->first();
 
                 if (! $movement) {
@@ -1007,6 +1030,7 @@ class CashMovementService
             ->where('origin_type', 'manual')
             ->whereNull('reversal_of_id')
             ->orderBy('id')
+            ->lockForUpdate()
             ->get();
 
         $outflow = $group->first(fn (CashMovement $item) => $item->direction === CashMovementDirection::OUTFLOW);

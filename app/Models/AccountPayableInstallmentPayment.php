@@ -11,6 +11,8 @@ class AccountPayableInstallmentPayment extends Model
         'account_payable_installment_id',
         'company_id',
         'payment_date',
+        'origin',
+        'bank_confirmed_at',
         'amount',
         'interest_amount',
         'fine_amount',
@@ -23,6 +25,7 @@ class AccountPayableInstallmentPayment extends Model
 
     protected $casts = [
         'payment_date' => 'date',
+        'bank_confirmed_at' => 'datetime',
         'amount' => 'float',
         'interest_amount' => 'float',
         'fine_amount' => 'float',

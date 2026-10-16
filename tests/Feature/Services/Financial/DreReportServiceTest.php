@@ -15,6 +15,7 @@ use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
+use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
 use App\Models\ChartAccount;
 use App\Models\Company;
@@ -25,7 +26,9 @@ use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Models\ResultCenter;
 use App\Models\User;
+use App\Services\Financial\CashMovementService;
 use App\Services\Financial\Dre\GenerateDreReportService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -410,6 +413,40 @@ class DreReportServiceTest extends TestCase
         $report = app(GenerateDreReportService::class)->generate($model, [$company->id], '2026-08-01', '2026-08-31');
 
         $this->assertSame(700.0, $report->lines->firstWhere('code', 'RECEITAS')->amount);
+    }
+
+    public function test_cash_report_includes_payment_reversals_on_their_own_dates(): void
+    {
+        $company = $this->createCompany('Empresa Estornos');
+        $account = $this->createChartAccount($company->id, '1', 'Receitas', ChartAccountType::REVENUE);
+        $category = $this->createCategory($company->id, $account->id, 'Receitas', true, false);
+        $bank = FinancialAccount::create([
+            'company_id' => $company->id, 'name' => 'Banco', 'type' => FinancialAccountType::BANK,
+            'opening_balance' => 0, 'is_active' => true,
+        ]);
+        $model = $this->createModelWithLines($company->id, 'estornos');
+        $model->lines()->where('code', 'RECEITA')->first()->chartAccounts()->attach($account->id);
+        $original = CashMovement::create([
+            'company_id' => $company->id, 'financial_account_id' => $bank->id,
+            'financial_category_id' => $category->id, 'chart_account_id' => $account->id,
+            'direction' => CashMovementDirection::INFLOW, 'transaction_date' => '2026-08-15',
+            'amount' => 100, 'description' => 'Recebimento',
+            'origin_type' => AccountReceivableInstallmentPayment::class, 'origin_id' => 999,
+        ]);
+        $this->travelTo(Carbon::parse('2026-09-10'));
+        $payment = new AccountReceivableInstallmentPayment;
+        $payment->id = 999;
+        $reversal = app(CashMovementService::class)->reverseForReceivablePayment($payment);
+        $this->assertNotNull($reversal);
+        $this->assertSame($original->id, $reversal->reversal_of_id);
+        $service = app(GenerateDreReportService::class);
+        $august = $service->generate($model, [$company->id], '2026-08-01', '2026-08-31', mode: DreMode::CASH, view: DreView::REALIZED);
+        $september = $service->generate($model, [$company->id], '2026-09-01', '2026-09-30', mode: DreMode::CASH, view: DreView::REALIZED);
+        $combined = $service->generate($model, [$company->id], '2026-08-01', '2026-09-30', mode: DreMode::CASH, view: DreView::REALIZED);
+        $this->assertSame(100.0, $august->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->assertSame(-100.0, $september->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->assertSame(0.0, $combined->lines->firstWhere('code', 'RECEITA')->amount);
+        $this->travelBack();
     }
 
     private function createCompany(string $name): Company

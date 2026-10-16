@@ -173,11 +173,13 @@ class GenerateDreReportService
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->whereBetween('transaction_date', [$startDate, $endDate])
-            ->whereNull('reversal_of_id')
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
             ->where(function ($query): void {
                 $query->where('origin_type', 'manual')
+                    ->orWhereIn('reversal_of_id', DB::table('cash_movements')->select('id')->whereIn('origin_type', [
+                        'manual', AccountPayableInstallmentPayment::class, AccountReceivableInstallmentPayment::class,
+                    ]))
                     ->orWhere('origin_type', AccountPayableInstallmentPayment::class)
                     ->orWhere('origin_type', AccountReceivableInstallmentPayment::class);
             })
@@ -218,8 +220,10 @@ class GenerateDreReportService
         return round((float) DB::table('cash_movements')
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
-            ->where('origin_type', 'manual')
-            ->whereNull('reversal_of_id')
+            ->where(function ($query): void {
+                $query->where('origin_type', 'manual')
+                    ->orWhereIn('reversal_of_id', DB::table('cash_movements')->select('id')->where('origin_type', 'manual'));
+            })
             ->whereBetween(DB::raw($dateColumn), [$startDate, $endDate])
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))

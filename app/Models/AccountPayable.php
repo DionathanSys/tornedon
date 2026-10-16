@@ -6,6 +6,7 @@ use App\Casts\MoneyCast;
 use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\ProtectsFinancialHistory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class AccountPayable extends Model
 {
     use HasAttachments;
+    use ProtectsFinancialHistory;
 
     protected $fillable = [
         'supplier_id',
