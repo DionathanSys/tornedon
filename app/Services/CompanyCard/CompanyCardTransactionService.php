@@ -75,6 +75,12 @@ class CompanyCardTransactionService
     {
         $this->resetResponse();
 
+        if ($document->isOperationalHistory()) {
+            $this->setSuccess();
+
+            return [];
+        }
+
         try {
             return DB::transaction(function () use ($document, $data, $userId) {
                 $payload = [

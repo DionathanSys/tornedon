@@ -19,6 +19,12 @@ class ProcessAuthorizedNfeStockMovementsAction
 
     public function execute(FiscalDocument $fiscalDocument): bool
     {
+        if ($fiscalDocument->isOperationalHistory()) {
+            $this->setSuccess();
+
+            return true;
+        }
+
         Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
             'metodo' => __METHOD__ . '@' . __LINE__,
             'fiscal_document_id' => $fiscalDocument->id,

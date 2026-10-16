@@ -109,6 +109,7 @@ class ProcessQueuedNfseEmissionJob implements ShouldQueue
         return FiscalDocument::query()
             ->where('document_type', 'nfse')
             ->where('nfse_status', NfeStatus::QUEUED->value)
+            ->whereNull('operational_reset_at')
             ->where('emission_group_key', $this->emissionGroupKey)
             ->orderBy('emission_requested_at')
             ->orderBy('id')

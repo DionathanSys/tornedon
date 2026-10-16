@@ -47,6 +47,10 @@ class SendNfseJob implements ShouldQueue
             return;
         }
 
+        if ($doc->isOperationalHistory()) {
+            return;
+        }
+
         $action = new SendNfseAction($this->userId);
         $result = $action->execute($doc, $this->serie);
 

@@ -31,7 +31,7 @@ class ReversePurchaseReturnFinancialImpactAction
             'errors' => [],
         ];
 
-        if (! $returnDocument->isPurchaseReturn() || ! $returnDocument->hasProcessedReturnFinancial()) {
+        if ($returnDocument->isOperationalHistory() || ! $returnDocument->isPurchaseReturn() || ! $returnDocument->hasProcessedReturnFinancial()) {
             $this->setSuccess();
 
             return $result;

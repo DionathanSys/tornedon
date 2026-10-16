@@ -36,7 +36,7 @@ class ProcessPurchaseReturnFinancialImpactAction
             'warnings' => [],
         ];
 
-        if (! $returnDocument->isPurchaseReturn()) {
+        if ($returnDocument->isOperationalHistory() || ! $returnDocument->isPurchaseReturn()) {
             $this->setSuccess();
 
             return $result;

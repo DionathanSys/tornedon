@@ -20,6 +20,10 @@ class ProcessFiscalEntryStockAction
      */
     public function execute(FiscalDocument $document, int $userId): array
     {
+        if ($document->isOperationalHistory()) {
+            return ['stock_movements' => 0, 'errors' => []];
+        }
+
         $document->loadMissing(['items.product', 'items.product.stock']);
 
         $result = [

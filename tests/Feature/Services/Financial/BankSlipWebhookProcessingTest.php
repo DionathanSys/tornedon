@@ -245,6 +245,42 @@ class BankSlipWebhookProcessingTest extends TestCase
             ->assertJson(['ok' => false]);
     }
 
+    public function test_webhook_after_operational_reset_records_unmatched_event_without_recreating_financial_data(): void
+    {
+        $connection = $this->bankSlip->connection;
+        $identification = $this->bankSlip->provider_identification;
+        $plan = app(\App\Services\Company\CompanyOperationalResetService::class)->plan($this->company->id);
+        $this->assertSame([], $plan['blockers']);
+        $this->assertSame(1000.0, $plan['banking']['bank_slips'][0]->amount);
+        app(\App\Services\Company\CompanyOperationalResetService::class)->execute($this->company->id);
+
+        $payload = [
+            'evento_id' => 'payment-after-reset',
+            'evento' => 'BAIXA',
+            'identificacao' => $identification,
+            'cnpj_cpf' => $this->company->document_number,
+            'assinatura' => $this->webhookSignature(),
+            'valor' => 1000,
+            'status' => ['codigo' => '3', 'mensagem' => 'Liquidado'],
+        ];
+        $this->postJson(route('webhook.bank-slips', ['connection' => $connection]), $payload)
+            ->assertOk()->assertJson(['ok' => true]);
+        // Repeated notifications must still deduplicate after the local charge was removed.
+        $this->postJson(route('webhook.bank-slips', ['connection' => $connection]), $payload)
+            ->assertOk()->assertJson(['ok' => true]);
+
+        $event = BankSlipEvent::query()->sole();
+        $this->assertNull($event->bank_slip_id);
+        $this->assertNotNull($event->processed_at);
+        $this->assertSame('Evento recebido sem boleto local correspondente.', $event->error);
+        foreach (['bank_slips', 'invoices', 'account_receivables', 'account_receivable_installments',
+            'account_receivable_installment_payments', 'cash_movements'] as $table) {
+            $this->assertDatabaseCount($table, 0);
+        }
+        $this->assertDatabaseHas('bank_account_connections', ['id' => $connection->id]);
+        $this->assertSame(0.0, $this->financialAccount->fresh()->current_balance);
+    }
+
     public function test_processes_generation_webhook_payload_without_event_id(): void
     {
         config(['app.debug' => true]);

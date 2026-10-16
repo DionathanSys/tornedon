@@ -22,6 +22,12 @@ class AccountReceivableGenerationService
     {
         $this->resetResponse();
 
+        if ($fiscalDocument->isOperationalHistory()) {
+            $this->setSuccess('Documento preservado como histórico anterior ao reinício operacional.');
+
+            return true;
+        }
+
         try {
             $fiscalDocument->loadMissing([
                 'invoice.requisitions.items',

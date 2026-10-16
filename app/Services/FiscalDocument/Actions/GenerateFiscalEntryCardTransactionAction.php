@@ -25,6 +25,10 @@ class GenerateFiscalEntryCardTransactionAction
      */
     public function execute(FiscalDocument $document, array $paymentData, int $userId): array
     {
+        if ($document->isOperationalHistory()) {
+            return ['transactions' => 0, 'errors' => []];
+        }
+
         $document->loadMissing('items');
 
         $condition = Condition::from((string) $paymentData['payment_condition']);

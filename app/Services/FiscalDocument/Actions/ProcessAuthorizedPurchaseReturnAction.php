@@ -31,7 +31,7 @@ class ProcessAuthorizedPurchaseReturnAction
             'warnings' => [],
         ];
 
-        if (! $document->isPurchaseReturn()) {
+        if ($document->isOperationalHistory() || ! $document->isPurchaseReturn()) {
             $this->setSuccess();
             return $result;
         }

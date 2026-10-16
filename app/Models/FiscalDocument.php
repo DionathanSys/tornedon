@@ -88,6 +88,7 @@ class FiscalDocument extends Model
     ];
 
     protected $casts = [
+        'operational_reset_at' => 'datetime',
         'status' => Status::class,
         'document_type' => DocumentModel::class,
         'operation_nature' => OperationNature::class,
@@ -125,6 +126,13 @@ class FiscalDocument extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Partner::class, 'customer_id');
+    }
+
+    public function isOperationalHistory(): bool
+    {
+        // Query the persisted marker as callers may hold a model loaded before the reset.
+        return $this->operational_reset_at !== null
+            || ($this->exists && static::query()->whereKey($this->id)->whereNotNull('operational_reset_at')->exists());
     }
 
     public function company(): BelongsTo

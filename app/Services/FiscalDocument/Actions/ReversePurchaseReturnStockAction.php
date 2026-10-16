@@ -21,6 +21,10 @@ class ReversePurchaseReturnStockAction
      */
     public function execute(FiscalDocument $document, int $userId): array
     {
+        if ($document->isOperationalHistory()) {
+            return ['reversed_movements' => 0, 'errors' => []];
+        }
+
         $document->loadMissing(['items.product', 'items.product.stock']);
 
         $result = [
