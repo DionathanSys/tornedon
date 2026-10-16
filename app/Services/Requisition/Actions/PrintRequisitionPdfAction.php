@@ -35,7 +35,7 @@ class PrintRequisitionPdfAction
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {
-                $this->setError('Nao foi possivel gerar o PDF da requisicao.');
+                $this->setError('Não foi possível gerar o PDF da requisição.');
                 return null;
             }
 
@@ -43,7 +43,7 @@ class PrintRequisitionPdfAction
 
             return base64_encode($pdfBinary);
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar PDF da requisicao: ' . $e->getMessage());
+            $this->setError('Erro ao montar PDF da requisição: ' . $e->getMessage());
 
             Log::error('PrintRequisitionPdfAction: excecao', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,

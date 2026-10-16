@@ -19,7 +19,7 @@ class EditCashMovement extends EditRecord
         parent::mount($record);
 
         if ($this->record instanceof CashMovement && $this->record->isTransfer()) {
-            notify::warning(message: 'Transferencias devem ser editadas pela acao especifica no extrato financeiro.');
+            notify::warning(message: 'Transferências devem ser editadas pela ação específica no extrato financeiro.');
             $this->redirect($this->getResource()::getUrl('index'));
         }
     }

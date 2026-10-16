@@ -53,7 +53,7 @@ class CreateQuoteItemAction
     public function execute(array $data): ?QuoteItem
     {
         if (! isset($data['quote_id']) || ! self::canModifyQuoteItems($data['quote_id'])) {
-            $this->setError('Nao e permitido adicionar itens a este orcamento. Apenas orcamentos em rascunho podem ter itens alterados.');
+            $this->setError('Não é permitido adicionar itens a este orçamento. Apenas orçamentos em rascunho podem ter itens alterados.');
             return null;
         }
 
@@ -114,7 +114,7 @@ class CreateQuoteItemAction
             $this->setSuccess();
             return $item;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors());
+            $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error('CreateQuoteItemAction: ' . $this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -126,7 +126,7 @@ class CreateQuoteItemAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao criar item de orcamento no banco de dados');
+            $this->setError('Erro ao criar item de orçamento no banco de dados');
 
             Log::error('CreateQuoteItemAction: ' . $this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -138,7 +138,7 @@ class CreateQuoteItemAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao criar item de orcamento');
+            $this->setError('Erro inesperado ao criar item de orçamento');
 
             Log::error('CreateQuoteItemAction: ' . $this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

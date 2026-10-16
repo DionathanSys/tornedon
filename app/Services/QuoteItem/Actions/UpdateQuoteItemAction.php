@@ -54,7 +54,7 @@ class UpdateQuoteItemAction
     public function execute(array $data): ?QuoteItem
     {
         if (! self::canModifyQuoteItems($this->item->quote_id)) {
-            $this->setError('Nao e permitido atualizar itens deste orcamento. Apenas orcamentos em rascunho podem ter itens alterados.');
+            $this->setError('Não é permitido atualizar itens deste orçamento. Apenas orçamentos em rascunho podem ter itens alterados.');
             return null;
         }
 
@@ -114,7 +114,7 @@ class UpdateQuoteItemAction
             $this->setSuccess();
             return $this->item;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors());
+            $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error('UpdateQuoteItemAction: ' . $this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -127,7 +127,7 @@ class UpdateQuoteItemAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao atualizar item de orcamento no banco de dados');
+            $this->setError('Erro ao atualizar item de orçamento no banco de dados');
 
             Log::error('UpdateQuoteItemAction: ' . $this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -140,7 +140,7 @@ class UpdateQuoteItemAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao atualizar item de orcamento');
+            $this->setError('Erro inesperado ao atualizar item de orçamento');
 
             Log::error('UpdateQuoteItemAction: ' . $this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

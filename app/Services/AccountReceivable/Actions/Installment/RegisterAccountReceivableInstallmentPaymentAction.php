@@ -105,7 +105,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
 
             return $payment;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados de recebimento', $e->errors());
+            $this->setError('Falha de validação dos dados de recebimento', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

@@ -75,7 +75,7 @@ class CreateServiceAction
             $this->setSuccess();
             return $service;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados do servico', $e->errors());
+            $this->setError('Falha de validação dos dados do serviço', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -106,7 +106,7 @@ class CreateServiceAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao criar servico');
+            $this->setError('Erro inesperado ao criar serviço');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

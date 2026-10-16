@@ -30,7 +30,7 @@ final class GenerateAccountReceivablesAction
             ->icon(Heroicon::Banknotes)
             ->color('primary')
             ->modalHeading('Gerar contas a receber')
-            ->modalDescription('Use esta acao quando a fatura estiver confirmada e as contas a receber ainda nao tiverem sido geradas.')
+            ->modalDescription('Use esta ação quando a fatura estiver confirmada e as contas a receber ainda não tiverem sido geradas.')
             ->visible(fn (Invoice $record): bool => $record->confirmed && ! $record->canceled && ! $record->accountReceivables()->exists())
             ->schema([
                 Select::make('payment_method')

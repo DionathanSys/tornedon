@@ -147,7 +147,7 @@ class CashMovementService
                 return $movement;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);
+            $this->setError('Falha de validação do movimento financeiro.', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -173,7 +173,7 @@ class CashMovementService
                 $movement = $movement->fresh();
 
                 if (! $movement) {
-                    $this->setSuccess('Movimento financeiro ja removido.');
+                    $this->setSuccess('Movimento financeiro já removido.');
 
                     return true;
                 }
@@ -342,7 +342,7 @@ class CashMovementService
                 return $movement->fresh();
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);
+            $this->setError('Falha de validação do movimento financeiro.', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -434,11 +434,11 @@ class CashMovementService
                 return $outflow->fresh();
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao da transferencia.', $e->errors(), 422);
+            $this->setError('Falha de validação da transferência.', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro ao criar transferencia entre contas.');
+            $this->setError('Erro ao criar transferência entre contas.');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__.'@'.__LINE__,
@@ -552,11 +552,11 @@ class CashMovementService
                 return $targetMovement;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao da transferencia.', $e->errors(), 422);
+            $this->setError('Falha de validação da transferência.', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro ao atualizar transferencia entre contas.');
+            $this->setError('Erro ao atualizar transferência entre contas.');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__.'@'.__LINE__,
@@ -667,11 +667,11 @@ class CashMovementService
                 return $targetMovement;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao do estorno da transferencia.', $e->errors(), 422);
+            $this->setError('Falha de validação do estorno da transferência.', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro ao estornar transferencia entre contas.');
+            $this->setError('Erro ao estornar transferência entre contas.');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__.'@'.__LINE__,
@@ -776,7 +776,7 @@ class CashMovementService
                 return $movement;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao do movimento financeiro.', $e->errors(), 422);
+            $this->setError('Falha de validação do movimento financeiro.', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -813,7 +813,7 @@ class CashMovementService
                 }
 
                 if ($movement->reversed_at !== null) {
-                    $this->setSuccess('Movimento financeiro ja revertido anteriormente.');
+                    $this->setSuccess('Movimento financeiro já revertido anteriormente.');
 
                     return $movement->reversals()->latest('id')->first();
                 }
@@ -935,7 +935,7 @@ class CashMovementService
             ],
         );
 
-        $this->setSuccess('Movimento financeiro excluido com sucesso.');
+        $this->setSuccess('Movimento financeiro excluído com sucesso.');
 
         return true;
     }

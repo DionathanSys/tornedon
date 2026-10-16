@@ -40,13 +40,13 @@ class SuggestBankStatementMatchesService
                 ]),
             ]);
 
-            $this->setSuccess('Sugestoes de conciliacao geradas com sucesso.', [
+            $this->setSuccess('Sugestões de conciliação geradas com sucesso.', [
                 'suggestions' => $limited,
             ]);
 
             return $limited;
         } catch (\Throwable $e) {
-            $this->setError('Erro ao gerar sugestoes de conciliacao.', [
+            $this->setError('Erro ao gerar sugestões de conciliação.', [
                 'exception' => [$e->getMessage()],
             ]);
 

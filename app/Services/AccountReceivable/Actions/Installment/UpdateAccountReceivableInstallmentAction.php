@@ -26,7 +26,7 @@ class UpdateAccountReceivableInstallmentAction
 
             return $this->installment->fresh();
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados da parcela', $e->errors());
+            $this->setError('Falha de validação dos dados da parcela', $e->errors());
             return null;
         } catch (QueryException $e) {
             $this->setError('Erro ao atualizar parcela de conta a receber no banco de dados');

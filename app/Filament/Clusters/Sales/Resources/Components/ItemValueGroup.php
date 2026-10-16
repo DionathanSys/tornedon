@@ -319,7 +319,7 @@ class ItemValueGroup
                 }
 
                 $fail(
-                    'O preco efetivo apos desconto nao pode ficar abaixo de R$ ' .
+                    'O preço efetivo após desconto não pode ficar abaixo de R$ ' .
                     number_format($minSalePrice, 2, ',', '.') .
                     '.'
                 );

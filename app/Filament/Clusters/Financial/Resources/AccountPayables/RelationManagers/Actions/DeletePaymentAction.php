@@ -30,7 +30,7 @@ final class DeletePaymentAction
                 }
 
                 Notification::make()
-                    ->title($service->getMessage() ?: 'Pagamento excluido com sucesso.')
+                    ->title($service->getMessage() ?: 'Pagamento excluído com sucesso.')
                     ->success()
                     ->send();
             });

@@ -785,7 +785,7 @@ class AccountPayableService
                 return $payment->fresh();
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -852,7 +852,7 @@ class AccountPayableService
                     return false;
                 }
 
-                $this->setSuccess('Pagamento excluido com sucesso.');
+                $this->setSuccess('Pagamento excluído com sucesso.');
 
                 return true;
             });

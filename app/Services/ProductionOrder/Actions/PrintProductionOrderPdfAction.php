@@ -28,7 +28,7 @@ class PrintProductionOrderPdfAction
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {
-                $this->setError('Nao foi possivel gerar o PDF da ordem de producao.');
+                $this->setError('Não foi possível gerar o PDF da ordem de produção.');
                 return null;
             }
 
@@ -36,7 +36,7 @@ class PrintProductionOrderPdfAction
 
             return base64_encode($pdfBinary);
         } catch (\Exception $e) {
-            $this->setError('Erro ao montar PDF da ordem de producao: ' . $e->getMessage());
+            $this->setError('Erro ao montar PDF da ordem de produção: ' . $e->getMessage());
 
             Log::error('PrintProductionOrderPdfAction: excecao', [
                 'metodo'              => __METHOD__ . '@' . __LINE__,

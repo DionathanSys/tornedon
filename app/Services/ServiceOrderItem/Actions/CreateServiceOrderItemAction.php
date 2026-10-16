@@ -44,7 +44,7 @@ class CreateServiceOrderItemAction
     public function execute(array $data): ?ServiceOrderItem
     {
         if (! isset($data['service_order_id']) || ! self::canModifyItems($data['service_order_id'])) {
-            $this->setError('Nao e permitido adicionar itens a esta ordem de servico.');
+            $this->setError('Não é permitido adicionar itens a esta ordem de serviço.');
             return null;
         }
 
@@ -97,7 +97,7 @@ class CreateServiceOrderItemAction
             $this->setSuccess();
             return $serviceOrderItem;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors());
+            $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -110,7 +110,7 @@ class CreateServiceOrderItemAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao criar item da ordem de servico');
+            $this->setError('Erro ao criar item da ordem de serviço');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -123,7 +123,7 @@ class CreateServiceOrderItemAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao criar item da ordem de servico');
+            $this->setError('Erro inesperado ao criar item da ordem de serviço');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

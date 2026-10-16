@@ -30,7 +30,7 @@ final class DeleteInstallmentAction
                 }
 
                 Notification::make()
-                    ->title($service->getMessage() ?: 'Parcela excluida com sucesso.')
+                    ->title($service->getMessage() ?: 'Parcela excluída com sucesso.')
                     ->success()
                     ->send();
             });

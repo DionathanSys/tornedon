@@ -122,7 +122,7 @@ class AccountReceivableService
                 return $syncedAccountReceivable;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__.'@'.__LINE__,
@@ -372,7 +372,7 @@ class AccountReceivableService
                 return $payment;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -475,7 +475,7 @@ class AccountReceivableService
                 return $updated;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -556,12 +556,12 @@ class AccountReceivableService
                     ],
                 );
 
-                $this->setSuccess('Parcela excluida com sucesso.');
+                $this->setSuccess('Parcela excluída com sucesso.');
 
                 return $result;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             return false;
         } catch (\Exception $e) {
@@ -649,7 +649,7 @@ class AccountReceivableService
                 return $payment->fresh();
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors(), 422);
+            $this->setError('Falha de validação dos dados', $e->errors(), 422);
 
             return null;
         } catch (\Exception $e) {
@@ -716,7 +716,7 @@ class AccountReceivableService
                     return false;
                 }
 
-                $this->setSuccess('Recebimento excluido com sucesso.');
+                $this->setSuccess('Recebimento excluído com sucesso.');
 
                 return true;
             });
@@ -768,13 +768,13 @@ class AccountReceivableService
                 $audit->recordModelEvent(
                     $accountReceivable,
                     'account_receivable.deleted',
-                    'Conta a receber excluida',
+                    'Conta a receber excluída',
                     $before,
                     null,
                     auth()->id(),
                 );
 
-                $this->setSuccess('Conta a receber excluida com sucesso');
+                $this->setSuccess('Conta a receber excluída com sucesso');
 
                 Log::info('Conta a receber excluida com sucesso via service', [
                     'metodo' => __METHOD__.'@'.__LINE__,

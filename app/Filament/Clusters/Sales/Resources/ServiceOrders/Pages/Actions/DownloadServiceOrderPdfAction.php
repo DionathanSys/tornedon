@@ -34,7 +34,7 @@ final class DownloadServiceOrderPdfAction
                 $pdf = $service->pdf($record, Auth::id(), (bool) ($data['include_service_photos'] ?? false));
 
                 if (! $pdf) {
-                    Notification::make()->title($service->getMessage() ?: 'Não foi possivel gerar o PDF.')->danger()->send();
+                    Notification::make()->title($service->getMessage() ?: 'Não foi possível gerar o PDF.')->danger()->send();
 
                     return response()->streamDownload(fn () => null, 'ordem-servico.pdf');
                 }

@@ -254,7 +254,7 @@ class StockMovementService
                     return false;
                 }
 
-                $this->setSuccess('Movimentacao de estoque excluida com sucesso');
+                $this->setSuccess('Movimentação de estoque excluída com sucesso');
 
                 Log::info('StockMovementService: Movimentacao de estoque excluida com sucesso', [
                     'metodo'             => __METHOD__ . '@' . __LINE__,

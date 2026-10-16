@@ -487,7 +487,7 @@ class ProductionOrderService
                 return null;
             }
 
-            $this->setSuccess('PDF da ordem de producao gerado.');
+            $this->setSuccess('PDF da ordem de produção gerado.');
 
             Log::info('ProductionOrderService: PDF gerado com sucesso', [
                 'metodo'              => __METHOD__ . '@' . __LINE__,
@@ -497,7 +497,7 @@ class ProductionOrderService
 
             return $pdf;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da ordem de producao: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da ordem de produção: ' . $e->getMessage());
 
             Log::error('ProductionOrderService::pdf', [
                 'metodo'              => __METHOD__ . '@' . __LINE__,
@@ -528,7 +528,7 @@ class ProductionOrderService
 
             return ['pdf' => $pdf];
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da ordem de producao: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da ordem de produção: ' . $e->getMessage());
 
             Log::error('ProductionOrderService::preview', [
                 'metodo'              => __METHOD__ . '@' . __LINE__,

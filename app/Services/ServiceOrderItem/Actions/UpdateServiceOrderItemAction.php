@@ -45,7 +45,7 @@ class UpdateServiceOrderItemAction
     public function execute(array $data): ?ServiceOrderItem
     {
         if (! self::canModifyItems($this->serviceOrderItem->service_order_id)) {
-            $this->setError('Nao e permitido atualizar itens desta ordem de servico.');
+            $this->setError('Não é permitido atualizar itens desta ordem de serviço.');
             return null;
         }
 
@@ -105,7 +105,7 @@ class UpdateServiceOrderItemAction
             $this->setSuccess();
             return $this->serviceOrderItem;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors());
+            $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -119,7 +119,7 @@ class UpdateServiceOrderItemAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao atualizar item da ordem de servico');
+            $this->setError('Erro ao atualizar item da ordem de serviço');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -133,7 +133,7 @@ class UpdateServiceOrderItemAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao atualizar item da ordem de servico');
+            $this->setError('Erro inesperado ao atualizar item da ordem de serviço');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

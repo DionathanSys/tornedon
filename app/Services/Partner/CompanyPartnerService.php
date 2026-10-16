@@ -64,7 +64,7 @@ class CompanyPartnerService
             $this->setSuccess('Vinculo com parceiro atualizado');
             return $result;
         } catch (\Exception $e) {
-            $this->setError('Erro ao atualizar vinculo entre Empresa e Parceiro', [$e->getMessage()]);
+            $this->setError('Erro ao atualizar vínculo entre Empresa e Parceiro', [$e->getMessage()]);
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Erro ao atualizar vinculo entre Empresa e Parceiro',
                 'errors' => $e->getMessage(),
@@ -175,13 +175,13 @@ class CompanyPartnerService
             ]);
 
             if (! $companyPartner) {
-                throw new \RuntimeException('Nao foi possivel localizar o vinculo entre empresa e parceiro apos a gravacao.');
+                throw new \RuntimeException('Não foi possível localizar o vínculo entre empresa e parceiro após a gravação.');
             }
 
             $this->setSuccess('Parceiro associado a empresa com sucesso');
             return $companyPartner;
         } catch (ValidationException $e) {
-            $this->setError('Falha ao validar os dados do vinculo', $e->errors());
+            $this->setError('Falha ao validar os dados do vínculo', $e->errors());
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'message' => 'Falha ao validar dados do vinculo entre empresa e parceiro',
                 'partner_id' => $partnerId,
@@ -309,7 +309,7 @@ class CompanyPartnerService
                 207
             );
         } else {
-            $this->setSuccess('Replicacao concluida com sucesso', $result);
+            $this->setSuccess('Replicação concluída com sucesso', $result);
         }
 
         $this->notifyReplicationResult($userId, $sourceCompanyPartner, $result);

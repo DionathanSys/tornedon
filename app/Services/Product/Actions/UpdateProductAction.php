@@ -98,7 +98,7 @@ class UpdateProductAction
             $this->setSuccess();
             return $this->product;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors());
+            $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo'     => __METHOD__ . '@' . __LINE__,

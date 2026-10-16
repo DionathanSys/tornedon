@@ -108,7 +108,7 @@ class CloseRequisitionAction
                 return $requisition;
             });
         } catch (DomainValidationException $e) {
-            $this->setError('Transicao invalida', $e->errors);
+            $this->setError('Transição inválida', $e->errors);
 
             Log::warning('CloseRequisitionAction: Transicao invalida', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -118,7 +118,7 @@ class CloseRequisitionAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao encerrar requisicao no banco de dados');
+            $this->setError('Erro ao encerrar requisição no banco de dados');
 
             Log::error('CloseRequisitionAction: QueryException', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -128,7 +128,7 @@ class CloseRequisitionAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro ao encerrar requisicao: ' . $e->getMessage());
+            $this->setError('Erro ao encerrar requisição: ' . $e->getMessage());
 
             Log::error('CloseRequisitionAction: Erro inesperado', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,

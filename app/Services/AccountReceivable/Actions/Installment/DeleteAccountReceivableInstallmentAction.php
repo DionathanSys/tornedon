@@ -17,7 +17,7 @@ class DeleteAccountReceivableInstallmentAction
     {
         try {
             if ($this->installment->payments()->exists()) {
-                $this->setError('Nao e possivel excluir uma parcela com recebimentos registrados.');
+                $this->setError('Não é possível excluir uma parcela com recebimentos registrados.');
                 return false;
             }
 

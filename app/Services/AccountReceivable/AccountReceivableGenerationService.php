@@ -70,19 +70,19 @@ class AccountReceivableGenerationService
             }
 
             if (! $this->isFiscalDocumentAuthorized($fiscalDocument)) {
-                $this->setError('Documento fiscal ainda nao autorizado para gerar contas a receber.');
+                $this->setError('Documento fiscal ainda não autorizado para gerar contas a receber.');
 
                 return false;
             }
 
             if ($invoice->status === InvoiceStatus::CANCELLED || $invoice->canceled) {
-                $this->setError('Nao e permitido gerar contas a receber para fatura cancelada.');
+                $this->setError('Não é permitido gerar contas a receber para fatura cancelada.');
 
                 return false;
             }
 
             if ($invoice->accountReceivables()->exists()) {
-                $this->setSuccess('Contas a receber ja existentes para a fatura.');
+                $this->setSuccess('Contas a receber já existentes para a fatura.');
 
                 Log::info('AccountReceivableGenerationService: contas a receber ja existem, geracao ignorada', [
                     'metodo' => __METHOD__.'@'.__LINE__,
@@ -257,7 +257,7 @@ class AccountReceivableGenerationService
         $netValue = round((float) $invoice->netValue, 2);
 
         if ($netValue <= 0) {
-            $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
+            $this->setError('Valor líquido da fatura inválido para gerar contas a receber.');
 
             return null;
         }

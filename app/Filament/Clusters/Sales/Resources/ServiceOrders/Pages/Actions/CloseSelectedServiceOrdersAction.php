@@ -72,7 +72,7 @@ final class CloseSelectedServiceOrdersAction
                     'ignored_count' => $ignoredCount,
                 ]);
 
-                notify::success("{$closedCount} ordem(ns) de serviço encerrada(s) com sucesso. {$ignoredCount} registro(s) foram ignorado(s) por nao estarem com status aberta.");
+                notify::success("{$closedCount} ordem(ns) de serviço encerrada(s) com sucesso. {$ignoredCount} registro(s) foram ignorado(s) por não estarem com status aberta.");
             });
     }
 }

@@ -19,7 +19,7 @@ final class ReverseTransferAction
             ->color('danger')
             ->requiresConfirmation()
             ->modalHeading('Estornar transferencia')
-            ->modalDescription('Os dois lados da transferencia serao estornados juntos.')
+            ->modalDescription('Os dois lados da transferência serão estornados juntos.')
             ->visible(fn (CashMovement $record): bool => $record->isTransfer() && $record->reversed_at === null)
             ->action(function (Action $action, CashMovement $record): void {
                 $service = app(CashMovementService::class);

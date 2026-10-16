@@ -91,7 +91,7 @@ final class RegisterPartnerByCnpjAction
                     ->visible(fn (Get $get): bool => filled($get('lookup_warning'))),
                 Callout::make('Erro')
                     ->danger()
-                    ->description(fn (Get $get): string => (string) ($get('lookup_message') ?? 'Nao foi possivel consultar o CNPJ informado.'))
+                    ->description(fn (Get $get): string => (string) ($get('lookup_message') ?? 'Não foi possível consultar o CNPJ informado.'))
                     ->visible(fn (Get $get): bool => $get('lookup_status') === 'error'),
             ]))
             ->action(function (Action $action, array $data): void {
@@ -100,13 +100,13 @@ final class RegisterPartnerByCnpjAction
                 $cnpj = (string) ($data['cnpj'] ?? '');
 
                 if (! $companyId || ! $userId) {
-                    notify::error(message: 'Nao foi possivel identificar a empresa ou o usuario atual.');
+                    notify::error(message: 'Não foi possível identificar a empresa ou o usuário atual.');
                     $action->halt();
                 }
 
                 if (mb_strlen($cnpj) !== self::CNPJ_LENGTH) {
                     notify::warning(
-                        title: 'CNPJ invalido',
+                        title: 'CNPJ inválido',
                         message: 'Informe um CNPJ completo antes de consultar ou cadastrar.',
                     );
                     $action->halt();
@@ -152,7 +152,7 @@ final class RegisterPartnerByCnpjAction
                     self::resetLookupState($set);
 
                     notify::warning(
-                        title: 'CNPJ invalido',
+                        title: 'CNPJ inválido',
                         message: 'Informe um CNPJ completo para realizar a consulta.',
                     );
 
@@ -170,7 +170,7 @@ final class RegisterPartnerByCnpjAction
                     self::resetLookupState($set);
                     $set('lookup_status', 'error');
                     $set('lookup_document_number', $cnpj);
-                    $set('lookup_message', $service->getMessageUser() ?: 'Nao foi possivel consultar o CNPJ informado.');
+                    $set('lookup_message', $service->getMessageUser() ?: 'Não foi possível consultar o CNPJ informado.');
 
                     return;
                 }
@@ -186,7 +186,7 @@ final class RegisterPartnerByCnpjAction
                     'lookup_warning',
                     $mainRegistration?->number
                         ? null
-                        : 'Consulta concluida, mas nao foi possivel obter a inscricao estadual.',
+                        : 'Consulta concluída, mas não foi possível obter a inscrição estadual.',
                 );
                 $set('lookup_name', $vo->companyName);
                 $set('lookup_state_tax_id', $mainRegistration?->number);
@@ -228,11 +228,11 @@ final class RegisterPartnerByCnpjAction
         ]);
 
         if (! $partner) {
-            throw new \RuntimeException($partnerService->getMessageUser() ?: 'Nao foi possivel cadastrar o parceiro.');
+            throw new \RuntimeException($partnerService->getMessageUser() ?: 'Não foi possível cadastrar o parceiro.');
         }
 
         if (CompanyPartnerService::companyHasPartner($partner->id, $companyId)) {
-            throw new \RuntimeException('Este parceiro ja esta vinculado a empresa atual.');
+            throw new \RuntimeException('Este parceiro já está vinculado à empresa atual.');
         }
 
         $companyPartner = $companyPartnerService->associatePartnerCompany($partner->id, $companyId, [
@@ -253,7 +253,7 @@ final class RegisterPartnerByCnpjAction
         ]);
 
         if (! $companyPartner) {
-            throw new \RuntimeException($companyPartnerService->getMessageUser() ?: 'Nao foi possivel vincular o parceiro a empresa.');
+            throw new \RuntimeException($companyPartnerService->getMessageUser() ?: 'Não foi possível vincular o parceiro à empresa.');
         }
 
         $addressService = app(AddressService::class);
@@ -270,7 +270,7 @@ final class RegisterPartnerByCnpjAction
         ], $userId);
 
         if (! $address) {
-            throw new \RuntimeException($addressService->getMessageUser() ?: 'Nao foi possivel cadastrar o endereco do parceiro.');
+            throw new \RuntimeException($addressService->getMessageUser() ?: 'Não foi possível cadastrar o endereço do parceiro.');
         }
 
         if (filled($data['lookup_email'] ?? null) || filled($data['lookup_phone'] ?? null) || filled($data['lookup_mobile'] ?? null)) {
@@ -284,7 +284,7 @@ final class RegisterPartnerByCnpjAction
             ], $userId);
 
             if (! $contact) {
-                throw new \RuntimeException($contactService->getMessageUser() ?: 'Nao foi possivel cadastrar o contato do parceiro.');
+                throw new \RuntimeException($contactService->getMessageUser() ?: 'Não foi possível cadastrar o contato do parceiro.');
             }
         }
 

@@ -87,7 +87,7 @@ class UpdateServiceAction
             $this->setSuccess();
             return $this->service;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados do servico', $e->errors());
+            $this->setError('Falha de validação dos dados do serviço', $e->errors());
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -101,7 +101,7 @@ class UpdateServiceAction
 
             return null;
         } catch (QueryException $e) {
-            $this->setError('Erro ao atualizar servico no banco de dados');
+            $this->setError('Erro ao atualizar serviço no banco de dados');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,
@@ -116,7 +116,7 @@ class UpdateServiceAction
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro inesperado ao atualizar servico');
+            $this->setError('Erro inesperado ao atualizar serviço');
 
             Log::error($this->getMessage(), [
                 'metodo' => __METHOD__ . '@' . __LINE__,

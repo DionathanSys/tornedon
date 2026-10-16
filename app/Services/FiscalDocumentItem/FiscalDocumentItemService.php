@@ -240,7 +240,7 @@ class FiscalDocumentItemService
                 app(RecalculateFiscalDocumentTaxTotalsAction::class)
                     ->execute(FiscalDocument::query()->findOrFail((int) $fiscalDocumentId));
 
-                $this->setSuccess('Item do documento fiscal excluido com sucesso');
+                $this->setSuccess('Item do documento fiscal excluído com sucesso');
 
                 Log::info('Item do documento fiscal excluido com sucesso via service', [
                     'metodo' => __METHOD__.'@'.__LINE__,

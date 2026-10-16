@@ -55,7 +55,7 @@ class CreatePartner
             $this->setSuccess();
             return $partner;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados', $e->errors());
+            $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error(__METHOD__ . '@' . __LINE__, [
                 'error_code' => $this->getErrorCode(),

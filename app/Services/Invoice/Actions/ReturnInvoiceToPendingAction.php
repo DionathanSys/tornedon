@@ -97,7 +97,7 @@ class ReturnInvoiceToPendingAction
     private function validateCanReturnToPending(): bool
     {
         if ($this->invoice->canceled || $this->invoice->status === InvoiceStatus::CANCELLED) {
-            $this->setError('Nao e possivel retornar uma fatura cancelada para pendente.');
+            $this->setError('Não é possível retornar uma fatura cancelada para pendente.');
             return false;
         }
 

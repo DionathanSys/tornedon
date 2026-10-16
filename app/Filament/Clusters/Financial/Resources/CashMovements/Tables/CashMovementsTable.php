@@ -160,13 +160,13 @@ class CashMovementsTable
                     ->iconButton()
                     ->requiresConfirmation()
                     ->modalHeading('Excluir movimento financeiro')
-                    ->modalDescription('Se este movimento veio de uma baixa de parcela, a baixa sera desfeita e a conta voltara ao estado anterior. Movimentos conciliados serao preservados via estorno quando aplicavel.')
+                    ->modalDescription('Se este movimento veio de uma baixa de parcela, a baixa será desfeita e a conta voltará ao estado anterior. Movimentos conciliados serão preservados via estorno quando aplicável.')
                     ->action(function (CashMovement $record): void {
                         $service = app(CashMovementService::class);
 
                         if (! $service->deleteSafely($record, Auth::id())) {
                             Notification::make()
-                                ->title($service->getMessageUser() ?: 'Nao foi possivel excluir o movimento.')
+                                ->title($service->getMessageUser() ?: 'Não foi possível excluir o movimento.')
                                 ->danger()
                                 ->send();
 
@@ -174,7 +174,7 @@ class CashMovementsTable
                         }
 
                         Notification::make()
-                            ->title($service->getMessage() ?: 'Movimento financeiro excluido com sucesso.')
+                            ->title($service->getMessage() ?: 'Movimento financeiro excluído com sucesso.')
                             ->success()
                             ->send();
                     }),

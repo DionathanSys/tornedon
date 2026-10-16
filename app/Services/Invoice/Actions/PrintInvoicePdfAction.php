@@ -38,7 +38,7 @@ class PrintInvoicePdfAction
             ])->setPaper('a4')->output();
 
             if ($pdfBinary === '') {
-                $this->setError('Nao foi possivel gerar o PDF da fatura.');
+                $this->setError('Não foi possível gerar o PDF da fatura.');
                 return null;
             }
 

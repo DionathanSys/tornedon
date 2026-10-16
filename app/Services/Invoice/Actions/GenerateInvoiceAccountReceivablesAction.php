@@ -134,7 +134,7 @@ class GenerateInvoiceAccountReceivablesAction
     private function validateCanGenerate(): bool
     {
         if ($this->invoice->canceled || $this->invoice->status === InvoiceStatus::CANCELLED) {
-            $this->setError('Nao e possivel gerar contas a receber para uma fatura cancelada.');
+            $this->setError('Não é possível gerar contas a receber para uma fatura cancelada.');
 
             return false;
         }
@@ -146,13 +146,13 @@ class GenerateInvoiceAccountReceivablesAction
         }
 
         if ($this->invoice->accountReceivables->isNotEmpty()) {
-            $this->setError('Esta fatura ja possui contas a receber vinculadas.');
+            $this->setError('Esta fatura já possui contas a receber vinculadas.');
 
             return false;
         }
 
         if (round((float) $this->invoice->netValue, 2) <= 0) {
-            $this->setError('Valor liquido da fatura invalido para gerar contas a receber.');
+            $this->setError('Valor líquido da fatura inválido para gerar contas a receber.');
 
             return false;
         }

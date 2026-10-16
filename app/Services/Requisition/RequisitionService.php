@@ -742,7 +742,7 @@ class RequisitionService
                 return null;
             }
 
-            $this->setSuccess('PDF da requisicao gerado.');
+            $this->setSuccess('PDF da requisição gerado.');
 
             Log::info('RequisitionService: PDF gerado com sucesso', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -752,7 +752,7 @@ class RequisitionService
 
             return $pdf;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da requisicao: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da requisição: ' . $e->getMessage());
 
             Log::error('RequisitionService::pdf', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,
@@ -783,7 +783,7 @@ class RequisitionService
 
             return ['pdf' => $pdf];
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da requisicao: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da requisição: ' . $e->getMessage());
 
             Log::error('RequisitionService::preview', [
                 'metodo'         => __METHOD__ . '@' . __LINE__,

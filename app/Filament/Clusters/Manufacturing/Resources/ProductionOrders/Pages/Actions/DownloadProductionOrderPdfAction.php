@@ -23,7 +23,7 @@ final class DownloadProductionOrderPdfAction
                 $pdf     = $service->pdf($record, Auth::id());
 
                 if (! $pdf) {
-                    Notification::make()->title($service->getMessage() ?: 'Nao foi possivel gerar o PDF.')->danger()->send();
+                    Notification::make()->title($service->getMessage() ?: 'Não foi possível gerar o PDF.')->danger()->send();
                     return response()->streamDownload(fn () => null, 'ordem-producao.pdf');
                 }
 

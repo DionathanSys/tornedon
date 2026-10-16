@@ -24,7 +24,7 @@ final class PreviewProductionOrderPdfAction
 
                 if (! $data || ! ($data['pdf'] ?? null)) {
                     return new HtmlString(
-                        '<p class="text-red-500">' . ($service->getMessage() ?: 'Nao foi possivel gerar o preview.') . '</p>'
+                        '<p class="text-red-500">' . ($service->getMessage() ?: 'Não foi possível gerar o preview.') . '</p>'
                     );
                 }
 

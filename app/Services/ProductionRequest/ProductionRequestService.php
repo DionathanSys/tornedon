@@ -42,11 +42,11 @@ class ProductionRequestService
                 return $request;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados.', $e->errors());
+            $this->setError('Falha de validação dos dados.', $e->errors());
 
             return null;
         } catch (\Throwable $e) {
-            $this->setError('Erro ao criar pedido para producao.', ['exception' => [$e->getMessage()]]);
+            $this->setError('Erro ao criar pedido para produção.', ['exception' => [$e->getMessage()]]);
 
             return null;
         }
@@ -60,13 +60,13 @@ class ProductionRequestService
             return DB::transaction(function () use ($request, $data, $updatedBy): ProductionRequest {
                 if ($request->isDelivered()) {
                     throw ValidationException::withMessages([
-                        'status' => ['Nao e permitido editar um pedido entregue.'],
+                        'status' => ['Não é permitido editar um pedido entregue.'],
                     ]);
                 }
 
                 if ($request->isCancelled()) {
                     throw ValidationException::withMessages([
-                        'status' => ['Nao e permitido editar um pedido cancelado.'],
+                        'status' => ['Não é permitido editar um pedido cancelado.'],
                     ]);
                 }
 
@@ -81,11 +81,11 @@ class ProductionRequestService
                 return $request;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados.', $e->errors());
+            $this->setError('Falha de validação dos dados.', $e->errors());
 
             return null;
         } catch (\Throwable $e) {
-            $this->setError('Erro ao atualizar pedido para producao.', ['exception' => [$e->getMessage()]]);
+            $this->setError('Erro ao atualizar pedido para produção.', ['exception' => [$e->getMessage()]]);
 
             return null;
         }
@@ -101,19 +101,19 @@ class ProductionRequestService
 
                 if ($request->isDelivered()) {
                     throw ValidationException::withMessages([
-                        'status' => ['Este pedido ja foi entregue.'],
+                        'status' => ['Este pedido já foi entregue.'],
                     ]);
                 }
 
                 if ($request->isCancelled()) {
                     throw ValidationException::withMessages([
-                        'status' => ['Nao e possivel entregar um pedido cancelado.'],
+                        'status' => ['Não é possível entregar um pedido cancelado.'],
                     ]);
                 }
 
                 if ($request->account_receivable_id) {
                     throw ValidationException::withMessages([
-                        'account_receivable_id' => ['Este pedido ja possui conta a receber vinculada.'],
+                        'account_receivable_id' => ['Este pedido já possui conta a receber vinculada.'],
                     ]);
                 }
 
@@ -150,7 +150,7 @@ class ProductionRequestService
                     throw ValidationException::withMessages(
                         $receivableService->getErrors() !== []
                             ? $receivableService->getErrors()
-                            : ['account_receivable' => [$receivableService->getMessage() ?: 'Nao foi possivel gerar a conta a receber.']]
+                            : ['account_receivable' => [$receivableService->getMessage() ?: 'Não foi possível gerar a conta a receber.']]
                     );
                 }
 
@@ -175,11 +175,11 @@ class ProductionRequestService
                 return $request;
             });
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados.', $e->errors());
+            $this->setError('Falha de validação dos dados.', $e->errors());
 
             return null;
         } catch (\Throwable $e) {
-            $this->setError('Erro ao entregar pedido para producao.', ['exception' => [$e->getMessage()]]);
+            $this->setError('Erro ao entregar pedido para produção.', ['exception' => [$e->getMessage()]]);
 
             return null;
         }
@@ -192,7 +192,7 @@ class ProductionRequestService
         try {
             if ($request->isDelivered()) {
                 throw ValidationException::withMessages([
-                    'status' => ['Nao e permitido cancelar um pedido entregue.'],
+                    'status' => ['Não é permitido cancelar um pedido entregue.'],
                 ]);
             }
 
@@ -205,11 +205,11 @@ class ProductionRequestService
 
             return true;
         } catch (ValidationException $e) {
-            $this->setError('Falha de validacao dos dados.', $e->errors());
+            $this->setError('Falha de validação dos dados.', $e->errors());
 
             return false;
         } catch (\Throwable $e) {
-            $this->setError('Erro ao cancelar pedido para producao.', ['exception' => [$e->getMessage()]]);
+            $this->setError('Erro ao cancelar pedido para produção.', ['exception' => [$e->getMessage()]]);
 
             return false;
         }
@@ -341,7 +341,7 @@ class ProductionRequestService
 
         if (! $account) {
             throw ValidationException::withMessages([
-                'financial_account_id' => ['Conta financeira invalida para a empresa informada.'],
+                'financial_account_id' => ['Conta financeira inválida para a empresa informada.'],
             ]);
         }
 
@@ -369,7 +369,7 @@ class ProductionRequestService
                 throw ValidationException::withMessages(
                     $receivableService->getErrors() !== []
                         ? $receivableService->getErrors()
-                        : ['payment' => [$receivableService->getMessage() ?: 'Nao foi possivel registrar o recebimento.']]
+                        : ['payment' => [$receivableService->getMessage() ?: 'Não foi possível registrar o recebimento.']]
                 );
             }
         }
