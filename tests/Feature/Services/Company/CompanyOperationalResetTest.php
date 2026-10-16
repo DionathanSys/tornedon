@@ -83,6 +83,10 @@ class CompanyOperationalResetTest extends TestCase
         ]);
         $this->assertSame(0.0, $data['account']->fresh()->current_balance);
         $this->assertSame($otherBefore, $this->snapshot($other['company']->id));
+        $this->assertDatabaseMissing('service_order_defects', ['service_order_id' => $data['order']->id]);
+        $this->assertDatabaseHas('service_order_defects', [
+            'service_order_id' => $other['order']->id, 'report' => 'Defeito relatado',
+        ]);
 
         // An old in-memory instance must see the marker written by the reset too.
         $this->assertTrue($data['documents'][0]->isOperationalHistory());
@@ -266,6 +270,9 @@ class CompanyOperationalResetTest extends TestCase
             'invoice_date' => now()->toDateString(), 'status' => 'pending',
         ]);
         $order = ServiceOrder::factory()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'invoice_id' => $invoice->id]);
+        DB::table('service_order_defects')->insert([
+            'service_order_id' => $order->id, 'report' => 'Defeito relatado', 'diagnosis' => 'Diagnóstico da ordem',
+        ]);
         $documents = [];
         foreach (['authorized', 'canceled', 'rejected', 'pending'] as $index => $status) {
             $doc = FiscalDocument::create([

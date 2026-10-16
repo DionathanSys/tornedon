@@ -26,7 +26,7 @@ class CompanyOperationalResetService
 {
     private const OPERATIONAL_TABLES = [
         'quotes', 'quote_items', 'invoices', 'service_orders', 'service_order_items',
-        'service_order_received_assets', 'service_order_signature_links',
+        'service_order_received_assets', 'service_order_signature_links', 'service_order_defects',
         'requisitions', 'requisition_items', 'production_orders', 'production_order_items',
         'production_requests', 'production_request_items', 'warranty_claims',
         'account_payables', 'account_payable_installments', 'account_payable_installment_payments',
