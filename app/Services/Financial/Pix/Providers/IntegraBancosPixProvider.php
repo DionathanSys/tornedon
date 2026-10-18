@@ -4,11 +4,14 @@ namespace App\Services\Financial\Pix\Providers;
 
 use App\Models\BankAccountConnection;
 use App\Models\PixCharge;
+use App\Services\Financial\Banking\Providers\IntegraBancosAuthenticationException;
 use App\Services\Financial\Banking\Providers\IntegraBancosExceptionFormatter;
+use App\Services\Financial\Banking\Providers\IntegraBancosPayloadBuilder;
+use App\Services\Financial\Banking\Providers\IntegraBancosResponse;
 use App\Services\Financial\Pix\Contracts\PixProviderInterface;
 use App\Services\Financial\Pix\DTO\PixProviderResult;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
+use Illuminate\Validation\ValidationException;
 
 final class IntegraBancosPixProvider implements PixProviderInterface
 {
@@ -52,7 +55,7 @@ final class IntegraBancosPixProvider implements PixProviderInterface
     {
         try {
             $payload = $request();
-        } catch (\InvalidArgumentException $exception) {
+        } catch (\InvalidArgumentException|ValidationException|IntegraBancosAuthenticationException $exception) {
             $message = IntegraBancosExceptionFormatter::message($exception);
 
             Log::warning('IntegraBancos PIX: requisição rejeitada antes do envio', [
@@ -62,7 +65,7 @@ final class IntegraBancosPixProvider implements PixProviderInterface
                 'message' => $message,
             ]);
 
-            return new PixProviderResult(false, false, 0, errors: [$message], message: $message);
+            return new PixProviderResult(false, false, 0, errors: [$message], message: $message, responseCode: 'LOCAL_VALIDATION');
         } catch (\Throwable $exception) {
             $message = IntegraBancosExceptionFormatter::message($exception);
 
@@ -76,7 +79,7 @@ final class IntegraBancosPixProvider implements PixProviderInterface
             return new PixProviderResult(false, true, 0, errors: [$message], message: $message);
         }
 
-        $statusCode = $this->responseStatusCode($payload);
+        $statusCode = IntegraBancosResponse::status($payload);
         $statusMessage = $this->responseValue($payload, [
             'mensagem', 'message', 'status.mensagem', 'status.message',
             'dados.status.mensagem', 'dados.status.message', 'data.status.mensagem',
@@ -88,15 +91,15 @@ final class IntegraBancosPixProvider implements PixProviderInterface
             $statusMessage = trim(implode(' | ', array_filter([$statusMessage, $errors])));
         }
 
-        $successful = $this->responseIsSuccessful($payload, $statusCode);
+        $successful = IntegraBancosResponse::accepted($payload);
         $identification = $this->responseValue($payload, [
             'identificacao', 'identification', 'dados.identificacao', 'data.identificacao',
         ]) ?: $charge->provider_identification;
 
         return new PixProviderResult(
             successful: $successful,
-            retryable: false,
-            httpStatus: $successful ? 200 : 422,
+            retryable: ! $successful && IntegraBancosResponse::code($payload) === '17',
+            httpStatus: 0,
             providerIdentification: $identification,
             providerChargeId: $this->responseValue($payload, [
                 'id', 'charge_id', 'cobranca.id', 'dados.id', 'dados.charge_id', 'data.id',
@@ -116,10 +119,11 @@ final class IntegraBancosPixProvider implements PixProviderInterface
             statusCode: $statusCode,
             statusMessage: $statusMessage,
             amount: $this->responseAmount($payload),
-            paid: $this->responseIsPaid($payload),
+            paid: IntegraBancosResponse::status($payload) === '3',
             payload: $payload,
             errors: $successful ? [] : [$statusMessage ?: 'Provider recusou a operação.'],
             message: $successful ? null : ($statusMessage ?: 'Provider recusou a operação.'),
+            responseCode: IntegraBancosResponse::code($payload),
         );
     }
 
@@ -128,65 +132,10 @@ final class IntegraBancosPixProvider implements PixProviderInterface
      */
     private function chargePayload(PixCharge $charge): array
     {
-        $customer = $charge->installment?->accountReceivable?->customer;
-        $document = preg_replace('/\D+/', '', (string) $customer?->document_number) ?: '';
-        $documentField = strtoupper((string) $customer?->document_type) === 'CNPJ' ? 'cnpj' : 'cpf';
+        $payload = app(IntegraBancosPayloadBuilder::class)->build($charge);
+        $charge->update(['request_snapshot' => $payload]);
 
-        if ($document === '' || ! $customer?->name) {
-            throw new RuntimeException('Cliente sem documento ou nome para emissão da cobrança PIX.');
-        }
-
-        return [
-            'codigo_banco' => (string) $charge->connection?->bank?->code,
-            'numero' => (string) $charge->id,
-            'identificacao' => $charge->provider_identification,
-            'pagamento' => [
-                'valor' => number_format((float) $charge->amount, 2, '.', ''),
-                'data_vencimento' => $charge->due_date?->toDateString(),
-            ],
-            'pagador' => [
-                'cpf' => $documentField === 'cpf' ? $document : null,
-                'cnpj' => $documentField === 'cnpj' ? $document : null,
-                'nome' => $customer->name,
-            ],
-        ];
-    }
-
-    private function responseIsSuccessful(array $payload, ?string $statusCode): bool
-    {
-        $success = $payload['sucesso'] ?? $payload['success'] ?? null;
-
-        if (is_bool($success)) {
-            return $success;
-        }
-
-        if (is_string($success)) {
-            if (in_array(strtolower($success), ['true', '1', 'sim'], true)) {
-                return true;
-            }
-
-            if (in_array(strtolower($success), ['false', '0', 'nao', 'não'], true)) {
-                return false;
-            }
-        }
-
-        if (filled(data_get($payload, 'error')) || filled(data_get($payload, 'erro')) || filled(data_get($payload, 'errors'))) {
-            return false;
-        }
-
-        return $statusCode === null || in_array($statusCode, ['2', '3', '4', '5', '7'], true);
-    }
-
-    private function responseIsPaid(array $payload): bool
-    {
-        $status = $this->responseValue($payload, [
-            'status.codigo', 'status.code', 'status', 'situacao', 'situacao_cobranca',
-            'dados.status.codigo', 'dados.status', 'data.status.codigo', 'data.status',
-        ]);
-
-        return in_array(strtolower((string) $status), [
-            '3', 'pago', 'paga', 'paid', 'liquidado', 'liquidada', 'settled', 'concluido', 'concluida', 'concluído', 'concluída',
-        ], true);
+        return $payload;
     }
 
     private function responseAmount(array $payload): ?float
@@ -199,18 +148,6 @@ final class IntegraBancosPixProvider implements PixProviderInterface
             ?? data_get($payload, 'data.pagamento.valor');
 
         return is_numeric($amount) ? round((float) $amount, 2) : null;
-    }
-
-    private function responseStatusCode(array $payload): ?string
-    {
-        $status = data_get($payload, 'status.codigo')
-            ?? data_get($payload, 'status.code')
-            ?? data_get($payload, 'dados.status.codigo')
-            ?? data_get($payload, 'data.status.codigo')
-            ?? data_get($payload, 'codigo')
-            ?? data_get($payload, 'status_code');
-
-        return is_scalar($status) && filled($status) ? (string) $status : null;
     }
 
     /**

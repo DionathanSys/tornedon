@@ -5,6 +5,8 @@ namespace App\Enum\Financial;
 enum BankSlipStatus: string
 {
     case PENDING_REGISTRATION = 'pending_registration';
+    case PROCESSING = 'processing';
+    case UNCERTAIN = 'uncertain';
     case REGISTERED = 'registered';
     case REGISTRATION_FAILED = 'registration_failed';
     case UPDATE_PENDING = 'update_pending';
@@ -19,6 +21,8 @@ enum BankSlipStatus: string
     {
         return match ($this) {
             self::PENDING_REGISTRATION => 'Aguardando registro',
+            self::PROCESSING => 'Em processamento no banco',
+            self::UNCERTAIN => 'Resultado da emissão incerto',
             self::REGISTERED => 'Registrado',
             self::REGISTRATION_FAILED => 'Falha no registro',
             self::UPDATE_PENDING => 'Atualizacao pendente',

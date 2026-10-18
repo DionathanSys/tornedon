@@ -12,6 +12,14 @@ class BankSlip extends Model
 {
     protected $fillable = [
         'company_id',
+        'operation_status',
+        'operation_kind',
+        'operation_attempt_id',
+        'pending_update',
+        'provider_operation_id',
+        'provider_response_code',
+        'request_snapshot',
+        'request_sent_at',
         'account_receivable_installment_id',
         'bank_account_connection_id',
         'financial_account_id',
@@ -35,6 +43,9 @@ class BankSlip extends Model
     ];
 
     protected $casts = [
+        'request_snapshot' => 'array',
+        'pending_update' => 'array',
+        'request_sent_at' => 'datetime',
         'status' => BankSlipStatus::class,
         'amount' => MoneyCast::class,
         'due_date' => 'date',
@@ -73,6 +84,9 @@ class BankSlip extends Model
 
     public function providerResponseFailed(): bool
     {
+        if (in_array((string) data_get($this->provider_payload, 'codigo'), ['3', '4'], true)) {
+            return false;
+        }
         $success = data_get($this->provider_payload, 'sucesso');
 
         return $success === false

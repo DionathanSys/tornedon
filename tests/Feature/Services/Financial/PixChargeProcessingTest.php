@@ -49,6 +49,7 @@ class PixChargeProcessingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['integrabancos-contracts.999' => config('integrabancos-contracts.461')]);
 
         $this->user = User::factory()->create();
         $this->company = Company::create([
@@ -238,6 +239,7 @@ class PixChargeProcessingTest extends TestCase
                 'sucesso' => true,
                 'identificacao' => 'PX-TEST',
                 'valor' => '100.00',
+                'data_pagamento' => '2026-10-01 12:00:00',
                 'status' => ['codigo' => '3', 'mensagem' => 'Pago/Liquidado'],
             ]);
         app()->instance(IntegraBancosPixClientInterface::class, $client);
@@ -361,7 +363,7 @@ class PixChargeProcessingTest extends TestCase
     {
         $client = Mockery::mock(IntegraBancosPixClientInterface::class);
         $client->shouldReceive('query')->once()->andReturn([
-            'sucesso' => true, 'valor' => '100.00',
+            'sucesso' => true, 'valor' => '100.00', 'data_pagamento' => '2026-10-01 12:00:00',
             'status' => ['codigo' => '3', 'mensagem' => 'Pago/Liquidado'],
         ]);
         app()->instance(IntegraBancosPixClientInterface::class, $client);

@@ -5,12 +5,13 @@ namespace App\Filament\Clusters\Financial\Resources\BankSlips;
 use App\Enum\Financial\BankSlipStatus;
 use App\Filament\Clusters\Financial\Resources\BankSlips\Pages\ListBankSlips;
 use App\Jobs\QueryBankSlipJob;
-use App\Jobs\RegisterBankSlipJob;
 use App\Models\BankSlip;
+use App\Services\Financial\Banking\BankingOperationService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -20,6 +21,7 @@ use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
 
@@ -73,8 +75,10 @@ class BankSlipResource extends Resource
                     ->formatStateUsing(fn (?BankSlipStatus $state): string => $state?->description() ?? '-')
                     ->color(fn (?BankSlipStatus $state): string => $state?->color() ?? 'gray')
                     ->sortable(),
+                TextColumn::make('operation_status')->label('Situação da solicitação')->badge()->placeholder('-'),
+                TextColumn::make('provider_response_code')->label('Código da resposta')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('provider_status_code')
-                    ->label('Código provider')
+                    ->label('Status da cobrança no provedor')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('provider_status_message')
@@ -120,6 +124,11 @@ class BankSlipResource extends Resource
                     ->multiple(),
             ])
             ->recordActions(ActionGroup::make([
+                Action::make('synchronize_installment')->label('Sincronizar alterações da parcela')->icon(Heroicon::ArrowPath)
+                    ->visible(fn (BankSlip $record) => $record->status === BankSlipStatus::REGISTERED)
+                    ->schema([Textarea::make('reason')->label('Justificativa')->required()->minLength(10)->maxLength(2000)])
+                    ->action(fn (BankSlip $record, array $data) => app(BankingOperationService::class)
+                        ->requestUpdate($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason'])),
                 Action::make('open_pdf')
                     ->label('Abrir PDF')
                     ->icon(Heroicon::DocumentArrowDown)
@@ -131,6 +140,7 @@ class BankSlipResource extends Resource
                     ->color('info')
                     ->visible(fn (BankSlip $record): bool => filled($record->provider_identification))
                     ->action(function (BankSlip $record): void {
+                        Gate::authorize('update', $record);
                         QueryBankSlipJob::dispatch($record->id);
 
                         Notification::make()
@@ -159,19 +169,14 @@ class BankSlipResource extends Resource
                     ->label('Tentar registro novamente')
                     ->icon(Heroicon::ArrowPath)
                     ->color('warning')
-                    ->visible(fn (BankSlip $record): bool => $record->providerResponseFailed() || in_array($record->status, [
+                    ->visible(fn (BankSlip $record): bool => in_array($record->status, [
                         BankSlipStatus::PENDING_REGISTRATION,
                         BankSlipStatus::REGISTRATION_FAILED,
-                        BankSlipStatus::UPDATE_PENDING,
+                        BankSlipStatus::UNCERTAIN,
                     ], true))
-                    ->action(function (BankSlip $record): void {
-                        if ($record->providerResponseFailed()) {
-                            $record->update([
-                                'status' => BankSlipStatus::REGISTRATION_FAILED->value,
-                            ]);
-                        }
-
-                        RegisterBankSlipJob::dispatch($record->id);
+                    ->schema([Textarea::make('reason')->label('Justificativa')->required()->minLength(10)->maxLength(2000)])
+                    ->action(function (BankSlip $record, array $data): void {
+                        app(BankingOperationService::class)->retryRegistration($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']);
 
                         Notification::make()
                             ->title('Registro do boleto enfileirado.')

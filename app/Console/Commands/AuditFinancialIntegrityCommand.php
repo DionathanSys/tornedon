@@ -45,7 +45,7 @@ class AuditFinancialIntegrityCommand extends Command
                         } elseif ($movement && ((int) $payment->company_id !== (int) $movement->company_id
                             || (int) $payment->financial_account_id !== (int) $movement->financial_account_id
                             || $this->cents($payment->amount) !== $this->cents($movement->amount)
-                            || $movement->reversed_at !== null)) {
+                            || ($movement->reversed_at !== null && (float) $payment->returned_amount <= 0))) {
                             $report('pagamento_movimento_divergente', $payment, 'Empresa, conta, valor ou estado de estorno incompatível.');
                         }
                     }
@@ -70,7 +70,7 @@ class AuditFinancialIntegrityCommand extends Command
                         $paid = 0;
                         $due = $this->cents($installment->original_amount);
                         foreach ($installment->payments as $payment) {
-                            $paid += $this->cents($payment->amount);
+                            $paid += $this->cents($payment->amount) - $this->cents($payment->returned_amount);
                             $due += $this->cents($payment->interest_amount) + $this->cents($payment->fine_amount) - $this->cents($payment->discount_amount);
                         }
                         $storedPaid = $relation === 'accountPayable' ? $installment->paid_amount : $installment->received_amount;

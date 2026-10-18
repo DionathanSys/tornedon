@@ -19,5 +19,6 @@ final readonly class PixProviderResult
         public array $payload = [],
         public array $errors = [],
         public ?string $message = null,
+        public ?string $responseCode = null,
     ) {}
 }

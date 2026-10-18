@@ -17,6 +17,8 @@ interface BankSlipProviderInterface
 
     public function query(BankSlip $bankSlip): BankSlipProviderResult;
 
+    public function queryEvent(BankSlip $bankSlip, string $eventId): BankSlipProviderResult;
+
     public function validateWebhook(BankAccountConnection $connection, array $payload, string $rawBody): bool;
 
     public function normalizeWebhook(array $payload): BankSlipWebhookEvent;

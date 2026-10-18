@@ -8,7 +8,7 @@ use App\Services\Financial\Banking\Contracts\BankSlipProviderInterface;
 use App\Services\Financial\Banking\DTO\BankSlipProviderResult;
 use App\Services\Financial\Banking\DTO\BankSlipWebhookEvent;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
+use Illuminate\Validation\ValidationException;
 
 final class IntegraBancosProvider implements BankSlipProviderInterface
 {
@@ -48,7 +48,11 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             'motivo' => 'Cancelamento solicitado pela empresa.',
         ];
 
-        return $this->sendProviderRequest($bankSlip, 'cancel', fn (): array => $this->client->cancel($payload));
+        return $this->sendProviderRequest($bankSlip, 'cancel', function () use ($bankSlip, $payload): array {
+            app(IntegraBancosPayloadBuilder::class)->assertOperation($bankSlip->connection, 'cancel');
+
+            return $this->client->cancel($payload);
+        });
     }
 
     public function query(BankSlip $bankSlip): BankSlipProviderResult
@@ -109,6 +113,14 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             && abs(time() - (int) $timestamp) <= 300;
     }
 
+    public function queryEvent(BankSlip $bankSlip, string $eventId): BankSlipProviderResult
+    {
+        return $this->sendProviderRequest($bankSlip, 'event_query', fn (): array => $this->client->queryEvent([
+            'codigo_banco' => (string) $bankSlip->connection->bank->code,
+            'identificacao' => $bankSlip->provider_identification, 'evento_id' => $eventId,
+        ]));
+    }
+
     public function normalizeWebhook(array $payload): BankSlipWebhookEvent
     {
         $providerEventId = $payload['evento_id'] ?? data_get($payload, 'event_id');
@@ -159,7 +171,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
     {
         try {
             $payloadResponse = $request();
-        } catch (\InvalidArgumentException $exception) {
+        } catch (\InvalidArgumentException|ValidationException|IntegraBancosAuthenticationException $exception) {
             $message = IntegraBancosExceptionFormatter::message($exception);
 
             Log::warning('IntegraBancos: requisicao rejeitada antes do envio', [
@@ -176,6 +188,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
                 httpStatus: 0,
                 errors: [$message],
                 message: $message,
+                responseCode: 'LOCAL_VALIDATION',
             );
         } catch (\Throwable $exception) {
             $message = IntegraBancosExceptionFormatter::message($exception);
@@ -197,7 +210,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             );
         }
 
-        $statusCode = $this->responseStatusCode($payloadResponse);
+        $statusCode = IntegraBancosResponse::status($payloadResponse);
         $statusMessage = $this->responseValue($payloadResponse, [
             'dados.status.mensagem',
             'dados.status.message',
@@ -215,7 +228,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         if (filled($errorDetails)) {
             $statusMessage = trim(implode(' | ', array_filter([$statusMessage, $errorDetails])));
         }
-        $successful = $this->responseIsSuccessful($payloadResponse, $statusCode);
+        $successful = IntegraBancosResponse::accepted($payloadResponse);
 
         if (! $successful) {
             Log::warning('IntegraBancos: provider recusou a operacao', [
@@ -228,8 +241,8 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
 
         return new BankSlipProviderResult(
             successful: $successful,
-            retryable: false,
-            httpStatus: $successful ? 200 : 422,
+            retryable: ! $successful && IntegraBancosResponse::code($payloadResponse) === '17',
+            httpStatus: 0,
             providerIdentification: $this->responseValue($payloadResponse, [
                 'identificacao',
                 'identification',
@@ -281,6 +294,8 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             payload: $payloadResponse,
             errors: $successful ? [] : [$statusMessage ?: 'Provider recusou a operacao.'],
             message: $successful ? null : ($statusMessage ?: 'Provider recusou a operacao.'),
+            responseCode: IntegraBancosResponse::code($payloadResponse),
+            operationId: isset($payloadResponse['evento_id']) ? (string) $payloadResponse['evento_id'] : null,
         );
     }
 
@@ -291,9 +306,11 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
     {
         return [
             'operation' => $operation,
-            'endpoint' => $operation === 'query'
-                ? '/charge/{identificacao}'
-                : '/charge',
+            'endpoint' => match ($operation) {
+                'query' => '/cobranca/{codigo_banco}/{identificacao}',
+                'event_query' => '/cobranca/{codigo_banco}/{identificacao}/{evento_id}',
+                default => '/cobranca',
+            },
             'connection_id' => $this->connection->id,
             'bank_slip_id' => $bankSlip->id,
             'provider_identification' => $bankSlip->provider_identification,
@@ -312,59 +329,14 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
      */
     private function updatePayload(BankSlip $bankSlip): array
     {
+        app(IntegraBancosPayloadBuilder::class)->assertOperation($bankSlip->connection, 'update');
+
         return [
             'codigo_banco' => (string) $bankSlip->connection?->bank?->code,
             'identificacao' => $bankSlip->provider_identification,
-            'data_vencimento' => $bankSlip->due_date?->toDateString(),
-            'valor' => number_format((float) $bankSlip->amount, 2, '.', ''),
+            'data_vencimento' => data_get($bankSlip->pending_update, 'data_vencimento') ?? $bankSlip->due_date?->toDateString(),
+            'valor' => data_get($bankSlip->pending_update, 'valor') ?? number_format((float) $bankSlip->amount, 2, '.', ''),
         ];
-    }
-
-    private function responseIsSuccessful(array $payload, ?string $statusCode): bool
-    {
-        $success = $payload['sucesso'] ?? null;
-
-        if (is_bool($success)) {
-            return $success;
-        }
-
-        if (is_string($success) && in_array(strtolower($success), ['true', '1', 'sim'], true)) {
-            return true;
-        }
-
-        if (is_string($success) && in_array(strtolower($success), ['false', '0', 'nao', 'não'], true)) {
-            return false;
-        }
-
-        $error = data_get($payload, 'error')
-            ?? data_get($payload, 'erro')
-            ?? data_get($payload, 'errors')
-            ?? data_get($payload, 'erros');
-
-        if (filled($error)) {
-            return false;
-        }
-
-        if ($statusCode === null) {
-            return true;
-        }
-
-        return in_array($statusCode, ['2', '3', '4', '5', '7'], true);
-    }
-
-    private function responseStatusCode(array $payload): ?string
-    {
-        $status = data_get($payload, 'dados.status.codigo')
-            ?? data_get($payload, 'status.codigo')
-            ?? data_get($payload, 'data.status.codigo')
-            ?? data_get($payload, 'status.code')
-            ?? data_get($payload, 'dados.status.code')
-            ?? data_get($payload, 'data.status.code')
-            ?? data_get($payload, 'codigo')
-            ?? data_get($payload, 'status_code')
-            ?? data_get($payload, 'status');
-
-        return is_scalar($status) && filled($status) ? (string) $status : null;
     }
 
     /**
@@ -416,28 +388,9 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
      */
     private function chargePayload(BankSlip $bankSlip): array
     {
-        $installment = $bankSlip->installment;
-        $receivable = $installment?->accountReceivable;
-        $customer = $receivable?->customer;
-        $document = preg_replace('/\D+/', '', (string) $customer?->document_number) ?: '';
-        $documentField = strtoupper((string) $customer?->document_type) === 'CNPJ' ? 'cnpj' : 'cpf';
+        $payload = app(IntegraBancosPayloadBuilder::class)->build($bankSlip);
+        $bankSlip->update(['request_snapshot' => $payload]);
 
-        if ($document === '' || ! $customer?->name) {
-            throw new RuntimeException('Cliente sem documento ou nome para emissao do boleto.');
-        }
-
-        return [
-            'numero' => (string) $bankSlip->id,
-            'identificacao' => $bankSlip->provider_identification,
-            'codigo_banco' => (string) $bankSlip->connection?->bank?->code,
-            'pagamento' => [
-                'valor' => number_format((float) $bankSlip->amount, 2, '.', ''),
-                'data_vencimento' => $bankSlip->due_date?->toDateString(),
-            ],
-            'pagador' => [
-                $documentField => $document,
-                'nome' => $customer->name,
-            ],
-        ];
+        return $payload;
     }
 }

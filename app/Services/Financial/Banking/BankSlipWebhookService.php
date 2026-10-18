@@ -2,10 +2,13 @@
 
 namespace App\Services\Financial\Banking;
 
+use App\Jobs\ProcessBankingEventJob;
 use App\Jobs\ProcessBankSlipWebhookJob;
 use App\Models\BankAccountConnection;
+use App\Models\BankingEvent;
 use App\Models\BankSlip;
 use App\Models\BankSlipEvent;
+use App\Models\PixCharge;
 use App\Services\Financial\Banking\DTO\BankSlipWebhookEvent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +19,7 @@ final class BankSlipWebhookService
         private readonly BankSlipProviderRegistry $registry,
     ) {}
 
-    public function ingest(BankAccountConnection $connection, array $payload, string $rawBody): ?BankSlipEvent
+    public function ingest(BankAccountConnection $connection, array $payload, string $rawBody): BankSlipEvent|BankingEvent|null
     {
         $provider = $this->registry->resolve($connection);
 
@@ -29,6 +32,19 @@ final class BankSlipWebhookService
         }
 
         $normalized = $provider->normalizeWebhook($payload);
+
+        $pix = PixCharge::query()->where('bank_account_connection_id', $connection->id)
+            ->where('company_id', $connection->company_id)->where('provider_identification', $normalized->identification)->first();
+        if ($pix && $this->resolveBankSlipId($connection, $normalized) === null) {
+            return DB::transaction(function () use ($pix, $payload, $normalized) {
+                $event = app(BankingEventService::class)->record($pix, [
+                    'response' => $payload, 'successful' => $normalized->statusCode !== '9', 'charge_status' => $normalized->statusCode,
+                ], $normalized->eventType ?: 'ATUALIZACAO', 'webhook');
+                ProcessBankingEventJob::dispatch($event->id)->afterCommit();
+
+                return $event;
+            });
+        }
 
         return DB::transaction(function () use ($connection, $normalized): BankSlipEvent {
             $event = BankSlipEvent::query()->firstOrCreate(
@@ -55,6 +71,11 @@ final class BankSlipWebhookService
 
             return $event;
         });
+    }
+
+    public function validateTest(BankAccountConnection $connection, array $payload, string $rawBody): bool
+    {
+        return $this->registry->resolve($connection)->validateWebhook($connection, $payload, $rawBody);
     }
 
     private function resolveBankSlipId(

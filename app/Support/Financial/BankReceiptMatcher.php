@@ -13,7 +13,7 @@ final class BankReceiptMatcher
         if (! in_array($chargeField, ['pix_charge_id', 'bank_slip_id'], true)) {
             throw new \InvalidArgumentException('Tipo de cobrança inválido.');
         }
-        $payments = $installment->payments()->where($chargeField, $chargeId)
+        $payments = $installment->payments()->where('company_id', $installment->company_id)->where($chargeField, $chargeId)
             ->where('origin', 'due_date')->whereNull('bank_confirmed_at')->get();
         if ($payments->count() !== 1) {
             return null;
@@ -24,7 +24,7 @@ final class BankReceiptMatcher
             return null;
         }
         $movement = CashMovement::query()->where('origin_type', $payment::class)->where('origin_id', $payment->id)->first();
-        if (! $movement || $movement->reversed_at !== null || (int) $movement->financial_account_id !== $accountId
+        if (! $movement || (int) $movement->company_id !== (int) $installment->company_id || $movement->reversed_at !== null || (int) $movement->financial_account_id !== $accountId
             || (int) round((float) $movement->amount * 100) !== (int) round($amount * 100)) {
             return null;
         }

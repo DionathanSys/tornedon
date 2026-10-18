@@ -2,22 +2,16 @@
 
 namespace App\Jobs;
 
-use App\Enum\Financial\BankSlipStatus;
-use App\Models\BankSlip;
+use App\Models\BankingEvent;
 use App\Models\BankSlipEvent;
 use App\Services\AccountReceivable\AccountReceivableService;
-use App\Support\Financial\BankReceiptMatcher;
-use App\Support\Financial\InstallmentPaymentGuard;
+use App\Services\Financial\Banking\BankingEventService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
 {
@@ -25,7 +19,7 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 120;
+    public int $timeout = 300;
 
     public int $uniqueFor = 900;
 
@@ -46,196 +40,39 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(AccountReceivableService $receivableService): void
     {
-        $lock = Cache::lock('bank-slip-webhook:'.$this->eventId, 120);
-
-        if (! $lock->get()) {
+        $event = BankSlipEvent::find($this->eventId);
+        if (! $event || $event->processed_at) {
             return;
         }
+        if (! $event->bankSlip) {
+            BankingEvent::firstOrCreate([
+                'bank_account_connection_id' => $event->bank_account_connection_id,
+                'event_key' => hash('sha256', 'unmatched-boleto:'.$event->id),
+            ], [
+                'company_id' => $event->company_id, 'source' => 'webhook', 'operation' => $event->event_type ?: 'unknown',
+                'status' => 'needs_review', 'payload' => ['response' => $event->payload, 'legacy_event_id' => $event->id],
+                'received_at' => $event->received_at, 'error' => 'Evento sem cobrança local correspondente.',
+            ]);
+            $event->update(['failed_at' => now(), 'processed_at' => now(), 'error' => 'Evento recebido sem boleto local correspondente.']);
 
-        try {
-            DB::transaction(function () use ($receivableService): void {
-                $event = BankSlipEvent::query()
-                    ->with(['bankSlip.installment.accountReceivable', 'bankSlip.connection'])
-                    ->lockForUpdate()
-                    ->find($this->eventId);
-
-                if (! $event || $event->processed_at) {
-                    return;
-                }
-
-                if (! $event->bankSlip) {
-                    $this->markForReview($event, 'Evento recebido sem boleto local correspondente.');
-
-                    return;
-                }
-
-                $bankSlip = $event->bankSlip;
-                $statusCode = (string) ($event->provider_status_code ?? '');
-
-                if ($statusCode === '3') {
-                    $this->processPayment($event, $bankSlip, $receivableService);
-
-                    return;
-                }
-
-                $bankSlip->update([
-                    'status' => match ($statusCode) {
-                        '2' => BankSlipStatus::REGISTERED->value,
-                        '4' => BankSlipStatus::CANCELED->value,
-                        '7' => BankSlipStatus::PAYMENT_RETURNED->value,
-                        default => BankSlipStatus::NEEDS_REVIEW->value,
-                    },
-                    'provider_status_code' => $statusCode !== '' ? $statusCode : null,
-                    'provider_status_message' => data_get($event->payload, 'status.mensagem')
-                        ?? data_get($event->payload, 'status.message'),
-                    'canceled_at' => $statusCode === '4' ? now() : $bankSlip->canceled_at,
-                    'last_synchronized_at' => now(),
-                    'provider_payload' => $event->payload,
-                    ...$this->providerDocumentAttributes($event, $bankSlip),
-                ]);
-
-                $event->update(['processed_at' => now()]);
-            });
-        } finally {
-            $lock->release();
+            return;
         }
+        $service = app(BankingEventService::class);
+        $observation = $service->record($event->bankSlip, [
+            'response' => [...$event->payload, 'valor' => $event->amount, 'status' => ['codigo' => $event->provider_status_code]],
+            'successful' => $event->provider_status_code !== '9', 'charge_status' => $event->provider_status_code,
+            'legacy_event_id' => $event->id,
+        ], (string) ($event->event_type ?: 'ATUALIZACAO'), 'webhook');
+        $service->process($observation);
+        $observation->refresh();
+        $event->update([
+            'processed_at' => now(), 'failed_at' => $observation->status === 'needs_review' ? now() : null,
+            'error' => $observation->error,
+        ]);
     }
 
     public function failed(\Throwable $exception): void
     {
-        BankSlipEvent::query()
-            ->whereKey($this->eventId)
-            ->update([
-                'failed_at' => now(),
-                'error' => $exception->getMessage(),
-            ]);
-
-        Log::error('ProcessBankSlipWebhookJob: falha ao processar evento', [
-            'event_id' => $this->eventId,
-            'exception' => $exception->getMessage(),
-        ]);
-    }
-
-    private function processPayment(
-        BankSlipEvent $event,
-        BankSlip $bankSlip,
-        AccountReceivableService $receivableService,
-    ): void {
-        $amount = (float) $event->amount;
-        $installment = $bankSlip->installment;
-
-        if (! $installment || $amount <= 0) {
-            $this->markForReview($event, 'Evento de liquidacao sem parcela ou valor valido.');
-
-            return;
-        }
-
-        $installment = InstallmentPaymentGuard::lock($installment);
-        $connection = $bankSlip->connection;
-        if (! $connection || (int) $connection->company_id !== (int) $installment->company_id
-            || $installment->status->value === 'cancelled' || $installment->accountReceivable->status->value === 'cancelled') {
-            $this->markForReview($event, 'Conta, conexão ou parcela inválida para a liquidação.');
-
-            return;
-        }
-        $existing = BankReceiptMatcher::dueDatePayment(
-            $installment, 'bank_slip_id', $bankSlip->id, $amount, (int) ($bankSlip->financial_account_id ?? $connection->financial_account_id),
-        );
-        if ($existing) {
-            $existing->update(['bank_confirmed_at' => now(), 'bank_slip_event_id' => $event->id]);
-            $bankSlip->update(['status' => BankSlipStatus::PAID, 'paid_at' => now(), 'last_error' => null]);
-            $event->update(['processed_at' => now()]);
-
-            return;
-        }
-        $balance = round((float) $installment->balance_amount, 2);
-
-        if ($amount > $balance) {
-            $this->markForReview($event, 'Valor do evento excede o saldo da parcela.');
-
-            return;
-        }
-
-        $payment = $receivableService->registerInstallmentPayment(
-            $installment,
-            $amount,
-            $event->received_at?->toDateString() ?? now()->toDateString(),
-            [
-                'financial_account_id' => $bankSlip->financial_account_id ?? $connection->financial_account_id,
-                'bank_slip_id' => $bankSlip->id,
-                'bank_slip_event_id' => $event->id,
-                'description' => 'Pagamento incremental de boleto bancario',
-            ],
-        );
-
-        if ($receivableService->hasError() || ! $payment) {
-            throw new RuntimeException(
-                $receivableService->getMessage() ?: 'Nao foi possivel registrar o pagamento do boleto.'
-            );
-        }
-
-        $payment->update(['bank_confirmed_at' => now()]);
-
-        $installment->refresh();
-        $bankSlip->update([
-            'status' => (float) $installment->balance_amount <= 0
-                ? BankSlipStatus::PAID->value
-                : BankSlipStatus::PARTIALLY_PAID->value,
-            'paid_at' => (float) $installment->balance_amount <= 0 ? now() : $bankSlip->paid_at,
-            'provider_status_code' => (string) $event->provider_status_code,
-            'provider_status_message' => data_get($event->payload, 'status.mensagem')
-                ?? data_get($event->payload, 'status.message'),
-            'last_synchronized_at' => now(),
-            'provider_payload' => $event->payload,
-            ...$this->providerDocumentAttributes($event, $bankSlip),
-        ]);
-        $event->update(['processed_at' => now()]);
-    }
-
-    /**
-     * @return array<string, string|null>
-     */
-    private function providerDocumentAttributes(BankSlipEvent $event, BankSlip $bankSlip): array
-    {
-        return [
-            'pdf_url' => data_get($event->payload, 'pdf')
-                ?? data_get($event->payload, 'dados.pdf')
-                ?? data_get($event->payload, 'data.pdf')
-                ?: $bankSlip->pdf_url,
-            'digitable_line' => data_get($event->payload, 'linha_digitavel')
-                ?? data_get($event->payload, 'dados.linha_digitavel')
-                ?? data_get($event->payload, 'data.linha_digitavel')
-                ?: $bankSlip->digitable_line,
-            'barcode' => data_get($event->payload, 'codigo_barras')
-                ?? data_get($event->payload, 'dados.codigo_barras')
-                ?? data_get($event->payload, 'data.codigo_barras')
-                ?? data_get($event->payload, 'barcode')
-                ?? data_get($event->payload, 'dados.barcode')
-                ?? data_get($event->payload, 'data.barcode')
-                ?? $bankSlip->barcode,
-        ];
-    }
-
-    private function markForReview(BankSlipEvent $event, string $message): void
-    {
-        $event->update([
-            'processed_at' => now(),
-            'failed_at' => now(),
-            'error' => $message,
-        ]);
-
-        $event->bankSlip?->update([
-            'status' => BankSlipStatus::NEEDS_REVIEW->value,
-            'provider_status_code' => $event->provider_status_code,
-            'provider_payload' => $event->payload,
-            'last_error' => $message,
-            'last_synchronized_at' => now(),
-        ]);
-
-        Log::warning('ProcessBankSlipWebhookJob: evento encaminhado para revisao', [
-            'event_id' => $event->id,
-            'bank_slip_id' => $event->bank_slip_id,
-            'message' => $message,
-        ]);
+        BankSlipEvent::whereKey($this->eventId)->update(['failed_at' => now(), 'error' => $exception->getMessage()]);
     }
 }

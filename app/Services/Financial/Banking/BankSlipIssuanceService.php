@@ -79,7 +79,7 @@ final class BankSlipIssuanceService
                 ->first();
 
             if ($existing) {
-                if ($existing->providerResponseFailed()) {
+                if ($existing->providerResponseFailed() && in_array($existing->status, [BankSlipStatus::PENDING_REGISTRATION, BankSlipStatus::REGISTRATION_FAILED], true)) {
                     $existing->update([
                         'status' => BankSlipStatus::REGISTRATION_FAILED->value,
                     ]);

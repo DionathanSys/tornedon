@@ -24,11 +24,11 @@ final class InstallmentPaymentGuard
     {
         $payment = $installment->payments()->first();
         if ($payment) {
-            self::validate($installment, $account, (float) $payment->amount, $payment->only(['interest_amount', 'fine_amount', 'discount_amount']), $payment->id);
+            self::validate($installment, $account, (float) $payment->amount - (float) $payment->returned_amount, $payment->only(['interest_amount', 'fine_amount', 'discount_amount']), $payment->id, true);
         }
     }
 
-    public static function validate(Model $installment, Model $account, float $amount, array $charges, ?int $replacedPaymentId = null): void
+    public static function validate(Model $installment, Model $account, float $amount, array $charges, ?int $replacedPaymentId = null, bool $allowZero = false): void
     {
         if ((int) $installment->company_id !== (int) $account->company_id) {
             throw ValidationException::withMessages(['company_id' => ['Empresa da parcela divergente da conta.']]);
@@ -42,7 +42,7 @@ final class InstallmentPaymentGuard
         }
 
         $paid = self::cents($amount, 'amount');
-        if ($paid <= 0) {
+        if ($paid <= 0 && ! $allowZero) {
             throw ValidationException::withMessages(['amount' => ['O valor deve ser de pelo menos R$ 0,01.']]);
         }
 
@@ -52,7 +52,7 @@ final class InstallmentPaymentGuard
         }
 
         foreach ($installment->payments()->when($replacedPaymentId, fn ($query) => $query->whereKeyNot($replacedPaymentId))->get() as $payment) {
-            $paid += self::cents((float) $payment->amount, 'amount');
+            $paid += self::cents((float) $payment->amount - (float) $payment->returned_amount, 'amount');
             $due += self::cents((float) $payment->interest_amount, 'interest_amount')
                 + self::cents((float) $payment->fine_amount, 'fine_amount')
                 - self::cents((float) $payment->discount_amount, 'discount_amount');

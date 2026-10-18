@@ -27,4 +27,6 @@ interface IntegraBancosClientInterface
      * @return array<string, mixed>
      */
     public function query(array $payload): array;
+
+    public function queryEvent(array $payload): array;
 }

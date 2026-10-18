@@ -18,5 +18,7 @@ final readonly class BankSlipProviderResult
         public array $payload = [],
         public array $errors = [],
         public ?string $message = null,
+        public ?string $responseCode = null,
+        public ?string $operationId = null,
     ) {}
 }

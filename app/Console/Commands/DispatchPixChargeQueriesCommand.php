@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Enum\Financial\PixChargeStatus;
 use App\Jobs\QueryPixChargeJob;
 use App\Models\PixCharge;
 use Illuminate\Console\Command;
@@ -16,7 +15,8 @@ final class DispatchPixChargeQueriesCommand extends Command
     public function handle(): int
     {
         $query = PixCharge::query()
-            ->where('status', PixChargeStatus::REGISTERED->value)
+            ->whereIn('status', ['registered', 'processing', 'uncertain', 'partially_paid'])
+            ->whereHas('connection', fn ($query) => $query->where('status', 'active'))
             ->where(function ($query): void {
                 $query
                     ->whereNull('last_synchronized_at')

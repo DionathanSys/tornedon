@@ -58,6 +58,7 @@ class BankSlipWebhookProcessingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['integrabancos-contracts.999' => config('integrabancos-contracts.461')]);
 
         $this->user = User::factory()->create();
         $this->company = Company::create([
@@ -153,6 +154,7 @@ class BankSlipWebhookProcessingTest extends TestCase
             ],
             'settings' => [
                 'base_url' => 'https://bank.test',
+                'webhook_amount_mode' => 'incremental',
             ],
             'status' => 'active',
         ]);
@@ -329,6 +331,7 @@ class BankSlipWebhookProcessingTest extends TestCase
         $payload = [
             'identificacao' => $this->bankSlip->provider_identification,
             'valor' => '35.00',
+            'data_hora' => '2026-10-01 12:00:00',
             'status' => [
                 'codigo' => 3,
                 'mensagem' => 'Pago/Liquidado',
@@ -371,7 +374,7 @@ class BankSlipWebhookProcessingTest extends TestCase
                 'identificacao' => 'BS-TEST-001',
                 'motivo' => 'Cancelamento solicitado pela empresa.',
             ])
-            ->andReturn([]);
+            ->andReturn(['sucesso' => true, 'codigo' => 4, 'evento_id' => 'cancel-1']);
         app()->instance(IntegraBancosClientInterface::class, $client);
 
         CompanyPreference::setCancelBankSlipsWhenInvoiceCancelled(true, $this->company->id);
@@ -380,8 +383,9 @@ class BankSlipWebhookProcessingTest extends TestCase
             $this->bankSlip->installment()->first()->accountReceivable->invoice_id
         ))->handle();
 
-        $this->assertSame(BankSlipStatus::CANCELED, $this->bankSlip->fresh()->status);
-        $this->assertNotNull($this->bankSlip->fresh()->canceled_at);
+        $this->assertSame(BankSlipStatus::CANCEL_PENDING, $this->bankSlip->fresh()->status);
+        $this->assertNull($this->bankSlip->fresh()->canceled_at);
+        $this->assertSame('cancel-1', $this->bankSlip->fresh()->provider_operation_id);
     }
 
     public function test_registers_pending_slip_after_invoice_schedule(): void
@@ -398,6 +402,7 @@ class BankSlipWebhookProcessingTest extends TestCase
                     && $payload['pagador']['cpf'] === '12345678901';
             }))
             ->andReturn([
+                'sucesso' => true,
                 'identificacao' => 'BS-TEST-001',
                 'id' => 'charge-001',
                 'pdf' => 'https://bank.test/boletos/001.pdf',
@@ -415,7 +420,7 @@ class BankSlipWebhookProcessingTest extends TestCase
         $invoice = $this->bankSlip->installment()->first()->accountReceivable->invoice;
         $invoice->update(['auto_bank_slip_issuance' => true]);
         $this->bankSlip->installment()->update(['auto_bank_slip_issuance' => true]);
-        $this->bankSlip->update(['status' => BankSlipStatus::UPDATE_PENDING->value]);
+        $this->bankSlip->update(['status' => BankSlipStatus::PENDING_REGISTRATION->value]);
 
         (new ScheduleBankSlipIssuanceJob($invoice->id))->handle(app(BankSlipIssuanceService::class));
 
@@ -440,14 +445,15 @@ class BankSlipWebhookProcessingTest extends TestCase
             ]);
         app()->instance(IntegraBancosClientInterface::class, $client);
 
-        $this->bankSlip->update(['status' => BankSlipStatus::UPDATE_PENDING->value]);
+        $this->bankSlip->update(['status' => BankSlipStatus::PENDING_REGISTRATION->value]);
 
         (new RegisterBankSlipJob($this->bankSlip->id))->handle(app(BankSlipProviderRegistry::class));
 
         $bankSlip = $this->bankSlip->fresh();
 
         $this->assertSame(BankSlipStatus::REGISTRATION_FAILED, $bankSlip->status);
-        $this->assertSame('1', $bankSlip->provider_status_code);
+        $this->assertSame('1', $bankSlip->provider_response_code);
+        $this->assertNull($bankSlip->provider_status_code);
         $this->assertSame(
             'JSON com erros nos campos. | numero: A propriedade numero é obrigatória',
             $bankSlip->provider_status_message,
@@ -579,7 +585,7 @@ class BankSlipWebhookProcessingTest extends TestCase
             'event_type' => 'ATUALIZACAO',
             'provider_status_code' => '3',
             'amount' => $amount,
-            'payload' => ['status' => ['codigo' => '3']],
+            'payload' => ['status' => ['codigo' => '3'], 'data_hora' => '2026-10-01 12:00:00'],
             'received_at' => now(),
         ]);
     }

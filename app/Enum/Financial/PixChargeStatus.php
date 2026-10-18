@@ -5,6 +5,10 @@ namespace App\Enum\Financial;
 enum PixChargeStatus: string
 {
     case PENDING_REGISTRATION = 'pending_registration';
+    case PROCESSING = 'processing';
+    case UNCERTAIN = 'uncertain';
+    case PARTIALLY_PAID = 'partially_paid';
+    case PAYMENT_RETURNED = 'payment_returned';
     case REGISTERED = 'registered';
     case REGISTRATION_FAILED = 'registration_failed';
     case PAID = 'paid';
@@ -16,6 +20,10 @@ enum PixChargeStatus: string
     {
         return match ($this) {
             self::PENDING_REGISTRATION => 'Aguardando registro',
+            self::PROCESSING => 'Em processamento no banco',
+            self::UNCERTAIN => 'Resultado da emissão incerto',
+            self::PARTIALLY_PAID => 'Paga parcialmente',
+            self::PAYMENT_RETURNED => 'Pagamento devolvido',
             self::REGISTERED => 'Registrada',
             self::REGISTRATION_FAILED => 'Falha no registro',
             self::PAID => 'Paga',

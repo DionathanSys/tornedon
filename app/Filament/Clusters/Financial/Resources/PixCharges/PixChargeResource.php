@@ -6,12 +6,13 @@ use App\Enum\Financial\PixChargeStatus;
 use App\Filament\Clusters\Financial\Resources\PixCharges\Pages\ListPixCharges;
 use App\Filament\Support\Actions\PixPaymentLinkAction;
 use App\Jobs\QueryPixChargeJob;
-use App\Jobs\RegisterPixChargeJob;
 use App\Models\PixCharge;
+use App\Services\Financial\Banking\BankingOperationService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,6 +22,7 @@ use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
 
@@ -74,6 +76,8 @@ class PixChargeResource extends Resource
                     ->formatStateUsing(fn (?PixChargeStatus $state): string => $state?->description() ?? '-')
                     ->color(fn (?PixChargeStatus $state): string => $state?->color() ?? 'gray')
                     ->sortable(),
+                TextColumn::make('operation_status')->label('Situação da solicitação')->badge()->placeholder('-'),
+                TextColumn::make('provider_response_code')->label('Código da resposta')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('pix_copy_paste')
                     ->label('Copia e cola')
                     ->copyable()
@@ -121,8 +125,9 @@ class PixChargeResource extends Resource
                     ->icon(Heroicon::ArrowPath)
                     ->color('info')
                     ->visible(fn (PixCharge $record): bool => filled($record->provider_identification)
-                        && $record->status === PixChargeStatus::REGISTERED)
+                        && ! in_array($record->status, [PixChargeStatus::PAID, PixChargeStatus::CANCELED, PixChargeStatus::PAYMENT_RETURNED], true))
                     ->action(function (PixCharge $record): void {
+                        Gate::authorize('update', $record);
                         QueryPixChargeJob::dispatch($record->id);
 
                         Notification::make()
@@ -137,9 +142,11 @@ class PixChargeResource extends Resource
                     ->visible(fn (PixCharge $record): bool => in_array($record->status, [
                         PixChargeStatus::PENDING_REGISTRATION,
                         PixChargeStatus::REGISTRATION_FAILED,
+                        PixChargeStatus::UNCERTAIN,
                     ], true))
-                    ->action(function (PixCharge $record): void {
-                        RegisterPixChargeJob::dispatch($record->id);
+                    ->schema([Textarea::make('reason')->label('Justificativa')->required()->minLength(10)->maxLength(2000)])
+                    ->action(function (PixCharge $record, array $data): void {
+                        app(BankingOperationService::class)->retryRegistration($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']);
 
                         Notification::make()
                             ->title('Registro da cobrança PIX enfileirado.')

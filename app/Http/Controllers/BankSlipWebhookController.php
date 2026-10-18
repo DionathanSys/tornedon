@@ -16,6 +16,13 @@ final class BankSlipWebhookController extends Controller
         BankSlipWebhookService $service,
     ): JsonResponse {
         try {
+            $token = data_get($connection->credentials, 'webhook_token');
+            if (filled($token) && ! hash_equals((string) $token, (string) $request->header('X-Webhook-Token'))) {
+                return response()->json(['ok' => false]);
+            }
+            if ($request->input('evento') === 'TESTE') {
+                return response()->json(['ok' => $service->validateTest($connection, $request->all(), $request->getContent())]);
+            }
             $event = $service->ingest(
                 $connection,
                 $request->all(),
@@ -33,7 +40,7 @@ final class BankSlipWebhookController extends Controller
                 'trace' => $exception->getTraceAsString(),
             ]);
 
-            return response()->json(['ok' => false]);
+            return response()->json(['ok' => false], 503);
         }
     }
 }

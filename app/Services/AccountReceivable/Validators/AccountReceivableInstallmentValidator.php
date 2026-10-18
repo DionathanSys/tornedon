@@ -3,6 +3,7 @@
 namespace App\Services\AccountReceivable\Validators;
 
 use App\Enum\AccountReceivable\Status;
+use App\Models\BankingEvent;
 use App\Models\BankSlip;
 use App\Models\BankSlipEvent;
 use App\Models\ChartAccount;
@@ -100,6 +101,7 @@ class AccountReceivableInstallmentValidator
             'bank_account_id' => self::bankAccountRule(false),
             'financial_account_id' => self::financialAccountRule($data, false),
             'bank_slip_id' => self::companyOwnedRule($data, BankSlip::class, 'Boleto nao encontrado para a empresa.'),
+            'banking_event_id' => self::companyOwnedRule($data, BankingEvent::class, 'Evento bancário não encontrado para a empresa.'),
             'bank_slip_event_id' => self::companyOwnedRule($data, BankSlipEvent::class, 'Evento de boleto nao encontrado para a empresa.'),
             'pix_charge_id' => self::companyOwnedRule($data, PixCharge::class, 'Cobrança PIX não encontrada para a empresa.'),
             'description' => ['nullable', 'string', 'max:255'],

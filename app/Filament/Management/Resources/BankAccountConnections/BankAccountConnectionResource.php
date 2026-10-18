@@ -16,6 +16,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -157,6 +158,22 @@ class BankAccountConnectionResource extends Resource
                         ->password()
                         ->revealable()
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
+                    TextInput::make('credential_webhook_token')->label('Token opcional do header X-Webhook-Token')
+                        ->password()->revealable()->dehydrated(fn (mixed $state): bool => filled($state)),
+                ]),
+            Section::make('Contrato do banco')
+                ->description('Configuração por modalidade, conforme o schema IntegraBancos. Não informe senhas aqui. Identificação, valor e pagador são preenchidos pelo sistema.')
+                ->schema([
+                    Select::make('settings.webhook_amount_mode')->label('Semântica do valor no webhook')
+                        ->options(['unknown' => 'Não homologada — revisar parciais', 'incremental' => 'Valor de cada recebimento', 'cumulative' => 'Total acumulado recebido'])
+                        ->default('unknown')->required()
+                        ->helperText('Configure incremental/acumulado somente após validar retornos reais desta conexão com o provedor.'),
+                    Textarea::make('settings.cobranca')->label('Boleto: conta, pagamento e beneficiario (JSON)')
+                        ->rows(8)->formatStateUsing(fn ($state) => json_encode($state ?: new \stdClass, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
+                        ->rules(['nullable', 'json'])->dehydrateStateUsing(fn ($state) => json_decode($state ?: '{}', true)),
+                    Textarea::make('settings.pix')->label('PIX: pagamento.chave_pix, tipo_chave_pix e demais opções (JSON)')
+                        ->rows(5)->formatStateUsing(fn ($state) => json_encode($state ?: new \stdClass, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
+                        ->rules(['nullable', 'json'])->dehydrateStateUsing(fn ($state) => json_decode($state ?: '{}', true)),
                 ]),
         ]);
     }
@@ -172,6 +189,7 @@ class BankAccountConnectionResource extends Resource
             'secret_key',
             'access_token',
             'refresh_token',
+            'webhook_token',
         ] as $key) {
             $field = 'credential_'.$key;
 

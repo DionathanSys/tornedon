@@ -31,7 +31,7 @@ class CompanyOperationalResetService
         'production_requests', 'production_request_items', 'warranty_claims',
         'account_payables', 'account_payable_installments', 'account_payable_installment_payments',
         'account_receivables', 'account_receivable_installments', 'account_receivable_installment_payments',
-        'bank_slips', 'bank_slip_events', 'pix_charges', 'cash_movements',
+        'bank_slips', 'bank_slip_events', 'pix_charges', 'banking_events', 'cash_movements',
         'bank_statement_imports', 'bank_statement_import_runs', 'bank_statement_lines',
         'company_card_transactions', 'company_card_statements', 'company_card_statement_items',
         'company_card_statement_payments', 'purchase_closings', 'purchase_closing_fiscal_documents',

@@ -21,7 +21,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
     {
         try {
             Log::info('Iniciando registro de recebimento de parcela', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'account_receivable_id' => $this->installment->account_receivable_id,
                 'company_id' => $this->installment->company_id,
@@ -40,14 +40,14 @@ class RegisterAccountReceivableInstallmentPaymentAction
 
             $validated = AccountReceivableInstallmentValidator::validatePayment($data);
             Log::info('Payload de recebimento validado', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'validated' => $validated,
             ]);
 
             $payment = AccountReceivableInstallmentPayment::create($validated);
             Log::info('Recebimento criado', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'payment_id' => $payment->id,
                 'installment_id' => $this->installment->id,
                 'payment_snapshot' => [
@@ -64,7 +64,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
 
             $totals = $this->calculateInstallmentTotals();
             Log::info('Totais recalculados da parcela a receber', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'totals' => $totals,
             ]);
@@ -82,7 +82,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
 
             $this->installment->refresh();
             Log::info('Parcela a receber atualizada apos registro do recebimento', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'installment_snapshot' => [
                     'interest_amount' => $this->installment->interest_amount,
@@ -108,7 +108,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
             $this->setError('Falha de validação dos dados de recebimento', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
                 'installment_id' => $this->installment->id,
@@ -120,7 +120,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
             $this->setError('Erro ao salvar recebimento da parcela no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'installment_id' => $this->installment->id,
@@ -132,7 +132,7 @@ class RegisterAccountReceivableInstallmentPaymentAction
             $this->setError('Erro inesperado ao registrar recebimento da parcela');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -147,9 +147,9 @@ class RegisterAccountReceivableInstallmentPaymentAction
     private function calculateInstallmentTotals(): array
     {
         $payments = $this->installment->payments()
-            ->get(['amount', 'interest_amount', 'fine_amount', 'discount_amount']);
+            ->get(['amount', 'returned_amount', 'interest_amount', 'fine_amount', 'discount_amount']);
 
-        $received = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount), 2);
+        $received = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount - (float) $payment->returned_amount), 2);
         $interest = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
         $fine = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
         $discount = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);

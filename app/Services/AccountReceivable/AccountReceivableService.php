@@ -28,6 +28,7 @@ use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
 use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -294,6 +295,7 @@ class AccountReceivableService
                     'bank_account_id' => $extra['bank_account_id'] ?? null,
                     'financial_account_id' => $extra['financial_account_id'] ?? null,
                     'bank_slip_id' => $extra['bank_slip_id'] ?? null,
+                    'banking_event_id' => $extra['banking_event_id'] ?? null,
                     'bank_slip_event_id' => $extra['bank_slip_event_id'] ?? null,
                     'pix_charge_id' => $extra['pix_charge_id'] ?? null,
                     'description' => $extra['description']
@@ -589,6 +591,20 @@ class AccountReceivableService
             return $this->financialTransaction(function () use ($payment, $data) {
                 InstallmentPaymentGuard::lock($payment->installment);
                 $payment = AccountReceivableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
+                if ((float) $payment->returned_amount > 0) {
+                    throw ValidationException::withMessages(['payment' => ['Recebimentos devolvidos preservam o histórico e não podem ser editados.']]);
+                }
+                if ($payment->bank_confirmed_at !== null) {
+                    foreach (['amount', 'interest_amount', 'fine_amount', 'discount_amount', 'financial_account_id', 'payment_date'] as $field) {
+                        $original = $field === 'payment_date' ? $payment->payment_date?->toDateString() : $payment->{$field};
+                        $changed = $field === 'payment_date'
+                            ? (string) ($data[$field] ?? $original) !== (string) $original
+                            : (int) round((float) ($data[$field] ?? $original) * 100) !== (int) round((float) $original * 100);
+                        if (array_key_exists($field, $data) && $changed) {
+                            throw ValidationException::withMessages(['payment' => ['Baixas confirmadas pelo banco não podem ter seus valores, conta ou data alterados. Utilize a resolução bancária.']]);
+                        }
+                    }
+                }
                 $userId = $data['user_id'] ?? auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
@@ -675,6 +691,9 @@ class AccountReceivableService
             return $this->financialTransaction(function () use ($payment) {
                 InstallmentPaymentGuard::lock($payment->installment);
                 $payment = AccountReceivableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
+                if ((float) $payment->returned_amount > 0 || $payment->bank_confirmed_at !== null) {
+                    throw ValidationException::withMessages(['payment' => ['Recebimentos confirmados pelo banco ou devolvidos não podem ser excluídos.']]);
+                }
                 $userId = auth()->id();
                 $payment->loadMissing('installment.accountReceivable');
 
@@ -870,12 +889,24 @@ class AccountReceivableService
         return $counterpartyName === '' ? null : $counterpartyName;
     }
 
+    public function resynchronizeAfterBankReturn(AccountReceivableInstallment $installment): void
+    {
+        DB::transaction(function () use ($installment): void {
+            $installment = InstallmentPaymentGuard::lock($installment);
+            $this->recalculateReceivableInstallment($installment);
+            $action = new SyncAccountReceivableStatusFromInstallmentsAction($installment->accountReceivable);
+            if (! $action->execute() || $action->hasError()) {
+                throw ValidationException::withMessages(['account' => [$action->getMessage()]]);
+            }
+        });
+    }
+
     private function recalculateReceivableInstallment(AccountReceivableInstallment $installment): void
     {
         InstallmentPaymentGuard::validateExistingPayments($installment, $installment->accountReceivable);
         $installment->loadMissing('payments', 'accountReceivable');
 
-        $received = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount), 2);
+        $received = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount - (float) $payment->returned_amount), 2);
         $interest = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
         $fine = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
         $discount = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);

@@ -53,6 +53,7 @@ class AccountReceivableInstallmentPaymentsTable
                     ->label('Valor Recebido')
                     ->money('BRL')
                     ->sortable(),
+                TextColumn::make('returned_amount')->label('Valor devolvido')->money('BRL')->toggleable(),
                 TextColumn::make('origin')
                     ->label('Origem')
                     ->formatStateUsing(fn (string $state): string => match ($state) {

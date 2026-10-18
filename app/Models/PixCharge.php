@@ -11,6 +11,14 @@ class PixCharge extends Model
 {
     protected $fillable = [
         'company_id',
+        'operation_status',
+        'operation_kind',
+        'operation_attempt_id',
+        'pending_update',
+        'provider_operation_id',
+        'provider_response_code',
+        'request_snapshot',
+        'request_sent_at',
         'account_receivable_installment_id',
         'bank_account_connection_id',
         'financial_account_id',
@@ -31,6 +39,9 @@ class PixCharge extends Model
     ];
 
     protected $casts = [
+        'request_snapshot' => 'array',
+        'pending_update' => 'array',
+        'request_sent_at' => 'datetime',
         'status' => PixChargeStatus::class,
         'amount' => MoneyCast::class,
         'due_date' => 'date',

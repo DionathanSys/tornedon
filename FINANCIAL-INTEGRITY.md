@@ -1,5 +1,7 @@
 # Integridade financeira — primeira entrega da etapa 1
 
+A continuação da operação bancária está documentada em [FINANCIAL-PHASE-2.md](FINANCIAL-PHASE-2.md), incluindo desenvolvimento, testes, implantação e próximos passos.
+
 ## Regras implementadas
 
 - Faturas e serviços de contas a pagar/receber executam operações atômicas também quando as actions retornam erro, preservando os contratos públicos `null`/`false` e as mensagens existentes. `RunsFinancialTransactions` provoca rollback antes de devolver o resultado de falha.

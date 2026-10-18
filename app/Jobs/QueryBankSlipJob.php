@@ -2,9 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Enum\Financial\BankSlipStatus;
-use App\Models\BankAccountConnection;
 use App\Models\BankSlip;
+use App\Services\Financial\Banking\BankingEventService;
 use App\Services\Financial\Banking\BankSlipProviderRegistry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -13,8 +12,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 final class QueryBankSlipJob implements ShouldBeUnique, ShouldQueue
 {
@@ -22,7 +19,7 @@ final class QueryBankSlipJob implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 120;
+    public int $timeout = 300;
 
     public int $uniqueFor = 900;
 
@@ -43,83 +40,31 @@ final class QueryBankSlipJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(BankSlipProviderRegistry $registry): void
     {
-        $lock = Cache::lock('bank-slip-query:'.$this->bankSlipId, 120);
-
-        if (! $lock->get()) {
-            return;
-        }
-
-        try {
-            $bankSlip = BankSlip::query()
-                ->with(['connection.billingProvider', 'connection.bank'])
-                ->find($this->bankSlipId);
-
-            if (! $bankSlip || blank($bankSlip->provider_identification)) {
+        Cache::lock('banking-charge:boleto:'.$this->bankSlipId, 330)->get(function () use ($registry): void {
+            $charge = BankSlip::find($this->bankSlipId);
+            if (! $charge || blank($charge->provider_identification) || $charge->connection?->status !== 'active') {
                 return;
             }
-
-            $connection = $bankSlip->connection;
-
-            if (! $connection instanceof BankAccountConnection) {
-                return;
-            }
-
-            $result = $registry->resolve($connection)->query($bankSlip);
-            $statusCode = (string) ($result->statusCode ?? '');
-            $updates = [
-                'provider_identification' => $result->providerIdentification ?? $bankSlip->provider_identification,
-                'provider_charge_id' => $result->providerChargeId ?: $bankSlip->provider_charge_id,
-                'provider_status_code' => $result->statusCode,
-                'provider_status_message' => $result->statusMessage,
-                'pdf_url' => $result->pdfUrl ?: $bankSlip->pdf_url,
-                'digitable_line' => $result->digitableLine ?: $bankSlip->digitable_line,
-                'barcode' => $result->barcode ?: $bankSlip->barcode,
-                'last_synchronized_at' => now(),
-                'provider_payload' => $result->payload,
-                'last_error' => $result->successful
-                    ? null
-                    : ($result->message ?: implode('; ', $result->errors)),
-            ];
-
-            if ($result->successful) {
-                $updates['status'] = match ($statusCode) {
-                    '2' => BankSlipStatus::REGISTERED->value,
-                    '4' => BankSlipStatus::CANCELED->value,
-                    '7' => BankSlipStatus::PAYMENT_RETURNED->value,
-                    default => $bankSlip->status?->value ?? BankSlipStatus::NEEDS_REVIEW->value,
-                };
-
-                if ($statusCode === '2' && ! $bankSlip->registered_at) {
-                    $updates['registered_at'] = now();
-                }
-
-                if ($statusCode === '4' && ! $bankSlip->canceled_at) {
-                    $updates['canceled_at'] = now();
+            $provider = $registry->resolve($charge->connection);
+            $service = app(BankingEventService::class);
+            if ($charge->provider_operation_id && in_array($charge->status->value, ['cancel_pending', 'update_pending'], true)
+                && $charge->operation_status !== 'confirmed') {
+                $operation = $provider->queryEvent($charge, $charge->provider_operation_id);
+                $service->observe($charge, $operation, 'event_query');
+                if ($operation->retryable) {
+                    throw new \RuntimeException($operation->message ?: 'Falha transitória ao consultar evento.');
                 }
             }
-
-            $bankSlip->update($updates);
-
+            $result = $provider->query($charge->fresh());
+            $service->observe($charge, $result, 'query');
             if ($result->retryable) {
-                throw new RuntimeException($result->message ?: 'Falha transitoria ao consultar boleto.');
+                throw new \RuntimeException($result->message ?: 'Falha transitória ao consultar boleto.');
             }
-        } finally {
-            $lock->release();
-        }
+        });
     }
 
     public function failed(\Throwable $exception): void
     {
-        BankSlip::query()
-            ->whereKey($this->bankSlipId)
-            ->update([
-                'last_error' => $exception->getMessage(),
-                'last_synchronized_at' => now(),
-            ]);
-
-        Log::error('QueryBankSlipJob: falha definitiva ao consultar boleto', [
-            'bank_slip_id' => $this->bankSlipId,
-            'exception' => $exception->getMessage(),
-        ]);
+        BankSlip::whereKey($this->bankSlipId)->update(['last_error' => $exception->getMessage()]);
     }
 }
