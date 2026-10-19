@@ -15,7 +15,7 @@ enum ProcessingStatus: string
         return match ($this) {
             self::QUEUED => 'Na fila',
             self::PROCESSING => 'Processando',
-            self::PROCESSED => 'Processado',
+            self::PROCESSED => 'Leitura concluída',
             self::NEEDS_REVIEW => 'Revisão necessária',
             self::FAILED => 'Falhou',
         };

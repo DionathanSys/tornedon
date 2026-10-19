@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CommitmentImports\RelationManagers;
 
+use App\Filament\Clusters\Financial\Resources\CommitmentImports\Schemas\ImportFileDetailsSchema;
 use App\Models\CommitmentImportFile;
 use App\Services\Commitments\ReprocessCommitmentImportFileService;
 use Filament\Actions\Action;
@@ -44,7 +45,9 @@ class FilesRelationManager extends RelationManager
                 TextColumn::make('last_error')->label('Último erro')->wrap()->limit(120)->tooltip(fn ($state) => $state),
             ])->recordActions([
                 Action::make('details')->authorize('view')->label('Dados extraídos')->icon('heroicon-o-eye')->modalWidth('7xl')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
-                    ->modalContent(fn (CommitmentImportFile $record) => view('filament.commitments.import-file-details', ['record' => $record])),
+                    ->stickyModalHeader()->stickyModalFooter()
+                    ->fillForm(fn (CommitmentImportFile $record) => ['extracted_text' => $record->extracted_text])
+                    ->schema(ImportFileDetailsSchema::components()),
                 Action::make('preview_pdf')->authorize('view')->label('Visualizar PDF')->icon('heroicon-o-document')->openUrlInNewTab()
                     ->visible(fn (CommitmentImportFile $record) => $record->currentAttachments()->exists())
                     ->url(fn (CommitmentImportFile $record) => $record->currentAttachments()->first()?->preview_url),

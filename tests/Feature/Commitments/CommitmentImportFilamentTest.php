@@ -16,6 +16,8 @@ use App\Models\Partner;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -104,15 +106,24 @@ class CommitmentImportFilamentTest extends TestCase
             'company_id' => $this->company->id, 'customer_id' => $this->customer->id,
             'type' => ImportType::COMMITMENTS, 'sha256' => hash('sha256', 'one'),
             'original_name' => 'example.pdf', 'status' => 'needs_review',
+            'extracted_text' => str_repeat('TEXTO-LONGO-SEM-ESPACO', 100).' <script>alert(1)</script>',
             'extracted_data' => ['number' => '14728', 'fiscal_year' => 2026, 'patrimony' => '142186', 'object' => 'Manutenção', 'issues' => ['Revisar patrimônio'], 'items' => []],
         ]);
         Livewire::test(ViewCommitmentImport::class, ['record' => $import->getRouteKey()])->assertSuccessful();
         $component = Livewire::test(FilesRelationManager::class, ['ownerRecord' => $import, 'pageClass' => ViewCommitmentImport::class])
             ->assertCanSeeTableRecords([$file])->mountAction(TestAction::make('details')->table($file))
             ->assertActionMounted(TestAction::make('details')->table($file));
-        $content = $component->instance()->getMountedAction()->getModalContent()->render();
+        $instance = $component->instance();
+        $fields = collect($instance->getSchema($instance->getMountedActionSchemaName())->getFlatComponents());
+        $content = $fields->filter(fn ($field) => $field instanceof TextEntry)
+            ->map(fn ($entry) => $entry->toHtml())->implode('');
+        $textarea = $fields->first(fn ($field) => $field instanceof Textarea);
         $this->assertStringContainsString('Revisar patrimônio', $content);
         $this->assertStringContainsString('142186', $content);
+        $this->assertNotNull($textarea);
+        $this->assertTrue($textarea->isReadOnly());
+        $this->assertSame(12, $textarea->getRows());
+        $this->assertSame($file->extracted_text, $textarea->getState());
     }
 
     public function test_financial_permission_is_required_to_open_import_pages(): void

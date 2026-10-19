@@ -35,8 +35,8 @@ class ConfigureCommitmentsAction
                 Toggle::make('is_enabled')->label('Habilitar importação para este cliente')->default(false),
                 Select::make('nfse_service_id')->label('Serviço padrão da NFS-e')->searchable()
                     ->options(fn () => Service::where('company_id', Filament::getTenant()->id)->where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-                Select::make('payment_method')->label('Forma de pagamento')->options(collect(Method::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
-                Select::make('payment_condition')->label('Condição de pagamento')->options(collect(Condition::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
+                Select::make('payment_method')->label('Forma de pagamento')->native(false)->options(collect(Method::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
+                Select::make('payment_condition')->label('Condição de pagamento')->native(false)->searchable()->options(collect(Condition::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
                 Select::make('financial_category_id')->label('Categoria financeira')->searchable()
                     ->options(fn () => FinancialCategory::where('company_id', Filament::getTenant()->id)->where('is_active', true)->where('allow_receivable', true)->orderBy('name')->pluck('name', 'id')),
                 Select::make('financial_account_id')->label('Conta financeira de recebimento')->searchable()
