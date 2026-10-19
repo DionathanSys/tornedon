@@ -28,6 +28,20 @@ return [
     |
     */
     'types' => [
+        AttachmentType::COMMITMENT_PDF->value => [
+            'mode' => 'single_latest',
+            'allowed_mimes' => ['application/pdf'],
+            'max_size' => 20480,
+            'disk' => 'local',
+        ],
+
+        AttachmentType::COMMITMENT_PAYMENT_REPORT->value => [
+            'mode' => 'single_latest',
+            'allowed_mimes' => ['application/pdf'],
+            'max_size' => 20480,
+            'disk' => 'local',
+        ],
+
         AttachmentType::FISCAL_DOCUMENT->value => [
             'mode' => 'multiple',
             'allowed_mimes' => ['application/xml', 'text/xml', 'application/pdf'],

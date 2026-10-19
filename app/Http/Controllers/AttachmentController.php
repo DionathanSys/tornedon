@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttachmentType;
 use App\Models\Attachment;
+use App\Models\CommitmentImportFile;
+use App\Services\Access\UserAccessService;
 use App\Services\Attachments\AttachmentService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -45,6 +48,14 @@ class AttachmentController extends Controller
 
         if (! $user) {
             abort(401, 'Não autorizado');
+        }
+
+        if (in_array($attachment->type, [AttachmentType::COMMITMENT_PDF, AttachmentType::COMMITMENT_PAYMENT_REPORT], true)) {
+            $owner = $attachment->attachable;
+            abort_unless($owner instanceof CommitmentImportFile
+                && (int) $owner->company_id === (int) $attachment->company_id
+                && in_array($attachment->type->value, $owner->allowedAttachmentTypes(), true)
+                && app(UserAccessService::class)->allows($user, $owner->company, 'account_receivables.access', 'admin'), 403, 'Acesso negado');
         }
 
         Log::info('Acesso ao arquivo', [

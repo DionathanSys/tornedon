@@ -19,7 +19,15 @@ use App\Listeners\RequisitionItem\HandleStockReservationCreated;
 use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
 use App\Models\AuditEntry;
+use App\Models\CommitmentBilling;
+use App\Models\CommitmentImport;
+use App\Models\CommitmentImportFile;
+use App\Models\CommitmentPaymentLine;
+use App\Models\CommitmentReceipt;
+use App\Models\CommitmentReceiptPayment;
+use App\Models\CommitmentSetting;
 use App\Models\Company;
+use App\Models\CustomerCommitment;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Models\ProductionOrder;
@@ -33,6 +41,7 @@ use App\Observers\ProductionOrderObserver;
 use App\Observers\RequisitionObserver;
 use App\Observers\ServiceOrderObserver;
 use App\Policies\AuditEntryPolicy;
+use App\Policies\CommitmentRecordPolicy;
 use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
 use App\Policies\UserPolicy;
@@ -111,6 +120,19 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+
+        foreach ([
+            CommitmentSetting::class,
+            CommitmentImport::class,
+            CommitmentImportFile::class,
+            CustomerCommitment::class,
+            CommitmentBilling::class,
+            CommitmentPaymentLine::class,
+            CommitmentReceipt::class,
+            CommitmentReceiptPayment::class,
+        ] as $commitmentModel) {
+            Gate::policy($commitmentModel, CommitmentRecordPolicy::class);
+        }
 
         ServiceOrder::observe(ServiceOrderObserver::class);
         Requisition::observe(RequisitionObserver::class);

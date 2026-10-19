@@ -273,7 +273,7 @@ O workflow existente anexa requisições à mesma fatura e pode gerar NF-e além
 
 Cada etapa entrega código verificável e atualiza este checklist. Ordem de implementação:
 
-- [ ] **1 — Base:** migrations, models, enums, policies, configuração e tipos de anexos; validar unicidade e tenancy.
+- [x] **1 — Base:** migrations, models, enums, policies, configuração e tipos de anexos; validar unicidade e tenancy.
 - [ ] **2 — PDFs:** extrator, leitores, DTOs e comando de diagnóstico local; conferir os três empenhos, relatório e total declarado.
 - [ ] **3 — Importação:** formulário múltiplo, histórico de arquivos, jobs individuais, progresso e reprocessamento.
 - [ ] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
@@ -284,6 +284,18 @@ Cada etapa entrega código verificável e atualiza este checklist. Ordem de impl
 - [ ] **9 — Homologação:** cenários ponta a ponta, documentação operacional, dependência Poppler e instruções de implantação.
 
 Não executar faturamento, emissão ou baixa sobre dados reais para validar os parsers. Homologar as ações financeiras em ambiente apropriado e a emissão conforme ambiente fiscal configurado.
+
+### Registro de execução — etapa 1 (19/10/2026)
+
+- Migration `2026_10_19_000001_create_commitment_workflow_tables.php` cria as oito tabelas do domínio, com rollback em ordem inversa, índices de identidade e vínculos exclusivos de empenho/OS/fatura.
+- Models e enums implementados, com scopes explícitos de empresa/cliente e validação de pertencimento dos vínculos. A empresa e o cliente de um registro persistido não podem ser transferidos.
+- Configuração persistida pelo `CommitmentSettingsService`, com autorização explícita, validação de referências ativas da empresa, serialização da gravação e auditoria. A interface de configuração será integrada nas etapas de telas/faturamento.
+- Policies registradas para os oito models concretos, usando `account_receivables.access` no painel administrativo e bloqueando exclusão pela interface para preservar histórico.
+- Tipos `commitment_pdf` e `commitment_payment_report` registrados em anexos, com armazenamento privado local. Download/preview desses tipos exige vínculo ao arquivo de importação correto e permissão financeira ativa na empresa.
+- Vínculos com pagamentos guardam snapshot e mantêm evidência quando um pagamento financeiro é removido; a referência passa a nula para revisão posterior.
+- Verificação: `php artisan test tests/Feature/Commitments/CommitmentFoundationTest.php tests/Feature/Services/Attachments/AttachmentServiceTest.php tests/Feature/Services/Financial/FinancialAuthorizationTest.php` — **34 testes aprovados, 140 assertions**, sendo 15 testes novos do domínio.
+- PHP alterado formatado com Pint; migration validada por criação e rollback/reaplicação no SQLite em memória dos testes.
+- Próxima entrega: etapa 2, extração dos PDFs e diagnóstico dos arquivos de referência.
 
 ## 10. Verificação e critérios de aceite
 
