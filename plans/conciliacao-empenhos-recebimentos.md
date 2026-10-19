@@ -275,7 +275,7 @@ Cada etapa entrega código verificável e atualiza este checklist. Ordem de impl
 
 - [x] **1 — Base:** migrations, models, enums, policies, configuração e tipos de anexos; validar unicidade e tenancy.
 - [x] **2 — PDFs:** extrator, leitores, DTOs e comando de diagnóstico local; conferir os três empenhos, relatório e total declarado.
-- [ ] **3 — Importação:** formulário múltiplo, histórico de arquivos, jobs individuais, progresso e reprocessamento.
+- [x] **3 — Importação:** formulário múltiplo, histórico de arquivos, jobs individuais, progresso e reprocessamento.
 - [ ] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
 - [ ] **5 — Faturamento:** configuração financeira/fiscal, prévia de corpo/rodapé, ação individual/lote, confirmação e retomada por etapa.
 - [ ] **6 — Emissão:** encaminhamento pela fila existente e apresentação da situação real da NFS-e; validação do mapeamento de rodapé no emissor utilizado.
@@ -309,6 +309,23 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - Verificação: `php artisan test tests/Unit/Services/Commitments tests/Feature/Commitments/PdfTextExtractorTest.php tests/Feature/Commitments/DiagnoseCommitmentPdfCommandTest.php` — **45 testes aprovados, 109 assertions**. Inclui extração real de PDFs sintéticos, limites, limpeza, falhas, fixtures de leitura e diagnóstico.
 - Instalação, opções, contratos dos DTOs e comandos documentados em `manual-empenhos-leitura-pdf.md`. PHP alterado formatado com Pint.
 - Próxima entrega: etapa 3, telas de importação, armazenamento, processamento individual em fila e histórico de arquivos.
+
+### Registro de execução — etapa 3 (19/10/2026)
+
+- Menus **Financeiro → Empenhos** e **Financeiro → Pagamentos de empenhos** no painel administrativo, separados por tipo de importação e empresa. Nesta etapa são os históricos de importação; as telas de conciliação serão acrescentadas nas etapas 4 e 7.
+- Cabeçalho com **Importar empenhos/Importar relatório** e **Configurar cliente**. A configuração permite habilitar o fluxo e definir os padrões já previstos, respeitando a permissão financeira e as referências da empresa.
+- Upload de até 20 PDFs de empenho ou um relatório por lote; assinatura PDF, MIME, tamanho e contexto validados. Um arquivo rejeitado não impede aceitar os outros.
+- `ImportCommitmentFilesService` armazena originais privados via anexos, calcula SHA-256 por stream, compensa arquivos físicos em rollback e registra resumo de aceitos/duplicados/rejeitados. Duplicados apontam para o lote original sem criar outro arquivo/job.
+- `ProcessCommitmentImportFileJob` roda na fila padrão, um arquivo por job, com despacho após commit. O processamento verifica novamente acesso, configuração, integridade do original e partes do documento antes de persistir empenho/linhas de pagamento em transação.
+- Valores dos DTOs são convertidos da unidade de centavos para a entrada esperada pelo `MoneyCast`; testes conferem os valores brutos persistidos, evitando dupla conversão.
+- PDF diferente com número/ano de empenho já importado fica para revisão, preservando o registro anterior. Relatórios preservam dados e pendências por linha, sem executar baixas.
+- Migration complementar `2026_10_19_000002_add_execution_tracking_to_commitment_imports.php`: resumo por lote, token de execução e início do processamento por arquivo. O token identifica a geração do job e impede que uma entrega antiga sobrescreva uma retomada recente.
+- Listagens com cliente, situação, finalizados/total, duplicados, rejeitados, data e usuário. Detalhe com resumo do envio e tabela de arquivos atualizada a cada cinco segundos; ações para dados extraídos, visualização/download e reprocessamento.
+- Modal de extração apresenta identificação/itens do empenho ou linhas do relatório com datas, notas, patrimônio, valores, páginas e pendências, além do texto original extraído.
+- Reprocessamento revalida permissões e bloqueia resultados revisados/vinculados. Entradas paradas na fila/processamento por mais de cinco minutos podem ser recuperadas; eventos ficam registrados em auditoria.
+- Verificação: **21 testes novos de integração**, incluindo UI Filament, upload Livewire, persistência, duplicidades, fila síncrona após commit, falhas, retomada e revisão concorrente. `composer test`: **794 testes aprovados, 4.155 assertions**. `npm run build`: aprovado. PHP alterado formatado com Pint.
+- Operação e implantação documentadas em `manual-empenhos-leitura-pdf.md`.
+- Próxima entrega: etapa 4, sugestões de OS por patrimônio/valor/abertura, revisão e aprovação exclusiva dos vínculos.
 
 ## 10. Verificação e critérios de aceite
 

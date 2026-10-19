@@ -62,6 +62,11 @@ class Company extends Model
         return $this->hasMany(CustomerCommitment::class);
     }
 
+    public function commitmentImports(): HasMany
+    {
+        return $this->hasMany(CommitmentImport::class);
+    }
+
     public function entitlements(): HasMany
     {
         return $this->hasMany(CompanyEntitlement::class);

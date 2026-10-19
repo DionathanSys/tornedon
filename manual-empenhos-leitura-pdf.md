@@ -81,3 +81,55 @@ php artisan test tests/Unit/Services/Commitments tests/Feature/Commitments/PdfTe
 ```
 
 Fixtures de texto são sintéticas. Os testes de integração geram PDFs temporários e verificam Poppler, limites e limpeza dos arquivos. Cenários que dependem da extração real são marcados como ignorados se o executável não estiver instalado; os testes dos parsers e do comando continuam executáveis.
+
+## Importação pelo painel administrativo — etapa 3
+
+### Preparação do ambiente
+
+Aplicar as migrations disponíveis:
+
+```bash
+php artisan migrate
+```
+
+O processamento utiliza a fila padrão. O worker precisa ter Poppler instalado e acesso ao mesmo armazenamento privado local usado pelos uploads:
+
+```bash
+php artisan queue:work --queue=default --tries=1 --timeout=90
+```
+
+O `composer dev` existente já escuta a fila padrão. Após implantar alterações de jobs/serviços, reiniciar os workers conforme o procedimento do ambiente.
+
+### Como importar
+
+1. Acessar a empresa no painel `/admin`.
+2. Abrir **Financeiro → Empenhos** ou **Financeiro → Pagamentos de empenhos**.
+3. Em **Configurar cliente**, selecionar o cliente e habilitar o fluxo. Os campos fiscais e financeiros podem ser preparados para as próximas etapas.
+4. Clicar em **Importar empenhos** para enviar até 20 PDFs, ou **Importar relatório** para enviar um PDF de pagamentos.
+5. Conferir o resumo de arquivos aceitos, duplicados e rejeitados no detalhe do lote.
+
+O limite da aplicação é 20 MiB por PDF; limites de upload do PHP, servidor e Livewire também se aplicam. Os nomes originais são mantidos no histórico. O original fica em `storage/app/private` pelo disco `local`, acessível pelas rotas autorizadas de anexos.
+
+### Histórico e consulta
+
+As listas mostram cliente, situação do lote, quantidade de arquivos finalizados, duplicados, rejeitados, data e usuário. As tabelas atualizam a cada cinco segundos. No detalhe do lote, **Atualizar progresso** recarrega também o resumo da situação.
+
+Em cada arquivo:
+
+- **Dados extraídos**: informações do empenho ou tabela de pagamentos, pendências, páginas e texto original.
+- **Visualizar PDF / Baixar PDF**: consulta do original, com autorização financeira da empresa.
+- **Reprocessar**: nova leitura do mesmo original, quando permitida.
+
+Reenvio de um arquivo idêntico não agenda outra execução: o novo lote registra a duplicidade e oferece link ao lote original. Um PDF diferente que declare um empenho já existente fica para revisão e não substitui o empenho anterior.
+
+### Recuperação de falhas
+
+Uma falha de leitura fica no arquivo, sem interromper os outros jobs. Após corrigir a causa, usar **Reprocessar**. Entradas que ficaram paradas na fila ou no processamento por mais de cinco minutos também podem ser recuperadas pela ação.
+
+A execução utiliza um token por geração: um job antigo não pode assumir a nova execução nem sobrescrever seu resultado. O processamento é idempotente em reentregas. Dados com revisão manual, aprovação, faturamento ou recebimentos vinculados ficam protegidos contra reprocessamento.
+
+Pendências extraídas ficam disponíveis para revisão nas etapas de conciliação. Nesta entrega, a importação persiste os documentos e resultados; o faturamento e os recebimentos serão acionados pelas etapas específicas do fluxo.
+
+### Conferências de partes
+
+Na importação de empenhos, o CNPJ do emissor é comparado ao documento do cliente e o CNPJ do credor ao documento da empresa. No relatório, o credor só está disponível por nome/código: o nome é comparado ao nome cadastrado da empresa. Diferenças permanecem como pendências para revisão.
