@@ -6,11 +6,11 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\AuditEntry;
 use App\Models\CustomerCommitment;
 use App\Services\Commitments\CommitmentMatchEngine;
+use Carbon\Carbon;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 
 class CommitmentReviewSchema
 {
@@ -58,15 +58,19 @@ class CommitmentReviewSchema
                             TableColumn::make('Deslocamento'), TableColumn::make('Requisição'), TableColumn::make('Total'),
                             TableColumn::make('Diferença'), TableColumn::make('Elegibilidade'),
                         ])->schema([
-                            TextEntry::make('number')->url(fn (Get $get) => ServiceOrderResource::getUrl('edit', ['record' => $get('service_order_id')]))->openUrlInNewTab()
-                                ->helperText(fn (Get $get) => ($get('oldest') ? 'Mais antiga elegível · ' : '').\Carbon\Carbon::parse($get('order_date'))->format('d/m/Y')),
+                            TextEntry::make('number')->url(fn (TextEntry $component) => ServiceOrderResource::getUrl('edit', ['record' => $component->getContainer()->getConstantState()['service_order_id']]))->openUrlInNewTab()
+                                ->helperText(function (TextEntry $component): string {
+                                    $row = $component->getContainer()->getConstantState();
+
+                                    return ($row['oldest'] ? 'Mais antiga elegível · ' : '').Carbon::parse($row['order_date'])->format('d/m/Y');
+                                }),
                             TextEntry::make('equipment_name'),
                             TextEntry::make('services_amount_cents')->money('BRL', divideBy: 100, locale: 'pt_BR'),
                             TextEntry::make('travel_amount_cents')->money('BRL', divideBy: 100, locale: 'pt_BR'),
                             TextEntry::make('requisition_amount_cents')->money('BRL', divideBy: 100, locale: 'pt_BR'),
                             TextEntry::make('total_amount_cents')->money('BRL', divideBy: 100, locale: 'pt_BR'),
                             TextEntry::make('difference_cents')->money('BRL', divideBy: 100, locale: 'pt_BR'),
-                            TextEntry::make('reason')->badge()->color(fn (Get $get) => $get('eligible') ? 'success' : 'warning'),
+                            TextEntry::make('reason')->badge()->color(fn (TextEntry $component) => $component->getContainer()->getConstantState()['eligible'] ? 'success' : 'warning'),
                         ])->placeholder('Nenhuma OS candidata para exibir.'),
                 ]),
             Section::make('Dados originalmente extraídos')->columnSpanFull()->collapsible()->collapsed()->columns(['default' => 1, 'md' => 3])->schema([

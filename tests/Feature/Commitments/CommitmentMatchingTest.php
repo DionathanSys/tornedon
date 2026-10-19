@@ -17,6 +17,7 @@ use App\Services\Commitments\ReviewCommitmentService;
 use App\Services\Commitments\SuggestCommitmentMatchesService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Concerns\CreatesCommitmentReviewFixtures;
@@ -179,6 +180,7 @@ class CommitmentMatchingTest extends TestCase
         }
         $result = $service->unlink($this->company->id, $record->id, $this->user->id, 'Escolher outra ordem');
         $this->assertSame(MatchStatus::SUGGESTED, $result->status);
+        $this->assertSame('Escolher outra ordem', $result->review_reason);
         $this->assertDatabaseCount('commitment_billings', 0);
         $this->assertDatabaseHas('audit_entries', ['event' => 'commitment.match_unlinked', 'auditable_id' => $record->id]);
     }
@@ -233,6 +235,17 @@ class CommitmentMatchingTest extends TestCase
         $record = $this->commitment();
         $this->expectException(ModelNotFoundException::class);
         app(SuggestCommitmentMatchesService::class)->refresh(Company::factory()->create()->id, $record->id, $this->user->id);
+    }
+
+    public function test_suggestion_migration_can_be_reapplied_preserving_imported_commitments(): void
+    {
+        $record = $this->commitment();
+        $migration = require database_path('migrations/2026_10_19_000003_add_commitment_match_suggestions.php');
+        $migration->down();
+        $this->assertFalse(Schema::hasColumn('customer_commitments', 'suggested_service_order_id'));
+        $migration->up();
+        $this->assertTrue(Schema::hasColumn('customer_commitments', 'suggested_service_order_id'));
+        $this->assertSame(40000, (int) $record->fresh()->getRawOriginal('amount'));
     }
 
     private function invoice(): Invoice

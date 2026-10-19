@@ -3,9 +3,9 @@
 namespace App\Filament\Clusters\Financial\Resources\CommitmentImports\Pages;
 
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\CommitmentImportResource;
+use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
-use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 
 class ViewCommitmentImport extends ViewRecord
 {

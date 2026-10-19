@@ -79,7 +79,7 @@ class CommitmentReviewFilamentTest extends TestCase
         $order = $this->order(401);
         Livewire::test(ViewCustomerCommitment::class, ['record' => $record->id])
             ->assertSee('Valor total diferente')
-            ->callAction('approve_match', ['service_order_id' => $order->id])->assertHasActionErrors(['service_order_id']);
+            ->assertActionDisabled('approve_match');
         $this->assertDatabaseCount('commitment_billings', 0);
     }
 
@@ -114,8 +114,8 @@ class CommitmentReviewFilamentTest extends TestCase
         $first = $this->commitment();
         $second = $this->commitment();
         $this->order();
-        Livewire::test(ListCustomerCommitments::class)->selectTableRecords([$first->id, $second->id])
-            ->callTableBulkAction('refresh_selected')->assertHasNoActionErrors();
+        Livewire::test(ListCustomerCommitments::class)
+            ->callTableBulkAction('refresh_selected', [$first->id, $second->id])->assertHasNoActionErrors();
         $this->assertSame(MatchStatus::SUGGESTED, $first->fresh()->status);
         $this->assertSame(MatchStatus::SUGGESTED, $second->fresh()->status);
         Livewire::test(ListCustomerCommitments::class)->filterTable('import_id', $first->importFile->commitment_import_id)

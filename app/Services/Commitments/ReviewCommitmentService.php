@@ -6,7 +6,6 @@ use App\Enum\Commitment\MatchStatus;
 use App\Models\CustomerCommitment;
 use App\Services\Audit\AuditRecorder;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ReviewCommitmentService
@@ -19,7 +18,7 @@ class ReviewCommitmentService
                 throw ValidationException::withMessages(['commitment' => 'Reabra o empenho antes de corrigir os dados.']);
             }
             $validated = Validator::make($data, [
-                'number' => ['required', 'regex:/^\d{1,40}$/', Rule::unique('customer_commitments', 'number')->where('company_id', $record->company_id)->where('customer_id', $record->customer_id)->where('fiscal_year', $data['fiscal_year'] ?? null)->ignore($record->id)],
+                'number' => ['required', 'regex:/^\d{1,40}$/'],
                 'fiscal_year' => ['required', 'integer', 'between:1900,9999'],
                 'issued_at' => ['required', 'date_format:Y-m-d'],
                 'patrimony' => ['required', 'regex:/^\d{1,60}$/'],
@@ -82,6 +81,7 @@ class ReviewCommitmentService
             }
             $record->update(['status' => $ignore ? MatchStatus::IGNORED : MatchStatus::UNMATCHED,
                 'suggested_service_order_id' => null, 'suggestion_count' => 0, 'review_reason' => $reason,
+                'match_diagnostics' => ['reason' => $ignore ? 'Ignorado: '.$reason : 'Reaberto para nova busca.', 'issues' => [], 'candidates' => [], 'eligible_ids' => []],
                 'reviewed_by' => $userId, 'reviewed_at' => now()]);
             app(AuditRecorder::class)->recordModelEvent($record, $ignore ? 'commitment.ignored' : 'commitment.reopened', $ignore ? 'Empenho ignorado.' : 'Empenho reaberto.', actorUserId: $userId, metadata: ['reason' => $reason]);
 

@@ -276,7 +276,7 @@ Cada etapa entrega código verificável e atualiza este checklist. Ordem de impl
 - [x] **1 — Base:** migrations, models, enums, policies, configuração e tipos de anexos; validar unicidade e tenancy.
 - [x] **2 — PDFs:** extrator, leitores, DTOs e comando de diagnóstico local; conferir os três empenhos, relatório e total declarado.
 - [x] **3 — Importação:** formulário múltiplo, histórico de arquivos, jobs individuais, progresso e reprocessamento.
-- [ ] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
+- [x] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
 - [ ] **5 — Faturamento:** configuração financeira/fiscal, prévia de corpo/rodapé, ação individual/lote, confirmação e retomada por etapa.
 - [ ] **6 — Emissão:** encaminhamento pela fila existente e apresentação da situação real da NFS-e; validação do mapeamento de rodapé no emissor utilizado.
 - [ ] **7 — Pagamentos:** importação do relatório, integridade dos totais, identificação de vínculos, revisão e baixa integral selecionada.
@@ -333,6 +333,22 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - Rotas de entrada: `/admin/{tenant}/commitment-imports` e `/admin/{tenant}/commitment-payment-imports`.
 - Adicionado teste da navegação efetiva, além do registro/renderização das páginas, confirmando os links no grupo Financeiro e sua ausência para usuários sem permissão financeira.
 - Verificação: `php artisan test tests/Feature/Commitments/CommitmentImportFilamentTest.php` — **7 testes aprovados, 40 assertions**.
+
+### Registro de execução — etapa 4 (19/10/2026)
+
+- **Financeiro → Empenhos** passa a abrir a listagem de documentos/conciliações em `/admin/{tenant}/customer-commitments`. O histórico de lotes continua em **Importações de empenhos**, mantendo suas URLs anteriores. Os arquivos e lotes oferecem acesso direto à conciliação.
+- Listagem com empenho/exercício, cliente, emissão, patrimônio, valor, situação, OS aprovada/sugerida, abertura, quantidade de compatíveis, valor da OS na última busca/aprovação e diagnóstico. Abas com contagens, filtros por cliente, lote, emissão e candidatas sem elegibilidade; busca por número e patrimônio.
+- `CommitmentMatchEngine` identifica o PAT no nome do equipamento, restringe empresa/proprietário e busca OS encerradas, não faturadas, com itens. Valores calculados em centavos a partir dos totais líquidos persistidos e do deslocamento decimal; soma inclui a requisição vinculada.
+- Sugestão ordenada por `order_date` e ID. Equipamentos com patrimônio parcial/ambíguo, valores divergentes, requisição incompatível/cancelada/faturada e OS reservadas não são elegíveis. Alternativas e motivos aparecem na comparação nativa do Filament.
+- `SuggestCommitmentMatchesService` persiste a melhor sugestão, quantidade, candidatas/diagnóstico e horário da busca, sem reservar a OS. Novas importações executam essa busca ao concluir a extração; documentos antigos podem ser atualizados individualmente ou em seleção na listagem.
+- Migration `2026_10_19_000003_add_commitment_match_suggestions.php` adiciona referência de sugestão, contagem, diagnóstico e data da busca ao empenho. A sugestão é removida se a OS for excluída; o vínculo aprovado continua protegido pelas restrições exclusivas da tabela de faturamento.
+- Página **Revisar conciliação** apresenta empenho, valores, pendências, OS candidatas, composição do total/diferenças, destaque da mais antiga e links à OS/PDF. Seções adicionais preservam dados originais e histórico de auditoria.
+- Ações **Revisar dados extraídos**, **Aprovar vínculo com OS**, **Desvincular OS**, **Ignorar** e **Reabrir**. Correções exigem motivo e mantêm os dados originais. Pendências do leitor exigem confirmação explícita antes de aprovar.
+- Aprovação transacional com locks e revalidação atual de patrimônio/valor/status; a OS fica reservada para um único empenho. É possível escolher outra candidata elegível, preservando em snapshot a escolhida e a mais antiga disponível. Repetir a mesma aprovação não duplica o vínculo.
+- Desvinculação exige motivo e é bloqueada após início de faturamento/recebimento. Correções e reprocessamento do PDF não podem sobrescrever dados aprovados; alterações, vínculos e liberações são auditados.
+- Verificação: **16 testes de domínio e 9 de interface/integração** adicionados para esta etapa; `composer test` passou com **825 testes e 4.319 assertions**. Após ajustes finais de motivo/contagem, os 25 testes focados passaram novamente, com **132 assertions**. PHP alterado formatado com Pint.
+- Cache de componentes/rotas limpo e novas rotas conferidas. Implantação requer aplicar a nova migration e atualizar os workers para a busca automática nas novas importações.
+- Próxima entrega: etapa 5, faturamento individual das conciliações aprovadas, confirmação de faturas e preparação dos textos fiscais.
 
 ## 10. Verificação e critérios de aceite
 

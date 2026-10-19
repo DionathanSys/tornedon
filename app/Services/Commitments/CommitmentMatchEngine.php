@@ -2,8 +2,8 @@
 
 namespace App\Services\Commitments;
 
-use App\Enum\ServiceOrder\State;
 use App\Enum\Requisition\Status as RequisitionStatus;
+use App\Enum\ServiceOrder\State;
 use App\Models\CustomerCommitment;
 use App\Models\Equipment;
 use App\Models\ServiceOrder;

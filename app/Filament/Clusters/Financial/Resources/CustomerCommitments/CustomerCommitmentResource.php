@@ -15,10 +15,12 @@ use BackedEnum;
 use Filament\Actions\BulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,6 +70,11 @@ class CustomerCommitmentResource extends Resource
             TextColumn::make('order_number')->label('OS aprovada / sugerida')->state(fn (CustomerCommitment $record) => $record->billing?->serviceOrder?->number ?? $record->suggestedServiceOrder?->number)->placeholder('—')
                 ->description(fn (CustomerCommitment $record) => ($record->billing?->serviceOrder ?? $record->suggestedServiceOrder)?->order_date?->format('d/m/Y')),
             TextColumn::make('suggestion_count')->label('Compatíveis')->badge(),
+            TextColumn::make('order_amount_cents')->label('Valor OS (busca/aprovação)')->money('BRL', divideBy: 100, locale: 'pt_BR')
+                ->state(fn (CustomerCommitment $record) => $record->billing
+                    ? data_get($record->billing->approval_snapshot, 'selected_order.total_amount_cents')
+                    : collect(data_get($record->match_diagnostics, 'candidates', []))->firstWhere('service_order_id', $record->suggested_service_order_id)['total_amount_cents'] ?? null)->placeholder('—')->toggleable(),
+            TextColumn::make('matched_at')->label('Última busca')->dateTime('d/m/Y H:i')->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('match_diagnostics.reason')->label('Diagnóstico')->wrap()->limit(90)->placeholder('Clique em Buscar OS ou abra Revisar conciliação.')->toggleable(),
         ])->filters([
             SelectFilter::make('customer_id')->label('Cliente')->options(fn () => ImportCommitmentFilesAction::customerOptions()),
@@ -75,6 +82,14 @@ class CustomerCommitmentResource extends Resource
             SelectFilter::make('import_id')->label('Lote de importação')
                 ->options(fn () => CommitmentImport::forCompany(Filament::getTenant()->id)->where('type', 'commitments')->orderByDesc('id')->pluck('id', 'id')->all())
                 ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn (Builder $query, $value) => $query->whereHas('importFile', fn ($file) => $file->where('commitment_import_id', $value)))),
+            Filter::make('issued_period')->label('Período de emissão')->schema([
+                DatePicker::make('from')->label('Emissão a partir de'),
+                DatePicker::make('until')->label('Emissão até'),
+            ])->query(fn (Builder $query, array $data) => $query
+                ->when($data['from'] ?? null, fn ($query, $date) => $query->whereDate('issued_at', '>=', $date))
+                ->when($data['until'] ?? null, fn ($query, $date) => $query->whereDate('issued_at', '<=', $date))),
+            Filter::make('without_eligible_order')->label('Com candidatas, sem OS elegível')
+                ->query(fn (Builder $query) => $query->where('status', MatchStatus::UNMATCHED->value)->where('suggestion_count', 0)->whereJsonLength('match_diagnostics->candidates', '>', 0)),
         ])->recordActions([
             ViewAction::make()->label('Revisar conciliação'),
             CommitmentReviewActions::refresh()->iconButton(),

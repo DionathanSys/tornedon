@@ -71,7 +71,7 @@ class ApproveCommitmentMatchService
             app(AuditRecorder::class)->recordModelEvent($record, 'commitment.match_unlinked', 'OS desvinculada do empenho.', actorUserId: $userId, metadata: ['reason' => trim($reason), 'billing_snapshot' => $billing->attributesToArray()]);
             $billing->delete();
             $record->update(['status' => MatchStatus::UNMATCHED, 'suggested_service_order_id' => null,
-                'suggestion_count' => 0, 'reviewed_by' => $userId, 'reviewed_at' => now()]);
+                'suggestion_count' => 0, 'review_reason' => $reason, 'reviewed_by' => $userId, 'reviewed_at' => now()]);
 
             return app(SuggestCommitmentMatchesService::class)->refresh($record->company_id, $record->id, $userId);
         });

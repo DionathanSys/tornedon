@@ -31,7 +31,9 @@ class ListCustomerCommitments extends ListRecords
         $tabs = ['all' => Tab::make('Todos')];
         foreach (MatchStatus::cases() as $status) {
             $tabs[$status->value] = Tab::make($status->description())
-                ->badge(fn () => CustomerCommitment::forCompany(Filament::getTenant()->id)->where('status', $status->value)->count())
+                ->badge(fn () => CustomerCommitment::forCompany(Filament::getTenant()->id)
+                    ->when(data_get($this->tableFilters, 'customer_id.value'), fn ($query, $customerId) => $query->where('customer_id', $customerId))
+                    ->where('status', $status->value)->count())
                 ->modifyQueryUsing(fn ($query) => $query->where('status', $status->value));
         }
 

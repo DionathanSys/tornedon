@@ -7,6 +7,7 @@ use App\Services\Commitments\ApproveCommitmentMatchService;
 use App\Services\Commitments\CommitmentMatchEngine;
 use App\Services\Commitments\ReviewCommitmentService;
 use App\Services\Commitments\SuggestCommitmentMatchesService;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Checkbox;
@@ -34,13 +35,15 @@ class CommitmentReviewActions
     {
         return Action::make('approve_match')->label('Aprovar vínculo com OS')->icon('heroicon-o-check-circle')->authorize('update')
             ->visible(fn (CustomerCommitment $record) => ! $record->billing()->exists() && $record->status->value !== 'ignored')
+            ->disabled(fn (CustomerCommitment $record) => app(CommitmentMatchEngine::class)->analyze($record)['eligible_ids'] === [])
+            ->tooltip('Disponível quando há uma OS elegível com o mesmo patrimônio e valor.')
             ->modalDescription('A primeira opção é a OS elegível mais antiga pela data de abertura. A aprovação reserva a OS para este empenho.')
             ->schema([
                 Select::make('service_order_id')->label('OS compatível')->native(false)->searchable()->required()
                     ->options(function (CustomerCommitment $record): array {
                         $result = app(CommitmentMatchEngine::class)->analyze($record);
 
-                        return collect($result['candidates'])->where('eligible', true)->mapWithKeys(fn ($row) => [$row['service_order_id'] => $row['number'].' — abertura '.\Carbon\Carbon::parse($row['order_date'])->format('d/m/Y').' — R$ '.number_format($row['total_amount_cents'] / 100, 2, ',', '.')])->all();
+                        return collect($result['candidates'])->where('eligible', true)->mapWithKeys(fn ($row) => [$row['service_order_id'] => $row['number'].' — abertura '.Carbon::parse($row['order_date'])->format('d/m/Y').' — R$ '.number_format($row['total_amount_cents'] / 100, 2, ',', '.')])->all();
                     })
                     ->default(fn (CustomerCommitment $record) => app(CommitmentMatchEngine::class)->analyze($record)['eligible_ids'][0] ?? null),
             ])

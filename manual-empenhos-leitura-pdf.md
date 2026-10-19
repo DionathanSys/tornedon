@@ -1,4 +1,4 @@
-# Empenhos — manual de leitura e diagnóstico de PDFs
+# Empenhos — importação, conciliação e diagnóstico de PDFs
 
 ## Dependência de execução
 
@@ -103,17 +103,18 @@ O `composer dev` existente já escuta a fila padrão. Após implantar alteraçõ
 ### Como importar
 
 1. Acessar a empresa no painel `/admin`.
-2. Abrir **Financeiro → Empenhos** ou **Financeiro → Pagamentos de empenhos**.
+2. Abrir **Financeiro → Empenhos**, **Financeiro → Importações de empenhos** ou **Financeiro → Pagamentos de empenhos**.
 3. Em **Configurar cliente**, selecionar o cliente e habilitar o fluxo. Os campos fiscais e financeiros podem ser preparados para as próximas etapas.
 4. Clicar em **Importar empenhos** para enviar até 20 PDFs, ou **Importar relatório** para enviar um PDF de pagamentos.
 5. Conferir o resumo de arquivos aceitos, duplicados e rejeitados no detalhe do lote.
 
 Os acessos ficam no grupo Financeiro do menu principal, junto dos demais recursos financeiros. URLs diretas no painel administrativo:
 
-- `/admin/{tenant}/commitment-imports`
-- `/admin/{tenant}/commitment-payment-imports`
+- `/admin/{tenant}/customer-commitments` — empenhos e conciliação com OS.
+- `/admin/{tenant}/commitment-imports` — histórico de importações de empenhos.
+- `/admin/{tenant}/commitment-payment-imports` — histórico de relatórios de pagamentos.
 
-Substituir `{tenant}` pelo identificador da empresa presente na URL atual do painel. Os dois links exigem permissão de contas a receber na empresa.
+Substituir `{tenant}` pelo identificador da empresa presente na URL atual do painel. Os acessos exigem permissão de contas a receber na empresa.
 
 O limite da aplicação é 20 MiB por PDF; limites de upload do PHP, servidor e Livewire também se aplicam. Os nomes originais são mantidos no histórico. O original fica em `storage/app/private` pelo disco `local`, acessível pelas rotas autorizadas de anexos.
 
@@ -140,3 +141,54 @@ Pendências extraídas ficam disponíveis para revisão nas etapas de conciliaç
 ### Conferências de partes
 
 Na importação de empenhos, o CNPJ do emissor é comparado ao documento do cliente e o CNPJ do credor ao documento da empresa. No relatório, o credor só está disponível por nome/código: o nome é comparado ao nome cadastrado da empresa. Diferenças permanecem como pendências para revisão.
+
+## Conciliação com ordens de serviço — etapa 4
+
+### Atualização do ambiente
+
+Aplicar a migration de sugestões:
+
+```bash
+php artisan migrate
+```
+
+Atualizar os workers conforme o procedimento do ambiente para carregar a busca automática incluída no processamento dos PDFs.
+
+### Caminho após a importação
+
+1. Abrir **Financeiro → Empenhos**. No histórico de um lote, também é possível usar **Conciliar empenhos**; na linha de um arquivo, **Conciliar com OS** abre o documento correspondente.
+2. Para novos PDFs, a busca por OS é feita automaticamente após a leitura.
+3. Para empenhos importados antes desta etapa, selecionar os documentos e usar **Buscar OS para selecionados**, ou abrir o documento e clicar em **Buscar OS novamente**. Não é necessário reenviar os PDFs.
+4. Abrir **Revisar conciliação** para conferir empenho e candidatas.
+5. Usar **Aprovar vínculo com OS** e confirmar a OS escolhida.
+
+### Regras de correspondência
+
+- Mesma empresa e cliente, incluindo o proprietário do equipamento.
+- Patrimônio completo extraído do nome/descrição do equipamento (`PAT 142186`, por exemplo), sem usar número de série, placa ou correspondência parcial como substitutos.
+- OS encerrada, ainda não faturada, com serviços e sem reserva para outro empenho.
+- Valor total exato em centavos: serviços líquidos de descontos + deslocamento + total líquido da requisição vinculada.
+- Prioridade pela abertura mais antiga; em datas iguais, pelo menor ID.
+
+A página mostra as candidatas em ordem, destacando a mais antiga elegível. Apresenta valores de serviços, deslocamento, requisição, total e diferença para o empenho. Candidatas divergentes ou reservadas continuam identificadas, mas não podem ser aprovadas. O seletor permite escolher outra OS elegível e registra essa decisão.
+
+### Revisar ou corrigir a extração
+
+Usar **Revisar dados extraídos** para conferir número/ano, emissão, patrimônio, objeto e valores. Toda revisão exige motivo e preserva os dados originalmente extraídos.
+
+Quando houver pendências do leitor, marcar a confirmação de conferência do PDF para registrar que os dados foram verificados. Enquanto essas pendências estiverem sem confirmação, o sistema não oferece uma OS para aprovação. Os valores bruto, retido e líquido precisam ser consistentes, e o número/ano não pode duplicar outro empenho do mesmo cliente/empresa.
+
+### O que significa vínculo aprovado
+
+**Vínculo aprovado** significa que a OS foi reservada para o empenho. O sistema revalida os dados atuais ao confirmar e mantém a relação exclusiva, impedindo que outro empenho reserve a mesma OS.
+
+Essa é a conclusão da etapa de conciliação. O faturamento das conciliações aprovadas e o encaminhamento fiscal serão implementados nas etapas seguintes.
+
+Antes do faturamento, é possível usar **Desvincular OS**, informando o motivo. Depois que o vínculo inicia faturamento ou recebimento, essa ação é bloqueada. A revisão preserva o histórico, usuário, data e dados considerados na aprovação.
+
+### Outros controles
+
+- **Ignorar empenho** retira o documento da conciliação operacional, com motivo.
+- **Reabrir empenho** devolve um documento ignorado à busca, também com motivo.
+- Filtros por cliente, situação, lote e emissão ajudam a revisar os documentos. O filtro **Com candidatas, sem OS elegível** reúne divergências de valor, reservas e outras incompatibilidades.
+- Valores e contagens de sugestões na listagem refletem a última busca/aprovação. Ao revisar/aprovar, as condições atuais da OS são consultadas novamente.
