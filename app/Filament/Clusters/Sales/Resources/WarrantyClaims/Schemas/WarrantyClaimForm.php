@@ -75,6 +75,8 @@ class WarrantyClaimForm
                             ->columnSpan(['md' => 2, 'lg' => 2]),
                         SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')
+                            ->required(fn (Get $get): bool => $get('type') === Type::SERVICE_COMPANY->value)
+                            ->helperText('Opcional para garantia de peça com fornecedor.')
                             ->columnSpan(['md' => 4, 'lg' => 6]),
                         SelectPartner::make('supplier_id', 'supplier')
                             ->label('Fornecedor')

@@ -71,6 +71,34 @@ class WarrantyRemittanceFiscalDocumentServiceTest extends TestCase
         $this->assertSame($document->id, $claim->fresh()->remittance_fiscal_document_id);
     }
 
+    public function test_it_generates_remittance_to_supplier_without_claim_customer(): void
+    {
+        [$user, $claim, $purchase] = $this->createScenario();
+        $purchase->update([
+            'operation_type' => OperationType::ENTRADA->value,
+            'customer_id' => $claim->supplier_id,
+            'invoice_id' => null,
+        ]);
+        $claim->update([
+            'customer_id' => null,
+            'origin_requisition_id' => null,
+            'origin_invoice_id' => null,
+        ]);
+
+        $service = app(WarrantyRemittanceFiscalDocumentService::class);
+        $document = $service->generateFromWarrantyClaim($claim->fresh(), $user->id);
+
+        $this->assertNotNull($document, $service->getMessage());
+        $this->assertSame($claim->supplier_id, $document->customer_id);
+        $this->assertSame(OperationType::SAIDA, $document->operation_type);
+        $this->assertSame(OperationNature::REMESSA_GARANTIA, $document->operation_nature);
+        $this->assertSame($claim->product_id, $document->items()->first()->product_id);
+        $this->assertDatabaseHas('fiscal_document_item_origins', [
+            'origin_fiscal_document_id' => $purchase->id,
+            'return_fiscal_document_id' => $document->id,
+        ]);
+    }
+
     public function test_it_blocks_multiple_remittance_documents_for_same_claim(): void
     {
         [$user, $claim] = $this->createScenario();

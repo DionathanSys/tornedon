@@ -2,6 +2,7 @@
 
 namespace App\Services\WarrantyClaim\Validators;
 
+use App\Enum\FiscalDocument\OperationType;
 use App\Enum\WarrantyClaim\CoverageType;
 use App\Enum\WarrantyClaim\Responsibility;
 use App\Enum\WarrantyClaim\Status;
@@ -44,7 +45,7 @@ class WarrantyClaimValidator
             'company_id' => 'required|integer|exists:companies,id',
             'type' => ['required', Rule::enum(Type::class)],
             'status' => ['required', Rule::enum(Status::class)],
-            'customer_id' => 'required|integer|exists:partners,id',
+            'customer_id' => [Rule::requiredIf(($data['type'] ?? null) === Type::SERVICE_COMPANY->value), 'nullable', 'integer', 'exists:partners,id'],
             'supplier_id' => 'nullable|integer|exists:partners,id',
             'service_order_id' => 'nullable|integer|exists:service_orders,id',
             'origin_service_order_id' => 'nullable|integer|exists:service_orders,id',
@@ -96,7 +97,7 @@ class WarrantyClaimValidator
                 if (blank($data['origin_requisition_id'] ?? null)
                     && blank($data['origin_invoice_id'] ?? null)
                     && blank($data['origin_fiscal_document_id'] ?? null)) {
-                    $validator->errors()->add('origin_requisition_id', 'Informe ao menos uma origem comercial ou fiscal da venda.');
+                    $validator->errors()->add('origin_requisition_id', 'Informe ao menos uma origem comercial ou fiscal da compra ou venda.');
                 }
             }
 
@@ -178,7 +179,8 @@ class WarrantyClaimValidator
                 $validator->errors()->add('origin_fiscal_document_id', 'O documento fiscal de origem não pertence à empresa atual.');
             }
 
-            if ($fiscalDocument && $customerId && (int) $fiscalDocument->customer_id !== (int) $customerId) {
+            if ($fiscalDocument && $fiscalDocument->operation_type === OperationType::SAIDA
+                && $customerId && (int) $fiscalDocument->customer_id !== (int) $customerId) {
                 $validator->errors()->add('customer_id', 'O cliente deve ser o mesmo do documento fiscal de origem.');
             }
         }

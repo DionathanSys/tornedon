@@ -18,6 +18,7 @@ use App\Enum\ServiceOrder\Type as ServiceOrderType;
 use App\Enum\WarrantyClaim\CoverageType;
 use App\Enum\WarrantyClaim\Responsibility;
 use App\Enum\WarrantyClaim\Type;
+use App\Filament\Clusters\Sales\Resources\WarrantyClaims\Pages\CreateWarrantyClaim;
 use App\Models\Company;
 use App\Models\Equipment;
 use App\Models\FiscalDocument;
@@ -29,7 +30,9 @@ use App\Models\RequisitionItem;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use App\Services\WarrantyClaim\WarrantyClaimService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class WarrantyClaimServiceTest extends TestCase
@@ -112,6 +115,121 @@ class WarrantyClaimServiceTest extends TestCase
         $this->assertNull($claim);
         $this->assertTrue($service->hasError());
         $this->assertArrayHasKey('supplier_id', $service->getErrors());
+    }
+
+    public function test_it_creates_and_updates_supplier_warranty_from_purchase_without_customer(): void
+    {
+        [$user, $requisition, $supplier, $product, , $purchase] = $this->makeRequisitionScenario();
+        $purchase->update([
+            'operation_type' => OperationType::ENTRADA->value,
+            'customer_id' => $supplier->id,
+            'invoice_id' => null,
+        ]);
+
+        $service = app(WarrantyClaimService::class);
+        $claim = $service->create([
+            'company_id' => $requisition->company_id,
+            'type' => Type::PRODUCT_SUPPLIER->value,
+            'status' => 'draft',
+            'supplier_id' => $supplier->id,
+            'product_id' => $product->id,
+            'origin_fiscal_document_id' => $purchase->id,
+            'quantity' => 1,
+            'coverage_type' => CoverageType::LABOR_AND_PARTS->value,
+            'responsibility' => Responsibility::COMPANY->value,
+            'customer_issue_description' => 'Peça do estoque com defeito.',
+            'supplier_decision' => 'pending',
+            'supplier_resolution' => 'none',
+        ], $user->id);
+
+        $this->assertNotNull($claim, json_encode($service->getErrors()));
+        $this->assertNull($claim->fresh()->customer_id);
+
+        $updated = $service->update($claim, ['supplier_protocol' => 'RMA-123'], $user->id);
+
+        $this->assertNotNull($updated, json_encode($service->getErrors()));
+        $this->assertNull($updated->customer_id);
+        $this->assertSame('RMA-123', $updated->supplier_protocol);
+
+        // O parceiro de uma nota de entrada é o fornecedor, não o cliente da garantia.
+        $updated = $service->update($updated, ['customer_id' => $requisition->customer_id], $user->id);
+
+        $this->assertNotNull($updated, json_encode($service->getErrors()));
+        $this->assertSame($requisition->customer_id, $updated->customer_id);
+    }
+
+    public function test_supplier_warranty_form_accepts_purchase_without_customer(): void
+    {
+        [$user, $requisition, $supplier, $product, , $purchase] = $this->makeRequisitionScenario();
+        $purchase->update([
+            'operation_type' => OperationType::ENTRADA->value,
+            'customer_id' => $supplier->id,
+            'invoice_id' => null,
+        ]);
+        $company = Company::query()->findOrFail($requisition->company_id);
+        $user->companies()->attach($company, ['role' => 'admin', 'is_active' => true]);
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($company);
+
+        Livewire::test(CreateWarrantyClaim::class)
+            ->fillForm([
+                'type' => Type::PRODUCT_SUPPLIER->value,
+                'customer_id' => null,
+                'supplier_id' => $supplier->id,
+                'product_id' => $product->id,
+                'origin_fiscal_document_id' => $purchase->id,
+                'quantity' => 1,
+                'customer_issue_description' => 'Peça do estoque com defeito.',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('warranty_claims', [
+            'company_id' => $company->id,
+            'customer_id' => null,
+            'supplier_id' => $supplier->id,
+            'product_id' => $product->id,
+            'origin_fiscal_document_id' => $purchase->id,
+        ]);
+    }
+
+    public function test_it_still_requires_customer_for_service_warranty(): void
+    {
+        [$user, $serviceOrder] = $this->makeServiceOrderScenario();
+
+        $service = app(WarrantyClaimService::class);
+        $claim = $service->openFromServiceOrder($serviceOrder, [
+            'customer_id' => null,
+            'customer_issue_description' => 'Falha no serviço.',
+        ], $user->id);
+
+        $this->assertNull($claim);
+        $this->assertArrayHasKey('customer_id', $service->getErrors());
+    }
+
+    public function test_it_preserves_company_validation_for_purchase_origin_without_customer(): void
+    {
+        [$user, $requisition, $supplier, $product, , $purchase] = $this->makeRequisitionScenario();
+        $otherCompany = Company::query()->create([
+            'name' => 'Outra empresa',
+            'document_number' => '30303030000173',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $user->id,
+        ]);
+        $purchase->update(['company_id' => $otherCompany->id, 'operation_type' => OperationType::ENTRADA->value]);
+
+        $service = app(WarrantyClaimService::class);
+        $claim = $service->openFromRequisition($requisition, [
+            'customer_id' => null,
+            'supplier_id' => $supplier->id,
+            'product_id' => $product->id,
+            'origin_fiscal_document_id' => $purchase->id,
+            'customer_issue_description' => 'Peça com defeito.',
+        ], $user->id);
+
+        $this->assertNull($claim);
+        $this->assertArrayHasKey('origin_fiscal_document_id', $service->getErrors());
     }
 
     private function makeServiceOrderScenario(): array
