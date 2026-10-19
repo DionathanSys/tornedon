@@ -1,0 +1,20 @@
+Prefeitura Municipal de Chapecó
+CNPJ: 83.021.808/0001-82
+Nota de Empenho
+Número: 14728/2026
+Espécie: Ordinário                          Emissão: 23/06/2026
+Saldo anterior: R$ 205.922,34
+Saldo atual: R$ 205.522,34                  Valor deste empenho: R$ 400,00
+Pré-Empenho: 7895/2026
+Credor: 999 - EMPRESA EXEMPLO LTDA           CNPJ: 12.345.678/0001-95
+Objeto resumido: SERVIÇO PARA MANUTENÇÃO DE CAMINHÃO,
+                PATRIMÔNIO N° 142186, EQUIPE DE ESTRADAS.
+Itens do Empenho
+Item Qtde. Unid. med. Cód. Material/Serviço Valor unitário (R$) Valor total (R$)
+ 1 4,00000 SER 106774 MÃO DE OBRA                    45,00000       180,00
+   Complemento do item: MONTAGEM
+ 2 1,00000 SER 106774 MÃO DE OBRA                   100,00000       100,00
+   Complemento do item: DESLOCAMENTO
+ 3 4,00000 SER 106774 MÃO DE OBRA                    30,00000       120,00
+   Complemento do item: TROCA DE VÁLVULA
+Valor deste empenho: R$ 400,00     Total retido: R$ 0,00     Valor líquido: R$ 400,00

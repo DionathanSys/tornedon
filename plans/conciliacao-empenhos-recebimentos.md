@@ -274,7 +274,7 @@ O workflow existente anexa requisições à mesma fatura e pode gerar NF-e além
 Cada etapa entrega código verificável e atualiza este checklist. Ordem de implementação:
 
 - [x] **1 — Base:** migrations, models, enums, policies, configuração e tipos de anexos; validar unicidade e tenancy.
-- [ ] **2 — PDFs:** extrator, leitores, DTOs e comando de diagnóstico local; conferir os três empenhos, relatório e total declarado.
+- [x] **2 — PDFs:** extrator, leitores, DTOs e comando de diagnóstico local; conferir os três empenhos, relatório e total declarado.
 - [ ] **3 — Importação:** formulário múltiplo, histórico de arquivos, jobs individuais, progresso e reprocessamento.
 - [ ] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
 - [ ] **5 — Faturamento:** configuração financeira/fiscal, prévia de corpo/rodapé, ação individual/lote, confirmação e retomada por etapa.
@@ -296,6 +296,19 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - Verificação: `php artisan test tests/Feature/Commitments/CommitmentFoundationTest.php tests/Feature/Services/Attachments/AttachmentServiceTest.php tests/Feature/Services/Financial/FinancialAuthorizationTest.php` — **34 testes aprovados, 140 assertions**, sendo 15 testes novos do domínio.
 - PHP alterado formatado com Pint; migration validada por criação e rollback/reaplicação no SQLite em memória dos testes.
 - Próxima entrega: etapa 2, extração dos PDFs e diagnóstico dos arquivos de referência.
+
+### Registro de execução — etapa 2 (19/10/2026)
+
+- Implementado `PdfTextExtractor` com Symfony Process e Poppler (`pdftotext`), preservação de layout/páginas, cópia temporária privada, limpeza em falhas e limites configuráveis em `config/commitments.php`.
+- Leitores versionados `ChapecoCommitmentParser` e `ChapecoPaymentReportParser` retornam DTOs com valores inteiros em centavos, dados de origem e pendências revisáveis. Estruturas inválidas geram erro explícito.
+- Empenho: número/ano, emissão, patrimônio, objeto, credor/CNPJs, itens/complementos e valores bruto/retido/líquido; conferência de valores repetidos e soma dos itens.
+- Relatório: estado da data por grupo entre páginas, continuidade de objeto/nota, páginas de origem, documentos fiscais e totais. Múltiplas notas, valores divergentes, pagamentos repetidos e mudanças de emissor são diagnosticados.
+- Comando `php artisan commitments:diagnose-pdf commitments|payments "arquivo.pdf" [outros arquivos]`, com saída tabular ou `--json` e conferência opcional das partes; execução sem persistência e sem efeitos financeiros.
+- PDFs originais conferidos com Poppler 24.02.0: 14728/2026 → patrimônio 142186 / R$ 400,00 / 3 itens; 14731/2026 → patrimônio 79071 / R$ 540,00 / 3 itens; 14732/2026 → patrimônio 92181 / R$ 190,00 / 4 itens. Todos consistentes.
+- Relatório original: **13 páginas, 142 pagamentos, total extraído e declarado de R$ 57.330,00**, com datas preservadas por grupo e sem pendências de integridade. Confirmado 14732/2026 → NF 247 → pagamento em 27/08/2026.
+- Verificação: `php artisan test tests/Unit/Services/Commitments tests/Feature/Commitments/PdfTextExtractorTest.php tests/Feature/Commitments/DiagnoseCommitmentPdfCommandTest.php` — **45 testes aprovados, 109 assertions**. Inclui extração real de PDFs sintéticos, limites, limpeza, falhas, fixtures de leitura e diagnóstico.
+- Instalação, opções, contratos dos DTOs e comandos documentados em `manual-empenhos-leitura-pdf.md`. PHP alterado formatado com Pint.
+- Próxima entrega: etapa 3, telas de importação, armazenamento, processamento individual em fila e histórico de arquivos.
 
 ## 10. Verificação e critérios de aceite
 
