@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\Financial\Resources\CommitmentImports;
 
 use App\Enum\Commitment\ImportType;
 use App\Enum\Commitment\ProcessingStatus;
-use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Actions\ImportCommitmentFilesAction;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Pages\ListCommitmentImports;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Pages\ViewCommitmentImport;
@@ -22,12 +21,13 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class CommitmentImportResource extends Resource
 {
     protected static ?string $model = CommitmentImport::class;
 
-    protected static ?string $cluster = FinancialCluster::class;
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-arrow-up';
 

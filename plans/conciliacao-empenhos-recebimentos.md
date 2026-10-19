@@ -327,6 +327,13 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - Operação e implantação documentadas em `manual-empenhos-leitura-pdf.md`.
 - Próxima entrega: etapa 4, sugestões de OS por patrimônio/valor/abertura, revisão e aprovação exclusiva dos vínculos.
 
+### Correção de navegação após a etapa 3
+
+- Ajustado o registro dos dois recursos para o grupo `Financeiro`, seguindo o padrão de Faturas e dos demais recursos existentes, em vez de um cluster separado.
+- Rotas de entrada: `/admin/{tenant}/commitment-imports` e `/admin/{tenant}/commitment-payment-imports`.
+- Adicionado teste da navegação efetiva, além do registro/renderização das páginas, confirmando os links no grupo Financeiro e sua ausência para usuários sem permissão financeira.
+- Verificação: `php artisan test tests/Feature/Commitments/CommitmentImportFilamentTest.php` — **7 testes aprovados, 40 assertions**.
+
 ## 10. Verificação e critérios de aceite
 
 ### Testes automatizados relevantes

@@ -108,6 +108,13 @@ O `composer dev` existente já escuta a fila padrão. Após implantar alteraçõ
 4. Clicar em **Importar empenhos** para enviar até 20 PDFs, ou **Importar relatório** para enviar um PDF de pagamentos.
 5. Conferir o resumo de arquivos aceitos, duplicados e rejeitados no detalhe do lote.
 
+Os acessos ficam no grupo Financeiro do menu principal, junto dos demais recursos financeiros. URLs diretas no painel administrativo:
+
+- `/admin/{tenant}/commitment-imports`
+- `/admin/{tenant}/commitment-payment-imports`
+
+Substituir `{tenant}` pelo identificador da empresa presente na URL atual do painel. Os dois links exigem permissão de contas a receber na empresa.
+
 O limite da aplicação é 20 MiB por PDF; limites de upload do PHP, servidor e Livewire também se aplicam. Os nomes originais são mantidos no histórico. O original fica em `storage/app/private` pelo disco `local`, acessível pelas rotas autorizadas de anexos.
 
 ### Histórico e consulta

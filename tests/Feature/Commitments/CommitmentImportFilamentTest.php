@@ -63,6 +63,17 @@ class CommitmentImportFilamentTest extends TestCase
         Livewire::test(ListCommitmentPaymentImports::class)->assertSuccessful()->assertCanSeeTableRecords([$payments])->assertCanNotSeeTableRecords([$commitments, $foreign]);
     }
 
+    public function test_import_links_are_visible_in_the_existing_financial_navigation_group(): void
+    {
+        $financial = collect(Filament::getNavigation())->first(fn ($group) => $group->getLabel() === 'Financeiro');
+        $this->assertNotNull($financial);
+        $items = collect($financial->getItems())->keyBy(fn ($item) => $item->getLabel());
+        $this->assertTrue($items->has('Empenhos'), 'O menu Financeiro deve conter o acesso a Empenhos.');
+        $this->assertTrue($items->has('Pagamentos de empenhos'));
+        $this->assertSame(CommitmentImportResource::getUrl('index'), $items['Empenhos']->getUrl());
+        $this->assertSame(CommitmentPaymentImportResource::getUrl('index'), $items['Pagamentos de empenhos']->getUrl());
+    }
+
     public function test_configuration_action_can_enable_the_import_flow(): void
     {
         Livewire::test(ListCommitmentImports::class)->callAction('configure_customer', [
@@ -108,6 +119,9 @@ class CommitmentImportFilamentTest extends TestCase
     {
         $this->user->companyAccesses()->create(['company_id' => $this->company->id, 'permissions' => ['cash_movements.access'], 'panels' => ['admin' => true], 'navigation' => []]);
         Livewire::test(ListCommitmentImports::class)->assertForbidden();
+        $labels = collect(Filament::getNavigation())->flatMap(fn ($group) => collect($group->getItems())->map(fn ($item) => $item->getLabel()));
+        $this->assertNotContains('Empenhos', $labels);
+        $this->assertNotContains('Pagamentos de empenhos', $labels);
     }
 
     public function test_cross_tenant_detail_is_not_resolved(): void
