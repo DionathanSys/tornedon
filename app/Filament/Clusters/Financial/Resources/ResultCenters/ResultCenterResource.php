@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\ResultCenters;
 
+use App\Filament\Clusters\Financial\FinancialRegistrationsCluster;
 use App\Filament\Clusters\Financial\Resources\ResultCenters\Pages\CreateResultCenter;
 use App\Filament\Clusters\Financial\Resources\ResultCenters\Pages\EditResultCenter;
 use App\Filament\Clusters\Financial\Resources\ResultCenters\Pages\ListResultCenters;
@@ -15,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class ResultCenterResource extends Resource
 {
@@ -23,13 +23,13 @@ class ResultCenterResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialRegistrationsCluster::class;
 
     protected static ?string $modelLabel = 'Centro de Resultado';
 
     protected static ?string $pluralModelLabel = 'Centros de Resultado';
 
-    protected static ?int $navigationSort = 13;
+    protected static ?int $navigationSort = 4;
 
     public static function form(Schema $schema): Schema
     {

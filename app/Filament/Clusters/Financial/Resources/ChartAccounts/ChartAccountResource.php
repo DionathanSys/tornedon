@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\ChartAccounts;
 
+use App\Filament\Clusters\Financial\FinancialRegistrationsCluster;
 use App\Filament\Clusters\Financial\Resources\ChartAccounts\Pages\CreateChartAccount;
 use App\Filament\Clusters\Financial\Resources\ChartAccounts\Pages\EditChartAccount;
 use App\Filament\Clusters\Financial\Resources\ChartAccounts\Pages\ListChartAccounts;
@@ -15,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class ChartAccountResource extends Resource
 {
@@ -23,13 +23,13 @@ class ChartAccountResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialRegistrationsCluster::class;
 
     protected static ?string $modelLabel = 'Plano de Contas';
 
     protected static ?string $pluralModelLabel = 'Plano de Contas';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {

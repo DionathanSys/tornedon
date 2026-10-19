@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\DreModels;
 
+use App\Filament\Clusters\Financial\FinancialRegistrationsCluster;
 use App\Filament\Clusters\Financial\Resources\DreModels\Pages\CreateDreModel;
 use App\Filament\Clusters\Financial\Resources\DreModels\Pages\EditDreModel;
 use App\Filament\Clusters\Financial\Resources\DreModels\Pages\ListDreModels;
@@ -21,7 +22,6 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class DreModelResource extends Resource
 {
@@ -29,13 +29,13 @@ class DreModelResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBarSquare;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialRegistrationsCluster::class;
 
     protected static ?string $modelLabel = 'Modelo de DRE';
 
     protected static ?string $pluralModelLabel = 'Modelos de DRE';
 
-    protected static ?int $navigationSort = 14;
+    protected static ?int $navigationSort = 6;
 
     public static function form(Schema $schema): Schema
     {

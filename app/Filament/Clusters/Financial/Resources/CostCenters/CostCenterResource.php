@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CostCenters;
 
+use App\Filament\Clusters\Financial\FinancialRegistrationsCluster;
 use App\Filament\Clusters\Financial\Resources\CostCenters\Pages\CreateCostCenter;
 use App\Filament\Clusters\Financial\Resources\CostCenters\Pages\EditCostCenter;
 use App\Filament\Clusters\Financial\Resources\CostCenters\Pages\ListCostCenters;
@@ -15,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class CostCenterResource extends Resource
 {
@@ -23,13 +23,13 @@ class CostCenterResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialRegistrationsCluster::class;
 
     protected static ?string $modelLabel = 'Centro de Custo';
 
     protected static ?string $pluralModelLabel = 'Centros de Custo';
 
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

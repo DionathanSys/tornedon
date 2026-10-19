@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CardInstitutions;
 
+use App\Filament\Clusters\Financial\FinancialRegistrationsCluster;
 use App\Filament\Clusters\Financial\Resources\CardInstitutions\Pages\CreateCardInstitution;
 use App\Filament\Clusters\Financial\Resources\CardInstitutions\Pages\EditCardInstitution;
 use App\Filament\Clusters\Financial\Resources\CardInstitutions\Pages\ListCardInstitutions;
@@ -15,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class CardInstitutionResource extends Resource
 {
@@ -23,13 +23,13 @@ class CardInstitutionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialRegistrationsCluster::class;
 
     protected static ?string $modelLabel = 'Instituição de cartão';
 
     protected static ?string $pluralModelLabel = 'Instituições de cartão';
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 5;
 
     public static function form(Schema $schema): Schema
     {

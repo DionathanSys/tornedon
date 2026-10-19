@@ -2,7 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FinancialCategories;
 
-use App\Filament\Clusters\Financial\FinancialCluster;
+use App\Filament\Clusters\Financial\FinancialRegistrationsCluster;
 use App\Filament\Clusters\Financial\Resources\FinancialCategories\Pages\CreateFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\FinancialCategories\Pages\EditFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\FinancialCategories\Pages\ListFinancialCategories;
@@ -15,7 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use UnitEnum;
 use Illuminate\Database\Eloquent\Builder;
 
 class FinancialCategoryResource extends Resource
@@ -24,15 +23,13 @@ class FinancialCategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Tag;
 
-    // protected static ?string $cluster = FinancialCluster::class;
-
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialRegistrationsCluster::class;
 
     protected static ?string $modelLabel = 'Categoria Financeira';
 
     protected static ?string $pluralModelLabel = 'Categorias Financeiras';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {
