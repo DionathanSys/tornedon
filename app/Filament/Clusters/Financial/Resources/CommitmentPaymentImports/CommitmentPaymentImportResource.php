@@ -17,7 +17,7 @@ class CommitmentPaymentImportResource extends CommitmentImportResource
 
     protected static ?string $pluralModelLabel = 'Relatórios de pagamentos de empenhos';
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 3;
 
     public static function importType(): ImportType
     {

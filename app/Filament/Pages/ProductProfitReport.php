@@ -3,9 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Enum\Requisition\Status;
+use App\Filament\Clusters\Financial\FinancialReportsCluster;
 use App\Models\Product;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -17,7 +19,6 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use UnitEnum;
 
 class ProductProfitReport extends Page implements Forms\Contracts\HasForms
 {
@@ -25,7 +26,7 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar-square';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialReportsCluster::class;
 
     protected static ?string $navigationLabel = 'Lucro por Produto';
 
@@ -33,7 +34,7 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
 
     protected static ?string $slug = 'relatorio-lucro-produtos';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 2;
 
     protected string $view = 'filament.pages.product-profit-report';
 
@@ -157,7 +158,7 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
             ],
         ])->setPaper('a4', 'landscape')->output();
 
-        $fileName = 'lucro-por-produto-' . now()->format('Y-m-d_H-i-s') . '.pdf';
+        $fileName = 'lucro-por-produto-'.now()->format('Y-m-d_H-i-s').'.pdf';
 
         return response()->streamDownload(function () use ($pdfBinary): void {
             echo $pdfBinary;
@@ -198,7 +199,7 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
             ->orderBy('name')
             ->get(['id', 'product_code', 'name'])
             ->mapWithKeys(fn (Product $product): array => [
-                $product->id => trim(($product->product_code ? '[' . $product->product_code . '] ' : '') . $product->name),
+                $product->id => trim(($product->product_code ? '['.$product->product_code.'] ' : '').$product->name),
             ])
             ->all();
     }
@@ -250,8 +251,8 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
         $productId = $filters['product_id'] ?? null;
 
         return [
-            'Período' => ($this->formatDate($filters['date_from'] ?? null) ?? 'Início') . ' até ' . ($this->formatDate($filters['date_to'] ?? null) ?? 'Hoje'),
-            'Produto' => filled($productId) ? ($this->productOptions()[(int) $productId] ?? 'Produto #' . $productId) : 'Todos',
+            'Período' => ($this->formatDate($filters['date_from'] ?? null) ?? 'Início').' até '.($this->formatDate($filters['date_to'] ?? null) ?? 'Hoje'),
+            'Produto' => filled($productId) ? ($this->productOptions()[(int) $productId] ?? 'Produto #'.$productId) : 'Todos',
             'Status' => $statuses === []
                 ? 'Todos, exceto canceladas'
                 : collect($statuses)->map(fn (string $status): string => Status::tryFrom($status)?->description() ?? $status)->implode(', '),
@@ -264,12 +265,12 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
             return null;
         }
 
-        return \Carbon\Carbon::parse($date)->format('d/m/Y');
+        return Carbon::parse($date)->format('d/m/Y');
     }
 
     public function money(float $amount): string
     {
-        return 'R$ ' . number_format($amount, 2, ',', '.');
+        return 'R$ '.number_format($amount, 2, ',', '.');
     }
 
     public function decimal(float $amount, int $decimals = 2): string

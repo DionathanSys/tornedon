@@ -14,7 +14,12 @@ use App\Services\Commitments\DTO\ExtractedPdf;
 use App\Services\Commitments\ImportCommitmentFilesService;
 use App\Services\Commitments\Pdf\PdfTextExtractor;
 use App\Services\Commitments\ProcessCommitmentImportFileService;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -71,6 +76,60 @@ class CommitmentReviewFilamentTest extends TestCase
         $this->assertSame(MatchStatus::APPROVED, $record->fresh()->status);
         $this->assertDatabaseHas('commitment_billings', ['customer_commitment_id' => $record->id, 'service_order_id' => $old->id]);
         $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_table_groups_actions_on_the_left_and_opens_comparison_without_navigation(): void
+    {
+        $record = $this->commitment();
+        $new = $this->order(attributes: ['order_date' => '2026-02-01']);
+        $old = $this->order(attributes: ['order_date' => '2026-01-01']);
+        $page = Livewire::test(ListCustomerCommitments::class);
+        $table = $page->instance()->getTable();
+        $this->assertSame(RecordActionsPosition::BeforeCells, $table->getRecordActionsPosition());
+        $this->assertSame('start', $table->getRecordActionsAlignment());
+        $this->assertCount(1, $table->getRecordActions());
+        $group = $table->getRecordActions()[0];
+        $this->assertInstanceOf(ActionGroup::class, $group);
+        $this->assertSame(Heroicon::Bars3, $group->getIcon());
+        $this->assertNull($table->getRecordUrl($record));
+        $page->mountAction(TestAction::make('review_match')->table($record))
+            ->assertActionMounted(TestAction::make('review_match')->table($record))->assertNoRedirect();
+        $instance = $page->instance();
+        $entries = collect($instance->getSchema($instance->getMountedActionSchemaName())->getFlatComponents());
+        $candidates = $entries->first(fn ($entry) => $entry instanceof RepeatableEntry && $entry->getName() === 'candidates');
+        $this->assertNotNull($candidates);
+        $this->assertSame([$old->id, $new->id], array_column($candidates->getState(), 'service_order_id'));
+        $this->assertTrue($candidates->getState()[0]['oldest']);
+    }
+
+    public function test_table_actions_approve_unlink_ignore_and_reopen_without_leaving_filtered_list(): void
+    {
+        $record = $this->commitment();
+        $order = $this->order();
+        $page = Livewire::test(ListCustomerCommitments::class)->filterTable('customer_id', $this->customer->id);
+        $page->callAction(TestAction::make('refresh_matches')->table($record))->assertHasNoActionErrors()->assertNoRedirect();
+        $this->assertSame($order->id, $record->fresh()->suggested_service_order_id);
+        $page->callAction(TestAction::make('approve_match')->table($record), data: ['service_order_id' => $order->id])->assertHasNoActionErrors()->assertNoRedirect();
+        $this->assertSame(MatchStatus::APPROVED, $record->fresh()->status);
+        $page->callAction(TestAction::make('unlink_order')->table($record), data: ['reason' => 'Escolher outra ordem'])->assertHasNoActionErrors();
+        $this->assertDatabaseCount('commitment_billings', 0);
+        $page->callAction(TestAction::make('ignore')->table($record), data: ['reason' => 'Documento fora do fluxo'])->assertHasNoActionErrors();
+        $this->assertSame(MatchStatus::IGNORED, $record->fresh()->status);
+        $page->callAction(TestAction::make('reopen')->table($record), data: ['reason' => 'Retomar análise'])->assertHasNoActionErrors()->assertNoRedirect();
+        $this->assertSame(MatchStatus::SUGGESTED, $record->fresh()->status);
+        $this->assertSame($this->customer->id, (int) data_get($page->instance()->tableFilters, 'customer_id.value'));
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_table_can_correct_extraction_and_enable_approval_for_the_row(): void
+    {
+        $record = $this->commitment(['patrimony' => null], ['Patrimônio não identificado.']);
+        $order = $this->order();
+        Livewire::test(ListCustomerCommitments::class)
+            ->callAction(TestAction::make('correct_extraction')->table($record), data: $this->correctedData($record, ['patrimony' => '142186', 'acknowledge_issues' => true]))
+            ->assertHasNoActionErrors()->assertNoRedirect();
+        $this->assertSame($order->id, $record->fresh()->suggested_service_order_id);
+        $this->assertSame(MatchStatus::SUGGESTED, $record->fresh()->status);
     }
 
     public function test_action_rejects_a_different_value_without_reserving_the_order(): void

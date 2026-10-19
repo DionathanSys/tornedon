@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\CustomerCommitments;
 
 use App\Enum\Commitment\MatchStatus;
+use App\Filament\Clusters\Financial\CommitmentsCluster;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Actions\ImportCommitmentFilesAction;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Actions\CommitmentReviewActions;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Pages\ListCustomerCommitments;
@@ -12,14 +13,17 @@ use App\Models\CommitmentImport;
 use App\Models\CustomerCommitment;
 use App\Services\Commitments\SuggestCommitmentMatchesService;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
-use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -27,7 +31,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use UnitEnum;
 
 class CustomerCommitmentResource extends Resource
 {
@@ -35,7 +38,7 @@ class CustomerCommitmentResource extends Resource
 
     protected static ?string $tenantRelationshipName = 'commitments';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = CommitmentsCluster::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
@@ -45,7 +48,7 @@ class CustomerCommitmentResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Empenhos e conciliações';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 1;
 
     public static function canCreate(): bool
     {
@@ -60,7 +63,7 @@ class CustomerCommitmentResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->defaultSort('id', 'desc')->columns([
+        return $table->defaultSort('id', 'desc')->recordUrl(null)->columns([
             TextColumn::make('number')->label('Empenho')->searchable()->description(fn (CustomerCommitment $record) => 'Exercício '.$record->fiscal_year),
             TextColumn::make('customer.name')->label('Cliente')->searchable(),
             TextColumn::make('issued_at')->label('Emissão')->date('d/m/Y')->sortable(),
@@ -91,9 +94,17 @@ class CustomerCommitmentResource extends Resource
             Filter::make('without_eligible_order')->label('Com candidatas, sem OS elegível')
                 ->query(fn (Builder $query) => $query->where('status', MatchStatus::UNMATCHED->value)->where('suggestion_count', 0)->whereJsonLength('match_diagnostics->candidates', '>', 0)),
         ])->recordActions([
-            ViewAction::make()->label('Revisar conciliação'),
-            CommitmentReviewActions::refresh()->iconButton(),
-        ])->toolbarActions([
+            ActionGroup::make([
+                CommitmentReviewActions::review(),
+                CommitmentReviewActions::approve(),
+                CommitmentReviewActions::refresh(),
+                CommitmentReviewActions::originalPdf(),
+                CommitmentReviewActions::correct(),
+                CommitmentReviewActions::unlink(),
+                CommitmentReviewActions::ignore(),
+                CommitmentReviewActions::ignore(reopen: true),
+            ])->label('Ações do empenho')->tooltip('Ações do empenho')->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
+        ], RecordActionsPosition::BeforeCells)->recordActionsAlignment('start')->toolbarActions([
             BulkAction::make('refresh_selected')->label('Buscar OS para selecionados')->icon('heroicon-o-arrow-path')
                 ->authorize('viewAny', CustomerCommitment::class)->deselectRecordsAfterCompletion()
                 ->action(function (Collection $records): void {

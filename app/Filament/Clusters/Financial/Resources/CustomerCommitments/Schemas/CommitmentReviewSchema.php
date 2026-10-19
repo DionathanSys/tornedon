@@ -47,10 +47,10 @@ class CommitmentReviewSchema
             Section::make('Comparação com ordens de serviço')->columnSpanFull()
                 ->description('Valor total = serviços líquidos + deslocamento + requisição vinculada. As OS estão ordenadas pela abertura, da mais antiga para a mais nova.')
                 ->visible(fn (CustomerCommitment $record) => $record->billing === null && $record->status->value !== 'ignored')->schema([
-                    TextEntry::make('match_reason')->label('Resultado da busca')->state(fn ($livewire) => $livewire->matchResult()['reason']),
+                    TextEntry::make('match_reason')->label('Resultado da busca')->state(fn (CustomerCommitment $record) => app(CommitmentMatchEngine::class)->analyze($record)['reason']),
                     RepeatableEntry::make('candidates')->hiddenLabel()->columnSpanFull()
-                        ->state(function ($livewire): array {
-                            $result = $livewire->matchResult();
+                        ->state(function (CustomerCommitment $record): array {
+                            $result = app(CommitmentMatchEngine::class)->analyze($record);
 
                             return array_map(fn ($row) => [...$row, 'oldest' => $row['service_order_id'] === ($result['eligible_ids'][0] ?? null)], $result['candidates']);
                         })->table([

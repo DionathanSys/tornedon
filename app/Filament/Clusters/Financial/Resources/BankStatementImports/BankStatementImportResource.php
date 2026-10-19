@@ -2,7 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports;
 
-use App\Filament\Clusters\Financial\FinancialCluster;
+use App\Filament\Clusters\Financial\BankingCluster;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ListBankStatementImports;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ViewBankStatementImport;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\LinesRelationManager;
@@ -16,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class BankStatementImportResource extends Resource
 {
@@ -24,15 +23,13 @@ class BankStatementImportResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowDownTray;
 
-    // protected static ?string $cluster = FinancialCluster::class;
-
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = BankingCluster::class;
 
     protected static ?string $modelLabel = 'Importação OFX';
 
     protected static ?string $pluralModelLabel = 'Importações OFX';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 2;
 
     public static function infolist(Schema $schema): Schema
     {

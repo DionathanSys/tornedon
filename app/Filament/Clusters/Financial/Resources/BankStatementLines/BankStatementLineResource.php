@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementLines;
 
+use App\Filament\Clusters\Financial\BankingCluster;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
@@ -20,7 +21,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class BankStatementLineResource extends Resource
 {
@@ -28,13 +28,13 @@ class BankStatementLineResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Bars3BottomLeft;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = BankingCluster::class;
 
     protected static ?string $modelLabel = 'Item de extrato';
 
     protected static ?string $pluralModelLabel = 'Itens de extrato';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 3;
 
     public static function table(Table $table): Table
     {

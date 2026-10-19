@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enum\Financial\DreDisplaySign;
 use App\Enum\Financial\DreMode;
 use App\Enum\Financial\DreView;
+use App\Filament\Clusters\Financial\FinancialReportsCluster;
 use App\Models\Company;
 use App\Models\CostCenter;
 use App\Models\DreModel;
@@ -23,7 +24,6 @@ use Filament\Schemas\Schema;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
-use UnitEnum;
 
 class DreReportPage extends Page implements Forms\Contracts\HasForms
 {
@@ -31,7 +31,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-presentation-chart-line';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = FinancialReportsCluster::class;
 
     protected static ?string $navigationLabel = 'DRE';
 
@@ -39,7 +39,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
 
     protected static ?string $slug = 'dre';
 
-    protected static ?int $navigationSort = 21;
+    protected static ?int $navigationSort = 1;
 
     protected string $view = 'filament.pages.dre-report-page';
 

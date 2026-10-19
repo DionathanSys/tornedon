@@ -2,7 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FinancialAccounts;
 
-use App\Filament\Clusters\Financial\FinancialCluster;
+use App\Filament\Clusters\Financial\BankingCluster;
 use App\Filament\Clusters\Financial\Resources\FinancialAccounts\Pages\CreateFinancialAccount;
 use App\Filament\Clusters\Financial\Resources\FinancialAccounts\Pages\EditFinancialAccount;
 use App\Filament\Clusters\Financial\Resources\FinancialAccounts\Pages\ListFinancialAccounts;
@@ -16,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class FinancialAccountResource extends Resource
 {
@@ -24,15 +23,13 @@ class FinancialAccountResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingLibrary;
 
-    // protected static ?string $cluster = FinancialCluster::class;
-
-    protected static string | UnitEnum | null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = BankingCluster::class;
 
     protected static ?string $modelLabel = 'Conta Financeira';
 
     protected static ?string $pluralModelLabel = 'Contas Financeiras';
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

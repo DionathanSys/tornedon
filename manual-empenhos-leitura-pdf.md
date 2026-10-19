@@ -158,9 +158,22 @@ Atualizar os workers conforme o procedimento do ambiente para carregar a busca a
 
 1. Abrir **Financeiro → Empenhos**. No histórico de um lote, também é possível usar **Conciliar empenhos**; na linha de um arquivo, **Conciliar com OS** abre o documento correspondente.
 2. Para novos PDFs, a busca por OS é feita automaticamente após a leitura.
-3. Para empenhos importados antes desta etapa, selecionar os documentos e usar **Buscar OS para selecionados**, ou abrir o documento e clicar em **Buscar OS novamente**. Não é necessário reenviar os PDFs.
-4. Abrir **Revisar conciliação** para conferir empenho e candidatas.
-5. Usar **Aprovar vínculo com OS** e confirmar a OS escolhida.
+3. Para empenhos importados antes desta etapa, selecionar os documentos e usar **Buscar OS para selecionados**, ou usar **Buscar OS novamente** no menu da linha. Não é necessário reenviar os PDFs.
+4. No ícone de barrinhas à esquerda da linha, usar **Revisar conciliação** para conferir empenho e candidatas em um modal nativo.
+5. No mesmo menu, usar **Aprovar vínculo com OS** e confirmar a OS escolhida.
+
+### Ações diretamente na tabela
+
+As ações de cada empenho ficam em um único `ActionGroup`, representado pelo ícone de três barrinhas e alinhado à esquerda, antes das colunas:
+
+- **Revisar conciliação**: modal com dados do empenho, candidatas, diferenças e histórico.
+- **Aprovar vínculo com OS**: seleção e confirmação da OS elegível.
+- **Buscar OS novamente**: atualização das sugestões da linha.
+- **Visualizar PDF original**: consulta em outra aba, quando o arquivo está disponível.
+- **Revisar dados extraídos**: correção/confirmação dos dados pelo modal.
+- **Desvincular OS**, **Ignorar empenho** e **Reabrir empenho**: exibidas conforme a situação atual.
+
+As operações atualizam a tabela sem sair da listagem, preservando os filtros. Aprovação, correção e desvinculação continuam utilizando os mesmos serviços, permissões e validações da página individual.
 
 ### Regras de correspondência
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CustomerCommitments\Actions;
 
+use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Schemas\CommitmentReviewSchema;
 use App\Models\CustomerCommitment;
 use App\Services\Commitments\ApproveCommitmentMatchService;
 use App\Services\Commitments\CommitmentMatchEngine;
@@ -20,6 +21,22 @@ use Illuminate\Support\Facades\Auth;
 
 class CommitmentReviewActions
 {
+    public static function review(): Action
+    {
+        return Action::make('review_match')->label('Revisar conciliação')->icon('heroicon-o-eye')->authorize('view')
+            ->modalHeading(fn (CustomerCommitment $record) => 'Conciliação do empenho '.$record->number.'/'.$record->fiscal_year)
+            ->modalWidth('7xl')->stickyModalHeader()->stickyModalFooter()
+            ->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
+            ->schema(CommitmentReviewSchema::components());
+    }
+
+    public static function originalPdf(): Action
+    {
+        return Action::make('original_pdf')->label('Visualizar PDF original')->icon('heroicon-o-document-text')->authorize('view')->openUrlInNewTab()
+            ->visible(fn (CustomerCommitment $record) => $record->importFile->currentAttachments()->exists())
+            ->url(fn (CustomerCommitment $record) => $record->importFile->currentAttachments()->first()?->preview_url);
+    }
+
     public static function refresh(): Action
     {
         return Action::make('refresh_matches')->label('Buscar OS novamente')->icon('heroicon-o-arrow-path')->authorize('update')
@@ -83,7 +100,7 @@ class CommitmentReviewActions
 
     public static function unlink(): Action
     {
-        return Action::make('unlink_order')->label('Desvincular OS')->color('warning')->authorize('update')
+        return Action::make('unlink_order')->label('Desvincular OS')->icon('heroicon-o-link-slash')->color('warning')->authorize('update')
             ->visible(fn (CustomerCommitment $record) => $record->billing?->invoice_id === null && $record->billing !== null)
             ->requiresConfirmation()->schema([Textarea::make('reason')->label('Motivo')->required()->minLength(3)->maxLength(2000)])
             ->action(function (CustomerCommitment $record, array $data): void {
@@ -95,7 +112,8 @@ class CommitmentReviewActions
 
     public static function ignore(bool $reopen = false): Action
     {
-        return Action::make($reopen ? 'reopen' : 'ignore')->label($reopen ? 'Reabrir empenho' : 'Ignorar empenho')->color('gray')->authorize('update')
+        return Action::make($reopen ? 'reopen' : 'ignore')->label($reopen ? 'Reabrir empenho' : 'Ignorar empenho')
+            ->icon($reopen ? 'heroicon-o-arrow-uturn-left' : 'heroicon-o-archive-box-x-mark')->color('gray')->authorize('update')
             ->visible(fn (CustomerCommitment $record) => ! $record->billing()->exists() && ($reopen ? $record->status->value === 'ignored' : ! in_array($record->status->value, ['approved', 'ignored'], true)))
             ->schema([Textarea::make('reason')->label('Motivo')->required()->minLength(3)->maxLength(2000)])
             ->action(function (CustomerCommitment $record, array $data) use ($reopen): void {

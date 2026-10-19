@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankingEvents;
 
+use App\Filament\Clusters\Financial\BankingCluster;
 use App\Filament\Clusters\Financial\Resources\BankingEvents\Pages\ListBankingEvents;
 use App\Models\BankingEvent;
 use App\Models\BankSlip;
@@ -22,7 +23,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
-use UnitEnum;
 
 class BankingEventResource extends Resource
 {
@@ -30,13 +30,13 @@ class BankingEventResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-exclamation-triangle';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = BankingCluster::class;
 
     protected static ?string $modelLabel = 'Pendência bancária';
 
     protected static ?string $pluralModelLabel = 'Pendências bancárias';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 4;
 
     public static function getEloquentQuery(): Builder
     {

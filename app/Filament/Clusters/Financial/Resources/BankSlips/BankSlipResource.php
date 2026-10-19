@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\BankSlips;
 
 use App\Enum\Financial\BankSlipStatus;
+use App\Filament\Clusters\Financial\CollectionsCluster;
 use App\Filament\Clusters\Financial\Resources\BankSlips\Pages\ListBankSlips;
 use App\Jobs\QueryBankSlipJob;
 use App\Models\BankSlip;
@@ -23,7 +24,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
-use UnitEnum;
 
 class BankSlipResource extends Resource
 {
@@ -31,13 +31,13 @@ class BankSlipResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingLibrary;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = CollectionsCluster::class;
 
     protected static ?string $modelLabel = 'Boleto';
 
     protected static ?string $pluralModelLabel = 'Boletos';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

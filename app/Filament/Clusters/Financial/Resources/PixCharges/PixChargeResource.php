@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\PixCharges;
 
 use App\Enum\Financial\PixChargeStatus;
+use App\Filament\Clusters\Financial\CollectionsCluster;
 use App\Filament\Clusters\Financial\Resources\PixCharges\Pages\ListPixCharges;
 use App\Filament\Support\Actions\PixPaymentLinkAction;
 use App\Jobs\QueryPixChargeJob;
@@ -24,7 +25,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
-use UnitEnum;
 
 class PixChargeResource extends Resource
 {
@@ -32,13 +32,13 @@ class PixChargeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::QrCode;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+    protected static ?string $cluster = CollectionsCluster::class;
 
     protected static ?string $modelLabel = 'Cobrança PIX';
 
     protected static ?string $pluralModelLabel = 'Cobranças PIX';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {
