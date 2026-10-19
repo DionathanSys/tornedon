@@ -157,6 +157,11 @@ class ServiceOrder extends Model
         return $this->belongsTo(Equipment::class);
     }
 
+    public function commitmentBilling(): HasOne
+    {
+        return $this->hasOne(CommitmentBilling::class);
+    }
+
     public function technician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'technician_id');

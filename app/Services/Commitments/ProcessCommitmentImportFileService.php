@@ -89,6 +89,10 @@ class ProcessCommitmentImportFileService
                     'parser_version' => $version, 'processed_at' => now(), 'last_error' => null, 'processing_token' => null,
                 ]);
                 app(AuditRecorder::class)->recordModelEvent($file, 'commitment.file_processed', 'PDF de empenhos processado.', actorUserId: $userId, metadata: ['parser_version' => $version, 'requires_review' => $needsReview]);
+                if ($data instanceof CommitmentData && ! isset($result['existing_commitment_id'])) {
+                    $commitment = $file->commitments()->firstOrFail();
+                    app(SuggestCommitmentMatchesService::class)->refresh($companyId, $commitment->id, $userId);
+                }
             });
         } catch (Throwable $exception) {
             $message = match (true) {

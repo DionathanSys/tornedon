@@ -31,13 +31,13 @@ class CommitmentImportResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-arrow-up';
 
-    protected static ?string $navigationLabel = 'Empenhos';
+    protected static ?string $navigationLabel = 'Importações de empenhos';
 
     protected static ?string $modelLabel = 'importação de empenhos';
 
     protected static ?string $pluralModelLabel = 'Importações de empenhos';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 8;
 
     public static function importType(): ImportType
     {

@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\CommitmentImports\RelationManagers;
 
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Schemas\ImportFileDetailsSchema;
+use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 use App\Models\CommitmentImportFile;
 use App\Services\Commitments\ReprocessCommitmentImportFileService;
 use Filament\Actions\Action;
@@ -44,6 +45,9 @@ class FilesRelationManager extends RelationManager
                 TextColumn::make('attempts')->label('Tentativas'),
                 TextColumn::make('last_error')->label('Último erro')->wrap()->limit(120)->tooltip(fn ($state) => $state),
             ])->recordActions([
+                Action::make('reconcile')->authorize('view')->label('Conciliar com OS')->icon('heroicon-o-link')
+                    ->visible(fn (CommitmentImportFile $record) => $record->type->value === 'commitments' && $record->commitments()->exists())
+                    ->url(fn (CommitmentImportFile $record) => CustomerCommitmentResource::getUrl('view', ['record' => $record->commitments()->firstOrFail()])),
                 Action::make('details')->authorize('view')->label('Dados extraídos')->icon('heroicon-o-eye')->modalWidth('7xl')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
                     ->stickyModalHeader()->stickyModalFooter()
                     ->fillForm(fn (CommitmentImportFile $record) => ['extracted_text' => $record->extracted_text])

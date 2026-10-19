@@ -9,6 +9,7 @@ use App\Filament\Clusters\Financial\Resources\CommitmentImports\Pages\ViewCommit
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\RelationManagers\FilesRelationManager;
 use App\Filament\Clusters\Financial\Resources\CommitmentPaymentImports\CommitmentPaymentImportResource;
 use App\Filament\Clusters\Financial\Resources\CommitmentPaymentImports\Pages\ListCommitmentPaymentImports;
+use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 use App\Models\CommitmentImport;
 use App\Models\CommitmentSetting;
 use App\Models\Company;
@@ -72,7 +73,8 @@ class CommitmentImportFilamentTest extends TestCase
         $items = collect($financial->getItems())->keyBy(fn ($item) => $item->getLabel());
         $this->assertTrue($items->has('Empenhos'), 'O menu Financeiro deve conter o acesso a Empenhos.');
         $this->assertTrue($items->has('Pagamentos de empenhos'));
-        $this->assertSame(CommitmentImportResource::getUrl('index'), $items['Empenhos']->getUrl());
+        $this->assertSame(CustomerCommitmentResource::getUrl('index'), $items['Empenhos']->getUrl());
+        $this->assertSame(CommitmentImportResource::getUrl('index'), $items['Importações de empenhos']->getUrl());
         $this->assertSame(CommitmentPaymentImportResource::getUrl('index'), $items['Pagamentos de empenhos']->getUrl());
     }
 
