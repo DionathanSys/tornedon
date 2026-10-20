@@ -2,13 +2,16 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CustomerCommitments;
 
+use App\Enum\Commitment\BillingStatus;
 use App\Enum\Commitment\MatchStatus;
 use App\Filament\Clusters\Financial\CommitmentsCluster;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Actions\ImportCommitmentFilesAction;
+use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Actions\CommitmentBillingActions;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Actions\CommitmentReviewActions;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Pages\ListCustomerCommitments;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Pages\ViewCustomerCommitment;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Schemas\CommitmentReviewSchema;
+use App\Models\CommitmentBillingBatch;
 use App\Models\CommitmentImport;
 use App\Models\CustomerCommitment;
 use App\Services\Commitments\SuggestCommitmentMatchesService;
@@ -58,18 +61,24 @@ class CustomerCommitmentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('company_id', Filament::getTenant()->id)
-            ->with(['customer', 'suggestedServiceOrder.equipment', 'billing.serviceOrder.equipment', 'importFile']);
+            ->with(['customer', 'suggestedServiceOrder.equipment', 'billing.serviceOrder.equipment', 'billing.latestBatchItem', 'billing.activeBatch', 'billing.invoice.fiscalDocuments', 'importFile']);
     }
 
     public static function table(Table $table): Table
     {
-        return $table->defaultSort('id', 'desc')->recordUrl(null)->columns([
+        return $table->defaultSort('id', 'desc')->recordUrl(null)->poll('10s')->columns([
             TextColumn::make('number')->label('Empenho')->searchable()->description(fn (CustomerCommitment $record) => 'Exercício '.$record->fiscal_year),
             TextColumn::make('customer.name')->label('Cliente')->searchable(),
             TextColumn::make('issued_at')->label('Emissão')->date('d/m/Y')->sortable(),
             TextColumn::make('patrimony')->label('Patrimônio')->searchable()->placeholder('Não identificado'),
             TextColumn::make('amount')->label('Valor')->money('BRL', locale: 'pt_BR')->sortable(),
             TextColumn::make('status')->label('Conciliação')->badge()->formatStateUsing(fn ($state) => $state->description())->color(fn ($state) => $state->color()),
+            TextColumn::make('billing.status')->label('Faturamento')->badge()->formatStateUsing(fn ($state) => $state->description())->color(fn ($state) => $state->color())->placeholder('Sem vínculo'),
+            TextColumn::make('execution')->label('Execução')->state(fn (CustomerCommitment $record) => match ($record->billing?->latestBatchItem?->status) {
+                'queued' => 'Na fila', 'processing' => 'Processando', 'completed' => 'Concluído', 'failed' => 'Falhou', default => null,
+            })->placeholder('—')->description(fn (CustomerCommitment $record) => $record->billing?->active_batch_id ? 'Lote #'.$record->billing->active_batch_id : null),
+            TextColumn::make('nfse_status')->label('NFS-e')->state(fn (CustomerCommitment $record) => $record->billing?->invoice?->fiscalDocuments->firstWhere('document_type.value', 'nfse')?->nfse_status?->description())->placeholder('Não encaminhada'),
+            TextColumn::make('billing.last_error')->label('Erro de faturamento/emissão')->wrap()->limit(120)->placeholder('—')->toggleable(),
             TextColumn::make('order_number')->label('OS aprovada / sugerida')->state(fn (CustomerCommitment $record) => $record->billing?->serviceOrder?->number ?? $record->suggestedServiceOrder?->number)->placeholder('—')
                 ->description(fn (CustomerCommitment $record) => ($record->billing?->serviceOrder ?? $record->suggestedServiceOrder)?->order_date?->format('d/m/Y')),
             TextColumn::make('suggestion_count')->label('Compatíveis')->badge(),
@@ -82,6 +91,11 @@ class CustomerCommitmentResource extends Resource
         ])->filters([
             SelectFilter::make('customer_id')->label('Cliente')->options(fn () => ImportCommitmentFilesAction::customerOptions()),
             SelectFilter::make('status')->label('Conciliação')->options(collect(MatchStatus::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
+            SelectFilter::make('billing_status')->label('Etapa de faturamento')->options(collect(BillingStatus::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all())
+                ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn ($query, $value) => $query->whereHas('billing', fn ($billing) => $billing->where('status', $value)))),
+            SelectFilter::make('billing_batch')->label('Lote de faturamento')->options(fn () => CommitmentBillingBatch::query()->where('company_id', Filament::getTenant()->id)->latest('id')->limit(100)->pluck('id', 'id')->all())
+                ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn ($query, $value) => $query->whereHas('billingBatchItems', fn ($item) => $item->where('company_id', Filament::getTenant()->id)->where('commitment_billing_batch_id', $value)))),
+            Filter::make('billing_errors')->label('Com falha de faturamento/emissão')->query(fn (Builder $query) => $query->whereHas('billing', fn ($billing) => $billing->whereNotNull('last_error'))),
             SelectFilter::make('import_id')->label('Lote de importação')
                 ->options(fn () => CommitmentImport::forCompany(Filament::getTenant()->id)->where('type', 'commitments')->orderByDesc('id')->pluck('id', 'id')->all())
                 ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn (Builder $query, $value) => $query->whereHas('importFile', fn ($file) => $file->where('commitment_import_id', $value)))),
@@ -96,6 +110,8 @@ class CustomerCommitmentResource extends Resource
         ])->recordActions([
             ActionGroup::make([
                 CommitmentReviewActions::review(),
+                CommitmentBillingActions::make(),
+                CommitmentBillingActions::invoice(),
                 CommitmentReviewActions::approve(),
                 CommitmentReviewActions::refresh(),
                 CommitmentReviewActions::originalPdf(),
@@ -105,6 +121,7 @@ class CustomerCommitmentResource extends Resource
                 CommitmentReviewActions::ignore(reopen: true),
             ])->label('Ações do empenho')->tooltip('Ações do empenho')->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
         ], RecordActionsPosition::BeforeCells)->recordActionsAlignment('start')->toolbarActions([
+            CommitmentBillingActions::bulk(),
             BulkAction::make('refresh_selected')->label('Buscar OS para selecionados')->icon('heroicon-o-arrow-path')
                 ->authorize('viewAny', CustomerCommitment::class)->deselectRecordsAfterCompletion()
                 ->action(function (Collection $records): void {

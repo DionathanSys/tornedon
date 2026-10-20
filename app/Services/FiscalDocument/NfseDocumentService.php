@@ -3,10 +3,10 @@
 namespace App\Services\FiscalDocument;
 
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\Status;
+use App\Jobs\ProcessQueuedNfseEmissionJob;
 use App\Models\FiscalDocument;
 use App\Models\FiscalProfile;
-use App\Jobs\ProcessQueuedNfseEmissionJob;
-use App\Services\Fiscal\NfseConfigService;
 use App\Services\FiscalDocument\Actions\CancelNfseAction;
 use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\Actions\PrintNfsePdfAction;
@@ -31,16 +31,19 @@ class NfseDocumentService
 
         if (! $doc->isNfse()) {
             $this->setError('O documento informado não é NFS-e. Use o fluxo de validação da NF-e.');
+
             return false;
         }
 
         if ($doc->isNfseInProcessing()) {
             $this->setError('Não é possível excluir uma NFS-e em processamento. Aguarde o retorno da prefeitura.');
+
             return false;
         }
 
         if ($doc->isNfseAuthorized()) {
             $this->setError('Não é possível excluir uma NFS-e autorizada. Cancele a NFS-e antes da exclusão.');
+
             return false;
         }
 
@@ -58,12 +61,13 @@ class NfseDocumentService
 
         try {
             if ($doc->blocksNfseResubmission()) {
-                $this->setError('NFS-e já possui solicitação de emissão. Status atual: ' . $doc->nfse_status?->description());
+                $this->setError('NFS-e já possui solicitação de emissão. Status atual: '.$doc->nfse_status?->description());
                 $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                     'contexto' => [
                         'status_atual' => $doc->nfse_status?->value,
                     ],
                 ]);
+
                 return false;
             }
 
@@ -93,7 +97,7 @@ class NfseDocumentService
             $requestedAt = now();
 
             $doc->update([
-                'status' => \App\Enum\FiscalDocument\Status::PENDING->value,
+                'status' => Status::PENDING->value,
                 'nfse_status' => NfeStatus::QUEUED->value,
                 'emission_requested_at' => $requestedAt,
                 'emission_group_key' => $preflight->queueGroupKey,
@@ -102,7 +106,7 @@ class NfseDocumentService
                 'updated_by' => $userId,
             ]);
 
-            dispatch(new ProcessQueuedNfseEmissionJob($preflight->queueGroupKey));
+            dispatch(new ProcessQueuedNfseEmissionJob($preflight->queueGroupKey))->afterCommit();
 
             $this->setSuccess('NFS-e enfileirada para emissão.');
 
@@ -117,20 +121,20 @@ class NfseDocumentService
             return true;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao enfileirar emissão da NFS-e: ' . $e->getMessage());
+            $this->setError('Erro ao enfileirar emissão da NFS-e: '.$e->getMessage());
 
             $this->persistActionError($doc, 'emitir', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
-                    'serie'     => $serie,
-                    'user_id'   => $userId,
+                    'serie' => $serie,
+                    'user_id' => $userId,
                 ],
             ]);
 
             Log::error('NfseDocumentService::emitir', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $doc->id,
-                'exception'          => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return false;
@@ -145,7 +149,7 @@ class NfseDocumentService
         $this->resetResponse();
 
         try {
-            $action = new ConsultNfseAction();
+            $action = new ConsultNfseAction;
             $result = $action->execute($doc);
 
             if (! $result || $action->hasError()) {
@@ -153,14 +157,16 @@ class NfseDocumentService
                 $this->persistActionError($doc, 'consultar', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
+
                 return false;
             }
 
             $this->setSuccess($action->getMessage() ?: 'Consulta realizada.');
+
             return true;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao consultar NFS-e: ' . $e->getMessage());
+            $this->setError('Erro ao consultar NFS-e: '.$e->getMessage());
             $this->persistActionError($doc, 'consultar', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
@@ -168,9 +174,9 @@ class NfseDocumentService
             ]);
 
             Log::error('NfseDocumentService::consultar', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $doc->id,
-                'exception'          => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return false;
@@ -185,22 +191,24 @@ class NfseDocumentService
         $this->resetResponse();
 
         try {
-            $action = new PrintNfsePdfAction();
-            $pdf    = $action->execute($doc);
+            $action = new PrintNfsePdfAction;
+            $pdf = $action->execute($doc);
 
             if ($pdf === null || $action->hasError()) {
                 $this->setError($action->getMessage(), $action->getErrors());
                 $this->persistActionError($doc, 'pdf', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
+
                 return null;
             }
 
             $this->setSuccess('PDF gerado.');
+
             return $pdf;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da NFS-e: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da NFS-e: '.$e->getMessage());
             $this->persistActionError($doc, 'pdf', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
@@ -208,9 +216,9 @@ class NfseDocumentService
             ]);
 
             Log::error('NfseDocumentService::pdf', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $doc->id,
-                'exception'          => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -225,22 +233,24 @@ class NfseDocumentService
         $this->resetResponse();
 
         try {
-            $action = new PrintNfsePreviewAction();
-            $data   = $action->execute($doc);
+            $action = new PrintNfsePreviewAction;
+            $data = $action->execute($doc);
 
             if (! $data || $action->hasError()) {
                 $this->setError($action->getMessage(), $action->getErrors());
                 $this->persistActionError($doc, 'preview', $this->getMessageUser(), [
                     'erros' => $action->getErrors(),
                 ]);
+
                 return null;
             }
 
             $this->setSuccess('Preview gerado.');
+
             return $data;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da NFS-e: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da NFS-e: '.$e->getMessage());
             $this->persistActionError($doc, 'preview', $this->getMessageUser(), [
                 'contexto' => [
                     'exception' => $e->getMessage(),
@@ -248,9 +258,9 @@ class NfseDocumentService
             ]);
 
             Log::error('NfseDocumentService::preview', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $doc->id,
-                'exception'          => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -265,12 +275,11 @@ class NfseDocumentService
         string $codigoCancelamento = '9',
         string $motivoCancelamento = 'Cancelamento solicitado',
         ?int $userId = null
-    ): bool
-    {
+    ): bool {
         $this->resetResponse();
 
         try {
-            $action = new CancelNfseAction();
+            $action = new CancelNfseAction;
             $result = $action->execute($doc, $codigoCancelamento, $motivoCancelamento);
 
             if (! $result || $action->hasError()) {
@@ -283,14 +292,16 @@ class NfseDocumentService
                         'user_id' => $userId,
                     ],
                 ]);
+
                 return false;
             }
 
             $this->setSuccess('NFS-e cancelada com sucesso.');
+
             return true;
 
         } catch (\Exception $e) {
-            $this->setError('Erro ao cancelar NFS-e: ' . $e->getMessage());
+            $this->setError('Erro ao cancelar NFS-e: '.$e->getMessage());
             $this->persistActionError($doc, 'cancelar', $this->getMessageUser(), [
                 'contexto' => [
                     'codigo_cancelamento' => $codigoCancelamento,
@@ -301,9 +312,9 @@ class NfseDocumentService
             ]);
 
             Log::error('NfseDocumentService::cancelar', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $doc->id,
-                'exception'          => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return false;
@@ -328,12 +339,13 @@ class NfseDocumentService
     public static function getDefaultCnaeCode(int $companyId): string
     {
         $cnaeCode = FiscalProfile::query()->where('company_id', $companyId)->value('service_cnae_code');
+
         return str_replace(['.', '-'], '', $cnaeCode ?? '');
     }
 
     private function persistActionError(FiscalDocument $doc, string $action, ?string $message, array $data = []): void
     {
-        $persistAction = new SaveFiscalDocumentErrorAction();
+        $persistAction = new SaveFiscalDocumentErrorAction;
         $persistAction->execute($doc, $message, array_merge($data, [
             'acao' => $action,
         ]));

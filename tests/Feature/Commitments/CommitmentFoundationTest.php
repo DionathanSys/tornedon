@@ -12,6 +12,8 @@ use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CommitmentBilling;
+use App\Models\CommitmentBillingBatch;
+use App\Models\CommitmentBillingBatchItem;
 use App\Models\CommitmentImport;
 use App\Models\CommitmentImportFile;
 use App\Models\CommitmentPaymentLine;
@@ -159,7 +161,7 @@ class CommitmentFoundationTest extends TestCase
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Filament::setTenant($this->company);
-        foreach ([CommitmentSetting::class, CommitmentImport::class, CommitmentImportFile::class, CustomerCommitment::class, CommitmentBilling::class, CommitmentPaymentLine::class, CommitmentReceipt::class, CommitmentReceiptPayment::class] as $model) {
+        foreach ([CommitmentSetting::class, CommitmentImport::class, CommitmentImportFile::class, CustomerCommitment::class, CommitmentBilling::class, CommitmentBillingBatch::class, CommitmentBillingBatchItem::class, CommitmentPaymentLine::class, CommitmentReceipt::class, CommitmentReceiptPayment::class] as $model) {
             $record = new $model(['company_id' => $this->company->id]);
             $this->assertTrue(Gate::forUser($user)->allows('view', $record), $model);
             $this->assertFalse(Gate::forUser($user)->allows('delete', $record));

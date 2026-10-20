@@ -18,6 +18,7 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfseConfigService;
+use App\Services\FiscalDocument\Actions\SendNfseAction;
 use App\Services\FiscalDocument\NfseDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -57,7 +58,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $this->assertNotNull($document->emission_requested_at);
         $this->assertSame("nfse:{$document->company_id}:1:2", $document->emission_group_key);
 
-        Bus::assertDispatched(ProcessQueuedNfseEmissionJob::class);
+        Bus::assertDispatched(ProcessQueuedNfseEmissionJob::class, fn (ProcessQueuedNfseEmissionJob $job): bool => $job->afterCommit === true);
     }
 
     public function test_queue_job_reuses_rps_number_when_first_document_fails_before_api_acceptance(): void
@@ -236,7 +237,7 @@ class QueuedNfseEmissionFlowTest extends TestCase
         $config->shouldReceive('resolveToken')->andReturn('fake-token');
         $this->app->instance(NfseConfigService::class, $config);
 
-        $action = new \App\Services\FiscalDocument\Actions\SendNfseAction($user->id);
+        $action = new SendNfseAction($user->id);
 
         $result = $action->execute($document->fresh(), '1', 'municipal_nfse');
 

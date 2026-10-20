@@ -15,6 +15,7 @@ Este documento define a implementação a executar. Os nomes de novas classes, t
 - Comparar patrimônio e valor total da ordem, em centavos, sem tolerância automática.
 - Priorizar a data de abertura (`order_date`) crescente; desempatar pelo ID.
 - O usuário revisa e seleciona as conciliações antes do faturamento.
+- Este fluxo atende exclusivamente serviços/NFS-e. OS com requisição vinculada são bloqueadas e devem seguir o faturamento normal.
 - Cada OS selecionada gera sua própria fatura, confirmada com padrões configurados, e sua NFS-e é encaminhada para emissão.
 - Corpo da NFS-e: nome do serviço selecionado para o documento.
 - Rodapé/informações complementares: mensagem fixa configurável, patrimônio e número/ano do empenho, preservando o requisito inicial de identificar o empenho na nota.
@@ -95,12 +96,12 @@ Correções de extração exigem motivo e preservam o conteúdo originalmente ex
 | Buscar novamente | Linha/detalhe e lote selecionado | Recalcular sugestões não executadas |
 | Aprovar vínculo | Detalhe | Reservar OS para o empenho com revalidação |
 | Desvincular | Detalhe | Liberar vínculo apenas antes de criar fatura; auditar |
-| Faturar e emitir NFS-e | Linha/detalhe e seleção em lote | Prévia, confirmação da seleção e processamento sequencial |
+| Faturar OS vinculada | Linha/detalhe e seleção em lote | Prévia, confirmação da seleção, emissão opcional e processamento sequencial |
 | Retomar processamento | Linha/detalhe e seleção com falha | Continuar da última etapa persistida |
 | Reprocessar arquivo | Histórico de importações | Nova tentativa de extração; não sobrescrever vínculos executados |
 | Ignorar/Reabrir | Linha/detalhe | Retirar da fila operacional ou devolver para revisão com motivo |
 
-O modal **Faturar e emitir NFS-e** mostra quantidade de OS, total, padrões financeiros, corpo/rodapé de exemplo e registros não elegíveis. A execução é assíncrona, com progresso e resultado por empenho. “Encaminhada para emissão” não significa “autorizada”; a situação fiscal será lida do documento existente.
+O modal **Faturar OS vinculada** mostra quantidade de OS, total, padrões financeiros, corpo/rodapé de exemplo e registros não elegíveis. A opção de encaminhar a NFS-e exige confirmação do usuário. A execução é assíncrona, com progresso e resultado por empenho, até 25 registros por lote. “Encaminhada para emissão” não significa “autorizada”; a situação fiscal é lida do documento existente.
 
 ### 3.4. Configuração empresa/cliente
 
@@ -224,7 +225,7 @@ Novos serviços em `app/Services/Commitments/`:
 | `SuggestCommitmentMatchesService` | Extrair PAT do nome do equipamento e sugerir OS elegíveis |
 | `ApproveCommitmentMatchService` | Reservar vínculo exclusivo com revalidação e auditoria |
 | `BillCommitmentService` | Faturar uma OS e confirmar a fatura com snapshot dos padrões |
-| `QueueCommitmentFiscalEmissionService` | Encaminhar documentos existentes e registrar resultado recuperável |
+| `NfseDocumentService` (existente) | Reutilizado diretamente para o encaminhamento opcional da NFS-e, com sua fila e validações atuais |
 | `MatchCommitmentPaymentsService` | Resolver empenho → OS/fatura → notas/contas/parcelas e divergências |
 | `ReceiveCommitmentPaymentService` | Validar quitação, registrar pagamentos e guardar vínculo idempotente |
 
@@ -242,9 +243,9 @@ Jobs propostos: `ProcessCommitmentImportFileJob` e `ProcessCommitmentBillingBatc
 
 ### Valor da ordem e requisições
 
-O model atual distingue `total_amount`/`services_total_amount` de `grand_total_amount`, que inclui requisição vinculada. Implementar a comparação com o total geral da ordem apresentado ao usuário (`grand_total_amount`), incluindo serviços líquidos, deslocamento e requisição vinculada. Exibir a composição no detalhe para evitar ambiguidades.
+O valor elegível neste fluxo é a soma de serviços líquidos e deslocamento, comparada em centavos com o empenho. O model também possui total geral com requisição; essa composição continua visível para diagnóstico de registros antigos, mas qualquer requisição torna a OS inelegível.
 
-O workflow existente anexa requisições à mesma fatura e pode gerar NF-e além da NFS-e. Antes de confirmar automaticamente uma fatura mista, validar se todos os dados fiscais exigidos estão disponíveis. Se não estiverem, manter a fatura pendente com diagnóstico e acesso à revisão normal; não omitir produtos nem transferir seu valor para a NFS-e. A NFS-e mantém a parcela de serviços calculada pelo domínio existente.
+O workflow existente é reutilizado somente após bloquear OS com requisição. A confirmação verifica que a fatura contém exatamente a OS aprovada e nenhuma requisição. Este fluxo gera somente NFS-e; não ignora produtos nem altera o comportamento do faturamento normal.
 
 ## 7. Transações, retomada e duplicidade
 
@@ -277,7 +278,7 @@ Cada etapa entrega código verificável e atualiza este checklist. Ordem de impl
 - [x] **2 — PDFs:** extrator, leitores, DTOs e comando de diagnóstico local; conferir os três empenhos, relatório e total declarado.
 - [x] **3 — Importação:** formulário múltiplo, histórico de arquivos, jobs individuais, progresso e reprocessamento.
 - [x] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
-- [ ] **5 — Faturamento:** configuração financeira/fiscal, prévia de corpo/rodapé, ação individual/lote, confirmação e retomada por etapa.
+- [x] **5 — Faturamento:** configuração financeira/fiscal, prévia de corpo/rodapé, ação individual/lote, confirmação e retomada por etapa; emissão opcional reutilizando o serviço existente.
 - [ ] **6 — Emissão:** encaminhamento pela fila existente e apresentação da situação real da NFS-e; validação do mapeamento de rodapé no emissor utilizado.
 - [ ] **7 — Pagamentos:** importação do relatório, integridade dos totais, identificação de vínculos, revisão e baixa integral selecionada.
 - [ ] **8 — Integração visual:** referências na OS, fatura e recebimentos; filtros, mensagens e navegação final.
@@ -350,6 +351,18 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - Cache de componentes/rotas limpo e novas rotas conferidas. Implantação requer aplicar a nova migration e atualizar os workers para a busca automática nas novas importações.
 - Próxima entrega: etapa 5, faturamento individual das conciliações aprovadas, confirmação de faturas e preparação dos textos fiscais.
 
+### Registro de execução — etapa 5 (19/10/2026)
+
+- `BillCommitmentService` apenas orquestra os passos existentes: `InvoiceServiceOrderWorkflow::execute()`, `InvoiceService::confirm()` e, se solicitado pelo usuário, `NfseDocumentService::emitir()`. Não foi criado um novo serviço de emissão.
+- Migration `2026_10_19_000004_create_commitment_billing_batches.php`: lote, itens, token de execução e última etapa concluída. Estados de fila/processamento pertencem aos itens; o faturamento mantém seus cinco estados originais.
+- Faturamento e vínculo da fatura são atômicos. Confirmação e atualização da etapa usam outra transação; falha permite retomar sem refaturar. O job fiscal existente passa a ser despachado `afterCommit()`, evitando execução antes de persistir o documento.
+- Emissão é opcional e posterior ao commit financeiro. Falha preserva a fatura confirmada e seus títulos/documento; retomada usa os mesmos registros e respeita conciliação de RPS/cancelamento. Recuperação de despacho usa o processador fiscal existente e o mesmo grupo, sem novo documento ou RPS.
+- `RequestCommitmentBillingService` captura os padrões utilizados. O job `ProcessCommitmentBillingBatchJob` processa até 25 empenhos sequencialmente, isola falhas, registra resultado individual e notifica o solicitante. Acesso é revalidado no worker. Tentativas interrompidas podem ser retomadas após dez minutos; tokens antigos não podem alterar a nova execução.
+- Na tabela e no detalhe: faturar/retomar, encaminhar NFS-e e abrir fatura, prévia dos textos e padrões financeiros, seleção em lote, filtros, execução, erro e situação fiscal real. A tabela atualiza a cada dez segundos.
+- OS com requisição são bloqueadas já na conciliação e novamente antes de faturar/confirmar/emitir. Desvinculação é bloqueada durante execução e após criação de fatura. Tentativas falhas sem fatura permitem desvincular preservando o histórico do lote.
+- Implantação: aplicar a migration, limpar caches dos componentes e reiniciar workers. O ambiente fiscal configurado e a fila existente continuam sendo utilizados. A homologação com provedor real permanece na etapa própria.
+- Verificação: `composer test` passou com **845 testes e 4.501 assertions**; os 101 testes focados de empenhos/fila NFS-e também passaram. Pint e conferência das sete rotas do cluster concluídos. A tentativa de aplicar a migration neste ambiente ficou bloqueada por timeout da conexão MySQL; não foi possível confirmar a implantação no banco configurado.
+
 ## 10. Verificação e critérios de aceite
 
 ### Testes automatizados relevantes
@@ -362,7 +375,7 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - Mesmo arquivo e mesmo empenho reimportados; dois jobs tentando usar a mesma OS.
 - Fatura individual, corpo com nome do serviço, rodapé com mensagem/PAT/empenho e snapshot de padrões.
 - Falha de confirmação com rollback; falha fiscal com retomada sem nova fatura/documento.
-- Fatura mista e dados fiscais incompletos com pendência explícita.
+- OS com requisição bloqueada na conciliação e no worker, inclusive quando vinculada após o envio à fila.
 - Baixa compatível, múltiplas parcelas, saldo alterado depois da sugestão e rollback na segunda parcela.
 - Relatórios sobrepostos, conta já recebida e recebimento removido/estornado.
 - Políticas, ações em lote e acesso autorizado a PDFs entre tenants.

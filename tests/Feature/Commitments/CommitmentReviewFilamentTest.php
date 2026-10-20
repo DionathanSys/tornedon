@@ -4,15 +4,22 @@ namespace Tests\Feature\Commitments;
 
 use App\Enum\Commitment\ImportType;
 use App\Enum\Commitment\MatchStatus;
+use App\Enum\Payment\Condition;
+use App\Enum\Payment\Method;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Pages\ListCustomerCommitments;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Pages\ViewCustomerCommitment;
+use App\Jobs\ProcessCommitmentBillingBatchJob;
 use App\Jobs\ProcessCommitmentImportFileJob;
+use App\Models\CommitmentBillingBatch;
+use App\Models\CommitmentSetting;
 use App\Models\Company;
 use App\Models\CustomerCommitment;
+use App\Services\Commitments\ApproveCommitmentMatchService;
 use App\Services\Commitments\DTO\ExtractedPdf;
 use App\Services\Commitments\ImportCommitmentFilesService;
 use App\Services\Commitments\Pdf\PdfTextExtractor;
+use App\Services\Commitments\ProcessCommitmentBillingBatchService;
 use App\Services\Commitments\ProcessCommitmentImportFileService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
@@ -42,6 +49,50 @@ class CommitmentReviewFilamentTest extends TestCase
         $this->actingAs($this->user);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Filament::setTenant($this->company);
+    }
+
+    public function test_table_billing_modal_previews_texts_and_enqueues_only_after_confirmation(): void
+    {
+        CommitmentSetting::query()->update(['payment_method' => Method::BANK_TRANSFER->value, 'payment_condition' => Condition::DAYS_30->value, 'nfse_footer_message' => 'Contrato municipal.']);
+        $record = $this->commitment();
+        $order = $this->order();
+        app(ApproveCommitmentMatchService::class)->approve($this->company->id, $record->id, $order->id, $this->user->id);
+        $page = Livewire::test(ListCustomerCommitments::class)->mountAction(TestAction::make('bill_commitment')->table($record))
+            ->assertActionMounted(TestAction::make('bill_commitment')->table($record));
+        $instance = $page->instance();
+        $entries = collect($instance->getSchema($instance->getMountedActionSchemaName())->getFlatComponents());
+        $preview = $entries->first(fn ($entry) => $entry instanceof RepeatableEntry && $entry->getName() === 'billing_preview');
+        $this->assertNotNull($preview);
+        $this->assertStringContainsString('Contrato municipal.', $preview->getState()[0]['footer']);
+        $this->assertStringContainsString('Patrimônio: 142186', $preview->getState()[0]['footer']);
+        $this->assertSame($order->items->first()->service->name, $preview->getState()[0]['body']);
+        Queue::assertNotPushed(ProcessCommitmentBillingBatchJob::class);
+        $this->assertDatabaseCount('invoices', 0);
+        $page->callMountedAction(['emit_nfse' => false])->assertHasNoActionErrors()->assertNoRedirect();
+        Queue::assertPushed(ProcessCommitmentBillingBatchJob::class);
+        $batch = CommitmentBillingBatch::sole();
+        $this->assertFalse($batch->emit_nfse);
+        $this->assertSame($record->billing->id, $batch->items()->sole()->commitment_billing_id);
+        app(ProcessCommitmentBillingBatchService::class)->process($batch->id, $batch->company_id, $batch->run_token);
+        Livewire::test(ListCustomerCommitments::class)->assertSee('Fatura confirmada')->assertSee('Concluído')->filterTable('billing_batch', $batch->id)->assertCanSeeTableRecords([$record]);
+        Livewire::test(ViewCustomerCommitment::class, ['record' => $record->id])->assertSuccessful()->assertSee('Faturamento e emissão')->assertSee('Contrato municipal.');
+    }
+
+    public function test_bulk_billing_skips_unapproved_rows_and_persists_optional_emission(): void
+    {
+        CommitmentSetting::query()->update(['payment_method' => Method::BANK_TRANSFER->value, 'payment_condition' => Condition::DAYS_30->value]);
+        $record = $this->commitment();
+        $unapproved = $this->commitment();
+        $order = $this->order();
+        app(ApproveCommitmentMatchService::class)->approve($this->company->id, $record->id, $order->id, $this->user->id);
+        Livewire::test(ListCustomerCommitments::class)->selectTableRecords([$record->id, $unapproved->id])
+            ->callAction(TestAction::make('bill_selected')->table()->bulk(), ['emit_nfse' => true])->assertHasNoActionErrors();
+        $batch = CommitmentBillingBatch::sole();
+        $this->assertTrue($batch->emit_nfse);
+        $this->assertSame(1, $batch->items()->count());
+        $this->assertNull($unapproved->fresh()->billing);
+        Queue::assertPushed(ProcessCommitmentBillingBatchJob::class);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_navigation_and_list_expose_commitments_and_keep_tenant_scope(): void

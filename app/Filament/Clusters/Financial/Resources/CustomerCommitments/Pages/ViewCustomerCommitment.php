@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CustomerCommitments\Pages;
 
+use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Actions\CommitmentBillingActions;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\Actions\CommitmentReviewActions;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 use App\Services\Commitments\CommitmentMatchEngine;
@@ -15,6 +16,7 @@ class ViewCustomerCommitment extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            CommitmentBillingActions::make(), CommitmentBillingActions::invoice(),
             CommitmentReviewActions::refresh(), CommitmentReviewActions::approve(), CommitmentReviewActions::correct(),
             CommitmentReviewActions::unlink(), CommitmentReviewActions::ignore(), CommitmentReviewActions::ignore(reopen: true),
             Action::make('original_pdf')->label('Consultar PDF original')->openUrlInNewTab()

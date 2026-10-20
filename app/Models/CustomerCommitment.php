@@ -38,6 +38,11 @@ class CustomerCommitment extends CommitmentRecord
         return $this->hasOne(CommitmentBilling::class);
     }
 
+    public function billingBatchItems(): HasMany
+    {
+        return $this->hasMany(CommitmentBillingBatchItem::class);
+    }
+
     public function suggestedServiceOrder(): BelongsTo
     {
         return $this->belongsTo(ServiceOrder::class, 'suggested_service_order_id');

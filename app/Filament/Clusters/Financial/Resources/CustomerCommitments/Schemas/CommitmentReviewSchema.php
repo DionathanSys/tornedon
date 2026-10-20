@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Financial\Resources\CustomerCommitments\Schemas;
 
+use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\AuditEntry;
 use App\Models\CustomerCommitment;
@@ -42,10 +44,33 @@ class CommitmentReviewSchema
                     TextEntry::make('billing.serviceOrder.equipment.name')->label('Veículo / equipamento'),
                     TextEntry::make('billing.approval_snapshot.selected_order.total_amount_cents')->label('Valor da OS na aprovação')->money('BRL', divideBy: 100, locale: 'pt_BR'),
                     TextEntry::make('billing.approved_at')->label('Aprovado em')->dateTime('d/m/Y H:i'),
-                    TextEntry::make('billing.invoice_id')->label('Fatura')->placeholder('Aguardando etapa de faturamento'),
+                    TextEntry::make('billing.invoice_id')->label('Fatura')->placeholder('Aguardando faturamento')
+                        ->url(fn (CustomerCommitment $record) => $record->billing?->invoice_id ? InvoiceResource::getUrl('edit', ['record' => $record->billing->invoice_id]) : null)->openUrlInNewTab(),
                 ]),
+            Section::make('Faturamento e emissão')->columnSpanFull()->visible(fn (CustomerCommitment $record) => $record->billing !== null)->columns(2)->schema([
+                TextEntry::make('billing.status')->label('Etapa')->badge()->formatStateUsing(fn ($state) => $state->description()),
+                TextEntry::make('billing.completed_step')->label('Última etapa concluída')->formatStateUsing(fn ($state) => $state->description())->placeholder('Aguardando faturamento'),
+                TextEntry::make('billing.active_batch_id')->label('Lote de faturamento')->placeholder('—'),
+                TextEntry::make('billing.attempts')->label('Tentativas'),
+                TextEntry::make('billing.last_error')->label('Diagnóstico de falha')->placeholder('Sem falhas registradas')->columnSpanFull(),
+                TextEntry::make('billing.settings_snapshot.nfse_item_description')->label('Corpo da NFS-e utilizado')->placeholder('Não faturado'),
+                TextEntry::make('billing.settings_snapshot.nfse_additional_information')->label('Rodapé da NFS-e utilizado')->placeholder('Não faturado'),
+                RepeatableEntry::make('billing_batch_history')->label('Tentativas de faturamento')->columnSpanFull()
+                    ->state(fn (CustomerCommitment $record) => $record->billingBatchItems()->forCustomer($record->company_id, $record->customer_id)->latest('id')->limit(20)->get()->map(fn ($item) => [
+                        'batch' => $item->commitment_billing_batch_id, 'status' => match ($item->status) {
+                            'queued' => 'Na fila', 'processing' => 'Processando', 'completed' => 'Concluído', 'failed' => 'Falhou', default => $item->status,
+                        }, 'error' => $item->last_error, 'finished_at' => $item->finished_at,
+                    ])->all())
+                    ->schema([TextEntry::make('batch')->label('Lote'), TextEntry::make('status')->label('Execução'), TextEntry::make('error')->label('Diagnóstico')->placeholder('—'), TextEntry::make('finished_at')->label('Finalizado em')->dateTime('d/m/Y H:i')->placeholder('—')]),
+                RepeatableEntry::make('billing_documents')->label('Documentos fiscais existentes')->columnSpanFull()
+                    ->state(fn (CustomerCommitment $record) => $record->billing?->invoice?->fiscalDocuments->map(fn ($doc) => ['id' => $doc->id, 'number' => $doc->document_number ?? $doc->id, 'status' => $doc->nfse_status?->description() ?? 'Pendente de emissão'])->all() ?? [])
+                    ->schema([
+                        TextEntry::make('number')->label('Documento')->url(fn (TextEntry $component) => FiscalDocumentResource::getUrl('edit', ['record' => $component->getContainer()->getConstantState()['id']]))->openUrlInNewTab(),
+                        TextEntry::make('status')->label('Situação fiscal real'),
+                    ]),
+            ]),
             Section::make('Comparação com ordens de serviço')->columnSpanFull()
-                ->description('Valor total = serviços líquidos + deslocamento + requisição vinculada. As OS estão ordenadas pela abertura, da mais antiga para a mais nova.')
+                ->description('Este fluxo atende somente NFS-e: serviços líquidos + deslocamento. OS com requisição não são elegíveis. As OS estão ordenadas pela abertura, da mais antiga para a mais nova.')
                 ->visible(fn (CustomerCommitment $record) => $record->billing === null && $record->status->value !== 'ignored')->schema([
                     TextEntry::make('match_reason')->label('Resultado da busca')->state(fn (CustomerCommitment $record) => app(CommitmentMatchEngine::class)->analyze($record)['reason']),
                     RepeatableEntry::make('candidates')->hiddenLabel()->columnSpanFull()

@@ -102,6 +102,7 @@ class CommitmentReviewActions
     {
         return Action::make('unlink_order')->label('Desvincular OS')->icon('heroicon-o-link-slash')->color('warning')->authorize('update')
             ->visible(fn (CustomerCommitment $record) => $record->billing?->invoice_id === null && $record->billing !== null)
+            ->disabled(fn (CustomerCommitment $record) => $record->billing?->isRunning() ?? false)
             ->requiresConfirmation()->schema([Textarea::make('reason')->label('Motivo')->required()->minLength(3)->maxLength(2000)])
             ->action(function (CustomerCommitment $record, array $data): void {
                 app(ApproveCommitmentMatchService::class)->unlink(Filament::getTenant()->id, $record->id, Auth::id(), $data['reason']);

@@ -110,9 +110,9 @@ O `composer dev` existente já escuta a fila padrão. Após implantar alteraçõ
 
 Os acessos ficam no grupo Financeiro do menu principal, junto dos demais recursos financeiros. URLs diretas no painel administrativo:
 
-- `/admin/{tenant}/customer-commitments` — empenhos e conciliação com OS.
-- `/admin/{tenant}/commitment-imports` — histórico de importações de empenhos.
-- `/admin/{tenant}/commitment-payment-imports` — histórico de relatórios de pagamentos.
+- `/admin/{tenant}/empenhos/customer-commitments` — empenhos e conciliação com OS.
+- `/admin/{tenant}/empenhos/commitment-imports` — histórico de importações de empenhos.
+- `/admin/{tenant}/empenhos/commitment-payment-imports` — histórico de relatórios de pagamentos.
 
 Substituir `{tenant}` pelo identificador da empresa presente na URL atual do painel. Os acessos exigem permissão de contas a receber na empresa.
 
@@ -180,7 +180,8 @@ As operações atualizam a tabela sem sair da listagem, preservando os filtros. 
 - Mesma empresa e cliente, incluindo o proprietário do equipamento.
 - Patrimônio completo extraído do nome/descrição do equipamento (`PAT 142186`, por exemplo), sem usar número de série, placa ou correspondência parcial como substitutos.
 - OS encerrada, ainda não faturada, com serviços e sem reserva para outro empenho.
-- Valor total exato em centavos: serviços líquidos de descontos + deslocamento + total líquido da requisição vinculada.
+- Valor total exato em centavos: serviços líquidos de descontos + deslocamento.
+- Somente serviços/NFS-e: OS com requisição vinculada não são elegíveis e devem usar o faturamento normal.
 - Prioridade pela abertura mais antiga; em datas iguais, pelo menor ID.
 
 A página mostra as candidatas em ordem, destacando a mais antiga elegível. Apresenta valores de serviços, deslocamento, requisição, total e diferença para o empenho. Candidatas divergentes ou reservadas continuam identificadas, mas não podem ser aprovadas. O seletor permite escolher outra OS elegível e registra essa decisão.
@@ -195,7 +196,7 @@ Quando houver pendências do leitor, marcar a confirmação de conferência do P
 
 **Vínculo aprovado** significa que a OS foi reservada para o empenho. O sistema revalida os dados atuais ao confirmar e mantém a relação exclusiva, impedindo que outro empenho reserve a mesma OS.
 
-Essa é a conclusão da etapa de conciliação. O faturamento das conciliações aprovadas e o encaminhamento fiscal serão implementados nas etapas seguintes.
+Essa é a conclusão da etapa de conciliação. O faturamento das conciliações aprovadas e o encaminhamento fiscal opcional estão descritos abaixo.
 
 Antes do faturamento, é possível usar **Desvincular OS**, informando o motivo. Depois que o vínculo inicia faturamento ou recebimento, essa ação é bloqueada. A revisão preserva o histórico, usuário, data e dados considerados na aprovação.
 
@@ -205,3 +206,43 @@ Antes do faturamento, é possível usar **Desvincular OS**, informando o motivo.
 - **Reabrir empenho** devolve um documento ignorado à busca, também com motivo.
 - Filtros por cliente, situação, lote e emissão ajudam a revisar os documentos. O filtro **Com candidatas, sem OS elegível** reúne divergências de valor, reservas e outras incompatibilidades.
 - Valores e contagens de sugestões na listagem refletem a última busca/aprovação. Ao revisar/aprovar, as condições atuais da OS são consultadas novamente.
+
+## Faturamento automático e emissão opcional — etapa 5
+
+### Implantação
+
+Aplicar `2026_10_19_000004_create_commitment_billing_batches.php`, atualizar os componentes e carregar o código novo nos workers:
+
+```bash
+php artisan migrate
+php artisan filament:clear-cached-components
+php artisan queue:restart
+```
+
+Os lotes usam a fila padrão e `ProcessCommitmentBillingBatchJob` com uma tentativa e timeout de 60 segundos. Mantenha o worker da aplicação e o worker fiscal existentes ativos; nenhuma nova fila fiscal ou configuração do emissor é necessária. Para execução assíncrona, utilizar uma conexão de fila assíncrona (por exemplo Redis); `sync` executa o processamento na própria requisição.
+
+### Como solicitar
+
+1. Em **Financeiro → Empenhos**, abrir **Configurar cliente** e definir forma/condição de pagamento, categoria/conta quando aplicáveis, serviço fiscal e mensagem fixa. O serviço precisa estar ativo e presente na OS; se houver um único serviço, ele pode ser resolvido automaticamente. Cartão de crédito exige os dados adicionais do fluxo normal de confirmação da fatura.
+2. Aprovar o vínculo do empenho com uma OS encerrada, sem fatura e sem requisição.
+3. No menu de barrinhas da linha, escolher **Faturar OS vinculada**. Conferir valor, forma/condição, serviço, corpo e rodapé. O corpo contém o nome do serviço. O rodapé contém a mensagem configurada, patrimônio e empenho/exercício, até 2000 caracteres e respeitando os 2000 bytes do emissor nacional, sem corte silencioso das referências. Mensagens com muitos caracteres acentuados podem precisar ser reduzidas.
+4. Para faturar e solicitar a emissão em uma única operação, marcar **Encaminhar NFS-e para emissão após confirmar a fatura**. Sem esta opção, a fatura é confirmada e a emissão pode ser solicitada depois por **Encaminhar NFS-e**.
+5. Confirmar **Solicitar processamento**. Para vários empenhos, selecionar até 25 e usar **Faturar selecionados**; cada OS gera sua própria fatura. A prévia identifica itens indisponíveis. Registros sem vínculo aprovado ou já em processamento ficam fora da execução.
+
+Sob a mesma ação, o sistema executa os passos atuais: faturar a OS, confirmar a fatura (gerando NFS-e pendente e contas a receber) e, somente se autorizado, chamar o serviço de emissão existente. Não há baixa automática de recebimento, nem emissão automática de boleto/PIX por esta ação.
+
+### Progresso e resultado
+
+- A tabela atualiza a cada dez segundos; **Faturamento** mostra a etapa financeira e **Execução** mostra fila/processamento/conclusão/falha.
+- O número do lote permite filtrar os registros; o solicitante recebe notificação com quantidades concluídas e falhas.
+- **Erro de faturamento/emissão** apresenta o diagnóstico operacional. **Revisar conciliação** e o detalhe exibem etapas, tentativas, textos utilizados e links para fatura e documento fiscal.
+- **NFS-e encaminhada** significa solicitação aceita pela fila existente, não autorização. A situação real é consultada diretamente do documento fiscal.
+- OS com requisição, inclusive quando vinculada após entrar na fila, ficam bloqueadas sem faturar nem ignorar seus produtos.
+
+### Retomada
+
+Corrigir a causa indicada e usar **Retomar faturamento** ou **Encaminhar NFS-e**. O sistema continua a partir da fatura já criada e não recria documentos ou títulos. Falha de emissão mantém a fatura confirmada. Os padrões usados ficam registrados em snapshot; documentos confirmados não são reescritos por mudanças posteriores de configuração.
+
+Entradas interrompidas sem conclusão podem ser retomadas após dez minutos. Uma geração antiga não pode sobrescrever a retomada. Se houver pendência de conciliação de RPS ou cancelamento, resolver pela tela fiscal normal antes de reenviar.
+
+Durante um lote ativo, **Desvincular OS** fica bloqueada. Após uma falha anterior à criação da fatura, é possível desvincular com motivo e preservar o histórico. Uma vez criada a fatura, utilizar os fluxos financeiros normais para revisar o documento.

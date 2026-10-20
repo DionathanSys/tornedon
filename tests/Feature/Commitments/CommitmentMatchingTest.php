@@ -63,7 +63,7 @@ class CommitmentMatchingTest extends TestCase
         $this->assertNotContains($ambiguous->id, array_column($result['candidates'], 'service_order_id'));
     }
 
-    public function test_total_includes_net_services_travel_and_linked_requisition(): void
+    public function test_requisition_is_visible_for_diagnosis_but_blocks_nfse_only_flow(): void
     {
         $record = $this->commitment();
         $order = $this->order(350, ['travel_value' => '20.00']);
@@ -72,7 +72,8 @@ class CommitmentMatchingTest extends TestCase
         $product = Product::factory()->create(['company_id' => $this->company->id]);
         $request->items()->create(['product_id' => $product->id, 'unit_of_measure' => 'UN', 'quantity' => 1, 'unit_price' => 50, 'discount_amount' => 0]);
         $result = app(CommitmentMatchEngine::class)->analyze($record);
-        $this->assertSame([$order->id], $result['eligible_ids']);
+        $this->assertSame([], $result['eligible_ids']);
+        $this->assertStringContainsString('somente serviços/NFS-e', $result['candidates'][0]['reason']);
         $this->assertSame(33000, $result['candidates'][0]['services_amount_cents']);
         $this->assertSame(2000, $result['candidates'][0]['travel_amount_cents']);
         $this->assertSame(5000, $result['candidates'][0]['requisition_amount_cents']);

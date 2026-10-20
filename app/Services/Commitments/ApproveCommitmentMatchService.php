@@ -5,6 +5,7 @@ namespace App\Services\Commitments;
 use App\Enum\Commitment\BillingStatus;
 use App\Enum\Commitment\MatchStatus;
 use App\Models\CommitmentBilling;
+use App\Models\CommitmentBillingBatchItem;
 use App\Models\CustomerCommitment;
 use App\Models\ServiceOrder;
 use App\Services\Audit\AuditRecorder;
@@ -65,10 +66,12 @@ class ApproveCommitmentMatchService
         return app(CommitmentReviewContext::class)->transaction($companyId, $commitmentId, $userId, function (CustomerCommitment $record) use ($userId, $reason) {
             $billing = $record->billing()->lockForUpdate()->firstOrFail();
             $order = $billing->serviceOrder()->lockForUpdate()->firstOrFail();
-            if ($billing->invoice_id || $billing->status !== BillingStatus::PENDING || $order->invoice_id || $order->status->value === 'faturada' || $record->receipt()->exists()) {
+            if ($billing->invoice_id || $billing->isRunning() || ! in_array($billing->status, [BillingStatus::PENDING, BillingStatus::FAILED], true) || $order->invoice_id || $order->status->value === 'faturada' || $record->receipt()->exists()) {
                 throw ValidationException::withMessages(['commitment' => 'O vínculo já iniciou faturamento ou recebimento e não pode ser removido por esta ação.']);
             }
             app(AuditRecorder::class)->recordModelEvent($record, 'commitment.match_unlinked', 'OS desvinculada do empenho.', actorUserId: $userId, metadata: ['reason' => trim($reason), 'billing_snapshot' => $billing->attributesToArray()]);
+            CommitmentBillingBatchItem::forCustomer($record->company_id, $record->customer_id)->where('commitment_billing_id', $billing->id)
+                ->whereIn('status', ['queued', 'processing'])->update(['status' => 'failed', 'last_error' => 'Vínculo removido antes do faturamento.', 'finished_at' => now()]);
             $billing->delete();
             $record->update(['status' => MatchStatus::UNMATCHED, 'suggested_service_order_id' => null,
                 'suggestion_count' => 0, 'review_reason' => $reason, 'reviewed_by' => $userId, 'reviewed_at' => now()]);

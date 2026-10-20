@@ -2,7 +2,6 @@
 
 namespace App\Services\Commitments;
 
-use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Enum\ServiceOrder\State;
 use App\Models\CustomerCommitment;
 use App\Models\Equipment;
@@ -78,8 +77,7 @@ class CommitmentMatchEngine
             $order->order_date === null => 'Data de abertura não informada.',
             $order->items->isEmpty() => 'OS sem itens de serviço.',
             $order->commitmentBilling && (int) $order->commitmentBilling->customer_commitment_id !== (int) $record->id => 'OS já reservada para outro empenho.',
-            $order->requisition && ((int) $order->requisition->company_id !== (int) $record->company_id || (int) $order->requisition->customer_id !== (int) $record->customer_id) => 'Requisição de outra empresa ou cliente.',
-            $order->requisition && ($order->requisition->invoice_id !== null || in_array($order->requisition->status, [RequisitionStatus::CANCELLED, RequisitionStatus::INVOICED], true)) => 'Requisição cancelada ou já faturada.',
+            $order->requisition !== null => 'Esta OS possui requisição. Use o faturamento normal; este fluxo atende somente serviços/NFS-e.',
             $difference !== 0 => 'Valor total diferente do empenho.',
             default => null,
         };

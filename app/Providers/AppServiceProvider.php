@@ -20,6 +20,8 @@ use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
 use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
 use App\Models\AuditEntry;
 use App\Models\CommitmentBilling;
+use App\Models\CommitmentBillingBatch;
+use App\Models\CommitmentBillingBatchItem;
 use App\Models\CommitmentImport;
 use App\Models\CommitmentImportFile;
 use App\Models\CommitmentPaymentLine;
@@ -127,6 +129,8 @@ class AppServiceProvider extends ServiceProvider
             CommitmentImportFile::class,
             CustomerCommitment::class,
             CommitmentBilling::class,
+            CommitmentBillingBatch::class,
+            CommitmentBillingBatchItem::class,
             CommitmentPaymentLine::class,
             CommitmentReceipt::class,
             CommitmentReceiptPayment::class,

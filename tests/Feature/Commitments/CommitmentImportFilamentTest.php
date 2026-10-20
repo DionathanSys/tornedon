@@ -3,6 +3,7 @@
 namespace Tests\Feature\Commitments;
 
 use App\Enum\Commitment\ImportType;
+use App\Filament\Clusters\Financial\CommitmentsCluster;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\CommitmentImportResource;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Pages\ListCommitmentImports;
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Pages\ViewCommitmentImport;
@@ -66,16 +67,18 @@ class CommitmentImportFilamentTest extends TestCase
         Livewire::test(ListCommitmentPaymentImports::class)->assertSuccessful()->assertCanSeeTableRecords([$payments])->assertCanNotSeeTableRecords([$commitments, $foreign]);
     }
 
-    public function test_import_links_are_visible_in_the_existing_financial_navigation_group(): void
+    public function test_financial_navigation_exposes_commitments_cluster_and_its_import_resources(): void
     {
         $financial = collect(Filament::getNavigation())->first(fn ($group) => $group->getLabel() === 'Financeiro');
         $this->assertNotNull($financial);
         $items = collect($financial->getItems())->keyBy(fn ($item) => $item->getLabel());
         $this->assertTrue($items->has('Empenhos'), 'O menu Financeiro deve conter o acesso a Empenhos.');
-        $this->assertTrue($items->has('Pagamentos de empenhos'));
-        $this->assertSame(CustomerCommitmentResource::getUrl('index'), $items['Empenhos']->getUrl());
-        $this->assertSame(CommitmentImportResource::getUrl('index'), $items['Importações de empenhos']->getUrl());
-        $this->assertSame(CommitmentPaymentImportResource::getUrl('index'), $items['Pagamentos de empenhos']->getUrl());
+        $this->assertSame(CommitmentsCluster::getUrl(), $items['Empenhos']->getUrl());
+        $clustered = CommitmentsCluster::getClusteredComponents();
+        foreach ([CustomerCommitmentResource::class, CommitmentImportResource::class, CommitmentPaymentImportResource::class] as $resource) {
+            $this->assertContains($resource, $clustered);
+            $this->assertTrue($resource::canAccess());
+        }
     }
 
     public function test_configuration_action_can_enable_the_import_flow(): void
