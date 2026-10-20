@@ -185,9 +185,12 @@
         <div class="relation-title">Fotos do Serviço — {{ $pdfData['title'] }}</div>
         <img src="{{ $photo['src'] }}" alt="{{ $photo['name'] }}"
             style="width: {{ $photo['width'] }}px; height: {{ $photo['height'] }}px;">
-        <div style="margin-top: 8px; font-size: 11px; overflow-wrap: break-word;">{{ $photo['name'] }}</div>
+        <div style="margin-top: 8px; color: #6b7280; font-size: 10px; line-height: 1.4; overflow-wrap: break-word;">{{ $photo['name'] }}</div>
         @if (filled($photo['description'] ?? null))
-            <div style="margin-top: 8px; font-size: 12px; text-align: left; white-space: pre-wrap; overflow-wrap: break-word;">{{ $photo['description'] }}</div>
+            <div style="margin-top: 16px; padding: 14px 16px; border: 1px solid #dbe3ec; border-left: 4px solid #17385b; border-radius: 4px; background-color: #f4f7fa; text-align: left;">
+                <div style="margin-bottom: 8px; color: #17385b; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px;">Comentário da foto</div>
+                <div style="color: #374151; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word;">{{ $photo['description'] }}</div>
+            </div>
         @endif
     </div>
 @endforeach
