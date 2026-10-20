@@ -49,6 +49,7 @@ class Requisition extends Model
         'salesperson_id',
         'invoice_id',
         'invoiced_at',
+        'status_before_invoicing',
         'equipment_id',
         'stock_consumed',
         'stock_reserved',
@@ -60,6 +61,7 @@ class Requisition extends Model
 
     protected $casts = [
         'status' => Status::class,
+        'status_before_invoicing' => Status::class,
         'payment_method' => PaymentMethod::class,
         'payment_condition' => PaymentCondition::class,
         'sale_date' => 'date',

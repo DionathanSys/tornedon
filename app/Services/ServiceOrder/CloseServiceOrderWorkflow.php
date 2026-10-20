@@ -8,12 +8,13 @@ use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Services\Requisition\RequisitionService;
 use App\Traits\HandlesServiceResponse;
-use Illuminate\Support\Facades\DB;
+use App\Traits\RunsFinancialTransactions;
 use Illuminate\Support\Facades\Log;
 
 class CloseServiceOrderWorkflow
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     private ?Invoice $invoice = null;
 
@@ -31,11 +32,11 @@ class CloseServiceOrderWorkflow
         $this->closedLinkedRequisition = false;
 
         try {
-            return DB::transaction(function () use ($serviceOrder, $userId, $sendEmail, $shouldInvoiceAfterClose): bool {
+            return $this->financialTransaction(function () use ($serviceOrder, $userId, $sendEmail, $shouldInvoiceAfterClose): bool {
                 $linkedRequisition = $serviceOrder->requisition()->first();
 
                 Log::debug('CloseServiceOrderWorkflow: iniciando fechamento sincronizado', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'service_order_id' => $serviceOrder->id,
                     'linked_requisition_id' => $linkedRequisition?->id,
                 ]);
@@ -48,6 +49,10 @@ class CloseServiceOrderWorkflow
                     }
 
                     $this->closedLinkedRequisition = true;
+
+                    if ($shouldInvoiceAfterClose) {
+                        $closedRequisition->update(['status_before_invoicing' => RequisitionStatus::OPEN]);
+                    }
                 }
 
                 $closedServiceOrder = $this->serviceOrderService->close($serviceOrder, $userId, $sendEmail);
@@ -80,7 +85,7 @@ class CloseServiceOrderWorkflow
             }
 
             Log::error('CloseServiceOrderWorkflow: erro ao encerrar fluxo sincronizado', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_id' => $serviceOrder->id,
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),

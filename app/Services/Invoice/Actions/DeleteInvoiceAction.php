@@ -2,11 +2,15 @@
 
 namespace App\Services\Invoice\Actions;
 
+use App\Enum\ProductionOrder\Status as ProductionOrderStatus;
+use App\Enum\Requisition\Status as RequisitionStatus;
+use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Models\Invoice;
-use App\Services\Audit\AuditRecorder;
 use App\Models\User;
+use App\Services\Audit\AuditRecorder;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DeleteInvoiceAction
@@ -22,34 +26,43 @@ class DeleteInvoiceAction
     {
         try {
             Log::debug('Iniciando exclusão de fatura', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $this->invoice->id,
-                'number'     => $this->invoice->invoice_number,
-                'user_id'    => $this->deletedBy,
+                'number' => $this->invoice->invoice_number,
+                'user_id' => $this->deletedBy,
             ]);
 
             if (! $this->validateCanDelete()) {
                 return false;
             }
 
-            $audit = app(AuditRecorder::class);
-            $before = $audit->snapshot($this->invoice);
-            $result = $this->invoice->delete();
+            $result = DB::transaction(function (): bool {
+                $audit = app(AuditRecorder::class);
+                $before = $audit->snapshot($this->invoice);
 
-            $audit->recordModelEvent(
-                $this->invoice,
-                'invoice.deleted',
-                "Fatura #{$this->invoice->invoice_number} excluída",
-                $before,
-                null,
-                $this->deletedBy,
-            );
+                $this->restoreLinkedRecords();
+
+                if (! $this->invoice->delete()) {
+                    throw new \RuntimeException('Não foi possível excluir a fatura.');
+                }
+
+                $audit->recordModelEvent(
+                    $this->invoice,
+                    'invoice.deleted',
+                    "Fatura #{$this->invoice->invoice_number} excluída",
+                    $before,
+                    null,
+                    $this->deletedBy,
+                );
+
+                return true;
+            });
 
             Log::info('Fatura excluída com sucesso', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'invoice_id' => $this->invoice->id,
-                'number'     => $this->invoice->invoice_number,
-                'user_id'    => $this->deletedBy,
+                'number' => $this->invoice->invoice_number,
+                'user_id' => $this->deletedBy,
             ]);
 
             $this->setSuccess();
@@ -59,12 +72,12 @@ class DeleteInvoiceAction
             $this->setError('Erro ao excluir fatura. Ela pode estar vinculada a outros registros.');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
-                'invoice_id'    => $this->invoice->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'invoice_id' => $this->invoice->id,
                 'error_message' => $e->getMessage(),
-                'user_id'       => $this->deletedBy,
+                'user_id' => $this->deletedBy,
             ]);
 
             return false;
@@ -72,16 +85,47 @@ class DeleteInvoiceAction
             $this->setError('Erro inesperado ao excluir fatura');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
-                'invoice_id'    => $this->invoice->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'invoice_id' => $this->invoice->id,
                 'error_message' => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
-                'user_id'       => $this->deletedBy,
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $this->deletedBy,
             ]);
 
             return false;
+        }
+    }
+
+    private function restoreLinkedRecords(): void
+    {
+        foreach ($this->invoice->serviceOrders()->where('company_id', $this->invoice->company_id)->lockForUpdate()->get() as $order) {
+            $order->update([
+                'status' => $order->status === ServiceOrderState::INVOICED ? ServiceOrderState::CLOSED : $order->status,
+                'invoice_id' => null,
+                'updated_by' => $this->deletedBy,
+            ]);
+        }
+
+        foreach ($this->invoice->requisitions()->where('company_id', $this->invoice->company_id)->lockForUpdate()->get() as $requisition) {
+            $requisition->update([
+                'status' => $requisition->status === RequisitionStatus::INVOICED
+                    ? ($requisition->status_before_invoicing ?? RequisitionStatus::CLOSED)
+                    : $requisition->status,
+                'invoice_id' => null,
+                'invoiced_at' => null,
+                'status_before_invoicing' => null,
+                'updated_by' => $this->deletedBy,
+            ]);
+        }
+
+        foreach ($this->invoice->productionOrders()->where('company_id', $this->invoice->company_id)->lockForUpdate()->get() as $order) {
+            $order->update([
+                'status' => $order->status === ProductionOrderStatus::INVOICED ? ProductionOrderStatus::COMPLETED : $order->status,
+                'invoice_id' => null,
+                'updated_by' => $this->deletedBy,
+            ]);
         }
     }
 
@@ -93,12 +137,12 @@ class DeleteInvoiceAction
             $this->setError('Não é possível excluir fatura de outra empresa');
 
             Log::warning($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
                 'company_id' => $this->invoice->company_id,
-                'user_id'    => $this->deletedBy,
+                'user_id' => $this->deletedBy,
             ]);
 
             return false;
@@ -108,11 +152,11 @@ class DeleteInvoiceAction
             $this->setError('Não é possível excluir fatura que já gerou documento fiscal');
 
             Log::warning($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
-                'user_id'    => $this->deletedBy,
+                'user_id' => $this->deletedBy,
             ]);
 
             return false;
@@ -122,11 +166,11 @@ class DeleteInvoiceAction
             $this->setError('Não é possível excluir uma fatura confirmada');
 
             Log::warning($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
-                'user_id'    => $this->deletedBy,
+                'user_id' => $this->deletedBy,
             ]);
 
             return false;
@@ -136,11 +180,11 @@ class DeleteInvoiceAction
             $this->setError('Não é possível excluir fatura que possui contas a receber vinculadas');
 
             Log::warning($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'invoice_id' => $this->invoice->id,
-                'user_id'    => $this->deletedBy,
+                'user_id' => $this->deletedBy,
             ]);
 
             return false;

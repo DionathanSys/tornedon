@@ -8,13 +8,14 @@ use App\Models\Requisition;
 use App\Models\ServiceOrder;
 use App\Services\Requisition\RequisitionService;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceServiceOrderWorkflow
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     private ?Invoice $invoice = null;
 
@@ -36,14 +37,14 @@ class InvoiceServiceOrderWorkflow
             : $serviceOrders;
 
         try {
-            return DB::transaction(function () use ($serviceOrders, $userId): bool {
-                $linkedRequisitions = new Collection();
+            return $this->financialTransaction(function () use ($serviceOrders, $userId): bool {
+                $linkedRequisitions = new Collection;
 
                 foreach ($serviceOrders as $serviceOrder) {
                     $linkedRequisition = $serviceOrder->requisition()->first();
 
                     Log::debug('InvoiceServiceOrderWorkflow: iniciando faturamento sincronizado', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'service_order_id' => $serviceOrder->id,
                         'linked_requisition_id' => $linkedRequisition?->id,
                     ]);
@@ -60,6 +61,7 @@ class InvoiceServiceOrderWorkflow
                         }
 
                         $linkedRequisition = $closedRequisition;
+                        $linkedRequisition->update(['status_before_invoicing' => RequisitionStatus::OPEN]);
                     }
 
                     if ($linkedRequisition->status === RequisitionStatus::CANCELLED) {
@@ -102,7 +104,7 @@ class InvoiceServiceOrderWorkflow
             }
 
             Log::error('InvoiceServiceOrderWorkflow: erro ao faturar fluxo sincronizado', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'service_order_ids' => $serviceOrders->pluck('id')->all(),
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),

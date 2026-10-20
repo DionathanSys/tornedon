@@ -24,15 +24,16 @@ class ClosedState implements RequisitionState
     {
         Log::info('Requisition: Faturando requisição (closed → invoiced)', [
             'requisition_id' => $requisition->id,
-            'user_id'        => $userId,
-            'invoice_id'     => $invoiceId,
+            'user_id' => $userId,
+            'invoice_id' => $invoiceId,
         ]);
 
         $requisition->update([
-            'status'      => Status::INVOICED,
-            'invoice_id'  => $invoiceId,
+            'status' => Status::INVOICED,
+            'invoice_id' => $invoiceId,
             'invoiced_at' => now(),
-            'updated_by'  => $userId,
+            'status_before_invoicing' => $requisition->status_before_invoicing ?? $requisition->status,
+            'updated_by' => $userId,
         ]);
     }
 
@@ -47,11 +48,11 @@ class ClosedState implements RequisitionState
     {
         Log::info('Requisition: Reabrindo requisição (closed → open)', [
             'requisition_id' => $requisition->id,
-            'user_id'        => $userId,
+            'user_id' => $userId,
         ]);
 
         $requisition->update([
-            'status'     => Status::OPEN,
+            'status' => Status::OPEN,
             'updated_by' => $userId,
         ]);
     }

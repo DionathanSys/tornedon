@@ -4,20 +4,27 @@ namespace Tests\Feature\Services\ServiceOrder;
 
 use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
+use App\Enum\ProductionOrder\DestinationType;
+use App\Enum\ProductionOrder\Status as ProductionOrderStatus;
 use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Enum\Tax\IssExigibility;
 use App\Models\Company;
+use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Product;
+use App\Models\ProductionOrder;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\Service;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderItem;
 use App\Models\User;
+use App\Services\Audit\AuditRecorder;
+use App\Services\Invoice\Actions\DeleteInvoiceAction;
+use App\Services\Invoice\InvoiceService;
 use App\Services\ServiceOrder\Actions\CloseServiceOrderAction;
 use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
 use App\Services\ServiceOrder\InvoiceServiceOrderWorkflow;
@@ -123,18 +130,140 @@ class ServiceOrderWorkflowTest extends TestCase
         $this->assertSame($firstServiceOrder->fresh()->invoice_id, $firstRequisition->fresh()->invoice_id);
     }
 
+    public function test_deleting_invoice_restores_automatically_closed_requisition_to_open_and_allows_reinvoicing(): void
+    {
+        [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
+        $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
+        $serviceOrder->update(['status' => State::CLOSED]);
+        $workflow = app(InvoiceServiceOrderWorkflow::class);
+
+        $this->assertTrue($workflow->execute($serviceOrder->fresh(), $user->id), $workflow->getMessage());
+        $invoice = $workflow->invoice();
+        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status_before_invoicing);
+
+        $service = app(InvoiceService::class);
+        $this->assertTrue($service->delete($invoice, $user->id), $service->getMessage());
+
+        $this->assertModelMissing($invoice);
+        $this->assertSame(State::CLOSED, $serviceOrder->fresh()->status);
+        $this->assertNull($serviceOrder->fresh()->invoice_id);
+        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status);
+        $this->assertNull($requisition->fresh()->invoice_id);
+        $this->assertNull($requisition->fresh()->invoiced_at);
+        $this->assertNull($requisition->fresh()->status_before_invoicing);
+
+        $this->assertTrue($workflow->execute($serviceOrder->fresh(), $user->id), $workflow->getMessage());
+        $this->assertSame(RequisitionStatus::INVOICED, $requisition->fresh()->status);
+        $this->assertSame($workflow->invoice()->id, $requisition->fresh()->invoice_id);
+    }
+
+    public function test_deleting_invoice_preserves_previously_closed_requisition_and_restores_production_order(): void
+    {
+        [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
+        $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
+        $serviceOrder->update(['status' => State::CLOSED]);
+        $requisition->update(['status' => RequisitionStatus::CLOSED]);
+        $workflow = app(InvoiceServiceOrderWorkflow::class);
+        $this->assertTrue($workflow->execute($serviceOrder->fresh(), $user->id), $workflow->getMessage());
+        $invoice = $workflow->invoice();
+        $productionOrder = ProductionOrder::create([
+            'company_id' => $serviceOrder->company_id,
+            'customer_id' => $serviceOrder->customer_id,
+            'status' => ProductionOrderStatus::INVOICED,
+            'destination_type' => DestinationType::DIRECT_DELIVERY,
+            'invoice_id' => $invoice->id,
+            'completed_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(InvoiceService::class);
+        $this->assertTrue($service->delete($invoice, $user->id), $service->getMessage());
+        $this->assertSame(RequisitionStatus::CLOSED, $requisition->fresh()->status);
+        $this->assertSame(ProductionOrderStatus::COMPLETED, $productionOrder->fresh()->status);
+        $this->assertNull($productionOrder->fresh()->invoice_id);
+        $this->assertNotNull($productionOrder->fresh()->completed_at);
+        $this->assertSame($user->id, $productionOrder->fresh()->updated_by);
+    }
+
+    public function test_deleting_invoice_created_during_close_restores_requisition_to_open(): void
+    {
+        [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
+        $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
+        $workflow = app(CloseServiceOrderWorkflow::class);
+        $this->assertTrue($workflow->execute($serviceOrder, $user->id, false, true), $workflow->getMessage());
+
+        $service = app(InvoiceService::class);
+        $this->assertTrue($service->delete($workflow->invoice(), $user->id), $service->getMessage());
+        $this->assertSame(State::CLOSED, $serviceOrder->fresh()->status);
+        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status);
+    }
+
+    public function test_failed_deletion_rolls_back_linked_records_and_invoice(): void
+    {
+        [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
+        $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
+        $serviceOrder->update(['status' => State::CLOSED]);
+        $workflow = app(InvoiceServiceOrderWorkflow::class);
+        $this->assertTrue($workflow->execute($serviceOrder->fresh(), $user->id), $workflow->getMessage());
+        $invoice = $workflow->invoice();
+
+        $this->partialMock(AuditRecorder::class, function ($mock): void {
+            $mock->shouldReceive('recordModelEvent')->andThrow(new \RuntimeException('Falha na auditoria'));
+        });
+
+        $action = new DeleteInvoiceAction($invoice, $user->id);
+        $this->assertFalse($action->execute());
+        $this->assertNotNull(Invoice::find($invoice->id));
+        $this->assertSame(State::INVOICED, $serviceOrder->fresh()->status);
+        $this->assertSame($invoice->id, $serviceOrder->fresh()->invoice_id);
+        $this->assertSame(RequisitionStatus::INVOICED, $requisition->fresh()->status);
+        $this->assertSame($invoice->id, $requisition->fresh()->invoice_id);
+        $this->assertNotNull($requisition->fresh()->invoiced_at);
+        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status_before_invoicing);
+    }
+
+    public function test_blocked_deletions_do_not_restore_linked_records(): void
+    {
+        [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
+        $serviceOrder->update(['status' => State::CLOSED]);
+        $workflow = app(InvoiceServiceOrderWorkflow::class);
+        $this->assertTrue($workflow->execute($serviceOrder->fresh(), $user->id), $workflow->getMessage());
+        $invoice = $workflow->invoice();
+        $service = app(InvoiceService::class);
+
+        $this->assertFalse($service->delete($invoice, $user->id));
+        $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
+        $invoice->update(['confirmed' => true]);
+        $this->assertFalse($service->delete($invoice->fresh(), $user->id));
+        $this->assertSame(State::INVOICED, $serviceOrder->fresh()->status);
+        $this->assertSame(RequisitionStatus::INVOICED, $requisition->fresh()->status);
+        $this->assertSame($invoice->id, $requisition->fresh()->invoice_id);
+    }
+
+    public function test_failed_invoicing_rolls_back_automatic_close_and_previous_status(): void
+    {
+        [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
+        $serviceOrder->items()->delete();
+        $serviceOrder->update(['status' => State::CLOSED]);
+        $workflow = app(InvoiceServiceOrderWorkflow::class);
+
+        $this->assertFalse($workflow->execute($serviceOrder->fresh(), $user->id));
+        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status);
+        $this->assertNull($requisition->fresh()->status_before_invoicing);
+        $this->assertNull($requisition->fresh()->invoice_id);
+    }
+
     private function makeLinkedDocuments(
         string $suffix = '001',
         ?User $user = null,
         ?Company $company = null,
         ?Partner $customer = null,
-    ): array
-    {
+    ): array {
         [$user, $company, $customer] = $this->makeBaseContext($user, $suffix, $company, $customer);
 
         $service = Service::query()->create([
             'company_id' => $company->id,
-            'service_code' => 'SRV-WF-' . $suffix,
+            'service_code' => 'SRV-WF-'.$suffix,
             'name' => 'Servico Workflow',
             'price' => 100,
             'min_sale_price' => 100,
@@ -149,7 +278,7 @@ class ServiceOrderWorkflowTest extends TestCase
 
         $product = Product::query()->create([
             'company_id' => $company->id,
-            'product_code' => 'PRD-WF-' . $suffix,
+            'product_code' => 'PRD-WF-'.$suffix,
             'name' => 'Produto Workflow',
             'unit' => Unit::UN,
             'origin_sale_price' => OriginSalePrice::FREE,
@@ -160,7 +289,7 @@ class ServiceOrderWorkflowTest extends TestCase
         ]);
 
         $serviceOrder = ServiceOrder::query()->create([
-            'number' => 'OS-WF-' . $suffix,
+            'number' => 'OS-WF-'.$suffix,
             'customer_id' => $customer->id,
             'company_id' => $company->id,
             'order_date' => now()->toDateString(),
@@ -184,7 +313,7 @@ class ServiceOrderWorkflowTest extends TestCase
         ]);
 
         $requisition = Requisition::query()->create([
-            'number' => 'REQ-WF-' . $suffix,
+            'number' => 'REQ-WF-'.$suffix,
             'customer_id' => $customer->id,
             'company_id' => $company->id,
             'service_order_id' => $serviceOrder->id,
@@ -216,19 +345,18 @@ class ServiceOrderWorkflowTest extends TestCase
         string $suffix = '001',
         ?Company $company = null,
         ?Partner $customer = null,
-    ): array
-    {
+    ): array {
         $user ??= User::factory()->create();
 
         $company ??= Company::query()->create([
-            'name' => 'Empresa Workflow ' . $suffix,
-            'document_number' => '55443322' . str_pad($suffix, 6, '0', STR_PAD_LEFT),
+            'name' => 'Empresa Workflow '.$suffix,
+            'document_number' => '55443322'.str_pad($suffix, 6, '0', STR_PAD_LEFT),
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
             'created_by' => $user->id,
         ]);
 
         $customer ??= Partner::query()->create([
-            'name' => 'Cliente Workflow ' . $suffix,
+            'name' => 'Cliente Workflow '.$suffix,
             'document_type' => 'CPF',
             'document_number' => str_pad($suffix, 11, '9', STR_PAD_LEFT),
             'created_by' => $user->id,
