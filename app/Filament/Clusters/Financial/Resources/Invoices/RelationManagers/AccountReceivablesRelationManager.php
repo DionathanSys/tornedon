@@ -3,7 +3,10 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 
 use App\Enum\AccountReceivable\Status;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
+use App\Models\AccountReceivable;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -42,7 +45,7 @@ class AccountReceivablesRelationManager extends RelationManager
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->limit(40)
-                    ->tooltip(fn($state, $record) => $record->description)
+                    ->tooltip(fn ($state, $record) => $record->description)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('due_date')
@@ -75,7 +78,13 @@ class AccountReceivablesRelationManager extends RelationManager
             ])
             ->defaultSort('due_date')
             ->headerActions([])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('openAccountReceivable')
+                    ->label('Abrir conta a receber')
+                    ->icon(Heroicon::ArrowTopRightOnSquare)
+                    ->url(fn (AccountReceivable $record): string => AccountReceivableResource::getUrl('edit', ['record' => $record]))
+                    ->visible(fn (AccountReceivable $record): bool => AccountReceivableResource::canEdit($record)),
+            ])
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }

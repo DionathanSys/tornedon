@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\IssueBankSlipAction;
@@ -133,18 +134,19 @@ class InstallmentsRelationManager extends RelationManager
             ->defaultSort('account_receivable_id')
             ->headerActions([])
             ->recordActions(ActionGroup::make([
+                Action::make('openAccountReceivable')
+                    ->label('Abrir conta a receber')
+                    ->icon(Heroicon::ArrowTopRightOnSquare)
+                    ->url(fn (AccountReceivableInstallment $record): string => AccountReceivableResource::getUrl('edit', ['record' => $record->account_receivable_id]))
+                    ->visible(fn (AccountReceivableInstallment $record): bool => $record->accountReceivable !== null && AccountReceivableResource::canEdit($record->accountReceivable)),
                 IssueBankSlipAction::make()
-                    ->tooltip('Emitir boleto')
-                    ->iconButton(),
+                    ->label('Emitir boleto'),
                 IssuePixChargeAction::make()
-                    ->tooltip('Emitir PIX')
-                    ->iconButton(),
+                    ->label('Emitir PIX'),
                 PixPaymentLinkAction::make()
-                    ->tooltip('Copiar link PIX')
-                    ->iconButton(),
+                    ->label('Copiar link PIX'),
                 PixPaymentLinkAction::open()
-                    ->tooltip('Abrir pagamento PIX')
-                    ->iconButton(),
+                    ->label('Abrir pagamento PIX'),
                 Action::make('queryBankSlip')
                     ->label('Consultar boleto')
                     ->icon(Heroicon::ArrowPath)
@@ -162,24 +164,23 @@ class InstallmentsRelationManager extends RelationManager
                             ->title('Consulta do boleto enfileirada.')
                             ->success()
                             ->send();
-                    })
-                    ->iconButton(),
+                    }),
                 RegisterInstallmentPaymentAction::make()
-                    ->iconButton()
+                    ->label('Registrar recebimento / antecipação')
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-page');
                     }),
                 EditInstallmentAction::make()
-                    ->iconButton()
+                    ->label('Editar parcela')
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-page');
                     }),
                 DeleteInstallmentAction::make()
-                    ->iconButton()
+                    ->label('Excluir parcela')
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-page');
                     }),
-            ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
+            ])->label('Ações')->icon(Heroicon::EllipsisVertical)->button(), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }
