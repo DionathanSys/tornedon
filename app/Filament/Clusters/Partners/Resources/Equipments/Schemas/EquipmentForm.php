@@ -3,20 +3,18 @@
 namespace App\Filament\Clusters\Partners\Resources\Equipments\Schemas;
 
 use App\Enum;
-use App\Models\Company;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\MultiSelect;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class EquipmentForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $forDuplication = false): Schema
     {
         return $schema
             ->columns([
@@ -43,6 +41,7 @@ class EquipmentForm
                                 'name',
                                 modifyQueryUsing: function (Builder $query) {
                                     $tenant = Filament::getTenant();
+
                                     return $query
                                         ->whereHas('companies', function (Builder $subQuery) use ($tenant) {
                                             $subQuery->where('company_id', $tenant->id);
@@ -59,7 +58,7 @@ class EquipmentForm
                             ->columnSpan(['md' => 4, 'lg' => 4])
                             ->required()
                             ->maxLength(255)
-                            ->helperText(fn($operation) => match ($operation) {
+                            ->helperText(fn ($operation) => match ($operation) {
                                 'create' => 'Identificação do equipamento, ex: "Caminhão 01", "Equipamento 02", etc.',
                                 'edit' => 'Identificação do equipamento, ex: "Caminhão 01", "Equipamento 02", etc.',
                                 default => '',
@@ -78,7 +77,7 @@ class EquipmentForm
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(7)
                             ->placeholder('ABC1234')
-                            ->required(fn(Get $get) => $get('type') === Enum\Equipment\Type::CAR->value || $get('type') === Enum\Equipment\Type::TRUCK->value)
+                            ->required(fn (Get $get) => $get('type') === Enum\Equipment\Type::CAR->value || $get('type') === Enum\Equipment\Type::TRUCK->value)
                             ->hiddenJs(<<<'JS'
                                 $get('type') !== 'car' && $get('type') !== 'truck'
                             JS)
@@ -98,10 +97,18 @@ class EquipmentForm
                             ->label('Número de Série')
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->maxLength(255)
+                            ->rules(fn (Get $get): array => $forDuplication ? [
+                                Rule::unique('equipments', 'serial_number')
+                                    ->where('company_id', Filament::getTenant()->getKey())
+                                    ->where('name', $get('name'))
+                                    ->where('owner_id', $get('owner_id')),
+                            ] : [])
+                            ->validationMessages([
+                                'unique' => 'Já existe um equipamento com este número de série, descrição e proprietário nesta empresa.',
+                            ])
                             ->helperText('Identificação única do equipamento')
                             ->autocomplete(false),
                     ]),
             ]);
     }
 }
-

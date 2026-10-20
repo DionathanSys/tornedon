@@ -2,11 +2,11 @@
 
 namespace App\Filament\Mobile\Resources\Equipments\Tables;
 
+use App\Filament\Clusters\Partners\Resources\Equipments\Pages\Actions\DuplicateEquipmentAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
@@ -40,8 +40,8 @@ class EquipmentsTable
                         TextColumn::make('owner.name')
                             ->sortable()
                             ->placeholder('Sem proprietário'),
-                    ])
-                ])
+                    ]),
+                ]),
             ])
             ->filters([
                 SelectFilter::make('owner_id')
@@ -51,6 +51,7 @@ class EquipmentsTable
                         'name',
                         modifyQueryUsing: function (Builder $query) {
                             $tenant = Filament::getTenant();
+
                             return $query
                                 ->whereHas('companies', function (Builder $subQuery) use ($tenant) {
                                     $subQuery->where('company_id', $tenant->id);
@@ -63,6 +64,7 @@ class EquipmentsTable
             ])
             ->recordActions([
                 EditAction::make(),
+                DuplicateEquipmentAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

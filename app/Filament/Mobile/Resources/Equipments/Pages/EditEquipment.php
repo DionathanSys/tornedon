@@ -2,11 +2,11 @@
 
 namespace App\Filament\Mobile\Resources\Equipments\Pages;
 
+use App\Filament\Clusters\Partners\Resources\Equipments\Pages\Actions\DuplicateEquipmentAction;
 use App\Filament\Mobile\Resources\Equipments\EquipmentResource;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Size;
@@ -19,6 +19,8 @@ class EditEquipment extends EditRecord
     {
         return [
             ActionGroup::make([
+                DuplicateEquipmentAction::make()
+                    ->size(Size::ExtraSmall),
                 Action::make('index')
                     ->label('Voltar')
                     ->icon('heroicon-o-arrow-left')

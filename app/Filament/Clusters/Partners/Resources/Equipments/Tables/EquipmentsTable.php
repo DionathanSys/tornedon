@@ -2,13 +2,11 @@
 
 namespace App\Filament\Clusters\Partners\Resources\Equipments\Tables;
 
-use Filament\Actions\BulkActionGroup;
+use App\Filament\Clusters\Partners\Resources\Equipments\Pages\Actions\DuplicateEquipmentAction;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
-use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -18,7 +16,6 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class EquipmentsTable
 {
@@ -26,7 +23,7 @@ class EquipmentsTable
     {
         return $table
             ->columns([
-                
+
                 TextColumn::make('owner.name')
                     ->label('Proprietário')
                     ->sortable()
@@ -35,7 +32,7 @@ class EquipmentsTable
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->searchable()
-                    ->formatStateUsing(fn($state) => $state->description())
+                    ->formatStateUsing(fn ($state) => $state->description())
                     ->sortable()
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false)
@@ -59,7 +56,7 @@ class EquipmentsTable
                     ->label('Placa / Nº Série')
                     ->disabledClick()
                     ->toggleable(isToggledHiddenByDefault: false)
-                    ->searchable(query: fn(Builder $query, string $search) => $query->searchByIdentifier($search)),
+                    ->searchable(query: fn (Builder $query, string $search) => $query->searchByIdentifier($search)),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
                     ->sortable()
@@ -83,6 +80,7 @@ class EquipmentsTable
                         'name',
                         modifyQueryUsing: function (Builder $query) {
                             $tenant = Filament::getTenant();
+
                             return $query
                                 ->whereHas('companies', function (Builder $subQuery) use ($tenant) {
                                     $subQuery->where('company_id', $tenant->id);
@@ -103,6 +101,8 @@ class EquipmentsTable
             ])
             ->recordActions([
                 EditAction::make()
+                    ->iconButton(),
+                DuplicateEquipmentAction::make()
                     ->iconButton(),
                 RestoreAction::make()
                     ->iconButton(),
