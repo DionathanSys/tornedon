@@ -16,8 +16,8 @@ class ServiceOrderPdfDataFormatter
     public function format(ServiceOrder $serviceOrder, bool $includeServicePhotos = false): array
     {
         $requisition = $serviceOrder->requisition;
-        $itemsTotal = round((float) $serviceOrder->services_total_amount, 2);
         $travelValue = (float) $serviceOrder->travel_value;
+        $itemsTotal = round((float) $serviceOrder->services_total_amount - $travelValue, 2);
         $productsTotal = round((float) $serviceOrder->requisition_total_amount, 2);
         $discountTotal = round(
             (float) $serviceOrder->discount_amount + (float) ($requisition?->discount_amount ?? 0),

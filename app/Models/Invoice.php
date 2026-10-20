@@ -280,14 +280,15 @@ class Invoice extends Model
             ];
         }
 
+        // Os itens estão em centavos, enquanto travel_value é armazenado em reais.
         $serviceOrdersByInvoice = DB::table('service_orders')
             ->leftJoin('service_order_items', 'service_order_items.service_order_id', '=', 'service_orders.id')
             ->where('service_orders.invoice_id', $this->getKey())
             ->groupBy('service_orders.id', 'service_orders.travel_value')
             ->selectRaw('
-                COALESCE(SUM(service_order_items.gross_amount), 0) + COALESCE(service_orders.travel_value, 0) as gross_amount,
+                COALESCE(SUM(service_order_items.gross_amount), 0) + ROUND(COALESCE(service_orders.travel_value, 0) * 100, 0) as gross_amount,
                 COALESCE(SUM(service_order_items.discount_amount), 0) as discount_amount,
-                COALESCE(SUM(service_order_items.total_amount), 0) + COALESCE(service_orders.travel_value, 0) as total_amount
+                COALESCE(SUM(service_order_items.total_amount), 0) + ROUND(COALESCE(service_orders.travel_value, 0) * 100, 0) as total_amount
             ');
 
         $serviceTotals = DB::query()
