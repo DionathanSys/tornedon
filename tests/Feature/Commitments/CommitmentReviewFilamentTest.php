@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Commitments;
 
+use App\Enum\Commitment\BillingStatus;
 use App\Enum\Commitment\ImportType;
 use App\Enum\Commitment\MatchStatus;
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
@@ -21,6 +23,8 @@ use App\Services\Commitments\ImportCommitmentFilesService;
 use App\Services\Commitments\Pdf\PdfTextExtractor;
 use App\Services\Commitments\ProcessCommitmentBillingBatchService;
 use App\Services\Commitments\ProcessCommitmentImportFileService;
+use App\Services\Commitments\RequestCommitmentBillingService;
+use App\Services\FiscalDocument\NfseDocumentService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -93,6 +97,55 @@ class CommitmentReviewFilamentTest extends TestCase
         $this->assertNull($unapproved->fresh()->billing);
         Queue::assertPushed(ProcessCommitmentBillingBatchJob::class);
         $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_confirmed_invoice_opens_emission_specific_modal_and_submits_existing_nfse_without_checkbox(): void
+    {
+        CommitmentSetting::query()->update(['payment_method' => Method::BANK_TRANSFER->value, 'payment_condition' => Condition::DAYS_30->value, 'nfse_footer_message' => 'Contrato municipal.']);
+        $record = $this->commitment();
+        $order = $this->order();
+        $billing = app(ApproveCommitmentMatchService::class)->approve($this->company->id, $record->id, $order->id, $this->user->id);
+        $batch = app(RequestCommitmentBillingService::class)->request($this->company->id, [$record->id], $this->user->id);
+        app(ProcessCommitmentBillingBatchService::class)->process($batch->id, $batch->company_id, $batch->run_token);
+        $billing->refresh();
+        $invoiceId = $billing->invoice_id;
+        $documentId = $billing->invoice->fiscalDocuments()->sole()->id;
+        $this->assertSame(BillingStatus::CONFIRMED, $billing->status);
+
+        $page = Livewire::test(ListCustomerCommitments::class)->mountAction(TestAction::make('bill_commitment')->table($record))
+            ->assertActionMounted(TestAction::make('bill_commitment')->table($record));
+        $instance = $page->instance();
+        $action = $instance->getMountedAction();
+        $this->assertSame('Solicitar emissão da NFS-e', $action->getModalHeading());
+        $this->assertSame('Solicitar emissão', $action->getModalSubmitActionLabel());
+        $this->assertStringContainsString('A fatura já está confirmada.', $action->getModalDescription());
+        $entries = collect($instance->getSchema($instance->getMountedActionSchemaName())->getFlatComponents(withHidden: true));
+        $this->assertTrue($entries->first(fn ($entry) => $entry->getName() === 'nfse_service_id')->isHidden());
+        $this->assertTrue($entries->first(fn ($entry) => $entry->getName() === 'emit_nfse')->isHidden());
+        $preview = $entries->first(fn ($entry) => $entry instanceof RepeatableEntry && $entry->getName() === 'billing_preview');
+        $fields = collect($preview->getItems()[0]->getComponents())->map(fn ($entry) => $entry->getName());
+        $this->assertContains('invoice', $fields);
+        $this->assertContains('fiscal_status', $fields);
+        $this->assertNotContains('method', $fields);
+        $this->assertNotContains('condition', $fields);
+        $this->assertSame($billing->invoice->invoice_number, $preview->getState()[0]['invoice']);
+
+        $page->callMountedAction()->assertHasNoActionErrors()->assertNoRedirect();
+        $emissionBatch = CommitmentBillingBatch::latest('id')->firstOrFail();
+        $this->assertTrue($emissionBatch->emit_nfse);
+        $this->assertSame(2, CommitmentBillingBatch::count());
+        $this->mock(NfseDocumentService::class)->shouldReceive('emitir')->once()->andReturnUsing(function ($document) use ($documentId) {
+            $this->assertSame($documentId, $document->id);
+            $document->update(['nfse_status' => NfeStatus::QUEUED]);
+
+            return true;
+        });
+        app(ProcessCommitmentBillingBatchService::class)->process($emissionBatch->id, $emissionBatch->company_id, $emissionBatch->run_token);
+        $this->assertSame(BillingStatus::EMISSION_QUEUED, $billing->fresh()->status, $billing->fresh()->last_error ?? '');
+        $this->assertSame($invoiceId, $billing->fresh()->invoice_id);
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertDatabaseCount('fiscal_documents', 1);
+        $this->assertDatabaseCount('account_receivables', 1);
     }
 
     public function test_navigation_and_list_expose_commitments_and_keep_tenant_scope(): void

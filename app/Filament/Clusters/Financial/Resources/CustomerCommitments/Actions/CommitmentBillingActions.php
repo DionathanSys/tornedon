@@ -32,9 +32,12 @@ class CommitmentBillingActions
             ? 'Encaminhar NFS-e' : ($record->billing?->invoice_id || $record->billing?->last_error ? 'Retomar faturamento' : 'Faturar OS vinculada'))
             ->icon('heroicon-o-document-currency-dollar')->authorize('update')
             ->visible(fn (CustomerCommitment $record) => $record->status->value === 'approved' && $record->billing?->canRequestBilling())
-            ->modalHeading('Faturamento do empenho')->modalWidth('5xl')->stickyModalHeader()->stickyModalFooter()
-            ->modalDescription('Uma fatura por OS. O sistema executará o faturamento e a confirmação pelos serviços atuais. A emissão depende da opção abaixo e não representa autorização fiscal.')
-            ->modalSubmitActionLabel('Solicitar processamento')
+            ->modalHeading(fn (CustomerCommitment $record) => self::isEmissionOnly($record) ? 'Solicitar emissão da NFS-e' : 'Faturamento do empenho')
+            ->modalWidth('5xl')->stickyModalHeader()->stickyModalFooter()
+            ->modalDescription(fn (CustomerCommitment $record) => self::isEmissionOnly($record)
+                ? 'A fatura já está confirmada. Confira a NFS-e existente e confirme o envio para a fila de emissão. A situação fiscal será atualizada após o processamento.'
+                : 'Uma fatura por OS. O sistema executará o faturamento e a confirmação pelos serviços atuais. A emissão depende da opção abaixo e não representa autorização fiscal.')
+            ->modalSubmitActionLabel(fn (CustomerCommitment $record) => self::isEmissionOnly($record) ? 'Solicitar emissão' : 'Solicitar processamento')
             ->schema([
                 Select::make('nfse_service_id')->label('Serviço da NFS-e')->native(false)->searchable()->live()
                     ->visible(fn (CustomerCommitment $record) => ! $record->billing?->invoice?->confirmed)
@@ -47,12 +50,13 @@ class CommitmentBillingActions
                         }
                     }),
                 RepeatableEntry::make('billing_preview')->hiddenLabel()->state(fn (CustomerCommitment $record, Get $get) => [self::preview($record, filled($get('nfse_service_id')) ? (int) $get('nfse_service_id') : null)])
-                    ->schema(self::previewSchema()),
-                self::emissionCheckbox()->default(fn (CustomerCommitment $record) => (bool) $record->billing?->invoice?->confirmed),
+                    ->schema(fn (CustomerCommitment $record) => self::previewSchema(self::isEmissionOnly($record))),
+                self::emissionCheckbox()->visible(fn (CustomerCommitment $record) => ! self::isEmissionOnly($record)),
             ])->action(function (CustomerCommitment $record, array $data): void {
+                $emissionOnly = self::isEmissionOnly($record);
                 $batch = app(RequestCommitmentBillingService::class)->request(Filament::getTenant()->id, [$record->id], Auth::id(),
-                    (bool) ($data['emit_nfse'] ?? false), filled($data['nfse_service_id'] ?? null) ? (int) $data['nfse_service_id'] : null);
-                self::notify($batch);
+                    $emissionOnly || (bool) ($data['emit_nfse'] ?? false), ! $emissionOnly && filled($data['nfse_service_id'] ?? null) ? (int) $data['nfse_service_id'] : null);
+                self::notify($batch, emissionOnly: $emissionOnly);
             });
     }
 
@@ -85,8 +89,11 @@ class CommitmentBillingActions
 
     public static function preview(CustomerCommitment $record, ?int $serviceId = null): array
     {
+        $invoice = $record->billing?->invoice;
         $row = ['commitment' => $record->number.'/'.$record->fiscal_year, 'order' => $record->billing?->serviceOrder?->number,
-            'amount' => $record->amount, 'diagnostic' => 'Disponível para processamento.'];
+            'amount' => $record->amount, 'invoice' => $invoice?->invoice_number,
+            'fiscal_status' => $invoice?->fiscalDocuments->first(fn ($document) => $document->isNfse())?->nfse_status?->description() ?? 'Pendente de emissão',
+            'diagnostic' => self::isEmissionOnly($record) ? 'Fatura confirmada. Confira os dados da NFS-e existente.' : 'Disponível para processamento.'];
         if ($record->status->value !== 'approved' || ! $record->billing || ! $record->billing->canRequestBilling()) {
             return [...$row, 'diagnostic' => 'Não será executado: aprove o vínculo ou aguarde o processamento atual.'];
         }
@@ -103,14 +110,23 @@ class CommitmentBillingActions
         }
     }
 
-    private static function previewSchema(): array
+    private static function previewSchema(bool $emissionOnly = false): array
     {
-        return [TextEntry::make('commitment')->label('Empenho'), TextEntry::make('order')->label('OS')->placeholder('Sem vínculo'),
+        $identity = [TextEntry::make('commitment')->label('Empenho'), TextEntry::make('order')->label('OS')->placeholder('Sem vínculo'),
             TextEntry::make('amount')->label('Valor')->money('BRL', locale: 'pt_BR'),
-            TextEntry::make('diagnostic')->label('Diagnóstico'), TextEntry::make('method')->label('Forma de pagamento')->placeholder('—'),
-            TextEntry::make('condition')->label('Condição')->placeholder('—'), TextEntry::make('category')->label('Categoria financeira')->placeholder('—'),
-            TextEntry::make('account')->label('Conta financeira')->placeholder('—'),
+            TextEntry::make('diagnostic')->label('Diagnóstico')];
+        $details = $emissionOnly ? [TextEntry::make('invoice')->label('Fatura confirmada'), TextEntry::make('fiscal_status')->label('Situação da NFS-e')]
+            : [TextEntry::make('method')->label('Forma de pagamento')->placeholder('—'),
+                TextEntry::make('condition')->label('Condição')->placeholder('—'), TextEntry::make('category')->label('Categoria financeira')->placeholder('—'),
+                TextEntry::make('account')->label('Conta financeira')->placeholder('—')];
+
+        return [...$identity, ...$details,
             TextEntry::make('body')->label('Corpo da NFS-e')->placeholder('Revise a configuração'), TextEntry::make('footer')->label('Rodapé da NFS-e')->placeholder('Revise a configuração')];
+    }
+
+    private static function isEmissionOnly(CustomerCommitment $record): bool
+    {
+        return (bool) $record->billing?->invoice?->confirmed;
     }
 
     private static function emissionCheckbox(): Checkbox
@@ -119,10 +135,11 @@ class CommitmentBillingActions
             ->helperText('Opcional. Usa o serviço e a fila fiscal existentes. Sem esta opção, a fatura fica confirmada para emissão posterior. Não registra recebimento.');
     }
 
-    private static function notify(CommitmentBillingBatch $batch, int $skipped = 0): void
+    private static function notify(CommitmentBillingBatch $batch, int $skipped = 0, bool $emissionOnly = false): void
     {
         $errors = $batch->items()->where('status', 'failed')->pluck('last_error')->unique()->implode(' ');
-        Notification::make()->title('Lote de faturamento #'.$batch->id)->body('Processamento solicitado. Acompanhe a coluna Execução e filtre pelo lote.'
+        Notification::make()->title(($emissionOnly ? 'Solicitação de emissão NFS-e #' : 'Lote de faturamento #').$batch->id)
+            ->body(($emissionOnly ? 'Emissão solicitada para a NFS-e existente.' : 'Processamento solicitado.').' Acompanhe a coluna Execução e filtre pelo lote.'
             .($skipped ? " {$skipped} registro(s) indisponível(is) excluído(s)." : '').($errors ? ' Pendências: '.$errors : ''))
             ->color($errors ? 'warning' : 'success')->send();
     }
