@@ -4,6 +4,7 @@
         @if ($showUpload)
             <x-mary-form wire:submit="uploadAttachments" x-on:submit.capture="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); }" :x-data="'operationPhotoUpload('.\Illuminate\Support\Js::from($uploadLimits)->toHtml().')'" no-separator class="rounded-box border border-base-300 bg-base-200 p-4">
                 <x-mary-select label="Tipo de anexo" wire:model.live="attachmentType" :options="$types" x-bind:disabled="busy" />
+                <x-mary-textarea label="Descrição" wire:model="description" rows="3" maxlength="2000" hint="Aplicada a todos os arquivos deste envio. Pode ser editada individualmente depois." x-bind:disabled="busy" />
                 <label class="block">
                     <span class="mb-2 block text-sm font-semibold">Arquivo(s)</span>
                     <input type="file" multiple accept="{{ $attachmentType === 'service_photo' ? 'image/*' : implode(',', $allowedMimes) }}" x-on:change="selectFiles($event)" x-bind:disabled="busy" class="file-input file-input-bordered w-full" />
@@ -40,12 +41,16 @@
                 <div class="flex flex-col justify-between gap-3 rounded-box border border-base-300 p-3 sm:flex-row sm:items-center" wire:key="operation-attachment-{{ $attachment['id'] }}">
                     <div class="min-w-0">
                         <p class="break-words text-sm font-medium">{{ $attachment['name'] }}</p>
+                        @if (filled($attachment['description']))
+                            <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ $attachment['description'] }}</p>
+                        @endif
                         <p class="mt-1 text-xs text-base-content/60">{{ $attachment['type'] }} · {{ $attachment['size'] }} · {{ $attachment['date'] }}</p>
                         @if ($attachment['uploader'])
                             <p class="text-xs text-base-content/60">Enviado por {{ $attachment['uploader'] }}</p>
                         @endif
                     </div>
                     <div class="flex shrink-0 gap-2">
+                        <x-mary-button :id="'edit-description-'.$attachment['id']" icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'editAttachmentDescription('.$attachment['id'].')'" aria-label="Editar descrição" tooltip="Editar descrição" />
                         @if ($attachment['previewable'])
                             <x-mary-button :id="'view-attachment-'.$attachment['id']" icon="o-eye" class="btn-ghost btn-sm btn-circle" :wire:click="'viewAttachment('.$attachment['id'].')'" aria-label="Visualizar anexo" tooltip="Visualizar" />
                         @endif
@@ -59,6 +64,16 @@
         </div>
     </x-operation.panel>
 
+    <x-mary-modal wire:model="showDescriptionModal" title="Editar descrição do anexo" class="backdrop-blur-sm">
+        <x-mary-form wire:submit="saveAttachmentDescription" no-separator>
+            <x-mary-textarea label="Descrição" wire:model="editingDescription" rows="4" maxlength="2000" />
+            <x-slot:actions>
+                <x-mary-button label="Cancelar" @click="$wire.showDescriptionModal = false" />
+                <x-mary-button label="Salvar" type="submit" class="btn-primary" spinner="saveAttachmentDescription" />
+            </x-slot:actions>
+        </x-mary-form>
+    </x-mary-modal>
+
     <x-mary-modal wire:model="showDeleteModal" title="Remover anexo?" :subtitle="$deletingName" class="backdrop-blur-sm">
         <x-slot:actions>
             <x-mary-button label="Voltar" @click="$wire.showDeleteModal = false" />
@@ -67,6 +82,9 @@
     </x-mary-modal>
     <x-mary-modal wire:model="showPreviewModal" :title="$preview['name'] ?? 'Visualizar anexo'" box-class="max-w-4xl" class="backdrop-blur-sm">
         @if ($showPreviewModal && $preview)
+            @if (filled($preview['description'] ?? null))
+                <p class="mb-3 whitespace-pre-wrap break-words text-sm">{{ $preview['description'] }}</p>
+            @endif
             @if ($preview['image'])
                 <img src="{{ $preview['url'] }}" alt="{{ $preview['name'] }}" class="mx-auto max-h-[65dvh] max-w-full object-contain" />
             @else

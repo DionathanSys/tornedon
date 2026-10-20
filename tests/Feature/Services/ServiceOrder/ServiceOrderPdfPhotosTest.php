@@ -60,9 +60,14 @@ class ServiceOrderPdfPhotosTest extends TestCase
     public function test_pdf_renders_each_photo_on_an_additional_page_and_print_action_accepts_the_option(): void
     {
         $order = ServiceOrder::factory()->create();
-        $this->attachment($order, 'primeira.png');
+        $this->attachment($order, 'primeira.png', ['description' => "Vazamento na conexão\nAntes do reparo <teste>"]);
         $this->attachment($order, 'segunda.png');
         $formatter = app(ServiceOrderPdfDataFormatter::class);
+        $data = $formatter->format($order, true);
+        $this->assertSame("Vazamento na conexão\nAntes do reparo <teste>", $data['service_photos'][0]['description']);
+        $this->assertNull($data['service_photos'][1]['description']);
+        $html = view('pdf.service-order', ['record' => $order, 'pdfData' => $data])->render();
+        $this->assertStringContainsString("Vazamento na conexão\nAntes do reparo &lt;teste&gt;", $html);
         $plain = Pdf::loadView('pdf.service-order', ['record' => $order, 'pdfData' => $formatter->format($order)])->setPaper('a4');
         $plain->output();
         $withPhotos = Pdf::loadView('pdf.service-order', ['record' => $order, 'pdfData' => $formatter->format($order, true)])->setPaper('a4');

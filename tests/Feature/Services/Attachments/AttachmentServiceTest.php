@@ -182,13 +182,20 @@ class AttachmentServiceTest extends TestCase
         Filament::setCurrentPanel('admin');
         Filament::setTenant($this->owner->company);
 
-        Livewire::test(AttachmentsRelationManager::class, ['ownerRecord' => $this->owner, 'pageClass' => EditServiceOrder::class])
+        $page = Livewire::test(AttachmentsRelationManager::class, ['ownerRecord' => $this->owner, 'pageClass' => EditServiceOrder::class])
             ->callAction(TestAction::make('create')->table(), data: [
                 'type' => AttachmentType::SERVICE_PHOTO->value,
                 'file' => [UploadedFile::fake()->image('nova.jpg')],
+                'description' => 'Antes do serviço',
             ])->assertHasNoActionErrors();
 
         $this->assertSame(2, $this->owner->currentAttachments()->sole()->version);
+        $attachment = $this->owner->currentAttachments()->sole();
+        $this->assertSame('Antes do serviço', $attachment->description);
+        $page->callAction(TestAction::make('editDescription')->table($attachment), data: [
+            'description' => 'Depois do serviço',
+        ])->assertHasNoActionErrors();
+        $this->assertSame('Depois do serviço', $attachment->fresh()->description);
     }
 
     public function test_admin_upload_failure_shows_notification_instead_of_internal_server_error(): void

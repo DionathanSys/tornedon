@@ -151,9 +151,10 @@ class ServiceOrderPdfDataFormatter
                     continue;
                 }
 
-                $scale = min(680 / $dimensions[0], 800 / $dimensions[1], 1);
+                $scale = min(680 / $dimensions[0], (filled($attachment->description) ? 600 : 800) / $dimensions[1], 1);
                 $photos[] = [
                     'name' => $attachment->original_name,
+                    'description' => $attachment->description,
                     'src' => 'data:'.$dimensions['mime'].';base64,'.base64_encode($contents),
                     'width' => (int) floor($dimensions[0] * $scale),
                     'height' => (int) floor($dimensions[1] * $scale),

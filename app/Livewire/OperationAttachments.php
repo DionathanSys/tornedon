@@ -26,6 +26,15 @@ class OperationAttachments extends Component
 
     public string $attachmentType = 'generic';
 
+    public string $description = '';
+
+    public string $editingDescription = '';
+
+    public bool $showDescriptionModal = false;
+
+    #[Locked]
+    public ?int $editingId = null;
+
     public bool $showUpload = false;
 
     public bool $showDeleteModal = false;
@@ -50,7 +59,10 @@ class OperationAttachments extends Component
     public function uploadAttachments(): void
     {
         $order = $this->tenantOrder();
-        $this->validate(['attachmentType' => ['required', Rule::in($order->allowedAttachmentTypes())]]);
+        $this->validate([
+            'attachmentType' => ['required', Rule::in($order->allowedAttachmentTypes())],
+            'description' => ['nullable', 'string', 'max:2000'],
+        ]);
         $config = config('attachments.types.'.$this->attachmentType, []);
         $maxSize = $config['max_size'] ?? 20480;
         $rules = ['required', 'file', 'max:'.$maxSize];
@@ -70,7 +82,9 @@ class OperationAttachments extends Component
 
         try {
             foreach ($this->files as $index => $file) {
-                app(AttachmentService::class)->upload($order, $file, $this->attachmentType);
+                app(AttachmentService::class)->upload($order, $file, $this->attachmentType, [
+                    'description' => $this->description,
+                ]);
                 unset($remaining[$index]);
             }
         } catch (\Throwable $exception) {
@@ -82,6 +96,7 @@ class OperationAttachments extends Component
         }
 
         $this->files = [];
+        $this->description = '';
         $this->showUpload = false;
         $this->success('Anexos enviados com sucesso.');
     }
@@ -94,6 +109,7 @@ class OperationAttachments extends Component
             'id' => $attachment->id,
             'name' => $attachment->original_name, 'url' => $attachment->preview_url,
             'image' => $attachment->isPreviewableImage(),
+            'description' => $attachment->description,
         ];
         $this->showPreviewModal = true;
     }
@@ -104,6 +120,30 @@ class OperationAttachments extends Component
         $this->deletingId = $attachment->id;
         $this->deletingName = $attachment->original_name;
         $this->showDeleteModal = true;
+    }
+
+    public function editAttachmentDescription(int $id): void
+    {
+        $attachment = $this->tenantAttachment($id);
+        $this->editingId = $attachment->id;
+        $this->editingDescription = $attachment->description ?? '';
+        $this->resetValidation('editingDescription');
+        $this->showDescriptionModal = true;
+    }
+
+    public function saveAttachmentDescription(): void
+    {
+        abort_unless($this->showDescriptionModal && $this->editingId, 403);
+        $attachment = $this->tenantAttachment($this->editingId);
+        $this->validate(['editingDescription' => ['nullable', 'string', 'max:2000']]);
+        $attachment->update(['description' => $this->editingDescription]);
+        if (($this->preview['id'] ?? null) === $attachment->id) {
+            $this->preview['description'] = $attachment->description;
+        }
+        $this->showDescriptionModal = false;
+        $this->editingId = null;
+        $this->editingDescription = '';
+        $this->success('Descrição atualizada.');
     }
 
     public function deleteAttachment(): void
@@ -145,6 +185,7 @@ class OperationAttachments extends Component
         $attachments = $order->currentAttachments()->where('company_id', $order->company_id)->with('uploader:id,name')->orderByDesc('created_at')->orderByDesc('id')->get()
             ->map(fn (Attachment $attachment): array => [
                 'id' => $attachment->id, 'name' => $attachment->original_name,
+                'description' => $attachment->description,
                 'type' => $attachment->type->getLabel(), 'size' => Number::fileSize($attachment->size_bytes),
                 'date' => $attachment->created_at->format('d/m/Y H:i'), 'uploader' => $attachment->uploader?->name,
                 'url' => $attachment->url, 'previewable' => $attachment->isPreviewable(),

@@ -113,6 +113,7 @@ class AttachmentService
                     'disk' => $disk,
                     'path' => $storedPath,
                     'original_name' => $originalName,
+                    'description' => $options['description'] ?? null,
                     'stored_name' => $storedName,
                     'extension' => $extension,
                     'mime_type' => $mimeType,

@@ -152,17 +152,33 @@ class OperationServiceOrderFeaturesTest extends TestCase
         $order = $this->order('OS-ANEXOS');
         $file = UploadedFile::fake()->createWithContent('documento.txt', 'Conteúdo privado do anexo');
         $page = Livewire::test(OperationAttachments::class, ['orderId' => $order->id])
+            ->set('description', 'Descrição inicial')
             ->set('showUpload', true)->set('files', [$file])->call('uploadAttachments')->assertHasNoErrors()
             ->assertSet('showUpload', false)->assertSee('documento.txt');
         $attachment = $order->currentAttachments()->sole();
         $this->assertSame($this->company->id, $attachment->company_id);
         $this->assertSame($this->user->id, $attachment->uploaded_by);
+        $this->assertSame('Descrição inicial', $attachment->description);
         Storage::disk('local')->assertExists($attachment->path);
         $this->get($attachment->url)->assertOk()->assertDownload('documento.txt');
         $this->get($attachment->preview_url)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
 
         $page->call('viewAttachment', $attachment->id)->assertSet('showPreviewModal', true)
             ->assertSet('preview.url', $attachment->preview_url)
+            ->call('editAttachmentDescription', $attachment->id)
+            ->assertSet('editingDescription', 'Descrição inicial')
+            ->set('editingDescription', str_repeat('x', 2001))
+            ->call('saveAttachmentDescription')->assertHasErrors(['editingDescription'])
+            ->set('editingDescription', "Vazamento identificado\nConexão de entrada")
+            ->call('saveAttachmentDescription')->assertHasNoErrors()
+            ->assertSet('showDescriptionModal', false)
+            ->assertSet('preview.description', "Vazamento identificado\nConexão de entrada")
+            ->assertSee('Vazamento identificado');
+        $this->assertSame("Vazamento identificado\nConexão de entrada", $attachment->fresh()->description);
+        $page->call('editAttachmentDescription', $attachment->id)
+            ->set('editingDescription', '')->call('saveAttachmentDescription')->assertHasNoErrors();
+        $this->assertEmpty($attachment->fresh()->description);
+        $page
             ->call('requestAttachmentDeletion', $attachment->id)->assertSet('showDeleteModal', true)
             ->call('deleteAttachment')->assertSet('showDeleteModal', false)->assertDontSee('documento.txt');
         $this->assertSoftDeleted($attachment);
@@ -191,6 +207,7 @@ class OperationServiceOrderFeaturesTest extends TestCase
         $otherOrder = $this->order('OS-ANEXOS-OUTRA');
         $attachment = app(AttachmentService::class)->upload($otherOrder, UploadedFile::fake()->createWithContent('outra.txt', 'Outro arquivo'), 'generic');
         Livewire::test(OperationAttachments::class, ['orderId' => $order->id])->call('viewAttachment', $attachment->id)->assertStatus(404);
+        Livewire::test(OperationAttachments::class, ['orderId' => $order->id])->call('editAttachmentDescription', $attachment->id)->assertStatus(404);
         Livewire::test(OperationAttachments::class, ['orderId' => $order->id])->call('requestAttachmentDeletion', $attachment->id)->assertStatus(404);
         $this->assertNotSoftDeleted($attachment);
         $foreign = $this->order('OS-ANEXOS-FORA', Company::factory()->create(['created_by' => $this->user->id]));

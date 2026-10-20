@@ -27,6 +27,7 @@ class Attachment extends Model
         'disk',
         'path',
         'original_name',
+        'description',
         'stored_name',
         'extension',
         'mime_type',
@@ -39,8 +40,8 @@ class Attachment extends Model
 
     protected $casts = [
         'is_current' => 'boolean',
-        'metadata'   => 'array',
-        'type'       => AttachmentType::class,
+        'metadata' => 'array',
+        'type' => AttachmentType::class,
     ];
 
     /**

@@ -19,6 +19,10 @@
         </a>
     </div>
 
+    @if (filled($record->description))
+        <p class="whitespace-pre-wrap break-words text-sm text-gray-950 dark:text-white">{{ $record->description }}</p>
+    @endif
+
     @if ($record->isPreviewableImage())
         <div class="flex max-h-[70vh] min-h-32 items-center justify-center overflow-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-950">
             <img

@@ -8,9 +8,11 @@ use App\Services\Attachments\AttachmentService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -59,6 +61,12 @@ class AttachmentsRelationManager extends RelationManager
                     ->required()
                     ->multiple()
                     ->columnSpanFull(),
+                Textarea::make('description')
+                    ->label('Descrição')
+                    ->helperText('Aplicada a todos os arquivos deste envio. Pode ser editada individualmente depois.')
+                    ->maxLength(2000)
+                    ->rows(3)
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -74,6 +82,11 @@ class AttachmentsRelationManager extends RelationManager
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->formatStateUsing(fn (?AttachmentType $state): string => $state ? $state->getLabel() : '-'),
+                TextColumn::make('description')
+                    ->label('Descrição')
+                    ->placeholder('-')
+                    ->wrap()
+                    ->limit(100),
                 TextColumn::make('version')
                     ->label('Versão')
                     ->alignCenter(),
@@ -103,7 +116,9 @@ class AttachmentsRelationManager extends RelationManager
                         try {
                             foreach ($files as $file) {
                                 if ($file instanceof TemporaryUploadedFile) {
-                                    $lastAttachment = $service->upload($owner, $file, $type);
+                                    $lastAttachment = $service->upload($owner, $file, $type, [
+                                        'description' => $data['description'] ?? null,
+                                    ]);
                                 }
                             }
                         } catch (\Throwable $exception) {
@@ -124,6 +139,17 @@ class AttachmentsRelationManager extends RelationManager
                     ->successNotificationTitle('Anexo(s) enviado(s) com sucesso'),
             ])
             ->recordActions([
+                EditAction::make('editDescription')
+                    ->label('Editar descrição')
+                    ->modalHeading('Editar descrição do anexo')
+                    ->icon('heroicon-o-pencil-square')
+                    ->iconButton()
+                    ->schema([
+                        Textarea::make('description')
+                            ->label('Descrição')
+                            ->maxLength(2000)
+                            ->rows(4),
+                    ]),
                 ViewAction::make()
                     ->iconButton()
                     ->modalHeading(fn (Attachment $record): string => "Visualizar anexo: {$record->original_name}")

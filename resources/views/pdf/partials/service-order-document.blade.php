@@ -186,5 +186,8 @@
         <img src="{{ $photo['src'] }}" alt="{{ $photo['name'] }}"
             style="width: {{ $photo['width'] }}px; height: {{ $photo['height'] }}px;">
         <div style="margin-top: 8px; font-size: 11px; overflow-wrap: break-word;">{{ $photo['name'] }}</div>
+        @if (filled($photo['description'] ?? null))
+            <div style="margin-top: 8px; font-size: 12px; text-align: left; white-space: pre-wrap; overflow-wrap: break-word;">{{ $photo['description'] }}</div>
+        @endif
     </div>
 @endforeach
