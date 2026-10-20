@@ -180,7 +180,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->after(function (InstallmentsRelationManager $livewire) {
                         $livewire->dispatch('refresh-page');
                     }),
-            ])->label('Ações')->icon(Heroicon::EllipsisVertical)->button(), position: RecordActionsPosition::BeforeColumns)
+            ])->icon(Heroicon::Bars3)->tooltip('Ações da parcela'), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
     }
