@@ -6,6 +6,7 @@ use App\Enum\Commitment\ImportType;
 use App\Enum\Commitment\ProcessingStatus;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class CommitmentImport extends CommitmentRecord
 {
@@ -21,5 +22,10 @@ class CommitmentImport extends CommitmentRecord
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function paymentLines(): HasManyThrough
+    {
+        return $this->hasManyThrough(CommitmentPaymentLine::class, CommitmentImportFile::class);
     }
 }

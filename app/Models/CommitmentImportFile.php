@@ -31,6 +31,10 @@ class CommitmentImportFile extends CommitmentRecord
 
     public function hasProtectedResults(): bool
     {
+        if ($this->type === ImportType::PAYMENTS && filled(data_get($this->extracted_data, 'review'))) {
+            return true;
+        }
+
         return $this->commitments()->where(function ($query) {
             $query->whereHas('billing')->orWhereHas('receipt')->orWhereNotNull('reviewed_at')
                 ->orWhereNotNull('corrected_data')->orWhereIn('status', ['approved', 'ignored']);

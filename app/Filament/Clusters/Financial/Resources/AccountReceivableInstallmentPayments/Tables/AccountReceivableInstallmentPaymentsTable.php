@@ -61,6 +61,7 @@ class AccountReceivableInstallmentPaymentsTable
                         'pix' => 'PIX',
                         'bank_slip' => 'Boleto',
                         'bank_statement' => 'Conciliação',
+                        'commitment_report' => 'Relatório de empenhos',
                         default => 'Manual',
                     })
                     ->placeholder('Histórico sem identificação')

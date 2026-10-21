@@ -280,7 +280,7 @@ Cada etapa entrega código verificável e atualiza este checklist. Ordem de impl
 - [x] **4 — Conciliação:** listagem/detalhe, sugestões, correções, reserva exclusiva de OS e busca por abertura/valor/patrimônio.
 - [x] **5 — Faturamento:** configuração financeira/fiscal, prévia de corpo/rodapé, ação individual/lote, confirmação e retomada por etapa; emissão opcional reutilizando o serviço existente.
 - [ ] **6 — Emissão:** encaminhamento pela fila existente e apresentação da situação real da NFS-e; validação do mapeamento de rodapé no emissor utilizado.
-- [ ] **7 — Pagamentos:** importação do relatório, integridade dos totais, identificação de vínculos, revisão e baixa integral selecionada.
+- [x] **7 — Pagamentos:** importação do relatório, integridade dos totais, identificação de vínculos, revisão e baixa integral selecionada.
 - [ ] **8 — Integração visual:** referências na OS, fatura e recebimentos; filtros, mensagens e navegação final.
 - [ ] **9 — Homologação:** cenários ponta a ponta, documentação operacional, dependência Poppler e instruções de implantação.
 
@@ -362,6 +362,19 @@ Não executar faturamento, emissão ou baixa sobre dados reais para validar os p
 - OS com requisição são bloqueadas já na conciliação e novamente antes de faturar/confirmar/emitir. Desvinculação é bloqueada durante execução e após criação de fatura. Tentativas falhas sem fatura permitem desvincular preservando o histórico do lote.
 - Implantação: aplicar a migration, limpar caches dos componentes e reiniciar workers. O ambiente fiscal configurado e a fila existente continuam sendo utilizados. A homologação com provedor real permanece na etapa própria.
 - Verificação: `composer test` passou com **845 testes e 4.501 assertions**; os 101 testes focados de empenhos/fila NFS-e também passaram. Pint e conferência das sete rotas do cluster concluídos. A tentativa de aplicar a migration neste ambiente ficou bloqueada por timeout da conexão MySQL; não foi possível confirmar a implantação no banco configurado.
+
+### Registro de execução — etapa 7 (20/10/2026)
+
+- A importação de relatórios não compara mais o nome do credor no PDF com a empresa importadora. Nome/código são preservados como dados de origem; empresa/cliente, permissões e referências financeiras continuam explicitamente escopados. A antiga pendência de nome não bloqueia a conciliação de relatórios já existentes. A validação de credor da nota de empenho e a opção explícita de diagnóstico não foram alteradas.
+- Migration `2026_10_20_000001_add_commitment_payment_review_fields.php`: diagnóstico, dados conferidos e data da busca nas linhas de pagamentos. Nenhuma nova tabela de recebimentos: reutilizados os registros/evidências criados na etapa 1.
+- `MatchCommitmentPaymentsService` resolve empenho/exercício → OS/fatura exclusiva → NFS-e/número/data → contas/parcelas. Recalcula saldo em centavos a partir dos pagamentos atuais e verifica consistência dos valores persistidos. O valor do relatório deve coincidir com todo o saldo aberto. Divergências são encaminhadas para revisão.
+- `MatchCommitmentPaymentLinesJob` realiza a conciliação em blocos de até 25 linhas após o commit da leitura, usando a fila padrão e autorização explícita no worker. Os jobs não fazem baixa. Busca individual permanece imediata.
+- `ReceiveCommitmentPaymentService` trava empresa, arquivo/linha, vínculos e registros financeiros antes de revalidar. Registra cada parcela por `AccountReceivableService::registerInstallmentPayment()`; todas as parcelas, movimentos, quitação e vínculos de um empenho são atômicos. Origem `commitment_report` incluída na validação e no rótulo dos recebimentos financeiros.
+- `ReviewCommitmentPaymentsService` permite correções preservando os dados originais, confirmação das pendências de extração/integridade e ignorar/reabrir, com motivo e auditoria. Dados com quitação vinculada não são reescritos.
+- Relatórios sobrepostos compartilham a quitação existente. Conta previamente recebida não gera nova baixa; vínculo explícito de pagamentos existentes exige data/valor/conta compatíveis. Pagamentos vinculados removidos, devolvidos ou alterados exigem revisão e não disparam nova baixa.
+- Interface integrada a **Pagamentos de empenhos**, na aba **Conciliação dos pagamentos**, com menu de barrinhas à esquerda, filtros de situação, revisão, links, confirmação individual/seleção de até 25 linhas e resultado isolado por empenho. Totais vinculados não duplicam recebimentos reconhecidos por várias linhas.
+- Testes incluem importação em empresa com nome diferente, leitura → conciliação → quitação, várias parcelas/rollback na segunda, duplicidade, baixa manual existente, saldo alterado após sugestão, estorno, revisão e isolamento por empresa/permissão.
+- Verificação final: `composer test` passou com **880 testes e 4.865 assertions**; Pint e `git diff --check` também passaram. A aplicação da migration no banco configurado foi tentada, mas ficou bloqueada por timeout de conexão MySQL. Aplicar a migration no ambiente com acesso ao banco e reiniciar os workers para ativar esta etapa.
 
 ## 10. Verificação e critérios de aceite
 

@@ -5,9 +5,13 @@ namespace App\Filament\Clusters\Financial\Resources\CommitmentImports\RelationMa
 use App\Filament\Clusters\Financial\Resources\CommitmentImports\Schemas\ImportFileDetailsSchema;
 use App\Filament\Clusters\Financial\Resources\CustomerCommitments\CustomerCommitmentResource;
 use App\Models\CommitmentImportFile;
+use App\Services\Commitments\CommitmentPaymentContext;
 use App\Services\Commitments\ReprocessCommitmentImportFileService;
+use App\Services\Commitments\ReviewCommitmentPaymentsService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -52,6 +56,15 @@ class FilesRelationManager extends RelationManager
                     ->stickyModalHeader()->stickyModalFooter()
                     ->fillForm(fn (CommitmentImportFile $record) => ['extracted_text' => $record->extracted_text])
                     ->schema(ImportFileDetailsSchema::components()),
+                Action::make('review_report_integrity')->authorize('update')->label('Conferir integridade do relatório')->icon('heroicon-o-check-circle')
+                    ->visible(fn (CommitmentImportFile $record) => $record->type->value === 'payments' && CommitmentPaymentContext::reportIssues($record) !== [])
+                    ->modalDescription('Consulte o PDF e confira os totais e pendências em Dados extraídos. A confirmação será auditada com motivo e permitirá a conciliação das linhas válidas.')
+                    ->schema([Checkbox::make('confirm_integrity')->label('Conferi o relatório original, os totais e as pendências apresentadas')->accepted()->required(),
+                        Textarea::make('reason')->label('Motivo da conferência')->required()->minLength(3)->maxLength(2000)])
+                    ->action(function (CommitmentImportFile $record, array $data): void {
+                        app(ReviewCommitmentPaymentsService::class)->acknowledgeFile(Filament::getTenant()->id, $record->id, Auth::id(), $data['reason']);
+                        Notification::make()->title('Conferência registrada e vínculos atualizados')->success()->send();
+                    }),
                 Action::make('preview_pdf')->authorize('view')->label('Visualizar PDF')->icon('heroicon-o-document')->openUrlInNewTab()
                     ->visible(fn (CommitmentImportFile $record) => $record->currentAttachments()->exists())
                     ->url(fn (CommitmentImportFile $record) => $record->currentAttachments()->first()?->preview_url),

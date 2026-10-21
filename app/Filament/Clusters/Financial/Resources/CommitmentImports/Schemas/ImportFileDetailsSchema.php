@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\CommitmentImports\Schemas;
 
 use App\Models\CommitmentImportFile;
+use App\Services\Commitments\CommitmentPaymentContext;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -24,9 +25,10 @@ class ImportFileDetailsSchema
                 TextEntry::make('last_error')->label('Último erro')->color('danger')->columnSpanFull()
                     ->state(fn (CommitmentImportFile $record) => $record->last_error)->visible(fn (CommitmentImportFile $record) => filled($record->last_error)),
             ]),
-            Section::make('Pendências da extração')->columnSpanFull()->visible(fn (CommitmentImportFile $record) => filled(data_get($record->extracted_data, 'issues')))->schema([
+            Section::make('Pendências da extração')->columnSpanFull()->visible(fn (CommitmentImportFile $record) => filled($record->type->value === 'payments' ? CommitmentPaymentContext::reportIssues($record) : data_get($record->extracted_data, 'issues')))->schema([
                 TextEntry::make('extraction_issues')->hiddenLabel()->color('warning')->listWithLineBreaks()
-                    ->state(fn (CommitmentImportFile $record) => data_get($record->extracted_data, 'issues', [])),
+                    ->state(fn (CommitmentImportFile $record) => $record->type->value === 'payments' ? CommitmentPaymentContext::reportIssues($record) : data_get($record->extracted_data, 'issues', [])),
+                TextEntry::make('report_review')->label('Conferência registrada')->state(fn (CommitmentImportFile $record) => data_get($record->extracted_data, 'review.reason'))->placeholder('Aguardando conferência'),
             ]),
             Section::make('Empenho')->columnSpanFull()->visible(fn (CommitmentImportFile $record) => filled(data_get($record->extracted_data, 'number')))
                 ->columns(['default' => 1, 'md' => 3])->schema([

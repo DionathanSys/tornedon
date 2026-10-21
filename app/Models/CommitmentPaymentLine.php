@@ -10,9 +10,9 @@ use Illuminate\Validation\ValidationException;
 
 class CommitmentPaymentLine extends CommitmentRecord
 {
-    protected $fillable = ['company_id', 'customer_id', 'commitment_import_file_id', 'position', 'page_start', 'page_end', 'commitment_number', 'fiscal_year', 'patrimony', 'fiscal_document_number', 'fiscal_document_date', 'payment_date', 'amount', 'object', 'original_data', 'status', 'review_reason', 'customer_commitment_id', 'commitment_receipt_id'];
+    protected $fillable = ['company_id', 'customer_id', 'commitment_import_file_id', 'position', 'page_start', 'page_end', 'commitment_number', 'fiscal_year', 'patrimony', 'fiscal_document_number', 'fiscal_document_date', 'payment_date', 'amount', 'object', 'original_data', 'status', 'review_reason', 'customer_commitment_id', 'commitment_receipt_id', 'match_diagnostics', 'corrected_data', 'matched_at'];
 
-    protected $casts = ['fiscal_document_date' => 'date', 'payment_date' => 'date', 'amount' => MoneyCast::class, 'original_data' => 'array', 'status' => PaymentLineStatus::class];
+    protected $casts = ['fiscal_document_date' => 'date', 'payment_date' => 'date', 'amount' => MoneyCast::class, 'original_data' => 'array', 'status' => PaymentLineStatus::class, 'match_diagnostics' => 'array', 'corrected_data' => 'array', 'matched_at' => 'datetime'];
 
     protected function contextRelations(): array
     {

@@ -140,7 +140,7 @@ Pendências extraídas ficam disponíveis para revisão nas etapas de conciliaç
 
 ### Conferências de partes
 
-Na importação de empenhos, o CNPJ do emissor é comparado ao documento do cliente e o CNPJ do credor ao documento da empresa. No relatório, o credor só está disponível por nome/código: o nome é comparado ao nome cadastrado da empresa. Diferenças permanecem como pendências para revisão.
+Na importação de empenhos, o CNPJ do emissor é comparado ao documento do cliente e o CNPJ do credor ao documento da empresa. **Na importação do relatório de pagamentos, o nome/código do credor é apenas informativo: não é comparado com a empresa importadora.** É possível usar o relatório em outra empresa de testes. O CNPJ do emissor continua conferido com o cliente selecionado; registros, faturas e contas são sempre buscados somente na empresa e cliente da importação.
 
 ## Conciliação com ordens de serviço — etapa 4
 
@@ -246,3 +246,50 @@ Corrigir a causa indicada e usar **Retomar faturamento** ou **Encaminhar NFS-e**
 Entradas interrompidas sem conclusão podem ser retomadas após dez minutos. Uma geração antiga não pode sobrescrever a retomada. Se houver pendência de conciliação de RPS ou cancelamento, resolver pela tela fiscal normal antes de reenviar.
 
 Durante um lote ativo, **Desvincular OS** fica bloqueada. Após uma falha anterior à criação da fatura, é possível desvincular com motivo e preservar o histórico. Uma vez criada a fatura, utilizar os fluxos financeiros normais para revisar o documento.
+
+## Relatório de empenhos pagos — conciliação e recebimento (etapa 7)
+
+### Atualização do ambiente
+
+```bash
+php artisan migrate
+php artisan filament:clear-cached-components
+php artisan queue:restart
+```
+
+A migration `2026_10_20_000001_add_commitment_payment_review_fields.php` adiciona diagnóstico, dados conferidos e data da busca às linhas. A fila padrão executa `MatchCommitmentPaymentLinesJob` em blocos de até 25 linhas após a leitura do PDF. Esses jobs só conciliam; não registram recebimentos.
+
+### Importar e conferir
+
+1. Acessar **Financeiro → Empenhos → Pagamentos de empenhos** e importar um PDF, selecionando o cliente.
+2. Após a leitura, a busca de vínculos é solicitada automaticamente. Abrir o relatório e a aba **Conciliação dos pagamentos**. A lista de relatórios apresenta quantidades lidas/compatíveis/recebidas e total de quitações vinculadas, sem somar duas vezes o mesmo recebimento.
+3. Para relatórios antigos, ou após emitir/faturar uma nota, usar **Buscar vínculos do relatório**. A busca acontece pela fila, sem baixa. A ação **Buscar vínculos** da linha atualiza apenas aquela ocorrência imediatamente.
+4. No menu de barrinhas, abrir **Revisar pagamento**: comparar empenho/ano, patrimônio, NFS-e, data/valor do relatório, saldo atual, distribuição das parcelas por vencimento e vínculos à fatura/contas/documento fiscal.
+
+O nome da empresa credora impresso no PDF não bloqueia a importação. A antiga pendência “Nome do credor não corresponde à empresa selecionada” também deixa de bloquear os relatórios já importados; não é necessário reenviar o PDF para buscar vínculos. O comando de diagnóstico ainda permite solicitar comparação de nome explicitamente por `--creditor-name`; essa opção não é utilizada pela importação do painel.
+
+### Situações e revisões
+
+- **Não localizado:** não foi encontrado o empenho na empresa/cliente selecionados.
+- **Compatível:** empenho, NFS-e e saldo aberto conferem; a soma dos saldos é exatamente o valor informado.
+- **Revisar divergência:** conferir diagnóstico. Diferença de patrimônio, nota/data, saldo, parcial, retenção, juros/desconto, cancelamento ou inconsistência financeira impedem a baixa automática.
+- **Já recebido:** a conta já está liquidada ou a quitação já foi reconhecida em outro relatório; não será criada nova baixa.
+- **Recebimento confirmado:** quitação feita por este fluxo, com vínculos aos pagamentos e movimentos financeiros existentes.
+- **Ignorado:** retirado da conciliação operacional com motivo; **Reabrir linha** permite buscar novamente.
+
+Pendências gerais de integridade/totais precisam ser conferidas na aba **Arquivos e processamento**, em **Dados extraídos**, e confirmadas em **Conferir integridade do relatório**, com confirmação explícita e motivo. Pendências da própria linha podem ser revistas em **Conferir dados extraídos**, com correção, confirmação das inconsistências e motivo. Os dados originais permanecem preservados e a revisão é auditada. Linhas com quitação vinculada não podem ter os dados reescritos por essa ação.
+
+### Confirmar recebimento
+
+1. Em uma linha compatível, usar **Confirmar recebimento**; para seleção de até 25 linhas, **Confirmar recebimentos selecionados**.
+2. Selecionar uma conta financeira ativa da empresa atual. A competência é opcional: em branco, mantém a classificação das parcelas; preenchida, será aplicada pelo serviço financeiro existente.
+3. Conferir as datas e valores. A data de recebimento é sempre a data efetiva de cada linha do relatório, nunca a data da importação ou a data atual.
+4. Confirmar. O saldo é recalculado sob locks antes de registrar. São reutilizados `AccountReceivableService::registerInstallmentPayment()` e a criação de movimentos financeiros/auditoria do sistema.
+
+Todas as parcelas de um empenho são quitadas em uma única transação, por vencimento e ID. Falha em qualquer parcela desfaz os pagamentos, movimentos e vínculos daquele empenho. Na seleção, cada empenho é independente: o resumo informa concluídos e pendências. A origem dos pagamentos aparece como **Relatório de empenhos** no financeiro.
+
+### Recebimentos existentes, duplicidade e estorno
+
+Uma conta já recebida manualmente, por boleto, PIX ou rotina automática nunca é baixada novamente. Quando data, valor e conta dos pagamentos existentes conferem, a ação **Vincular recebimento existente** permite associar o relatório explicitamente, sem novo movimento financeiro. Caso contrário, revisar pelo fluxo financeiro normal.
+
+Relatórios sobrepostos e confirmações repetidas reutilizam a mesma quitação. Se um pagamento vinculado for removido, estornado, devolvido ou alterado, a linha passa para revisão e não é reaberta automaticamente para nova baixa. A evidência original dos pagamentos permanece disponível em **Revisar pagamento**.

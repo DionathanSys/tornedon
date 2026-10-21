@@ -137,6 +137,19 @@ class CommitmentImportWorkflowTest extends TestCase
         $this->assertDatabaseCount('commitment_receipts', 0);
     }
 
+    public function test_report_creditor_name_does_not_have_to_match_importing_company(): void
+    {
+        $this->company->update(['name' => 'EMPRESA DE TESTES DIFERENTE DO PDF']);
+        $this->mockExtractor('chapeco-payments.txt');
+        $import = $this->import([$this->pdf()], ImportType::PAYMENTS);
+        Queue::pushed(ProcessCommitmentImportFileJob::class)->first()->handle(app(ProcessCommitmentImportFileService::class));
+        $file = $import->files()->firstOrFail();
+        $this->assertSame(ProcessingStatus::PROCESSED, $file->status);
+        $this->assertNotContains('Nome do credor não corresponde à empresa selecionada.', $file->extracted_data['issues']);
+        $this->assertSame(4, $file->paymentLines()->count());
+        $this->assertSame($this->company->id, $file->paymentLines()->first()->company_id);
+    }
+
     public function test_different_pdf_with_same_commitment_identity_requires_review_and_preserves_original(): void
     {
         $this->mockExtractor('chapeco-commitment.txt');

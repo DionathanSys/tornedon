@@ -54,7 +54,8 @@ class ProcessCommitmentImportFileService
                 $data = app(ChapecoCommitmentParser::class)->parse($pdf, $issuerDocument, $company->document_number);
                 $version = ChapecoCommitmentParser::VERSION;
             } else {
-                $data = app(ChapecoPaymentReportParser::class)->parse($pdf, $issuerDocument, $company->name);
+                // The PDF creditor is informational; importing into another company is supported.
+                $data = app(ChapecoPaymentReportParser::class)->parse($pdf, $issuerDocument);
                 $version = ChapecoPaymentReportParser::VERSION;
             }
 
@@ -92,6 +93,8 @@ class ProcessCommitmentImportFileService
                 if ($data instanceof CommitmentData && ! isset($result['existing_commitment_id'])) {
                     $commitment = $file->commitments()->firstOrFail();
                     app(SuggestCommitmentMatchesService::class)->refresh($companyId, $commitment->id, $userId);
+                } elseif ($data instanceof PaymentReportData) {
+                    app(MatchCommitmentPaymentsService::class)->queueFile($companyId, $fileId, $userId);
                 }
             });
         } catch (Throwable $exception) {
