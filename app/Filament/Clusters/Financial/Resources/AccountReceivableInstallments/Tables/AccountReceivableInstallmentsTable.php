@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\Tables;
 
 use App\Enum\AccountReceivable\Status;
+use App\Filament\Clusters\Financial\Actions\ChangeInstallmentStatusBulkAction;
 use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
@@ -126,15 +127,15 @@ class AccountReceivableInstallmentsTable
             ->recordActions([
                 ActionGroup::make([
                     RegisterInstallmentPaymentAction::make(),
-                EditInstallmentAction::make(),
-                DeleteInstallmentAction::make(),
-                Action::make('open_account')
-                    ->label('Abrir agrupador')
-                    ->icon('heroicon-o-folder-open')
-                    ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
-                        ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
-                        : null),])->icon(Heroicon::Bars3)
-                ], RecordActionsPosition::BeforeCells)
+                    EditInstallmentAction::make(),
+                    DeleteInstallmentAction::make(),
+                    Action::make('open_account')
+                        ->label('Abrir agrupador')
+                        ->icon('heroicon-o-folder-open')
+                        ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
+                            ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
+                            : null), ])->icon(Heroicon::Bars3),
+            ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
                 Action::make('create_account_receivable')
                     ->label('Novo lancamento')
@@ -142,6 +143,7 @@ class AccountReceivableInstallmentsTable
                     ->color('gray')
                     ->url(AccountReceivableResource::getUrl('create')),
                 RefreshChartAccountFromCategoryBulkAction::make(),
+                ChangeInstallmentStatusBulkAction::make(AccountReceivableInstallment::class),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
             ->emptyStateDescription('As parcelas das contas a receber aparecerao aqui.')

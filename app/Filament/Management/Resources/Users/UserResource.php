@@ -94,7 +94,7 @@ class UserResource extends Resource
                             CheckboxList::make('permissions')
                                 ->label('Recursos permitidos')
                                 ->options(OperationModules::permissions())
-                                ->default(array_keys(OperationModules::permissions()))
+                                ->default(array_keys(OperationModules::defaultPermissions()))
                                 ->bulkToggleable()
                                 ->columns(2),
                             Repeater::make('order')

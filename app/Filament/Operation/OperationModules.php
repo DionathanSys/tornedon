@@ -37,6 +37,15 @@ class OperationModules
 
     public static function permissions(): array
     {
+        return [
+            ...self::defaultPermissions(),
+            'account_payables.change_status_without_movement' => 'Pagar: alterar status sem movimentação',
+            'account_receivables.change_status_without_movement' => 'Receber: alterar status sem movimentação',
+        ];
+    }
+
+    public static function defaultPermissions(): array
+    {
         $permissions = [];
         foreach (self::definitions() as $module) {
             if ($module['permission']) {

@@ -17,7 +17,7 @@ class UserAccessConfigurationService
             return [
                 'company_id' => $company->id,
                 'operation_enabled' => $settings?->panels['operation'] ?? true,
-                'permissions' => $settings?->permissions ?? array_keys(OperationModules::permissions()),
+                'permissions' => $settings?->permissions ?? array_keys(OperationModules::defaultPermissions()),
                 'order' => array_map(fn (string $module): array => ['module' => $module], $settings?->navigation['operation'] ?? array_keys(OperationModules::definitions())),
             ];
         })->all();
@@ -61,7 +61,7 @@ class UserAccessConfigurationService
                 'panels' => $panels,
                 'navigation' => $navigation,
                 'permissions' => array_values(array_unique([
-                    ...array_keys(OperationModules::permissions()),
+                    ...array_keys(OperationModules::defaultPermissions()),
                     ...array_diff($settings->permissions, array_keys(OperationModules::permissions())),
                 ])),
             ]);
