@@ -11,6 +11,8 @@ use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Commitments\MatchCommitmentPaymentsService;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\Concerns\CreatesCommitmentPaymentFixtures;
@@ -51,8 +53,17 @@ class CommitmentPaymentsFilamentTest extends TestCase
         $wrong = $this->paymentLine($this->billedCommitment(), ['amount' => 300], $first->importFile);
         $unselected = $this->paymentLine($this->billedCommitment(), [], $first->importFile);
         app(MatchCommitmentPaymentsService::class)->refreshFile($this->company->id, $first->commitment_import_file_id, $this->user->id);
-        $this->manager($first)->selectTableRecords([$first->id, $wrong->id])
-            ->callAction(TestAction::make('receive_selected')->table()->bulk(), ['financial_account_id' => $this->cashAccount->id])->assertHasNoActionErrors();
+        $page = $this->manager($first)->selectTableRecords([$first->id, $wrong->id])
+            ->mountAction(TestAction::make('receive_selected')->table()->bulk())->assertActionMounted(TestAction::make('receive_selected')->table()->bulk());
+        $instance = $page->instance();
+        $entries = collect($instance->getSchema($instance->getMountedActionSchemaName())->getFlatComponents());
+        $summary = $entries->first(fn ($entry) => $entry instanceof TextEntry && $entry->getName() === 'selection_summary');
+        $preview = $entries->first(fn ($entry) => $entry instanceof RepeatableEntry && $entry->getName() === 'selected_payments');
+        $this->assertSame('2 linha(s) — R$ 700,00', $summary->getState());
+        $this->assertEqualsCanonicalizing([$first->commitment_number.'/2026', $wrong->commitment_number.'/2026'], array_column($preview->getState(), 'reference'));
+        $this->assertEquals(700, collect($preview->getState())->sum('amount'));
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $page->fillForm(['financial_account_id' => $this->cashAccount->id])->callMountedAction()->assertHasNoActionErrors();
         $this->assertSame(PaymentLineStatus::RECEIVED, $first->fresh()->status);
         $this->assertSame(PaymentLineStatus::DIVERGENT, $wrong->fresh()->status);
         $this->assertSame(PaymentLineStatus::MATCHED, $unselected->fresh()->status);

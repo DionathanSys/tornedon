@@ -113,9 +113,9 @@ class CommitmentPaymentActions
         return BulkAction::make('receive_selected')->label('Confirmar recebimentos selecionados')->icon('heroicon-o-banknotes')
             ->authorize('viewAny', CommitmentPaymentLine::class)->deselectRecordsAfterCompletion()->modalWidth('6xl')
             ->modalHeading('Confirmar recebimentos do relatório')->modalDescription('Até 25 linhas por operação. Cada empenho é confirmado em sua própria transação. Divergências não geram baixa; uma falha não desfaz outros empenhos concluídos.')
-            ->schema([
-                TextEntry::make('selection_summary')->label('Seleção')->state(fn (Collection $records) => $records->count().' linha(s) — R$ '.number_format($records->sum('amount'), 2, ',', '.')),
-                RepeatableEntry::make('selected_payments')->label('Datas e valores utilizados')->state(fn (Collection $records) => $records->map(fn ($record) => [
+            ->schema(fn (Collection $records) => [
+                TextEntry::make('selection_summary')->label('Seleção')->state($records->count().' linha(s) — R$ '.number_format($records->sum('amount'), 2, ',', '.')),
+                RepeatableEntry::make('selected_payments')->label('Datas e valores utilizados')->state($records->map(fn ($record) => [
                     'reference' => $record->commitment_number.'/'.$record->fiscal_year, 'date' => $record->payment_date, 'amount' => $record->amount,
                     'diagnostic' => data_get($record->match_diagnostics, 'reason'),
                 ])->all())->schema([TextEntry::make('reference')->label('Empenho'), TextEntry::make('date')->label('Pagamento')->date('d/m/Y'),

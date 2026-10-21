@@ -29,6 +29,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -96,6 +97,44 @@ class CommitmentReviewFilamentTest extends TestCase
         $this->assertSame(1, $batch->items()->count());
         $this->assertNull($unapproved->fresh()->billing);
         Queue::assertPushed(ProcessCommitmentBillingBatchJob::class);
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_bulk_billing_modal_shows_selected_commitments_total_and_fiscal_previews_before_submission(): void
+    {
+        CommitmentSetting::query()->update(['payment_method' => Method::BANK_TRANSFER->value, 'payment_condition' => Condition::DAYS_30->value, 'nfse_footer_message' => 'Contrato municipal.']);
+        $first = $this->commitment();
+        $firstOrder = $this->order();
+        $second = $this->commitment(['amount' => 540, 'net_amount' => 540]);
+        $secondOrder = $this->order(540);
+        $unselected = $this->commitment();
+        foreach ([[$first, $firstOrder], [$second, $secondOrder]] as [$record, $order]) {
+            app(ApproveCommitmentMatchService::class)->approve($this->company->id, $record->id, $order->id, $this->user->id);
+        }
+        $page = Livewire::test(ListCustomerCommitments::class)->selectTableRecords([$first->id, $second->id])
+            ->mountAction(TestAction::make('bill_selected')->table()->bulk())->assertActionMounted(TestAction::make('bill_selected')->table()->bulk());
+        $instance = $page->instance();
+        $entries = collect($instance->getSchema($instance->getMountedActionSchemaName())->getFlatComponents());
+        $summary = $entries->first(fn ($entry) => $entry instanceof TextEntry && $entry->getName() === 'selected_summary');
+        $preview = $entries->first(fn ($entry) => $entry instanceof RepeatableEntry && $entry->getName() === 'billing_preview');
+        $this->assertSame('2 empenho(s) — R$ 940,00', $summary->getState());
+        $rows = collect($preview->getState())->keyBy('commitment');
+        $this->assertCount(2, $rows);
+        foreach ([[$first, $firstOrder], [$second, $secondOrder]] as [$record, $order]) {
+            $row = $rows->get($record->number.'/2026');
+            $this->assertNotNull($row);
+            $this->assertEquals($record->amount, $row['amount']);
+            $this->assertSame($order->number, $row['order']);
+            $this->assertSame($order->items->first()->service->name, $row['body']);
+            $this->assertStringContainsString('Contrato municipal.', $row['footer']);
+            $this->assertStringContainsString('Empenho: '.$record->number.'/2026', $row['footer']);
+        }
+        Queue::assertNotPushed(ProcessCommitmentBillingBatchJob::class);
+        $page->fillForm(['emit_nfse' => true])->callMountedAction()->assertHasNoActionErrors();
+        $batch = CommitmentBillingBatch::sole();
+        $this->assertTrue($batch->emit_nfse);
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], $batch->items()->pluck('customer_commitment_id')->all());
+        $this->assertNull($unselected->fresh()->billing);
         $this->assertDatabaseCount('invoices', 0);
     }
 

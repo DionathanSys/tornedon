@@ -16,8 +16,9 @@ class ListCommitmentImports extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            ImportCommitmentFilesAction::make(static::getResource()), ConfigureCommitmentsAction::make(),
-            Action::make('commitments')->label('Conciliar empenhos')->url(CustomerCommitmentResource::getUrl('index')),
+            ImportCommitmentFilesAction::make(static::getResource())->iconButton()->tooltip('Importar PDFs'),
+            ConfigureCommitmentsAction::make()->iconButton()->tooltip('Configurar cliente'),
+            Action::make('commitments')->label('Conciliar empenhos')->icon('heroicon-o-link')->iconButton()->tooltip('Conciliar empenhos')->url(CustomerCommitmentResource::getUrl('index')),
         ];
     }
 }

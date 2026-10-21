@@ -66,9 +66,9 @@ class CommitmentBillingActions
             ->authorize('viewAny', CustomerCommitment::class)->deselectRecordsAfterCompletion()
             ->modalHeading('Faturamento dos empenhos selecionados')->modalWidth('6xl')->stickyModalHeader()->stickyModalFooter()
             ->modalDescription('Até 25 empenhos por lote, cada OS com sua própria fatura. Registros sem vínculo aprovado ou já em processamento serão excluídos da execução. Revise os diagnósticos de cada item.')
-            ->schema([
-                TextEntry::make('selected_summary')->label('Seleção')->state(fn (Collection $records) => $records->count().' empenho(s) — R$ '.number_format($records->sum('amount'), 2, ',', '.')),
-                RepeatableEntry::make('billing_preview')->hiddenLabel()->state(fn (Collection $records) => $records->map(fn ($record) => self::preview($record))->all())->schema(self::previewSchema()),
+            ->schema(fn (Collection $records) => [
+                TextEntry::make('selected_summary')->label('Seleção')->state($records->count().' empenho(s) — R$ '.number_format($records->sum('amount'), 2, ',', '.')),
+                RepeatableEntry::make('billing_preview')->hiddenLabel()->state($records->map(fn ($record) => self::preview($record))->all())->schema(self::previewSchema()),
                 self::emissionCheckbox(),
             ])->action(function (Collection $records, array $data): void {
                 $eligible = $records->filter(fn (CustomerCommitment $record) => $record->status->value === 'approved' && $record->billing?->canRequestBilling());

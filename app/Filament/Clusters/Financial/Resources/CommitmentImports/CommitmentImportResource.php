@@ -64,7 +64,7 @@ class CommitmentImportResource extends Resource
         ])->filters([
             SelectFilter::make('customer_id')->label('Cliente')->options(fn () => ImportCommitmentFilesAction::customerOptions()),
             SelectFilter::make('status')->label('Situação')->options(collect(ProcessingStatus::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
-        ])->recordActions([ViewAction::make()->label('Ver arquivos')]);
+        ])->recordActions([ViewAction::make()->label('Ver arquivos')->iconButton()->tooltip('Ver arquivos')]);
     }
 
     public static function infolist(Schema $schema): Schema

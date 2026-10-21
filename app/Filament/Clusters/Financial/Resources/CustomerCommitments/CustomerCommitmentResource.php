@@ -121,8 +121,8 @@ class CustomerCommitmentResource extends Resource
                 CommitmentReviewActions::ignore(reopen: true),
             ])->label('Ações do empenho')->tooltip('Ações do empenho')->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
         ], RecordActionsPosition::BeforeCells)->recordActionsAlignment('start')->toolbarActions([
-            CommitmentBillingActions::bulk(),
-            BulkAction::make('refresh_selected')->label('Buscar OS para selecionados')->icon('heroicon-o-arrow-path')
+            CommitmentBillingActions::bulk()->iconButton()->tooltip('Faturar selecionados'),
+            BulkAction::make('refresh_selected')->label('Buscar OS para selecionados')->icon('heroicon-o-arrow-path')->iconButton()->tooltip('Buscar OS para selecionados')
                 ->authorize('viewAny', CustomerCommitment::class)->deselectRecordsAfterCompletion()
                 ->action(function (Collection $records): void {
                     $errors = [];

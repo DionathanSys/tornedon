@@ -49,14 +49,14 @@ class FilesRelationManager extends RelationManager
                 TextColumn::make('attempts')->label('Tentativas'),
                 TextColumn::make('last_error')->label('Último erro')->wrap()->limit(120)->tooltip(fn ($state) => $state),
             ])->recordActions([
-                Action::make('reconcile')->authorize('view')->label('Conciliar com OS')->icon('heroicon-o-link')
+                Action::make('reconcile')->authorize('view')->label('Conciliar com OS')->icon('heroicon-o-link')->iconButton()->tooltip('Conciliar com OS')
                     ->visible(fn (CommitmentImportFile $record) => $record->type->value === 'commitments' && $record->commitments()->exists())
                     ->url(fn (CommitmentImportFile $record) => CustomerCommitmentResource::getUrl('view', ['record' => $record->commitments()->firstOrFail()])),
-                Action::make('details')->authorize('view')->label('Dados extraídos')->icon('heroicon-o-eye')->modalWidth('7xl')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
+                Action::make('details')->authorize('view')->label('Dados extraídos')->icon('heroicon-o-eye')->iconButton()->tooltip('Dados extraídos')->modalWidth('7xl')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
                     ->stickyModalHeader()->stickyModalFooter()
                     ->fillForm(fn (CommitmentImportFile $record) => ['extracted_text' => $record->extracted_text])
                     ->schema(ImportFileDetailsSchema::components()),
-                Action::make('review_report_integrity')->authorize('update')->label('Conferir integridade do relatório')->icon('heroicon-o-check-circle')
+                Action::make('review_report_integrity')->authorize('update')->label('Conferir integridade do relatório')->icon('heroicon-o-check-circle')->iconButton()->tooltip('Conferir integridade do relatório')
                     ->visible(fn (CommitmentImportFile $record) => $record->type->value === 'payments' && CommitmentPaymentContext::reportIssues($record) !== [])
                     ->modalDescription('Consulte o PDF e confira os totais e pendências em Dados extraídos. A confirmação será auditada com motivo e permitirá a conciliação das linhas válidas.')
                     ->schema([Checkbox::make('confirm_integrity')->label('Conferi o relatório original, os totais e as pendências apresentadas')->accepted()->required(),
@@ -65,13 +65,13 @@ class FilesRelationManager extends RelationManager
                         app(ReviewCommitmentPaymentsService::class)->acknowledgeFile(Filament::getTenant()->id, $record->id, Auth::id(), $data['reason']);
                         Notification::make()->title('Conferência registrada e vínculos atualizados')->success()->send();
                     }),
-                Action::make('preview_pdf')->authorize('view')->label('Visualizar PDF')->icon('heroicon-o-document')->openUrlInNewTab()
+                Action::make('preview_pdf')->authorize('view')->label('Visualizar PDF')->icon('heroicon-o-document')->iconButton()->tooltip('Visualizar PDF')->openUrlInNewTab()
                     ->visible(fn (CommitmentImportFile $record) => $record->currentAttachments()->exists())
                     ->url(fn (CommitmentImportFile $record) => $record->currentAttachments()->first()?->preview_url),
-                Action::make('download_pdf')->authorize('view')->label('Baixar PDF')->openUrlInNewTab()
+                Action::make('download_pdf')->authorize('view')->label('Baixar PDF')->icon('heroicon-o-arrow-down-tray')->iconButton()->tooltip('Baixar PDF')->openUrlInNewTab()
                     ->visible(fn (CommitmentImportFile $record) => $record->currentAttachments()->exists())
                     ->url(fn (CommitmentImportFile $record) => $record->currentAttachments()->first()?->url),
-                Action::make('reprocess')->label('Reprocessar')->icon('heroicon-o-arrow-path')->requiresConfirmation()
+                Action::make('reprocess')->label('Reprocessar')->icon('heroicon-o-arrow-path')->iconButton()->tooltip('Reprocessar')->requiresConfirmation()
                     ->visible(fn (CommitmentImportFile $record) => $record->canReprocess())
                     ->modalDescription('Executa uma nova leitura do PDF original. Arquivos com vínculos ou revisão já realizada são preservados.')
                     ->action(function (CommitmentImportFile $record): void {

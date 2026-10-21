@@ -59,6 +59,7 @@ class PaymentLinesRelationManager extends RelationManager
                     CommitmentPaymentActions::receive(linkExisting: true), CommitmentPaymentActions::correct(), CommitmentPaymentActions::pdf(),
                     CommitmentPaymentActions::ignore(), CommitmentPaymentActions::ignore(reopen: true)])->icon(Heroicon::Bars3)->label('Ações do pagamento'),
             ], RecordActionsPosition::BeforeCells)->recordActionsAlignment('start')
-            ->headerActions([CommitmentPaymentActions::refreshAll()])->toolbarActions([CommitmentPaymentActions::bulkReceive()]);
+            ->headerActions([CommitmentPaymentActions::refreshAll()->iconButton()->tooltip('Buscar vínculos do relatório')])
+            ->toolbarActions([CommitmentPaymentActions::bulkReceive()->iconButton()->tooltip('Confirmar recebimentos selecionados')]);
     }
 }

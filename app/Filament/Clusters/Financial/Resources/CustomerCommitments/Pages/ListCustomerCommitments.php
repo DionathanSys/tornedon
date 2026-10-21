@@ -20,9 +20,9 @@ class ListCustomerCommitments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            ImportCommitmentFilesAction::make(CommitmentImportResource::class),
-            ConfigureCommitmentsAction::make(),
-            Action::make('imports')->label('Histórico de importações')->url(CommitmentImportResource::getUrl('index')),
+            ImportCommitmentFilesAction::make(CommitmentImportResource::class)->iconButton()->tooltip('Importar empenhos'),
+            ConfigureCommitmentsAction::make()->iconButton()->tooltip('Configurar cliente'),
+            Action::make('imports')->label('Histórico de importações')->icon('heroicon-o-clock')->iconButton()->tooltip('Histórico de importações')->url(CommitmentImportResource::getUrl('index')),
         ];
     }
 
