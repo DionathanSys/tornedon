@@ -8,7 +8,9 @@ use App\Enum\Requisition\Status;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Management\Resources\CompanyEntitlements\Pages\CreateCompanyEntitlement;
 use App\Filament\Management\Resources\CompanyEntitlements\Pages\EditCompanyEntitlement;
+use App\Filament\Management\Resources\CompanyEntitlements\Pages\ListCompanyEntitlements;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
 use App\Jobs\QueryPixChargeJob;
@@ -278,6 +280,28 @@ class ServiceOrderPixPaymentTest extends TestCase
         $this->assertSame('all', $this->right->fresh()->metadata['user_access']);
     }
 
+    public function test_management_can_create_the_right_without_losing_selected_account_and_category(): void
+    {
+        $metadata = $this->right->metadata;
+        $this->right->delete();
+        $this->user->update(['is_admin' => true]);
+        Filament::setCurrentPanel('management');
+        Filament::setTenant(null);
+
+        Livewire::test(CreateCompanyEntitlement::class)
+            ->set('data.company_id', $this->company->id)
+            ->set('data.feature', ServiceOrderPixPayment::FEATURE)
+            ->set('data.metadata.user_ids', [$this->user->id])
+            ->set('data.metadata.financial_account_id', $metadata['financial_account_id'])
+            ->set('data.metadata.financial_category_id', $metadata['financial_category_id'])
+            ->set('data.company_id', $this->company->id)
+            ->call('create')->assertHasNoFormErrors();
+
+        $right = CompanyEntitlement::where('feature', ServiceOrderPixPayment::FEATURE)->sole();
+        $this->assertEquals($metadata['financial_account_id'], $right->metadata['financial_account_id']);
+        $this->assertEquals($metadata['financial_category_id'], $right->metadata['financial_category_id']);
+    }
+
     public function test_scheduler_recovers_pending_os_registration_without_the_technician(): void
     {
         app(ServiceOrderPixPaymentWorkflow::class)->execute($this->order, $this->user);
@@ -286,5 +310,49 @@ class ServiceOrderPixPaymentTest extends TestCase
         $this->artisan('pix:dispatch-queries', ['--company_id' => $this->company->id])->assertSuccessful();
         Queue::assertPushed(RegisterPixChargeJob::class, 1);
         Queue::assertNotPushed(QueryPixChargeJob::class);
+    }
+
+    public function test_management_can_create_the_right_from_the_list_modal(): void
+    {
+        $metadata = $this->right->metadata;
+        $this->right->delete();
+        $this->user->update(['is_admin' => true]);
+        Filament::setCurrentPanel('management');
+        Filament::setTenant(null);
+
+        Livewire::test(ListCompanyEntitlements::class)
+            ->mountTableAction('create')
+            ->set('mountedActions.0.data.company_id', $this->company->id)
+            ->set('mountedActions.0.data.feature', ServiceOrderPixPayment::FEATURE)
+            ->set('mountedActions.0.data.metadata.user_ids', [$this->user->id])
+            ->set('mountedActions.0.data.metadata.financial_account_id', $metadata['financial_account_id'])
+            ->set('mountedActions.0.data.metadata.financial_category_id', $metadata['financial_category_id'])
+            ->set('mountedActions.0.data.company_id', $this->company->id)
+            ->callMountedAction()->assertHasNoFormErrors();
+
+        $right = CompanyEntitlement::where('feature', ServiceOrderPixPayment::FEATURE)->sole();
+        $this->assertEquals($metadata['financial_account_id'], $right->metadata['financial_account_id']);
+        $this->assertEquals($metadata['financial_category_id'], $right->metadata['financial_category_id']);
+    }
+
+    public function test_changing_company_clears_pix_selections_but_preserves_other_metadata(): void
+    {
+        $this->right->update(['metadata' => [...$this->right->metadata, 'other_setting' => 'preserved']]);
+        $this->user->update(['is_admin' => true]);
+        $other = Company::factory()->create();
+        Filament::setCurrentPanel('management');
+        Filament::setTenant(null);
+
+        Livewire::test(EditCompanyEntitlement::class, ['record' => $this->right->id])
+            ->set('data.company_id', $other->id)
+            ->assertSet('data.metadata.financial_account_id', null)
+            ->assertSet('data.metadata.financial_category_id', null)
+            ->assertSet('data.metadata.user_ids', [])
+            ->assertSet('data.metadata.user_access', 'selected')
+            ->assertSet('data.metadata.other_setting', 'preserved')
+            ->call('save')
+            ->assertHasFormErrors(['metadata.financial_account_id' => 'required', 'metadata.financial_category_id' => 'required']);
+
+        $this->assertSame($this->company->id, $this->right->fresh()->company_id);
     }
 }

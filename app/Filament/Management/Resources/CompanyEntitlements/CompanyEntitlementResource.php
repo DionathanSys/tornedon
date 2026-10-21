@@ -22,6 +22,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -59,7 +60,17 @@ class CompanyEntitlementResource extends Resource
                 ->schema([
                     Select::make('company_id')
                         ->live()
-                        ->afterStateUpdated(fn ($set) => $set('metadata', ['user_access' => 'selected']))
+                        ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
+                            // A repeated synchronization of the same company must not erase selections.
+                            if (blank($old) || (string) $state === (string) $old) {
+                                return;
+                            }
+
+                            $set('metadata.user_access', 'selected');
+                            $set('metadata.user_ids', []);
+                            $set('metadata.financial_account_id', null);
+                            $set('metadata.financial_category_id', null);
+                        })
                         ->label('Empresa')
                         ->options(fn (): array => Company::query()
                             ->where('is_active', true)
