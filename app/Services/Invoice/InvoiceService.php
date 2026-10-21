@@ -214,15 +214,15 @@ class InvoiceService
         }
     }
 
-    public function confirm(Invoice $invoice, array $data, int $confirmedBy): ?array
+    public function confirm(Invoice $invoice, array $data, int $confirmedBy, bool $generateFiscalDocuments = true): ?array
     {
         $this->resetResponse();
 
         try {
-            return $this->financialTransaction(function () use ($invoice, $data, $confirmedBy) {
+            return $this->financialTransaction(function () use ($invoice, $data, $confirmedBy, $generateFiscalDocuments) {
                 $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
                 $action = new Actions\ConfirmInvoiceAction($invoice, $confirmedBy);
-                $result = $action->execute($data);
+                $result = $action->execute($data, $generateFiscalDocuments);
 
                 if ($action->hasError() || $result === null) {
                     $this->setError(

@@ -185,6 +185,7 @@ class ServiceOrderQueue extends OperationPage
                 'equipment:id,name,type,placa,serial_number',
                 'items',
                 'requisition.items',
+                'latestPixPayment',
             ]);
 
         $this->applyDateRange($baseQuery, 'order_date');
@@ -225,6 +226,9 @@ class ServiceOrderQueue extends OperationPage
                 'status_color' => $order->status?->color() ?? 'gray',
                 'is_open' => $order->status === State::OPEN,
                 'priority' => $order->priority?->description() ?? '-',
+                'pix_payment' => $order->latestPixPayment
+                    ? ($order->latestPixPayment->status->value === 'paid' ? 'PIX: pagamento confirmado' : 'PIX: '.$order->latestPixPayment->status->description())
+                    : null,
                 'order_date' => $order->order_date?->format('d/m/Y'),
                 'scheduled_date' => $order->scheduled_date?->format('d/m/Y'),
                 'total' => 'R$ '.number_format((float) $order->grand_total_amount, 2, ',', '.'),

@@ -119,6 +119,11 @@ class ServiceOrder extends Model
         'additional_info' => 'array',
     ];
 
+    public function latestPixPayment(): HasOne
+    {
+        return $this->hasOne(PixCharge::class)->latestOfMany();
+    }
+
     protected $appends = [
         'gross_amount',
         'discount_amount',

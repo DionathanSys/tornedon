@@ -4,6 +4,7 @@
             <x-operation.stat title="Valor" :value="$order['total']" />
             <x-operation.stat title="Status" :value="$order['status_label']" />
         </div>
+        @livewire(\App\Livewire\OperationServiceOrderPix::class, ['orderId' => $order['id']], key('operation-pix-'.$order['id']))
         <x-operation.panel title="Cliente" :subtitle="$order['customer_doc']">
             <p class="font-semibold">{{ $order['customer_name'] }}</p>
         </x-operation.panel>

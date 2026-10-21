@@ -6,7 +6,7 @@
     </x-operation.panel>
     <div class="rounded-box border border-base-300 bg-base-100 [&_hr]:border-base-300">
         @forelse ($orders as $order)
-            <x-operation.record-item :record="$order" :title="'OS #'.$order['number']" :subtitle="$order['customer']" :status="$order['status']" :color="$order['status_color']" :amount="$order['total']" :details="[$order['equipment'], $order['technician'], $order['order_date']]">
+            <x-operation.record-item :record="$order" :title="'OS #'.$order['number']" :subtitle="$order['customer']" :status="$order['status']" :color="$order['status_color']" :amount="$order['total']" :details="array_filter([$order['equipment'], $order['technician'], $order['order_date'], $order['pix_payment']])">
                 <x-mary-dropdown :id="'order-actions-'.$order['id']" right>
                     <x-slot:trigger class="btn btn-ghost btn-sm btn-circle" aria-label="Ações da OS {{ $order['number'] }}">
                         <x-mary-icon name="o-ellipsis-vertical" class="h-4 w-4" />

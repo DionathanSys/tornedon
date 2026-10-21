@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\QueryPixChargeJob;
+use App\Jobs\RegisterPixChargeJob;
 use App\Models\PixCharge;
 use Illuminate\Console\Command;
 
@@ -15,7 +16,10 @@ final class DispatchPixChargeQueriesCommand extends Command
     public function handle(): int
     {
         $query = PixCharge::query()
-            ->whereIn('status', ['registered', 'processing', 'uncertain', 'partially_paid'])
+            ->where(function ($query): void {
+                $query->whereIn('status', ['registered', 'processing', 'uncertain', 'partially_paid'])
+                    ->orWhere(fn ($pending) => $pending->where('status', 'pending_registration')->whereNotNull('service_order_id'));
+            })
             ->whereHas('connection', fn ($query) => $query->where('status', 'active'))
             ->where(function ($query): void {
                 $query
@@ -28,9 +32,13 @@ final class DispatchPixChargeQueriesCommand extends Command
         }
 
         $count = 0;
-        $query->select('id')->chunkById(100, function ($charges) use (&$count): void {
+        $query->select('id', 'status')->chunkById(100, function ($charges) use (&$count): void {
             foreach ($charges as $charge) {
-                QueryPixChargeJob::dispatch($charge->id);
+                if ($charge->status->value === 'pending_registration') {
+                    RegisterPixChargeJob::dispatch($charge->id);
+                } else {
+                    QueryPixChargeJob::dispatch($charge->id);
+                }
                 $count++;
             }
         });

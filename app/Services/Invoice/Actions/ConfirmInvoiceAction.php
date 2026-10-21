@@ -38,7 +38,7 @@ class ConfirmInvoiceAction
         private int $confirmedBy,
     ) {}
 
-    public function execute(array $data): ?array
+    public function execute(array $data, bool $generateFiscalDocuments = true): ?array
     {
         try {
             $audit = app(AuditRecorder::class);
@@ -93,7 +93,7 @@ class ConfirmInvoiceAction
                 SchedulePixChargeIssuanceJob::dispatch($this->invoice->id)->afterCommit();
             }
 
-            $documentTypes = $this->resolveDocumentTypes();
+            $documentTypes = $generateFiscalDocuments ? $this->resolveDocumentTypes() : [];
             $generatedDocuments = [];
 
             $invoiceService = app(InvoiceService::class);

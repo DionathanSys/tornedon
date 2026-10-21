@@ -13,17 +13,20 @@ use App\Models\User;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
 use App\Services\ServiceOrder\OperationalSheetPdfService;
+use App\Services\ServiceOrder\ServiceOrderPixPaymentWorkflow;
 use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrder\ServiceOrderSignatureLinkService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Support\OperationMoney;
 use App\Support\ServiceOrderOperationalSheet;
+use App\Support\ServiceOrderPixPayment;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Mary\Traits\Toast;
@@ -422,12 +425,12 @@ class ServiceOrderDetail extends OperationPage
             ->orderBy('name')->get()->map(fn ($equipment): array => ['id' => $equipment->id, 'name' => trim($equipment->name.' '.$equipment->identifier)])->all();
     }
 
-    public function save(): void
+    public function save(): bool
     {
         $order = $this->tenantOrder();
 
         if (! $order || ! in_array($order->status, [State::OPEN, State::CLOSED], true)) {
-            return;
+            return false;
         }
 
         if (! $this->operationalSheetEnabled) {
@@ -459,11 +462,42 @@ class ServiceOrderDetail extends OperationPage
         if ($service->hasError() || ! $updated) {
             $this->error($service->getMessageUser());
 
-            return;
+            return false;
         }
 
         $this->loadOrder();
         $this->success($service->getMessage());
+
+        return true;
+    }
+
+    public function generatePixPayment(): void
+    {
+        $order = $this->tenantOrder();
+        abort_unless($order, 404);
+        abort_unless(ServiceOrderPixPayment::allows(Auth::user(), (int) $order->company_id), 403);
+
+        if (in_array($order->status, [State::OPEN, State::CLOSED], true) && ! $this->save()) {
+            return;
+        }
+
+        try {
+            app(ServiceOrderPixPaymentWorkflow::class)->execute($order->fresh(), Auth::user());
+        } catch (ValidationException $exception) {
+            $this->error(collect($exception->errors())->flatten()->first());
+            $this->loadOrder(preserveForm: true);
+
+            return;
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->error('Não foi possível preparar a cobrança. Tente novamente para retomar a operação.');
+
+            return;
+        }
+
+        $this->loadOrder();
+        $this->dispatch('service-order-pix-updated');
+        $this->success('Cobrança solicitada. Acompanhe o pagamento nesta ordem.');
     }
 
     public function openAddService(): void

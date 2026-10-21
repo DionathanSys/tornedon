@@ -11,6 +11,8 @@ class PixCharge extends Model
 {
     protected $fillable = [
         'company_id',
+        'service_order_id',
+        'requested_by',
         'operation_status',
         'operation_kind',
         'operation_attempt_id',
@@ -59,6 +61,11 @@ class PixCharge extends Model
     public function installment(): BelongsTo
     {
         return $this->belongsTo(AccountReceivableInstallment::class, 'account_receivable_installment_id');
+    }
+
+    public function serviceOrder(): BelongsTo
+    {
+        return $this->belongsTo(ServiceOrder::class);
     }
 
     public function connection(): BelongsTo
