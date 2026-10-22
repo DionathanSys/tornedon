@@ -29,7 +29,7 @@ class SyncAccountReceivableStatusFromInstallmentsAction
             $totalDue = round((float) $this->accountReceivable->installments->sum('due_amount'), 2);
             $totalReceived = round((float) $this->accountReceivable->installments->sum('received_amount'), 2);
             $hasOverdue = $this->accountReceivable->installments
-                ->contains(fn (AccountReceivableInstallment $installment) => $installment->balance_amount > 0 && $installment->due_date?->isPast());
+                ->contains(fn (AccountReceivableInstallment $installment) => $installment->status !== Status::CANCELLED && $installment->balance_amount > 0 && $installment->due_date?->lt(today()));
 
             $status = match (true) {
                 $totalReceived >= $totalDue && $totalDue > 0 => Status::RECEIVED->value,

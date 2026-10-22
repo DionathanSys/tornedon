@@ -35,7 +35,7 @@ class SyncAccountPayableStatusFromInstallmentsAction
             $totalDue = round((float) $this->accountPayable->installments->sum('due_amount'), 2);
             $totalPaid = round((float) $this->accountPayable->installments->sum('paid_amount'), 2);
             $hasOverdue = $this->accountPayable->installments
-                ->contains(fn (AccountPayableInstallment $installment) => $installment->balance_amount > 0 && $installment->due_date?->isPast());
+                ->contains(fn (AccountPayableInstallment $installment) => $installment->status !== Status::CANCELLED && $installment->balance_amount > 0 && $installment->due_date?->lt(today()));
 
             $status = match (true) {
                 $totalPaid >= $totalDue && $totalDue > 0 => Status::PAID->value,
