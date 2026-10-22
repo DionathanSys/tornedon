@@ -23,8 +23,8 @@ class CashMovementsReconciliationStats extends StatsOverviewWidget
         $baseQuery = $this->getPageTableQuery()->clone()->reorder();
 
         $total = $baseQuery->clone()->count();
-        $reconciled = $baseQuery->clone()->whereHas('statementLines')->count();
-        $pending = $baseQuery->clone()->whereDoesntHave('statementLines')->count();
+        $reconciled = $baseQuery->clone()->reconciled()->count();
+        $pending = $baseQuery->clone()->unreconciled()->count();
         $rate = $total > 0 ? ($reconciled / $total) * 100 : 0;
 
         return [
@@ -42,6 +42,6 @@ class CashMovementsReconciliationStats extends StatsOverviewWidget
 
     private function formatPercentage(float $value): string
     {
-        return number_format($value, 1, ',', '.') . '%';
+        return number_format($value, 1, ',', '.').'%';
     }
 }

@@ -19,7 +19,10 @@ final class ReverseStatementLineReconciliationAction
             ->label('Desfazer conciliação')
             ->icon('heroicon-o-arrow-uturn-left')
             ->color('danger')
-            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status === BankStatementLineStatus::RECONCILED)
+            ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status === BankStatementLineStatus::RECONCILED || ($record->bank_reconciliation_group_id && $record->reconciliation_status === BankStatementLineStatus::NEEDS_REVIEW))
+            ->modalDescription(fn (BankStatementLine $record): string => $record->bank_reconciliation_group_id
+                ? 'Toda a conciliação composta será desfeita, incluindo os vínculos e as baixas criadas para as linhas abaixo: '.BankStatementLine::query()->where('company_id', $record->company_id)->where('bank_reconciliation_group_id', $record->bank_reconciliation_group_id)->get()->map(fn ($line) => sprintf('#%d %s (R$ %s)', $line->id, $line->description, number_format((float) $line->amount, 2, ',', '.')))->implode('; ')
+                : 'O vínculo e a baixa criada pela conciliação serão desfeitos.')
             ->schema(fn (Schema $schema) => $schema->components([
                 Textarea::make('reason')
                     ->label('Motivo do desfazimento')

@@ -118,6 +118,26 @@ class CashMovement extends Model
         return $this->hasMany(BankStatementLine::class);
     }
 
+    public function statementAllocations(): HasMany
+    {
+        return $this->hasMany(BankStatementAllocation::class);
+    }
+
+    public function hasStatementLinks(): bool
+    {
+        return $this->statementLines()->exists() || $this->statementAllocations()->exists();
+    }
+
+    public function scopeReconciled(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $query) => $query->whereHas('statementLines')->orWhereHas('statementAllocations'));
+    }
+
+    public function scopeUnreconciled(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('statementLines')->whereDoesntHave('statementAllocations');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

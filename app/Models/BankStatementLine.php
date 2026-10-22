@@ -7,6 +7,7 @@ use App\Enum\Financial\BankStatementLineStatus;
 use App\Enum\Financial\CashMovementDirection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class BankStatementLine extends Model
 {
@@ -15,6 +16,7 @@ class BankStatementLine extends Model
         'company_id',
         'financial_account_id',
         'cash_movement_id',
+        'bank_reconciliation_group_id',
         'transaction_date',
         'amount',
         'balance_amount',
@@ -59,6 +61,16 @@ class BankStatementLine extends Model
     public function cashMovement(): BelongsTo
     {
         return $this->belongsTo(CashMovement::class);
+    }
+
+    public function cashMovements(): BelongsToMany
+    {
+        return $this->belongsToMany(CashMovement::class, 'bank_statement_allocations')->withPivot('amount');
+    }
+
+    public function hasFinancialEffect(): bool
+    {
+        return $this->cash_movement_id !== null || $this->bank_reconciliation_group_id !== null;
     }
 
     public function lastSeenImportRun(): BelongsTo

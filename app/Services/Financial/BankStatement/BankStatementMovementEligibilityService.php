@@ -20,6 +20,7 @@ class BankStatementMovementEligibilityService
             ->where('direction', $line->direction()?->value)
             ->whereNull('reversed_at')
             ->whereNull('reversal_of_id')
+            ->whereDoesntHave('statementAllocations')
             ->whereBetween('amount', [
                 max(0, ((float) $line->amount - $amountTolerance) * 100),
                 ((float) $line->amount + $amountTolerance) * 100,

@@ -251,7 +251,7 @@ class CashMovementService
         try {
             return DB::transaction(function () use ($movement, $data, $userId) {
                 $movement = CashMovement::query()->lockForUpdate()->findOrFail($movement->id);
-                if ($movement->origin_type !== 'manual' || $movement->reversal_of_id !== null || $movement->reversed_at !== null || $movement->statementLines()->exists()) {
+                if ($movement->origin_type !== 'manual' || $movement->reversal_of_id !== null || $movement->reversed_at !== null || $movement->hasStatementLinks()) {
                     throw ValidationException::withMessages([
                         'movement' => ['Somente movimentos manuais não conciliados e não estornados podem ser editados.'],
                     ]);
@@ -467,7 +467,7 @@ class CashMovementService
                     ]);
                 }
 
-                if ($outflow->statementLines()->exists() || $inflow->statementLines()->exists()) {
+                if ($outflow->hasStatementLinks() || $inflow->hasStatementLinks()) {
                     throw ValidationException::withMessages(['movement' => ['Desfaça a conciliação antes de editar a transferência.']]);
                 }
 
@@ -716,7 +716,7 @@ class CashMovementService
                 $before = $movement->exists ? $audit->snapshot($movement) : null;
                 $isNewMovement = ! $movement->exists;
 
-                if ($movement->exists && ($movement->reversed_at !== null || $movement->reversal_of_id !== null || $movement->statementLines()->exists())) {
+                if ($movement->exists && ($movement->reversed_at !== null || $movement->reversal_of_id !== null || $movement->hasStatementLinks())) {
                     throw ValidationException::withMessages([
                         'movement' => ['Desfaça a conciliação ou trate o estorno antes de alterar a baixa.'],
                     ]);
@@ -883,7 +883,7 @@ class CashMovementService
                     return null;
                 }
 
-                if ($movement->statementLines()->exists()) {
+                if ($movement->hasStatementLinks()) {
                     return $this->reverseForOrigin($originType, $originId, $userId);
                 }
 
@@ -910,7 +910,7 @@ class CashMovementService
 
     private function deleteStandaloneMovement(CashMovement $movement, ?int $userId = null): bool
     {
-        if ($movement->statementLines()->exists()) {
+        if ($movement->hasStatementLinks()) {
             throw ValidationException::withMessages([
                 'movement' => ['Movimento conciliado nao pode ser excluido diretamente. Desfaca a conciliacao ou use estorno quando aplicavel.'],
             ]);

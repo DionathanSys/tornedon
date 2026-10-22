@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatement
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMovementAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcilePayableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileReceivableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
@@ -48,7 +49,7 @@ class BankStatementLineResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->color(fn ($state) => $state?->color() ?? 'gray'),
-                TextColumn::make('cashMovement.description')->label('Movimento vinculado')->placeholder('-')->limit(40),
+                TextColumn::make('linked_movements')->label('Movimentos vinculados')->getStateUsing(fn (BankStatementLine $record) => $record->bank_reconciliation_group_id ? $record->cashMovements->pluck('description')->implode('; ') : $record->cashMovement?->description)->placeholder('-')->limit(60),
             ])
             ->groups([
                 Group::make('import.file_name')
@@ -67,6 +68,7 @@ class BankStatementLineResource extends Resource
                 'record' => $record->bank_statement_import_id,
             ]))
             ->recordActions([
+                ReconcileMultipleAction::make()->iconButton(),
                 ReconcileMovementAction::make()->iconButton(),
                 ReconcilePayableInstallmentAction::make()->iconButton(),
                 ReconcileReceivableInstallmentAction::make()->iconButton(),
@@ -74,14 +76,15 @@ class BankStatementLineResource extends Resource
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),
                 ReverseStatementLineReconciliationAction::make()->iconButton(),
-            ]);
+            ])
+            ->toolbarActions([ReconcileMultipleAction::make(bulk: true)]);
     }
 
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
             ->where('company_id', Filament::getTenant()->id)
-            ->with(['cashMovement', 'import']);
+            ->with(['cashMovement', 'cashMovements', 'import']);
     }
 
     public static function getPages(): array

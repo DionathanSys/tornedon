@@ -89,7 +89,7 @@ class CashMovementsTable
                 IconColumn::make('statement_lines_exists')
                     ->label('Conciliado')
                     ->boolean()
-                    ->state(fn ($record): bool => $record->statementLines()->exists()),
+                    ->state(fn ($record): bool => $record->hasStatementLinks()),
                 TextColumn::make('reversed_at')
                     ->label('Estornado em')
                     ->dateTime('d/m/Y H:i')
@@ -122,8 +122,8 @@ class CashMovementsTable
                 TernaryFilter::make('conciliado')
                     ->label('Conciliado')
                     ->queries(
-                        true: fn ($query) => $query->whereHas('statementLines'),
-                        false: fn ($query) => $query->whereDoesntHave('statementLines'),
+                        true: fn ($query) => $query->reconciled(),
+                        false: fn ($query) => $query->unreconciled(),
                         blank: fn ($query) => $query,
                     )
                     ->native(false),

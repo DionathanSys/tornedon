@@ -429,6 +429,13 @@ class ResolveBankStatementLineService
                 $audit = app(AuditRecorder::class);
                 $line = BankStatementLine::query()->lockForUpdate()->findOrFail($line->id);
 
+                if ($line->bank_reconciliation_group_id) {
+                    app(ReconcileBankStatementGroupService::class)->reverse($line, $userId, $reason);
+                    $this->setSuccess('Conciliação composta desfeita com sucesso.');
+
+                    return $line->fresh();
+                }
+
                 if ($line->reconciliation_status !== BankStatementLineStatus::RECONCILED) {
                     throw ValidationException::withMessages([
                         'line' => ['Somente linhas conciliadas podem ter a conciliação desfeita.'],
@@ -567,13 +574,13 @@ class ResolveBankStatementLineService
                     ]);
                 }
 
-                if ($decision === 'keep' && ! $line->cash_movement_id) {
+                if ($decision === 'keep' && ! $line->hasFinancialEffect()) {
                     throw ValidationException::withMessages([
                         'review' => ['Não existe efeito financeiro para manter nesta linha. Reabra-a como pendente.'],
                     ]);
                 }
 
-                if ($decision === 'reopen' && $line->cash_movement_id) {
+                if ($decision === 'reopen' && $line->hasFinancialEffect()) {
                     throw ValidationException::withMessages([
                         'review' => ['Desfaça a conciliação para reabrir uma linha com efeito financeiro.'],
                     ]);
@@ -646,7 +653,7 @@ class ResolveBankStatementLineService
             ->where('id', '!=', $line->id)
             ->exists();
 
-        if ($alreadyLinked) {
+        if ($alreadyLinked || $movement->statementAllocations()->exists()) {
             throw ValidationException::withMessages([
                 'cash_movement_id' => ['Este movimento ja esta conciliado com outra linha de extrato.'],
             ]);

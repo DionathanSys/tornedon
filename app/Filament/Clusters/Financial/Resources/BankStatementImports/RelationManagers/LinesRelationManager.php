@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Relatio
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMovementAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcilePayableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileReceivableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
@@ -81,8 +82,9 @@ class LinesRelationManager extends RelationManager
                         default => 'warning',
                     })
                     ->toggleable(),
-                TextColumn::make('cashMovement.description')
-                    ->label('Movimento vinculado')
+                TextColumn::make('linked_movements')
+                    ->label('Movimentos vinculados')
+                    ->getStateUsing(fn (BankStatementLine $record) => $record->bank_reconciliation_group_id ? $record->cashMovements->pluck('description')->implode('; ') : $record->cashMovement?->description)
                     ->placeholder('-')
                     ->tooltip(fn (BankStatementLine $record): ?string => filled($record->cashMovement?->description) ? $record->cashMovement?->description : null)
                     ->limit(40)
@@ -104,7 +106,9 @@ class LinesRelationManager extends RelationManager
             ])
             ->defaultSort('transaction_date', 'desc')
             ->headerActions([])
+            ->toolbarActions([ReconcileMultipleAction::make(bulk: true)])
             ->recordActions([
+                ReconcileMultipleAction::make()->iconButton(),
                 Action::make('refresh_suggestions')
                     ->label('Atualizar sugestões')
                     ->icon('heroicon-o-arrow-path')

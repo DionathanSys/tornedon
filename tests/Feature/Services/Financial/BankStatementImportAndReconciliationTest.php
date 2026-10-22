@@ -8,6 +8,9 @@ use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ViewBankStatementImport;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\LinesRelationManager;
+use App\Filament\Clusters\Financial\Resources\BankStatementLines\Pages\ListBankStatementLines;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountPayableInstallmentPayment;
@@ -24,9 +27,17 @@ use App\Models\FinancialCategory;
 use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\User;
+use App\Services\Company\CompanyOperationalResetService;
 use App\Services\Financial\BankStatement\ImportBankStatementService;
+use App\Services\Financial\BankStatement\ReconcileBankStatementGroupService;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class BankStatementImportAndReconciliationTest extends TestCase
@@ -1102,6 +1113,253 @@ OFX;
             'balance_amount' => 100,
             'financial_category_id' => $this->payableCategory->id,
         ]);
+    }
+
+    public static function reconciliationTypes(): array
+    {
+        return ['receber' => ['receivable', 'CREDIT', '100.00'], 'pagar' => ['payable', 'DEBIT', '-100.00']];
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_group_distributes_one_bank_line_between_partial_installments_and_reverses_atomically(string $type, string $bankType, string $amount): void
+    {
+        $first = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $second = $first->replicate();
+        $second->sequence_number = '02';
+        $second->save();
+        $line = $this->importLine($bankType, $amount, 'group-partial');
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], $type, [
+            ['id' => $first->id, 'amount' => 60], ['id' => $second->id, 'amount' => 40],
+        ], $this->user->id);
+
+        $this->assertEquals(40, $first->fresh()->balance_amount);
+        $this->assertEquals(60, $second->fresh()->balance_amount);
+        $this->assertCount(2, $line->fresh()->cashMovements);
+        $this->assertSame(10000, (int) $line->cashMovements()->sum('bank_statement_allocations.amount'));
+        $this->assertSame(2, CashMovement::query()->reconciled()->count());
+        $this->assertNotNull($this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Distribuição incorreta'));
+        $this->assertEquals(100, $first->fresh()->balance_amount);
+        $this->assertEquals(100, $second->fresh()->balance_amount);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+        $this->assertDatabaseCount('bank_statement_allocations', 0);
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_group_settles_one_installment_using_bank_dates_of_two_lines(string $type, string $bankType, string $amount): void
+    {
+        $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $line = $this->importLine($bankType, $type === 'receivable' ? '40.00' : '-40.00', 'group-split');
+        $other = $this->duplicatePendingLine($line, 60);
+        $other->update(['transaction_date' => '2026-04-12']);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id, $other->id], $type, [['id' => $installment->id, 'amount' => 100]], $this->user->id);
+        $this->assertEquals(0, $installment->fresh()->balance_amount);
+        $this->assertEquals(40, $line->fresh()->cashMovements->sole()->amount);
+        $this->assertEquals(60, $other->fresh()->cashMovements->sole()->amount);
+        $this->assertSame('2026-04-11', $line->cashMovements->sole()->transaction_date->toDateString());
+        $this->assertSame('2026-04-12', $other->cashMovements->sole()->transaction_date->toDateString());
+        $this->assertNotNull($this->resolveService->reverseReconciliation($other->fresh(), $this->user->id, 'Desfazer o grupo'));
+        $this->assertEquals(100, $installment->fresh()->balance_amount);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+        $this->assertSame('pending', $other->fresh()->reconciliation_status->value);
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_group_links_existing_movements_in_both_directions_without_changing_cash(string $type, string $bankType, string $amount): void
+    {
+        $line = $this->importLine($bankType, $amount, 'group-existing');
+        $direction = $line->direction();
+        $first = $this->createCashMovement($direction, 40);
+        $second = $this->createCashMovement($direction, 60);
+        $service = app(ReconcileBankStatementGroupService::class);
+        $service->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $first->id], ['id' => $second->id]], $this->user->id);
+        $this->assertDatabaseCount('cash_movements', 2);
+        $this->assertTrue($first->hasStatementLinks());
+        $this->assertNotNull($this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Desvincular'));
+        $this->assertDatabaseCount('cash_movements', 2);
+        $this->assertFalse($first->fresh()->hasStatementLinks());
+
+        $other = $this->duplicatePendingLine($line->fresh(), 60);
+        $line->update(['amount' => 40]);
+        $whole = $this->createCashMovement($direction, 100);
+        $service->reconcile($this->company->id, [$line->id, $other->id], 'cash_movement', [['id' => $whole->id]], $this->user->id);
+        $this->assertSame(4000, (int) $line->fresh()->cashMovements->sole()->pivot->amount);
+        $this->assertSame(6000, (int) $other->fresh()->cashMovements->sole()->pivot->amount);
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($this->duplicatePendingLine($line->fresh(), 100), $whole->id));
+    }
+
+    public function test_group_rejects_invalid_compositions_without_financial_effects(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'group-invalid');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $wrongDirection = $this->createCashMovement(CashMovementDirection::OUTFLOW, 100);
+        $otherAccount = $this->financialAccount->replicate();
+        $otherAccount->name = 'Outra conta';
+        $otherAccount->save();
+        $wrongAccount = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['financial_account_id' => $otherAccount->id]);
+        $foreign = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['company_id' => Company::factory()->create()->id]);
+        $reversed = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['reversed_at' => now()]);
+        $low = $this->createCashMovement(CashMovementDirection::INFLOW, 99.99);
+        $installment = $this->createReceivableInstallmentForRollback();
+        $cases = [
+            ['cash_movement', [['id' => $movement->id], ['id' => $movement->id]]],
+            ['cash_movement', [['id' => $wrongDirection->id]]],
+            ['cash_movement', [['id' => $wrongAccount->id]]],
+            ['cash_movement', [['id' => $foreign->id]]],
+            ['cash_movement', [['id' => $reversed->id]]],
+            ['cash_movement', [['id' => $low->id]]],
+            ['receivable', [['id' => $installment->id, 'amount' => 101]]],
+            ['receivable', [['id' => $installment->id, 'amount' => -100]]],
+        ];
+        foreach ($cases as [$type, $items]) {
+            try {
+                app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], $type, $items, $this->user->id);
+                $this->fail('Composição inválida aceita.');
+            } catch (ValidationException) {
+                $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+                $this->assertEquals(100, $installment->fresh()->balance_amount);
+                $this->assertDatabaseCount('bank_reconciliation_groups', 0);
+                $this->assertDatabaseCount('bank_statement_allocations', 0);
+            }
+        }
+    }
+
+    public function test_group_rolls_back_all_payments_when_a_later_installment_cannot_be_paid(): void
+    {
+        $first = $this->createPayableInstallmentForRollback();
+        $second = $first->replicate();
+        $second->sequence_number = '02';
+        $second->status = AccountPayableStatus::CANCELLED;
+        $second->save();
+        $line = $this->importLine('DEBIT', '-100.00', 'group-rollback');
+        try {
+            app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'payable', [
+                ['id' => $first->id, 'amount' => 50], ['id' => $second->id, 'amount' => 50],
+            ], $this->user->id);
+            $this->fail('Expected failed payment.');
+        } catch (ValidationException) {
+            $this->assertEquals(100, $first->fresh()->balance_amount);
+            $this->assertDatabaseCount('account_payable_installment_payments', 0);
+            $this->assertDatabaseCount('cash_movements', 0);
+            $this->assertDatabaseCount('bank_statement_allocations', 0);
+            $this->assertDatabaseCount('bank_reconciliation_groups', 0);
+        }
+    }
+
+    private function duplicatePendingLine(BankStatementLine $line, float $amount): BankStatementLine
+    {
+        $other = $line->replicate();
+        $other->fill(['amount' => $amount, 'cash_movement_id' => null, 'bank_reconciliation_group_id' => null, 'reconciliation_status' => 'pending', 'reconciled_at' => null, 'external_id' => (string) Str::uuid(), 'transaction_key' => (string) Str::uuid()]);
+        $other->save();
+
+        return $other;
+    }
+
+    public function test_multiple_reconciliation_actions_work_on_the_list_and_import_lines(): void
+    {
+        $this->user->companies()->attach($this->company, ['role' => 'member', 'is_active' => true]);
+        $this->actingAs($this->user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($this->company);
+        $this->user->companyAccesses()->create([
+            'company_id' => $this->company->id, 'permissions' => ['cash_movements.access'],
+            'panels' => ['admin' => true], 'navigation' => [],
+        ]);
+        $line = $this->importLine('CREDIT', '40.00', 'group-ui');
+        $other = $this->duplicatePendingLine($line, 60);
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        Livewire::test(ListBankStatementLines::class)
+            ->callTableBulkAction('reconcile_multiple', [$line, $other], [
+                'type' => 'cash_movement', 'items' => [['id' => $movement->id, 'amount' => 100]],
+            ])->assertHasNoTableBulkActionErrors();
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+        $this->assertSame('reconciled', $other->fresh()->reconciliation_status->value);
+        $this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Testar ação individual');
+        $line->update(['amount' => 100]);
+        Livewire::test(LinesRelationManager::class, [
+            'ownerRecord' => $line->import,
+            'pageClass' => ViewBankStatementImport::class,
+        ])->callTableAction('reconcile_multiple', $line, [
+            'type' => 'cash_movement', 'items' => [['id' => $movement->id, 'amount' => 100]],
+        ])->assertHasNoTableActionErrors();
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+    }
+
+    public function test_group_survives_reimport_and_can_be_reversed_after_bank_changes(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'group-reimport');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id);
+        $groupId = $line->fresh()->bank_reconciliation_group_id;
+        $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildOfx('237', [
+            ['type' => 'CREDIT', 'date' => '20260411', 'amount' => '110.00', 'fitid' => 'group-reimport', 'memo' => 'Valor atualizado'],
+        ]), 'updated.ofx', $this->user->id);
+        $this->assertSame('needs_review', $line->fresh()->reconciliation_status->value);
+        $this->assertSame($groupId, $line->fresh()->bank_reconciliation_group_id);
+        $this->assertCount(1, $line->fresh()->cashMovements);
+        $this->assertNull($this->resolveService->resolveReview($line->fresh(), $this->user->id, 'reopen', 'Reabrir sem desfazer'));
+        $this->assertNotNull($this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Banco corrigiu valor'));
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+        $this->assertDatabaseCount('cash_movements', 1);
+        $this->assertDatabaseCount('bank_statement_allocations', 0);
+    }
+
+    public function test_group_reversal_failure_restores_all_links_and_financial_effects(): void
+    {
+        $installment = $this->createPayableInstallmentForRollback();
+        $line = $this->importLine('DEBIT', '-40.00', 'group-reversal-failure');
+        $other = $this->duplicatePendingLine($line, 60);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id, $other->id], 'payable', [['id' => $installment->id, 'amount' => 100]], $this->user->id);
+        // Simulate missing historical data in the second payment, after the first could be undone.
+        DB::table('account_payable_installment_payments')->where('id', $other->cashMovements->sole()->origin_id)->delete();
+        $this->assertNull($this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Falha no segundo item'));
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+        $this->assertSame('reconciled', $other->fresh()->reconciliation_status->value);
+        $this->assertEquals(0, $installment->fresh()->balance_amount);
+        $this->assertDatabaseCount('bank_statement_allocations', 2);
+        $this->assertDatabaseCount('cash_movements', 2);
+        $this->assertDatabaseCount('account_payable_installment_payments', 1);
+    }
+
+    public function test_group_rejects_foreign_mixed_and_already_resolved_bank_lines(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'group-line-validation');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 200);
+        $other = $this->duplicatePendingLine($line, 100);
+        $cases = [
+            ['company_id' => Company::factory()->create()->id],
+            ['metadata' => ['direction' => 'outflow']],
+            ['reconciliation_status' => 'ignored'],
+        ];
+        foreach ($cases as $attributes) {
+            $other->update(['company_id' => $line->company_id, 'metadata' => $line->metadata, 'reconciliation_status' => 'pending', ...$attributes]);
+            try {
+                app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id, $other->id], 'cash_movement', [['id' => $movement->id]], $this->user->id);
+                $this->fail('Expected incompatible bank lines.');
+            } catch (ValidationException) {
+                $this->assertFalse($movement->hasStatementLinks());
+                $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+                $this->assertDatabaseCount('bank_reconciliation_groups', 0);
+            }
+        }
+    }
+
+    public function test_group_checks_date_exception_and_is_included_in_operational_reset(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'group-date');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['transaction_date' => '2026-03-01']);
+        $service = app(ReconcileBankStatementGroupService::class);
+        try {
+            $service->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id);
+            $this->fail('Expected date exception justification.');
+        } catch (ValidationException) {
+            $this->assertFalse($movement->hasStatementLinks());
+        }
+        $service->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id, 'Data de lançamento ajustada pelo banco');
+        $plan = app(CompanyOperationalResetService::class)->plan($this->company->id);
+        $this->assertSame([], $plan['blockers']);
+        $this->assertContains($line->fresh()->bank_reconciliation_group_id, $plan['delete']['bank_reconciliation_groups']);
+        $this->assertCount(1, $plan['delete']['bank_statement_allocations']);
+        $this->assertLessThan(array_search('bank_statement_lines', $plan['order']), array_search('bank_statement_allocations', $plan['order']));
     }
 
     private function createReceivableInstallmentForRollback(): AccountReceivableInstallment
