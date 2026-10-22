@@ -13,6 +13,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class EditInstallmentAction
 {
@@ -23,6 +24,11 @@ final class EditInstallmentAction
             ->icon('heroicon-o-pencil-square')
             ->color('warning')
             ->schema([
+                Money::make('original_amount')
+                    ->label('Valor da parcela')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
+                    ->required()
+                    ->helperText('Valor base, sem juros, multa ou desconto. O saldo e o total da conta serão recalculados.'),
                 DatePicker::make('due_date')
                     ->label('Vencimento')
                     ->required(),
@@ -53,6 +59,7 @@ final class EditInstallmentAction
                     ->rows(3),
             ])
             ->fillForm(fn (AccountPayableInstallment $record): array => [
+                'original_amount' => $record->original_amount,
                 'due_date' => $record->due_date?->format('Y-m-d'),
                 'competence_date' => $record->competence_date?->format('Y-m-d'),
                 'financial_category_id' => $record->financial_category_id,

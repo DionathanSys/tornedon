@@ -26,11 +26,17 @@ class AccountPayableFinancialIntegrationTest extends TestCase
     use RefreshDatabase;
 
     private AccountPayableService $service;
+
     private User $user;
+
     private Company $company;
+
     private Partner $supplier;
+
     private FinancialAccount $financialAccount;
+
     private FinancialCategory $payableCategory;
+
     private FinancialCategory $payableParentCategory;
 
     protected function setUp(): void
@@ -148,6 +154,65 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         $this->assertTrue($this->service->deleteInstallmentPayment($payment->fresh()));
         $this->assertDatabaseCount('cash_movements', 0);
         $this->assertSame(150.0, $installment->fresh()->balance_amount);
+    }
+
+    public function test_edit_installment_amount_recalculates_totals_and_preserves_existing_payments(): void
+    {
+        $payable = $this->service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-12-10',
+            'due_amount' => 300,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 2,
+            'financial_category_id' => $this->payableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($payable, $this->service->getMessage());
+        $installment = $payable->installments()->orderBy('sequence_number')->firstOrFail();
+        $otherInstallment = $payable->installments()->orderByDesc('sequence_number')->firstOrFail();
+
+        $updated = $this->service->updateInstallment($installment, ['original_amount' => 175.50]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertSame(175.50, $updated->due_amount);
+        $this->assertSame(175.50, $updated->balance_amount);
+        $this->assertSame(325.50, (float) $payable->fresh()->due_amount);
+        $this->assertDatabaseCount('cash_movements', 0);
+
+        $payment = $this->service->registerInstallmentPayment($updated, 80, '2026-12-10', [
+            'financial_account_id' => $this->financialAccount->id,
+            'interest_amount' => 5,
+            'fine_amount' => 2,
+            'discount_amount' => 3,
+        ]);
+        $this->assertNotNull($payment, $this->service->getMessage());
+
+        $updated = $this->service->updateInstallment($installment, ['original_amount' => 200.25]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertSame(204.25, $updated->due_amount);
+        $this->assertSame(80.0, $updated->paid_amount);
+        $this->assertSame(124.25, $updated->balance_amount);
+        $this->assertSame(AccountPayableStatus::PARTIALLY_PAID, $updated->status);
+        $this->assertSame(354.25, (float) $payable->fresh()->due_amount);
+
+        $this->assertNull($this->service->updateInstallment($installment, ['original_amount' => 50]));
+        $this->assertTrue($this->service->hasError());
+        $this->assertSame(200.25, $installment->fresh()->original_amount);
+        $this->assertSame(354.25, (float) $payable->fresh()->due_amount);
+
+        $updated = $this->service->updateInstallment($installment, ['original_amount' => 76]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertSame(80.0, $updated->due_amount);
+        $this->assertSame(0.0, $updated->balance_amount);
+        $this->assertSame(AccountPayableStatus::PAID, $updated->status);
+        $this->assertSame(230.0, (float) $payable->fresh()->due_amount);
+        $this->assertSame(150.0, $otherInstallment->fresh()->due_amount);
+        $this->assertSame(80.0, (float) $payment->fresh()->amount);
+        $this->assertDatabaseCount('cash_movements', 1);
+        $this->assertSame(80.0, (float) CashMovement::query()->sole()->amount);
     }
 
     public function test_validator_rejects_parent_category_for_payable_installment(): void

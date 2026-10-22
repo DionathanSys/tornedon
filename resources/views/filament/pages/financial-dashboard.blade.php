@@ -4,7 +4,7 @@
     @endphp
     <div class="space-y-6" style="display: grid; gap: 1.5rem;">
         <x-filament::section heading="Previsão de recebimentos e pagamentos">
-            <div class="flex flex-wrap gap-2" role="group" aria-label="Período">
+            <div class="flex flex-wrap gap-2" style="row-gap: 1rem;" role="group" aria-label="Período">
                 @foreach(\App\Services\Financial\FinancialDashboardService::PERIODS as $value => $label)
                     <x-filament::button
                         :color="$period === $value ? 'primary' : 'gray'"
@@ -13,7 +13,7 @@
                     >{{ $label }}</x-filament::button>
                 @endforeach
             </div>
-            <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-gray-500 dark:text-gray-400" style="margin-top: 1.5rem;">
                 Os períodos de 7 e 30 dias incluem hoje. Só é vencida a parcela com vencimento anterior a hoje e saldo em aberto.
                 Os totais consideram o período completo; a busca filtra apenas as listagens.
             </p>

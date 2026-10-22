@@ -353,6 +353,66 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
         ]);
     }
 
+    public function test_edit_installment_amount_recalculates_totals_and_preserves_existing_receipts(): void
+    {
+        $receivable = $this->service->create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => null,
+            'due_date' => '2026-12-10',
+            'due_amount' => 300,
+            'payment_method' => PaymentMethod::PIX->value,
+            'installment_count' => 2,
+            'financial_category_id' => $this->receivableCategory->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($receivable, $this->service->getMessage());
+        $installment = $receivable->installments()->orderBy('sequence_number')->firstOrFail();
+        $otherInstallment = $receivable->installments()->orderByDesc('sequence_number')->firstOrFail();
+
+        $updated = $this->service->updateInstallment($installment, ['original_amount' => 175.50]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertSame(175.50, $updated->due_amount);
+        $this->assertSame(175.50, $updated->balance_amount);
+        $this->assertSame(325.50, (float) $receivable->fresh()->due_amount);
+        $this->assertDatabaseCount('cash_movements', 0);
+
+        $payment = $this->service->registerInstallmentPayment($updated, 80, '2026-12-10', [
+            'financial_account_id' => $this->financialAccount->id,
+            'interest_amount' => 5,
+            'fine_amount' => 2,
+            'discount_amount' => 3,
+        ]);
+        $this->assertNotNull($payment, $this->service->getMessage());
+
+        $updated = $this->service->updateInstallment($installment, ['original_amount' => 200.25]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertSame(204.25, $updated->due_amount);
+        $this->assertSame(80.0, $updated->received_amount);
+        $this->assertSame(124.25, $updated->balance_amount);
+        $this->assertSame(AccountReceivableStatus::PARTIALLY_RECEIVED, $updated->status);
+        $this->assertSame(354.25, (float) $receivable->fresh()->due_amount);
+
+        $this->assertNull($this->service->updateInstallment($installment, ['original_amount' => 50]));
+        $this->assertTrue($this->service->hasError());
+        $this->assertSame(200.25, $installment->fresh()->original_amount);
+        $this->assertSame(354.25, (float) $receivable->fresh()->due_amount);
+
+        $updated = $this->service->updateInstallment($installment, ['original_amount' => 76]);
+
+        $this->assertNotNull($updated, $this->service->getMessage());
+        $this->assertSame(80.0, $updated->due_amount);
+        $this->assertSame(0.0, $updated->balance_amount);
+        $this->assertSame(AccountReceivableStatus::RECEIVED, $updated->status);
+        $this->assertSame(230.0, (float) $receivable->fresh()->due_amount);
+        $this->assertSame(150.0, $otherInstallment->fresh()->due_amount);
+        $this->assertSame(80.0, (float) $payment->fresh()->amount);
+        $this->assertDatabaseCount('cash_movements', 1);
+        $this->assertSame(80.0, (float) CashMovement::query()->sole()->amount);
+    }
+
     private function createInvoice(): Invoice
     {
         return Invoice::create([
