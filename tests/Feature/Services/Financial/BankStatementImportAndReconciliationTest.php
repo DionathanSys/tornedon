@@ -31,10 +31,12 @@ use App\Services\Company\CompanyOperationalResetService;
 use App\Services\Financial\BankStatement\ImportBankStatementService;
 use App\Services\Financial\BankStatement\ReconcileBankStatementGroupService;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
+use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -1267,10 +1269,17 @@ OFX;
         $line = $this->importLine('CREDIT', '40.00', 'group-ui');
         $other = $this->duplicatePendingLine($line, 60);
         $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
-        Livewire::test(ListBankStatementLines::class)
-            ->callTableBulkAction('reconcile_multiple', [$line, $other], [
-                'type' => 'cash_movement', 'items' => [['id' => $movement->id, 'amount' => 100]],
-            ])->assertHasNoTableBulkActionErrors();
+        $workbench = Livewire::test(ListBankStatementLines::class)
+            ->mountTableBulkAction('reconcile_multiple', [$line, $other]);
+        view()->share('errors', new ViewErrorBag);
+        $modalHtml = $workbench->instance()->getSchemaComponent('mountedActionSchema0.selection')->toHtml();
+        $this->assertStringContainsString('Já lançado no sistema', $modalHtml);
+        $this->assertStringContainsString('Confirmar conciliação', $modalHtml);
+        $results = $workbench->instance()->callSchemaComponentMethod('mountedActionSchema0.selection', 'searchRecords', ['type' => 'cash_movement']);
+        $this->assertSame([$movement->id], array_column($results['records'], 'id'));
+        $workbench->setTableBulkActionData([
+            'selection' => ['type' => 'cash_movement', 'items' => [['id' => $movement->id, 'amount' => 100]]],
+        ])->callMountedTableBulkAction()->assertHasNoTableBulkActionErrors();
         $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
         $this->assertSame('reconciled', $other->fresh()->reconciliation_status->value);
         $this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Testar ação individual');
@@ -1279,7 +1288,7 @@ OFX;
             'ownerRecord' => $line->import,
             'pageClass' => ViewBankStatementImport::class,
         ])->callTableAction('reconcile_multiple', $line, [
-            'type' => 'cash_movement', 'items' => [['id' => $movement->id, 'amount' => 100]],
+            'selection' => ['type' => 'cash_movement', 'items' => [['id' => $movement->id, 'amount' => 100]]],
         ])->assertHasNoTableActionErrors();
         $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
     }
@@ -1301,6 +1310,54 @@ OFX;
         $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
         $this->assertDatabaseCount('cash_movements', 1);
         $this->assertDatabaseCount('bank_statement_allocations', 0);
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_workbench_searches_installments_by_party_description_id_and_brazilian_amount(string $type, string $bankType, string $amount): void
+    {
+        $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $line = $this->importLine($bankType, $amount, 'workbench-search');
+        $search = app(SearchBankReconciliationCandidates::class);
+        foreach ([$type === 'receivable' ? 'Cliente OFX' : 'Fornecedor OFX', 'sujeito a rollback', '#'.$installment->id, 'R$ 100,00'] as $term) {
+            $results = $search->search($this->company->id, collect([$line]), $type, $term);
+            $this->assertSame([$installment->id], array_column($results['records'], 'id'), $term);
+            $this->assertTrue($results['records'][0]['exact_match']);
+        }
+        $installment->update(['status' => 'cancelled']);
+        $this->assertSame([], $search->search($this->company->id, collect([$line]), $type)['records']);
+    }
+
+    public function test_workbench_search_is_tenant_scoped_ranked_paginated_and_excludes_linked_movements(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'workbench-movements');
+        $exact = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+        $closest = $this->createCashMovement(CashMovementDirection::INFLOW, 99.99, ['transaction_date' => '2026-01-01']);
+        $foreign = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['company_id' => Company::factory()->create()->id]);
+        $opposite = $this->createCashMovement(CashMovementDirection::OUTFLOW, 100);
+        $reversed = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['reversed_at' => now()]);
+        for ($i = 0; $i < 20; $i++) {
+            $this->createCashMovement(CashMovementDirection::INFLOW, 1);
+        }
+        $service = app(SearchBankReconciliationCandidates::class);
+        $first = $service->search($this->company->id, collect([$line]), 'cash_movement');
+        $this->assertCount(20, $first['records']);
+        $this->assertTrue($first['has_more']);
+        $this->assertSame($exact->id, $first['records'][0]['id']);
+        $this->assertSame($closest->id, $first['records'][1]['id']);
+        $this->assertTrue($first['records'][1]['date_exception']);
+        foreach ([$foreign, $opposite, $reversed] as $excluded) {
+            $this->assertNotContains($excluded->id, array_column($first['records'], 'id'));
+        }
+        $second = $service->search($this->company->id, collect([$line]), 'cash_movement', page: 2);
+        $this->assertCount(2, $second['records']);
+        $this->assertFalse($second['has_more']);
+        $party = $service->search($this->company->id, collect([$line]), 'cash_movement', 'Cliente OFX');
+        $this->assertSame([$exact->id], array_column($party['records'], 'id'));
+        $this->resolveService->reconcileWithCashMovement($line, $exact->id, $this->user->id);
+        $this->assertSame([], $service->search($this->company->id, collect([$line]), 'cash_movement', 'Cliente OFX')['records']);
+
+        $this->expectException(ValidationException::class);
+        $service->search($foreign->company_id, collect([$line]), 'cash_movement');
     }
 
     public function test_group_reversal_failure_restores_all_links_and_financial_effects(): void
