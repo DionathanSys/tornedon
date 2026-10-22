@@ -65,7 +65,7 @@ class BankStatementLineResource extends Resource
                 'record' => $record->bank_statement_import_id,
             ]))
             ->recordActions([
-                ReconcileMultipleAction::make()->button(),
+                ReconcileMultipleAction::make()->iconButton(),
                 CreateManualMovementAction::make()->iconButton(),
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),

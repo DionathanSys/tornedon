@@ -105,7 +105,7 @@ class LinesRelationManager extends RelationManager
             ->headerActions([])
             ->toolbarActions([ReconcileMultipleAction::make(bulk: true)])
             ->recordActions([
-                ReconcileMultipleAction::make()->button(),
+                ReconcileMultipleAction::make()->iconButton(),
                 Action::make('refresh_suggestions')
                     ->label('Atualizar sugestões')
                     ->icon('heroicon-o-arrow-path')
