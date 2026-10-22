@@ -83,26 +83,10 @@ class SefazRecepcaoEventoService
         $document = new DOMDocument('1.0', 'UTF-8');
         $document->formatOutput = false;
 
-        $envelope = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Envelope');
-        $document->appendChild($envelope);
-
-        $header = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Header');
-        $envelope->appendChild($header);
-
-        $cabecMsg = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeCabecMsg');
-        $header->appendChild($cabecMsg);
-        $cabecMsg->appendChild($document->createElementNS(self::WSDL_NAMESPACE, 'cUF', '91'));
-        $cabecMsg->appendChild($document->createElementNS(self::WSDL_NAMESPACE, 'versaoDados', '1.00'));
-
-        $body = $document->createElementNS(self::SOAP_NAMESPACE, 'soap:Body');
-        $envelope->appendChild($body);
-        $request = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeRecepcaoEventoNF');
-        $body->appendChild($request);
-        $dadosMsg = $document->createElementNS(self::WSDL_NAMESPACE, 'nfeDadosMsg');
-        $request->appendChild($dadosMsg);
+        // Sign the fiscal payload independently of SOAP ancestor namespaces.
         $envEvento = $document->createElementNS(self::NFE_NAMESPACE, 'envEvento');
         $envEvento->setAttribute('versao', '1.00');
-        $dadosMsg->appendChild($envEvento);
+        $document->appendChild($envEvento);
         $envEvento->appendChild($document->createElementNS(self::NFE_NAMESPACE, 'idLote', now()->format('YmdHis')));
 
         $evento = $document->createElementNS(self::NFE_NAMESPACE, 'evento');
@@ -126,9 +110,15 @@ class SefazRecepcaoEventoService
         $infEvento->appendChild($detEvento);
         $detEvento->appendChild($document->createElementNS(self::NFE_NAMESPACE, 'descEvento', 'Ciencia da Operacao'));
 
-        $this->appendSignature($document, $evento, $infEvento, $privateKeyPem, $certificatePem, '#'.$id);
+        $signatureXml = $this->buildSignatureXml($infEvento, $privateKeyPem, $certificatePem, '#'.$id);
+        $payloadXml = str_replace('</evento>', $signatureXml.'</evento>', $document->saveXML($envEvento));
 
-        return $document->saveXML() ?: '';
+        // NFeRecepcaoEvento4 uses document/literal bare: nfeDadosMsg is the body element.
+        // Embed serialized XML without DOM namespace reconciliation changing signed nodes.
+        return '<?xml version="1.0" encoding="UTF-8"?>'
+            .'<soap:Envelope xmlns:soap="'.self::SOAP_NAMESPACE.'"><soap:Body>'
+            .'<nfeDadosMsg xmlns="'.self::WSDL_NAMESPACE.'">'.$payloadXml.'</nfeDadosMsg>'
+            .'</soap:Body></soap:Envelope>';
     }
 
     /**
@@ -226,17 +216,19 @@ class SefazRecepcaoEventoService
         return $response;
     }
 
-    private function appendSignature(
-        DOMDocument $document,
-        DOMElement $parent,
+    private function buildSignatureXml(
         DOMElement $signedNode,
         string $privateKeyPem,
         string $certificatePem,
         string $referenceUri,
-    ): void {
+    ): string {
         $digestValue = base64_encode(sha1($signedNode->C14N(false, false), true));
 
+        // Keep XMLDSig's default namespace local to Signature and canonicalize
+        // SignedInfo only after it belongs to a document.
+        $document = new DOMDocument('1.0', 'UTF-8');
         $signature = $document->createElementNS(self::DS_NAMESPACE, 'Signature');
+        $document->appendChild($signature);
         $signedInfo = $document->createElementNS(self::DS_NAMESPACE, 'SignedInfo');
         $signature->appendChild($signedInfo);
 
@@ -287,7 +279,7 @@ class SefazRecepcaoEventoService
         $keyInfo->appendChild($x509Data);
         $signature->appendChild($keyInfo);
 
-        $parent->appendChild($signature);
+        return $document->saveXML($signature) ?: '';
     }
 
     private function resolveEndpoint(int $environment): string

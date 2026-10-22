@@ -6,7 +6,11 @@ use App\Models\Company;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\Fiscal\Sefaz\CompanySefazCertificateService;
 use App\Services\Fiscal\Sefaz\SefazRecepcaoEventoService;
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
 use Mockery;
+use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -50,7 +54,7 @@ class SefazRecepcaoEventoServiceTest extends TestCase
 </retEnvEvento>
 XML;
 
-        /** @var SefazRecepcaoEventoService&\Mockery\MockInterface $service */
+        /** @var SefazRecepcaoEventoService&MockInterface $service */
         $service = Mockery::mock(SefazRecepcaoEventoService::class, [$config, $certificates])
             ->makePartial()
             ->shouldAllowMockingProtectedMethods();
@@ -105,8 +109,60 @@ XML;
         $this->assertStringContainsString('<tpEvento>210210</tpEvento>', $xml);
         $this->assertStringContainsString('<descEvento>Ciencia da Operacao</descEvento>', $xml);
         $this->assertStringContainsString('<Signature', $xml);
-        $this->assertStringContainsString('<nfeRecepcaoEventoNF', $xml);
+        $dom = new DOMDocument;
+        $this->assertTrue($dom->loadXML($xml));
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('soap', 'http://www.w3.org/2003/05/soap-envelope');
+        $xpath->registerNamespace('ws', 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4');
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+
+        $this->assertSame(1, $xpath->query('/soap:Envelope/soap:Body/ws:nfeDadosMsg/nfe:envEvento')->length);
+        $this->assertSame(0, $xpath->query('//ws:nfeRecepcaoEventoNF | //ws:nfeCabecMsg')->length);
         $this->assertStringContainsString('35260412345678000199550010000003211000000321', $xml);
+    }
+
+    public function test_the_fiscal_payload_signature_and_digest_are_valid_after_serialization(): void
+    {
+        [$privateKeyPem, $certificatePem] = $this->generateCertificatePair();
+        $service = new SefazRecepcaoEventoService(
+            app(NfeConfigService::class),
+            app(CompanySefazCertificateService::class),
+        );
+        $xml = $service->buildSoapRequestXml(
+            environment: 1,
+            cnpj: '12345678000199',
+            accessKey: '35260412345678000199550010000003211000000321',
+            privateKeyPem: $privateKeyPem,
+            certificatePem: $certificatePem,
+        );
+
+        $soap = new DOMDocument;
+        $soap->loadXML($xml);
+        // A SEFAZ validates the fiscal XML carried inside the SOAP message.
+        $serializedPayload = new DOMDocument;
+        $serializedPayload->loadXML($soap->saveXML($soap->getElementsByTagName('envEvento')->item(0)));
+        $xpath = new DOMXPath($serializedPayload);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        /** @var DOMElement $infEvento */
+        $infEvento = $xpath->query('//nfe:infEvento')->item(0);
+        $signedInfo = $xpath->query('//ds:SignedInfo')->item(0);
+
+        $this->assertSame(
+            '#'.$infEvento->getAttribute('Id'),
+            $xpath->evaluate('string(//ds:Reference/@URI)'),
+        );
+        $this->assertSame(
+            base64_encode(sha1($infEvento->C14N(false, false), true)),
+            $xpath->evaluate('string(//ds:DigestValue)'),
+        );
+        $publicKey = openssl_pkey_get_details(openssl_pkey_get_private($privateKeyPem))['key'];
+        $this->assertSame(1, openssl_verify(
+            $signedInfo->C14N(false, false),
+            base64_decode($xpath->evaluate('string(//ds:SignatureValue)'), true),
+            $publicKey,
+            OPENSSL_ALGO_SHA1,
+        ));
     }
 
     public function test_it_parses_successful_manifestation_response(): void
