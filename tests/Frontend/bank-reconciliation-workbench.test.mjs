@@ -111,3 +111,49 @@ test('confirma apenas seleção válida e impede envio duplicado', async () => {
     await pending;
     assert.equal(component.submitting, false);
 });
+
+test('juros e multa ajustam a sugestão até o valor do banco e permitem quitação acima do saldo original', () => {
+    const component = workbench({ bank: { valid: true, inflow: true, total_cents: 112000 } });
+    component.toggle(record(1, 100000));
+    component.updateCharge(1, 'interest_amount', '100,00');
+    component.updateCharge(1, 'fine_amount', '50,00');
+    component.updateCharge(1, 'discount_amount', '30,00');
+    assert.equal(component.adjustedBalance(component.items[0]), 112000);
+    assert.equal(component.items[0].amount, 1120);
+    assert.equal(component.remainingBalance(component.items[0]), 0);
+    assert.equal(component.hasAdjustments(component.items[0]), true);
+    assert.equal(component.canSubmit, true);
+});
+
+test('desconto quita a parcela sem exigir o valor original e valor parcial manual é preservado', () => {
+    const component = workbench({ bank: { valid: true, inflow: true, total_cents: 90000 } });
+    component.toggle(record(1, 100000));
+    component.updateCharge(1, 'discount_amount', '100,00');
+    assert.equal(component.items[0].amount, 900);
+    assert.equal(component.remainingBalance(component.items[0]), 0);
+    assert.equal(component.canSubmit, true);
+    component.updateAmount(1, '600,00');
+    component.updateCharge(1, 'interest_amount', '200,00');
+    assert.equal(component.items[0].amount, 600);
+    assert.equal(component.remainingBalance(component.items[0]), 50000);
+    component.fillRemaining(1);
+    assert.equal(component.items[0].amount, 900);
+    assert.equal(component.remainingBalance(component.items[0]), 20000);
+});
+
+test('encargos inválidos e descontos excessivos bloqueiam confirmação; movimentos existentes não recebem ajustes', () => {
+    const component = workbench();
+    component.toggle(record(1, 100000));
+    component.updateCharge(1, 'interest_amount', '-1');
+    assert.equal(component.validAmounts, false);
+    component.updateCharge(1, 'interest_amount', '0');
+    assert.equal(component.validAmounts, true);
+    component.updateCharge(1, 'discount_amount', '1.001,00');
+    assert.equal(component.validAmounts, false);
+    assert.equal(component.canSubmit, false);
+    component.changeType('cash_movement');
+    component.toggle(record(1, 100000));
+    component.updateCharge(1, 'interest_amount', '100,00');
+    assert.equal(component.items[0].interest_amount, 0);
+    assert.equal(component.adjustedBalance(component.items[0]), 100000);
+});

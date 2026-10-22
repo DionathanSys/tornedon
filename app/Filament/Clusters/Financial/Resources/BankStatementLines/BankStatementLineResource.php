@@ -6,10 +6,7 @@ use App\Filament\Clusters\Financial\BankingCluster;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcilePayableInstallmentAction;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileReceivableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementLines\Pages\ListBankStatementLines;
@@ -68,10 +65,7 @@ class BankStatementLineResource extends Resource
                 'record' => $record->bank_statement_import_id,
             ]))
             ->recordActions([
-                ReconcileMultipleAction::make()->iconButton(),
-                ReconcileMovementAction::make()->iconButton(),
-                ReconcilePayableInstallmentAction::make()->iconButton(),
-                ReconcileReceivableInstallmentAction::make()->iconButton(),
+                ReconcileMultipleAction::make()->button(),
                 CreateManualMovementAction::make()->iconButton(),
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),

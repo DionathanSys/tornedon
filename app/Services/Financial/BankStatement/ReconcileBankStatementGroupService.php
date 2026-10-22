@@ -47,7 +47,14 @@ class ReconcileBankStatementGroupService
                 $this->ensure($target !== null, 'Item não encontrado na empresa atual.');
                 $amount = $type === 'cash_movement' ? $this->cents($target->amount) : $this->cents($item['amount'] ?? 0);
                 $this->ensure($amount > 0, 'Informe um valor positivo para cada parcela.');
+                $charges = [];
+                foreach (['interest_amount', 'fine_amount', 'discount_amount'] as $field) {
+                    $value = array_key_exists($field, $item) ? $item[$field] : 0;
+                    $this->ensure(is_numeric($value) && is_finite((float) $value) && (float) $value >= 0, 'Juros, multa e desconto devem ser valores válidos e não negativos.');
+                    $charges[$field] = $this->cents($value);
+                }
                 if ($type === 'cash_movement') {
+                    $this->ensure(array_sum($charges) === 0, 'Movimentos já registrados não podem receber juros, multa ou desconto pela conciliação.');
                     $this->ensure($target->financial_account_id === $first->financial_account_id && $target->direction === $first->direction(), 'Movimento de outra conta bancária ou direção.');
                     $this->ensure(! $target->reversed_at && ! $target->reversal_of_id && ! $target->hasStatementLinks(), 'Movimento estornado ou já conciliado.');
                     $days = max(0, (int) ($first->financialAccount?->reconciliation_date_tolerance_days ?? 3));
@@ -55,9 +62,10 @@ class ReconcileBankStatementGroupService
                         $this->ensure(abs($line->transaction_date->diffInDays($target->transaction_date)) <= $days || filled($exceptionReason), 'Informe justificativa para conciliar movimentos fora da margem de data.');
                     }
                 } else {
-                    $this->ensure($amount <= $this->cents($target->balance_amount), 'O valor distribuído excede o saldo da parcela.');
+                    $adjustedBalance = $this->cents($target->balance_amount) + $charges['interest_amount'] + $charges['fine_amount'] - $charges['discount_amount'];
+                    $this->ensure($amount <= $adjustedBalance, 'O valor distribuído excede o saldo da parcela ajustado por juros, multa e desconto.');
                 }
-                $prepared[] = ['target' => $target, 'remaining' => $amount];
+                $prepared[] = ['target' => $target, 'remaining' => $amount, 'charges' => $charges, 'adjustments_applied' => false, 'notes' => $item['notes'] ?? null];
             }
             $this->ensure(array_sum(array_column($prepared, 'remaining')) === $total, 'A soma dos valores distribuídos deve ser igual ao total do extrato.');
             $groupId = DB::table('bank_reconciliation_groups')->insertGetId([
@@ -74,14 +82,19 @@ class ReconcileBankStatementGroupService
                     $movement = $item['target'];
                     if ($type !== 'cash_movement') {
                         $service = app($type === 'receivable' ? AccountReceivableService::class : AccountPayableService::class);
+                        // Apply the installment's adjustments once, on its first bank payment.
+                        // Later payments consume the adjusted balance without repeating the charges.
+                        $charges = array_map(fn (int $value) => $item['adjustments_applied'] ? 0 : $value / 100, $item['charges']);
                         $payment = $service->registerInstallmentPayment($item['target'], $allocated / 100, $line->transaction_date->toDateString(), [
+                            ...$charges,
                             'financial_account_id' => $line->financial_account_id, 'origin' => 'bank_statement',
-                            'notes' => $line->description, 'user_id' => $userId,
+                            'notes' => filled($item['notes']) ? $item['notes'] : $line->description, 'user_id' => $userId,
                         ]);
                         $this->ensure($payment !== null && ! $service->hasError(), $service->getMessageUser() ?: 'Não foi possível registrar a baixa.');
                         $movement = CashMovement::query()->where('origin_type', $payment::class)->where('origin_id', $payment->id)->lockForUpdate()->first();
                         $this->ensure($movement !== null, 'Movimento da baixa não encontrado.');
                         $payments[] = ['type' => $type, 'id' => $payment->id];
+                        $item['adjustments_applied'] = true;
                     }
                     $line->cashMovements()->attach($movement->id, ['amount' => $allocated]);
                     $remaining -= $allocated;
@@ -112,7 +125,9 @@ class ReconcileBankStatementGroupService
                 $member->cashMovements()->detach();
             }
             $metadata = json_decode($group->metadata, true, flags: JSON_THROW_ON_ERROR);
-            foreach ($metadata['payments'] as $item) {
+            // Undo the latest payments first so their remaining balance is restored before
+            // removing the earlier payment that introduced the installment's adjustments.
+            foreach (array_reverse($metadata['payments']) as $item) {
                 $receivable = $item['type'] === 'receivable';
                 $model = $receivable ? AccountReceivableInstallmentPayment::class : AccountPayableInstallmentPayment::class;
                 $service = app($receivable ? AccountReceivableService::class : AccountPayableService::class);

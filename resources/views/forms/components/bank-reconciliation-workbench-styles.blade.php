@@ -55,8 +55,19 @@
     .brw-selection-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .brw-count { display: inline-block; background: var(--brw-soft); border-radius: 5px; padding: 1px 7px; margin-left: 5px; font-size: 12px; }
     .brw-text-button { color: var(--brw-accent); font-size: 11px !important; font-weight: 600 !important; background: none; }
-    .brw-selected-list { max-height: 240px; overflow-y: auto; }
-    .brw-selected-item { display: flex; align-items: start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--brw-border); }
+    .brw-selected-list { max-height: 380px; overflow-y: auto; }
+    .brw-selected-entry { border-top: 1px solid var(--brw-border); padding-bottom: 12px; }
+    .brw-selected-item { display: flex; align-items: start; gap: 12px; padding: 12px 0; }
+    .brw-amount-label { display: block; font-size: 10px; color: var(--brw-muted); margin-bottom: 4px; }
+    .brw-adjustments { background: var(--brw-soft); border-radius: 7px; padding: 9px 12px; }
+    .brw-adjustments summary { cursor: pointer; color: var(--brw-accent); font-size: 11px; font-weight: 600; }
+    .brw-adjustments summary small { display: inline-block; margin-left: 8px; color: var(--brw-muted); font-weight: 400; }
+    .brw-adjustment-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .brw-adjustment-fields > label > span, .brw-notes > span { display: block; font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+    .brw-adjustment-fields .brw-amount { background: var(--brw-bg); }
+    .brw-adjustment-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 11px; margin-top: 12px; }
+    .brw-adjustment-hint { font-size: 10px; color: var(--brw-muted); margin: 9px 0; }
+    .brw-notes textarea { width: 100%; border: 1px solid var(--brw-border); border-radius: 6px; padding: 8px; background: var(--brw-bg); color: var(--brw-text); font-size: 12px; }
     .brw-selected-title { flex: 1; min-width: 0; }
     .brw-selected-title > strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
     .brw-selected-title > small { display: block; font-size: 11px; color: var(--brw-muted); margin-top: 4px; }
@@ -107,5 +118,7 @@
         .brw-record { gap: 8px; padding: 11px; }
         .brw-record-value > strong { font-size: 12px; }
         .brw-edit-value { width: 130px; }
+        .brw-adjustment-fields { gap: 6px; }
+        .brw-adjustment-fields .brw-amount { padding: 7px 5px; }
     }
 </style>

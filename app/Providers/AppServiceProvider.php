@@ -49,6 +49,8 @@ use App\Policies\ServiceOrderPolicy;
 use App\Policies\UserPolicy;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\Providers\ResendEmailProvider;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Auth;
@@ -92,6 +94,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_START,
+            fn () => view('partials.translation-meta'),
+        );
+
         Model::unguard();
 
         Horizon::auth(function ($request) {

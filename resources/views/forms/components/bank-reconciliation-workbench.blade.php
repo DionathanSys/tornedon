@@ -68,20 +68,39 @@
                     <div class="brw-selection-heading"><strong>Selecionados <span class="brw-count" x-text="items.length"></span></strong><button type="button" class="brw-text-button" @click="state = { ...state, items: [] }">Limpar seleção</button></div>
                     <div class="brw-selected-list">
                         <template x-for="item in items" :key="state.type + '-selected-' + item.id">
-                            <div class="brw-selected-item">
+                            <div class="brw-selected-entry">
+                              <div class="brw-selected-item">
                                 <div class="brw-selected-title"><strong x-text="item.party || item.description"></strong><small x-text="item.description + ' · #' + item.id"></small><small class="brw-date-warning" x-show="item.date_exception">Data diferente da registrada no banco</small></div>
                                 <div class="brw-edit-value">
                                     <strong x-show="isMovement" x-text="money(item.amount_cents)"></strong>
                                     <template x-if="!isMovement">
                                         <div>
+                                            <span class="brw-amount-label" x-text="bank.inflow ? 'Valor recebido' : 'Valor pago'"></span>
                                             <label class="brw-amount"><span>R$</span><input type="text" inputmode="decimal" :aria-label="'Valor da baixa do registro ' + item.id" :value="decimal(item.amount)" @change="updateAmount(item.id, $event.target.value)" @keydown.enter.prevent="$event.target.blur()" /></label>
                                             <small class="brw-muted" x-text="'Saldo: ' + money(item.amount_cents)"></small>
                                             <button type="button" class="brw-text-button" x-show="difference !== 0" @click="fillRemaining(item.id)">Usar valor restante</button>
-                                            <small class="brw-partial" x-show="item.amount > 0 && Math.round(item.amount * 100) < item.amount_cents" x-text="'Ficará em aberto: ' + money(item.amount_cents - Math.round(item.amount * 100))"></small>
+                                            <small class="brw-partial" x-show="item.amount > 0 && remainingBalance(item) > 0" x-text="'Ficará em aberto: ' + money(remainingBalance(item))"></small>
+                                            <small class="brw-match" x-show="item.amount > 0 && remainingBalance(item) === 0">Parcela quitada</small>
+                                            <small class="brw-date-warning" x-show="remainingBalance(item) < 0">Valor acima do saldo ajustado</small>
                                         </div>
                                     </template>
                                 </div>
                                 <button type="button" class="brw-remove" :aria-label="'Remover registro ' + item.id" @click="remove(item.id)"><x-filament::icon icon="heroicon-o-x-mark" /></button>
+                              </div>
+                              <details class="brw-adjustments" x-show="!isMovement">
+                                  <summary><span>Juros, multa, desconto e observações</span><small x-show="hasAdjustments(item)" x-text="'Saldo ajustado: ' + money(adjustedBalance(item))"></small></summary>
+                                  <div class="brw-adjustment-fields">
+                                      <template x-for="adjustment in [{ key: 'interest_amount', label: 'Juros (+)' }, { key: 'fine_amount', label: 'Multa (+)' }, { key: 'discount_amount', label: 'Desconto (−)' }]" :key="adjustment.key">
+                                          <label><span x-text="adjustment.label"></span><div class="brw-amount"><span>R$</span><input type="text" inputmode="decimal" :aria-label="adjustment.label + ' do registro ' + item.id" :value="item[adjustment.key] === null ? '' : decimal(item[adjustment.key] || 0)" @change="updateCharge(item.id, adjustment.key, $event.target.value)" @keydown.enter.prevent="$event.target.blur()" /></div></label>
+                                      </template>
+                                  </div>
+                                  <div class="brw-adjustment-summary">
+                                      <span x-text="'Saldo atual: ' + money(item.amount_cents)"></span>
+                                      <strong x-text="'Saldo com ajustes: ' + money(adjustedBalance(item))"></strong>
+                                  </div>
+                                  <p class="brw-adjustment-hint">Juros e multa aumentam o saldo; desconto reduz o saldo. Os ajustes são aplicados uma única vez à parcela, mesmo com vários lançamentos bancários.</p>
+                                  <label class="brw-notes"><span>Observações da baixa</span><textarea x-model="item.notes" rows="2" :aria-label="'Observações da baixa do registro ' + item.id" placeholder="Opcional"></textarea></label>
+                              </details>
                             </div>
                         </template>
                     </div>

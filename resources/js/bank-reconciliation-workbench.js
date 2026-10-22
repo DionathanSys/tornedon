@@ -26,7 +26,9 @@
         get validAmounts() {
             return this.items.every(item => {
                 const amount = Math.round(Number(item.amount) * 100);
-                return Number.isFinite(amount) && amount > 0 && amount <= item.amount_cents;
+                const validCharges = ['interest_amount', 'fine_amount', 'discount_amount'].every(field =>
+                    item[field] !== null && Number.isFinite(Number(item[field] ?? 0)) && Number(item[field] ?? 0) >= 0);
+                return validCharges && Number.isFinite(amount) && amount > 0 && amount <= this.adjustedBalance(item);
             });
         },
         get canSubmit() {
@@ -36,7 +38,7 @@
         get status() {
             if (!this.bank.valid) return 'Selecione lançamentos pendentes da mesma conta e direção.';
             if (!this.items.length) return 'Selecione os registros do sistema que correspondem ao extrato.';
-            if (!this.validAmounts) return 'Confira os valores: informe um valor positivo, sem ultrapassar o saldo.';
+            if (!this.validAmounts) return 'Confira os ajustes e o valor da baixa: não use valores negativos nem ultrapasse o saldo ajustado.';
             if (this.difference > 0) return 'Faltam ' + this.money(this.difference) + ' para fechar. Adicione outro registro ou ajuste os valores.';
             if (this.difference < 0) return 'A seleção excedeu o extrato em ' + this.money(-this.difference) + '. Remova um registro ou ajuste a baixa.';
             if (this.needsReason && !this.state.exception_reason?.trim()) return 'Os valores fecharam. Explique a diferença de datas para continuar.';
@@ -47,6 +49,17 @@
         },
         decimal(amount) {
             return Number(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
+        adjustedBalance(item) {
+            if (this.isMovement) return item.amount_cents;
+            return item.amount_cents + Math.round(Number(item.interest_amount || 0) * 100)
+                + Math.round(Number(item.fine_amount || 0) * 100) - Math.round(Number(item.discount_amount || 0) * 100);
+        },
+        remainingBalance(item) {
+            return this.adjustedBalance(item) - Math.round(Number(item.amount || 0) * 100);
+        },
+        hasAdjustments(item) {
+            return ['interest_amount', 'fine_amount', 'discount_amount'].some(field => Number(item[field] || 0) !== 0);
         },
         isSelected(id) { return this.items.some(item => item.id === id); },
         changeType(type) {
@@ -62,22 +75,38 @@
             }
             const amount = this.isMovement ? record.amount_cents
                 : Math.min(record.amount_cents, this.difference > 0 ? this.difference : record.amount_cents);
-            this.state = { ...this.state, items: [...this.items, { ...record, amount: amount / 100 }] };
+            this.state = { ...this.state, items: [...this.items, {
+                ...record, amount: amount / 100, amount_manual: false,
+                interest_amount: 0, fine_amount: 0, discount_amount: 0, notes: '',
+            }] };
         },
         remove(id) {
             this.state = { ...this.state, items: this.items.filter(item => item.id !== id) };
         },
-        updateAmount(id, value) {
+        parseMoney(value) {
             let normalized = String(value).trim().replace(/R\$|\s/g, '');
             if (normalized.includes(',')) normalized = normalized.replace(/\./g, '').replace(',', '.');
-            const amount = /^\d+(\.\d{1,2})?$/.test(normalized) ? Number(normalized) : 0;
-            this.state = { ...this.state, items: this.items.map(item => item.id === id ? { ...item, amount } : item) };
+            return /^\d+(\.\d{1,2})?$/.test(normalized) ? Number(normalized) : null;
+        },
+        updateAmount(id, value) {
+            const amount = this.parseMoney(value) ?? 0;
+            this.state = { ...this.state, items: this.items.map(item => item.id === id ? { ...item, amount, amount_manual: true } : item) };
+        },
+        updateCharge(id, field, value) {
+            if (this.isMovement || !['interest_amount', 'fine_amount', 'discount_amount'].includes(field)) return;
+            const item = this.items.find(item => item.id === id);
+            const available = this.difference + Math.round(Number(item.amount || 0) * 100);
+            const updated = { ...item, [field]: String(value).trim() === '' ? 0 : this.parseMoney(value) };
+            if (!updated.amount_manual) {
+                updated.amount = Math.max(0, Math.min(this.adjustedBalance(updated), available)) / 100;
+            }
+            this.state = { ...this.state, items: this.items.map(item => item.id === id ? updated : item) };
         },
         fillRemaining(id) {
             const item = this.items.find(item => item.id === id);
             const available = this.difference + Math.round(Number(item.amount || 0) * 100);
-            const amount = Math.min(item.amount_cents, Math.max(0, available));
-            this.state = { ...this.state, items: this.items.map(item => item.id === id ? { ...item, amount: amount / 100 } : item) };
+            const amount = Math.max(0, Math.min(this.adjustedBalance(item), available));
+            this.state = { ...this.state, items: this.items.map(item => item.id === id ? { ...item, amount: amount / 100, amount_manual: false } : item) };
         },
         async load(more = false) {
             const request = ++this.request;

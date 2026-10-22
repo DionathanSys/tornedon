@@ -4,10 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Relatio
 
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcilePayableInstallmentAction;
-use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileReceivableInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
 use App\Models\BankStatementLine;
@@ -108,7 +105,7 @@ class LinesRelationManager extends RelationManager
             ->headerActions([])
             ->toolbarActions([ReconcileMultipleAction::make(bulk: true)])
             ->recordActions([
-                ReconcileMultipleAction::make()->iconButton(),
+                ReconcileMultipleAction::make()->button(),
                 Action::make('refresh_suggestions')
                     ->label('Atualizar sugestões')
                     ->icon('heroicon-o-arrow-path')
@@ -178,9 +175,6 @@ class LinesRelationManager extends RelationManager
 
                         $this->applySuggestion($record, $suggestion, $data['exception_reason'] ?? null);
                     }),
-                ReconcileMovementAction::make()->iconButton(),
-                ReconcilePayableInstallmentAction::make()->iconButton(),
-                ReconcileReceivableInstallmentAction::make()->iconButton(),
                 CreateManualMovementAction::make()->iconButton(),
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),
