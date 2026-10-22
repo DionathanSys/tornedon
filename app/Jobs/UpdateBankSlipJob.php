@@ -48,8 +48,6 @@ final class UpdateBankSlipJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
             if ($charge->operation_status !== 'ready') {
-                QueryBankSlipJob::dispatch($charge->id);
-
                 return;
             }
             $reserved = DB::transaction(function () use ($charge): bool {

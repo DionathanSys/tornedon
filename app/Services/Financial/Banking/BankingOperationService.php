@@ -23,7 +23,7 @@ use Illuminate\Validation\ValidationException;
 
 final class BankingOperationService
 {
-    /** Reserve before external I/O so a killed worker is recovered by consultation. */
+    /** Reserve before external I/O so a killed worker can be recovered by manual consultation. */
     public function beginRegistration(BankSlip|PixCharge $charge): bool
     {
         return DB::transaction(function () use ($charge): bool {

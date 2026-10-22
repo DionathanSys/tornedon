@@ -135,6 +135,8 @@ class BankingOperationsTest extends TestCase
         }
         $this->assertSame('uncertain', $this->slip->fresh()->status->value);
         (new RegisterBankSlipJob($this->slip->id))->handle(app(BankSlipProviderRegistry::class));
+        Queue::assertNotPushed(QueryBankSlipJob::class);
+        app(BankingOperationService::class)->query($this->slip->fresh());
         Queue::assertPushed(QueryBankSlipJob::class);
         (new QueryBankSlipJob($this->slip->id))->handle(app(BankSlipProviderRegistry::class));
         $this->assertSame('registered', $this->slip->fresh()->status->value);
@@ -289,16 +291,28 @@ class BankingOperationsTest extends TestCase
         $this->assertSame('new-refresh', $this->connection->fresh()->credentials['refresh_token']);
     }
 
-    public function test_dispatchers_recover_processing_and_uncertain_but_skip_terminal_charges(): void
+    public function test_explicit_queries_dispatch_jobs_for_boleto_and_pix(): void
     {
         Queue::fake();
         $this->slip->update(['status' => 'uncertain']);
         $pix = $this->pix();
         $pix->update(['status' => 'processing']);
-        $this->artisan('bank-slips:dispatch-queries', ['--company_id' => $this->company->id])->assertSuccessful();
-        $this->artisan('pix:dispatch-queries', ['--company_id' => $this->company->id])->assertSuccessful();
+        app(BankingOperationService::class)->query($this->slip->fresh());
+        app(BankingOperationService::class)->query($pix->fresh());
         Queue::assertPushed(QueryBankSlipJob::class, 1);
         Queue::assertPushed(QueryPixChargeJob::class, 1);
+    }
+
+    public function test_pending_boleto_operations_do_not_dispatch_automatic_queries(): void
+    {
+        Queue::fake();
+        $this->slip->update(['status' => 'cancel_pending', 'operation_kind' => 'cancel', 'operation_status' => 'pending', 'provider_operation_id' => 'cancel-1']);
+        (new CancelBankSlipJob($this->slip->id))->handle(app(BankSlipProviderRegistry::class));
+
+        $this->slip->update(['status' => 'update_pending', 'operation_kind' => 'update', 'operation_status' => 'uncertain', 'pending_update' => ['valor' => '120.00']]);
+        (new UpdateBankSlipJob($this->slip->id))->handle(app(BankSlipProviderRegistry::class));
+
+        Queue::assertNothingPushed();
     }
 
     public function test_update_keeps_original_until_bank_query_matches_requested_installment(): void

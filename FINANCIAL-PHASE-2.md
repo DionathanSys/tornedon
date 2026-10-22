@@ -287,14 +287,7 @@ As somas de recebimentos e o diagnóstico `financial:audit-integrity` foram adeq
 
 ## 4. Agendamento e filas
 
-Comandos:
-
-```bash
-php artisan bank-slips:dispatch-queries --company_id=1
-php artisan pix:dispatch-queries --company_id=1
-```
-
-Ambos são agendados a cada cinco minutos, com seleção de estados elegíveis, conexões ativas e última sincronização. Não fazem reemissão indiscriminada.
+As consultas à IntegraBancos são solicitadas exclusivamente pelas actions manuais do financeiro. Os comandos de consulta em lote e seus agendamentos foram removidos. A atualização local da tela PIX e as retentativas de emissão, alteração e cancelamento não disparam consultas bancárias. Webhooks continuam atualizando as cobranças pelo processamento existente.
 
 Os jobs bancários de I/O utilizam timeout de 300 segundos e lock de cobrança de 330 segundos. O supervisor bancário do Horizon foi ajustado para 300 segundos. Defaults de `retry_after` em Redis/database passaram para 360 segundos.
 

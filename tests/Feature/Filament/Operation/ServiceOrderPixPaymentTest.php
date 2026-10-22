@@ -181,16 +181,16 @@ class ServiceOrderPixPaymentTest extends TestCase
         }
     }
 
-    public function test_polling_is_throttled_and_does_not_modify_attendance_form(): void
+    public function test_polling_only_refreshes_local_state_without_querying_the_provider(): void
     {
         $charge = app(ServiceOrderPixPaymentWorkflow::class)->execute($this->order, $this->user);
         $charge->update(['status' => PixChargeStatus::REGISTERED]);
         $component = Livewire::test(OperationServiceOrderPix::class, ['orderId' => $this->order->id]);
         $component->call('refreshPayment')->call('refreshPayment');
-        Queue::assertPushed(QueryPixChargeJob::class, 1);
+        Queue::assertNotPushed(QueryPixChargeJob::class);
         $this->right->update(['enabled' => false]);
         $component->call('refreshPayment')->assertDontSee('Compartilhar link');
-        Queue::assertPushed(QueryPixChargeJob::class, 1);
+        Queue::assertNotPushed(QueryPixChargeJob::class);
     }
 
     public function test_linked_materials_and_travel_are_included_in_the_single_charge(): void
@@ -216,8 +216,9 @@ class ServiceOrderPixPaymentTest extends TestCase
         $this->assertSame($charge->id, $same->id);
         Livewire::test(OperationServiceOrderPix::class, ['orderId' => $this->order->id])
             ->call('refreshPayment')->assertSee('Confirmando emissão com o banco');
+        (new RegisterPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
         Queue::assertNotPushed(RegisterPixChargeJob::class);
-        Queue::assertPushed(QueryPixChargeJob::class, 1);
+        Queue::assertNotPushed(QueryPixChargeJob::class);
         $this->assertDatabaseCount('pix_charges', 1);
     }
 
@@ -302,14 +303,13 @@ class ServiceOrderPixPaymentTest extends TestCase
         $this->assertEquals($metadata['financial_category_id'], $right->metadata['financial_category_id']);
     }
 
-    public function test_scheduler_recovers_pending_os_registration_without_the_technician(): void
+    public function test_polling_does_not_dispatch_pending_os_registration(): void
     {
         app(ServiceOrderPixPaymentWorkflow::class)->execute($this->order, $this->user);
-        $this->right->update(['enabled' => false]);
         Queue::fake();
-        $this->artisan('pix:dispatch-queries', ['--company_id' => $this->company->id])->assertSuccessful();
-        Queue::assertPushed(RegisterPixChargeJob::class, 1);
-        Queue::assertNotPushed(QueryPixChargeJob::class);
+        Livewire::test(OperationServiceOrderPix::class, ['orderId' => $this->order->id])
+            ->call('refreshPayment')->call('refreshPayment');
+        Queue::assertNothingPushed();
     }
 
     public function test_management_can_create_the_right_from_the_list_modal(): void

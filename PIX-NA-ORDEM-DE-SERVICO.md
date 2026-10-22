@@ -22,10 +22,10 @@ O fluxo inicial aceita pagamento integral de uma OS com uma única parcela. Fatu
 
 ## Filas e atualização
 
-- Mantenha um worker consumindo a fila `banking` e o scheduler Laravel ativo.
+- Mantenha um worker consumindo a fila `banking`.
 - O webhook e as consultas usam o processamento bancário e a baixa financeira existentes.
-- A tela consulta o estado local a cada cinco segundos. A consulta bancária de recuperação é limitada por cobrança, por padrão a cada 30 segundos enquanto a tela está aberta. Ajuste `PIX_OPERATION_QUERY_INTERVAL_SECONDS` aos limites homologados com o provedor (mínimo de 20 segundos).
-- `pix:dispatch-queries`, já agendado a cada cinco minutos, recupera também as emissões de OS ainda pendentes de registro.
+- A tela atualiza somente o estado local a cada cinco segundos, sem chamadas à IntegraBancos.
+- Consultas bancárias são solicitadas exclusivamente pelas actions manuais do financeiro. Não há comandos ou agendamentos de consulta, nem consultas automáticas nas retentativas de emissão, alteração ou cancelamento.
 - Revogar o direito bloqueia novas solicitações e o acesso aos dados de pagamento pelo técnico. O recebimento de cobranças existentes continua sendo processado em segundo plano, e o resumo financeiro permanece disponível para quem pode visualizar a OS.
 - A validade do link público não cancela a cobrança bancária.
 

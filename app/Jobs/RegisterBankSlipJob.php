@@ -48,16 +48,12 @@ final class RegisterBankSlipJob implements ShouldBeUnique, ShouldQueue
             }
             $operations = app(BankingOperationService::class);
             if (! $operations->beginRegistration($charge)) {
-                if (in_array($charge->fresh()->status->value, ['processing', 'uncertain'], true)) {
-                    $operations->query($charge);
-                }
-
                 return;
             }
             $result = $registry->resolve($charge->connection)->register($charge->fresh());
             app(BankingEventService::class)->observe($charge, $result, 'register', 'request');
             if ($result->retryable) {
-                throw new \RuntimeException($result->message ?: 'Resultado de emissão incerto; a próxima tentativa fará consulta.');
+                throw new \RuntimeException($result->message ?: 'Resultado de emissão incerto; consulte pela action antes de reenviar.');
             }
         });
     }

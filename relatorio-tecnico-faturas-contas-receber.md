@@ -51,7 +51,7 @@ Existe uma base razoavel de transacoes, auditoria, escopo de tenant no Filament,
 - O registro no provider ocorre em jobs `banking` com `ShouldBeUnique` e lock de cache. Referencias: `app/Jobs/RegisterBankSlipJob.php:17-109` e `app/Jobs/RegisterPixChargeJob.php:18-111`.
 - O webhook de boleto e publico por necessidade de integracao, mas valida CNPJ, assinatura HMAC, timestamp de cinco minutos e deduplica evento. Referencias: `routes/web.php:33-35`, `app/Services/Financial/Banking/Providers/IntegraBancosProvider.php:61-107` e `app/Services/Financial/Banking/BankSlipWebhookService.php:19-57`.
 - O webhook de liquidacao aceita pagamentos incrementais e rejeita valor acima do saldo antes da baixa: `app/Jobs/ProcessBankSlipWebhookJob.php:117-171`.
-- O PIX e consultado a cada cinco minutos por `pix:dispatch-queries`: `routes/console.php:29-32` e `app/Console/Commands/DispatchPixChargeQueriesCommand.php:16-40`.
+- As consultas de PIX e boleto a IntegraBancos sao solicitadas apenas pelas actions manuais do financeiro; nao ha consultas bancarias programadas. Webhooks continuam atualizando as cobrancas.
 
 ## Controles positivos observados
 

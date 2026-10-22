@@ -48,10 +48,6 @@ final class RegisterPixChargeJob implements ShouldBeUnique, ShouldQueue
             }
             $operations = app(BankingOperationService::class);
             if (! $operations->beginRegistration($charge)) {
-                if (in_array($charge->fresh()->status->value, ['processing', 'uncertain'], true)) {
-                    $operations->query($charge);
-                }
-
                 return;
             }
             $result = $registry->resolve($charge->connection)->register($charge->fresh());

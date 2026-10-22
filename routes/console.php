@@ -31,16 +31,6 @@ Schedule::command('sefaz:dfe-sync-dispatch')
     ->withoutOverlapping()
     ->description('Despacha a sincronização assíncrona de DF-e recebidos por empresa');
 
-Schedule::command('pix:dispatch-queries')
-    ->everyFiveMinutes()
-    ->withoutOverlapping()
-    ->description('Despacha consultas periódicas de cobranças PIX');
-
-Schedule::command('bank-slips:dispatch-queries')
-    ->everyFiveMinutes()
-    ->withoutOverlapping()
-    ->description('Recupera boletos e operações bancárias pendentes');
-
 Schedule::command('fiscal-document-xml-exports:prune-expired')
     ->hourly()
     ->withoutOverlapping()

@@ -48,8 +48,6 @@ final class CancelBankSlipJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
             if ($charge->operation_kind === 'cancel' && (in_array($charge->operation_status, ['sending', 'pending', 'uncertain'], true) || $charge->provider_operation_id)) {
-                QueryBankSlipJob::dispatch($charge->id);
-
                 return;
             }
             $reserved = DB::transaction(function () use ($charge): bool {
