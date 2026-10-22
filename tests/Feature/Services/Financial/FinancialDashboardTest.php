@@ -95,6 +95,10 @@ class FinancialDashboardTest extends TestCase
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Filament::setTenant($company);
+        $this->assertNull(FinancialDashboard::getCluster());
+        $this->assertSame('Financeiro', FinancialDashboard::getNavigationGroup());
+        $this->assertSame('Dashboard Financeiro', FinancialDashboard::getNavigationLabel());
+        $this->assertStringEndsWith('/admin/'.$company->getRouteKey().'/financial-dashboard', FinancialDashboard::getUrl());
         for ($i = 0; $i < 11; $i++) {
             $this->installment($company, 'receivable', '2026-10-22');
         }

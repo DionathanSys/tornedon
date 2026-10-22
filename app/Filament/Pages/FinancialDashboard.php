@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Clusters\Financial\FinancialCluster;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Models\AccountPayable;
@@ -15,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Livewire\WithPagination;
+use UnitEnum;
 
 class FinancialDashboard extends Page
 {
@@ -22,7 +22,9 @@ class FinancialDashboard extends Page
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-presentation-chart-line';
 
-    protected static ?string $cluster = FinancialCluster::class;
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+
+    protected static ?string $navigationLabel = 'Dashboard Financeiro';
 
     protected static ?string $title = 'Dashboard Financeiro';
 
