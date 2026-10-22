@@ -2,7 +2,6 @@
 
 namespace App\Services\Fiscal\Sefaz;
 
-use CloudDfe\SdkPHP\Dfe;
 use App\Models\Company;
 use App\Services\Fiscal\NfeConfigService;
 use DOMDocument;
@@ -14,55 +13,56 @@ use RuntimeException;
 class SefazRecepcaoEventoService
 {
     private const SOAP_NAMESPACE = 'http://www.w3.org/2003/05/soap-envelope';
+
     private const WSDL_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4';
+
     private const NFE_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe';
+
     private const DS_NAMESPACE = 'http://www.w3.org/2000/09/xmldsig#';
+
     private const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEventoNF';
+
     private const EVENT_TYPE_SCIENCE = '210210';
 
     public function __construct(
         private readonly NfeConfigService $nfeConfigService,
         private readonly CompanySefazCertificateService $certificateService,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string,mixed>
      */
     public function manifestScience(Company $company, string $accessKey, int $sequence = 1): array
     {
+        $cnpj = preg_replace('/\D+/', '', (string) $company->document_number) ?? '';
+        if (strlen($cnpj) !== 14) {
+            throw new RuntimeException('Informe um CNPJ válido para a empresa antes de manifestar DF-e na SEFAZ.');
+        }
+
         if (preg_match('/^\d{44}$/', $accessKey) !== 1) {
             throw new RuntimeException('A chave de acesso informada para manifestação é inválida.');
         }
 
-        $sdk = new Dfe($this->nfeConfigService->buildSdkParams((int) $company->id));
-        $response = $sdk->manifesta([
-            'chave' => $accessKey,
-            'tipo_evento' => self::EVENT_TYPE_SCIENCE,
-            'justificativa' => null,
-        ]);
+        $environment = $this->nfeConfigService->resolveAmbiente($company->id);
+        $certificate = $this->certificateService->loadForCompany($company);
 
-        $success = (bool) ($response->sucesso ?? false);
-        $code = (string) ($response->codigo ?? '');
-        $message = (string) ($response->mensagem ?? ($success ? 'Manifestação aceita.' : 'Falha na manifestação.'));
+        $requestXml = $this->buildSoapRequestXml(
+            environment: $environment,
+            cnpj: $cnpj,
+            accessKey: $accessKey,
+            privateKeyPem: $certificate['private_key_pem'],
+            certificatePem: $certificate['certificate_pem'],
+            sequence: $sequence,
+        );
 
-        return [
-            'success' => $success,
-            'batch_status_code' => $code,
-            'batch_status_message' => $message,
-            'event_status_code' => $code,
-            'event_status_message' => $message,
-            'protocol' => (string) ($response->protocolo ?? ''),
-            'registered_at' => (string) ($response->data_hora_evento ?? ''),
-            'event_errors' => (array) ($response->erros ?? []),
-            'raw_response' => [
-                'sucesso' => $response->sucesso ?? null,
-                'codigo' => $response->codigo ?? null,
-                'mensagem' => $response->mensagem ?? null,
-                'protocolo' => $response->protocolo ?? null,
-                'data_hora_evento' => $response->data_hora_evento ?? null,
-            ],
-        ];
+        $responseXml = $this->sendSoapRequest(
+            endpoint: $this->resolveEndpoint($environment),
+            requestXml: $requestXml,
+            certificatePem: $certificate['certificate_pem'],
+            privateKeyPem: $certificate['private_key_pem'],
+        );
+
+        return $this->parseSoapResponse($responseXml);
     }
 
     public function buildSoapRequestXml(
@@ -126,7 +126,7 @@ class SefazRecepcaoEventoService
         $infEvento->appendChild($detEvento);
         $detEvento->appendChild($document->createElementNS(self::NFE_NAMESPACE, 'descEvento', 'Ciencia da Operacao'));
 
-        $this->appendSignature($document, $evento, $infEvento, $privateKeyPem, $certificatePem, '#' . $id);
+        $this->appendSignature($document, $evento, $infEvento, $privateKeyPem, $certificatePem, '#'.$id);
 
         return $document->saveXML() ?: '';
     }
@@ -136,7 +136,7 @@ class SefazRecepcaoEventoService
      */
     public function parseSoapResponse(string $responseXml): array
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         if (! $document->loadXML($responseXml)) {
             throw new RuntimeException('A SEFAZ retornou um XML inválido na manifestação do destinatário.');
         }
@@ -187,8 +187,8 @@ class SefazRecepcaoEventoService
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
-                'Content-Type: application/soap+xml; charset=utf-8; action="' . self::SOAP_ACTION . '"',
-                'Content-Length: ' . strlen($requestXml),
+                'Content-Type: application/soap+xml; charset=utf-8; action="'.self::SOAP_ACTION.'"',
+                'Content-Length: '.strlen($requestXml),
             ],
             CURLOPT_POSTFIELDS => $requestXml,
             CURLOPT_SSLCERT => $certFile,
@@ -209,7 +209,7 @@ class SefazRecepcaoEventoService
         @unlink($keyFile);
 
         if ($response === false) {
-            throw new RuntimeException('Falha técnica ao manifestar DF-e na SEFAZ: ' . $errorMessage);
+            throw new RuntimeException('Falha técnica ao manifestar DF-e na SEFAZ: '.$errorMessage);
         }
 
         if ($httpCode >= 400) {
