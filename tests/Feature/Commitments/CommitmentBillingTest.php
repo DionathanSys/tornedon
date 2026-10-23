@@ -60,6 +60,7 @@ class CommitmentBillingTest extends TestCase
 
     public function test_creates_one_invoice_nfse_and_receivable_with_exact_texts_without_emitting(): void
     {
+        CommitmentSetting::query()->update(['nfse_footer_message' => "Pagamento conforme contrato.\r\nConforme orçamento."]);
         $billing = $this->approved();
         $this->mock(NfseDocumentService::class)->shouldNotReceive('emitir');
         $batch = $this->request([$billing]);
@@ -76,7 +77,7 @@ class CommitmentBillingTest extends TestCase
         $document = $billing->invoice->fiscalDocuments()->sole();
         $this->assertSame('nfse', $document->document_type->value);
         $this->assertSame($billing->serviceOrder->items->first()->service->name, $document->items()->sole()->description);
-        $this->assertSame("Pagamento conforme contrato.\nPatrimônio: 142186\nEmpenho: {$billing->commitment->number}/2026", $document->items()->sole()->additional_information);
+        $this->assertSame("Pagamento conforme contrato. | Conforme orçamento. | Patrimônio: 142186 | Empenho: {$billing->commitment->number}/2026", $document->items()->sole()->additional_information);
         $this->assertSame(0, $billing->invoice->requisitions()->count());
         $this->assertSame('faturada', $billing->serviceOrder->fresh()->status->value);
     }

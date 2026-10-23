@@ -19,7 +19,7 @@
             </p>
         </x-filament::section>
 
-        <div class="grid gap-4 md:grid-cols-3">
+        <div class="grid md:grid-cols-3" style="display: grid; gap: 1.5rem;">
             @foreach(['receivable' => 'A receber', 'payable' => 'A pagar'] as $type => $label)
                 @isset($dashboard[$type])
                     <x-filament::section :heading="$label">
@@ -39,7 +39,7 @@
             @endif
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid md:grid-cols-2" style="display: grid; gap: 1.5rem;">
             @foreach(['receivable' => 'Recebimentos vencidos', 'payable' => 'Pagamentos vencidos'] as $type => $label)
                 @isset($dashboard[$type])
                     <x-filament::section :heading="$label">

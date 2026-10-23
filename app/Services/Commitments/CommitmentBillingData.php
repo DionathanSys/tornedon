@@ -37,8 +37,8 @@ class CommitmentBillingData
         if (! $serviceId || ! isset($options[$serviceId])) {
             $this->invalid('Selecione um serviço ativo presente na OS ou ajuste o serviço padrão nas configurações de empenhos.');
         }
-        $footer = trim(implode("\n", array_filter([
-            trim((string) $settings->nfse_footer_message),
+        $footer = trim(implode(' | ', array_filter([
+            preg_replace('/\s*\R\s*/u', ' | ', trim((string) $settings->nfse_footer_message)),
             'Patrimônio: '.$billing->commitment->patrimony,
             'Empenho: '.$billing->commitment->number.'/'.$billing->commitment->fiscal_year,
         ])));
