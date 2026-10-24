@@ -10,6 +10,7 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
+use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivableInstallment;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -17,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -113,6 +115,17 @@ class AccountReceivableInstallmentsTable
             ->defaultSort('due_date', 'asc')
             ->persistFiltersInSession()
             ->filters([
+                Filter::make('customer_id')
+                    ->label('Parceiro')
+                    ->schema([
+                        SelectPartner::make('customer_id', 'all')->required(false),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query->when(
+                        filled($data['customer_id'] ?? null),
+                        fn (Builder $query): Builder => $query->whereHas('accountReceivable',
+                            fn (Builder $accountQuery): Builder => $accountQuery->where('customer_id', $data['customer_id']),
+                        ),
+                    )),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Status::toSelectArray())
