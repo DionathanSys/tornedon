@@ -39,7 +39,7 @@ class CommitmentBillingActions
                 : 'Uma fatura por OS. O sistema executará o faturamento e a confirmação pelos serviços atuais. A emissão depende da opção abaixo e não representa autorização fiscal.')
             ->modalSubmitActionLabel(fn (CustomerCommitment $record) => self::isEmissionOnly($record) ? 'Solicitar emissão' : 'Solicitar processamento')
             ->schema([
-                Select::make('nfse_service_id')->label('Serviço da NFS-e')->native(false)->searchable()->live()
+                Select::make('nfse_service_id')->label('Serviço da NFS-e')->native(false)->searchable()->searchDebounce(1500)->live()
                     ->visible(fn (CustomerCommitment $record) => ! $record->billing?->invoice?->confirmed)
                     ->options(fn (CustomerCommitment $record) => $record->billing ? app(CommitmentBillingData::class)->serviceOptions($record->billing) : [])
                     ->default(function (CustomerCommitment $record) {

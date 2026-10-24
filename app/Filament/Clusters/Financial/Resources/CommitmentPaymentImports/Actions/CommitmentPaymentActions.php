@@ -183,7 +183,7 @@ class CommitmentPaymentActions
 
     private static function accountSelect(): Select
     {
-        return Select::make('financial_account_id')->label('Conta financeira do recebimento')->required()->native(false)->searchable()->preload()
+        return Select::make('financial_account_id')->label('Conta financeira do recebimento')->required()->native(false)->searchable()->searchDebounce(1500)->preload()
             ->options(fn () => FinancialAccount::optionsForCompany(Filament::getTenant()->id));
     }
 

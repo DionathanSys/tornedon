@@ -29,6 +29,8 @@ class AccountPayableInstallmentResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Parcelas Pagar';
 
+    protected static ?string $navigationLabel = 'Contas à Pagar';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema

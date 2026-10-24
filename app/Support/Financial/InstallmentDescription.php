@@ -61,11 +61,11 @@ class InstallmentDescription
 
     public static function fallbackForPayable(?AccountPayable $accountPayable, ?string $sequenceNumber): string
     {
-        $supplier = trim((string) ($accountPayable?->supplier?->name ?? 'Conta a pagar'));
-        $document = trim((string) ($accountPayable?->document_number ?? $accountPayable?->note_number ?? 'Sem documento'));
-        $sequence = trim((string) ($sequenceNumber ?: '01'));
+        $document = trim((string) $accountPayable?->document_number)
+            ?: (trim((string) $accountPayable?->note_number) ?: 'N/A');
+        $sequence = str_pad(trim((string) $sequenceNumber) ?: '01', 2, '0', STR_PAD_LEFT);
 
-        return sprintf('%s | Doc. %s | Parcela %s', $supplier, $document, $sequence);
+        return sprintf('Doc. %s | P.%s', $document, $sequence);
     }
 
     public static function fallbackForReceivable(?AccountReceivable $accountReceivable, ?string $sequenceNumber): string

@@ -29,7 +29,7 @@ class ImportCommitmentFilesAction
             ->icon('heroicon-o-arrow-up-tray')
             ->authorize('create', CommitmentImport::class)
             ->schema([
-                Select::make('customer_id')->label('Cliente')->options(fn () => self::customerOptions())->searchable()->required(),
+                Select::make('customer_id')->label('Cliente')->options(fn () => self::customerOptions())->searchable()->searchDebounce(1500)->required(),
                 FileUpload::make('files')->label('PDFs')->multiple()->maxFiles($type === ImportType::PAYMENTS ? 1 : 20)
                     ->acceptedFileTypes(['application/pdf'])->maxSize(20480)->storeFiles(false)->required()
                     ->helperText('O fluxo deve estar habilitado em Configurar cliente. Cada arquivo será processado individualmente.'),

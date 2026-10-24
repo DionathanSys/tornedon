@@ -56,7 +56,7 @@ class CommitmentReviewActions
             ->tooltip('Disponível quando há uma OS elegível com o mesmo patrimônio e valor.')
             ->modalDescription('A primeira opção é a OS elegível mais antiga pela data de abertura. A aprovação reserva a OS para este empenho.')
             ->schema([
-                Select::make('service_order_id')->label('OS compatível')->native(false)->searchable()->required()
+                Select::make('service_order_id')->label('OS compatível')->native(false)->searchable()->searchDebounce(1500)->required()
                     ->options(function (CustomerCommitment $record): array {
                         $result = app(CommitmentMatchEngine::class)->analyze($record);
 

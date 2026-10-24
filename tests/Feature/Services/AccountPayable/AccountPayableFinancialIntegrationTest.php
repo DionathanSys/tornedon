@@ -276,7 +276,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
             $installments->pluck('due_date')->map(fn ($date) => $date?->format('Y-m-d'))->all()
         );
         $this->assertSame(
-            'Fornecedor Teste | Doc. Sem documento | Parcela 01',
+            'Doc. N/A | P.01',
             $installments->first()->description
         );
     }
