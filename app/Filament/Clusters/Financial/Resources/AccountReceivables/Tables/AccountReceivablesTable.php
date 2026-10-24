@@ -33,10 +33,12 @@ class AccountReceivablesTable
                     ? ((float) $record->considered_balance > 0 ? 'Parcialmente ignorada' : 'Ignorada') : 'Considerada')->badge(),
                 TextColumn::make('counterparty_label')
                     ->label('Cliente')
+                    ->description(fn ($record): ?string => $record->description)
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where(function (Builder $query) use ($search): void {
                             $query->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', "%{$search}%"))
-                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%")
+                                ->orWhere('description', 'like', "%{$search}%");
                         });
                     })
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw('COALESCE((SELECT name FROM partners WHERE partners.id = account_receivables.customer_id AND partners.deleted_at IS NULL), manual_counterparty_name, ?) '.($direction === 'desc' ? 'desc' : 'asc'), ['']))
@@ -45,11 +47,6 @@ class AccountReceivablesTable
                     ->label('Nº Documento')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('-'),
-                TextColumn::make('description')
-                    ->label('Descrição')
-                    ->searchable()
-                    ->limit(40)
                     ->placeholder('-'),
                 TextColumn::make('next_due_date')
                     ->label('Próximo vencimento aberto')

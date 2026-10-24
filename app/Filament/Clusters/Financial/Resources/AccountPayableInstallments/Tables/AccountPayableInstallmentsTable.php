@@ -34,6 +34,14 @@ class AccountPayableInstallmentsTable
                 TextColumn::make('accountPayable.supplier.name')
                     ->label('Fornecedor')
                     ->getStateUsing(fn (AccountPayableInstallment $record): string => $record->accountPayable?->counterparty_label ?? '-')
+                    ->description(fn (AccountPayableInstallment $record): ?string => $record->description)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $query) use ($search): void {
+                        $query->where('description', 'like', "%{$search}%")
+                            ->orWhereHas('accountPayable', function (Builder $accountQuery) use ($search): void {
+                                $accountQuery->whereHas('supplier', fn (Builder $supplierQuery) => $supplierQuery->where('name', 'like', "%{$search}%"))
+                                    ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                            });
+                    }))
                     ->sortable()
                     ->limit(40)
                     ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
@@ -44,13 +52,6 @@ class AccountPayableInstallmentsTable
                     ->searchable()
                     ->sortable()
                     ->placeholder('-'),
-                TextColumn::make('description')
-                    ->label('Descrição')
-                    ->searchable()
-                    ->wrap()
-                    ->lineClamp(5)
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sequence_number')
                     ->label('Parcela')
                     ->badge()

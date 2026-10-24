@@ -34,10 +34,14 @@ class AccountReceivableInstallmentsTable
                 TextColumn::make('accountReceivable.counterparty_label')
                     ->label('Cliente')
                     ->getStateUsing(fn (AccountReceivableInstallment $record): string => $record->accountReceivable?->counterparty_label ?? '-')
+                    ->description(fn (AccountReceivableInstallment $record): ?string => $record->description)
                     ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->whereHas('accountReceivable', function (Builder $query) use ($search): void {
-                            $query->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', "%{$search}%"))
-                                ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                        return $query->where(function (Builder $query) use ($search): void {
+                            $query->where('description', 'like', "%{$search}%")
+                                ->orWhereHas('accountReceivable', function (Builder $accountQuery) use ($search): void {
+                                    $accountQuery->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', "%{$search}%"))
+                                        ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
+                                });
                         });
                     })
                     ->limit(40)
@@ -48,12 +52,6 @@ class AccountReceivableInstallmentsTable
                     ->label('Nº Documento')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('description')
-                    ->label('Descrição')
-                    ->searchable()
-                    ->limit(50)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('sequence_number')
