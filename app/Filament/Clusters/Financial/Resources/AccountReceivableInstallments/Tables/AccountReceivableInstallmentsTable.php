@@ -12,13 +12,16 @@ use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManager
 use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivableInstallment;
+use App\Models\Partner;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -118,6 +121,18 @@ class AccountReceivableInstallmentsTable
                     ->schema([
                         SelectPartner::make('customer_id', 'all')->required(false),
                     ])
+                    ->indicateUsing(function (array $data): ?Indicator {
+                        if (blank($data['customer_id'] ?? null)) {
+                            return null;
+                        }
+
+                        $partner = Partner::query()
+                            ->whereHas('companies', fn (Builder $query) => $query->where('companies.id', Filament::getTenant()->id))
+                            ->find($data['customer_id']);
+
+                        return Indicator::make('Parceiro: '.($partner?->name ?? 'Selecionado'))
+                            ->removeField('customer_id');
+                    })
                     ->query(fn (Builder $query, array $data): Builder => $query->when(
                         filled($data['customer_id'] ?? null),
                         fn (Builder $query): Builder => $query->whereHas('accountReceivable',

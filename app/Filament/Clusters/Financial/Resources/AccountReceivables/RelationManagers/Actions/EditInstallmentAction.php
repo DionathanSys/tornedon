@@ -2,18 +2,12 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions;
 
-use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
+use App\Filament\Clusters\Financial\Resources\Components\InstallmentEditForm;
 use App\Models\AccountReceivableInstallment;
-use App\Models\CostCenter;
-use App\Models\ResultCenter;
 use App\Services\AccountReceivable\AccountReceivableService;
 use Filament\Actions\Action;
-use Filament\Facades\Filament;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Leandrocfe\FilamentPtbrFormFields\Money;
+use Filament\Support\Enums\Width;
 
 final class EditInstallmentAction
 {
@@ -23,41 +17,11 @@ final class EditInstallmentAction
             ->label('Editar parcela')
             ->icon('heroicon-o-pencil-square')
             ->color('warning')
-            ->schema([
-                Money::make('original_amount')
-                    ->label('Valor da parcela')
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
-                    ->required()
-                    ->helperText('Valor base, sem juros, multa ou desconto. O saldo e o total da conta serão recalculados.'),
-                DatePicker::make('due_date')
-                    ->label('Vencimento')
-                    ->required(),
-                DatePicker::make('competence_date')
-                    ->label('Competência')
-                    ->helperText('Data econômica usada nos relatórios por competência.'),
-                SelectFinancialCategory::make('financial_category_id', 'receivable')
-                    ->label('Categoria Financeira')
-                    ->placeholder('Selecione uma categoria'),
-                Select::make('cost_center_id')
-                    ->label('Centro de Custo')
-                    ->options(fn (): array => CostCenter::optionsForCompany(Filament::getTenant()->id))
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
-                Select::make('result_center_id')
-                    ->label('Centro de Resultado')
-                    ->options(fn (): array => ResultCenter::optionsForCompany(Filament::getTenant()->id))
-                    ->searchable()
-                    ->preload()
-                    ->native(false),
-                Textarea::make('description')
-                    ->label('Descrição da Parcela')
-                    ->rows(2)
-                    ->maxLength(255),
-                Textarea::make('notes')
-                    ->label('Observações')
-                    ->rows(3),
-            ])
+            ->modalHeading(fn (AccountReceivableInstallment $record): string => "Editar parcela {$record->sequence_number}")
+            ->modalWidth(Width::FourExtraLarge)
+            ->slideOver(false)
+            ->modalSubmitActionLabel('Salvar alterações')
+            ->schema(InstallmentEditForm::components('receivable'))
             ->fillForm(fn (AccountReceivableInstallment $record): array => [
                 'original_amount' => $record->original_amount,
                 'due_date' => $record->due_date?->format('Y-m-d'),
