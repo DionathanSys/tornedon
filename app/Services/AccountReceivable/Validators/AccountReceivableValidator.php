@@ -8,6 +8,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\AccountReceivable;
 use App\Models\CardInstitution;
 use App\Models\FinancialAccount;
+use App\Support\Financial\AccountEditGuard;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -73,6 +74,7 @@ class AccountReceivableValidator
      */
     public static function validateCreate(array $data): array
     {
+        AccountEditGuard::validateRelationships($data, 'customer_id');
         $rules = array_merge(self::commonRules(), [
             'customer_id' => 'nullable|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
@@ -102,6 +104,7 @@ class AccountReceivableValidator
             'auto_receipt_financial_account_id' => $record->auto_receipt_financial_account_id,
         ];
         $data = [...$defaults, ...$data];
+        AccountEditGuard::validateRelationships([...$record->attributesToArray(), ...$data], 'customer_id');
         $rules = array_merge(self::commonRules(), [
             'customer_id' => 'sometimes|nullable|integer|exists:partners,id',
             'due_date' => 'sometimes|required|date',

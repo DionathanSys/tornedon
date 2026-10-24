@@ -14,6 +14,7 @@ final class StatementLinePayableInstallmentsTable
     {
         return $table
             ->query(fn (): Builder => AccountPayableInstallment::query()
+                ->considered()
                 ->where('company_id', Filament::getTenant()->id)
                 ->where('balance_amount', '>', 0))
             ->recordTitleAttribute('description')

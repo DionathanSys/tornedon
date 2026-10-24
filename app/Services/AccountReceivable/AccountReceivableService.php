@@ -22,6 +22,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CardReceivableCalculatorService;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
+use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentPaymentGuard;
 use App\Support\Financial\InstallmentSchedule;
@@ -30,6 +31,7 @@ use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class AccountReceivableService
@@ -50,6 +52,7 @@ class AccountReceivableService
         try {
             return $this->financialTransaction(function () use ($data, $createdBy) {
                 $audit = app(AuditRecorder::class);
+                Validator::make($data, ['installment_count' => 'nullable|integer|min:1|max:24'])->validate();
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
@@ -158,6 +161,9 @@ class AccountReceivableService
         try {
             return $this->financialTransaction(function () use ($accountReceivable, $data, $updatedBy) {
                 $accountReceivable = AccountReceivable::query()->lockForUpdate()->findOrFail($accountReceivable->id);
+                AccountEditGuard::validate($accountReceivable, $data);
+                $reason = $data['counterparty_change_reason'] ?? null;
+                unset($data['counterparty_change_reason']);
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountReceivable);
                 $originalFirstDueDate = $accountReceivable->due_date->copy();
@@ -238,6 +244,7 @@ class AccountReceivableService
                     $before,
                     $audit->snapshot($synced),
                     $updatedBy,
+                    metadata: ['counterparty_change_reason' => $reason],
                 );
 
                 $this->setSuccess('Conta a receber atualizada com sucesso');
@@ -249,6 +256,10 @@ class AccountReceivableService
 
                 return $synced;
             });
+        } catch (ValidationException $e) {
+            $this->setError($e->validator->errors()->first(), $e->errors(), 422);
+
+            return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar conta a receber');
 

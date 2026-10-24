@@ -15,6 +15,11 @@ class CreateAccountReceivable extends CreateRecord
 {
     protected static string $resource = AccountReceivableResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $tenant = Filament::getTenant();
@@ -31,8 +36,8 @@ class CreateAccountReceivable extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         Log::debug('CreateAccountReceivable: Iniciando criação de conta a receber', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data'   => $data,
+            'metodo' => __METHOD__.'@'.__LINE__,
+            'data' => $data,
         ]);
 
         $service = app(AccountReceivableService::class);
@@ -40,10 +45,10 @@ class CreateAccountReceivable extends CreateRecord
 
         if ($service->hasError() || $accountReceivable === null) {
             Log::error($service->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $service->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $service->getMessage(),
                 'error_code' => $service->getErrorCode(),
-                'errors'     => $service->getErrors(),
+                'errors' => $service->getErrors(),
             ]);
 
             notify::error(
@@ -55,7 +60,7 @@ class CreateAccountReceivable extends CreateRecord
         }
 
         Log::info('CreateAccountReceivable: Conta a receber criada com sucesso', [
-            'metodo'                => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'account_receivable_id' => $accountReceivable->id,
         ]);
 

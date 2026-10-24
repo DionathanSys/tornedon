@@ -27,8 +27,11 @@ class AccountReceivableGenerationServiceTest extends TestCase
     use RefreshDatabase;
 
     private AccountReceivableGenerationService $service;
+
     private User $user;
+
     private Company $company;
+
     private Partner $customer;
 
     protected function setUp(): void
@@ -39,18 +42,19 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $this->user = User::factory()->create();
 
         $this->company = Company::create([
-            'name' => 'Empresa Teste ' . uniqid(),
-            'document_number' => '123456780001' . random_int(10, 99),
+            'name' => 'Empresa Teste '.uniqid(),
+            'document_number' => '123456780001'.random_int(10, 99),
             'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
             'created_by' => $this->user->id,
         ]);
 
         $this->customer = Partner::create([
-            'name' => 'Cliente Teste ' . uniqid(),
+            'name' => 'Cliente Teste '.uniqid(),
             'document_type' => 'CPF',
-            'document_number' => '123456789' . random_int(10, 99),
+            'document_number' => '123456789'.random_int(10, 99),
             'created_by' => $this->user->id,
         ]);
+        $this->customer->companies()->attach($this->company, ['is_active' => true, 'type' => '["customer"]']);
     }
 
     public function test_generates_header_and_installments_with_invoice_payment_method_and_condition(): void
@@ -58,7 +62,7 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $invoice = $this->createInvoice('2026-03-10');
 
         ServiceOrder::create([
-            'number' => 'OS-' . uniqid(),
+            'number' => 'OS-'.uniqid(),
             'customer_id' => $this->customer->id,
             'company_id' => $this->company->id,
             'order_date' => '2026-03-10',
@@ -108,7 +112,7 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $invoice = $this->createInvoice('2026-03-10');
 
         ServiceOrder::create([
-            'number' => 'OS-' . uniqid(),
+            'number' => 'OS-'.uniqid(),
             'customer_id' => $this->customer->id,
             'company_id' => $this->company->id,
             'order_date' => '2026-03-10',
@@ -151,7 +155,7 @@ class AccountReceivableGenerationServiceTest extends TestCase
         $invoice = $this->createInvoice('2026-03-10');
 
         ServiceOrder::create([
-            'number' => 'OS-' . uniqid(),
+            'number' => 'OS-'.uniqid(),
             'customer_id' => $this->customer->id,
             'company_id' => $this->company->id,
             'order_date' => '2026-03-10',
@@ -196,7 +200,7 @@ class AccountReceivableGenerationServiceTest extends TestCase
             'issued_at' => $invoice->invoice_date,
             'movement_at' => $invoice->invoice_date,
             'document_type' => DocumentModel::NFE->value,
-            'document_number' => 'NF-' . random_int(1000, 9999),
+            'document_number' => 'NF-'.random_int(1000, 9999),
             'document_series' => '1',
             'nfe_status' => NfeStatus::AUTHORIZED->value,
         ]);

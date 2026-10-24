@@ -141,6 +141,7 @@ class SuggestBankStatementMatchesService
         $date = Carbon::parse($line->transaction_date);
 
         return AccountPayableInstallment::query()
+            ->considered()
             ->with('accountPayable.supplier')
             ->where('company_id', $line->company_id)
             ->whereIn('status', [
@@ -205,6 +206,7 @@ class SuggestBankStatementMatchesService
         $date = Carbon::parse($line->transaction_date);
 
         return AccountReceivableInstallment::query()
+            ->considered()
             ->with('accountReceivable.customer')
             ->where('company_id', $line->company_id)
             ->whereIn('status', [

@@ -23,6 +23,7 @@ class AccountReceivableCardRulesTest extends TestCase
         $user = User::factory()->create();
         $company = $this->createCompany($user);
         $customer = $this->createCustomer($user);
+        $customer->companies()->attach($company, ['is_active' => true, 'type' => '["customer"]']);
         $invoice = $this->createInvoice($company, $customer, $user);
 
         $service = app(AccountReceivableService::class);
@@ -53,6 +54,7 @@ class AccountReceivableCardRulesTest extends TestCase
         $user = User::factory()->create();
         $company = $this->createCompany($user);
         $customer = $this->createCustomer($user);
+        $customer->companies()->attach($company, ['is_active' => true, 'type' => '["customer"]']);
         $invoice = $this->createInvoice($company, $customer, $user);
 
         $service = app(AccountReceivableService::class);

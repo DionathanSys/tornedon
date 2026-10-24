@@ -2,15 +2,16 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers;
 
+use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Livewire\Attributes\On;
@@ -18,6 +19,11 @@ use Livewire\Attributes\On;
 class InstallmentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'installments';
+
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
 
     protected static ?string $title = 'Parcelas';
 
@@ -67,7 +73,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Saldo')
                     ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('interest_amount')
                     ->label('Juros')
                     ->money('BRL')
@@ -84,6 +90,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
+                    ->description(fn ($record) => $record->ignored_at ? 'Ignorada no módulo' : null)
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
@@ -114,6 +121,8 @@ class InstallmentsRelationManager extends RelationManager
             ->defaultSort('sequence_number')
             ->headerActions([])
             ->recordActions(ActionGroup::make([
+                IgnoreFinancialAction::make(),
+                IgnoreFinancialAction::make(restore: true),
                 RegisterInstallmentPaymentAction::make()
                     ->tooltip('Registrar pagamento'),
                 EditInstallmentAction::make()
@@ -129,8 +138,7 @@ class InstallmentsRelationManager extends RelationManager
                     }),
             ])->icon(Heroicon::Bars3)->tooltip('Ações da parcela'), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
-            ->columnManagerLayout(ColumnManagerLayout::Modal)
-            ->columnManagerColumns(5)
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table))
             ->emptyStateHeading('Sem registros');
     }
 }

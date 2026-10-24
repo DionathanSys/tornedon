@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enum\AccountReceivable\Status;
+use App\Models\Concerns\HasFinancialConsideration;
 use App\Models\Concerns\ProtectsFinancialHistory;
 use App\Models\Concerns\SkipsGeneratedColumns;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AccountReceivableInstallment extends Model
 {
+    use HasFinancialConsideration;
     use ProtectsFinancialHistory;
     use SkipsGeneratedColumns;
 

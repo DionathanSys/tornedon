@@ -127,6 +127,7 @@ class GenerateDreReportService
     private function competenceAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreView $view, ?int $costCenterId, ?int $resultCenterId): float
     {
         $payables = DB::table('account_payable_installments')
+            ->when($view === DreView::PROJECTED_ONLY, fn ($query) => $query->whereNull('ignored_at'))
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->whereBetween(DB::raw('COALESCE(competence_date, due_date)'), [$startDate, $endDate])
@@ -138,10 +139,11 @@ class GenerateDreReportService
             ->sum(match ($view) {
                 DreView::REALIZED => 'paid_amount',
                 DreView::PROJECTED_ONLY => 'balance_amount',
-                default => 'due_amount',
+                default => DB::raw('CASE WHEN ignored_at IS NULL THEN due_amount ELSE paid_amount END'),
             });
 
         $receivables = DB::table('account_receivable_installments')
+            ->when($view === DreView::PROJECTED_ONLY, fn ($query) => $query->whereNull('ignored_at'))
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->whereBetween(DB::raw('COALESCE(competence_date, due_date)'), [$startDate, $endDate])
@@ -153,7 +155,7 @@ class GenerateDreReportService
             ->sum(match ($view) {
                 DreView::REALIZED => 'received_amount',
                 DreView::PROJECTED_ONLY => 'balance_amount',
-                default => 'due_amount',
+                default => DB::raw('CASE WHEN ignored_at IS NULL THEN due_amount ELSE received_amount END'),
             });
 
         $manualMovements = $view === DreView::PROJECTED_ONLY
@@ -191,6 +193,7 @@ class GenerateDreReportService
         }
 
         $openPayables = DB::table('account_payable_installments')
+            ->whereNull('ignored_at')
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->whereBetween('due_date', [$startDate, $endDate])
@@ -200,6 +203,7 @@ class GenerateDreReportService
             ->sum('balance_amount');
 
         $openReceivables = DB::table('account_receivable_installments')
+            ->whereNull('ignored_at')
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->whereBetween('due_date', [$startDate, $endDate])

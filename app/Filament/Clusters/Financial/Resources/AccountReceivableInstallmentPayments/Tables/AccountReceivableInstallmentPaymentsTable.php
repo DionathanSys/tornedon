@@ -5,13 +5,13 @@ namespace App\Filament\Clusters\Financial\Resources\AccountReceivableInstallment
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeletePaymentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditPaymentAction;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountReceivableInstallmentPayment;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -140,13 +140,12 @@ class AccountReceivableInstallmentPaymentsTable
                         ->label('Abrir agrupador')
                         ->icon('heroicon-o-folder-open')
                         ->url(fn (AccountReceivableInstallmentPayment $record): ?string => $record->installment?->accountReceivable
-                            ? AccountReceivableResource::getUrl('edit', ['record' => $record->installment->accountReceivable])
+                            ? AccountReceivableResource::getUrl('view', ['record' => $record->installment->accountReceivable])
                             : null),
                 ])->icon(Heroicon::Bars3),
             ], RecordActionsPosition::BeforeCells)
             ->emptyStateHeading('Nenhum recebimento registrado')
             ->emptyStateDescription('Os recebimentos de parcelas a receber aparecerao aqui.')
-            ->columnManagerLayout(ColumnManagerLayout::Modal)
-            ->columnManagerColumns(2);
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table));
     }
 }

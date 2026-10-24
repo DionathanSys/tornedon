@@ -2,11 +2,9 @@
 
 namespace App\Filament\Operation\Widgets;
 
-use App\Enum\AccountPayable\Status as ApStatus;
-use App\Enum\AccountReceivable\Status as ArStatus;
 use App\Filament\Operation\Concerns\AuthorizesCommercialWidget;
-use App\Models\AccountPayable;
-use App\Models\AccountReceivable;
+use App\Models\AccountPayableInstallment;
+use App\Models\AccountReceivableInstallment;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Contracts\Support\Htmlable;
@@ -36,24 +34,14 @@ class AccountsChart extends ChartWidget
             return ['datasets' => [], 'labels' => []];
         }
 
-        $arTotal = AccountReceivable::query()
+        $arTotal = AccountReceivableInstallment::query()->open()
             ->where('company_id', $tenantId)
-            ->whereIn('status', [
-                ArStatus::PENDING->value,
-                ArStatus::OVERDUE->value,
-                ArStatus::PARTIALLY_RECEIVED->value,
-            ])
-            ->selectRaw('COALESCE(SUM(due_amount - COALESCE(paid_amount, 0)), 0) as total')
+            ->selectRaw('COALESCE(SUM(balance_amount), 0) as total')
             ->value('total') / 100;
 
-        $apTotal = AccountPayable::query()
+        $apTotal = AccountPayableInstallment::query()->open()
             ->where('company_id', $tenantId)
-            ->whereIn('status', [
-                ApStatus::PENDING->value,
-                ApStatus::OVERDUE->value,
-                ApStatus::PARTIALLY_PAID->value,
-            ])
-            ->selectRaw('COALESCE(SUM(due_amount - COALESCE(paid_amount, 0)), 0) as total')
+            ->selectRaw('COALESCE(SUM(balance_amount), 0) as total')
             ->value('total') / 100;
 
         return [

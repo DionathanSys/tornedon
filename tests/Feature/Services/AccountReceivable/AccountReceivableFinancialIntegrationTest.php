@@ -67,6 +67,7 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
+        $this->customer->companies()->attach($this->company, ['is_active' => true, 'type' => '["customer"]']);
         $this->financialAccount = FinancialAccount::create([
             'company_id' => $this->company->id,
             'name' => 'Caixa Principal',

@@ -61,6 +61,7 @@ final class BankSlipIssuanceService
     ): ?BankSlip {
         $bankSlip = DB::transaction(function () use ($installment, $requireAutomaticIssuance): ?BankSlip {
             $installment = AccountReceivableInstallment::query()
+                ->considered()
                 ->with('accountReceivable')
                 ->lockForUpdate()
                 ->find($installment->id);

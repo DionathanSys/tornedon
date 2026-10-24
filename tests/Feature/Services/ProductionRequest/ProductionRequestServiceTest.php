@@ -57,6 +57,7 @@ class ProductionRequestServiceTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
+        $this->customer->companies()->attach($this->company, ['is_active' => true, 'type' => '["customer"]']);
         $this->product = Product::query()->create([
             'company_id' => $this->company->id,
             'product_code' => 'PRTESTE01',

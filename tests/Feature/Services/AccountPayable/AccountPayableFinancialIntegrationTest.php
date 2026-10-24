@@ -60,6 +60,7 @@ class AccountPayableFinancialIntegrationTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
+        $this->supplier->companies()->attach($this->company, ['is_active' => true, 'type' => '["supplier"]']);
         $this->financialAccount = FinancialAccount::create([
             'company_id' => $this->company->id,
             'name' => 'Conta Banco',

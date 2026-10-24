@@ -15,6 +15,11 @@ class CreateAccountPayable extends CreateRecord
 {
     protected static string $resource = AccountPayableResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $tenant = Filament::getTenant();
@@ -31,8 +36,8 @@ class CreateAccountPayable extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         Log::debug('CreateAccountPayable: Iniciando criação de conta a pagar', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
-            'data'   => $data,
+            'metodo' => __METHOD__.'@'.__LINE__,
+            'data' => $data,
         ]);
 
         $service = app(AccountPayableService::class);
@@ -40,10 +45,10 @@ class CreateAccountPayable extends CreateRecord
 
         if ($service->hasError() || $accountPayable === null) {
             Log::error($service->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $service->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $service->getMessage(),
                 'error_code' => $service->getErrorCode(),
-                'errors'     => $service->getErrors(),
+                'errors' => $service->getErrors(),
             ]);
 
             notify::error(
@@ -55,7 +60,7 @@ class CreateAccountPayable extends CreateRecord
         }
 
         Log::info('CreateAccountPayable: Conta a pagar criada com sucesso', [
-            'metodo'             => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'account_payable_id' => $accountPayable->id,
         ]);
 

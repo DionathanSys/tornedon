@@ -30,6 +30,7 @@ class ProcessAutoReceivableReceiptsCommand extends Command
         $failed = 0;
 
         AccountReceivableInstallment::query()
+            ->considered()
             ->whereDate('due_date', $targetDate)
             ->where('balance_amount', '>', 0)
             ->where('status', '!=', Status::CANCELLED->value)

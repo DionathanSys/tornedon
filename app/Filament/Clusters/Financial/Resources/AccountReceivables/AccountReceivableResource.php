@@ -3,13 +3,13 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables;
 
 use App\Filament\Clusters\Financial\FinancialCluster;
+use App\Filament\Clusters\Financial\RelationManagers\AccountAttachmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\CreateAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\ListAccountReceivables;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas\AccountReceivableForm;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables\AccountReceivablesTable;
-use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\AccountReceivable;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -50,7 +50,8 @@ class AccountReceivableResource extends Resource
     {
         return [
             InstallmentsRelationManager::class,
-            AttachmentsRelationManager::class,
+            RelationManagers\PaymentsRelationManager::class,
+            AccountAttachmentsRelationManager::class,
         ];
     }
 
@@ -59,6 +60,7 @@ class AccountReceivableResource extends Resource
         return [
             'index' => ListAccountReceivables::route('/'),
             'create' => CreateAccountReceivable::route('/create'),
+            'view' => Pages\ViewAccountReceivable::route('/{record}'),
             'edit' => EditAccountReceivable::route('/{record}/edit'),
         ];
     }

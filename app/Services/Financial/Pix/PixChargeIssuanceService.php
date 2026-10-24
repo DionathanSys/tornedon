@@ -64,6 +64,7 @@ final class PixChargeIssuanceService
     ): ?PixCharge {
         return DB::transaction(function () use ($installment, $requireAutomaticIssuance): ?PixCharge {
             $installment = AccountReceivableInstallment::query()
+                ->considered()
                 ->with('accountReceivable')
                 ->lockForUpdate()
                 ->find($installment->id);

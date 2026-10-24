@@ -67,6 +67,7 @@ class AccountPayableResource extends Resource
         return [
             'index' => ListAccountPayables::route('/'),
             'create' => CreateAccountPayable::route('/create'),
+            'view' => Pages\ViewAccountPayable::route('/{record}'),
             'edit' => EditAccountPayable::route('/{record}/edit'),
         ];
     }

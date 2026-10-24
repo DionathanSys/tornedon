@@ -29,6 +29,7 @@ class ProcessAutoPayablePaymentsCommand extends Command
         $failed = 0;
 
         AccountPayableInstallment::query()
+            ->considered()
             ->with(['accountPayable.supplier'])
             ->whereDate('due_date', $targetDate)
             ->where('balance_amount', '>', 0)

@@ -3,19 +3,19 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\Tables;
 
 use App\Enum\AccountReceivable\Status;
-use App\Filament\Clusters\Financial\Actions\ChangeInstallmentStatusBulkAction;
+use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use App\Models\AccountReceivableInstallment;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -40,7 +40,7 @@ class AccountReceivableInstallmentsTable
                     })
                     ->limit(40)
                     ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
-                        ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
+                        ? AccountReceivableResource::getUrl('view', ['record' => $record->accountReceivable])
                         : null),
                 TextColumn::make('accountReceivable.document_number')
                     ->label('Nº Documento')
@@ -82,6 +82,7 @@ class AccountReceivableInstallmentsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('status')
+                    ->description(fn ($record) => $record->ignored_at ? 'Ignorada no módulo' : ($record->status->value !== 'cancelled' && (float) $record->balance_amount > 0 && $record->due_date->lt(today()) ? 'Vencida' : null))
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
@@ -121,19 +122,20 @@ class AccountReceivableInstallmentsTable
                     ->label('Vencimento')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar()
-                    ->defaultLast7Days(),
+                    ->alwaysShowCalendar(),
             ])
             ->recordActions([
                 ActionGroup::make([
                     RegisterInstallmentPaymentAction::make(),
                     EditInstallmentAction::make(),
                     DeleteInstallmentAction::make(),
+                    IgnoreFinancialAction::make(),
+                    IgnoreFinancialAction::make(restore: true),
                     Action::make('open_account')
                         ->label('Abrir agrupador')
                         ->icon('heroicon-o-folder-open')
                         ->url(fn (AccountReceivableInstallment $record): ?string => $record->accountReceivable
-                            ? AccountReceivableResource::getUrl('edit', ['record' => $record->accountReceivable])
+                            ? AccountReceivableResource::getUrl('view', ['record' => $record->accountReceivable])
                             : null), ])->icon(Heroicon::Bars3),
             ], RecordActionsPosition::BeforeCells)
             ->toolbarActions([
@@ -143,11 +145,11 @@ class AccountReceivableInstallmentsTable
                     ->color('gray')
                     ->url(AccountReceivableResource::getUrl('create')),
                 RefreshChartAccountFromCategoryBulkAction::make(),
-                ChangeInstallmentStatusBulkAction::make(AccountReceivableInstallment::class),
+                IgnoreFinancialAction::make(bulk: true),
+                IgnoreFinancialAction::make(restore: true, bulk: true),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
             ->emptyStateDescription('As parcelas das contas a receber aparecerao aqui.')
-            ->columnManagerLayout(ColumnManagerLayout::Modal)
-            ->columnManagerColumns(2);
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table));
     }
 }

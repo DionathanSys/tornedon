@@ -276,6 +276,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
             'document_number' => '22345678000188',
             'created_by' => $user->id,
         ]);
+        $supplier->companies()->attach($company, ['is_active' => true, 'type' => '["supplier"]']);
 
         $product = Product::query()->create([
             'company_id' => $company->id,

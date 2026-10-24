@@ -77,7 +77,7 @@ class OperationResourceInteractionsTest extends TestCase
         $this->assertSame($company->id, $record->company_id);
         $this->assertStringContainsString('toast(', json_encode($page->effects));
         $this->assertEmpty(session('filament.notifications', []));
-        $page->assertRedirect(Support::resource($module)::getUrl('edit', ['record' => $record]));
+        $page->assertRedirect(Support::resource($module)::getUrl(str_starts_with($module, 'account_') ? 'view' : 'edit', ['record' => $record]));
         if (str_starts_with($module, 'account_')) {
             $this->assertSame(3, $record->installments()->count());
             $this->assertEquals(300, $record->due_amount);
@@ -233,6 +233,12 @@ class OperationResourceInteractionsTest extends TestCase
             $data['sequence_number'] = '01';
         }
         $record = Support::definition($module)['model']::create([...$data, 'company_id' => $company->id]);
+        if (str_starts_with($module, 'account_')) {
+            $record->installments()->create([
+                'company_id' => $company->id, 'sequence_number' => '01', 'status' => 'pending',
+                'due_date' => today(), 'original_amount' => 100, 'due_amount' => 100, 'balance_amount' => 100,
+            ]);
+        }
         Filament::setTenant($tenant);
 
         return $record;

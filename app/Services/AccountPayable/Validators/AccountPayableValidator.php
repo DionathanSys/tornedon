@@ -5,7 +5,9 @@ namespace App\Services\AccountPayable\Validators;
 use App\Enum\AccountPayable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Models\AccountPayable;
 use App\Models\FinancialAccount;
+use App\Support\Financial\AccountEditGuard;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -58,12 +60,13 @@ class AccountPayableValidator
      */
     public static function validateCreate(array $data): array
     {
+        AccountEditGuard::validateRelationships($data, 'supplier_id');
         $rules = array_merge(self::commonRules(), [
             'supplier_id' => 'nullable|integer|exists:partners,id',
             'company_id' => 'required|integer|exists:companies,id',
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'required|string|max:2',
-            'status' => ['required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
+            'status' => ['required', Rule::in(array_map(fn ($s) => $s->value, Status::cases()))],
             'installment_count' => 'nullable|integer|min:1|max:24',
             'installment_due_mode' => ['nullable', Rule::in([
                 ...array_keys(PaymentCondition::installmentIntervalOptions()),
@@ -121,6 +124,7 @@ class AccountPayableValidator
 
             if (! $account) {
                 $validator->errors()->add('auto_payment_financial_account_id', 'Conta financeira nao encontrada.');
+
                 return;
             }
 
@@ -137,12 +141,17 @@ class AccountPayableValidator
      */
     public static function validateUpdate(array $data, int $id): array
     {
+        $record = AccountPayable::findOrFail($id);
+        $data['company_id'] = $record->company_id;
+        AccountEditGuard::validateRelationships([...$record->attributesToArray(), ...$data], 'supplier_id');
         $rules = array_merge(self::commonRules(), [
+            'due_date' => 'sometimes|required|date',
+            'due_amount' => 'sometimes|required|numeric|min:0',
             'supplier_id' => 'sometimes|nullable|integer|exists:partners,id',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'fiscal_document_id' => 'sometimes|nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'sometimes|required|string|max:2',
-            'status' => ['sometimes', 'required', Rule::in(array_map(fn($s) => $s->value, Status::cases()))],
+            'status' => ['sometimes', 'required', Rule::in(array_map(fn ($s) => $s->value, Status::cases()))],
         ]);
 
         $validator = Validator::make($data, $rules, self::messages());

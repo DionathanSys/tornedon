@@ -19,6 +19,7 @@ use App\Services\AccountPayable\Validators\AccountPayableValidator;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
+use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentPaymentGuard;
 use App\Support\Financial\InstallmentSchedule;
@@ -324,11 +325,15 @@ class AccountPayableService
         try {
             return $this->financialTransaction(function () use ($accountPayable, $data, $updatedBy) {
                 $accountPayable = AccountPayable::query()->lockForUpdate()->findOrFail($accountPayable->id);
+                AccountEditGuard::validate($accountPayable, $data);
+                $reason = $data['counterparty_change_reason'] ?? null;
+                unset($data['counterparty_change_reason']);
                 $audit = app(AuditRecorder::class);
                 $before = $audit->snapshot($accountPayable);
                 unset($data['paid'], $data['paid_amount'], $data['paid_date'], $data['status']);
-                $data['supplier_id'] = $this->normalizeCounterpartyId($data['supplier_id'] ?? null);
-                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
+                $data['supplier_id'] = $this->normalizeCounterpartyId(array_key_exists('supplier_id', $data) ? $data['supplier_id'] : $accountPayable->supplier_id);
+                $data['manual_counterparty_name'] = $this->normalizeCounterpartyName(array_key_exists('manual_counterparty_name', $data) ? $data['manual_counterparty_name'] : $accountPayable->manual_counterparty_name);
+                $data['company_id'] = $accountPayable->company_id;
                 unset($data['is_manual_counterparty']);
 
                 $action = new UpdateAccountPayableAction($updatedBy, $accountPayable);
@@ -377,6 +382,7 @@ class AccountPayableService
                     $before,
                     $audit->snapshot($synced),
                     $updatedBy,
+                    metadata: ['counterparty_change_reason' => $reason],
                 );
 
                 $this->setSuccess('Conta a pagar atualizada com sucesso');
@@ -388,6 +394,10 @@ class AccountPayableService
 
                 return $synced;
             });
+        } catch (ValidationException $e) {
+            $this->setError($e->validator->errors()->first(), $e->errors(), 422);
+
+            return null;
         } catch (\Exception $e) {
             $this->setError('Erro ao atualizar conta a pagar');
 

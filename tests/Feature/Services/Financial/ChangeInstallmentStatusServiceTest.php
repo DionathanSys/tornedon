@@ -42,8 +42,8 @@ class ChangeInstallmentStatusServiceTest extends TestCase
         $records = new Collection([$this->installment($model, $company), $this->installment($model, $company)]);
         $before = $records->map(fn ($record) => $record->fresh()->getRawOriginal());
 
-        Livewire::test($page)->removeTableFilters()->callTableBulkAction('change_status_without_movement', $records, ['status' => $status])
-            ->assertHasNoTableBulkActionErrors();
+        // Legacy service remains compatible; the UI now uses explicit consideration instead.
+        app(ChangeInstallmentStatusService::class)->change($records, $model, $status, $user, $company, 'admin');
 
         foreach ($records as $index => $record) {
             $after = $record->fresh()->getRawOriginal();
@@ -63,7 +63,7 @@ class ChangeInstallmentStatusServiceTest extends TestCase
     {
         [$user, $company] = $this->authenticate();
         $record = $this->installment($model, $company);
-        Livewire::test($page)->assertTableBulkActionHidden('change_status_without_movement');
+        Livewire::test($page)->assertTableBulkActionHidden('ignore_financial');
 
         $this->expectException(HttpException::class);
         app(ChangeInstallmentStatusService::class)->change(new Collection([$record]), $model, $status, $user, $company, 'admin');

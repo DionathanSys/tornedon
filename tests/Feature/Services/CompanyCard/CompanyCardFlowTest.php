@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\CompanyCard;
 
+use App\Enum\Financial\FinancialAccountType;
 use App\Models\Company;
 use App\Models\CompanyCardStatementPayment;
 use App\Models\CompanyCardTransaction;
@@ -12,7 +13,6 @@ use App\Models\User;
 use App\Services\CompanyCard\CompanyCardStatementPaymentService;
 use App\Services\CompanyCard\CompanyCardStatementService;
 use App\Services\CompanyCard\CompanyCardTransactionService;
-use App\Enum\Financial\FinancialAccountType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,11 +21,17 @@ class CompanyCardFlowTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Company $company;
+
     private Partner $issuerPartner;
+
     private Partner $vendor;
+
     private FinancialAccount $defaultAccount;
+
     private FinancialAccount $secondaryAccount;
+
     private CompanyCreditCard $card;
 
     protected function setUp(): void
@@ -55,6 +61,7 @@ class CompanyCardFlowTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
+        $this->issuerPartner->companies()->attach($this->company, ['is_active' => true, 'type' => '["supplier"]']);
         $this->defaultAccount = FinancialAccount::create([
             'company_id' => $this->company->id,
             'name' => 'Conta Principal',

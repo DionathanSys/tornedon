@@ -11,6 +11,7 @@ use App\Models\CompanyPreference;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Models\Partner;
+use App\Support\Financial\AccountEditGuard;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
@@ -18,6 +19,17 @@ use Illuminate\Validation\Rule;
 
 trait HasModuleForm
 {
+    public function accountHeaderLocked(): bool
+    {
+        return $this->formEditing() && str_starts_with($this->moduleKey(), 'account_') && $this->record->payments()->exists();
+    }
+
+    public function counterpartyLocked(): bool
+    {
+        return $this->formEditing() && str_starts_with($this->moduleKey(), 'account_')
+            && ! AccountEditGuard::canChangeCounterparty($this->record);
+    }
+
     public array $data = [];
 
     public function formEditing(): bool
@@ -108,6 +120,7 @@ trait HasModuleForm
         $this->resetValidation();
         $module = $this->moduleKey();
         $editing = $this->formEditing();
+        abort_if($this->accountHeaderLocked(), 403, 'O cabeçalho não pode ser alterado após uma baixa.');
         $data = $this->data;
         $partner = $this->partnerField();
         if ($module === 'production_requests' && $editing) {
@@ -180,6 +193,10 @@ trait HasModuleForm
             }
         });
         $validated = $validator->validate()['data'];
+        if ($editing && str_starts_with($module, 'account_')) {
+            unset($validated['due_date'], $validated['due_amount']);
+            $validated['counterparty_change_reason'] = $data['counterparty_change_reason'] ?? null;
+        }
         $validated['company_id'] = Filament::getTenant()->id;
         if (! $editing && $module !== 'cash_movements') {
             $validated['status'] = $module === 'production_requests' ? 'open' : 'pending';

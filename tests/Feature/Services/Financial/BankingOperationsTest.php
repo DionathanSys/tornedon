@@ -36,7 +36,9 @@ use App\Services\Financial\Banking\Providers\IntegraBancosResponse;
 use App\Services\Financial\Banking\Providers\IntegraBancosSdkTransport;
 use App\Services\Financial\Banking\Providers\IntegraBancosTokenManager;
 use App\Services\Financial\CashMovementService;
+use App\Services\Financial\IgnoreFinancialInstallmentsService;
 use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -75,6 +77,7 @@ class BankingOperationsTest extends TestCase
         ]);
         $category = FinancialCategory::create(['company_id' => $this->company->id, 'name' => 'Receitas', 'is_active' => true, 'allow_receivable' => true, 'allow_cash_movement' => true]);
         $customer = Partner::create(['name' => 'Cliente', 'document_type' => 'CPF', 'document_number' => '12345678901', 'created_by' => $this->user->id]);
+        $customer->companies()->attach($this->company, ['is_active' => true, 'type' => '["customer"]']);
         $service = app(AccountReceivableService::class);
         $receivable = $service->create([
             'company_id' => $this->company->id, 'customer_id' => $customer->id, 'due_date' => '2026-10-01',
@@ -86,6 +89,26 @@ class BankingOperationsTest extends TestCase
             'bank_account_connection_id' => $this->connection->id, 'financial_account_id' => $account->id,
             'status' => 'pending_registration', 'provider_identification' => 'PHASE2-001', 'amount' => 100, 'due_date' => '2026-10-01',
         ]);
+    }
+
+    public function test_active_bank_charge_blocks_counterparty_and_ignoring(): void
+    {
+        $installment = $this->slip->installment;
+        $account = $installment->accountReceivable;
+        $service = app(AccountReceivableService::class);
+        $this->assertNull($service->update($account, ['manual_counterparty_name' => 'Outro pagador', 'counterparty_change_reason' => 'Correção do pagador'], $this->user->id));
+        $this->assertArrayHasKey('customer_id', $service->getErrors());
+        $this->user->companyAccesses()->create(['company_id' => $this->company->id,
+            'permissions' => ['account_receivables.access', 'account_receivables.change_status_without_movement'], 'panels' => ['admin' => true], 'navigation' => []]);
+        try {
+            app(IgnoreFinancialInstallmentsService::class)->change(new Collection([$account]), true, 'Anterior ao corte', $this->user, $this->company, 'admin');
+            $this->fail('Cobrança ativa deve impedir desconsideração.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('reason', $e->errors());
+        }
+        $this->assertNull($installment->fresh()->ignored_at);
+        $this->assertSame('2026-10-01', $installment->fresh()->due_date->toDateString());
+        $this->assertSame('pending_registration', $this->slip->fresh()->status->value);
     }
 
     private function observe(array $body, string $operation = 'query', string $source = 'query', BankSlip|PixCharge|null $charge = null): BankingEvent

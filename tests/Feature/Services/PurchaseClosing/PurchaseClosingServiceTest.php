@@ -146,6 +146,8 @@ class PurchaseClosingServiceTest extends TestCase
             'created_by' => $user->id,
         ]);
 
+        $supplier->companies()->attach($company, ['is_active' => true, 'type' => '["supplier"]']);
+
         return [$user, $company, $supplier];
     }
 
@@ -154,8 +156,8 @@ class PurchaseClosingServiceTest extends TestCase
         $product = Product::query()->create([
             'company_id' => $company->id,
             'created_by' => $user->id,
-            'product_code' => 'PC-' . str_replace('-', '', $number),
-            'name' => 'Produto ' . $number,
+            'product_code' => 'PC-'.str_replace('-', '', $number),
+            'name' => 'Produto '.$number,
             'unit' => Unit::UN->value,
             'has_stock_control' => false,
             'origin_sale_price' => OriginSalePrice::FREE->value,

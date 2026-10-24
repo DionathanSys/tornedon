@@ -1030,6 +1030,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
             'document_number' => '22345678000188',
             'created_by' => $user->id,
         ]);
+        $customer->companies()->attach($company, ['is_active' => true, 'type' => '["customer"]']);
 
         $invoice = Invoice::query()->create([
             'customer_id' => $customer->id,

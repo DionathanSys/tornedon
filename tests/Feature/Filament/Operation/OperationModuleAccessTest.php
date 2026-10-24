@@ -97,6 +97,12 @@ class OperationModuleAccessTest extends TestCase
                     $data = ['company_id' => $owner->id, 'financial_account_id' => $account->id, 'direction' => 'inflow', 'transaction_date' => today(), 'amount' => 100, 'description' => $label];
                 }
                 $records[] = $model::create($data);
+                if ($model === AccountPayable::class || $model === AccountReceivable::class) {
+                    end($records)->installments()->create([
+                        'company_id' => $owner->id, 'sequence_number' => '01', 'status' => 'pending',
+                        'due_date' => today(), 'original_amount' => 100, 'due_amount' => 100, 'balance_amount' => 100,
+                    ]);
+                }
             }
             Filament::setTenant($company);
             $this->get($resource::getUrl(tenant: $company))

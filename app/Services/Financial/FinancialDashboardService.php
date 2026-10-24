@@ -32,6 +32,7 @@ class FinancialDashboardService
         };
 
         $query = $model::query()
+            ->considered()
             ->where('company_id', $companyId)
             ->whereIn('status', $statuses)
             ->where('balance_amount', '>', 0)

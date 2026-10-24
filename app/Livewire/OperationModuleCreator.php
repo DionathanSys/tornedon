@@ -48,7 +48,7 @@ class OperationModuleCreator extends Component
         }
         $this->showModal = false;
         $this->success($service->getMessage() ?: 'Registro criado com sucesso.');
-        $this->redirect(Support::resource($this->resourceModule)::getUrl('edit', ['record' => $record]), navigate: true);
+        $this->redirect(Support::resource($this->resourceModule)::getUrl(str_starts_with($this->resourceModule, 'account_') ? 'view' : 'edit', ['record' => $record]), navigate: true);
     }
 
     public function render(): mixed

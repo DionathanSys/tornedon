@@ -2,6 +2,8 @@
 
 namespace App\Policies;
 
+use App\Models\AccountPayable;
+use App\Models\AccountReceivable;
 use App\Models\User;
 use App\Services\Access\UserAccessService;
 use Filament\Facades\Filament;
@@ -32,7 +34,9 @@ abstract class FinancialRecordPolicy
 
     public function update(User $user, Model $record): bool
     {
-        return $this->view($user, $record);
+        return $this->view($user, $record)
+            && (! ($record instanceof AccountPayable || $record instanceof AccountReceivable)
+                || ! $record->payments()->exists());
     }
 
     public function delete(User $user, Model $record): bool

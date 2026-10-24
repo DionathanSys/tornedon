@@ -149,6 +149,7 @@ class PixChargeProcessingTest extends TestCase
 
     public function test_persists_automatic_pix_issuance_on_new_installments(): void
     {
+        $this->customer->companies()->syncWithoutDetaching([$this->company->id => ['is_active' => true, 'type' => '["customer"]']]);
         $service = app(AccountReceivableService::class);
         $receivable = $service->create([
             'customer_id' => $this->customer->id,

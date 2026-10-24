@@ -14,6 +14,7 @@ final class StatementLineReceivableInstallmentsTable
     {
         return $table
             ->query(fn (): Builder => AccountReceivableInstallment::query()
+                ->considered()
                 ->where('company_id', Filament::getTenant()->id)
                 ->where('balance_amount', '>', 0))
             ->recordTitleAttribute('description')

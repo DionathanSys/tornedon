@@ -31,6 +31,11 @@ abstract class ModuleEditPage extends Page
         return OperationResourceSupport::definition($this->moduleKey())['title'].' #'.$this->record->id;
     }
 
+    public function isAccountViewPage(): bool
+    {
+        return false;
+    }
+
     public function mount(int|string $record): void
     {
         $this->record = OperationResourceSupport::query($this->moduleKey())->findOrFail($record);
@@ -85,10 +90,12 @@ abstract class ModuleEditPage extends Page
     {
         $actions = [
             ['label' => 'Lista', 'icon' => 'o-arrow-left', 'url' => static::getResource()::getUrl()],
-            ['label' => 'Salvar', 'icon' => 'o-check', 'method' => 'save', 'primary' => true],
         ];
+        if (! $this->accountHeaderLocked() && ! $this->isAccountViewPage()) {
+            $actions[] = ['label' => 'Salvar', 'icon' => 'o-check', 'method' => 'save', 'primary' => true];
+        }
         if (str_starts_with($this->moduleKey(), 'account_')) {
-            if (in_array($this->record->status->value, OperationResourceSupport::definition($this->moduleKey())['pending'], true)) {
+            if ($this->record->installments()->open()->exists()) {
                 $actions[] = ['label' => $this->moduleKey() === 'account_receivables' ? 'Receber' : 'Pagar', 'icon' => 'o-banknotes', 'method' => 'registerPayment'];
             }
             $actions[] = ['label' => 'Excluir conta', 'icon' => 'o-trash', 'method' => 'deleteRecord', 'more' => true, 'confirm' => true];

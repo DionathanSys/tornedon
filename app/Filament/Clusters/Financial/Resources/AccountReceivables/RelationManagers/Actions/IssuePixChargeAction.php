@@ -40,6 +40,9 @@ final class IssuePixChargeAction
                     ->helperText('A conta precisa possuir conexão ativa com capacidade PIX.'),
             ])
             ->visible(function (AccountReceivableInstallment $record): bool {
+                if ($record->ignored_at) {
+                    return false;
+                }
                 if ($record->accountReceivable?->payment_method !== PaymentMethod::PIX) {
                     return false;
                 }

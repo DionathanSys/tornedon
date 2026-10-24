@@ -94,12 +94,12 @@ class FinancialDashboard extends Page
 
     public function accountUrl(Model $account, string $type): ?string
     {
-        if (! Gate::allows('update', $account)) {
+        if (! Gate::allows('view', $account)) {
             return null;
         }
 
         $resource = $type === 'receivable' ? AccountReceivableResource::class : AccountPayableResource::class;
 
-        return $resource::getUrl('edit', ['record' => $account]);
+        return $resource::getUrl('view', ['record' => $account]);
     }
 }

@@ -23,6 +23,7 @@ final class RegisterInstallmentPaymentAction
     public static function make(): Action
     {
         return Action::make('register_payment')
+            ->disabled(fn (AccountReceivableInstallment $record) => $record->ignored_at || $record->status->value === 'cancelled' || (float) $record->balance_amount <= 0)
             ->label('Registrar recebimento / antecipação')
             ->icon('heroicon-o-currency-dollar')
             ->color('success')

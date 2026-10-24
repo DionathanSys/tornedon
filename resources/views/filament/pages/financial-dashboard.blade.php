@@ -65,7 +65,7 @@
                         </x-filament::section>
 
                         <x-filament::section :heading="'Parcelas · ' . $periodLabel">
-                            <div class="financial-dashboard__list" role="list" aria-label="{{ $label }}">
+                            <div class="financial-dashboard__list" role="list" aria-label="{{ $label }}" tabindex="0">
                                 @forelse($dashboard[$type]['rows'] as $row)
                                     @php
                                         $account = $type === 'receivable' ? $row->accountReceivable : $row->accountPayable;
@@ -83,7 +83,7 @@
                                 @endforelse
                             </div>
                             @if($dashboard[$type]['rows']->hasPages())
-                                <div class="financial-dashboard__pagination">{{ $dashboard[$type]['rows']->links() }}</div>
+                                <x-financial.pagination :paginator="$dashboard[$type]['rows']" :label="'Paginação de ' . $label" />
                             @endif
                         </x-filament::section>
                     </div>

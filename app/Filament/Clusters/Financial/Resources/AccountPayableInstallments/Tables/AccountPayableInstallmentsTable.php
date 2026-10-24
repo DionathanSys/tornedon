@@ -3,12 +3,13 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayableInstallments\Tables;
 
 use App\Enum\AccountPayable\Status;
-use App\Filament\Clusters\Financial\Actions\ChangeInstallmentStatusBulkAction;
+use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayableInstallment;
 use Filament\Actions\Action;
@@ -16,7 +17,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -37,7 +37,7 @@ class AccountPayableInstallmentsTable
                     ->sortable()
                     ->limit(40)
                     ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
-                        ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
+                        ? AccountPayableResource::getUrl('view', ['record' => $record->accountPayable])
                         : null),
                 TextColumn::make('accountPayable.document_number')
                     ->label('Nº Documento')
@@ -71,19 +71,19 @@ class AccountPayableInstallmentsTable
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('due_amount')->money('BRL', 100))
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('paid_amount')
                     ->label('Valor Pago')
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('paid_amount')->money('BRL', 100))
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('balance_amount')
                     ->label('Saldo')
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('balance_amount')->money('BRL', 100))
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('interest_amount')
                     ->label('Juros')
                     ->money('BRL')
@@ -100,6 +100,7 @@ class AccountPayableInstallmentsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
+                    ->description(fn ($record) => $record->ignored_at ? 'Ignorada no módulo' : ($record->status->value !== 'cancelled' && (float) $record->balance_amount > 0 && $record->due_date->lt(today()) ? 'Vencida' : null))
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
@@ -155,11 +156,13 @@ class AccountPayableInstallmentsTable
                     RegisterInstallmentPaymentAction::make(),
                     EditInstallmentAction::make(),
                     DeleteInstallmentAction::make(),
+                    IgnoreFinancialAction::make(),
+                    IgnoreFinancialAction::make(restore: true),
                     Action::make('open_account')
                         ->label('Abrir agrupador')
                         ->icon('heroicon-o-folder-open')
                         ->url(fn (AccountPayableInstallment $record): ?string => $record->accountPayable
-                            ? AccountPayableResource::getUrl('edit', ['record' => $record->accountPayable])
+                            ? AccountPayableResource::getUrl('view', ['record' => $record->accountPayable])
                             : null),
                 ])->icon(Heroicon::Bars3),
             ], RecordActionsPosition::BeforeCells)
@@ -170,11 +173,11 @@ class AccountPayableInstallmentsTable
                     ->color('gray')
                     ->url(AccountPayableResource::getUrl('create')),
                 RefreshChartAccountFromCategoryBulkAction::make(),
-                ChangeInstallmentStatusBulkAction::make(AccountPayableInstallment::class),
+                IgnoreFinancialAction::make(bulk: true),
+                IgnoreFinancialAction::make(restore: true, bulk: true),
             ])
             ->emptyStateHeading('Nenhuma parcela encontrada')
             ->emptyStateDescription('As parcelas das contas à pagar aparecerão aqui.')
-            ->columnManagerLayout(ColumnManagerLayout::Modal)
-            ->columnManagerColumns(2);
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table));
     }
 }

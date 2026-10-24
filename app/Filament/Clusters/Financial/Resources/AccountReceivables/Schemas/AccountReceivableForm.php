@@ -6,9 +6,6 @@ use App\Domain\DTO\Financial\CardReceivableCalculationDTO;
 use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
-use App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages\EditAccountReceivable;
-use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
@@ -18,6 +15,7 @@ use App\Models\CostCenter;
 use App\Models\ResultCenter;
 use App\Services\Financial\Banking\BankSlipEligibilityService;
 use App\Services\Financial\CardReceivableCalculatorService;
+use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -26,12 +24,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Operation;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class AccountReceivableForm
@@ -55,7 +51,7 @@ class AccountReceivableForm
                     ->schema([
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
-                            ->disabledOn('edit')
+                            ->disabled(fn ($record) => $record && ! AccountEditGuard::canChangeCounterparty($record))
                             ->live()
                             ->inline(false)
                             ->dehydrated(false)
@@ -77,16 +73,24 @@ class AccountReceivableForm
                             })
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         SelectPartner::make('customer_id', 'all')
+                            ->disabled(fn ($record) => $record && ! AccountEditGuard::canChangeCounterparty($record))
                             ->label('Cliente')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->required(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
                             ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
                         TextInput::make('manual_counterparty_name')
+                            ->disabled(fn ($record) => $record && ! AccountEditGuard::canChangeCounterparty($record))
                             ->label('Nome da Contraparte')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->maxLength(255)
                             ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
                             ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
+                        TextInput::make('counterparty_change_reason')
+                            ->label('Motivo da correção do parceiro')
+                            ->maxLength(1000)
+                            ->visibleOn('edit')
+                            ->helperText('Obrigatório ao alterar o parceiro ou o nome avulso.')
+                            ->columnSpanFull(),
                         Select::make('invoice_id')
                             ->label('Fatura')
                             ->columnSpan(['md' => 1])
@@ -161,11 +165,13 @@ class AccountReceivableForm
                     ->columnSpanFull()
                     ->schema([
                         DatePicker::make('due_date')
+                            ->visibleOn('create')
                             ->label('Data de Vencimento')
                             ->columnSpan(['md' => 2])
                             ->required()
                             ->displayFormat('d/m/Y'),
                         Money::make('due_amount')
+                            ->disabledOn('edit')
                             ->label('Valor à Receber')
                             ->columnSpan(['md' => 2])
                             ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
@@ -285,20 +291,6 @@ class AccountReceivableForm
                             ->disabled()
                             ->helperText('Controle automático por parcelas.'),
                     ]),
-                Livewire::make(InstallmentsRelationManager::class, fn (AccountReceivable $record) => [
-                    'ownerRecord' => $record,
-                    'pageClass' => EditAccountReceivable::class,
-                ])
-                    ->key('installments-relation-manager')
-                    ->columnSpanFull()
-                    ->visibleOn([Operation::Edit]),
-                Livewire::make(PaymentsRelationManager::class, fn (AccountReceivable $record) => [
-                    'ownerRecord' => $record,
-                    'pageClass' => EditAccountReceivable::class,
-                ])
-                    ->key('payments-relation-manager')
-                    ->columnSpanFull()
-                    ->visibleOn([Operation::Edit]),
                 Hidden::make('company_id'),
             ]);
     }

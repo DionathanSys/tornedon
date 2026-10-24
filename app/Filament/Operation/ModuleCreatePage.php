@@ -39,7 +39,7 @@ abstract class ModuleCreatePage extends Page
             return;
         }
         $this->success($service->getMessage() ?: 'Registro criado com sucesso.');
-        $this->redirect(static::getResource()::getUrl('edit', ['record' => $record]), navigate: true);
+        $this->redirect(static::getResource()::getUrl(str_starts_with($this->moduleKey(), 'account_') ? 'view' : 'edit', ['record' => $record]), navigate: true);
     }
 
     public function save(): void

@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Financial\Resources\AccountPayables\RelationMana
 
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeletePaymentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditPaymentAction;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
@@ -14,6 +15,11 @@ use Livewire\Attributes\On;
 class PaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'payments';
+
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
 
     protected static ?string $title = 'Pagamentos';
 
@@ -50,17 +56,17 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Juros')
                     ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('fine_amount')
                     ->label('Multa')
                     ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
                     ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('financialAccount.name')
                     ->label('Conta')
                     ->placeholder('-')
@@ -93,6 +99,7 @@ class PaymentsRelationManager extends RelationManager
                     }),
             ])
             ->toolbarActions([])
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table))
             ->emptyStateHeading('Nenhum pagamento registrado')
             ->emptyStateDescription('Os pagamentos desta conta a pagar aparecerao aqui.');
     }

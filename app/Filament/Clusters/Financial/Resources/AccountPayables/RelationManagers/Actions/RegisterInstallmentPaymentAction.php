@@ -23,6 +23,7 @@ final class RegisterInstallmentPaymentAction
     public static function make(): Action
     {
         return Action::make('register_payment')
+            ->disabled(fn (AccountPayableInstallment $record) => $record->ignored_at || $record->status->value === 'cancelled' || (float) $record->balance_amount <= 0)
             ->label('Registrar pagamento')
             ->icon('heroicon-o-currency-dollar')
             ->color('success')
@@ -46,7 +47,7 @@ final class RegisterInstallmentPaymentAction
                     Money::make('amount')
                         ->label('Valor pago')
                         ->columnSpan(1)
-                        ->default(fn (AccountPayableInstallment $record) => $record->due_amount)
+                        ->default(fn (AccountPayableInstallment $record) => $record->balance_amount)
                         ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                         ->required(),
                     Money::make('interest_amount')

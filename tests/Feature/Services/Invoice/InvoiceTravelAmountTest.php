@@ -103,6 +103,7 @@ class InvoiceTravelAmountTest extends TestCase
     private function createInvoiceWithTravel(): Invoice
     {
         $order = ServiceOrder::factory()->create(['travel_value' => 220.01]);
+        $order->customer->companies()->attach($order->company_id, ['is_active' => true, 'type' => '["customer"]']);
         $invoice = Invoice::create([
             'customer_id' => $order->customer_id,
             'company_id' => $order->company_id,

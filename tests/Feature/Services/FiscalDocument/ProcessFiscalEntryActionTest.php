@@ -2,21 +2,21 @@
 
 namespace Tests\Feature\Services\FiscalDocument;
 
-use App\Enum\Product\OriginSalePrice;
-use App\Enum\Product\Unit;
+use App\Enum\Financial\FinancialAccountType;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\OperationType;
-use App\Enum\Financial\FinancialAccountType;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
+use App\Enum\Product\OriginSalePrice;
+use App\Enum\Product\Unit;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
-use App\Models\CompanyCreditCard;
 use App\Models\Company;
+use App\Models\CompanyCreditCard;
+use App\Models\FinancialAccount;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
-use App\Models\FinancialAccount;
 use App\Models\Partner;
 use App\Models\Product;
 use App\Models\ProductStock;
@@ -49,6 +49,7 @@ class ProcessFiscalEntryActionTest extends TestCase
             'document_number' => '22345678000155',
             'created_by' => $user->id,
         ]);
+        $supplier->companies()->attach($company, ['is_active' => true, 'type' => '["supplier"]']);
 
         $document = FiscalDocument::create([
             'customer_id' => $supplier->id,
@@ -112,6 +113,7 @@ class ProcessFiscalEntryActionTest extends TestCase
             'document_number' => '22345678000157',
             'created_by' => $user->id,
         ]);
+        $supplier->companies()->attach($company, ['is_active' => true, 'type' => '["supplier"]']);
 
         $document = FiscalDocument::create([
             'customer_id' => $supplier->id,

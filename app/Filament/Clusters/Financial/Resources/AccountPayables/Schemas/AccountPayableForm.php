@@ -10,6 +10,7 @@ use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\CostCenter;
 use App\Models\FinancialAccount;
 use App\Models\ResultCenter;
+use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\InstallmentSchedule;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -44,7 +45,7 @@ class AccountPayableForm
                     ->schema([
                         Toggle::make('is_manual_counterparty')
                             ->label('Parceiro Avulso?')
-                            ->disabledOn('edit')
+                            ->disabled(fn ($record) => $record && ! AccountEditGuard::canChangeCounterparty($record))
                             ->live()
                             ->inline(false)
                             ->dehydrated(false)
@@ -66,16 +67,24 @@ class AccountPayableForm
                             })
                             ->columnSpan(['md' => 1, 'lg' => 1]),
                         SelectPartner::make('supplier_id', 'all')
+                            ->disabled(fn ($record) => $record && ! AccountEditGuard::canChangeCounterparty($record))
                             ->label('Fornecedor')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->required(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
                             ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false)),
                         TextInput::make('manual_counterparty_name')
+                            ->disabled(fn ($record) => $record && ! AccountEditGuard::canChangeCounterparty($record))
                             ->label('Nome da Contraparte')
                             ->columnSpan(['md' => 2, 'lg' => 5])
                             ->maxLength(255)
                             ->required(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
                             ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false)),
+                        TextInput::make('counterparty_change_reason')
+                            ->label('Motivo da correção do parceiro')
+                            ->maxLength(1000)
+                            ->visibleOn('edit')
+                            ->helperText('Obrigatório ao alterar o parceiro ou o nome avulso.')
+                            ->columnSpanFull(),
                         Select::make('fiscal_document_id')
                             ->label('Documento Fiscal')
                             ->columnSpan(['md' => 2, 'lg' => 4])
@@ -153,6 +162,7 @@ class AccountPayableForm
                     ->columnSpanFull()
                     ->schema([
                         DatePicker::make('due_date')
+                            ->visibleOn('create')
                             ->label('Data de Vencimento')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->required()
@@ -169,6 +179,7 @@ class AccountPayableForm
                             ->live()
                             ->visibleOn('create'),
                         Money::make('due_amount')
+                            ->disabledOn('edit')
                             ->label(fn (callable $get): string => $get('amount_input_mode') === 'per_installment'
                                 ? 'Valor de Cada Parcela'
                                 : 'Valor Total da Conta')

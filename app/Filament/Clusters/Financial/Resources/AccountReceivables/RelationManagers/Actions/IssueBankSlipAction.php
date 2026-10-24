@@ -46,6 +46,9 @@ final class IssueBankSlipAction
                     ->helperText('Selecione a conta bancária que possui provider ativo.'),
             ])
             ->visible(function (AccountReceivableInstallment $record): bool {
+                if ($record->ignored_at) {
+                    return false;
+                }
                 if ($record->accountReceivable?->payment_method !== PaymentMethod::BANK_SLIP) {
                     return false;
                 }

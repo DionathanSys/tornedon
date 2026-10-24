@@ -6,7 +6,9 @@ use App\Enum\AccountPayable\Status as PayableStatus;
 use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\ChartAccountType;
 use App\Enum\Financial\FinancialAccountType;
+use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
+use App\Models\CashMovement;
 use App\Models\ChartAccount;
 use App\Models\Company;
 use App\Models\CostCenter;
@@ -97,6 +99,7 @@ class FinancialClassificationSnapshotTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
+        $supplier->companies()->attach($this->company, ['is_active' => true, 'type' => '["supplier"]']);
         $service = app(AccountPayableService::class);
         $payable = $service->create([
             'supplier_id' => $supplier->id,
@@ -123,7 +126,7 @@ class FinancialClassificationSnapshotTest extends TestCase
 
     public function test_payment_can_override_installment_competence_and_cash_movement_uses_installment_classification(): void
     {
-        $payable = \App\Models\AccountPayable::query()->create([
+        $payable = AccountPayable::query()->create([
             'company_id' => $this->company->id,
             'manual_counterparty_name' => 'Fornecedor Avulso',
             'sequence_number' => '01',
@@ -157,7 +160,7 @@ class FinancialClassificationSnapshotTest extends TestCase
         ]);
 
         $this->assertNotNull($payment, $service->getMessage());
-        $movement = \App\Models\CashMovement::query()->first();
+        $movement = CashMovement::query()->first();
 
         $this->assertSame('2026-09-05', $installment->fresh()->competence_date->toDateString());
         $this->assertSame($this->chartAccount->id, $movement->chart_account_id);

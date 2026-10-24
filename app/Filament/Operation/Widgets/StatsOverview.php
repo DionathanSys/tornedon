@@ -2,13 +2,11 @@
 
 namespace App\Filament\Operation\Widgets;
 
-use App\Enum\AccountPayable\Status as AccountPayableStatus;
-use App\Enum\AccountReceivable\Status as AccountReceivableStatus;
 use App\Enum\Financial\CashMovementDirection;
 use App\Enum\ProductionRequest\Status as ProductionRequestStatus;
 use App\Filament\Operation\Concerns\AuthorizesCommercialWidget;
-use App\Models\AccountPayable;
-use App\Models\AccountReceivable;
+use App\Models\AccountPayableInstallment;
+use App\Models\AccountReceivableInstallment;
 use App\Models\CashMovement;
 use App\Models\ProductionRequest;
 use Filament\Facades\Filament;
@@ -49,24 +47,14 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->get()
             ->sum(fn (ProductionRequest $pr): float => (float) $pr->total_amount);
 
-        $arPending = AccountReceivable::query()
+        $arPending = AccountReceivableInstallment::query()->open()
             ->where('company_id', $tenantId)
-            ->whereIn('status', [
-                AccountReceivableStatus::PENDING->value,
-                AccountReceivableStatus::OVERDUE->value,
-                AccountReceivableStatus::PARTIALLY_RECEIVED->value,
-            ])
-            ->selectRaw('COALESCE(SUM(due_amount - COALESCE(paid_amount, 0)), 0) as total')
+            ->selectRaw('COALESCE(SUM(balance_amount), 0) as total')
             ->value('total');
 
-        $apPending = AccountPayable::query()
+        $apPending = AccountPayableInstallment::query()->open()
             ->where('company_id', $tenantId)
-            ->whereIn('status', [
-                AccountPayableStatus::PENDING->value,
-                AccountPayableStatus::OVERDUE->value,
-                AccountPayableStatus::PARTIALLY_PAID->value,
-            ])
-            ->selectRaw('COALESCE(SUM(due_amount - COALESCE(paid_amount, 0)), 0) as total')
+            ->selectRaw('COALESCE(SUM(balance_amount), 0) as total')
             ->value('total');
 
         $currentMonthStart = now()->startOfMonth();

@@ -8,19 +8,22 @@
 @endphp
 <div class="space-y-4">
     @if (! $production || ! $editing)
-    <x-mary-checkbox label="Contraparte avulsa" wire:model.live="data.is_manual_counterparty" :disabled="$editing && $module !== 'account_receivables'" />
+    <x-mary-checkbox label="Contraparte avulsa" wire:model.live="data.is_manual_counterparty" :disabled="$this->counterpartyLocked()" />
     @if ($data['is_manual_counterparty'] ?? false)
-        <x-mary-input label="Nome da contraparte" wire:model="data.manual_counterparty_name" maxlength="255" />
+        <x-mary-input label="Nome da contraparte" wire:model="data.manual_counterparty_name" maxlength="255" :disabled="$this->counterpartyLocked()" />
     @else
-        <x-operation.search-select :label="$module === 'account_payables' ? 'Fornecedor' : 'Cliente / parceiro'" :wire:model="'data.'.$partner" :options="$this->formOptions('partners')" offline />
+        <x-operation.search-select :label="$module === 'account_payables' ? 'Fornecedor' : 'Cliente / parceiro'" :wire:model="'data.'.$partner" :options="$this->formOptions('partners')" :disabled="$this->counterpartyLocked()" offline />
     @endif
+    @endif
+    @if ($editing && ! $production && ! $cash && ! $this->counterpartyLocked())
+        <x-mary-input label="Motivo da correção do parceiro" wire:model="data.counterparty_change_reason" maxlength="1000" />
     @endif
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        @if (! $production || ! $editing)
+        @if (! $editing || $cash)
         <x-mary-input :label="$production ? 'Data do pedido' : ($cash ? 'Data do movimento' : 'Vencimento')" type="date" :wire:model="'data.'.($production ? 'order_date' : ($cash ? 'transaction_date' : 'due_date'))" />
         @endif
         @if (! $production)
-            <x-mary-input label="Valor" prefix="R$" inputmode="decimal" :wire:model="'data.'.($cash ? 'amount' : 'due_amount')" />
+            <x-mary-input label="Valor" prefix="R$" inputmode="decimal" :wire:model="'data.'.($cash ? 'amount' : 'due_amount')" :disabled="$editing && ! $cash" />
         @endif
         @if ($cash)
             <x-mary-select label="Direção" wire:model="data.direction" :options="[['id' => 'inflow', 'name' => 'Entrada'], ['id' => 'outflow', 'name' => 'Saída']]" />

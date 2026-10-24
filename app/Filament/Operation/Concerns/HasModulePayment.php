@@ -24,7 +24,7 @@ trait HasModulePayment
         $record = Support::query($this->moduleKey())->findOrFail($id);
 
         return $record->installments()->where('company_id', Filament::getTenant()->id)
-            ->whereIn('status', Support::definition($this->moduleKey())['pending'])->orderBy('sequence_number')->first();
+            ->open()->orderBy('due_date')->orderBy('sequence_number')->first();
     }
 
     public function openRegisterPayment(int $id): void
@@ -37,7 +37,7 @@ trait HasModulePayment
             return;
         }
         $this->paymentRecordId = $id;
-        $this->paymentData = ['payment_date' => today()->toDateString(), 'amount' => number_format((float) ($installment->balance_amount ?: $installment->due_amount), 2, ',', '.'), 'interest_amount' => '0,00', 'fine_amount' => '0,00', 'discount_amount' => '0,00', 'financial_account_id' => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id), 'description' => $installment->description, 'notes' => null];
+        $this->paymentData = ['payment_date' => today()->toDateString(), 'amount' => number_format((float) $installment->balance_amount, 2, ',', '.'), 'interest_amount' => '0,00', 'fine_amount' => '0,00', 'discount_amount' => '0,00', 'financial_account_id' => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id), 'description' => $installment->description, 'notes' => null];
         $this->showPaymentForm = true;
     }
 

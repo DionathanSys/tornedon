@@ -36,6 +36,7 @@ final class ReconcilePayableInstallmentAction
                         ->getOptionLabelUsing(fn (mixed $value): ?string => blank($value)
                             ? null
                             : AccountPayableInstallment::query()
+                                ->considered()
                                 ->where('company_id', Filament::getTenant()->id)
                                 ->find($value)?->description)
                         ->selectAction(fn (Action $action): Action => $action

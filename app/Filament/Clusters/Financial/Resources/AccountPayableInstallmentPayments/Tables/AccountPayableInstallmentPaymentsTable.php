@@ -5,13 +5,13 @@ namespace App\Filament\Clusters\Financial\Resources\AccountPayableInstallmentPay
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeletePaymentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditPaymentAction;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\AccountPayableInstallmentPayment;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -126,13 +126,12 @@ class AccountPayableInstallmentPaymentsTable
                         ->label('Abrir agrupador')
                         ->icon('heroicon-o-folder-open')
                         ->url(fn (AccountPayableInstallmentPayment $record): ?string => $record->installment?->accountPayable
-                            ? AccountPayableResource::getUrl('edit', ['record' => $record->installment->accountPayable])
+                            ? AccountPayableResource::getUrl('view', ['record' => $record->installment->accountPayable])
                             : null),
                 ])->icon(Heroicon::Bars3),
             ], RecordActionsPosition::BeforeCells)
             ->emptyStateHeading('Nenhum pagamento registrado')
             ->emptyStateDescription('Os pagamentos de parcelas à pagar aparecerão aqui.')
-            ->columnManagerLayout(ColumnManagerLayout::Modal)
-            ->columnManagerColumns(2);
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table));
     }
 }

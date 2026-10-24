@@ -41,6 +41,7 @@ class InvoiceCardReceivableDueDateTest extends TestCase
             'document_number' => '12345678901',
             'created_by' => $user->id,
         ]);
+        $customer->companies()->attach($company, ['is_active' => true, 'type' => '["customer"]']);
         $invoice = Invoice::query()->create([
             'customer_id' => $customer->id,
             'company_id' => $company->id,
@@ -142,6 +143,7 @@ class InvoiceCardReceivableDueDateTest extends TestCase
             'document_number' => '10987654321',
             'created_by' => $user->id,
         ]);
+        $customer->companies()->attach($company, ['is_active' => true, 'type' => '["customer"]']);
         $invoice = Invoice::query()->create([
             'customer_id' => $customer->id,
             'company_id' => $company->id,

@@ -30,6 +30,9 @@ final class InstallmentPaymentGuard
 
     public static function validate(Model $installment, Model $account, float $amount, array $charges, ?int $replacedPaymentId = null, bool $allowZero = false): void
     {
+        if ($installment->ignored_at && ! $allowZero) {
+            throw ValidationException::withMessages(['ignored_at' => ['Restaure a consideração da parcela antes de registrar ou alterar uma baixa.']]);
+        }
         if ((int) $installment->company_id !== (int) $account->company_id) {
             throw ValidationException::withMessages(['company_id' => ['Empresa da parcela divergente da conta.']]);
         }

@@ -2,13 +2,14 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages;
 
+use App\Filament\Clusters\Financial\Concerns\HasFinancialTabs;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Support\Icons\Heroicon;
 
 class ListAccountReceivables extends ListRecords
 {
+    use HasFinancialTabs;
+
     protected static string $resource = AccountReceivableResource::class;
 
     protected function getHeaderActions(): array

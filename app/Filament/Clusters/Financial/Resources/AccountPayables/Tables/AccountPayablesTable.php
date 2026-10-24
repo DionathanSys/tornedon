@@ -3,11 +3,16 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Tables;
 
 use App\Enum\AccountPayable\Status;
+use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
+use App\Filament\Clusters\Financial\Resources\Components\AccountSummary;
+use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use App\Models\FinancialCategory;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +27,10 @@ class AccountPayablesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => AccountSummary::query($query))
             ->columns([
+                TextColumn::make('consideration')->label('No módulo')->state(fn ($record) => $record->ignored_count > 0
+                    ? ((float) $record->considered_balance > 0 ? 'Parcialmente ignorada' : 'Ignorada') : 'Considerada')->badge(),
                 TextColumn::make('counterparty_label')
                     ->label('Fornecedor')
                     ->searchable(query: function (Builder $query, string $search): Builder {
@@ -31,7 +39,7 @@ class AccountPayablesTable
                                 ->orWhere('manual_counterparty_name', 'like', "%{$search}%");
                         });
                     })
-                    ->sortable()
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw('COALESCE((SELECT name FROM partners WHERE partners.id = account_payables.supplier_id AND partners.deleted_at IS NULL), manual_counterparty_name, ?) '.($direction === 'desc' ? 'desc' : 'asc'), ['']))
                     ->limit(40),
                 TextColumn::make('document_number')
                     ->label('Nº Documento')
@@ -53,10 +61,14 @@ class AccountPayablesTable
                     ->searchable()
                     ->limit(40)
                     ->placeholder('-'),
-                TextColumn::make('due_date')
-                    ->label('Vencimento')
-                    ->date('d/m/Y')
-                    ->sortable(),
+                TextColumn::make('next_due_date')
+                    ->label('Próximo vencimento aberto')
+                    ->state(fn ($record) => $record->next_open_due_date)
+                    ->date('d/m/Y'),
+                TextColumn::make('open_balance')
+                    ->label('Saldo considerado')
+                    ->state(fn ($record) => (float) $record->considered_balance / 100)
+                    ->money('BRL'),
                 TextColumn::make('status')
                     ->label('Status')
                     ->sortable()
@@ -71,7 +83,7 @@ class AccountPayablesTable
                     ->label('Valor Pago')
                     ->money('BRL')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('paid')
                     ->label('Pago')
                     ->boolean()
@@ -115,6 +127,9 @@ class AccountPayablesTable
             ->recordActions([
                 EditAction::make()
                     ->iconButton(),
+                ViewAction::make()->iconButton(),
+                IgnoreFinancialAction::make(),
+                IgnoreFinancialAction::make(restore: true),
                 DeleteAction::make()
                     ->iconButton(),
             ])
@@ -124,8 +139,10 @@ class AccountPayablesTable
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small),
             ])
+            ->recordUrl(fn ($record) => AccountPayableResource::getUrl('view', ['record' => $record]))
             ->bulkActions([
                 DeleteBulkAction::make(),
-            ]);
+            ])
+            ->tap(fn (Table $table) => FinancialTableColumns::configure($table));
     }
 }

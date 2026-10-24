@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables;
 
 use App\Filament\Clusters\Financial\FinancialCluster;
+use App\Filament\Clusters\Financial\RelationManagers\AccountAttachmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\CreateAccountPayable;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\EditAccountPayable;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\ListAccountPayables;
@@ -10,7 +11,6 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\I
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas\AccountPayableForm;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Tables\AccountPayablesTable;
-use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\AccountPayable;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationGroup;
@@ -55,7 +55,7 @@ class AccountPayableResource extends Resource
                 InstallmentsRelationManager::class,
                 PaymentsRelationManager::class,
             ]),
-            AttachmentsRelationManager::class,
+            AccountAttachmentsRelationManager::class,
         ];
     }
 
@@ -64,6 +64,7 @@ class AccountPayableResource extends Resource
         return [
             'index' => ListAccountPayables::route('/'),
             'create' => CreateAccountPayable::route('/create'),
+            'view' => Pages\ViewAccountPayable::route('/{record}'),
             'edit' => EditAccountPayable::route('/{record}/edit'),
         ];
     }
