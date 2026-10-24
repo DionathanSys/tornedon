@@ -81,14 +81,19 @@ class GenerateSefazDistributionPayableAction
                 'sequence_number' => '01',
                 'status' => AccountPayableStatus::PENDING->value,
                 'payment_method' => $paymentData['payment_method'],
-                'due_date' => $paymentData['due_date'],
+                'due_date' => $paymentData['due_date'] ?? now()->toDateString(),
                 'due_amount' => $amount,
                 'description' => $description,
                 'document_number' => $locked->document_key,
                 'note_number' => $locked->document_number,
             ];
 
-            $installmentCount = $condition->installments();
+            $installmentCount = \App\Support\Financial\PaymentTerms::count($condition, $paymentData['payment_condition_details'] ?? null);
+            if ($condition === Condition::CUSTOM) {
+                $payload['due_date'] = \App\Support\Financial\PaymentTerms::firstDueDate($condition, \Carbon\Carbon::parse($locked->issued_at ?? now()), $paymentData['payment_condition_details'])->toDateString();
+                $payload['installment_due_mode'] = \App\Support\Financial\InstallmentSchedule::CUSTOM_INTERVAL_DAYS;
+                $payload['installment_interval_days'] = \App\Support\Financial\PaymentTerms::interval($condition, $paymentData['payment_condition_details']);
+            }
 
             if ($installmentCount > 1) {
                 $payload['installment_count'] = $installmentCount;

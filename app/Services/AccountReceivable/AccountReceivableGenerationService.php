@@ -10,6 +10,7 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\FiscalDocument;
 use App\Models\Invoice;
 use App\Support\Financial\InstallmentSchedule;
+use App\Support\Financial\PaymentTerms;
 use App\Traits\HandlesServiceResponse;
 use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
@@ -262,8 +263,13 @@ class AccountReceivableGenerationService
             return null;
         }
 
-        $installmentCount = max(1, $condition->installments() ?: 1);
-        $firstDueDate = $this->resolveDueDate($condition, Carbon::parse($invoice->invoice_date ?? now()->toDateString()), 1);
+        $details = $invoice->payment_condition_details;
+        if ($invoice->payment_condition === null && $condition === PaymentCondition::CUSTOM) {
+            $details = $invoice->requisitions->concat($invoice->serviceOrders)
+                ->first(fn ($record): bool => $record->payment_condition === $condition)?->payment_condition_details;
+        }
+        $installmentCount = PaymentTerms::count($condition, $details);
+        $firstDueDate = PaymentTerms::firstDueDate($condition, Carbon::parse($invoice->invoice_date ?? now()->toDateString()), $details);
         $documentNumber = $fiscalDocument->document_number
             ?? $fiscalDocument->document_key
             ?? $invoice->invoice_number;
@@ -287,26 +293,7 @@ class AccountReceivableGenerationService
             'payment_method' => $paymentMethod->value,
             'installment_count' => $installmentCount,
             'installment_due_mode' => $condition->isTerm() ? $condition->value : InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
-            'installment_interval_days' => $condition->isTerm() ? null : 30,
+            'installment_interval_days' => $condition->isTerm() ? null : PaymentTerms::interval($condition, $details),
         ];
-    }
-
-    private function resolveDueDate(PaymentCondition $condition, Carbon $baseDate, int $installmentNumber): Carbon
-    {
-        if ($condition->isCash() || $condition === PaymentCondition::CUSTOM) {
-            return $baseDate->copy();
-        }
-
-        if ($condition->installments() > 1) {
-            $daysStep = max($condition->days(), 30);
-
-            return $baseDate->copy()->addDays($daysStep * $installmentNumber);
-        }
-
-        if ($condition->isTerm()) {
-            return $baseDate->copy()->addDays($condition->days());
-        }
-
-        return $baseDate->copy();
     }
 }

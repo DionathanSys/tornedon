@@ -72,7 +72,7 @@ class AccountPayableForm
                 ->label('Parcelas')
                 ->numeric()
                 ->minValue(1)
-                ->maxValue(24)
+                ->maxValue(999)
                 ->default(1)
                 ->required()
                 ->visibleOn('create')

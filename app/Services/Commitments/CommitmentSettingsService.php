@@ -30,6 +30,7 @@ class CommitmentSettingsService
             'nfse_service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', $company->id)->where('is_active', true)->whereNull('deleted_at')],
             'payment_method' => ['nullable', Rule::enum(Method::class)],
             'payment_condition' => ['nullable', Rule::enum(Condition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'financial_category_id' => ['nullable', 'integer', Rule::exists('financial_categories', 'id')->where('company_id', $company->id)->where('is_active', true)->where('allow_receivable', true)->whereNull('deleted_at')],
             'financial_account_id' => ['nullable', 'integer', Rule::exists('financial_accounts', 'id')->where('company_id', $company->id)->where('is_active', true)->whereNull('deleted_at')],
             // Reserve space for the mandatory patrimony and commitment references.

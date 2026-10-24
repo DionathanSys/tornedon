@@ -39,6 +39,7 @@ class CreateServiceOrderAction
                 isset($data['customer_id']) ? (int) $data['customer_id'] : null,
                 $data['payment_method'] ?? null,
                 $data['payment_condition'] ?? null,
+                $data['payment_condition_details'] ?? null,
             ) + $data;
 
             $validated = ServiceOrderValidator::validateCreate($data);

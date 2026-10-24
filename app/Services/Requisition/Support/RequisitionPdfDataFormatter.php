@@ -60,7 +60,7 @@ class RequisitionPdfDataFormatter
         if ($requisition->payment_method || $requisition->payment_condition) {
             $paymentMode = ($requisition->payment_method?->description() ?? 'N/A')
                 .' - '
-                .($requisition->payment_condition?->description() ?? 'N/A');
+                .\App\Support\Financial\PaymentTerms::description($requisition->payment_condition, $requisition->payment_condition_details);
         }
 
         return [

@@ -45,6 +45,7 @@ class ServiceOrderBillingService
                 [
                     'payment_method' => $first->payment_method?->value,
                     'payment_condition' => $first->payment_condition?->value,
+                    'payment_condition_details' => $first->payment_condition_details,
                 ],
                 function (Collection $records, Invoice $invoice, int $userId): void {
                     foreach ($records as $record) {

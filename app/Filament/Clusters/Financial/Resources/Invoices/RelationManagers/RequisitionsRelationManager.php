@@ -63,7 +63,8 @@ class RequisitionsRelationManager extends RelationManager
                     ->required(),
                 Select::make('payment_method')
                     ->options(Method::class),
-                Select::make('payment_condition')
+                \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                Select::make('payment_condition')->live()
                     ->options(Condition::class),
                 Textarea::make('observations')
                     ->columnSpanFull(),

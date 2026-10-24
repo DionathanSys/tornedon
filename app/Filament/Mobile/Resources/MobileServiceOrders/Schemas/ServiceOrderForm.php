@@ -79,6 +79,7 @@ class ServiceOrderForm
 
                                                 if (blank($get('payment_condition')) || $get('payment_condition') === $companyDefaults['payment_condition']) {
                                                     $set('payment_condition', $defaults['payment_condition']);
+                                                    $set('payment_condition_details', $defaults['payment_condition_details']);
                                                 }
                                             })
                                             ->disabledOn('edit')
@@ -298,7 +299,8 @@ class ServiceOrderForm
                                         Filament::getTenant()->id,
                                         null,
                                     )['payment_method']),
-                                Select::make('payment_condition')
+                                \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                                Select::make('payment_condition')->live()
                                     ->label('Condição de Pagamento')
                                     ->columnSpan(['md' => 2, 'lg' => 4])
                                     ->options(PaymentCondition::toGroupedSelectArray())

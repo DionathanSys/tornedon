@@ -28,6 +28,7 @@ class ConfigureCommitmentsAction
                 Select::make('customer_id')->label('Cliente')->options(fn () => ImportCommitmentFilesAction::customerOptions())->searchable()->searchDebounce(1500)->required()->live()
                     ->afterStateUpdated(function ($state, Set $set): void {
                         $settings = CommitmentSetting::forCustomer(Filament::getTenant()->id, (int) $state)->first();
+                        $set('payment_condition_details', $settings?->payment_condition_details);
                         foreach (['is_enabled' => false, 'nfse_service_id' => null, 'payment_method' => null, 'payment_condition' => null, 'financial_category_id' => null, 'financial_account_id' => null, 'nfse_footer_message' => null] as $key => $default) {
                             $set($key, $settings?->getRawOriginal($key) ?? $default);
                         }
@@ -36,7 +37,8 @@ class ConfigureCommitmentsAction
                 Select::make('nfse_service_id')->label('Serviço padrão da NFS-e')->searchable()->searchDebounce(1500)
                     ->options(fn () => Service::where('company_id', Filament::getTenant()->id)->where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 Select::make('payment_method')->label('Forma de pagamento')->native(false)->options(collect(Method::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
-                Select::make('payment_condition')->label('Condição de pagamento')->native(false)->searchable()->searchDebounce(1500)->options(collect(Condition::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
+                Select::make('payment_condition')->live()->label('Condição de pagamento')->native(false)->searchable()->searchDebounce(1500)->options(collect(Condition::cases())->mapWithKeys(fn ($case) => [$case->value => $case->description()])->all()),
+                \App\Filament\Forms\Components\PaymentConditionFields::make(),
                 Select::make('financial_category_id')->label('Categoria financeira')->searchable()->searchDebounce(1500)
                     ->options(fn () => FinancialCategory::where('company_id', Filament::getTenant()->id)->where('is_active', true)->where('allow_receivable', true)->orderBy('name')->pluck('name', 'id')),
                 Select::make('financial_account_id')->label('Conta financeira de recebimento')->searchable()->searchDebounce(1500)

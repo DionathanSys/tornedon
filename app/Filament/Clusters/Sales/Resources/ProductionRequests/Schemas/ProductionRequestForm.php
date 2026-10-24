@@ -86,13 +86,13 @@ class ProductionRequestForm
                 ->native(false)
                 ->live()
                 ->columnSpan(['md' => 2, 'lg' => 3]),
-            Select::make('payment_condition')
+            \App\Filament\Forms\Components\PaymentConditionFields::make(),
+            Select::make('payment_condition')->live()
                 ->label('Condição de Pagamento')
                 ->options(PaymentCondition::toGroupedSelectArray())
                 ->default(fn (): ?string => CompanyPreference::getDefaultPaymentCondition(Filament::getTenant()?->id))
                 ->native(false)
                 ->required(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
-                ->visible(fn (Get $get): bool => (string) ($get('payment_method') ?? '') !== PaymentMethod::CREDIT_CARD->value)
                 ->columnSpan(['md' => 2, 'lg' => 3]),
             SelectFinancialCategory::make('financial_category_id', 'receivable')
                 ->label('Categoria Financeira')

@@ -17,6 +17,7 @@ class InvoiceValidator
         return [
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'financial_category_id' => self::financialCategoryRule($data),
             'pending' => 'boolean',
             'confirmed' => 'boolean',

@@ -40,7 +40,7 @@ class PurchaseClosingValidator
             'document_number' => 'nullable|string|max:50',
             'financial_category_id' => 'nullable|integer',
             'cost_center_id' => 'nullable|integer',
-            'installment_count' => 'nullable|integer|min:1|max:24',
+            'installment_count' => 'nullable|integer|min:1|max:999',
             'installment_due_mode' => 'nullable|string|max:50',
             'installment_fixed_day' => 'nullable|integer|min:1|max:31',
             'installment_interval_days' => 'nullable|integer|min:1|max:365',

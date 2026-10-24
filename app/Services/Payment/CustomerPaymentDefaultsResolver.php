@@ -9,13 +9,14 @@ use BackedEnum;
 class CustomerPaymentDefaultsResolver
 {
     /**
-     * @return array{payment_method:?string,payment_condition:?string}
+     * @return array{payment_method:?string,payment_condition:?string,payment_condition_details:?array}
      */
     public function resolve(
         int $companyId,
         ?int $customerId,
         mixed $paymentMethod = null,
         mixed $paymentCondition = null,
+        ?array $paymentConditionDetails = null,
     ): array {
         $resolvedPaymentMethod = $this->normalizeValue($paymentMethod);
         $resolvedPaymentCondition = $this->normalizeValue($paymentCondition);
@@ -24,6 +25,7 @@ class CustomerPaymentDefaultsResolver
             return [
                 'payment_method' => $resolvedPaymentMethod,
                 'payment_condition' => $resolvedPaymentCondition,
+                'payment_condition_details' => $paymentConditionDetails,
             ];
         }
 
@@ -41,11 +43,16 @@ class CustomerPaymentDefaultsResolver
             'payment_condition' => $resolvedPaymentCondition
                 ?? $this->normalizeValue($companyPartner?->payment_condition)
                 ?? CompanyPreference::getDefaultPaymentCondition($companyId),
+            'payment_condition_details' => $resolvedPaymentCondition !== null
+                ? $paymentConditionDetails
+                : ($companyPartner?->payment_condition !== null
+                    ? $companyPartner->payment_condition_details
+                    : CompanyPreference::get('default_payment_condition_details', $companyId)),
         ];
     }
 
     /**
-     * @return array{payment_method:?string,payment_condition:?string}
+     * @return array{payment_method:?string,payment_condition:?string,payment_condition_details:?array}
      */
     public function defaultsForCustomer(int $companyId, ?int $customerId): array
     {

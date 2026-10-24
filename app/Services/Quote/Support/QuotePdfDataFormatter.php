@@ -26,7 +26,7 @@ class QuotePdfDataFormatter
                 ['label' => 'Emitido em', 'value' => $quote->created_at?->format('d/m/Y') ?? '-'],
                 ['label' => 'Válido até', 'value' => $quote->valid_until?->format('d/m/Y') ?? '-'],
                 ['label' => 'Forma de pagamento', 'value' => $quote->payment_method?->description() ?? '-'],
-                ['label' => 'Condição de pagamento', 'value' => $quote->payment_condition?->description() ?? '-'],
+                ['label' => 'Condição de pagamento', 'value' => \App\Support\Financial\PaymentTerms::description($quote->payment_condition, $quote->payment_condition_details)],
             ],
             'items' => $items->map(fn ($item): array => [
                 'description' => $item->resolveDescription(),

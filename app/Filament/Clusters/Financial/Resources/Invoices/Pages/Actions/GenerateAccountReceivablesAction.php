@@ -63,7 +63,8 @@ final class GenerateAccountReceivablesAction
                     ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value)
                     ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::CREDIT_CARD->value),
 
-                Select::make('payment_condition')
+                \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                Select::make('payment_condition')->live()
                     ->label('Condicao de Pagamento')
                     ->options(Condition::toGroupedSelectArray())
                     ->default(fn (Invoice $record): ?string => $record->payment_condition?->value)

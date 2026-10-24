@@ -21,6 +21,7 @@ class EditCompanyPartner
         'customer_discount_percentage',
         'payment_method',
         'payment_condition',
+        'payment_condition_details',
         'is_active',
         'notify_service_order_closed',
         'notify_requisition_closed',

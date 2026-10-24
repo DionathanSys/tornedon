@@ -17,7 +17,7 @@ class InvoicePdfDataFormatter
             ['label' => 'Cliente', 'value' => $invoice->customer?->name ?? '-'],
         ];
 
-        $paymentMode = ($invoice->payment_method?->description() ?? 'N/A').' - '.($invoice->payment_condition?->description() ?? 'N/A');
+        $paymentMode = ($invoice->payment_method?->description() ?? 'N/A').' - '.\App\Support\Financial\PaymentTerms::description($invoice->payment_condition, $invoice->payment_condition_details);
 
         $summaryLines = collect([
             $invoice->discount_amount > 0

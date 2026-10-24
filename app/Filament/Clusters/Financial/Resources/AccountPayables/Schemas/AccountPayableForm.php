@@ -100,7 +100,7 @@ class AccountPayableForm
                             ->columnSpanFull(1)
                             ->numeric()
                             ->minValue(1)
-                            ->maxValue(24)
+                            ->maxValue(999)
                             ->default(1)
                             ->required()
                             ->live()

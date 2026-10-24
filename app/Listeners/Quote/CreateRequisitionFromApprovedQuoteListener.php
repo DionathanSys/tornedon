@@ -70,6 +70,7 @@ class CreateRequisitionFromApprovedQuoteListener
                     'status' => RequisitionStatus::OPEN,
                     'payment_method' => $paymentDefaults['payment_method'],
                     'payment_condition' => $paymentDefaults['payment_condition'],
+                    'payment_condition_details' => $event->quote->payment_condition_details ?? $paymentDefaults['payment_condition_details'],
                     'observations' => "Gerada a partir do orçamento #{$event->quote->quote_number}\n{$event->quote->observations}",
                 ], $event->approvedBy);
 

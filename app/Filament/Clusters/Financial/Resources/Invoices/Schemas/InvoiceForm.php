@@ -101,7 +101,7 @@ class InvoiceForm
                         TextEntry::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2])
-                            ->state(fn (Invoice $record): string => $record->payment_condition?->description() ?? 'Não definida'),
+                            ->state(fn (Invoice $record): string => \App\Support\Financial\PaymentTerms::description($record->payment_condition, $record->payment_condition_details)),
                         SelectFinancialCategory::make('financial_category_id', 'receivable')
                             ->label('Categoria Financeira')
                             ->columnSpan(['md' => 2, 'lg' => 4])

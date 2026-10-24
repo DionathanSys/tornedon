@@ -23,6 +23,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfseConfigService;
 use App\Services\Invoice\InvoiceService;
 use App\Support\Financial\InstallmentSchedule;
+use App\Support\Financial\PaymentTerms;
 use App\Traits\HandlesActionResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -72,11 +73,15 @@ class ConfirmInvoiceAction
             }
 
             $autoBankSlipIssuance = $this->resolveAutoBankSlipIssuance($paymentMethod, $data);
+            $data['payment_condition_details'] = PaymentTerms::details(
+                $paymentCondition, $data['payment_condition_details'] ?? $this->invoice->payment_condition_details,
+            );
             $autoPixChargeIssuance = $this->resolveAutoPixChargeIssuance($paymentMethod, $data);
 
             $this->invoice->update([
                 'payment_method' => $paymentMethod->value,
                 'payment_condition' => $paymentCondition?->value,
+                'payment_condition_details' => $data['payment_condition_details'],
                 'financial_category_id' => $this->resolveFinancialCategoryId($data),
                 'auto_bank_slip_issuance' => $autoBankSlipIssuance,
                 'auto_pix_charge_issuance' => $autoPixChargeIssuance,
@@ -430,7 +435,7 @@ class ConfirmInvoiceAction
                 : null,
             'installment_count' => count($installments),
             'installment_due_mode' => InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
-            'installment_interval_days' => 30,
+            'installment_interval_days' => PaymentTerms::interval($paymentCondition, $data['payment_condition_details'] ?? null),
         ], $this->confirmedBy);
 
         if ($service->hasError() || $accountReceivable === null) {
@@ -547,7 +552,7 @@ class ConfirmInvoiceAction
         }
 
         $totalCents = (int) round($netValue * 100);
-        $installmentsCount = max(1, $condition?->installments() ?: 1);
+        $installmentsCount = PaymentTerms::count($condition, $data['payment_condition_details'] ?? null);
         $baseCents = intdiv($totalCents, $installmentsCount);
         $remainder = $totalCents - ($baseCents * $installmentsCount);
         $baseDate = Carbon::parse($this->invoice->invoice_date ?? now()->toDateString());
@@ -576,6 +581,7 @@ class ConfirmInvoiceAction
                     $i,
                     $cardPaymentDate,
                     $cardPaymentProfile,
+                    $data['payment_condition_details'] ?? null,
                 )->toDateString(),
                 'due_amount' => round($amountCents / 100, 2),
                 'installment_number' => $i,
@@ -611,20 +617,26 @@ class ConfirmInvoiceAction
         int $installmentNumber,
         ?Carbon $cardPaymentDate,
         ?CardInstitution $cardPaymentProfile,
+        ?array $details = null,
     ): Carbon {
         if ($paymentMethod === PaymentMethod::CREDIT_CARD && $cardPaymentDate && $cardPaymentProfile) {
             $firstDueDate = $cardPaymentDate->copy()->addDays((int) $cardPaymentProfile->settlement_days);
 
             return $installmentNumber === 1
                 ? $firstDueDate
-                : $firstDueDate->copy()->addDays(30 * ($installmentNumber - 1));
+                : $firstDueDate->copy()->addDays(PaymentTerms::interval($condition, $details) * ($installmentNumber - 1));
         }
 
         if ($condition === null) {
             return $baseDate->copy();
         }
 
-        if ($condition->isCash() || $condition === PaymentCondition::CUSTOM) {
+        if ($condition === PaymentCondition::CUSTOM) {
+            return PaymentTerms::firstDueDate($condition, $baseDate, $details)
+                ->addDays(PaymentTerms::interval($condition, $details) * ($installmentNumber - 1));
+        }
+
+        if ($condition->isCash()) {
             return $baseDate->copy();
         }
 

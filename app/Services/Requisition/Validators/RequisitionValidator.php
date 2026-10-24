@@ -21,6 +21,7 @@ class RequisitionValidator
             'service_order_id'  => 'nullable|integer|exists:service_orders,id',
             'payment_method'    => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'observations'      => 'nullable|string',
             'delivery_address'  => 'nullable|string|max:500',
             'salesperson_id'    => 'nullable|integer|exists:users,id',

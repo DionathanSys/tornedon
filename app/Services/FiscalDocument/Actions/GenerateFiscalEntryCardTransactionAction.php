@@ -41,7 +41,12 @@ class GenerateFiscalEntryCardTransactionAction
             ];
         }
 
-        $installments = max(1, $condition->installments() ?: 1);
+        // As datas das parcelas corporativas seguem o fechamento da fatura do cartão.
+        $installments = \App\Support\Financial\PaymentTerms::count($condition, [
+            ...($paymentData['payment_condition_details'] ?? []),
+            'first_due_days' => 0,
+            'interval_days' => 30,
+        ]);
         $transactionDate = $paymentData['card_transaction_date']
             ?? $document->movement_at?->toDateString()
             ?? $document->issued_at?->toDateString()

@@ -108,12 +108,12 @@ final class ConfirmInvoiceAction
                                     ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
                                         $condition = Condition::tryFrom((string) $state);
 
-                                        if ($condition?->isCash() && $get('payment_method') !== Method::CREDIT_CARD->value) {
-                                            $set('mark_as_received', true);
-                                        }
+                                        $set('mark_as_received', ($condition?->isCash() ?? false) && $get('payment_method') !== Method::CREDIT_CARD->value);
                                     })
                                     ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
                                     ->helperText('Em cartão, o primeiro vencimento segue o prazo da instituição; as demais parcelas vencem a cada 30 dias.'),
+
+                                \App\Filament\Forms\Components\PaymentConditionFields::make(),
 
                                 ...AutoReceiptFields::components(),
 

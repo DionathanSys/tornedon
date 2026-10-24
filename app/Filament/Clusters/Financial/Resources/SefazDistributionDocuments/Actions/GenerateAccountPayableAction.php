@@ -70,7 +70,8 @@ class GenerateAccountPayableAction
                 ->required()
                 ->columnSpanFull(),
 
-            Select::make('payment_condition')
+            \App\Filament\Forms\Components\PaymentConditionFields::make(),
+            Select::make('payment_condition')->live()
                 ->label('Condição de pagamento')
                 ->options(Condition::toGroupedSelectArray())
                 ->default(Condition::CASH->value)
@@ -87,6 +88,7 @@ class GenerateAccountPayableAction
                 ->columnSpanFull(),
 
             DatePicker::make('due_date')
+                ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => $get('payment_condition') !== Condition::CUSTOM->value)
                 ->label('Primeiro vencimento')
                 ->displayFormat('d/m/Y')
                 ->default(Carbon::parse($baseDate)->format('Y-m-d'))

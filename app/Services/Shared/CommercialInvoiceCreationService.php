@@ -18,6 +18,9 @@ class CommercialInvoiceCreationService
             'customer_id' => $record->customer_id,
             'company_id' => $record->company_id,
             'invoice_date' => now()->toDateString(),
+            'payment_method' => $record->payment_method?->value,
+            'payment_condition' => $record->payment_condition?->value,
+            'payment_condition_details' => $record->payment_condition_details,
         ], $extraData), $userId);
 
         if ($this->invoiceService->hasError() || ! $invoice) {

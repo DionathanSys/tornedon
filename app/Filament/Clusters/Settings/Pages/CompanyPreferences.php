@@ -57,6 +57,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
         $this->form->fill([
             'default_payment_method' => CompanyPreference::getDefaultPaymentMethod($companyId),
             'default_payment_condition' => CompanyPreference::getDefaultPaymentCondition($companyId),
+            'default_payment_condition_details' => CompanyPreference::get('default_payment_condition_details', $companyId),
             'default_receivable_financial_category_id' => CompanyPreference::getDefaultReceivableFinancialCategoryId($companyId),
             'bank_slip_auto_issuance_default' => CompanyPreference::getBankSlipAutoIssuanceDefault($companyId),
             'cancel_bank_slips_when_invoice_cancelled' => CompanyPreference::shouldCancelBankSlipsWhenInvoiceCancelled($companyId),
@@ -130,7 +131,8 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
                             ->searchable()
                             ->placeholder('Selecione um método padrão')
                             ->columnSpan(['md' => 1, 'lg' => 1]),
-                        Forms\Components\Select::make('default_payment_condition')
+                        \App\Filament\Forms\Components\PaymentConditionFields::make('default_payment_condition', 'default_payment_condition_details'),
+                        Forms\Components\Select::make('default_payment_condition')->live()
                             ->label('Condição de Pagamento Padrão')
                             ->options(PaymentCondition::toGroupedSelectArray())
                             ->native(false)
@@ -328,6 +330,7 @@ class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 
             if (isset($data['default_payment_condition'])) {
                 CompanyPreference::setDefaultPaymentCondition($data['default_payment_condition'], $companyId);
+                CompanyPreference::set('default_payment_condition_details', $data['default_payment_condition_details'] ?? null, $companyId);
             }
 
             CompanyPreference::setDefaultReceivableFinancialCategoryId(

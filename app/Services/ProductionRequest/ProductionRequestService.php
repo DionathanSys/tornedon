@@ -224,6 +224,7 @@ class ProductionRequestService
             'order_date' => [$partial ? 'sometimes' : 'required', 'date'],
             'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'financial_category_id' => ['nullable', 'integer', 'exists:financial_categories,id'],
             'observations' => ['nullable', 'string'],
             'additional_info' => ['nullable', 'array'],
@@ -256,7 +257,7 @@ class ProductionRequestService
         $condition = $request->payment_condition;
         $paymentMethod = $request->payment_method;
         $dueDate = $this->resolveFirstDueDate($request)->toDateString();
-        $installmentCount = max(1, $condition?->installments() ?: 1);
+        $installmentCount = \App\Support\Financial\PaymentTerms::count($condition, $request->payment_condition_details);
 
         return [
             'customer_id' => $request->customer_id,
@@ -278,9 +279,8 @@ class ProductionRequestService
             'payment_date' => data_get($request->additional_info, 'payment_date'),
             'financial_category_id' => $request->financial_category_id,
             'installment_count' => $installmentCount,
-            'installment_due_mode' => $installmentCount > 1
-                ? ($condition?->isTerm() ? $condition->value : PaymentCondition::DAYS_30->value)
-                : PaymentCondition::DAYS_30->value,
+            'installment_due_mode' => $condition?->isTerm() ? $condition->value : \App\Support\Financial\InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
+            'installment_interval_days' => \App\Support\Financial\PaymentTerms::interval($condition, $request->payment_condition_details),
         ];
     }
 
@@ -314,11 +314,7 @@ class ProductionRequestService
             return Carbon::parse($paymentDate)->addDays((int) $profile->settlement_days);
         }
 
-        if ($condition === null || $condition->isCash() || $condition === PaymentCondition::CUSTOM) {
-            return $baseDate;
-        }
-
-        return $baseDate->copy()->addDays($condition->days());
+        return \App\Support\Financial\PaymentTerms::firstDueDate($condition, $baseDate, $request->payment_condition_details);
     }
 
     /**

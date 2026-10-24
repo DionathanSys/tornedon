@@ -57,6 +57,7 @@ class ServiceOrderRequisitionService
             'sale_date' => $serviceOrder->order_date?->toDateString() ?? now()->toDateString(),
             'payment_method' => $serviceOrder->payment_method?->value,
             'payment_condition' => $serviceOrder->payment_condition?->value,
+            'payment_condition_details' => $serviceOrder->payment_condition_details,
             'delivery_date' => $serviceOrder->scheduled_date?->toDateString(),
             'delivery_address' => $serviceOrder->location,
             'observations' => $serviceOrder->customer_observations,

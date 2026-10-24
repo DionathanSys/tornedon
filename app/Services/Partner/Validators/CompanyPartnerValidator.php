@@ -25,6 +25,7 @@ class CompanyPartnerValidator
             'customer_discount_percentage' => 'nullable|numeric|min:0|max:100',
             'payment_method' => 'nullable|string|in:' . implode(',', array_map(fn ($case) => $case->value, Enum\Payment\Method::cases())),
             'payment_condition' => 'nullable|string|in:' . implode(',', array_map(fn ($case) => $case->value, Enum\Payment\Condition::cases())),
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'is_active' => 'required|boolean',
             'notify_service_order_closed' => 'sometimes|boolean',
             'notify_requisition_closed' => 'sometimes|boolean',

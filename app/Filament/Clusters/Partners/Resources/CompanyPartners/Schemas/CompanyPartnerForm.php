@@ -161,7 +161,8 @@ class CompanyPartnerForm
                                     ->native(false)
                                     ->searchable()
                                     ->placeholder('Usar preferências'),
-                                Select::make('company_partner.payment_condition')
+                                \App\Filament\Forms\Components\PaymentConditionFields::make('company_partner.payment_condition', 'company_partner.payment_condition_details'),
+                                Select::make('company_partner.payment_condition')->live()
                                     ->label('Condição de Pagamento')
                                     ->options(PaymentCondition::toGroupedSelectArray())
                                     ->columnSpan(['md' => 2, 'lg' => 3])

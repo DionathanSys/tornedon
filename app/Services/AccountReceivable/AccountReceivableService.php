@@ -52,7 +52,7 @@ class AccountReceivableService
         try {
             return $this->financialTransaction(function () use ($data, $createdBy) {
                 $audit = app(AuditRecorder::class);
-                Validator::make($data, ['installment_count' => 'nullable|integer|min:1|max:24'])->validate();
+                Validator::make($data, ['installment_count' => 'nullable|integer|min:1|max:999'])->validate();
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);

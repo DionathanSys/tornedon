@@ -45,6 +45,7 @@ class CommitmentBillingData
         $data = [
             'payment_method' => $settings->payment_method?->value,
             'payment_condition' => $settings->payment_condition?->value,
+            'payment_condition_details' => $settings->payment_condition_details,
             'financial_category_id' => $settings->financial_category_id ?? CompanyPreference::getDefaultReceivableFinancialCategoryId($billing->company_id),
             'financial_account_id' => $settings->financial_account_id,
             'nfse_service_id' => $serviceId,

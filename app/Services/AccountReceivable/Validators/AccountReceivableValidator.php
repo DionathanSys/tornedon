@@ -41,7 +41,7 @@ class AccountReceivableValidator
             'settlement_days_snapshot' => 'nullable|integer|min:0',
             'expected_settlement_date' => 'nullable|date',
             'card_rule_snapshot' => 'nullable|array',
-            'installment_count' => 'nullable|integer|min:1|max:24',
+            'installment_count' => 'nullable|integer|min:1|max:999',
             'installment_due_mode' => ['nullable', Rule::in([
                 ...array_keys(PaymentCondition::installmentIntervalOptions()),
                 'fixed_day_of_month',

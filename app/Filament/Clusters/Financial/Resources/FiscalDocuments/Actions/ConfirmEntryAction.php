@@ -166,7 +166,9 @@ final class ConfirmEntryAction
                 ->helperText('Será usado para registrar as transações e compor a fatura do cartão.')
                 ->columnSpanFull(),
 
-            Select::make('payment_condition')
+            \App\Filament\Forms\Components\PaymentConditionFields::make(corporateCard: true)
+                ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => (bool) $get('generate_account_payable_now') && $get('payment_condition') === Condition::CUSTOM->value),
+            Select::make('payment_condition')->live()
                 ->label('Condição de Pagamento')
                 ->options(Condition::toGroupedSelectArray())
                 ->native(false)
@@ -192,7 +194,8 @@ final class ConfirmEntryAction
                 ->helperText('Data base para o primeiro vencimento. As demais parcelas serão calculadas a partir desta data.')
                 ->default(now()->format('Y-m-d'))
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
-                    && ($get('payment_method') ?? null) !== PaymentMethod::CREDIT_CARD->value)
+                    && ($get('payment_method') ?? null) !== PaymentMethod::CREDIT_CARD->value
+                    && ($get('payment_condition') ?? null) !== Condition::CUSTOM->value)
                 ->columnSpanFull(),
 
             DatePicker::make('card_transaction_date')

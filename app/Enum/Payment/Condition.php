@@ -27,6 +27,10 @@ enum Condition: string
     case INSTALLMENTS_12X = 'parcelado_12x';
     case INSTALLMENTS_18X = 'parcelado_18x';
     case INSTALLMENTS_24X = 'parcelado_24x';
+    case INSTALLMENTS_30X = 'parcelado_30x';
+    case INSTALLMENTS_36X = 'parcelado_36x';
+    case INSTALLMENTS_48X = 'parcelado_48x';
+    case INSTALLMENTS_60X = 'parcelado_60x';
     case CUSTOM = 'personalizado';
 
     public function description(): string
@@ -55,6 +59,10 @@ enum Condition: string
             self::INSTALLMENTS_12X => 'Parcelado em 12x',
             self::INSTALLMENTS_18X => 'Parcelado em 18x',
             self::INSTALLMENTS_24X => 'Parcelado em 24x',
+            self::INSTALLMENTS_30X => 'Parcelado em 30x',
+            self::INSTALLMENTS_36X => 'Parcelado em 36x',
+            self::INSTALLMENTS_48X => 'Parcelado em 48x',
+            self::INSTALLMENTS_60X => 'Parcelado em 60x',
             self::CUSTOM => 'Personalizado',
         };
     }
@@ -70,7 +78,9 @@ enum Condition: string
             self::INSTALLMENTS_2X, self::INSTALLMENTS_3X, self::INSTALLMENTS_4X, 
             self::INSTALLMENTS_5X, self::INSTALLMENTS_6X => 'heroicon-o-squares-2x2',
             self::INSTALLMENTS_9X, self::INSTALLMENTS_10X, self::INSTALLMENTS_12X,
-            self::INSTALLMENTS_18X, self::INSTALLMENTS_24X => 'heroicon-o-squares-plus',
+            self::INSTALLMENTS_18X, self::INSTALLMENTS_24X,
+            self::INSTALLMENTS_30X, self::INSTALLMENTS_36X,
+            self::INSTALLMENTS_48X, self::INSTALLMENTS_60X => 'heroicon-o-squares-plus',
             self::CUSTOM => 'heroicon-o-cog-6-tooth',
         };
     }
@@ -86,7 +96,9 @@ enum Condition: string
             self::INSTALLMENTS_2X, self::INSTALLMENTS_3X, self::INSTALLMENTS_4X => 'info',
             self::INSTALLMENTS_5X, self::INSTALLMENTS_6X => 'primary',
             self::INSTALLMENTS_9X, self::INSTALLMENTS_10X, self::INSTALLMENTS_12X => 'warning',
-            self::INSTALLMENTS_18X, self::INSTALLMENTS_24X => 'danger',
+            self::INSTALLMENTS_18X, self::INSTALLMENTS_24X,
+            self::INSTALLMENTS_30X, self::INSTALLMENTS_36X,
+            self::INSTALLMENTS_48X, self::INSTALLMENTS_60X => 'danger',
             self::CUSTOM => 'gray',
         };
     }
@@ -107,6 +119,10 @@ enum Condition: string
             self::INSTALLMENTS_12X => 12,
             self::INSTALLMENTS_18X => 18,
             self::INSTALLMENTS_24X => 24,
+            self::INSTALLMENTS_30X => 30,
+            self::INSTALLMENTS_36X => 36,
+            self::INSTALLMENTS_48X => 48,
+            self::INSTALLMENTS_60X => 60,
             self::DAYS_30_60 => 2,
             self::DAYS_30_60_90 => 3,
             self::DAYS_30_60_90_120 => 4,
@@ -161,6 +177,10 @@ enum Condition: string
             self::INSTALLMENTS_12X,
             self::INSTALLMENTS_18X,
             self::INSTALLMENTS_24X,
+            self::INSTALLMENTS_30X,
+            self::INSTALLMENTS_36X,
+            self::INSTALLMENTS_48X,
+            self::INSTALLMENTS_60X,
         ]);
     }
 
@@ -208,6 +228,10 @@ enum Condition: string
                 self::INSTALLMENTS_12X->value => self::INSTALLMENTS_12X->description(),
                 self::INSTALLMENTS_18X->value => self::INSTALLMENTS_18X->description(),
                 self::INSTALLMENTS_24X->value => self::INSTALLMENTS_24X->description(),
+                self::INSTALLMENTS_30X->value => self::INSTALLMENTS_30X->description(),
+                self::INSTALLMENTS_36X->value => self::INSTALLMENTS_36X->description(),
+                self::INSTALLMENTS_48X->value => self::INSTALLMENTS_48X->description(),
+                self::INSTALLMENTS_60X->value => self::INSTALLMENTS_60X->description(),
             ],
             'Outro' => [
                 self::CUSTOM->value => self::CUSTOM->description(),

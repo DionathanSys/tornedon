@@ -34,8 +34,13 @@
         @if (! $editing || $production || $cash)
             <x-operation.search-select label="Categoria financeira" wire:model="data.financial_category_id" :options="$this->formOptions('categories')" offline />
         @endif
-        @if ($production && ! $card)
-            <x-operation.search-select label="Condição de pagamento" wire:model="data.payment_condition" :options="$this->formOptions('conditions')" offline />
+        @if ($production)
+            <x-operation.search-select label="Condição de pagamento" wire:model.live="data.payment_condition" :options="$this->formOptions('conditions')" offline />
+            @if (($data['payment_condition'] ?? '') === 'personalizado')
+                <x-mary-input label="Quantidade de parcelas" type="number" min="1" max="999" wire:model="data.payment_condition_details.installments" />
+                <x-mary-input label="Primeiro vencimento em (dias)" type="number" min="0" wire:model="data.payment_condition_details.first_due_days" />
+                <x-mary-input label="Intervalo entre parcelas (dias)" type="number" min="1" max="365" wire:model="data.payment_condition_details.interval_days" />
+            @endif
         @endif
         @if (! $production && ! $cash)
             <x-mary-input label="Documento" wire:model="data.document_number" maxlength="50" />
@@ -43,7 +48,7 @@
     </div>
     @if (! $editing && ! $production && ! $cash)
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <x-mary-input label="Parcelas" type="number" min="1" max="24" wire:model.live="data.installment_count" />
+            <x-mary-input label="Parcelas" type="number" min="1" max="999" wire:model.live="data.installment_count" />
             <x-operation.search-select label="Vencimentos das parcelas" wire:model.live="data.installment_due_mode" :options="$this->formOptions('intervals')" offline />
             @if (($data['installment_due_mode'] ?? '') === 'fixed_day_of_month')
                 <x-mary-input label="Dia do mês" type="number" min="1" max="31" wire:model="data.installment_fixed_day" />

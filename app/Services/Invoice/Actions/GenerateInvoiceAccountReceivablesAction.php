@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
 use App\Support\Financial\InstallmentSchedule;
+use App\Support\Financial\PaymentTerms;
 use App\Traits\HandlesActionResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,9 @@ class GenerateInvoiceAccountReceivablesAction
             return null;
         }
 
+        $data['payment_condition_details'] = PaymentTerms::details(
+            $paymentCondition, $data['payment_condition_details'] ?? $this->invoice->payment_condition_details,
+        );
         $installments = $this->buildInstallments($paymentMethod, $paymentCondition, $data);
 
         if ($installments === []) {
@@ -56,6 +60,7 @@ class GenerateInvoiceAccountReceivablesAction
         $this->invoice->update([
             'payment_method' => $paymentMethod->value,
             'payment_condition' => $paymentCondition?->value,
+            'payment_condition_details' => $data['payment_condition_details'],
             'financial_category_id' => $this->resolveFinancialCategoryId($data),
             'updated_by' => $this->userId,
         ]);
@@ -88,7 +93,7 @@ class GenerateInvoiceAccountReceivablesAction
             'financial_category_id' => $this->invoice->financial_category_id,
             'installment_count' => count($installments),
             'installment_due_mode' => InstallmentSchedule::CUSTOM_INTERVAL_DAYS,
-            'installment_interval_days' => 30,
+            'installment_interval_days' => PaymentTerms::interval($paymentCondition, $data['payment_condition_details'] ?? null),
         ], $this->userId);
 
         if ($service->hasError() || $accountReceivable === null) {
@@ -174,7 +179,7 @@ class GenerateInvoiceAccountReceivablesAction
         }
 
         $totalCents = (int) round($netValue * 100);
-        $installmentsCount = max(1, $condition?->installments() ?: 1);
+        $installmentsCount = PaymentTerms::count($condition, $data['payment_condition_details'] ?? null);
         $baseCents = intdiv($totalCents, $installmentsCount);
         $remainder = $totalCents - ($baseCents * $installmentsCount);
         $baseDate = Carbon::parse($this->invoice->invoice_date ?? now()->toDateString());
@@ -191,7 +196,7 @@ class GenerateInvoiceAccountReceivablesAction
 
             $installments[] = [
                 'sequence_number' => str_pad((string) $i, 2, '0', STR_PAD_LEFT),
-                'due_date' => $this->resolveDueDate($paymentMethod, $condition, $baseDate, $i, $cardPaymentDate, $profile)->toDateString(),
+                'due_date' => $this->resolveDueDate($paymentMethod, $condition, $baseDate, $i, $cardPaymentDate, $profile, $data['payment_condition_details'] ?? null)->toDateString(),
                 'due_amount' => round($amountCents / 100, 2),
                 'installment_number' => $i,
                 'installments_count' => $installmentsCount,
@@ -208,20 +213,26 @@ class GenerateInvoiceAccountReceivablesAction
         int $installmentNumber,
         ?Carbon $cardPaymentDate,
         ?CardInstitution $cardPaymentProfile,
+        ?array $details = null,
     ): Carbon {
         if ($paymentMethod === PaymentMethod::CREDIT_CARD && $cardPaymentDate && $cardPaymentProfile) {
             $firstDueDate = $cardPaymentDate->copy()->addDays((int) $cardPaymentProfile->settlement_days);
 
             return $installmentNumber === 1
                 ? $firstDueDate
-                : $firstDueDate->copy()->addDays(30 * ($installmentNumber - 1));
+                : $firstDueDate->copy()->addDays(PaymentTerms::interval($condition, $details) * ($installmentNumber - 1));
         }
 
         if ($condition === null) {
             return $baseDate->copy();
         }
 
-        if ($condition->isCash() || $condition === PaymentCondition::CUSTOM) {
+        if ($condition === PaymentCondition::CUSTOM) {
+            return PaymentTerms::firstDueDate($condition, $baseDate, $details)
+                ->addDays(PaymentTerms::interval($condition, $details) * ($installmentNumber - 1));
+        }
+
+        if ($condition->isCash()) {
             return $baseDate->copy();
         }
 

@@ -148,7 +148,16 @@ class QuoteApprovalAutoCreateOrdersTest extends TestCase
         $this->assertSame(1, $quote->serviceOrders()->first()->items()->count());
     }
 
-    public function test_approve_quote_generates_service_order_and_requisition_using_customer_payment_defaults_when_quote_has_no_payment(): void
+    public static function customerPaymentTerms(): array
+    {
+        return [
+            'standard' => [Condition::DAYS_45, null],
+            'custom' => [Condition::CUSTOM, ['installments' => 36, 'first_due_days' => 15, 'interval_days' => 30]],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('customerPaymentTerms')]
+    public function test_approve_quote_generates_service_order_and_requisition_using_customer_payment_defaults_when_quote_has_no_payment(Condition $condition, ?array $details): void
     {
         CompanyPreference::setDefaultPaymentMethod(Method::PIX->value, $this->company->id);
         CompanyPreference::setDefaultPaymentCondition(Condition::CASH->value, $this->company->id);
@@ -160,7 +169,8 @@ class QuoteApprovalAutoCreateOrdersTest extends TestCase
             'invoice_threshold' => 0,
             'customer_discount_percentage' => 0,
             'payment_method' => Method::BANK_TRANSFER->value,
-            'payment_condition' => Condition::DAYS_45->value,
+            'payment_condition' => $condition->value,
+            'payment_condition_details' => $details,
             'is_active' => true,
         ]);
 
@@ -226,9 +236,15 @@ class QuoteApprovalAutoCreateOrdersTest extends TestCase
         $this->assertNotNull($serviceOrder);
         $this->assertNotNull($requisition);
         $this->assertSame(Method::BANK_TRANSFER, $serviceOrder->payment_method);
-        $this->assertSame(Condition::DAYS_45, $serviceOrder->payment_condition);
+        $this->assertSame($condition, $serviceOrder->payment_condition);
+        $this->assertSame($details, $serviceOrder->payment_condition_details);
         $this->assertSame(Method::BANK_TRANSFER, $requisition->payment_method);
-        $this->assertSame(Condition::DAYS_45, $requisition->payment_condition);
+        $this->assertSame($condition, $requisition->payment_condition);
+        $this->assertSame($details, $requisition->payment_condition_details);
         $this->assertSame($serviceOrder->id, $requisition->service_order_id);
+
+        $invoice = app(\App\Services\Shared\CommercialInvoiceCreationService::class)->createFromRecord($serviceOrder, $this->user->id);
+        $this->assertSame($condition, $invoice->payment_condition);
+        $this->assertSame($details, $invoice->payment_condition_details);
     }
 }

@@ -35,6 +35,7 @@ class ProductionRequest extends Model
         'delivered_at',
         'payment_method',
         'payment_condition',
+        'payment_condition_details',
         'financial_category_id',
         'account_receivable_id',
         'observations',
@@ -50,6 +51,7 @@ class ProductionRequest extends Model
         'delivered_at' => 'datetime',
         'payment_method' => PaymentMethod::class,
         'payment_condition' => PaymentCondition::class,
+        'payment_condition_details' => 'array',
         'additional_info' => 'array',
     ];
 

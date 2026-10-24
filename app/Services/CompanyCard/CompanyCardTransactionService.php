@@ -172,7 +172,7 @@ class CompanyCardTransactionService
             'description' => ['required', 'string', 'max:255'],
             'vendor_id' => ['nullable', 'integer', 'exists:partners,id'],
             'amount' => ['required', 'numeric', 'gt:0'],
-            'installments' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'installments' => ['nullable', 'integer', 'min:1', 'max:999'],
             'category_id' => ['nullable', 'integer', 'exists:financial_categories,id'],
             'cost_center_id' => ['nullable', 'integer'],
             'source_type' => [$requireSource ? 'required' : 'nullable', 'string', 'max:80'],

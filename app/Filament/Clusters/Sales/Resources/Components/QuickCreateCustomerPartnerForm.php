@@ -88,7 +88,8 @@ class QuickCreateCustomerPartnerForm
                         ->native(false)
                         ->searchable()
                         ->placeholder('Usar preferências'),
-                    Select::make('payment_condition')
+                    \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                    Select::make('payment_condition')->live()
                         ->label('Condição de Pagamento')
                         ->columnSpan(['md' => 3, 'lg' => 4])
                         ->options(PaymentCondition::toGroupedSelectArray())

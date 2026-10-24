@@ -18,6 +18,7 @@ class QuoteValidator
         return [
             'payment_method'         => ['required', Rule::enum(Method::class)],
             'payment_condition'      => ['required', Rule::enum(Condition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'description'            => 'nullable|string|max:1000',
             'observations'           => 'nullable|string|max:2000',
             'customer_observations'  => 'nullable|string|max:2000',
@@ -80,6 +81,7 @@ class QuoteValidator
         ], [
             'payment_method' => ['sometimes', 'required', Rule::enum(Method::class)],
             'payment_condition' => ['sometimes', 'required', Rule::enum(Condition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'description' => 'nullable|string|max:1000',
             'observations' => 'nullable|string|max:2000',
             'customer_observations' => 'nullable|string|max:2000',

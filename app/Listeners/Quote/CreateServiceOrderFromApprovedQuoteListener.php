@@ -75,6 +75,7 @@ class CreateServiceOrderFromApprovedQuoteListener
                     'estimated_hours' => $totalEstimatedHours,
                     'payment_method' => $paymentDefaults['payment_method'],
                     'payment_condition' => $paymentDefaults['payment_condition'],
+                    'payment_condition_details' => $quote->payment_condition_details ?? $paymentDefaults['payment_condition_details'],
                     'customer_observations' => "Gerada a partir do orcamento #{$quote->quote_number}\n{$quote->observations}",
                 ], $event->approvedBy);
 

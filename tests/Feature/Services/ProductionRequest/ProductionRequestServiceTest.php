@@ -123,6 +123,26 @@ class ProductionRequestServiceTest extends TestCase
         );
     }
 
+    public function test_delivery_uses_saved_custom_payment_terms(): void
+    {
+        $details = ['installments' => 36, 'first_due_days' => 10, 'interval_days' => 45];
+        $request = $this->createRequest([
+            'payment_method' => PaymentMethod::BANK_SLIP->value,
+            'payment_condition' => PaymentCondition::CUSTOM->value,
+            'payment_condition_details' => $details,
+        ]);
+        $this->attachItem($request, 360, 1);
+        $delivered = $this->service->deliver($request->fresh(), [], $this->user->id);
+
+        $this->assertNotNull($delivered, $this->service->getMessageUser());
+        $this->assertSame($details, $delivered->payment_condition_details);
+        $installments = $delivered->accountReceivable->installments()->orderBy('due_date')->get();
+        $this->assertCount(36, $installments);
+        $this->assertSame('2026-07-15', $installments->first()->due_date->toDateString());
+        $this->assertSame('2026-08-29', $installments[1]->due_date->toDateString());
+        $this->assertEquals(360, $installments->sum('due_amount'));
+    }
+
     public function test_it_allows_manual_counterparty_when_delivering_request(): void
     {
         $request = $this->createRequest([

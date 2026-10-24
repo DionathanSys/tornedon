@@ -67,7 +67,7 @@ class AccountPayableValidator
             'fiscal_document_id' => 'nullable|integer|exists:fiscal_documents,id',
             'sequence_number' => 'required|string|max:2',
             'status' => ['required', Rule::in(array_map(fn ($s) => $s->value, Status::cases()))],
-            'installment_count' => 'nullable|integer|min:1|max:24',
+            'installment_count' => 'nullable|integer|min:1|max:999',
             'installment_due_mode' => ['nullable', Rule::in([
                 ...array_keys(PaymentCondition::installmentIntervalOptions()),
                 'fixed_day_of_month',

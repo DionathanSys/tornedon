@@ -27,7 +27,7 @@ final class DuplicateServiceOrderWorkflow
                     'customer_id', 'company_id', 'priority', 'type', 'solution', 'equipment_id', 'location',
                     'customer_observations', 'general_observations', 'internal_observations', 'items_received',
                     'technician_observations', 'estimated_hours', 'value_km', 'distance_km', 'travel_value',
-                    'payment_method', 'payment_condition', 'technician_id', 'supervisor_id', 'salesperson_id',
+                    'payment_method', 'payment_condition', 'payment_condition_details', 'technician_id', 'supervisor_id', 'salesperson_id',
                     'warranty_expires_at', 'requires_approval', 'additional_info',
                 ]);
 

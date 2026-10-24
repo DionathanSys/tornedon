@@ -103,7 +103,7 @@ class AccountReceivableForm
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->numeric()
                             ->minValue(1)
-                            ->maxValue(24)
+                            ->maxValue(999)
                             ->default(1)
                             ->required()
                             ->live()

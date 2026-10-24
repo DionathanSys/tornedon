@@ -94,7 +94,7 @@ class CompanyCardTransactionsTable
                             ->label('Parcelas')
                             ->numeric()
                             ->minValue(1)
-                            ->maxValue(120)
+                            ->maxValue(999)
                             ->default(1)
                             ->required(),
                     ])

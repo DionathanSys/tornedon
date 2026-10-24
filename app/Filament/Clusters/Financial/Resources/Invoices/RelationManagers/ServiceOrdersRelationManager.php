@@ -93,7 +93,8 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->default(0.0),
                 Select::make('payment_method')
                     ->options(Method::class),
-                Select::make('payment_condition')
+                \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                Select::make('payment_condition')->live()
                     ->options(Condition::class),
                 Select::make('technician_id')
                     ->relationship('technician', 'name'),

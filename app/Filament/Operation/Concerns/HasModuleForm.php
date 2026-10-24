@@ -48,6 +48,7 @@ trait HasModuleForm
             'order_date' => today()->toDateString(), 'due_date' => today()->toDateString(), 'transaction_date' => today()->toDateString(),
             'payment_method' => CompanyPreference::getDefaultPaymentMethod($tenant) ?: Method::CASH->value,
             'payment_condition' => CompanyPreference::getDefaultPaymentCondition($tenant) ?: Condition::CASH->value,
+            'payment_condition_details' => CompanyPreference::get('default_payment_condition_details', $tenant),
             'financial_category_id' => $preferred && isset($categories[$preferred]) ? $preferred : array_key_first($categories),
             'financial_account_id' => FinancialAccount::defaultIdForCompany($tenant), 'direction' => 'inflow',
             'card_payment_profile_id' => CardInstitution::defaultIdForCompany($tenant), 'payment_date' => today()->toDateString(),
@@ -163,10 +164,11 @@ trait HasModuleForm
             $rules += ['data.direction' => ['required', Rule::in(['inflow', 'outflow'])], 'data.transaction_date' => 'required|date', 'data.amount' => 'required|numeric|gt:0', 'data.financial_account_id' => ['required', Rule::in(array_column($this->formOptions('accounts'), 'id'))], 'data.notes' => 'nullable|string'];
         } elseif ($module === 'production_requests') {
             $rules += ['data.order_date' => 'required|date', 'data.observations' => 'nullable|string', 'data.payment_condition' => ['nullable', Rule::enum(Condition::class)]];
+            $rules += \App\Support\Financial\PaymentTerms::rules('data.payment_condition', 'data.payment_condition_details');
         } else {
             $rules += ['data.due_date' => 'required|date', 'data.due_amount' => 'required|numeric|min:0', 'data.document_number' => 'nullable|string|max:50'];
             if (! $editing) {
-                $rules += ['data.installment_count' => 'required|integer|min:1|max:24', 'data.installment_due_mode' => ['required', Rule::in(array_column($this->formOptions('intervals'), 'id'))],
+                $rules += ['data.installment_count' => 'required|integer|min:1|max:999', 'data.installment_due_mode' => ['required', Rule::in(array_column($this->formOptions('intervals'), 'id'))],
                     'data.installment_fixed_day' => 'nullable|required_if:data.installment_due_mode,fixed_day_of_month|integer|min:1|max:31', 'data.installment_interval_days' => 'nullable|required_if:data.installment_due_mode,custom_interval_days|integer|min:1|max:365'];
             }
         }

@@ -85,6 +85,7 @@ class ServiceOrderValidator
             'priority' => ['required', Rule::enum(Priority::class)],
             'type' => ['required', Rule::enum(Type::class)],
             'payment_condition' => 'nullable|string|max:100',
+            ...\App\Support\Financial\PaymentTerms::rules(),
             'status' => ['required', Rule::enum(State::class)],
         ]);
 
@@ -113,6 +114,7 @@ class ServiceOrderValidator
             'priority' => ['sometimes', 'required', Rule::enum(Priority::class)],
             'type' => ['sometimes', 'required', Rule::enum(Type::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
+            ...\App\Support\Financial\PaymentTerms::rules(),
         ]);
 
         // Adiciona validação de number apenas se o campo estiver presente nos dados
