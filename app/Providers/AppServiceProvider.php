@@ -68,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class, \App\Http\Responses\LoginResponse::class);
+
         $this->app->bind(EmailProviderInterface::class, function ($app) {
             $provider = (string) config('email_notifications.provider', 'resend');
 

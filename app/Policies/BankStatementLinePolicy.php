@@ -2,4 +2,4 @@
 
 namespace App\Policies;
 
-class BankStatementLinePolicy extends CashMovementPolicy {}
+class BankStatementLinePolicy extends BankStatementImportPolicy {}

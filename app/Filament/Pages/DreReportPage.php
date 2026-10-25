@@ -55,7 +55,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         $company = Filament::getTenant();
 
         return $user && $company && $user->canAccessTenant($company)
-            && (! app(\App\Services\Access\CompanyAuthorization::class)->isManaged($user, $company)
+            && (! app(\App\Services\Access\CompanyAuthorization::class)->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId())
                 || app(\App\Services\Access\CompanyAuthorization::class)->allows($user, $company, 'reports.view'));
     }
 
@@ -199,7 +199,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         }
         foreach (Company::whereIn('id', $companyIds)->get() as $reportCompany) {
             $authorization = app(\App\Services\Access\CompanyAuthorization::class);
-            if ($authorization->isManaged(auth()->user(), $reportCompany) && ! $authorization->allows(auth()->user(), $reportCompany, 'reports.view')) {
+            if ($authorization->requiresRoleAuthorization(auth()->user(), $reportCompany, Filament::getCurrentPanel()?->getId()) && ! $authorization->allows(auth()->user(), $reportCompany, 'reports.view')) {
                 throw new AuthorizationException('Você não possui permissão para consultar relatórios desta empresa.');
             }
         }
@@ -391,6 +391,11 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
 
     private function companyOptions(): array
     {
+        if (Filament::getCurrentPanel()?->getId() === 'bpo') {
+            $company = Filament::getTenant();
+
+            return $company ? [$company->id => $company->name] : [];
+        }
         return auth()->user()?->companies()
             ->where('companies.is_active', true)
             ->wherePivot('is_active', true)

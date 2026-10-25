@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enum\User\ManagementRole;
 use App\Services\Access\UserAccessService;
+use App\Services\Bpo\BpoAccessService;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasTenants;
@@ -73,6 +74,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
         if ($panel->getId() === 'management') {
             return $this->canAccessManagementPanel();
+        }
+
+        if ($panel->getId() === 'bpo') {
+            return app(BpoAccessService::class)->canAccessPanel($this);
         }
 
         if ($panel->getId() === 'operation') {
@@ -143,6 +148,9 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
     public function getTenants(Panel $panel): Collection
     {
+        if ($panel->getId() === 'bpo') {
+            return app(BpoAccessService::class)->companies($this);
+        }
         $companies = $this->companies()
             ->where('companies.is_active', true)
             ->wherePivot('is_active', true)

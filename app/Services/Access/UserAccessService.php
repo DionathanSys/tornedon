@@ -5,6 +5,7 @@ namespace App\Services\Access;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\UserCompanyAccess;
+use Filament\Facades\Filament;
 
 class UserAccessService
 {
@@ -16,6 +17,9 @@ class UserAccessService
     public function canAccessPanel(User $user, Company $company, string $panel): bool
     {
         $authorization = app(CompanyAuthorization::class);
+        if ($panel === 'bpo') {
+            return $authorization->canAccessPanel($user, $company, $panel);
+        }
         if ($authorization->isManaged($user, $company)) {
             return $authorization->canAccessPanel($user, $company, $panel);
         }
@@ -26,12 +30,15 @@ class UserAccessService
 
     public function allows(User $user, Company $company, string $permission, ?string $panel = null): bool
     {
+        if ($panel === null && Filament::getCurrentPanel()?->getId() === 'bpo') {
+            $panel = 'bpo';
+        }
         if (! $user->canAccessTenant($company)) {
             return false;
         }
 
         $authorization = app(CompanyAuthorization::class);
-        if ($authorization->isManaged($user, $company)) {
+        if ($authorization->requiresRoleAuthorization($user, $company, $panel)) {
             $permission = str_ends_with($permission, '.access') ? substr($permission, 0, -7).'.view' : $permission;
             if ($permission === 'commercial_dashboard.view') {
                 $permission = 'reports.view';

@@ -5,6 +5,7 @@ namespace App\Services\Access;
 use App\Models\Company;
 use App\Models\CompanyRoleAssignment;
 use App\Models\User;
+use App\Services\Bpo\BpoAccessService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -25,6 +26,11 @@ class CompanyAuthorization
     public function isManaged(User $user, Company $company): bool
     {
         return $this->membership($user, $company)?->access_mode === 'roles';
+    }
+
+    public function requiresRoleAuthorization(User $user, Company $company, ?string $panel = null): bool
+    {
+        return $panel === 'bpo' || $this->isManaged($user, $company);
     }
 
     /** Re-read grants on every decision: revocation must also affect already-mounted Livewire components. */
@@ -112,6 +118,10 @@ class CompanyAuthorization
 
     public function canAccessPanel(User $user, Company $company, string $panel): bool
     {
+        if ($panel === 'bpo') {
+            return app(BpoAccessService::class)->canAccessCompany($user, $company);
+        }
+
         return $this->assignments($user, $company)->contains(fn ($assignment) => in_array($panel, $assignment->role->panels, true));
     }
 

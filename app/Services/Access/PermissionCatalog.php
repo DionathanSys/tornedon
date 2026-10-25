@@ -232,7 +232,8 @@ class PermissionCatalog
             'Administrador da empresa' => $all,
             'Financeiro' => $financial,
             'BPO responsável' => $financial,
-            'Auxiliar BPO' => array_intersect_key($financial, array_flip(['account_payables.view', 'account_payables.create', 'account_receivables.view', 'account_receivables.create', 'cash_movements.view'])),
+            'Auxiliar BPO' => array_intersect_key($financial, array_flip(['account_payables.view', 'account_payables.create', 'account_receivables.view', 'account_receivables.create', 'cash_movements.view']))
+                + ['account_payables.update' => 'own', 'account_receivables.update' => 'own'],
             'Vendedor' => ['quotes.view' => 'own', 'quotes.create' => 'company', 'quotes.update' => 'own', 'requisitions.view' => 'assigned', 'products.view' => 'company', 'services.view' => 'company', 'partners.view' => 'company'],
             'Técnico' => ['service_orders.view' => 'assigned', 'service_orders.update' => 'assigned', 'services.view' => 'company', 'equipments.view' => 'company', 'partners.view' => 'company'],
             'Emissor fiscal' => ['fiscal_documents.view' => 'company', 'fiscal_documents.create' => 'company', 'fiscal_documents.update' => 'company', 'fiscal_documents.issue' => 'company'],

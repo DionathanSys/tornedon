@@ -36,7 +36,7 @@ class CompanyTeamService
                 'name' => ['required', 'string', 'max:100', Rule::unique('company_roles')->where('company_id', $company->id)->ignore($roleId)],
                 'permissions' => ['present', 'array'],
                 'panels' => ['required', 'array', 'min:1'],
-                'panels.*' => [Rule::in(['admin', 'operation', 'mobile'])],
+                'panels.*' => [Rule::in(array_keys(PanelAccess::options()))],
             ])->validate();
             $validated['permissions'] = $this->validatePermissions($validated['permissions']);
             $role = $roleId ? CompanyRole::where('company_id', $company->id)->findOrFail($roleId) : new CompanyRole(['company_id' => $company->id]);
@@ -60,7 +60,7 @@ class CompanyTeamService
             $this->lock($company);
             $this->assertManager($actor, $company);
             foreach (PermissionCatalog::templates() as $name => $permissions) {
-                CompanyRole::firstOrCreate(['company_id' => $company->id, 'name' => $name], ['permissions' => $permissions, 'panels' => ['admin', 'operation', 'mobile']]);
+                CompanyRole::firstOrCreate(['company_id' => $company->id, 'name' => $name], ['permissions' => $permissions, 'panels' => array_keys(PanelAccess::options())]);
             }
         });
     }
@@ -71,6 +71,14 @@ class CompanyTeamService
             $this->lock($company);
             $roles = $this->roles($company, $roleIds);
             $engagement = $this->authorizeAssignment($actor, $company, $roles, $engagementId);
+            if ($engagement && $this->access->canManageTeam($actor, $company)) {
+                foreach ($roles as $role) {
+                    if (! in_array('bpo', $role->panels, true)) {
+                        $role->update(['panels' => [...$role->panels, 'bpo']]);
+                        $this->audit($actor, $role, 'access.role.updated', 'Painel BPO habilitado para papel autorizado no atendimento');
+                    }
+                }
+            }
             $this->ensureMembership($target, $company, $this->access->canManageTeam($actor, $company), $engagement === null);
             $query = CompanyRoleAssignment::where('company_id', $company->id)->where('user_id', $target->id);
             $engagement ? $query->where('bpo_engagement_id', $engagement->id) : $query->whereNull('bpo_engagement_id');
@@ -238,7 +246,7 @@ class CompanyTeamService
             foreach ($role->permissions as $permission => $scope) {
                 throw_unless(in_array('company', $this->access->scopes($actor, $company, $permission), true), AuthorizationException::class, 'Você não possui autorização ampla para delegar esta ação.');
             }
-            throw_if(array_diff($role->panels, ['admin', 'operation', 'mobile']) !== [], AuthorizationException::class);
+            throw_if(array_diff($role->panels, array_keys(PanelAccess::options())) !== [], AuthorizationException::class);
         }
 
         return $engagement;

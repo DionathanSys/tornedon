@@ -2,6 +2,7 @@
 
 use App\Providers\AppServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
+use App\Providers\Filament\BpoPanelProvider;
 use App\Providers\Filament\ManagementPanelProvider;
 use App\Providers\Filament\MobilePanelProvider;
 use App\Providers\Filament\OperationPanelProvider;
@@ -12,4 +13,5 @@ return [
     ManagementPanelProvider::class,
     MobilePanelProvider::class,
     OperationPanelProvider::class,
+    BpoPanelProvider::class,
 ];

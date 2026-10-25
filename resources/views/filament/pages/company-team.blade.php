@@ -105,7 +105,7 @@
                 <section class="ctw-detail" aria-label="Papel selecionado">
                     @if ($role)
                         <div class="ctw-detail-heading"><div><span class="ctw-eyebrow">Papel de acesso</span><h3>{{ $role->name }}</h3><p>{{ $team['roleAssignments']->count() }} {{ $team['roleAssignments']->count() === 1 ? 'pessoa utiliza' : 'pessoas utilizam' }} este papel.</p></div><x-filament::button icon="heroicon-o-pencil-square" wire:click="mountAction('role', { role_id: {{ $role->id }} })">Editar permissões</x-filament::button></div>
-                        <div class="ctw-badges">@foreach ($role->panels as $panel)<span class="ctw-badge is-neutral">{{ ['admin' => 'Gestão completa', 'operation' => 'Operação', 'mobile' => 'Mobile'][$panel] ?? $panel }}</span>@endforeach</div>
+                        <div class="ctw-badges">@foreach ($role->panels as $panel)<span class="ctw-badge is-neutral">{{ \App\Services\Access\PanelAccess::options()[$panel] ?? $panel }}</span>@endforeach</div>
                         <h4 class="ctw-subheading">Resumo por módulo</h4>
                         <div class="ctw-permission-summary">
                             @php($hasVisiblePermissions = false)

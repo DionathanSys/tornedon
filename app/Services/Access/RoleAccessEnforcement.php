@@ -41,7 +41,7 @@ class RoleAccessEnforcement
         if ($company instanceof Company && $this->access->isScopedUser($user) && ! $user->canAccessTenant($company)) {
             return false;
         }
-        if (! $company instanceof Company || ! $this->access->isManaged($user, $company)) {
+        if (! $company instanceof Company || ! $this->access->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId())) {
             return null;
         }
         if ($subject instanceof Company || $subject === Company::class) {
@@ -82,7 +82,7 @@ class RoleAccessEnforcement
         if ($this->access->isScopedUser($user)) {
             throw_unless($company && $user->canAccessTenant($company), AuthorizationException::class);
         }
-        if (! $user || ! $company || ! $this->access->isManaged($user, $company)) {
+        if (! $user || ! $company || ! $this->access->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId())) {
             return;
         }
         throw_unless($definition && ($parent === $record
@@ -114,7 +114,7 @@ class RoleAccessEnforcement
         if ($this->access->isScopedUser($user)) {
             throw_unless($company && $user->canAccessTenant($company), AuthorizationException::class);
         }
-        if (! $user || ! $company || ! $this->access->isManaged($user, $company)) {
+        if (! $user || ! $company || ! $this->access->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId())) {
             return;
         }
         $permissionAction = $parent === $record ? $action : $this->childAction($record, $action);

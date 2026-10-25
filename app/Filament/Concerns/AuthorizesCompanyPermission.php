@@ -23,7 +23,7 @@ trait AuthorizesCompanyPermission
         }
         $access = app(CompanyAuthorization::class);
 
-        return ! $access->isManaged($user, $company) || $access->allows($user, $company, static::rolePagePermission());
+        return ! $access->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId()) || $access->allows($user, $company, static::rolePagePermission());
     }
 
     public static function canAccess(): bool

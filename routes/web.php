@@ -15,6 +15,11 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    $user = auth()->user();
+    if ($user && app(\App\Services\Bpo\BpoAccessService::class)->canAccessPanel($user)) {
+        return redirect()->route('filament.bpo.portfolio');
+    }
+
     return redirect()->to('/mobile');
 });
 

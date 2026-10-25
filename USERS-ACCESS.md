@@ -4,6 +4,8 @@
 
 Uma identidade e um login por pessoa. Os papéis são acumuláveis por empresa; um usuário pode atuar como administrador, vendedor, técnico, BPO ou auxiliar em contextos diferentes. Não existe cadastro de escritório BPO.
 
+O painel operacional BPO, a entrada automática e o tema desktop estão documentados em [BPO-PANEL.md](BPO-PANEL.md). O catálogo `PanelAccess` inclui o novo painel; sua entrada exige também atendimento e atribuição ativos.
+
 - `company_user`: vínculo com a empresa e modo de autorização (`legacy` ou `roles`).
 - `company_roles`: papéis personalizados da empresa, permissões e painéis disponíveis.
 - `company_role_assignments`: atribuições de papéis, concedente e origem direta/BPO.

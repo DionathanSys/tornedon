@@ -11,6 +11,7 @@ use App\Models\CompanyRoleAssignment;
 use App\Models\User;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\CompanyTeamService;
+use App\Services\Access\PanelAccess;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
@@ -99,15 +100,15 @@ class CompanyTeam extends Page
             ->fillForm(function (array $arguments): array {
                 $role = empty($arguments['role_id']) ? null : $this->findRole((int) $arguments['role_id']);
 
-                return ['role_id' => $role?->id, 'name' => $role?->name, 'panels' => $role?->panels ?? ['admin', 'operation', 'mobile'], 'permissions' => $role?->permissions ?? []];
+                return ['role_id' => $role?->id, 'name' => $role?->name, 'panels' => $role?->panels ?? array_keys(PanelAccess::options()), 'permissions' => $role?->permissions ?? []];
             })
             ->schema([
                 Hidden::make('role_id'),
                 Section::make()->schema([
                     TextInput::make('name')->label('Nome do papel')->placeholder('Ex.: Financeiro, Vendedor, Técnico')->required()->maxLength(100),
                     CheckboxList::make('panels')->label('Onde a pessoa poderá trabalhar')
-                        ->options(['admin' => 'Gestão completa (Admin)', 'operation' => 'Operação', 'mobile' => 'Mobile'])
-                        ->columns(3)->required()->helperText('O painel dá acesso à interface. As ações permitidas são definidas abaixo.'),
+                        ->options(PanelAccess::options())
+                        ->columns(2)->required()->helperText('O painel dá acesso à interface. O BPO exige também um atendimento autorizado. As ações permitidas são definidas abaixo.'),
                 ])->columns(2),
                 CompanyPermissionWorkbench::make('permissions')->label('Permissões por módulo')->default([])->rules(['array']),
             ])->action(function (array $data): void {
@@ -363,6 +364,9 @@ class CompanyTeam extends Page
         abort_unless(static::canAccess(), 403);
         $roles = CompanyRole::where('company_id', Filament::getTenant()->id)->where('is_active', true)->orderBy('name')->get();
         if (! $this->isManager()) {
+            if (Filament::getCurrentPanel()?->getId() === 'bpo') {
+                $roles = $roles->filter(fn ($role) => in_array('bpo', $role->panels, true));
+            }
             $engagement = $this->visibleEngagements()->where('is_active', true)->where('can_delegate', true)
                 ->when(filled($engagementId), fn ($query) => $query->whereKey((int) $engagementId))->first();
             $permissions = app(CompanyAuthorization::class)->effectivePermissions(auth()->user(), Filament::getTenant());
