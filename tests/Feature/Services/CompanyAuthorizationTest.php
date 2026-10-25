@@ -281,10 +281,10 @@ class CompanyAuthorizationTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Filament::setTenant($company);
         Livewire::test(CompanyTeam::class)->callAction('role', data: [
-            'role_id' => null, 'name' => 'Consulta de propostas', 'panels' => ['admin'],
-            'grants' => [['permission' => 'quotes.view', 'scope' => 'own']],
+            'role_id' => null, 'name' => 'Consulta de orçamentos', 'panels' => ['admin'],
+            'permissions' => ['quotes.view' => 'own'],
         ])->assertHasNoActionErrors();
-        $role = CompanyRole::where('name', 'Consulta de propostas')->firstOrFail();
+        $role = CompanyRole::where('name', 'Consulta de orçamentos')->firstOrFail();
         $user = User::factory()->create();
         Livewire::test(CompanyTeam::class)->callAction('assign', data: ['email' => $user->email, 'role_ids' => [$role->id], 'engagement_id' => null])->assertHasNoActionErrors();
         $this->actingAs($user);

@@ -55,18 +55,40 @@ class CompanyAuthorization
 
     public function scopes(User $user, Company $company, string $permission): array
     {
-        return $this->assignments($user, $company)->map(function ($assignment) use ($company, $permission) {
+        return $this->effectivePermissions($user, $company)[$permission] ?? [];
+    }
+
+    public function effectivePermissions(User $user, Company $company): array
+    {
+        $result = [];
+        $responsiblePermissions = [];
+        foreach ($this->assignments($user, $company) as $assignment) {
+            $permissions = $assignment->role->permissions;
             if ($assignment->bpo_engagement_id && (int) $assignment->engagement->responsible_id !== (int) $assignment->user_id) {
-                if (($assignment->engagement->delegable_permissions[$permission] ?? null) !== 'company'
-                    || ! $this->assignments($assignment->engagement->responsible, $company)->contains(fn ($source) => (! $source->bpo_engagement_id || (int) $source->engagement->responsible_id === (int) $source->user_id)
-                        && ($source->role->permissions[$permission] ?? null) === 'company')) {
-                    return 'none';
+                $engagement = $assignment->engagement;
+                if (! array_key_exists($engagement->id, $responsiblePermissions)) {
+                    $responsiblePermissions[$engagement->id] = [];
+                    foreach ($this->assignments($engagement->responsible, $company) as $source) {
+                        if (! $source->bpo_engagement_id || (int) $source->engagement->responsible_id === (int) $source->user_id) {
+                            foreach ($source->role->permissions as $key => $scope) {
+                                if ($scope === 'company') {
+                                    $responsiblePermissions[$engagement->id][$key] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                $permissions = array_filter($permissions, fn ($key) => ($engagement->delegable_permissions[$key] ?? null) === 'company'
+                    && isset($responsiblePermissions[$engagement->id][$key]), ARRAY_FILTER_USE_KEY);
+            }
+            foreach ($permissions as $key => $scope) {
+                if (in_array($scope, ['own', 'assigned', 'company'], true)) {
+                    $result[$key] = array_values(array_unique([...($result[$key] ?? []), $scope]));
                 }
             }
+        }
 
-            return $assignment->role->permissions[$permission] ?? 'none';
-        })
-            ->filter(fn ($scope) => in_array($scope, ['own', 'assigned', 'company'], true))->unique()->values()->all();
+        return $result;
     }
 
     public function allows(User $user, Company $company, string $permission): bool

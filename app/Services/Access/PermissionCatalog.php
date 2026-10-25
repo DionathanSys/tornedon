@@ -11,7 +11,7 @@ class PermissionCatalog
     public static function modules(): array
     {
         $modules = [
-            'quotes' => ['label' => 'Propostas', 'model' => Models\Quote::class, 'owner' => 'created_by', 'assigned' => []],
+            'quotes' => ['label' => 'Orçamentos', 'model' => Models\Quote::class, 'owner' => 'created_by', 'assigned' => []],
             'service_orders' => ['label' => 'Ordens de serviço', 'model' => Models\ServiceOrder::class, 'owner' => 'created_by', 'assigned' => ['technician_id', 'supervisor_id', 'salesperson_id']],
             'requisitions' => ['label' => 'Requisições', 'model' => Models\Requisition::class, 'owner' => 'created_by', 'assigned' => ['salesperson_id']],
             'production_requests' => ['label' => 'Pedidos', 'model' => Models\ProductionRequest::class, 'owner' => 'created_by', 'assigned' => []],
@@ -81,7 +81,7 @@ class PermissionCatalog
     public static function scopeOptions(string $permission): array
     {
         $options = AccessScope::options();
-        [$module, $action] = explode('.', $permission, 2);
+        [$module, $action] = array_pad(explode('.', $permission, 2), 2, '');
         $definition = self::modules()[$module] ?? null;
         if (! $definition || $action === 'create') {
             return array_intersect_key($options, array_flip(['none', 'company']));
@@ -94,6 +94,95 @@ class PermissionCatalog
         }
 
         return $options;
+    }
+
+    /** Presentation only: stable authorization keys and existing role grants remain compatible. */
+    public static function editorGroups(): array
+    {
+        $basic = ['view', 'create', 'update', 'delete', 'export'];
+        $actions = [
+            'quotes' => [...$basic, 'approve'],
+            'service_orders' => [...$basic, 'approve', 'cancel', 'issue', 'assign'],
+            'requisitions' => [...$basic, 'cancel', 'issue', 'assign'],
+            'production_requests' => [...$basic, 'approve', 'cancel'],
+            'production_orders' => [...$basic, 'approve', 'cancel'],
+            'account_payables' => [...$basic, 'approve', 'settle', 'reverse', 'cancel', 'change_status_without_movement'],
+            'account_receivables' => [...$basic, 'approve', 'settle', 'reverse', 'cancel', 'change_status_without_movement'],
+            'cash_movements' => [...$basic, 'reverse'],
+            'invoices' => [...$basic, 'approve', 'cancel'],
+            'fiscal_documents' => [...$basic, 'approve', 'cancel', 'issue'],
+            'bank_statements' => [...$basic, 'reverse'],
+        ];
+        $areas = [
+            'Vendas e atendimento' => ['quotes', 'service_orders', 'requisitions', 'production_requests', 'production_orders', 'warranty_claims'],
+            'Financeiro' => ['account_payables', 'account_receivables', 'cash_movements', 'invoices', 'financial_accounts', 'bank_statements', 'financial_categories', 'chart_accounts', 'cost_centers', 'result_centers', 'dre_models', 'card_institutions', 'company_credit_cards', 'company_card_statements', 'company_card_transactions', 'banking_events', 'purchase_closings'],
+            'Fiscal' => ['fiscal_documents', 'sefaz_documents', 'fiscal_rules'],
+            'Cadastros e estoque' => ['partners', 'products', 'services', 'equipments', 'stock_movements', 'product_stocks', 'categories'],
+            'Comunicação' => ['email_dispatches'],
+        ];
+        $descriptions = [
+            'quotes' => 'Orçamentos enviados aos clientes no módulo de vendas.',
+            'service_orders' => 'Atendimentos, execução dos serviços e responsáveis pelas OS.',
+            'account_payables' => 'Despesas e pagamentos registrados no financeiro.',
+            'account_receivables' => 'Receitas e recebimentos registrados no financeiro.',
+            'bank_statements' => 'Importação de extratos e conciliação dos lançamentos bancários.',
+            'fiscal_documents' => 'Notas fiscais de produtos e serviços.',
+        ];
+        $hints = [
+            'view' => 'Abrir listas e consultar os detalhes dos registros.',
+            'create' => 'Cadastrar novos registros neste módulo.',
+            'update' => 'Editar os registros, respeitando as regras do módulo.',
+            'delete' => 'Excluir quando o estado do registro permitir.',
+            'approve' => 'Realizar as aprovações previstas neste módulo.',
+            'settle' => 'Registrar que um valor foi pago ou recebido. Não executa pagamento no banco.',
+            'reverse' => 'Reverter um lançamento ou desfazer uma operação permitida.',
+            'cancel' => 'Cancelar registros conforme o fluxo do módulo.',
+            'export' => 'Exportar registros e documentos autorizados.',
+            'issue' => 'Emitir documentos ou faturar a operação.',
+            'assign' => 'Definir ou alterar os responsáveis pelo registro.',
+            'change_status_without_movement' => 'Desconsiderar ou restaurar títulos, sem registrar movimentação financeira.',
+        ];
+        $groups = [];
+        foreach ($areas as $area => $modules) {
+            foreach ($modules as $module) {
+                $definition = self::modules()[$module];
+                $permissions = [];
+                foreach ($actions[$module] ?? $basic as $action) {
+                    $key = $module.'.'.$action;
+                    $options = self::scopeOptions($key);
+                    if (count($options) === 2) {
+                        $options['company'] = 'Permitido';
+                    }
+                    $permissions[] = [
+                        'key' => $key, 'label' => self::actions()[$action] ?? 'Ignorar / restaurar títulos',
+                        'description' => $hints[$action], 'options' => $options,
+                    ];
+                }
+                $groups[] = ['key' => $module, 'label' => $definition['label'], 'area' => $area,
+                    'description' => $descriptions[$module] ?? 'Controle das ações disponíveis em '.$definition['label'].'.',
+                    'permissions' => $permissions];
+            }
+        }
+        $groups[] = [
+            'key' => 'administration', 'label' => 'Gestão da empresa', 'area' => 'Administração',
+            'description' => 'Equipe, identidade da empresa, configurações e relatórios gerenciais.',
+            'permissions' => collect([
+                'team.manage' => ['Administrar equipe e papéis', 'Convidar pessoas, definir permissões e autorizar atendimentos BPO.'],
+                'company.update' => ['Alterar dados da empresa', 'Editar a identidade e o cadastro da empresa.'],
+                'reports.view' => ['Consultar relatórios gerenciais', 'Acessar DRE e relatórios gerenciais da empresa.'],
+                'settings.manage' => ['Administrar configurações', 'Alterar preferências e configurações operacionais e fiscais.'],
+            ])->map(fn ($definition, $key) => ['key' => $key, 'label' => $definition[0], 'description' => $definition[1],
+                'options' => ['none' => 'Não permitido', 'company' => 'Permitido']])->values()->all(),
+        ];
+
+        return $groups;
+    }
+
+    public static function visiblePermissionCount(array $permissions): int
+    {
+        $keys = collect(self::editorGroups())->pluck('permissions')->flatten(1)->pluck('key')->all();
+
+        return count(array_filter(array_intersect_key($permissions, array_flip($keys)), fn ($scope) => $scope !== 'none' && $scope !== []));
     }
 
     public static function definition(string $model): ?array
@@ -133,7 +222,8 @@ class PermissionCatalog
 
     public static function templates(): array
     {
-        $all = array_fill_keys(array_keys(self::labels()), 'company');
+        $keys = collect(self::editorGroups())->pluck('permissions')->flatten(1)->pluck('key')->all();
+        $all = array_fill_keys($keys, 'company');
         $financialModules = ['account_payables', 'account_receivables', 'cash_movements', 'invoices', 'financial_accounts', 'bank_statements', 'financial_categories', 'chart_accounts', 'cost_centers', 'result_centers', 'dre_models', 'card_institutions', 'company_credit_cards', 'company_card_statements', 'company_card_transactions', 'banking_events'];
         $financial = array_filter($all, fn ($key) => in_array(explode('.', $key)[0], $financialModules, true) || $key === 'reports.view', ARRAY_FILTER_USE_KEY);
         $financial += ['partners.view' => 'company', 'partners.create' => 'company', 'partners.update' => 'company'];

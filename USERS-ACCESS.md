@@ -26,6 +26,16 @@ O administrador da empresa pode:
 5. Autorizar um BPO e definir as ações delegáveis aos auxiliares.
 6. Suspender vínculos, revogar atribuições, revogar convites e encerrar atendimentos.
 
+### Interface de gerenciamento
+
+A página é organizada em **Pessoas**, **Papéis e permissões**, **Atendimentos BPO** e **Convites**. Em Pessoas, selecione um integrante para consultar seus papéis, editar cada concessão ou abrir as permissões resultantes. A edição contextual já preenche a pessoa, o atendimento e os papéis atuais.
+
+O editor de papéis usa uma bancada por módulo, com busca, filtro de ações permitidas, atalhos de somente consulta/permissão/bloqueio e resumo de alcance. A interface apresenta ações pertinentes a cada módulo: **Orçamentos** é o cadastro de `Quote` usado no módulo de vendas. As chaves de autorização continuam compatíveis com os papéis já gravados. Os modelos novos utilizam as ações apresentadas no editor.
+
+**Concedido pela empresa** substitui o rótulo anterior “Direto”: é um acesso independente de atendimento BPO. **Pelo atendimento de [responsável]** identifica papéis que serão retirados ao encerrar aquele atendimento. A página explica o efeito junto de cada concessão.
+
+A consulta de permissões resultantes é somente leitura e considera os alcances acumulados, a suspensão do vínculo e as autorizações atuais do BPO. Na delegação, os papéis disponíveis são filtrados pelos limites do atendimento para facilitar a escolha de acessos válidos.
+
 O convite tem validade de sete dias. A consulta por GET não concede acesso. O aceite é feito por POST com CSRF. Quem já possui conta entra com o mesmo e-mail; quem ainda não possui pode criar sua identidade pelo convite. O formulário não aceita privilégios administrativos da plataforma. O envio de e-mail utiliza o canal de notificações/mail configurado no Laravel, após o commit.
 
 ## Próprios, atribuídos e todos
