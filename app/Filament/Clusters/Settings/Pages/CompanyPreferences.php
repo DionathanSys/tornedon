@@ -22,6 +22,7 @@ use UnitEnum;
 class CompanyPreferences extends Page implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 

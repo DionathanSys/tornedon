@@ -23,6 +23,7 @@ class AccountPayable extends Model
         'supplier_id',
         'manual_counterparty_name',
         'company_id',
+        'created_by',
         'fiscal_document_id',
         'bank_slip_number',
         'note_number',

@@ -50,6 +50,13 @@ class AttachmentController extends Controller
             abort(401, 'Não autorizado');
         }
 
+        $company = \App\Models\Company::findOrFail($attachment->company_id);
+        $authorization = app(\App\Services\Access\CompanyAuthorization::class);
+        if ($authorization->isManaged($user, $company)) {
+            $owner = $attachment->attachable;
+            abort_unless($user->canAccessTenant($company) && $owner && \Illuminate\Support\Facades\Gate::forUser($user)->allows('view', $owner), 403, 'Acesso negado');
+        }
+
         if (in_array($attachment->type, [AttachmentType::COMMITMENT_PDF, AttachmentType::COMMITMENT_PAYMENT_REPORT], true)) {
             $owner = $attachment->attachable;
             abort_unless($owner instanceof CommitmentImportFile

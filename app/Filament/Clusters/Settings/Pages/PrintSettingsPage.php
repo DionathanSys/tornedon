@@ -110,8 +110,10 @@ class PrintSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public static function canAccess(): bool
     {
-        return true;
+        return static::rolePageAllowed();
     }
+
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
 
     /**
      * @param  array<int, string>  $tokens

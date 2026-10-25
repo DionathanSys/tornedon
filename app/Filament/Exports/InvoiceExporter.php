@@ -14,6 +14,8 @@ use OpenSpout\Common\Entity\Style\Style;
 
 class InvoiceExporter extends Exporter
 {
+    use AuthorizesScopedExport;
+
     private const NUMERIC_COLUMNS = [
         'gross_amount',
         'discount_amount',

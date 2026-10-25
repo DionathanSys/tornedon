@@ -59,9 +59,10 @@ class NfeSettingsPage extends Page implements Forms\Contracts\HasForms
      */
     public static function canAccess(): bool
     {
-        // return Auth::user()?->hasRole('super_admin') ?? false;
-        return true; // TODO: remover esta linha após criar role super_admin e atribuir aos usuários adequados
+        return static::rolePageAllowed();
     }
+
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
 
     public function mount(): void
     {

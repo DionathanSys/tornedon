@@ -27,6 +27,7 @@ class CreateAccountReceivableAction
             ]);
 
             $validated = AccountReceivableValidator::validateCreate($data);
+            $validated['created_by'] = $this->createdBy > 0 ? $this->createdBy : null;
 
             $accountReceivable = AccountReceivable::create($validated);
 

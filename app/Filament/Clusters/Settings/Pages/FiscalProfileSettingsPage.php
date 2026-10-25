@@ -23,6 +23,7 @@ use UnitEnum;
 class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calculator';
 
@@ -42,7 +43,7 @@ class FiscalProfileSettingsPage extends Page implements Forms\Contracts\HasForms
 
     public static function canAccess(): bool
     {
-        return true; // TODO: restringir por permissão (Shield)
+        return static::rolePageAllowed();
     }
 
     public function mount(): void

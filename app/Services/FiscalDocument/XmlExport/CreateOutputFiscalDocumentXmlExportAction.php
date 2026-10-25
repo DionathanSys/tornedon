@@ -17,7 +17,15 @@ class CreateOutputFiscalDocumentXmlExportAction
     {
         $queryService = app(OutputFiscalDocumentXmlExportQuery::class);
         $dateColumn = $queryService->normalizeDateColumn($dateColumn);
-        $documents = $queryService->query($companyId, $startDate, $endDate, $dateColumn)->get();
+        $query = $queryService->query($companyId, $startDate, $endDate, $dateColumn);
+        $user = \App\Models\User::findOrFail($userId);
+        $company = \App\Models\Company::findOrFail($companyId);
+        $access = app(\App\Services\Access\CompanyAuthorization::class);
+        if ($access->isManaged($user, $company)) {
+            throw_unless($access->allows($user, $company, 'fiscal_documents.export'), \Illuminate\Auth\Access\AuthorizationException::class);
+            $access->scopeQuery($query, $user, $company, 'fiscal_documents.export');
+        }
+        $documents = $query->get();
 
         $export = FiscalDocumentXmlExport::query()->create([
             'company_id' => $companyId,

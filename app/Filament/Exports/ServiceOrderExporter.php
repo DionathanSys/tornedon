@@ -14,6 +14,8 @@ use OpenSpout\Common\Entity\Style\Style;
 
 class ServiceOrderExporter extends Exporter
 {
+    use AuthorizesScopedExport;
+
     private const NUMERIC_COLUMNS = [
         'services_total_amount',
         'requisition_total_amount',

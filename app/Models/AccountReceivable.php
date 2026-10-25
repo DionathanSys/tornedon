@@ -22,6 +22,7 @@ class AccountReceivable extends Model
         'customer_id',
         'manual_counterparty_name',
         'company_id',
+        'created_by',
         'invoice_id',
         'fiscal_document_id',
         'status',

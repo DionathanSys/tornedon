@@ -23,6 +23,12 @@ use UnitEnum;
 class CompanySettings extends Page implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
+
+    protected static function rolePagePermission(): string
+    {
+        return 'company.update';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
 

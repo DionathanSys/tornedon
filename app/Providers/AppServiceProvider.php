@@ -94,6 +94,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        app(\App\Services\Access\RoleAccessEnforcement::class)->register();
+
         FilamentView::registerRenderHook(
             PanelsRenderHook::HEAD_START,
             fn () => view('partials.translation-meta'),

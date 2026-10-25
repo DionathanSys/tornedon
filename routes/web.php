@@ -18,6 +18,11 @@ Route::get('/', function () {
     return redirect()->to('/mobile');
 });
 
+Route::get('/convites-equipe/{token}', [\App\Http\Controllers\CompanyAccessInvitationController::class, 'show'])
+    ->middleware('throttle:30,1')->name('company-access.invitation.show');
+Route::post('/convites-equipe/{token}', [\App\Http\Controllers\CompanyAccessInvitationController::class, 'accept'])
+    ->middleware('throttle:10,1')->name('company-access.invitation.accept');
+
 /*
 |--------------------------------------------------------------------------
 | Webhook IntegraNotas — NF-e / NFS-e

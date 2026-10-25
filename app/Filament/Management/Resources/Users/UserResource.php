@@ -78,7 +78,7 @@ class UserResource extends Resource
                         ->dehydrated(fn (): bool => auth()->user()?->isSuperAdmin() ?? false),
                 ]),
             Section::make('Acessos e navegação por empresa')
-                ->description('Quatro recursos permitidos aparecem na barra do Operation; os demais ficam no Menu. Empresas sem configuração mantêm o acesso padrão.')
+                ->description('Configuração anterior do Operation. Vínculos migrados para papéis são administrados em Equipe e acessos dentro da empresa; estas opções anteriores não alteram suas permissões por papéis.')
                 ->schema([
                     Repeater::make('company_access')
                         ->label('Configurações')

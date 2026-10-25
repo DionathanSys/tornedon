@@ -148,8 +148,8 @@ class User extends Authenticatable implements FilamentUser, HasTenants
             ->wherePivot('is_active', true)
             ->get();
 
-        if ($panel->getId() === 'operation') {
-            return $companies->filter(fn (Company $company): bool => app(UserAccessService::class)->canAccessPanel($this, $company, 'operation'));
+        if (in_array($panel->getId(), ['operation', 'admin', 'mobile'], true)) {
+            return $companies->filter(fn (Company $company): bool => app(UserAccessService::class)->canAccessPanel($this, $company, $panel->getId()));
         }
 
         return $companies;

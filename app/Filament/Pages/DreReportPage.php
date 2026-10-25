@@ -28,6 +28,12 @@ use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 class DreReportPage extends Page implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
+
+    protected static function rolePagePermission(): string
+    {
+        return 'reports.view';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-presentation-chart-line';
 
@@ -42,6 +48,16 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     protected static ?int $navigationSort = 1;
 
     protected string $view = 'filament.pages.dre-report-page';
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        $company = Filament::getTenant();
+
+        return $user && $company && $user->canAccessTenant($company)
+            && (! app(\App\Services\Access\CompanyAuthorization::class)->isManaged($user, $company)
+                || app(\App\Services\Access\CompanyAuthorization::class)->allows($user, $company, 'reports.view'));
+    }
 
     public ?array $data = [];
 
@@ -180,6 +196,12 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         $allowedCompanyIds = array_map('intval', array_keys($this->companyOptions()));
         if (! auth()->user()?->isActive() || $companyIds === [] || array_diff($companyIds, $allowedCompanyIds) !== []) {
             throw new AuthorizationException('Você não possui acesso às empresas selecionadas.');
+        }
+        foreach (Company::whereIn('id', $companyIds)->get() as $reportCompany) {
+            $authorization = app(\App\Services\Access\CompanyAuthorization::class);
+            if ($authorization->isManaged(auth()->user(), $reportCompany) && ! $authorization->allows(auth()->user(), $reportCompany, 'reports.view')) {
+                throw new AuthorizationException('Você não possui permissão para consultar relatórios desta empresa.');
+            }
         }
         $costCenterId = filled($filters['cost_center_id'] ?? null) ? (int) $filters['cost_center_id'] : null;
         $resultCenterId = filled($filters['result_center_id'] ?? null) ? (int) $filters['result_center_id'] : null;

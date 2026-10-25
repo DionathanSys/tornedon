@@ -23,6 +23,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ProductProfitReport extends Page implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
+    use \App\Filament\Concerns\AuthorizesCompanyPermission;
+
+    protected static function rolePagePermission(): string
+    {
+        return 'reports.view';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar-square';
 

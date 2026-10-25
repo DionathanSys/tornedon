@@ -15,6 +15,11 @@ class UserAccessService
 
     public function canAccessPanel(User $user, Company $company, string $panel): bool
     {
+        $authorization = app(CompanyAuthorization::class);
+        if ($authorization->isManaged($user, $company)) {
+            return $authorization->canAccessPanel($user, $company, $panel);
+        }
+
         return $user->canAccessTenant($company)
             && ($this->settings($user, $company)?->panels[$panel] ?? true);
     }
@@ -23,6 +28,17 @@ class UserAccessService
     {
         if (! $user->canAccessTenant($company)) {
             return false;
+        }
+
+        $authorization = app(CompanyAuthorization::class);
+        if ($authorization->isManaged($user, $company)) {
+            $permission = str_ends_with($permission, '.access') ? substr($permission, 0, -7).'.view' : $permission;
+            if ($permission === 'commercial_dashboard.view') {
+                $permission = 'reports.view';
+            }
+
+            return (! $panel || $authorization->canAccessPanel($user, $company, $panel))
+                && $authorization->allows($user, $company, $permission);
         }
 
         $settings = $this->settings($user, $company);

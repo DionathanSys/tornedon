@@ -27,6 +27,7 @@ class OperationModules
             'account_payables' => ['label' => 'Pagar', 'icon' => 'o-arrow-trending-down', 'page' => AccountPayableResource::class, 'permission' => 'account_payables.access'],
             'cash_movements' => ['label' => 'Caixa', 'icon' => 'o-arrows-right-left', 'page' => CashMovementResource::class, 'permission' => 'cash_movements.access'],
             'commercial_dashboard' => ['label' => 'Produção e financeiro', 'icon' => 'o-chart-bar', 'page' => CommercialDashboard::class, 'permission' => 'commercial_dashboard.access'],
+            'team' => ['label' => 'Equipe e acessos', 'icon' => 'o-users', 'page' => \App\Filament\Operation\Pages\CompanyTeam::class, 'permission' => null],
         ];
     }
 
@@ -65,6 +66,9 @@ class OperationModules
         if (! $definition || ! $user || ! $tenant) {
             return false;
         }
+        if ($module === 'team') {
+            return \App\Filament\Operation\Pages\CompanyTeam::canAccess();
+        }
 
         $access = app(UserAccessService::class);
 
@@ -101,7 +105,7 @@ class OperationModules
         }
         $definitions = self::definitions();
         $settings = app(UserAccessService::class)->settings($user, $tenant);
-        if (! $user->canAccessTenant($tenant) || ! ($settings?->panels['operation'] ?? true)) {
+        if (! app(UserAccessService::class)->canAccessPanel($user, $tenant, 'operation')) {
             return [];
         }
         $order = $settings?->navigation['operation'] ?? [];
@@ -112,7 +116,10 @@ class OperationModules
                 continue;
             }
             $module = $definitions[$key];
-            if ($module['permission'] && $settings && ! in_array($module['permission'], $settings->permissions, true)) {
+            if ($key === 'team' && ! \App\Filament\Operation\Pages\CompanyTeam::canAccess()) {
+                continue;
+            }
+            if ($module['permission'] && ! app(UserAccessService::class)->allows($user, $tenant, $module['permission'], 'operation')) {
                 continue;
             }
             $items[] = [...$module, 'key' => $key, 'url' => $module['page']::getUrl(panel: 'operation', tenant: $tenant)];

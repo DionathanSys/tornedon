@@ -27,6 +27,7 @@ class CreateAccountPayableAction
             ]);
 
             $validated = AccountPayableValidator::validateCreate($data);
+            $validated['created_by'] = $this->createdBy > 0 ? $this->createdBy : null;
 
             $accountPayable = AccountPayable::create($validated);
 

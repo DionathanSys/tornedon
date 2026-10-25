@@ -70,6 +70,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
                 EnsureActiveUser::class,
             ])
+            ->tenantMiddleware([\App\Http\Middleware\AuthorizeTenantPanel::class], isPersistent: true)
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn () => new HtmlString(view('pwa.meta', [
