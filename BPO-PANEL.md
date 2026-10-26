@@ -68,6 +68,10 @@ Foi utilizado o procedimento manual documentado pelo Filament 4:
 
 A estrutura visual não utiliza o shell padrão de sidebar/topbar do Filament. Os componentes de formulários, tabelas e modais continuam sendo utilizados, com tema específico. O painel é voltado a desktop, com navegação lateral fixa, tabelas amplas, resumo operacional e largura mínima de área de trabalho de 1000 px. Os painéis anteriores mantêm seus estilos.
 
+O seletor **Tema do painel**, no cabeçalho e no login, oferece Claro, Escuro e Sistema. A preferência utiliza a mesma chave `theme` dos painéis Filament e é aplicada antes do carregamento do CSS para evitar a abertura do modo escuro com uma tela clara. Mudanças do dispositivo, de outra aba e eventos `theme-changed` mantêm a interface sincronizada. `resources/js/bpo-theme.js` controla esse comportamento sem depender de uma sessão no backend.
+
+As superfícies e os textos auxiliares usam tokens semânticos em `theme.css`, com paletas específicas para claro/escuro. As descrições dos módulos têm 11 px e os textos de apoio não dependem das cores claras fixas usadas na primeira versão. O tema também fornece a paleta das bancadas de equipe, permissões e conciliação.
+
 Referências consultadas:
 
 - <https://filamentphp.com/docs/4.x/styling/overview>

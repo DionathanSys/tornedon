@@ -4,6 +4,7 @@
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
     @include('partials.translation-meta')
     <title>{{ $livewire->getTitle() }} · Tornedon BPO</title>
+    @include('components.bpo.theme-script')
     @filamentStyles
     {{ filament()->getTheme()->getHtml() }}
     @livewireStyles
@@ -42,6 +43,7 @@
         <header class="bpo-topbar">
             <div class="bpo-breadcrumb"><a href="{{ $portfolioUrl }}">Minha carteira</a>@if ($company)<span>/</span><strong>{{ $company->name }}</strong>@else<span>/</span><strong>Visão da operação</strong>@endif</div>
             <div class="bpo-topbar-actions">
+                @include('components.bpo.theme-switcher')
                 <label class="bpo-company-switch"><x-filament::icon icon="heroicon-o-building-office-2" /><span class="bpo-sr-only">Trocar empresa em operação</span><select aria-label="Trocar empresa em operação" onchange="if (this.value) window.location.assign(this.value)"><option value="{{ $portfolioUrl }}" @selected(! $company)>Selecionar empresa</option>@foreach ($companies as $option)<option value="{{ \App\Filament\Bpo\Pages\CompanyOverview::getUrl(panel: 'bpo', tenant: $option) }}" @selected($company?->id === $option->id)>{{ $option->name }}</option>@endforeach</select></label>
                 <details class="bpo-user-menu"><summary><span class="bpo-user-avatar">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($user->name, 0, 1)) }}</span><span>{{ $user->name }}<small>Área BPO</small></span><x-filament::icon icon="heroicon-o-chevron-down" /></summary><div><p>{{ $user->email }}</p>@foreach ($otherPanels as $other)<a href="{{ $other['url'] }}">Acessar {{ $other['label'] }}</a>@endforeach<form method="POST" action="{{ \Filament\Facades\Filament::getPanel('bpo')->getLogoutUrl() }}">@csrf<button type="submit">Sair da conta</button></form></div></details>
             </div>

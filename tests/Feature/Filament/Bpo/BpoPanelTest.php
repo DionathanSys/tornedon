@@ -187,7 +187,9 @@ class BpoPanelTest extends TestCase
 
     public function test_bpo_login_uses_custom_theme_and_shell(): void
     {
-        $this->get(Filament::getPanel('bpo')->getLoginUrl())->assertOk()->assertSee('bpo-auth', false)->assertSee('Entre na sua área de trabalho');
+        $this->assertTrue(Filament::getPanel('bpo')->hasDarkMode());
+        $this->get(Filament::getPanel('bpo')->getLoginUrl())->assertOk()->assertSee('bpo-auth', false)->assertSee('Entre na sua área de trabalho')
+            ->assertSee('data-bpo-theme-select', false)->assertSee('Tema do painel');
     }
 
     public function test_new_payable_is_created_through_the_existing_service_with_server_owned_company(): void
