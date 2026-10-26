@@ -7,7 +7,7 @@
 @source '../../../../resources/views/filament/pages/**/*';
 @source '../../../../resources/views/forms/components/**/*';
 
-:root { --bpo-navy:#102a3a; --bpo-ink:#172f40; --bpo-muted:#6c7e8d; --bpo-teal:#087f8c; --bpo-border:#e0e8ed; --bpo-soft:#f4f7f9; --bpo-sidebar:244px; }
+:root { --bpo-navy:#102a3a; --bpo-ink:#172f40; --bpo-muted:#526878; --bpo-subtle:#5c7080; --bpo-on-dark-muted:#9cb6c4; --bpo-success-text:#34756a; --bpo-warning-text:#8b5c18; --bpo-danger-text:#a44550; --bpo-info-text:#35696c; --bpo-teal:#087f8c; --bpo-border:#e0e8ed; --bpo-soft:#f4f7f9; --bpo-sidebar:244px; }
 .bpo-document { color-scheme:light; background:var(--bpo-soft); }
 .bpo-shell,.bpo-auth { margin:0; font-family:Inter,ui-sans-serif,system-ui,sans-serif; color:var(--bpo-ink); -webkit-font-smoothing:antialiased; }
 .bpo-shell { min-width:1000px; min-height:100vh; background:var(--bpo-soft); font-size:13px; }
@@ -43,6 +43,46 @@
 .bpo-shell .ctw-permission-summary { max-height:540px; overflow-y:auto; padding-right:5px; }
 .bpo-shell .fi-page { padding:0; gap:22px; }.bpo-shell .fi-page-header-main-ctn { padding:0; }.bpo-shell .fi-header-heading { color:var(--bpo-ink); font-size:26px; font-weight:650; letter-spacing:-.7px; }.bpo-shell .fi-header-subheading { color:var(--bpo-muted); font-size:12px; }.bpo-shell .fi-section,.bpo-shell .fi-ta { border-radius:11px; box-shadow:none; border-color:var(--bpo-border); }.bpo-shell .fi-ta-header-heading,.bpo-shell .fi-section-header-heading { color:#37596b; font-weight:600; font-size:14px; }.bpo-shell .fi-ta-text { padding-block:12px; font-size:12px; }.bpo-shell .fi-ta-header-cell-label { font-size:10px; color:#7d93a0; }.bpo-shell .fi-btn { border-radius:7px; font-size:11px; box-shadow:none; }.bpo-shell .fi-input-wrp { border-radius:7px; box-shadow:inset 0 0 0 1px #dce5ea; }.bpo-shell .fi-fo-field-label-content { font-size:11px; color:#5c7585; }.bpo-shell .fi-tabs { box-shadow:none; background:white; border:1px solid var(--bpo-border); border-radius:9px; }.bpo-shell .fi-ta-content { border-top-color:#e6edf1; }
 .bpo-auth { display:grid; grid-template-columns:1.08fr 1fr; min-height:100vh; background:#fff; }.bpo-auth-story { background:var(--bpo-navy); color:#d3e3eb; padding:45px 65px; display:flex; flex-direction:column; justify-content:space-between; }.bpo-auth-story .bpo-brand { padding:0; }.bpo-auth-story > div { padding:60px 0; }.bpo-auth-story .bpo-eyebrow { color:#69b9bc; font-size:9px; }.bpo-auth-story h1 { color:#f3f8fa; font-size:43px; line-height:1.25; font-weight:550; letter-spacing:-1.7px; margin:20px 0; }.bpo-auth-story p { font-size:14px; line-height:1.9; max-width:430px; color:#8faebb; }.bpo-auth-story > small { color:#688997; font-size:10px; }.bpo-auth-points { display:grid; gap:17px; margin-top:38px; }.bpo-auth-points span { display:flex; align-items:center; gap:9px; color:#adc7d2; font-size:12px; }.bpo-auth-points svg { color:#68b9b1; width:17px; height:17px; }.bpo-auth-main { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:45px; }.bpo-auth-card { width:100%; max-width:390px; }.bpo-auth-main > p { color:#8c9daa; font-size:10px; margin-top:28px; }.bpo-auth .fi-simple-page { box-shadow:none; padding:0; background:transparent; }.bpo-auth .fi-simple-header-heading { color:var(--bpo-ink); font-size:25px; font-weight:650; letter-spacing:-.6px; }.bpo-auth .fi-btn { border-radius:8px; box-shadow:none; }.bpo-auth .fi-simple-header { text-align:left; }.bpo-auth .fi-logo { display:none; }
+/* Shared text colors keep secondary information readable on the theme's light surfaces. */
+.bpo-shell-footer,
+.bpo-metrics small,
+.bpo-segmented button,
+.bpo-portfolio-table th,
+.bpo-company-title small,
+.bpo-company-title em,
+.bpo-cell-caption,
+.bpo-restricted,
+.bpo-workbench-footer,
+.bpo-empty,
+.bpo-module-card small,
+.bpo-priority-list span,
+.bpo-priority-list strong,
+.bpo-shell .fi-ta-header-cell-label,
+.bpo-auth-main > p { color:var(--bpo-subtle); }
+
+.bpo-shell input::placeholder,
+.bpo-shell textarea::placeholder,
+.bpo-auth input::placeholder { color:var(--bpo-subtle); opacity:1; }
+
+.bpo-brand strong,
+.bpo-sidebar-label,
+.bpo-current-company > span,
+.bpo-current-company small,
+.bpo-sidebar-note p,
+.bpo-sidebar-bottom,
+.bpo-auth-story > small { color:var(--bpo-on-dark-muted); }
+
+.bpo-clear { color:var(--bpo-success-text); }
+.bpo-number-badge.is-amber,
+.bpo-priority-list .has-pending { color:var(--bpo-warning-text); }
+.bpo-number-badge.is-rose { color:var(--bpo-danger-text); }
+.bpo-badge,
+.bpo-context-note { color:var(--bpo-info-text); }
+
+.bpo-shell .ctw { --ctw-muted:var(--bpo-muted); }
+.bpo-shell .cpw { --cpw-muted:var(--bpo-muted); }
+.bpo-shell .brw { --brw-muted:var(--bpo-muted); }
+
 .bpo-sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }.bpo-skip-link { position:fixed; top:-60px; left:260px; z-index:100; padding:10px; background:white; color:var(--bpo-teal); border-radius:6px; }.bpo-skip-link:focus { top:10px; }
 @media (min-width:1600px) { .bpo-main { padding:42px; }.bpo-metrics article { padding:27px; }.bpo-portfolio-table td { padding-block:25px; } }
 @media (max-width:1200px) { :root { --bpo-sidebar:215px; }.bpo-main { padding:25px; }.bpo-topbar { padding:0 25px; }.bpo-metrics { gap:12px; }.bpo-metrics article { gap:10px; padding:17px 13px; }.bpo-metrics strong.is-money { font-size:18px; }.bpo-user-menu summary > span:nth-child(2) { max-width:90px; }.bpo-overview-grid { grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr); }.bpo-module-grid { grid-template-columns:1fr; }.bpo-toolbar { align-items:start; flex-wrap:wrap; }.bpo-search { max-width:none; width:320px; }.bpo-auth-story { padding:40px; }.bpo-auth-story h1 { font-size:35px; } }
