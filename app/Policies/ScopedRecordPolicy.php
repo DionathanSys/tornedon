@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\Access\PermissionCatalog;
 use Illuminate\Database\Eloquent\Model;
 
 /** Fallback for resources which previously had no policy. Existing domain policies are retained. */
@@ -16,7 +17,16 @@ class ScopedRecordPolicy
 
     public function view(User $user, Model $record): bool
     {
-        return $user->isActive() && $user->belongsToCompany((int) $record->company_id);
+        $child = PermissionCatalog::children()[$record::class] ?? null;
+        if ($child) {
+            // Match Gate::before: use the persisted parent, not a changed FK or cached relation.
+            $source = $record->exists ? $record->newFromBuilder($record->getRawOriginal()) : clone $record;
+            $record = data_get($source, $child[0]);
+        }
+
+        return $record instanceof Model
+            && $user->isActive()
+            && $user->belongsToCompany((int) $record->company_id);
     }
 
     public function create(User $user): bool

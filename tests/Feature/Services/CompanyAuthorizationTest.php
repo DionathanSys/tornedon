@@ -2,18 +2,25 @@
 
 namespace Tests\Feature\Services;
 
+use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Sales\Resources\Quotes\QuoteResource;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Settings\Pages\CompanyPreferences;
+use App\Filament\Mobile\Resources\MobileServiceOrders\Pages\EditMobileServiceOrder;
 use App\Filament\Pages\CompanyTeam;
 use App\Models\AccountPayableInstallment;
 use App\Models\Company;
 use App\Models\CompanyRole;
 use App\Models\CompanyRoleAssignment;
 use App\Models\Quote;
+use App\Models\QuoteItem;
+use App\Models\Service;
 use App\Models\ServiceOrder;
+use App\Models\ServiceOrderItem;
 use App\Models\User;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\CompanyTeamService;
+use App\Services\Access\PermissionCatalog;
 use App\Services\Access\UserAccessService;
 use App\Services\AccountPayable\AccountPayableService;
 use Filament\Facades\Filament;
@@ -40,6 +47,96 @@ class CompanyAuthorizationTest extends TestCase
     private function role(User $owner, Company $company, array $permissions, string $name = 'Papel'): CompanyRole
     {
         return app(CompanyTeamService::class)->saveRole($owner, $company, ['name' => $name, 'permissions' => $permissions, 'panels' => ['admin', 'operation', 'mobile']]);
+    }
+
+    public function test_company_administrator_can_edit_open_order_items_on_mobile_but_closed_orders_remain_locked(): void
+    {
+        [$owner, $company, $teams] = $this->company();
+        $user = User::factory()->create();
+        $order = ServiceOrder::factory()->create(['company_id' => $company->id]);
+        $item = $this->orderItem($order);
+        $role = $this->role($owner, $company, PermissionCatalog::templates()['Administrador da empresa']);
+        $teams->assign($owner, $company, $user, [$role->id]);
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('mobile'));
+        Filament::setTenant($company);
+
+        $this->assertTrue(Gate::allows('update', $item));
+        Livewire::test(ItemsRelationManager::class, [
+            'ownerRecord' => $order,
+            'pageClass' => EditMobileServiceOrder::class,
+        ])->assertTableActionVisible('edit', $item);
+
+        $order->update(['status' => State::CLOSED]);
+        Livewire::test(ItemsRelationManager::class, [
+            'ownerRecord' => $order->fresh(),
+            'pageClass' => EditMobileServiceOrder::class,
+        ])->assertTableActionHidden('edit', $item);
+    }
+
+    public function test_order_item_edit_permission_is_scoped_to_parent_and_revocable(): void
+    {
+        [$owner, $company, $teams] = $this->company();
+        [, $otherCompany] = $this->company();
+        $user = User::factory()->create();
+        $assigned = $this->orderItem(ServiceOrder::factory()->create([
+            'company_id' => $company->id, 'technician_id' => $user->id,
+        ]));
+        $unassigned = $this->orderItem(ServiceOrder::factory()->create(['company_id' => $company->id]));
+        $foreign = $this->orderItem(ServiceOrder::factory()->create(['company_id' => $otherCompany->id]));
+        $role = $this->role($owner, $company, ['service_orders.view' => 'company', 'service_orders.update' => 'assigned']);
+        $teams->assign($owner, $company, $user, [$role->id]);
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('mobile'));
+        Filament::setTenant($company);
+
+        $this->assertTrue(Gate::allows('update', $assigned));
+        $this->assertFalse(Gate::allows('update', $unassigned));
+        $this->assertFalse(Gate::allows('update', $foreign));
+        $this->assertFalse(Gate::allows('update', new ServiceOrderItem));
+
+        $foreign->service_order_id = $assigned->service_order_id;
+        $foreign->setRelation('serviceOrder', $assigned->serviceOrder);
+        $this->assertFalse(Gate::allows('update', $foreign));
+
+        $role->update(['permissions' => ['service_orders.view' => 'company']]);
+        $this->assertFalse(Gate::allows('update', $assigned));
+        Livewire::test(ItemsRelationManager::class, [
+            'ownerRecord' => $assigned->serviceOrder,
+            'pageClass' => EditMobileServiceOrder::class,
+        ])->assertTableActionHidden('edit', $assigned);
+    }
+
+    public function test_quote_items_also_inherit_company_membership_from_their_parent(): void
+    {
+        [$owner, $company, $teams] = $this->company();
+        [, $otherCompany] = $this->company();
+        $user = User::factory()->create();
+        $item = QuoteItem::factory()->create([
+            'quote_id' => Quote::factory()->create(['company_id' => $company->id])->id,
+        ]);
+        $foreign = QuoteItem::factory()->create([
+            'quote_id' => Quote::factory()->create(['company_id' => $otherCompany->id])->id,
+        ]);
+        $role = $this->role($owner, $company, ['quotes.view' => 'company', 'quotes.update' => 'company', 'quotes.delete' => 'company']);
+        $teams->assign($owner, $company, $user, [$role->id]);
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($company);
+
+        foreach (['view', 'update', 'delete', 'restore'] as $ability) {
+            $this->assertTrue(Gate::allows($ability, $item), $ability);
+            $this->assertFalse(Gate::allows($ability, $foreign), $ability);
+        }
+    }
+
+    private function orderItem(ServiceOrder $order): ServiceOrderItem
+    {
+        return $order->items()->create([
+            'service_id' => Service::factory()->create(['company_id' => $order->company_id])->id,
+            'quantity' => 1,
+            'unit_price' => 100,
+        ]);
     }
 
     public function test_own_visibility_and_company_visibility_accumulate_per_action_and_per_company(): void
