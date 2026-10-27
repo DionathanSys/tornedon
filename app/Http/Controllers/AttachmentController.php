@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AttachmentType;
+use App\Models\AccountPayable;
+use App\Models\AccountReceivable;
 use App\Models\Attachment;
 use App\Models\CommitmentImportFile;
+use App\Models\Company;
+use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
 use App\Services\Attachments\AttachmentService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -50,11 +55,16 @@ class AttachmentController extends Controller
             abort(401, 'Não autorizado');
         }
 
-        $company = \App\Models\Company::findOrFail($attachment->company_id);
-        $authorization = app(\App\Services\Access\CompanyAuthorization::class);
+        $company = Company::findOrFail($attachment->company_id);
+        $authorization = app(CompanyAuthorization::class);
         if ($authorization->isManaged($user, $company)) {
             $owner = $attachment->attachable;
-            abort_unless($user->canAccessTenant($company) && $owner && \Illuminate\Support\Facades\Gate::forUser($user)->allows('view', $owner), 403, 'Acesso negado');
+            $financialTitle = $owner instanceof AccountPayable || $owner instanceof AccountReceivable;
+            $allowed = $financialTitle
+                ? $authorization->allowsRecord($user, $company, ($owner instanceof AccountPayable ? 'account_payables' : 'account_receivables').'.view', $owner)
+                : ($owner && Gate::forUser($user)->allows('view', $owner));
+            // Attachment routes are authenticated, but do not have a Filament tenant in the URL.
+            abort_unless($user->canAccessTenant($company) && $owner && (int) $owner->company_id === (int) $company->id && $allowed, 403, 'Acesso negado');
         }
 
         if (in_array($attachment->type, [AttachmentType::COMMITMENT_PDF, AttachmentType::COMMITMENT_PAYMENT_REPORT], true)) {

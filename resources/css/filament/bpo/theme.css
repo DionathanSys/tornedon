@@ -1,4 +1,5 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import './financial-title.css';
 
 @source '../../../../app/Filament/Bpo/**/*';
 @source '../../../../app/Filament/Clusters/Financial/**/*';
@@ -6,6 +7,7 @@
 @source '../../../../resources/views/components/bpo/**/*';
 @source '../../../../resources/views/filament/pages/**/*';
 @source '../../../../resources/views/forms/components/**/*';
+@source '../../../../resources/views/livewire/bpo/**/*';
 
 /* Semantic tokens: all BPO surfaces and supporting text follow the selected theme. */
 .bpo-document {

@@ -56,6 +56,16 @@ Os saldos financeiros são apresentados por empresa, sem somar resultados de neg
 
 Empresa e identificação permanecem visíveis no cabeçalho e na navegação. O seletor de empresas resolve somente a carteira autorizada.
 
+### Detalhe customizado de contas
+
+A visualização de contas a pagar/receber usa `ViewFinancialTitle` e a view `filament/bpo/pages/financial-title.blade.php`. O cabeçalho ocupa dois terços do grid superior e o painel de anexos um terço. Abaixo, parcelas e pagamentos/recebimentos são apresentados simultaneamente, cada um em metade da área, sem abas. Valores, situação, classificação e saldo considerado são consultados novamente no servidor.
+
+Os relation managers BPO herdam as ações financeiras existentes e oferecem colunas compactas, seleção de colunas e paginação independentes. As mutações são autorizadas pelo alcance da ação sobre a conta e continuam sujeitas às regras dos serviços de baixa, estorno e edição. Os eventos de parcelas/baixas atualizam também o resumo.
+
+`App\Livewire\Bpo\RecordAttachments` é um componente reutilizável para contas, configurável no mount com `heading`, `allowedTypes`, `uploadsEnabled` e `deletionsEnabled`, além de `module` e `recordId`. Por padrão aceita os tipos genérico, documento fiscal e contrato, respeitando MIME/tamanho de `config/attachments.php` e o limite temporário do Livewire. A lista mantém a semântica de versões atuais do serviço de anexos. Oferece envio múltiplo, edição de descrição, prévia, download e remoção lógica.
+
+Consulta exige acesso atual à conta; envio/alteração exige a permissão de atualização do lançamento, inclusive para anexar comprovantes a contas já pagas. O componente revalida empresa, registro e vínculo antes das ações. Downloads e prévias continuam pelas rotas autenticadas, com autorização explícita do título sem depender de um tenant Filament na URL do arquivo.
+
 ## Tema e estrutura visual
 
 Foi utilizado o procedimento manual documentado pelo Filament 4:
