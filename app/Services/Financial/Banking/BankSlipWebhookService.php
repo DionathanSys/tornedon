@@ -33,7 +33,7 @@ final class BankSlipWebhookService
 
         $normalized = $provider->normalizeWebhook($payload);
 
-        $pix = PixCharge::query()->where('bank_account_connection_id', $connection->id)
+        $pix = PixCharge::withTrashed()->where('bank_account_connection_id', $connection->id)
             ->where('company_id', $connection->company_id)->where('provider_identification', $normalized->identification)->first();
         if ($pix && $this->resolveBankSlipId($connection, $normalized) === null) {
             return DB::transaction(function () use ($pix, $payload, $normalized) {
@@ -86,7 +86,7 @@ final class BankSlipWebhookService
             return null;
         }
 
-        return BankSlip::query()
+        return BankSlip::withTrashed()
             ->where('bank_account_connection_id', $connection->id)
             ->where('provider_identification', $event->identification)
             ->value('id');

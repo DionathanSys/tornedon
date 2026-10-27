@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\BankSlips;
 
 use App\Enum\Financial\BankSlipStatus;
+use App\Filament\Clusters\Financial\Actions\BankChargeLifecycleActions;
 use App\Filament\Clusters\Financial\CollectionsCluster;
 use App\Filament\Clusters\Financial\Resources\BankSlips\Pages\ListBankSlips;
 use App\Jobs\QueryBankSlipJob;
@@ -20,8 +21,10 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
@@ -116,6 +119,7 @@ class BankSlipResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                TrashedFilter::make()->label('Lixeira'),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(collect(BankSlipStatus::cases())
@@ -124,8 +128,9 @@ class BankSlipResource extends Resource
                     ->multiple(),
             ])
             ->recordActions(ActionGroup::make([
+                ...BankChargeLifecycleActions::make(),
                 Action::make('synchronize_installment')->label('Sincronizar alterações da parcela')->icon(Heroicon::ArrowPath)
-                    ->visible(fn (BankSlip $record) => $record->status === BankSlipStatus::REGISTERED)
+                    ->visible(fn (BankSlip $record) => ! $record->trashed() && $record->status === BankSlipStatus::REGISTERED)
                     ->schema([Textarea::make('reason')->label('Justificativa')->required()->minLength(10)->maxLength(2000)])
                     ->action(fn (BankSlip $record, array $data) => app(BankingOperationService::class)
                         ->requestUpdate($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason'])),
@@ -138,7 +143,7 @@ class BankSlipResource extends Resource
                     ->label('Consultar no provider')
                     ->icon(Heroicon::ArrowPath)
                     ->color('info')
-                    ->visible(fn (BankSlip $record): bool => filled($record->provider_identification))
+                    ->visible(fn (BankSlip $record): bool => ! $record->trashed() && filled($record->provider_identification))
                     ->action(function (BankSlip $record): void {
                         Gate::authorize('update', $record);
                         QueryBankSlipJob::dispatch($record->id);
@@ -169,7 +174,7 @@ class BankSlipResource extends Resource
                     ->label('Tentar registro novamente')
                     ->icon(Heroicon::ArrowPath)
                     ->color('warning')
-                    ->visible(fn (BankSlip $record): bool => in_array($record->status, [
+                    ->visible(fn (BankSlip $record): bool => ! $record->trashed() && in_array($record->status, [
                         BankSlipStatus::PENDING_REGISTRATION,
                         BankSlipStatus::REGISTRATION_FAILED,
                         BankSlipStatus::UNCERTAIN,
@@ -191,6 +196,7 @@ class BankSlipResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withoutGlobalScopes([SoftDeletingScope::class])
             ->where('company_id', Filament::getTenant()->id)
             ->with([
                 'installment.accountReceivable.invoice',

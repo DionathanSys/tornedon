@@ -26,18 +26,18 @@ class BankingEvent extends Model
 
     public function bankSlip(): BelongsTo
     {
-        return $this->belongsTo(BankSlip::class);
+        return $this->belongsTo(BankSlip::class)->withTrashed();
     }
 
     public function pixCharge(): BelongsTo
     {
-        return $this->belongsTo(PixCharge::class);
+        return $this->belongsTo(PixCharge::class)->withTrashed();
     }
 
     public function scopePending(Builder $query): Builder
     {
         return $query->where(fn ($query) => $query->whereIn('status', ['pending', 'failed', 'needs_review'])
             ->orWhereHas('bankSlip', fn ($charge) => $charge->whereIn('status', ['processing', 'uncertain', 'registration_failed', 'cancel_pending', 'update_pending', 'needs_review']))
-            ->orWhereHas('pixCharge', fn ($charge) => $charge->whereIn('status', ['processing', 'uncertain', 'registration_failed', 'needs_review'])));
+            ->orWhereHas('pixCharge', fn ($charge) => $charge->whereIn('status', ['processing', 'uncertain', 'registration_failed', 'cancel_pending', 'needs_review'])));
     }
 }

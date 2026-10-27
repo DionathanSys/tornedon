@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\PixCharges;
 
 use App\Enum\Financial\PixChargeStatus;
+use App\Filament\Clusters\Financial\Actions\BankChargeLifecycleActions;
 use App\Filament\Clusters\Financial\CollectionsCluster;
 use App\Filament\Clusters\Financial\Resources\PixCharges\Pages\ListPixCharges;
 use App\Filament\Support\Actions\PixPaymentLinkAction;
@@ -21,8 +22,10 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
@@ -110,6 +113,7 @@ class PixChargeResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                TrashedFilter::make()->label('Lixeira'),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(collect(PixChargeStatus::cases())
@@ -118,13 +122,14 @@ class PixChargeResource extends Resource
                     ->multiple(),
             ])
             ->recordActions(ActionGroup::make([
+                ...BankChargeLifecycleActions::make(),
                 PixPaymentLinkAction::make(),
                 PixPaymentLinkAction::open(),
                 Action::make('query_provider')
                     ->label('Consultar no provider')
                     ->icon(Heroicon::ArrowPath)
                     ->color('info')
-                    ->visible(fn (PixCharge $record): bool => filled($record->provider_identification)
+                    ->visible(fn (PixCharge $record): bool => ! $record->trashed() && filled($record->provider_identification)
                         && ! in_array($record->status, [PixChargeStatus::PAID, PixChargeStatus::CANCELED, PixChargeStatus::PAYMENT_RETURNED], true))
                     ->action(function (PixCharge $record): void {
                         Gate::authorize('update', $record);
@@ -139,7 +144,7 @@ class PixChargeResource extends Resource
                     ->label('Tentar registro novamente')
                     ->icon(Heroicon::ArrowPath)
                     ->color('warning')
-                    ->visible(fn (PixCharge $record): bool => in_array($record->status, [
+                    ->visible(fn (PixCharge $record): bool => ! $record->trashed() && in_array($record->status, [
                         PixChargeStatus::PENDING_REGISTRATION,
                         PixChargeStatus::REGISTRATION_FAILED,
                         PixChargeStatus::UNCERTAIN,
@@ -206,6 +211,7 @@ class PixChargeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withoutGlobalScopes([SoftDeletingScope::class])
             ->where('company_id', Filament::getTenant()->id)
             ->with([
                 'installment.accountReceivable.invoice',

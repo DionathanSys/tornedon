@@ -51,6 +51,22 @@ final class IntegraBancosPixProvider implements PixProviderInterface
         return (bool) data_get($connection->billingProvider?->capabilities, 'pix', false);
     }
 
+    public function assertCancellationSupported(): void
+    {
+        $this->client->assertCancellationSupported();
+    }
+
+    public function cancel(PixCharge $charge): PixProviderResult
+    {
+        $charge->loadMissing('connection.bank');
+
+        return $this->sendProviderRequest($charge, 'cancel', fn (): array => $this->client->cancel([
+            'codigo_banco' => (string) $charge->connection?->bank?->code,
+            'identificacao' => $charge->provider_identification,
+            'motivo' => 'Cancelamento solicitado pela empresa.',
+        ]));
+    }
+
     private function sendProviderRequest(PixCharge $charge, string $operation, \Closure $request): PixProviderResult
     {
         try {

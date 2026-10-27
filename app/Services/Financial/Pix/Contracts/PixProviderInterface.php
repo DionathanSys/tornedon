@@ -12,5 +12,9 @@ interface PixProviderInterface
 
     public function query(PixCharge $charge): PixProviderResult;
 
+    public function assertCancellationSupported(): void;
+
+    public function cancel(PixCharge $charge): PixProviderResult;
+
     public function supports(BankAccountConnection $connection): bool;
 }

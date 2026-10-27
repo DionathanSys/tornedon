@@ -13,6 +13,7 @@ enum PixChargeStatus: string
     case REGISTRATION_FAILED = 'registration_failed';
     case PAID = 'paid';
     case CANCELED = 'canceled';
+    case CANCEL_PENDING = 'cancel_pending';
     case EXPIRED = 'expired';
     case NEEDS_REVIEW = 'needs_review';
 
@@ -28,6 +29,7 @@ enum PixChargeStatus: string
             self::REGISTRATION_FAILED => 'Falha no registro',
             self::PAID => 'Paga',
             self::CANCELED => 'Cancelada',
+            self::CANCEL_PENDING => 'Cancelamento em andamento',
             self::EXPIRED => 'Expirada',
             self::NEEDS_REVIEW => 'Revisão necessária',
         };

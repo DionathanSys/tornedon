@@ -3,7 +3,10 @@
 namespace Tests\Feature\Services\Financial;
 
 use App\Filament\Clusters\Financial\Resources\BankingEvents\BankingEventResource;
+use App\Filament\Clusters\Financial\Resources\BankSlips\Pages\ListBankSlips;
+use App\Filament\Clusters\Financial\Resources\PixCharges\Pages\ListPixCharges;
 use App\Jobs\CancelBankSlipJob;
+use App\Jobs\CancelPixChargeJob;
 use App\Jobs\ProcessBankingEventJob;
 use App\Jobs\QueryBankSlipJob;
 use App\Jobs\QueryPixChargeJob;
@@ -23,6 +26,7 @@ use App\Models\PixCharge;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Company\CompanyOperationalResetService;
+use App\Services\Financial\Banking\BankChargeLifecycleService;
 use App\Services\Financial\Banking\BankingEventService;
 use App\Services\Financial\Banking\BankingOperationService;
 use App\Services\Financial\Banking\BankingResolutionService;
@@ -37,11 +41,14 @@ use App\Services\Financial\Banking\Providers\IntegraBancosSdkTransport;
 use App\Services\Financial\Banking\Providers\IntegraBancosTokenManager;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\IgnoreFinancialInstallmentsService;
+use App\Services\Financial\Pix\PixProviderRegistry;
+use App\Services\Financial\Pix\Providers\IntegraBancosPixClientInterface;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Mockery;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -599,6 +606,150 @@ class BankingOperationsTest extends TestCase
         $cipher = openssl_encrypt((string) time(), 'aes-128-cbc', $key, OPENSSL_RAW_DATA, $iv);
 
         return base64_encode($iv.hash_hmac('sha256', $cipher, $key, true).$cipher);
+    }
+
+    public function test_manual_cancellation_is_separate_from_removal_and_waits_for_bank_confirmation(): void
+    {
+        Queue::fake();
+        $this->slip->update(['status' => 'registered']);
+        $service = app(BankChargeLifecycleService::class);
+        $service->cancel($this->slip, $this->company->id, $this->user, 'Cancelamento solicitado pelo cliente.');
+        Queue::assertPushed(CancelBankSlipJob::class);
+        $this->assertSame('cancel_pending', $this->slip->fresh()->status->value);
+        $this->assertFalse($this->slip->fresh()->trashed());
+        try {
+            $service->remove($this->slip, $this->company->id, $this->user, 'Remoção solicitada pelo cliente.');
+            $this->fail('Não deve remover antes da confirmação.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('charge', $exception->errors());
+        }
+        $this->observe(['sucesso' => true, 'codigo' => 10, 'status' => ['codigo' => 4]], 'query');
+        $this->assertFalse($this->slip->fresh()->trashed());
+        $service->remove($this->slip, $this->company->id, $this->user, 'Remoção após cancelamento confirmado.');
+        $this->assertSoftDeleted($this->slip);
+    }
+
+    public function test_both_charge_types_support_trash_then_permanent_removal_preserving_events(): void
+    {
+        $service = app(BankChargeLifecycleService::class);
+        foreach ([$this->slip, $this->pix()] as $charge) {
+            $this->observe(['sucesso' => true, 'codigo' => 10, 'status' => ['codigo' => 4]], charge: $charge);
+            $field = $charge instanceof BankSlip ? 'bank_slip_id' : 'pix_charge_id';
+            $event = BankingEvent::where($field, $charge->id)->sole();
+            try {
+                $service->remove($charge, $this->company->id, $this->user, 'Exclusão definitiva da cobrança.', permanent: true);
+                $this->fail('Exclusão definitiva deve exigir lixeira.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('charge', $exception->errors());
+            }
+            $service->remove($charge, $this->company->id, $this->user, 'Remoção de cobrança cancelada.');
+            $this->assertSoftDeleted($charge);
+            $service->remove($charge, $this->company->id, $this->user, 'Exclusão definitiva da cobrança.', permanent: true);
+            $this->assertDatabaseMissing($charge->getTable(), ['id' => $charge->id]);
+            $this->assertNull($event->fresh()->{$field});
+            $this->assertSame($charge->id, data_get($event->fresh()->payload, 'removed_charge.id'));
+        }
+    }
+
+    public function test_removed_charge_receiving_late_payment_goes_to_review_without_settlement(): void
+    {
+        $this->slip->update(['status' => 'canceled']);
+        app(BankChargeLifecycleService::class)->remove(
+            $this->slip, $this->company->id, $this->user, 'Remoção após cancelamento confirmado.',
+        );
+        $event = $this->observe(['sucesso' => true, 'codigo' => 10, 'status' => ['codigo' => 3], 'valor' => 100]);
+        $this->assertSame('needs_review', $event->status);
+        $this->assertSame(0, $this->slip->installment->payments()->count());
+        $this->expectException(ValidationException::class);
+        app(BankChargeLifecycleService::class)->remove(
+            $this->slip, $this->company->id, $this->user, 'Exclusão definitiva com evento pendente.', permanent: true,
+        );
+    }
+
+    public function test_lifecycle_actions_reject_other_tenant_and_payments(): void
+    {
+        $service = app(BankChargeLifecycleService::class);
+        $this->slip->update(['status' => 'canceled']);
+        try {
+            $service->remove($this->slip, Company::factory()->create()->id, $this->user, 'Remoção de outra empresa.');
+            $this->fail('Não pode remover cobrança de outra empresa.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+        $this->slip->update(['status' => 'registered']);
+        $this->observe(['sucesso' => true, 'codigo' => 10, 'status' => ['codigo' => 3], 'valor' => 100]);
+        $this->expectException(ValidationException::class);
+        $service->remove($this->slip, $this->company->id, $this->user, 'Não deve excluir cobrança recebida.');
+    }
+
+    public function test_pix_cancellation_reports_missing_sdk_support_without_changing_the_charge(): void
+    {
+        Queue::fake();
+        $pix = $this->pix();
+        try {
+            app(BankChargeLifecycleService::class)->cancel(
+                $pix, $this->company->id, $this->user, 'Cancelamento solicitado pelo cliente.',
+            );
+            $this->fail('O SDK instalado não possui cancelamento PIX.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('não oferece cancelamento PIX', $exception->errors()['charge'][0]);
+        }
+        $this->assertSame('registered', $pix->fresh()->status->value);
+        Queue::assertNotPushed(CancelPixChargeJob::class);
+    }
+
+    public function test_pix_cancellation_adapter_waits_for_charge_confirmation_without_removing_it(): void
+    {
+        Queue::fake();
+        $pix = $this->pix();
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldReceive('assertCancellationSupported')->once();
+        $client->shouldReceive('cancel')->once()->with(Mockery::on(fn (array $payload): bool => $payload['identificacao'] === $pix->provider_identification))
+            ->andReturn(['sucesso' => true, 'codigo' => 4]);
+        $client->shouldReceive('query')->once()->andReturn(['sucesso' => true, 'codigo' => 10, 'status' => ['codigo' => 4]]);
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+        app(BankChargeLifecycleService::class)->cancel(
+            $pix, $this->company->id, $this->user, 'Cancelamento solicitado pelo cliente.',
+        );
+        Queue::assertPushed(CancelPixChargeJob::class);
+        $job = new CancelPixChargeJob($pix->id);
+        $registry = app(PixProviderRegistry::class);
+        $job->handle($registry);
+        $job->handle($registry);
+        $this->assertSame('cancel_pending', $pix->fresh()->status->value);
+        $this->assertSame('pending', $pix->fresh()->operation_status);
+        (new QueryPixChargeJob($pix->id))->handle($registry);
+        $this->assertSame('canceled', $pix->fresh()->status->value);
+        $this->assertNotNull($pix->fresh()->canceled_at);
+        $this->assertFalse($pix->fresh()->trashed());
+    }
+
+    public function test_charge_lists_expose_separate_actions_and_permanent_removal_only_in_trash(): void
+    {
+        foreach ([
+            [ListBankSlips::class, $this->slip],
+            [ListPixCharges::class, $this->pix()],
+        ] as [$page, $charge]) {
+            $charge->update(['status' => 'registered']);
+            $table = Livewire::test($page)
+                ->assertCanSeeTableRecords([$charge])
+                ->assertTableActionVisible('cancel_charge', $charge)
+                ->assertTableActionVisible('remove_charge', $charge)
+                ->assertTableActionHidden('force_remove_charge', $charge);
+            $charge->update(['status' => 'canceled']);
+            $table->callTableAction('remove_charge', $charge, ['reason' => 'Remoção após cancelamento no banco.'])
+                ->assertHasNoTableActionErrors()
+                ->assertCanNotSeeTableRecords([$charge])
+                ->filterTable('trashed', false)
+                ->assertCanSeeTableRecords([$charge])
+                ->assertTableActionHidden('cancel_charge', $charge)
+                ->assertTableActionHidden('remove_charge', $charge)
+                ->assertTableActionVisible('force_remove_charge', $charge)
+                ->callTableAction('force_remove_charge', $charge, ['reason' => 'Exclusão definitiva do registro cancelado.'])
+                ->assertHasNoTableActionErrors()
+                ->assertCanNotSeeTableRecords([$charge]);
+            $this->assertDatabaseMissing($charge->getTable(), ['id' => $charge->id]);
+        }
     }
 
     private function pix(): PixCharge

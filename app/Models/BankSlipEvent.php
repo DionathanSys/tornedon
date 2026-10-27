@@ -48,6 +48,6 @@ class BankSlipEvent extends Model
 
     public function bankSlip(): BelongsTo
     {
-        return $this->belongsTo(BankSlip::class);
+        return $this->belongsTo(BankSlip::class)->withTrashed();
     }
 }

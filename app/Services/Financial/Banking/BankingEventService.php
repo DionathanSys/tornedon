@@ -64,8 +64,8 @@ final class BankingEventService
                     return;
                 }
                 $charge = $event->bank_slip_id
-                    ? BankSlip::query()->lockForUpdate()->find($event->bank_slip_id)
-                    : PixCharge::query()->lockForUpdate()->find($event->pix_charge_id);
+                    ? BankSlip::withTrashed()->lockForUpdate()->find($event->bank_slip_id)
+                    : PixCharge::withTrashed()->lockForUpdate()->find($event->pix_charge_id);
                 if (! $charge || (int) $charge->company_id !== (int) $event->company_id
                     || (int) $charge->bank_account_connection_id !== (int) $event->bank_account_connection_id) {
                     $this->review($event, null, 'Evento sem cobrança válida da mesma empresa e conexão.');
@@ -125,7 +125,11 @@ final class BankingEventService
                     // Status 5 belongs to the requested operation, not to the charge.
                     $charge->update(['operation_status' => $code === '4' ? 'pending' : ($state === '5' ? 'confirmed' : 'pending'), 'last_error' => null]);
                 } elseif ($state === '3') {
-                    app(BankSettlementService::class)->settle($charge, $event);
+                    if ($charge->trashed()) {
+                        $this->review($event, $charge, 'Pagamento informado para cobrança removida. Revise o recebimento antes de registrar efeito financeiro.');
+                    } else {
+                        app(BankSettlementService::class)->settle($charge, $event);
+                    }
                 } elseif ($state === '7') {
                     $this->review($event, $charge, 'O banco informou pagamento devolvido. Identifique o recebimento e registre sua contrapartida; não exclua a baixa original.');
                     $charge->update(['operation_status' => 'returned_requires_review']);

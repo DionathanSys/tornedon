@@ -6,9 +6,12 @@ use App\Casts\MoneyCast;
 use App\Enum\Financial\PixChargeStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PixCharge extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'company_id',
         'service_order_id',
@@ -35,6 +38,8 @@ class PixCharge extends Model
         'provider_status_message',
         'registered_at',
         'paid_at',
+        'cancel_requested_at',
+        'canceled_at',
         'last_synchronized_at',
         'last_error',
         'provider_payload',
@@ -49,6 +54,8 @@ class PixCharge extends Model
         'due_date' => 'date',
         'registered_at' => 'datetime',
         'paid_at' => 'datetime',
+        'cancel_requested_at' => 'datetime',
+        'canceled_at' => 'datetime',
         'last_synchronized_at' => 'datetime',
         'provider_payload' => 'array',
     ];

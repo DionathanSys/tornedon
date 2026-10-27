@@ -15,4 +15,8 @@ interface IntegraBancosPixClientInterface
      * @return array<string, mixed>
      */
     public function query(array $payload): array;
+
+    public function assertCancellationSupported(): void;
+
+    public function cancel(array $payload): array;
 }
