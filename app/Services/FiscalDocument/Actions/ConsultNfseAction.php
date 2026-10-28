@@ -9,7 +9,11 @@ use App\Models\FiscalDocument;
 use App\Models\NfseSequence;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Fiscal\IntegranotasRateLimiter;
+use App\Services\Fiscal\NfseConfigService;
 use App\Traits\HandlesActionResponse;
+use CloudDfe\SdkPHP\Nfse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -27,6 +31,8 @@ class ConsultNfseAction
 
     public function execute(FiscalDocument $fiscalDocument): bool
     {
+        $this->resetResponse();
+
         try {
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($fiscalDocument);
@@ -47,11 +53,11 @@ class ConsultNfseAction
                 return false;
             }
 
-            $configService = app(\App\Services\Fiscal\NfseConfigService::class);
+            $configService = app(NfseConfigService::class);
             $companyId = (int) $fiscalDocument->company_id;
-            $sdk = new \CloudDfe\SdkPHP\Nfse($configService->buildSdkParams($companyId));
+            $sdk = new Nfse($configService->buildSdkParams($companyId));
 
-            $resp = app(\App\Services\Fiscal\IntegranotasRateLimiter::class)->run(
+            $resp = app(IntegranotasRateLimiter::class)->run(
                 token: $configService->resolveToken($companyId),
                 bucket: 'key',
                 key: (string) $fiscalDocument->document_key,
@@ -79,9 +85,13 @@ class ConsultNfseAction
 
             $updates = [];
             $payloadUpdates = [];
+            $responseStatus = mb_strtolower(trim((string) ($resp->status ?? $resp->situacao ?? '')));
+            $isCanceled = ($resp->sucesso ?? false) && (
+                (int) ($resp->codigo ?? 0) === 101
+                || in_array($responseStatus, ['cancelado', 'cancelada', 'canceled', 'cancelled'], true)
+            );
 
             if ($resp->sucesso ?? false) {
-                // Autorizada
                 $payload = is_array($fiscalDocument->nfse_payload) ? $fiscalDocument->nfse_payload : [];
                 if (! empty($resp->xml)) {
                     $payload['xml_base64'] = $resp->xml;
@@ -90,11 +100,27 @@ class ConsultNfseAction
                     $payload['pdf_base64'] = $resp->pdf;
                 }
 
+                $payloadUpdates['nfse_payload'] = $payload;
+            }
+
+            if ($isCanceled) {
+                $updates['nfse_status'] = NfeStatus::CANCELED->value;
+                $updates['status'] = Status::CANCELLED->value;
+                $updates['canceled_at'] = ! empty($resp->data_hora_evento)
+                    ? Carbon::parse($resp->data_hora_evento)
+                    : ($fiscalDocument->canceled_at ?? now());
+
+                Log::info('ConsultNfseAction: NFS-e cancelada', [
+                    'fiscal_document_id' => $fiscalDocument->id,
+                    'chave' => $fiscalDocument->document_key,
+                    'codigo' => $resp->codigo ?? null,
+                ]);
+            } elseif ($resp->sucesso ?? false) {
+                // Autorizada
                 $updates['nfse_status'] = NfeStatus::AUTHORIZED->value;
                 $updates['nfse_protocol'] = $resp->protocolo ?? null;
                 $updates['status'] = Status::CONFIRMED->value;
                 $updates['authorized_at'] = now();
-                $payloadUpdates['nfse_payload'] = $payload;
 
                 if (! empty($resp->numero)) {
                     $updates['document_number'] = $resp->numero;
@@ -183,6 +209,16 @@ class ConsultNfseAction
                     null,
                     AuditSource::JOB,
                 );
+            } elseif (($updates['nfse_status'] ?? null) === NfeStatus::CANCELED->value) {
+                $audit->recordModelEvent(
+                    $fiscalDocument,
+                    'fiscal_document.nfse_canceled',
+                    'NFS-e cancelada',
+                    $before,
+                    $audit->snapshot($fiscalDocument),
+                    null,
+                    AuditSource::JOB,
+                );
             } elseif (($updates['nfse_status'] ?? null) === NfeStatus::REJECTED->value) {
                 $audit->recordModelEvent(
                     $fiscalDocument,
@@ -244,7 +280,7 @@ class ConsultNfseAction
                 'status_final' => $updates['nfse_status'] ?? null,
             ]);
 
-            if ($this->hasError()) {
+            if (! ($resp->sucesso ?? false)) {
                 return false;
             }
 

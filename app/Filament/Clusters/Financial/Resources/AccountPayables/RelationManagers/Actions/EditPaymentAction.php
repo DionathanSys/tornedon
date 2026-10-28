@@ -31,6 +31,7 @@ final class EditPaymentAction
                             ->required(),
                         Money::make('amount')
                             ->label('Valor pago')
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
                             ->required(),
                         Select::make('financial_account_id')
                             ->label('Conta Financeira')
@@ -40,11 +41,14 @@ final class EditPaymentAction
                             ->native(false)
                             ->required(),
                         Money::make('interest_amount')
-                            ->label('Juros'),
+                            ->label('Juros')
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.')),
                         Money::make('fine_amount')
-                            ->label('Multa'),
+                            ->label('Multa')
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.')),
                         Money::make('discount_amount')
-                            ->label('Desconto'),
+                            ->label('Desconto')
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.')),
                         TextInput::make('bank_account_id')
                             ->label('Conta bancaria (ID)')
                             ->numeric()
