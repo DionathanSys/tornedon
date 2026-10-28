@@ -52,6 +52,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -864,6 +865,90 @@ class BankingOperationsTest extends TestCase
                 ->assertCanSeeTableRecords([$charge]);
             $this->assertFalse($charge->fresh()->trashed());
         }
+    }
+
+    public function test_confirmed_cancellation_resolves_older_operational_failures_before_removal(): void
+    {
+        $service = app(BankChargeLifecycleService::class);
+        foreach ([$this->slip, $this->pix()] as $charge) {
+            $failedEvents = [];
+            foreach ([['cancel', 'request', null, '4'], ['query', 'query', '2', '10'], ['GERACAO', 'webhook', '2', null]] as [$operation, $source, $state, $code]) {
+                $event = app(BankingEventService::class)->record($charge, [
+                    'response' => [], 'successful' => true, 'charge_status' => $state, 'response_code' => $code,
+                ], $operation, $source);
+                $event->update(['status' => 'failed', 'error' => 'Call to undefined method App\\Models\\BankSlip::withTrashed()']);
+                $failedEvents[] = $event;
+            }
+            $legacy = $charge instanceof BankSlip ? $charge->events()->create([
+                'company_id' => $charge->company_id, 'bank_account_connection_id' => $charge->bank_account_connection_id,
+                'billing_provider_id' => $this->connection->billing_provider_id,
+                'provider_event_id' => 'old-generation', 'event_type' => 'GERACAO', 'provider_status_code' => '2',
+                'payload' => ['status' => ['codigo' => '2']], 'received_at' => now()->subMinute(),
+                'failed_at' => now(), 'error' => 'Falha anterior no worker.',
+            ]) : null;
+            $confirmation = $this->observe(['sucesso' => true, 'codigo' => 10, 'dados' => ['status' => ['codigo' => 4]]], charge: $charge);
+
+            $service->remove($charge, $this->company->id, $this->user, 'Remoção após cancelamento confirmado.');
+            $this->assertSoftDeleted($charge);
+            foreach ($failedEvents as $event) {
+                $this->assertSame('resolved', $event->fresh()->status);
+                $this->assertNotNull($event->fresh()->error);
+                $this->assertSame($confirmation->id, data_get($event->fresh()->payload, 'resolution.cancellation_event_id'));
+            }
+            if ($legacy) {
+                $this->assertNotNull($legacy->fresh()->processed_at);
+                $this->assertSame($confirmation->id, data_get($legacy->fresh()->payload, 'resolution.cancellation_event_id'));
+            }
+            $service->remove($charge, $this->company->id, $this->user, 'Exclusão definitiva após cancelamento.', permanent: true);
+            $this->assertDatabaseMissing($charge->getTable(), ['id' => $charge->id]);
+        }
+    }
+
+    #[DataProvider('blockingCancellationEvents')]
+    public function test_cancellation_does_not_dismiss_financial_unknown_or_newer_events(?string $state, bool $afterConfirmation): void
+    {
+        $confirmation = fn () => $this->observe(['sucesso' => true, 'codigo' => 10, 'dados' => ['status' => ['codigo' => 4]]]);
+        if ($afterConfirmation) {
+            $confirmation();
+        }
+        $event = app(BankingEventService::class)->record($this->slip, [
+            'response' => [], 'successful' => true, 'charge_status' => $state,
+        ], 'query', 'query');
+        $event->update(['status' => 'failed', 'error' => 'Evento ainda não resolvido.']);
+        if (! $afterConfirmation) {
+            $confirmation();
+        }
+        try {
+            app(BankChargeLifecycleService::class)->remove($this->slip, $this->company->id, $this->user, 'Não deve ignorar evento pendente.');
+            $this->fail('A pendência deve impedir a remoção.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('charge', $exception->errors());
+        }
+        $this->assertFalse($this->slip->fresh()->trashed());
+        $this->assertSame('failed', $event->fresh()->status);
+        $this->assertNull(data_get($event->fresh()->payload, 'resolution'));
+    }
+
+    public static function blockingCancellationEvents(): array
+    {
+        return [
+            'pagamento anterior' => ['3', false],
+            'devolução anterior' => ['7', false],
+            'rejeição anterior' => ['9', false],
+            'estado desconhecido' => [null, false],
+            'evento posterior ao cancelamento' => ['2', true],
+        ];
+    }
+
+    public function test_canceled_status_without_bank_confirmation_does_not_dismiss_operational_events(): void
+    {
+        $this->slip->update(['status' => 'canceled']);
+        $event = app(BankingEventService::class)->record($this->slip, [
+            'response' => [], 'successful' => true, 'charge_status' => '2',
+        ], 'query', 'query');
+        $event->update(['status' => 'failed']);
+        $this->expectException(ValidationException::class);
+        app(BankChargeLifecycleService::class)->remove($this->slip, $this->company->id, $this->user, 'Remoção exige confirmação bancária.');
     }
 
     public function test_pix_cancellation_modal_displays_the_provider_limitation(): void

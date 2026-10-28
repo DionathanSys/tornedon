@@ -49,13 +49,14 @@ final class BankChargeLifecycleService
 
     public function remove(BankSlip|PixCharge $charge, int $companyId, User $user, string $reason, bool $permanent = false): void
     {
-        $this->change($charge, $companyId, $user, $reason, $permanent ? 'permanently_removed' : 'removed', function ($charge) use ($permanent): void {
-            $this->assertNoFinancialEffects($charge);
+        $this->change($charge, $companyId, $user, $reason, $permanent ? 'permanently_removed' : 'removed', function ($charge) use ($permanent, $user): void {
             $unsent = in_array($charge->status->value, ['pending_registration', 'registration_failed'], true)
                 && $charge->request_sent_at === null && $charge->request_snapshot === null;
             if ($charge->status->value !== 'canceled' && ! $unsent) {
                 $this->invalid('Confirme o cancelamento no provedor antes de remover a cobrança.');
             }
+            $this->resolveObsoleteOperationalEvents($charge, $user);
+            $this->assertNoFinancialEffects($charge);
             if ($permanent) {
                 if (! $charge->trashed()) {
                     $this->invalid('Remova a cobrança para a lixeira antes de excluir definitivamente.');
@@ -98,6 +99,64 @@ final class BankChargeLifecycleService
             || ($charge instanceof BankSlip && $charge->events()->whereNull('processed_at')->exists())
             || $this->events($charge)->whereIn('status', ['pending', 'failed', 'needs_review'])->exists()) {
             $this->invalid('Trate os recebimentos e eventos bancários pendentes antes desta ação.');
+        }
+    }
+
+    private function resolveObsoleteOperationalEvents(BankSlip|PixCharge $charge, User $user): void
+    {
+        if ($charge->status->value !== 'canceled') {
+            return;
+        }
+
+        // A processed charge cancellation is evidence; a completed operation alone
+        // (event_query) does not confirm that the bank canceled the charge.
+        $confirmation = $this->events($charge)
+            ->where('bank_account_connection_id', $charge->bank_account_connection_id)
+            ->where('status', 'processed')->where('operation', '!=', 'event_query')
+            ->orderByDesc('id')->get()->first(fn (BankingEvent $event): bool => data_get($event->payload, 'successful') === true
+                && (string) data_get($event->payload, 'charge_status') === '4');
+        if (! $confirmation) {
+            return;
+        }
+
+        $resolution = [
+            'reason' => 'Pendência operacional anterior superada pelo cancelamento confirmado no provedor.',
+            'cancellation_event_id' => $confirmation->id,
+            'financial_effect' => false,
+        ];
+        $audit = app(AuditRecorder::class);
+        $events = $this->events($charge)
+            ->where('bank_account_connection_id', $charge->bank_account_connection_id)
+            ->where('id', '<', $confirmation->id)->whereIn('status', ['pending', 'failed'])
+            ->whereIn('operation', ['register', 'cancel', 'update', 'query', 'event_query', 'GERACAO', 'ATUALIZACAO', 'CANCELAMENTO'])
+            ->whereIn('source', ['request', 'intent', 'query', 'webhook'])->lockForUpdate()->get();
+
+        foreach ($events as $event) {
+            $state = (string) data_get($event->payload, 'charge_status');
+            $pendingCancellation = $state === '' && $event->operation === 'cancel'
+                && (string) data_get($event->payload, 'response_code') === '4';
+            // Never dismiss payment, return, rejection, or unknown-state events.
+            if (! in_array($state, ['0', '1', '2', '4', '5', '6'], true) && ! $pendingCancellation) {
+                continue;
+            }
+            $before = $audit->snapshot($event);
+            $event->update(['status' => 'resolved', 'processed_at' => now(),
+                'payload' => [...$event->payload, 'resolution' => $resolution]]);
+            $audit->recordModelEvent($event, 'banking.obsolete_operation_resolved', $resolution['reason'],
+                $before, $audit->snapshot($event), $user->id);
+        }
+
+        if ($charge instanceof BankSlip) {
+            $legacyEvents = $charge->events()->where('company_id', $charge->company_id)
+                ->where('bank_account_connection_id', $charge->bank_account_connection_id)
+                ->whereNull('processed_at')->where('received_at', '<=', $confirmation->received_at)
+                ->whereIn('provider_status_code', ['0', '1', '2', '4', '5', '6'])->lockForUpdate()->get();
+            foreach ($legacyEvents as $event) {
+                $before = $audit->snapshot($event);
+                $event->update(['processed_at' => now(), 'payload' => [...$event->payload, 'resolution' => $resolution]]);
+                $audit->recordModelEvent($event, 'banking.obsolete_operation_resolved', $resolution['reason'],
+                    $before, $audit->snapshot($event), $user->id);
+            }
         }
     }
 
