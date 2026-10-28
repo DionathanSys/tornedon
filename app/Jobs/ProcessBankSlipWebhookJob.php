@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
 {
@@ -41,9 +42,21 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
     public function handle(AccountReceivableService $receivableService): void
     {
         $event = BankSlipEvent::find($this->eventId);
+        $context = [
+            'event_id' => $this->eventId,
+            'connection_id' => $event?->bank_account_connection_id,
+            'bank_slip_id' => $event?->bank_slip_id,
+            'identification' => data_get($event?->payload, 'identificacao'),
+            'provider_status_code' => $event?->provider_status_code,
+        ];
         if (! $event || $event->processed_at) {
+            Log::info('ProcessBankSlipWebhookJob: processamento ignorado', $context + [
+                'reason' => $event ? 'already_processed' : 'event_not_found',
+            ]);
+
             return;
         }
+        Log::info('ProcessBankSlipWebhookJob: processamento iniciado', $context);
         if (! $event->bankSlip) {
             BankingEvent::firstOrCreate([
                 'bank_account_connection_id' => $event->bank_account_connection_id,
@@ -54,25 +67,49 @@ final class ProcessBankSlipWebhookJob implements ShouldBeUnique, ShouldQueue
                 'received_at' => $event->received_at, 'error' => 'Evento sem cobrança local correspondente.',
             ]);
             $event->update(['failed_at' => now(), 'processed_at' => now(), 'error' => 'Evento recebido sem boleto local correspondente.']);
+            Log::warning('ProcessBankSlipWebhookJob: boleto nao localizado', $context);
 
             return;
         }
         $service = app(BankingEventService::class);
+        $previousStatus = $event->bankSlip->status->value;
         $observation = $service->record($event->bankSlip, [
             'response' => [...$event->payload, 'valor' => $event->amount, 'status' => ['codigo' => $event->provider_status_code]],
             'successful' => $event->provider_status_code !== '9', 'charge_status' => $event->provider_status_code,
             'legacy_event_id' => $event->id,
         ], (string) ($event->event_type ?: 'ATUALIZACAO'), 'webhook');
-        $service->process($observation);
+        try {
+            $service->process($observation);
+        } catch (\Throwable $exception) {
+            Log::error('ProcessBankSlipWebhookJob: falha na tentativa de processamento', $context + [
+                'banking_event_id' => $observation->id,
+                'exception_class' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
         $observation->refresh();
         $event->update([
             'processed_at' => now(), 'failed_at' => $observation->status === 'needs_review' ? now() : null,
+            'error' => $observation->error,
+        ]);
+        Log::log($observation->status === 'needs_review' ? 'warning' : 'info', 'ProcessBankSlipWebhookJob: processamento finalizado', $context + [
+            'banking_event_id' => $observation->id,
+            'processing_status' => $observation->status,
+            'previous_status' => $previousStatus,
+            'current_status' => $event->bankSlip->fresh()->status->value,
             'error' => $observation->error,
         ]);
     }
 
     public function failed(\Throwable $exception): void
     {
+        Log::error('ProcessBankSlipWebhookJob: tentativas de processamento esgotadas', [
+            'event_id' => $this->eventId,
+            'exception_class' => $exception::class,
+            'message' => $exception->getMessage(),
+        ]);
         BankSlipEvent::whereKey($this->eventId)->update(['failed_at' => now(), 'error' => $exception->getMessage()]);
     }
 }

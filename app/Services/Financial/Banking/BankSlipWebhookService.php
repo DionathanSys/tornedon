@@ -26,6 +26,7 @@ final class BankSlipWebhookService
         if (! $provider->validateWebhook($connection, $payload, $rawBody)) {
             Log::warning('BankSlipWebhookService: assinatura invalida ou ausente', [
                 'connection_id' => $connection->id,
+                'identification' => $payload['identificacao'] ?? null,
             ]);
 
             return null;
@@ -41,6 +42,13 @@ final class BankSlipWebhookService
                     'response' => $payload, 'successful' => $normalized->statusCode !== '9', 'charge_status' => $normalized->statusCode,
                 ], $normalized->eventType ?: 'ATUALIZACAO', 'webhook');
                 ProcessBankingEventJob::dispatch($event->id)->afterCommit();
+                Log::info('BankSlipWebhookService: evento PIX persistido para processamento apos commit', [
+                    'connection_id' => $pix->bank_account_connection_id,
+                    'identification' => $normalized->identification,
+                    'event_id' => $event->id,
+                    'pix_charge_id' => $pix->id,
+                    'queue' => 'banking',
+                ]);
 
                 return $event;
             });
@@ -65,8 +73,29 @@ final class BankSlipWebhookService
                 ],
             );
 
+            Log::info('BankSlipWebhookService: evento de boleto persistido', [
+                'connection_id' => $connection->id,
+                'company_id' => $connection->company_id,
+                'identification' => $normalized->identification,
+                'event_id' => $event->id,
+                'provider_event_id' => $normalized->providerEventId,
+                'bank_slip_id' => $event->bank_slip_id,
+                'provider_status_code' => $normalized->statusCode,
+                'duplicate' => ! $event->wasRecentlyCreated,
+                'processed_at' => $event->processed_at,
+                'stored_connection_id' => $event->bank_account_connection_id,
+            ]);
+
             if (! $event->processed_at) {
                 ProcessBankSlipWebhookJob::dispatch($event->id)->afterCommit();
+                Log::info('BankSlipWebhookService: processamento de boleto solicitado apos commit', [
+                    'connection_id' => $connection->id,
+                    'identification' => $normalized->identification,
+                    'event_id' => $event->id,
+                    'bank_slip_id' => $event->bank_slip_id,
+                    'queue' => 'banking',
+                    'queue_connection' => config('queue.default'),
+                ]);
             }
 
             return $event;

@@ -75,20 +75,22 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         $credentials = (array) ($connection->credentials ?? []);
         $encryptionKey = (string) ($credentials['secret_key'] ?? data_get($connection->settings, 'secret_key', ''));
 
-        if (
-            $payloadDocument === ''
-            || $companyDocument === ''
-            || ! hash_equals($companyDocument, $payloadDocument)
-            || $signature === ''
-            || $encryptionKey === ''
-        ) {
-            return false;
+        $reason = match (true) {
+            $payloadDocument === '' => 'payload_document_missing',
+            $companyDocument === '' => 'company_document_missing',
+            ! hash_equals($companyDocument, $payloadDocument) => 'document_mismatch',
+            $signature === '' => 'signature_missing',
+            $encryptionKey === '' => 'secret_key_missing',
+            default => null,
+        };
+        if ($reason !== null) {
+            return $this->rejectWebhook($connection, $payload, $reason);
         }
 
         $decoded = base64_decode($signature, true);
 
         if ($decoded === false || strlen($decoded) <= 48) {
-            return false;
+            return $this->rejectWebhook($connection, $payload, 'signature_invalid_encoding');
         }
 
         $iv = substr($decoded, 0, 16);
@@ -97,7 +99,7 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
         $expectedMac = hash_hmac('sha256', $encryptedTimestamp, $encryptionKey, true);
 
         if (! hash_equals($providedMac, $expectedMac)) {
-            return false;
+            return $this->rejectWebhook($connection, $payload, 'signature_mac_mismatch');
         }
 
         $timestamp = openssl_decrypt(
@@ -108,9 +110,33 @@ final class IntegraBancosProvider implements BankSlipProviderInterface
             $iv,
         );
 
-        return is_string($timestamp)
-            && ctype_digit($timestamp)
-            && abs(time() - (int) $timestamp) <= 300;
+        if (! is_string($timestamp) || ! ctype_digit($timestamp)) {
+            return $this->rejectWebhook($connection, $payload, 'signature_timestamp_invalid');
+        }
+
+        $age = time() - (int) $timestamp;
+        if (abs($age) > 300) {
+            return $this->rejectWebhook($connection, $payload, 'signature_timestamp_outside_window', [
+                'timestamp_age_seconds' => $age,
+                'tolerance_seconds' => 300,
+            ]);
+        }
+
+        return true;
+    }
+
+    private function rejectWebhook(BankAccountConnection $connection, array $payload, string $reason, array $context = []): bool
+    {
+        Log::warning('IntegraBancos: validacao do webhook rejeitada', [
+            'connection_id' => $connection->id,
+            'company_id' => $connection->company_id,
+            'identification' => $payload['identificacao'] ?? null,
+            'event_type' => $payload['evento'] ?? null,
+            'reason' => $reason,
+            ...$context,
+        ]);
+
+        return false;
     }
 
     public function queryEvent(BankSlip $bankSlip, string $eventId): BankSlipProviderResult

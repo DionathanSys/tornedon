@@ -34,6 +34,7 @@ use App\Services\Financial\Banking\BankSlipProviderRegistry;
 use App\Services\Financial\Banking\BankSlipWebhookService;
 use App\Services\Financial\Banking\Providers\IntegraBancosClientInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Mockery;
 use Tests\TestCase;
 
@@ -236,6 +237,7 @@ class BankSlipWebhookProcessingTest extends TestCase
 
     public function test_webhook_endpoint_returns_http_200_when_signature_is_rejected(): void
     {
+        Log::spy();
         $connection = BankAccountConnection::query()->findOrFail($this->bankSlip->bank_account_connection_id);
 
         $response = $this->postJson(route('webhook.bank-slips', ['connection' => $connection]), [
@@ -246,6 +248,34 @@ class BankSlipWebhookProcessingTest extends TestCase
         $response
             ->assertOk()
             ->assertJson(['ok' => false]);
+
+        Log::shouldHaveReceived('warning')->with(
+            'IntegraBancos: validacao do webhook rejeitada',
+            Mockery::on(fn (array $context): bool => $context['reason'] === 'signature_invalid_encoding'
+                && $context['connection_id'] === $connection->id
+                && ! array_key_exists('assinatura', $context)),
+        )->once();
+    }
+
+    public function test_logs_missing_webhook_token_without_exposing_credentials(): void
+    {
+        Log::spy();
+        $connection = $this->bankSlip->connection;
+        $connection->update(['credentials' => [...$connection->credentials, 'webhook_token' => 'private-token']]);
+
+        $this->postJson(route('webhook.bank-slips', ['connection' => $connection]), [
+            'identificacao' => $this->bankSlip->provider_identification,
+            'evento' => 'GERACAO',
+            'status' => ['codigo' => 2],
+        ])->assertOk()->assertJson(['ok' => false]);
+
+        Log::shouldHaveReceived('warning')->with(
+            'BankSlipWebhookController: token rejeitado',
+            Mockery::on(fn (array $context): bool => $context['reason'] === 'token_missing'
+                && $context['identification'] === $this->bankSlip->provider_identification
+                && ! str_contains(json_encode($context), 'private-token')),
+        )->once();
+        $this->assertDatabaseCount('bank_slip_events', 0);
     }
 
     public function test_webhook_after_operational_reset_records_unmatched_event_without_recreating_financial_data(): void
@@ -287,6 +317,8 @@ class BankSlipWebhookProcessingTest extends TestCase
     public function test_processes_generation_webhook_payload_without_event_id(): void
     {
         config(['app.debug' => true]);
+        Log::spy();
+        $this->bankSlip->update(['status' => BankSlipStatus::PROCESSING]);
 
         $payload = [
             'evento' => 'GERACAO',
@@ -315,6 +347,14 @@ class BankSlipWebhookProcessingTest extends TestCase
         $this->assertSame($payload['pdf'], $this->bankSlip->fresh()->pdf_url);
         $this->assertSame($payload['linha_digitavel'], $this->bankSlip->fresh()->digitable_line);
         $this->assertSame($payload['qrcode'], data_get($this->bankSlip->fresh()->provider_payload, 'qrcode'));
+        Log::shouldHaveReceived('log')->with(
+            'info',
+            'ProcessBankSlipWebhookJob: processamento finalizado',
+            Mockery::on(fn (array $context): bool => $context['identification'] === $payload['identificacao']
+                && $context['previous_status'] === 'processing'
+                && $context['current_status'] === 'registered'
+                && $context['processing_status'] === 'processed'),
+        )->once();
     }
 
     public function test_processes_integrabancos_paid_payload_and_updates_receivable(): void
