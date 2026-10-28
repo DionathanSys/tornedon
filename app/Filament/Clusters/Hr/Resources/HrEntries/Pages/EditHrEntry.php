@@ -10,6 +10,7 @@ use App\Models\AccountPayable;
 use App\Models\FinancialAccount;
 use App\Models\HrReceipt;
 use App\Services\Hr\HrAccess;
+use App\Services\Hr\HrReceiptSignatureService;
 use App\Services\Hr\HrService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -22,12 +23,16 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
+use Livewire\Attributes\Locked;
 
 class EditHrEntry extends EditRecord
 {
     protected static string $resource = HrEntryResource::class;
 
     protected string $view = 'filament.clusters.hr.pages.edit-hr-entry';
+
+    #[Locked]
+    public ?array $signatureLink = null;
 
     protected function authorizeAccess(): void
     {
@@ -138,7 +143,7 @@ class EditHrEntry extends EditRecord
 
     public function signReceiptAction(): Action
     {
-        return Action::make('signReceipt')->label('Coletar assinatura')->icon('heroicon-o-pencil-square')->disabledSchema(false)
+        return Action::make('signReceipt')->label('Assinar agora')->icon('heroicon-o-pencil-square')->disabledSchema(false)
             ->visible(fn () => $this->hrAllowed('sign') && $this->hrAllowed('view'))
             ->modalHeading('Assinatura do beneficiário')->modalDescription('A assinatura será incluída no PDF com a data e hora desta coleta.')->modalWidth('4xl')
             ->fillForm(fn (array $arguments) => ['signed_by_name' => $this->receiptForAction($arguments)->snapshot['person_name'], 'signature' => null])
@@ -150,8 +155,26 @@ class EditHrEntry extends EditRecord
             ])->modalSubmitActionLabel('Salvar assinatura no recibo')->closeModalByClickingAway(false)
             ->action(function (array $arguments, array $data): void {
                 app(HrService::class)->signReceipt(auth()->user(), Filament::getTenant(), $this->receiptForAction($arguments), $data);
+                $this->signatureLink = null;
                 Notification::make()->title('Recibo assinado. O PDF já inclui a assinatura e a data do ato.')->success()->send();
             });
+    }
+
+    public function generateSignatureLinkAction(): Action
+    {
+        return Action::make('generateSignatureLink')->label('Enviar link de assinatura')->icon('heroicon-o-link')
+            ->visible(fn () => $this->hrAllowed('sign') && $this->hrAllowed('view'))
+            ->action(function (array $arguments): void {
+                $receipt = $this->receiptForAction($arguments);
+                $generated = app(HrReceiptSignatureService::class)->createLink(auth()->user(), Filament::getTenant(), $receipt);
+                $this->signatureLink = ['receipt_id' => $receipt->id, 'url' => $generated['url'], 'expires_at' => $generated['expires_at']->format('d/m/Y H:i')];
+                Notification::make()->title('Link de assinatura gerado')->body('Copie o link ou compartilhe pelo WhatsApp abaixo.')->success()->send();
+            });
+    }
+
+    public function refreshReceiptsAction(): Action
+    {
+        return Action::make('refreshReceipts')->label('Atualizar recibos')->color('gray')->icon('heroicon-o-arrow-path')->action(fn () => null);
     }
 
     public function workflowData(): array

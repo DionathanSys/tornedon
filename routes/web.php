@@ -11,6 +11,7 @@ use App\Http\Controllers\FiscalDocumentXmlExportDownloadController;
 use App\Http\Controllers\HrDocumentController;
 use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\PdfPreviewController;
+use App\Http\Controllers\PublicHrReceiptSignatureController;
 use App\Http\Controllers\PublicPixChargeController;
 use App\Http\Controllers\PublicServiceOrderSignatureController;
 use App\Services\Bpo\BpoAccessService;
@@ -60,6 +61,13 @@ Route::post('/assinar-os/{token}', [PublicServiceOrderSignatureController::class
     ->where('token', '[a-f0-9]{64}')
     ->name('service-orders.signature.store')
     ->middleware('throttle:20,1');
+
+Route::get('/assinar-recibo/{token}', [PublicHrReceiptSignatureController::class, 'show'])
+    ->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1')->name('hr.signature.show');
+Route::post('/assinar-recibo/{token}', [PublicHrReceiptSignatureController::class, 'store'])
+    ->where('token', '[a-f0-9]{64}')->middleware('throttle:20,1')->name('hr.signature.store');
+Route::get('/assinar-recibo/{token}/pdf', [PublicHrReceiptSignatureController::class, 'pdf'])
+    ->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1')->name('hr.signature.pdf');
 
 Route::get('/email-dispatches/{emailDispatch}/attachments/{token}', [EmailDispatchAttachmentController::class, 'show'])
     ->name('email-dispatch.attachment')

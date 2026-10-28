@@ -21,12 +21,14 @@ use App\Models\HrEntry;
 use App\Models\HrPerson;
 use App\Models\HrReceipt;
 use App\Models\HrReceiptSignature;
+use App\Models\HrReceiptSignatureLink;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
 use App\Services\Access\PermissionCatalog;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\Hr\HrAccess;
+use App\Services\Hr\HrReceiptSignatureService;
 use App\Services\Hr\HrService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -34,6 +36,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -458,8 +461,10 @@ class HrWorkflowTest extends TestCase
         $receipt = HrReceipt::where('hr_entry_id', $entry->id)->firstOrFail();
         $snapshot = $receipt->snapshot;
         $unsigned = view('pdf.hr-receipt', ['data' => $snapshot, 'receipt' => $receipt])->render();
-        $this->assertStringContainsString('Data da assinatura manual', $unsigned);
+        $this->assertStringContainsString('class="manual-date"', $unsigned);
         $this->assertStringContainsString('____ / ____ / ________', $unsigned);
+        $this->assertSame(1, substr_count($unsigned, 'class="signature-line"'));
+        $this->assertStringNotContainsString('signature-grid', $unsigned);
         $this->travelTo(Carbon::parse('2026-11-03 14:37:25'));
         $page->callAction('signReceipt', data: ['signed_by_name' => $snapshot['person_name'], 'signature' => $this->signatureImage()], arguments: ['receipt_id' => $receipt->id])->assertHasNoActionErrors();
         $signature = $receipt->fresh()->signature;
@@ -470,7 +475,9 @@ class HrWorkflowTest extends TestCase
         $html = view('pdf.hr-receipt', ['data' => $snapshot, 'receipt' => $receipt->fresh()])->render();
         $this->assertStringContainsString('03/11/2026', $html);
         $this->assertStringContainsString('14:37:25', $html);
-        $this->assertStringNotContainsString('Data da assinatura manual', $html);
+        $this->assertStringNotContainsString('class="manual-date"', $html);
+        $this->assertStringContainsString('ASSINADO ELETRONICAMENTE', $html);
+        $this->assertSame(1, substr_count($html, 'class="signature-line"'));
         $pdf = Pdf::loadView('pdf.hr-receipt', ['data' => $snapshot, 'receipt' => $receipt->fresh()])->setPaper('a4');
         $pdf->render();
         $this->assertSame(1, $pdf->getDomPDF()->getCanvas()->get_page_count(), 'O recibo padrão deve acomodar a assinatura na mesma página.');
@@ -563,5 +570,114 @@ class HrWorkflowTest extends TestCase
         $this->assertSame(0, HrReceiptSignature::count());
         $this->expectException(AuthorizationException::class);
         $this->hr->signReceipt($outsider, $this->company, $receipt, ['signed_by_name' => 'Outra pessoa', 'signature' => $this->signatureImage()]);
+    }
+
+    private function receiptForPublicSignature(): HrReceipt
+    {
+        $entry = $this->confirmed();
+        $payment = $this->pay($entry, 100);
+
+        return $this->hr->issueReceipt($this->owner, $this->company, $entry, $payment->id);
+    }
+
+    public function test_receipt_link_can_be_generated_in_page_and_signed_without_login(): void
+    {
+        $receipt = $this->receiptForPublicSignature();
+        $page = Livewire::test(EditHrEntry::class, ['record' => $receipt->hr_entry_id])->callAction('generateSignatureLink', arguments: ['receipt_id' => $receipt->id])->assertHasNoActionErrors();
+        $url = $page->get('signatureLink')['url'];
+        $token = basename(parse_url($url, PHP_URL_PATH));
+        $link = HrReceiptSignatureLink::firstOrFail();
+        $this->assertSame(hash('sha256', $token), $link->token_hash);
+        $this->assertNotSame($token, $link->token_hash);
+        Auth::logout();
+        $this->get($url)->assertOk()->assertSee('Assine o recibo')->assertSee($receipt->snapshot['person_name'])->assertHeader('Referrer-Policy', 'no-referrer');
+        $this->assertDatabaseCount('hr_receipt_signatures', 0);
+        $this->get(route('hr.signature.pdf', ['token' => $token]))->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->travelTo(now()->addHour());
+        $this->post(route('hr.signature.store', ['token' => $token]), ['agreement' => 1, 'signed_by_name' => 'Beneficiário remoto', 'signature' => $this->signatureImage(), 'signed_at' => '1999-01-01', 'recorded_by' => $this->owner->id, 'hr_receipt_id' => 999999, 'company_id' => 999999])->assertRedirect($url);
+        $signature = HrReceiptSignature::withoutGlobalScopes()->firstOrFail();
+        $this->assertNull($signature->recorded_by);
+        $this->assertSame($receipt->id, $signature->hr_receipt_id);
+        $this->assertSame($this->company->id, $signature->company_id);
+        $this->assertSame(now()->format('Y-m-d H:i:s'), $signature->signed_at->format('Y-m-d H:i:s'));
+        $this->assertSame('public_signature_link', $signature->metadata['channel']);
+        $this->assertNotNull($link->fresh()->used_at);
+        $this->get($url)->assertOk()->assertSee('Assinatura concluída')->assertDontSee('id="hr-receipt-signature-form"', false);
+        $this->get(route('hr.signature.pdf', ['token' => $token]))->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->post(route('hr.signature.store', ['token' => $token]), ['agreement' => 1, 'signed_by_name' => 'Outra pessoa', 'signature' => $this->signatureImage()])->assertStatus(409);
+        $this->assertDatabaseCount('hr_receipt_signatures', 1);
+    }
+
+    public function test_regenerated_expired_and_unknown_signature_links_are_unavailable(): void
+    {
+        $receipt = $this->receiptForPublicSignature();
+        $service = app(HrReceiptSignatureService::class);
+        $first = $service->createLink($this->owner, $this->company, $receipt);
+        $second = $service->createLink($this->owner, $this->company, $receipt);
+        Auth::logout();
+        $this->get($first['url'])->assertStatus(410);
+        $this->get($second['url'])->assertOk();
+        $this->get(route('hr.signature.show', ['token' => str_repeat('0', 64)]))->assertStatus(410);
+        $this->travelTo($second['expires_at']->copy()->addSecond());
+        $this->get($second['url'])->assertStatus(410);
+        $token = basename(parse_url($second['url'], PHP_URL_PATH));
+        $this->get(route('hr.signature.pdf', ['token' => $token]))->assertStatus(410);
+        $this->post(route('hr.signature.store', ['token' => $token]), ['agreement' => 1, 'signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()])->assertStatus(410);
+        $this->assertDatabaseCount('hr_receipt_signatures', 0);
+    }
+
+    public function test_in_person_signature_revokes_pending_public_links(): void
+    {
+        $receipt = $this->receiptForPublicSignature();
+        $generated = app(HrReceiptSignatureService::class)->createLink($this->owner, $this->company, $receipt);
+        $this->hr->signReceipt($this->owner, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()]);
+        $this->assertNotNull($generated['link']->fresh()->revoked_at);
+        Auth::logout();
+        $this->get($generated['url'])->assertStatus(410);
+    }
+
+    public function test_public_link_is_invalid_after_payment_reversal_and_company_suspension(): void
+    {
+        $receipt = $this->receiptForPublicSignature();
+        $generated = app(HrReceiptSignatureService::class)->createLink($this->owner, $this->company, $receipt);
+        DB::table('companies')->where('id', $this->company->id)->update(['is_active' => false]);
+        $this->get($generated['url'])->assertStatus(410);
+        DB::table('companies')->where('id', $this->company->id)->update(['is_active' => true]);
+        $this->hr->reversePayment($this->owner, $this->company->fresh(), HrEntry::findOrFail($receipt->hr_entry_id), $receipt->payment_id);
+        Auth::logout();
+        $this->get($generated['url'])->assertStatus(410);
+        $token = basename(parse_url($generated['url'], PHP_URL_PATH));
+        $this->post(route('hr.signature.store', ['token' => $token]), ['agreement' => 1, 'signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()])->assertStatus(410);
+        $this->assertDatabaseCount('hr_receipt_signatures', 0);
+    }
+
+    public function test_public_signing_uses_token_not_an_unrelated_authenticated_account(): void
+    {
+        $receipt = $this->receiptForPublicSignature();
+        $generated = app(HrReceiptSignatureService::class)->createLink($this->owner, $this->company, $receipt);
+        $this->actingAs(User::factory()->create());
+        $token = basename(parse_url($generated['url'], PHP_URL_PATH));
+        $this->post(route('hr.signature.store', ['token' => $token]), ['agreement' => 1, 'signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()])->assertRedirect($generated['url']);
+        $signature = HrReceiptSignature::withoutGlobalScopes()->firstOrFail();
+        $this->assertNull($signature->recorded_by);
+        $this->assertDatabaseHas('audit_entries', ['auditable_type' => HrReceiptSignature::class, 'auditable_id' => $signature->id, 'event' => 'hr.receipt.signed', 'source' => 'public', 'actor_user_id' => null]);
+        $this->get($generated['url'])->assertSee('Assinatura concluída');
+        $this->get(route('hr.signature.pdf', ['token' => $token]))->assertOk();
+    }
+
+    public function test_public_signing_rejects_bad_image_and_missing_agreement_and_link_creation_requires_sign_permission(): void
+    {
+        $receipt = $this->receiptForPublicSignature();
+        $generated = app(HrReceiptSignatureService::class)->createLink($this->owner, $this->company, $receipt);
+        $token = basename(parse_url($generated['url'], PHP_URL_PATH));
+        Auth::logout();
+        $this->post(route('hr.signature.store', ['token' => $token]), ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()])->assertRedirect($generated['url'])->assertSessionHasErrors('agreement');
+        $this->post(route('hr.signature.store', ['token' => $token]), ['agreement' => 1, 'signed_by_name' => 'Beneficiário', 'signature' => 'data:image/png;base64,'.base64_encode('invalid')])->assertRedirect($generated['url'])->assertSessionHasErrors('signature');
+        $this->assertDatabaseCount('hr_receipt_signatures', 0);
+        [$viewer] = $this->userWith(['hr_entries.view' => 'company', 'hr_receipts.view' => 'company']);
+        $this->actingAs($viewer);
+        Livewire::test(EditHrEntry::class, ['record' => $receipt->hr_entry_id])->assertActionHidden('generateSignatureLink');
+        $this->expectException(AuthorizationException::class);
+        app(HrReceiptSignatureService::class)->createLink($viewer, $this->company, $receipt);
     }
 }

@@ -82,7 +82,18 @@
     </x-filament::section>
 
     <x-filament::section heading="Recibos, PDF e assinatura" description="Emita o comprovante da baixa e colete a assinatura do beneficiário. Sem assinatura eletrônica, o PDF possui espaço para data e assinatura manual.">
-        <div class="hr-workflow-toolbar">{{ $this->issueReceiptAction }}</div>
+        <div class="hr-workflow-toolbar">{{ $this->issueReceiptAction }} {{ $this->refreshReceiptsAction }}</div>
+        @if ($this->signatureLink && $this->hrAllowed('sign') && $this->hrAllowed('view'))
+            <div style="padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(128,128,128,.25); border-radius: .75rem" x-data="{ copied: false }">
+                <p><strong>Link de assinatura do recibo #{{ $this->signatureLink['receipt_id'] }}</strong></p>
+                <p class="hr-workflow-note">Válido até {{ $this->signatureLink['expires_at'] }}. O beneficiário pode conferir o recibo e assinar sem login.</p>
+                <input aria-label="Link de assinatura" readonly value="{{ $this->signatureLink['url'] }}" style="width: 100%; margin: .75rem 0; padding: .6rem; border: 1px solid #a1a1aa; border-radius: .4rem; color: #18181b; background: #fff">
+                <div class="hr-workflow-toolbar" style="margin-bottom: 0">
+                    <x-filament::button size="sm" color="gray" x-on:click="navigator.clipboard.writeText(@js($this->signatureLink['url'])).then(() => copied = true)"><span x-text="copied ? 'Link copiado' : 'Copiar link'">Copiar link</span></x-filament::button>
+                    <x-filament::button size="sm" tag="a" :href="'https://wa.me/?text='.rawurlencode('Assine seu recibo de pagamento: '.$this->signatureLink['url'])" target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</x-filament::button>
+                </div>
+            </div>
+        @endif
         @if ($workflow['receipts']->isEmpty())
             <p class="hr-workflow-empty">Nenhum recibo disponível. Registre o pagamento e emita seu recibo nesta página.</p>
         @else
@@ -99,7 +110,8 @@
                                     <x-filament::button size="sm" color="gray" tag="a" :href="$this->receiptUrl($receipt)" target="_blank">Abrir PDF</x-filament::button>
                                 @endif
                                 @if ($valid && ! $receipt->signature && $this->hrAllowed('sign', $receipt))
-                                    <x-filament::button size="sm" wire:click="mountAction('signReceipt', { receipt_id: {{ $receipt->id }} })">Coletar assinatura</x-filament::button>
+                                    <x-filament::button size="sm" wire:click="mountAction('signReceipt', { receipt_id: {{ $receipt->id }} })">Assinar agora</x-filament::button>
+                                    <x-filament::button size="sm" color="gray" wire:click="mountAction('generateSignatureLink', { receipt_id: {{ $receipt->id }} })">Enviar link</x-filament::button>
                                 @endif
                             </div></td>
                         </tr>

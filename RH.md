@@ -24,13 +24,15 @@ O administrador legado que possui o vínculo de proprietário da empresa pode co
 
 ## Assinatura e data no recibo
 
-Na lista de recibos do lançamento, use **Coletar assinatura** para o beneficiário assinar com toque, mouse ou caneta. A operação exige `hr_receipts.sign`, além da consulta ao recibo e ao lançamento. Os modelos de RH incluem essa nova permissão; em papéis já existentes, acrescente-a pelo editor ou reaplique o modelo preservando as concessões atuais.
+Na lista de recibos do lançamento, use **Assinar agora** para o beneficiário assinar com toque, mouse ou caneta, ou **Enviar link** para compartilhar a página de assinatura por cópia do link ou WhatsApp, como nas ordens de serviço do painel Operation. As duas operações exigem `hr_receipts.sign`, além da consulta ao recibo e ao lançamento. Em papéis já existentes, acrescente a permissão pelo editor ou reaplique o modelo preservando as concessões atuais.
 
-A assinatura eletrônica é coletada em tela e incorporada ao PDF. A data e hora são registradas pelo servidor no ato da assinatura. O recibo conserva os valores e a identificação originais; a assinatura é armazenada separadamente, com identificação do documento, operador e dados de auditoria, e não pode ser substituída.
+A assinatura eletrônica é incorporada ao PDF em uma única área centralizada, com carimbo da data e hora registradas pelo servidor no ato. O recibo conserva os valores e a identificação originais; a assinatura é armazenada separadamente, com identificação do documento e auditoria da coleta presencial ou pública, e não pode ser substituída.
 
-Sem assinatura eletrônica, o PDF traz linha para assinatura do beneficiário e espaço de data manual ao lado. Com assinatura eletrônica, esses espaços exibem a imagem e a data/hora da coleta. A data do pagamento continua identificada separadamente no documento.
+Sem assinatura eletrônica, o PDF traz uma única linha central para assinatura do beneficiário. O campo de data manual fica abaixo, com espaçamento próprio, sem criar outra linha de assinatura. Com assinatura eletrônica, a mesma área exibe a imagem e o carimbo da coleta. A data do pagamento continua identificada separadamente no documento.
 
-Ao atualizar uma instalação existente, execute novamente `php artisan migrate` para criar a tabela de assinaturas.
+O link público permite conferir o recibo, abrir o PDF e assinar sem login, e vale por sete dias. Gerar outro link revoga o anterior; a assinatura presencial revoga os links pendentes. Um link já utilizado não permite outra assinatura. Recibos invalidados, empresas inativas e links expirados ou revogados ficam indisponíveis. A assinatura pública é registrada como ato externo, sem atribuir o ato ao usuário eventualmente logado no navegador.
+
+Ao atualizar uma instalação existente, execute novamente `php artisan migrate` para criar as tabelas de assinaturas e links públicos.
 
 ## Adiantamentos e histórico
 

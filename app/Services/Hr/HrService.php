@@ -287,41 +287,7 @@ class HrService
 
     public function signReceipt(User $actor, Company $company, HrReceipt $receipt, array $data): HrReceiptSignature
     {
-        return DB::transaction(function () use ($actor, $company, $receipt, $data) {
-            $receipt = HrReceipt::withoutGlobalScopes()->where('company_id', $company->id)->findOrFail($receipt->id);
-            $entry = HrEntry::withoutGlobalScopes()->where('company_id', $company->id)->lockForUpdate()->findOrFail($receipt->hr_entry_id);
-            $this->access->authorize($actor, $company, 'hr_entries.view', $entry);
-            $this->access->authorize($actor, $company, 'hr_receipts.view', $receipt);
-            $this->access->authorize($actor, $company, 'hr_receipts.sign', $receipt);
-            $this->payments($entry)->whereKey($receipt->payment_id)->lockForUpdate()->first();
-            $receipt = HrReceipt::withoutGlobalScopes()->lockForUpdate()->findOrFail($receipt->id);
-            if (! $this->receiptIsValid($receipt)) {
-                $this->fail('signature', 'Não é possível assinar um recibo invalidado.');
-            }
-            if (HrReceiptSignature::withoutGlobalScopes()->where('hr_receipt_id', $receipt->id)->exists()) {
-                $this->fail('signature', 'Este recibo já possui assinatura.');
-            }
-            $validated = Validator::make($data, [
-                'signed_by_name' => ['required', 'string', 'max:255'],
-                'signature' => ['required', 'string', 'starts_with:data:image/png;base64,', 'max:2500000'],
-            ])->validate();
-            $binary = base64_decode(substr($validated['signature'], strlen('data:image/png;base64,')), true);
-            $image = $binary !== false ? @getimagesizefromstring($binary) : false;
-            if (! $image || $image[2] !== IMAGETYPE_PNG || $image[0] > 4096 || $image[1] > 4096) {
-                $this->fail('signature', 'Envie uma assinatura PNG válida, com dimensões de até 4096 pixels.');
-            }
-            $signature = HrReceiptSignature::create([
-                'company_id' => $company->id, 'hr_receipt_id' => $receipt->id,
-                'signed_by_name' => trim($validated['signed_by_name']), 'signature' => $validated['signature'],
-                'signed_at' => now(), 'recorded_by' => $actor->id,
-                'document_hash' => hash('sha256', json_encode(['id' => $receipt->id, 'snapshot' => $receipt->snapshot, 'fingerprint' => $receipt->fingerprint], JSON_THROW_ON_ERROR)),
-                'metadata' => ['ip' => request()->ip(), 'user_agent' => mb_substr((string) request()->userAgent(), 0, 1000), 'channel' => 'hr_panel'],
-            ]);
-            app(AuditRecorder::class)->recordModelEvent($signature, 'hr.receipt.signed', 'Recibo de RH #'.$receipt->id.' assinado em tela', null,
-                ['signed_by_name' => $signature->signed_by_name, 'signed_at' => $signature->signed_at->toIso8601String(), 'document_hash' => $signature->document_hash, 'signature_hash' => hash('sha256', $signature->signature)], $actor->id);
-
-            return $signature;
-        }, 3);
+        return app(HrReceiptSignatureService::class)->signInPerson($actor, $company, $receipt, $data);
     }
 
     public function canPerformFinancialAction(User $actor, Company $company, HrEntry $entry, string $action): bool

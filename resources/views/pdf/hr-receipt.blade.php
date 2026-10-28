@@ -32,13 +32,14 @@
         .declaration { text-align: justify; margin: 14px 0; }
         .notes { font-size: 9px; color: #64748b; white-space: pre-line; }
         .notice { border-left: 3px solid #718096; background: #f8fafc; padding: 9px 12px; font-size: 9px; margin: 12px 0; }
-        .signature-block { page-break-inside: avoid; margin-top: 28px; }
-        .signature-grid td { vertical-align: bottom; text-align: center; padding: 0 14px; }
+        .signature-block { page-break-inside: avoid; margin-top: 28px; text-align: center; }
+        .signature-center { width: 62%; margin: 0 auto; text-align: center; }
         .signature-line { border-top: 1px solid #526476; padding-top: 7px; font-size: 9px; }
         .signature-image { height: 70px; margin: 0 auto 3px; }
         .signature-image img { max-height: 70px; max-width: 260px; }
         .manual-space { height: 54px; }
-        .date-line { font-size: 12px; padding-bottom: 10px; }
+        .signature-stamp { display: inline-block; margin-top: 10px; padding: 5px 14px; border: 1px solid #c9d8e6; background: #f0f4f8; color: #253b55; font-size: 8px; }
+        .manual-date { margin-top: 22px; font-size: 10px; color: #526476; }
         .footer { margin-top: 26px; border-top: 1px solid #dce3eb; padding-top: 9px; color: #718096; font-size: 8px; }
         .hash { word-break: break-all; font-size: 7px; margin-top: 4px; }
     </style>
@@ -96,26 +97,19 @@
         @if ($data['notes'])<p class="notes">Observações: {{ $data['notes'] }}</p>@endif
 
         <div class="signature-block">
-            <table class="signature-grid"><tr>
-                <td style="width: 64%">
-                    @if ($signature)
-                        <div class="signature-image"><img src="{{ $signature->signature }}" alt="Assinatura do beneficiário"></div>
-                    @else
-                        <div class="manual-space"></div>
-                    @endif
-                    <div class="signature-line"><strong>{{ $signature?->signed_by_name ?? $data['person_name'] }}</strong><br>CPF/CNPJ: {{ $data['person_document'] }}<br>{{ $signature ? 'Assinatura eletrônica coletada em tela' : 'Assinatura do beneficiário' }}</div>
-                </td>
-                <td>
-                    @if ($signature)
-                        <div class="date-line">{{ $signature->signed_at->format('d/m/Y') }}<br><span style="font-size: 10px">{{ $signature->signed_at->format('H:i:s') }}</span></div>
-                        <div class="signature-line">Data e hora da assinatura</div>
-                    @else
-                        <div class="date-line">____ / ____ / ________</div>
-                        <div class="signature-line">Data da assinatura manual</div>
-                    @endif
-                </td>
-            </tr></table>
-            @if ($city)<p class="notes" style="text-align: center; margin-top: 12px">Local: {{ $city }}</p>@endif
+            <div class="signature-center">
+                @if ($signature)
+                    <div class="signature-image"><img src="{{ $signature->signature }}" alt="Assinatura do beneficiário"></div>
+                @else
+                    <div class="manual-space"></div>
+                @endif
+                <div class="signature-line"><strong>{{ $signature?->signed_by_name ?? $data['person_name'] }}</strong><br>CPF/CNPJ: {{ $data['person_document'] }}<br>Assinatura do beneficiário</div>
+                @if ($signature)
+                    <div class="signature-stamp">ASSINADO ELETRONICAMENTE<br>{{ $signature->signed_at->format('d/m/Y') }} às {{ $signature->signed_at->format('H:i:s') }}</div>
+                @else
+                    <div class="manual-date">{{ $city ? $city.' · ' : '' }}Data: ____ / ____ / ________</div>
+                @endif
+            </div>
         </div>
         <div class="footer">Recibo nº {{ $receipt->id }} · Lançamento RH #{{ $data['entry_id'] }} · Emitido em {{ $receipt->created_at->format('d/m/Y H:i') }}
             @if ($signature)<div class="hash">Identificação do documento assinado: {{ $signature->document_hash }}</div>@endif
