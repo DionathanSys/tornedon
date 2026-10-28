@@ -139,9 +139,18 @@ final class BankingEventService
                     if (in_array($charge->status->value, ['paid', 'partially_paid', 'payment_returned'], true)) {
                         $this->review($event, $charge, 'Cancelamento informado para uma cobrança com efeito financeiro.');
                     } else {
-                        $charge->update(['status' => 'canceled', 'canceled_at' => $charge->canceled_at ?? now(), 'operation_status' => 'confirmed', 'last_error' => null]);
+                        $canceledAt = IntegraBancosResponse::date(data_get($body, 'dados.data_cancelamento')
+                            ?? data_get($body, 'data.data_cancelamento') ?? data_get($body, 'data_cancelamento'));
+                        $charge->update(['status' => 'canceled', 'canceled_at' => $canceledAt ?? $charge->canceled_at ?? now(), 'operation_status' => 'confirmed', 'last_error' => null]);
                     }
                 } elseif ($state === '2') {
+                    if ($event->operation === 'query' && $charge->status->value === 'cancel_pending'
+                        && in_array($charge->operation_status, ['sending', 'uncertain'], true)) {
+                        $charge->update([
+                            'operation_status' => 'uncertain',
+                            'last_error' => 'A consulta ainda informa a cobrança como gerada. O cancelamento não foi confirmado pelo provedor.',
+                        ]);
+                    }
                     if ($charge instanceof BankSlip && $charge->status->value === 'update_pending' && $charge->pending_update && $event->operation === 'query') {
                         $value = data_get($body, 'dados.valor');
                         $date = IntegraBancosResponse::date(data_get($body, 'dados.data_vencimento'));

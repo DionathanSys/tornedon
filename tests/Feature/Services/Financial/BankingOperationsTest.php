@@ -44,6 +44,7 @@ use App\Services\Financial\IgnoreFinancialInstallmentsService;
 use App\Services\Financial\Pix\PixProviderRegistry;
 use App\Services\Financial\Pix\Providers\IntegraBancosPixClientInterface;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -722,6 +723,136 @@ class BankingOperationsTest extends TestCase
         $this->assertSame('canceled', $pix->fresh()->status->value);
         $this->assertNotNull($pix->fresh()->canceled_at);
         $this->assertFalse($pix->fresh()->trashed());
+    }
+
+    public function test_cancel_return_processing_failure_is_uncertain_and_query_recovers_without_resending(): void
+    {
+        $this->slip->update(['status' => 'cancel_pending', 'operation_kind' => 'cancel', 'operation_status' => 'ready']);
+        $client = Mockery::mock(IntegraBancosClientInterface::class);
+        $client->shouldReceive('cancel')->once()->andReturn(['sucesso' => true, 'codigo' => 4]);
+        $client->shouldReceive('query')->once()->andReturn(['sucesso' => true, 'codigo' => 10, 'dados' => ['status' => ['codigo' => 4]]]);
+        app()->instance(IntegraBancosClientInterface::class, $client);
+
+        // Simulate a failure persisting the bank response after the external call.
+        BankingEvent::creating(function (BankingEvent $event): void {
+            if ($event->source === 'request') {
+                throw new \RuntimeException('Falha ao gravar retorno bancário.');
+            }
+        });
+        $job = new CancelBankSlipJob($this->slip->id);
+        try {
+            $job->handle(app(BankSlipProviderRegistry::class));
+            $this->fail('Deve propagar a falha de persistência.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Falha ao gravar retorno bancário.', $exception->getMessage());
+        }
+        $this->assertSame('uncertain', $this->slip->fresh()->operation_status);
+        $this->assertStringContainsString('Consulte o provedor', $this->slip->fresh()->last_error);
+        $job->handle(app(BankSlipProviderRegistry::class));
+        (new QueryBankSlipJob($this->slip->id))->handle(app(BankSlipProviderRegistry::class));
+        $this->assertSame('canceled', $this->slip->fresh()->status->value);
+        $this->assertSame('confirmed', $this->slip->fresh()->operation_status);
+        $this->assertNull($this->slip->fresh()->last_error);
+    }
+
+    public function test_query_recovers_old_sending_state_without_treating_generated_as_canceled(): void
+    {
+        $this->slip->update(['status' => 'cancel_pending', 'operation_kind' => 'cancel', 'operation_status' => 'sending']);
+        $client = Mockery::mock(IntegraBancosClientInterface::class);
+        $client->shouldReceive('query')->twice()->andReturn(
+            ['sucesso' => true, 'codigo' => 10, 'dados' => ['status' => ['codigo' => 2]]],
+            ['sucesso' => true, 'codigo' => 10, 'dados' => ['status' => ['codigo' => 4]]],
+        );
+        app()->instance(IntegraBancosClientInterface::class, $client);
+        $job = new QueryBankSlipJob($this->slip->id);
+        $job->handle(app(BankSlipProviderRegistry::class));
+        $this->assertSame('cancel_pending', $this->slip->fresh()->status->value);
+        $this->assertSame('uncertain', $this->slip->fresh()->operation_status);
+        $this->assertNull($this->slip->fresh()->canceled_at);
+        $this->assertStringContainsString('não foi confirmado', $this->slip->fresh()->last_error);
+        $job->handle(app(BankSlipProviderRegistry::class));
+        $this->assertSame('canceled', $this->slip->fresh()->status->value);
+        $this->assertSame('confirmed', $this->slip->fresh()->operation_status);
+    }
+
+    public function test_canceled_query_response_recovers_stale_model_error_and_uses_bank_cancellation_date(): void
+    {
+        $this->slip->update([
+            'status' => 'cancel_pending', 'operation_kind' => 'cancel', 'operation_status' => 'sending',
+            'last_error' => 'Call to undefined method App\\Models\\BankSlip::withTrashed()',
+            'provider_status_code' => '2', 'provider_payload' => ['evento' => 'GERACAO', 'status' => ['codigo' => '2']],
+        ]);
+        $response = [
+            'sucesso' => true, 'codigo' => 10, 'mensagem' => 'Cobrança cancelada',
+            'dados' => [
+                'valor' => 100, 'data_pagamento' => null, 'data_cancelamento' => '2026-10-27 13:17:25',
+                'status' => ['codigo' => 4, 'mensagem' => 'Cancelado'], 'detalhes' => [],
+            ],
+        ];
+        $client = Mockery::mock(IntegraBancosClientInterface::class);
+        $client->shouldReceive('query')->once()->andReturn($response);
+        app()->instance(IntegraBancosClientInterface::class, $client);
+
+        (new QueryBankSlipJob($this->slip->id))->handle(app(BankSlipProviderRegistry::class));
+
+        $charge = $this->slip->fresh();
+        $this->assertSame('canceled', $charge->status->value);
+        $this->assertSame('confirmed', $charge->operation_status);
+        $this->assertSame('4', $charge->provider_status_code);
+        $this->assertSame('Cancelado', $charge->provider_status_message);
+        $this->assertSame('2026-10-27 13:17:25', $charge->canceled_at->format('Y-m-d H:i:s'));
+        $this->assertNull($charge->last_error);
+        $this->assertSame($response, $charge->provider_payload);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $this->assertSame('processed', BankingEvent::where('source', 'query')->sole()->status);
+    }
+
+    public function test_charge_removal_blockers_are_shown_in_a_visible_notification(): void
+    {
+        foreach ([[ListBankSlips::class, $this->slip], [ListPixCharges::class, $this->pix()]] as [$page, $charge]) {
+            $charge->update(['status' => 'registered']);
+            Livewire::test($page)
+                ->callTableAction('remove_charge', $charge, ['reason' => 'Remoção solicitada pelo cliente.'])
+                ->assertNotified(Notification::make()
+                    ->title('Não foi possível concluir a ação.')
+                    ->body('Confirme o cancelamento no provedor antes de remover a cobrança.')
+                    ->danger()->persistent())
+                ->assertSet('mountedActions.0.name', 'remove_charge')
+                ->assertCanSeeTableRecords([$charge]);
+            $this->assertFalse($charge->fresh()->trashed());
+        }
+    }
+
+    public function test_pix_cancellation_modal_displays_the_provider_limitation(): void
+    {
+        Queue::fake();
+        $pix = $this->pix();
+        Livewire::test(ListPixCharges::class)
+            ->callTableAction('cancel_charge', $pix, ['reason' => 'Cancelamento solicitado pelo cliente.'])
+            ->assertNotified(Notification::make()
+                ->title('Não foi possível concluir a ação.')
+                ->body('O SDK IntegraBancos instalado não oferece cancelamento PIX. É necessário obter do provedor o contrato/API de cancelamento antes de habilitar esta operação.')
+                ->danger()->persistent())
+            ->assertSet('mountedActions.0.name', 'cancel_charge');
+        $this->assertSame('registered', $pix->fresh()->status->value);
+        Queue::assertNotPushed(CancelPixChargeJob::class);
+    }
+
+    public function test_permanent_removal_modal_displays_pending_event_blockers(): void
+    {
+        $this->slip->update(['status' => 'canceled']);
+        app(BankChargeLifecycleService::class)->remove($this->slip, $this->company->id, $this->user, 'Remoção após cancelamento confirmado.');
+        $this->observe(['sucesso' => true, 'codigo' => 10, 'status' => ['codigo' => 3], 'valor' => 100]);
+
+        Livewire::test(ListBankSlips::class)
+            ->filterTable('trashed', false)
+            ->callTableAction('force_remove_charge', $this->slip, ['reason' => 'Exclusão definitiva da cobrança.'])
+            ->assertNotified(Notification::make()
+                ->title('Não foi possível concluir a ação.')
+                ->body('Trate os recebimentos e eventos bancários pendentes antes desta ação.')
+                ->danger()->persistent())
+            ->assertSet('mountedActions.0.name', 'force_remove_charge');
+        $this->assertSoftDeleted($this->slip);
     }
 
     public function test_charge_lists_expose_separate_actions_and_permanent_removal_only_in_trash(): void

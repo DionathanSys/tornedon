@@ -193,15 +193,22 @@ class PixChargeResource extends Resource
                     ->modalContent(function (PixCharge $record): HtmlString {
                         $details = json_encode([
                             'status' => $record->status?->description(),
+                            'operation_kind' => $record->operation_kind,
+                            'operation_status' => $record->operation_status,
+                            'provider_identification' => $record->provider_identification,
+                            'provider_charge_id' => $record->provider_charge_id,
+                            'provider_operation_id' => $record->provider_operation_id,
+                            'provider_response_code' => $record->provider_response_code,
                             'pix_copy_paste' => $record->pix_copy_paste,
                             'qr_code' => $record->qr_code,
                             'provider_status_code' => $record->provider_status_code,
                             'provider_status_message' => $record->provider_status_message,
+                            'last_synchronized_at' => $record->last_synchronized_at?->toIso8601String(),
                             'last_error' => $record->last_error,
                             'provider_payload' => $record->provider_payload,
                         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
 
-                        return new HtmlString('<pre style="white-space: pre-wrap; font-size: 12px;">'.e($details).'</pre>');
+                        return new HtmlString('<pre style="box-sizing: border-box; margin: 0; min-width: 0; max-width: 100%; max-height: 60vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: 12px;">'.e($details).'</pre>');
                     }),
             ])->icon(Heroicon::EllipsisVertical), position: RecordActionsPosition::BeforeColumns)
             ->defaultSort('created_at', 'desc')

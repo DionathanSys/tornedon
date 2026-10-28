@@ -58,8 +58,17 @@ final class CancelPixChargeJob implements ShouldBeUnique, ShouldQueue
             if (! $charge) {
                 return;
             }
-            $result = $registry->resolve($charge->connection)->cancel($charge);
-            app(BankingEventService::class)->observe($charge, $result, 'cancel', 'request');
+            try {
+                $result = $registry->resolve($charge->connection)->cancel($charge);
+                app(BankingEventService::class)->observe($charge, $result, 'cancel', 'request');
+            } catch (\Throwable $exception) {
+                PixCharge::whereKey($charge->id)->where('operation_status', 'sending')->update([
+                    'operation_status' => 'uncertain',
+                    'last_error' => 'Não foi possível aplicar o retorno do cancelamento. Consulte o provedor. '.$exception->getMessage(),
+                ]);
+
+                throw $exception;
+            }
             if ($result->retryable) {
                 throw new \RuntimeException($result->message ?: 'Resultado do cancelamento PIX incerto. Consulte o provedor.');
             }
