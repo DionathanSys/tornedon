@@ -6,7 +6,13 @@
 
 **Referência de código:** painel BPO entregue no commit `6c5066de`.
 
-**Situação:** proposta técnica para implementação. As fases descritas neste documento ainda precisam ser desenvolvidas e homologadas.
+**Situação:** plano original de referência. A arquitetura de origem avulsa das fases 0–8 foi substituída pela revisão abaixo; as fases posteriores continuam como backlog e exigem desenvolvimento/homologação.
+
+### Revisão de arquitetura — venda rápida com origem operacional
+
+A decisão posterior é iniciar em **Nova venda**, usando uma OS simplificada para serviços ou uma requisição para produtos. Na finalização, o fluxo existente cria a fatura, prepara o documento e cria/vincula o financeiro conforme a política escolhida. A emissão pode ser solicitada imediatamente ou depois; estoque é opcional por modelo.
+
+O contrato e a situação atual estão em **`BPO-QUICK-SALES.md`**. Não implementar `invoice_items`, resolvedor de origem direta ou documento fiscal como rascunho comercial com base nas seções originais a seguir. Os itens continuam exclusivamente nas entidades operacionais; os totais, PDFs e indicadores aproveitam essa origem. O texto restante preserva a proposta original para referência e o backlog de recuperação, cobrança, homologação e fases 9–13.
 
 ### Decisões confirmadas
 

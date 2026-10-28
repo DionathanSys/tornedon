@@ -22,6 +22,11 @@ class Requisition extends Model
 
     protected static function booted(): void
     {
+        static::updating(function (self $requisition): void {
+            if ($requisition->isDirty('stock_control_enabled') && $requisition->items()->exists()) {
+                throw new \RuntimeException('A política de estoque não pode mudar após incluir itens.');
+            }
+        });
         static::deleting(function (self $requisition): void {
             if ($requisition->invoice_id) {
                 throw new \RuntimeException('Não é possível excluir requisição que está vinculada a uma fatura.');
@@ -53,6 +58,7 @@ class Requisition extends Model
         'status_before_invoicing',
         'equipment_id',
         'stock_consumed',
+        'stock_control_enabled',
         'stock_reserved',
         'additional_info',
         'production_order_id',
@@ -70,6 +76,7 @@ class Requisition extends Model
         'delivery_date' => 'date',
         'invoiced_at' => 'datetime',
         'stock_consumed' => 'boolean',
+        'stock_control_enabled' => 'boolean',
         'stock_reserved' => 'boolean',
         'additional_info' => 'array',
     ];

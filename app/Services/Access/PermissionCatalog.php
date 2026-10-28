@@ -15,6 +15,8 @@ class PermissionCatalog
             'hr_entries' => ['label' => 'Lançamentos de RH', 'model' => Models\HrEntry::class, 'owner' => 'created_by', 'assigned' => []],
             'hr_receipts' => ['label' => 'Recibos de RH', 'model' => Models\HrReceipt::class, 'owner' => null, 'assigned' => []],
             'quotes' => ['label' => 'Orçamentos', 'model' => Models\Quote::class, 'owner' => 'created_by', 'assigned' => []],
+            'bpo_sales' => ['label' => 'Vendas rápidas BPO', 'model' => Models\BpoSale::class, 'owner' => 'created_by', 'assigned' => []],
+            'sale_templates' => ['label' => 'Modelos de venda', 'model' => Models\SaleTemplate::class, 'owner' => null, 'assigned' => []],
             'service_orders' => ['label' => 'Ordens de serviço', 'model' => Models\ServiceOrder::class, 'owner' => 'created_by', 'assigned' => ['technician_id', 'supervisor_id', 'salesperson_id']],
             'requisitions' => ['label' => 'Requisições', 'model' => Models\Requisition::class, 'owner' => 'created_by', 'assigned' => ['salesperson_id']],
             'production_requests' => ['label' => 'Pedidos', 'model' => Models\ProductionRequest::class, 'owner' => 'created_by', 'assigned' => []],
@@ -107,6 +109,8 @@ class PermissionCatalog
             'hr_entries' => [...$basic, 'approve', 'cancel'],
             'hr_receipts' => ['view', 'issue', 'export', 'sign'],
             'quotes' => [...$basic, 'approve'],
+            'bpo_sales' => ['view', 'create', 'update', 'approve'],
+            'sale_templates' => ['view', 'create', 'update'],
             'service_orders' => [...$basic, 'approve', 'cancel', 'issue', 'assign'],
             'requisitions' => [...$basic, 'cancel', 'issue', 'assign'],
             'production_requests' => [...$basic, 'approve', 'cancel'],
@@ -120,7 +124,7 @@ class PermissionCatalog
         ];
         $areas = [
             'Recursos Humanos' => ['hr_people', 'hr_entries', 'hr_receipts'],
-            'Vendas e atendimento' => ['quotes', 'service_orders', 'requisitions', 'production_requests', 'production_orders', 'warranty_claims'],
+            'Vendas e atendimento' => ['bpo_sales', 'sale_templates', 'quotes', 'service_orders', 'requisitions', 'production_requests', 'production_orders', 'warranty_claims'],
             'Financeiro' => ['account_payables', 'account_receivables', 'cash_movements', 'invoices', 'financial_accounts', 'bank_statements', 'financial_categories', 'chart_accounts', 'cost_centers', 'result_centers', 'dre_models', 'card_institutions', 'company_credit_cards', 'company_card_statements', 'company_card_transactions', 'banking_events', 'purchase_closings'],
             'Fiscal' => ['fiscal_documents', 'sefaz_documents', 'fiscal_rules'],
             'Cadastros e estoque' => ['partners', 'products', 'services', 'equipments', 'stock_movements', 'product_stocks', 'categories'],
@@ -237,6 +241,16 @@ class PermissionCatalog
         $financial += ['partners.view' => 'company', 'partners.create' => 'company', 'partners.update' => 'company'];
         $hr = array_filter($all, fn ($key) => str_starts_with($key, 'hr_'), ARRAY_FILTER_USE_KEY);
         $hrReferences = array_fill_keys(['partners.view', 'financial_categories.view', 'chart_accounts.view', 'cost_centers.view', 'result_centers.view'], 'company');
+        $quickSales = array_fill_keys([
+            'bpo_sales.view', 'bpo_sales.create', 'bpo_sales.update', 'bpo_sales.approve',
+            'sale_templates.view', 'partners.view', 'services.view', 'products.view',
+            'service_orders.view', 'service_orders.create', 'service_orders.update', 'service_orders.issue',
+            'requisitions.view', 'requisitions.create', 'requisitions.update', 'requisitions.issue',
+            'invoices.view', 'invoices.create', 'invoices.update', 'invoices.approve',
+            'fiscal_documents.view', 'fiscal_documents.create', 'fiscal_documents.update', 'fiscal_documents.issue', 'fiscal_documents.approve',
+            'account_receivables.view', 'account_receivables.create', 'account_receivables.update',
+            'financial_categories.view', 'stock_movements.view', 'stock_movements.create', 'product_stocks.view', 'product_stocks.update',
+        ], 'company');
 
         return [
             'Administrador da empresa' => $all,
@@ -244,6 +258,7 @@ class PermissionCatalog
             'Assistente de RH' => array_intersect_key($hr, array_flip(['hr_people.view', 'hr_people.create', 'hr_people.update', 'hr_entries.view', 'hr_entries.create', 'hr_entries.update'])) + $hrReferences,
             'Financeiro' => $financial,
             'BPO responsável' => $financial,
+            'Operador de vendas BPO' => $quickSales,
             'Auxiliar BPO' => array_intersect_key($financial, array_flip(['account_payables.view', 'account_payables.create', 'account_receivables.view', 'account_receivables.create', 'cash_movements.view']))
                 + ['account_payables.update' => 'own', 'account_receivables.update' => 'own'],
             'Vendedor' => ['quotes.view' => 'own', 'quotes.create' => 'company', 'quotes.update' => 'own', 'requisitions.view' => 'assigned', 'products.view' => 'company', 'services.view' => 'company', 'partners.view' => 'company'],

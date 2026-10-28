@@ -132,7 +132,7 @@ class ConfirmInvoiceAction
                 $generatedDocuments[] = $fiscalDocument;
             }
 
-            $createdReceivables = $this->createAccountReceivables(
+            $createdReceivables = in_array($this->invoice->financial_policy, ['fiscal_only', 'link_existing'], true) ? [] : $this->createAccountReceivables(
                 $paymentMethod,
                 $paymentCondition,
                 $data,
@@ -311,7 +311,8 @@ class ConfirmInvoiceAction
             ];
         }
 
-        $operationNature = $this->resolveOperationNature();
+        $operationNature = $this->invoice->financial_policy !== null && filled($data['sale_operation_nature'] ?? null)
+            ? OperationNature::from($data['sale_operation_nature']) : $this->resolveOperationNature();
 
         return [
             'document_type' => DocumentModel::NFE->value,

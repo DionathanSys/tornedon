@@ -27,7 +27,7 @@ class CloseRequisitionAction
                 $this->setError('Não é possível encerrar requisição sem itens.');
 
                 Log::warning('CloseRequisitionAction: requisição sem itens', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
                 ]);
 
@@ -38,9 +38,9 @@ class CloseRequisitionAction
             $before = $audit->snapshot($requisition);
 
             Log::debug('CloseRequisitionAction: Encerrando requisicao', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'user_id'        => $this->userId,
+                'user_id' => $this->userId,
                 'stock_reserved' => $requisition->stock_reserved,
             ]);
 
@@ -50,11 +50,11 @@ class CloseRequisitionAction
 
                 foreach ($items as $item) {
                     Log::debug('CloseRequisitionAction: Item', [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_id' => $requisition->id,
-                        'item_id'        => $item->id,
-                        'product_id'     => $item->product_id,
-                        'product_name'   => $item->product->name ?? 'N/A',
+                        'item_id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'product_name' => $item->product->name ?? 'N/A',
                         'has_stock_control' => $item->product?->has_stock_control,
                     ]);
                     if (! $item->product_id || ! $item->product?->has_stock_control) {
@@ -72,21 +72,21 @@ class CloseRequisitionAction
                 }
 
                 if (! $stockWorkflow->recreateReservationsIfNeeded($requisition, $this->userId)) {
-                    $this->setError($stockWorkflow->getMessage(), $stockWorkflow->getErrors(),$stockWorkflow->getErrorCode());
+                    $this->setError($stockWorkflow->getMessage(), $stockWorkflow->getErrors(), $stockWorkflow->getErrorCode());
 
                     return null;
                 }
 
                 if ($items->isNotEmpty()) {
                     Log::debug('CloseRequisitionAction: Recreating reservations', [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_id' => $requisition->id,
-                        'user_id'        => $this->userId,
+                        'user_id' => $this->userId,
                     ]);
                 }
 
                 $requisition->state()->close($requisition, $this->userId);
-                $requisition->update(['stock_reserved' => true]);
+                $requisition->update(['stock_reserved' => $requisition->stock_control_enabled !== false]);
                 $requisition->refresh();
                 $audit->recordModelEvent(
                     $requisition,
@@ -100,9 +100,9 @@ class CloseRequisitionAction
                 $this->setSuccess();
 
                 Log::debug('CloseRequisitionAction: Requisition closed', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
-                    'user_id'        => $this->userId,
+                    'user_id' => $this->userId,
                 ]);
 
                 return $requisition;
@@ -111,9 +111,9 @@ class CloseRequisitionAction
             $this->setError('Transição inválida', $e->errors);
 
             Log::warning('CloseRequisitionAction: Transicao invalida', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'errors'         => $e->errors,
+                'errors' => $e->errors,
             ]);
 
             return null;
@@ -121,20 +121,20 @@ class CloseRequisitionAction
             $this->setError('Erro ao encerrar requisição no banco de dados');
 
             Log::error('CloseRequisitionAction: QueryException', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'exception'      => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
         } catch (\Exception $e) {
-            $this->setError('Erro ao encerrar requisição: ' . $e->getMessage());
+            $this->setError('Erro ao encerrar requisição: '.$e->getMessage());
 
             Log::error('CloseRequisitionAction: Erro inesperado', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'exception'      => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;

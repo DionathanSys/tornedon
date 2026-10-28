@@ -50,7 +50,7 @@ class RequisitionStockWorkflow
                 $requisition,
                 $item,
                 $userId,
-                'Reserva recriada por re-encerramento - requisição #' . $requisition->number,
+                'Reserva recriada por re-encerramento - requisição #'.$requisition->number,
             );
 
             Log::info('RequisitionStockWorkflow: Reserva recriada após reabertura', [
@@ -104,7 +104,7 @@ class RequisitionStockWorkflow
                 $requisition,
                 $item,
                 $userId,
-                'Liberação de reserva — requisição #' . $requisition->number,
+                'Liberação de reserva — requisição #'.$requisition->number,
             );
 
             Log::info('RequisitionStockWorkflow: Reserva liberada', [
@@ -142,27 +142,28 @@ class RequisitionStockWorkflow
 
             if (! $product || ! $product->has_stock_control) {
                 $this->stockService->markItemAsConsumed($item);
+
                 continue;
             }
 
             $productStock = $this->stockService->findProductStock($requisition, $item);
 
             if (! $productStock) {
-                throw new \RuntimeException('Estoque não encontrado para o produto #' . $item->product_id);
+                throw new \RuntimeException('Estoque não encontrado para o produto #'.$item->product_id);
             }
 
             $exit = $this->stockService->createExit(
                 $requisition,
                 $item,
                 $userId,
-                'Saída por faturamento — requisição #' . $requisition->number,
+                'Saída por faturamento — requisição #'.$requisition->number,
             );
 
             $release = $this->stockService->createReservationRelease(
                 $requisition,
                 $item,
                 $userId,
-                'Liberação de reserva por faturamento — requisição #' . $requisition->number,
+                'Liberação de reserva por faturamento — requisição #'.$requisition->number,
             );
 
             $this->stockService->markItemAsConsumed($item);
@@ -195,7 +196,7 @@ class RequisitionStockWorkflow
         $effectiveAvailable = $availableQuantity + $reservedForItem;
 
         Log::debug('RequisitionStockWorkflow: Effective availability resolved for close', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'requisition_id' => $requisition->id,
             'item_id' => $item->id,
             'product_id' => $item->product_id,
@@ -210,20 +211,25 @@ class RequisitionStockWorkflow
 
     public function consumeAuthorizedFiscalItem(Requisition $requisition, RequisitionItem $item, int $userId): void
     {
+        if ($requisition->stock_control_enabled === false) {
+            return;
+        }
         if (! $item->product_id) {
             $this->stockService->markItemAsConsumed($item);
+
             return;
         }
 
         if (! $item->product?->has_stock_control) {
             $this->stockService->markItemAsConsumed($item);
+
             return;
         }
 
         $productStock = $this->stockService->findProductStock($requisition, $item);
 
         if (! $productStock) {
-            throw new \RuntimeException('Estoque não encontrado para o produto #' . $item->product_id);
+            throw new \RuntimeException('Estoque não encontrado para o produto #'.$item->product_id);
         }
 
         $releaseQuantity = $this->stockService->resolveReservedQuantity($requisition, $item);
@@ -233,7 +239,7 @@ class RequisitionStockWorkflow
                 $requisition,
                 $item,
                 $userId,
-                'Liberação de reserva por NF-e autorizada - requisição #' . $requisition->number,
+                'Liberação de reserva por NF-e autorizada - requisição #'.$requisition->number,
                 $releaseQuantity,
                 'requisition_item',
                 $item->id,
@@ -244,7 +250,7 @@ class RequisitionStockWorkflow
             $requisition,
             $item,
             $userId,
-            'Saída por NF-e autorizada - requisição #' . $requisition->number,
+            'Saída por NF-e autorizada - requisição #'.$requisition->number,
             'requisition_item',
             $item->id,
         );
@@ -276,7 +282,7 @@ class RequisitionStockWorkflow
             });
 
         Log::debug('RequisitionStockWorkflow: Net released quantity', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'requisition_id' => $requisition->id,
             'net_released_quantity' => $netReleasedQuantity,
         ]);

@@ -21,6 +21,11 @@ class ReturnInvoiceToPendingAction
 
     public function execute(): bool
     {
+        if ($this->invoice->financial_policy !== null) {
+            $this->setError('Uma venda rápida finalizada não pode voltar a rascunho. Trate seu cancelamento e os vínculos existentes.');
+
+            return false;
+        }
         $this->invoice->loadMissing([
             'fiscalDocuments.accountPayables',
             'accountReceivables.installments.payments',
@@ -84,7 +89,7 @@ class ReturnInvoiceToPendingAction
         );
 
         Log::info('Invoice retornada para pendente com sucesso', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'invoice_id' => $this->invoice->id,
             'user_id' => $this->userId,
         ]);
@@ -98,11 +103,13 @@ class ReturnInvoiceToPendingAction
     {
         if ($this->invoice->canceled || $this->invoice->status === InvoiceStatus::CANCELLED) {
             $this->setError('Não é possível retornar uma fatura cancelada para pendente.');
+
             return false;
         }
 
         if ($this->invoice->status !== InvoiceStatus::CONFIRMED || ! $this->invoice->confirmed) {
             $this->setError('Somente faturas confirmadas podem retornar para pendente.');
+
             return false;
         }
 
@@ -118,6 +125,7 @@ class ReturnInvoiceToPendingAction
                 || $fiscalDocument->isNfseSent()
             ) {
                 $this->setError('A fatura possui documento fiscal com comunicacao fiscal iniciada. Exclua ou cancele o documento antes de retornar para pendente.');
+
                 return false;
             }
         }
@@ -125,6 +133,7 @@ class ReturnInvoiceToPendingAction
         foreach ($this->invoice->accountReceivables as $accountReceivable) {
             if ($accountReceivable->paid || $accountReceivable->payments()->exists()) {
                 $this->setError('A fatura possui contas a receber com recebimentos registrados.');
+
                 return false;
             }
         }

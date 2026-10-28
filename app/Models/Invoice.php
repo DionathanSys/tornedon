@@ -38,6 +38,7 @@ class Invoice extends Model
     }
 
     protected $fillable = [
+        'financial_policy',
         'customer_id',
         'company_id',
         'invoice_number',

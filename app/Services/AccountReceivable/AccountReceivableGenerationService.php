@@ -70,6 +70,14 @@ class AccountReceivableGenerationService
                 return false;
             }
 
+            // Quick sales define their financial outcome at commercial finalization.
+            // Fiscal callbacks must never infer a new obligation from an absent title.
+            if ($invoice->financial_policy !== null) {
+                $this->setSuccess('Tratamento financeiro definido na finalização da venda.');
+
+                return true;
+            }
+
             if (! $this->isFiscalDocumentAuthorized($fiscalDocument)) {
                 $this->setError('Documento fiscal ainda não autorizado para gerar contas a receber.');
 

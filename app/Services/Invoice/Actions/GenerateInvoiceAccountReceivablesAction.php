@@ -32,6 +32,11 @@ class GenerateInvoiceAccountReceivablesAction
      */
     public function execute(array $data): ?array
     {
+        if ($this->invoice->financial_policy !== null) {
+            $this->setError('Esta venda possui decisão financeira registrada na finalização. Não é permitida geração independente.');
+
+            return null;
+        }
         $this->invoice->loadMissing('accountReceivables');
 
         if (! $this->validateCanGenerate()) {

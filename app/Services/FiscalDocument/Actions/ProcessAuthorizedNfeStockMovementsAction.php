@@ -19,6 +19,7 @@ class ProcessAuthorizedNfeStockMovementsAction
 
     public function execute(FiscalDocument $fiscalDocument): bool
     {
+        $this->setSuccess();
         if ($fiscalDocument->isOperationalHistory()) {
             $this->setSuccess();
 
@@ -26,27 +27,29 @@ class ProcessAuthorizedNfeStockMovementsAction
         }
 
         Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'fiscal_document_id' => $fiscalDocument->id,
-            'key'                => 'TEST:BAIXA_ESTOQUE',
+            'key' => 'TEST:BAIXA_ESTOQUE',
         ]);
 
         try {
             if ($fiscalDocument->document_type !== DocumentModel::NFE) {
                 Log::info('ProcessAuthorizedNfeStockMovementsAction: não é NFE', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);
                 $this->setSuccess();
+
                 return true;
             }
 
             if (! $fiscalDocument->invoice_id) {
                 Log::info('ProcessAuthorizedNfeStockMovementsAction: sem invoice', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);
                 $this->setSuccess();
+
                 return true;
             }
 
@@ -58,24 +61,28 @@ class ProcessAuthorizedNfeStockMovementsAction
                 if (! $invoice || $invoice->requisitions->isEmpty()) {
 
                     Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem requisições', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'fiscal_document_id' => $fiscalDocument->id,
-                        'key'                => 'TEST:BAIXA_ESTOQUE',
+                        'key' => 'TEST:BAIXA_ESTOQUE',
                     ]);
 
                     $this->setSuccess();
+
                     return true;
                 }
 
                 $userId = $this->resolveUserId($fiscalDocument, $invoice->created_by ?? null);
 
                 foreach ($invoice->requisitions as $requisition) {
+                    if ($requisition->stock_control_enabled === false) {
+                        continue;
+                    }
 
                     Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'fiscal_document_id' => $fiscalDocument->id,
                         'requisition_id' => $requisition->id,
-                        'key'                => 'TEST:BAIXA_ESTOQUE',
+                        'key' => 'TEST:BAIXA_ESTOQUE',
                     ]);
 
                     $this->processRequisition($requisition, $userId);
@@ -83,10 +90,10 @@ class ProcessAuthorizedNfeStockMovementsAction
                     if ($this->hasError()) {
 
                         Log::debug('ProcessAuthorizedNfeStockMovementsAction: erro', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,    
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'fiscal_document_id' => $fiscalDocument->id,
                             'requisition_id' => $requisition->id,
-                            'key'                => 'TEST:BAIXA_ESTOQUE',
+                            'key' => 'TEST:BAIXA_ESTOQUE',
                         ]);
 
                         return false;
@@ -96,22 +103,22 @@ class ProcessAuthorizedNfeStockMovementsAction
                 $this->setSuccess();
 
                 Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,    
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'fiscal_document_id' => $fiscalDocument->id,
-                    'key'                => 'TEST:BAIXA_ESTOQUE',
+                    'key' => 'TEST:BAIXA_ESTOQUE',
                 ]);
 
                 return true;
             });
         } catch (\Throwable $e) {
-            $this->setError('Erro ao processar estoque da NF-e autorizada: ' . $e->getMessage());
+            $this->setError('Erro ao processar estoque da NF-e autorizada: '.$e->getMessage());
 
             Log::error('ProcessAuthorizedNfeStockMovementsAction: exceção', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'fiscal_document_id' => $fiscalDocument->id,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'key'                => 'TEST:BAIXA_ESTOQUE',
+                'key' => 'TEST:BAIXA_ESTOQUE',
             ]);
 
             return false;
@@ -121,9 +128,9 @@ class ProcessAuthorizedNfeStockMovementsAction
     private function processRequisition(Requisition $requisition, int $userId): void
     {
         Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
-            'metodo' => __METHOD__ . '@' . __LINE__,    
+            'metodo' => __METHOD__.'@'.__LINE__,
             'requisition_id' => $requisition->id,
-            'key'                => 'TEST:BAIXA_ESTOQUE',
+            'key' => 'TEST:BAIXA_ESTOQUE',
         ]);
 
         $stockWorkflow = app(RequisitionStockWorkflow::class);
@@ -131,54 +138,60 @@ class ProcessAuthorizedNfeStockMovementsAction
         $items = $stockWorkflow->pendingItems($requisition, withProduct: true);
 
         Log::info('ProcessAuthorizedNfeStockMovementsAction: itens', [
-            'metodo'            => __METHOD__ . '@' . __LINE__,    
-            'requisition_id'    => $requisition->id,
-            'items'             => $items,
+            'metodo' => __METHOD__.'@'.__LINE__,
+            'requisition_id' => $requisition->id,
+            'items' => $items,
         ]);
 
         if ($items->isEmpty()) {
             Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem itens', [
-                'metodo' => __METHOD__ . '@' . __LINE__,    
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'key'                => 'TEST:BAIXA_ESTOQUE',
+                'key' => 'TEST:BAIXA_ESTOQUE',
             ]);
+
             return;
         }
 
         foreach ($items as $item) {
             if (! $item->product_id) {
                 Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem produto', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,    
-                    'requisition_id'    => $requisition->id,
-                    'item'              => $item,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'requisition_id' => $requisition->id,
+                    'item' => $item,
                 ]);
                 $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
+
                 continue;
             }
 
             if (! $item->product?->has_stock_control) {
                 Log::debug('ProcessAuthorizedNfeStockMovementsAction: sem controle de estoque', [
-                    'metodo'            => __METHOD__ . '@' . __LINE__,    
-                    'requisition_id'    => $requisition->id,
-                    'item'              => $item,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'requisition_id' => $requisition->id,
+                    'item' => $item,
                 ]);
                 $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
+
                 continue;
             }
 
             try {
-                $exit = $this->hasItemExit($item)
-                    ? true
-                    : $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
+                if (! $this->hasItemExit($item)) {
+                    $stockWorkflow->consumeAuthorizedFiscalItem($requisition, $item, $userId);
+                }
+                $exit = $this->hasItemExit($item);
             } catch (\RuntimeException $e) {
                 $this->setError($e->getMessage());
+
                 return;
             }
 
             if (! $exit) {
                 $this->setError(
-                    'Falha ao registrar saída do produto #' . $item->product_id
+                    'Falha ao registrar saída do produto #'.$item->product_id
                 );
+
                 return;
             }
 
@@ -191,11 +204,11 @@ class ProcessAuthorizedNfeStockMovementsAction
             ->exists();
 
         Log::debug('ProcessAuthorizedNfeStockMovementsAction: executando', [
-            'metodo' => __METHOD__ . '@' . __LINE__,    
+            'metodo' => __METHOD__.'@'.__LINE__,
             'requisition_id' => $requisition->id,
             'hasPendingItems' => $hasPendingItems,
             'stock_reserved' => $requisition->stock_reserved,
-            'key'                => 'TEST:BAIXA_ESTOQUE',
+            'key' => 'TEST:BAIXA_ESTOQUE',
         ]);
     }
 

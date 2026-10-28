@@ -50,11 +50,18 @@ Os saldos financeiros são apresentados por empresa, sem somar resultados de neg
 - Contas a pagar e receber: listas, abas, criação, alteração e detalhes com parcelas, pagamentos e anexos, usando os serviços financeiros existentes.
 - Movimentações financeiras: consulta e manutenção de movimentos manuais permitidos.
 - Conciliação: importação OFX e reutilização da bancada de seleção e conferência dos lançamentos.
-- Acompanhamento fiscal: consulta de notas, estados de emissão e retornos de rejeição. A emissão rápida dedicada é uma próxima frente do produto.
+- Vendas e faturamento: venda rápida sobre OS/requisições, modelos por empresa, rascunhos, finalização com financeiro e solicitação de emissão imediata ou posterior.
+- Acompanhamento fiscal: consulta de notas, estados de emissão e retornos de rejeição.
 - DRE gerencial limitada à empresa em operação.
 - Equipe e acessos com as permissões já existentes de gestão/delegação.
 
 Empresa e identificação permanecem visíveis no cabeçalho e na navegação. O seletor de empresas resolve somente a carteira autorizada.
+
+### Venda rápida
+
+Consulte `BPO-QUICK-SALES.md` para o contrato implementado, permissões, implantação e pendências. Os itens permanecem em OS/requisições reais e as faturas continuam usando a origem operacional existente. `BpoSale` registra apenas a bancada, identidade da solicitação, vínculos, revisão e decisão financeira.
+
+O modelo de papel **Operador de vendas BPO** reúne as permissões operacionais necessárias. Sua aplicação é explícita: esta entrega não amplia automaticamente papéis de atendimentos existentes. A manutenção dos modelos exige também `sale_templates.create/update`.
 
 ### Detalhe customizado de contas
 

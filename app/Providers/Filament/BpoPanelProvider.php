@@ -8,6 +8,8 @@ use App\Filament\Bpo\Pages\CompanyTeam;
 use App\Filament\Bpo\Pages\DreReport;
 use App\Filament\Bpo\Pages\FiscalDocuments;
 use App\Filament\Bpo\Pages\Portfolio;
+use App\Filament\Bpo\Pages\Sales;
+use App\Filament\Bpo\Pages\SaleTemplates;
 use App\Http\Middleware\AuthorizeBpoCompany;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureBpoPanelAccess;
@@ -37,7 +39,7 @@ class BpoPanelProvider extends PanelProvider
             ->navigation(false)->topbar(false)->tenantMenu(false)->darkMode()->defaultThemeMode(ThemeMode::System)
             ->colors(['primary' => [50 => '#effaf8', 100 => '#d8f1ed', 200 => '#b2e3dd', 300 => '#79cbc6', 400 => '#35adb2', 500 => '#16929d', 600 => '#087f8c', 700 => '#096572', 800 => '#0d505d', 900 => '#10434e', 950 => '#062a34'], 'gray' => Color::Slate])
             ->viteTheme('resources/css/filament/bpo/theme.css')
-            ->pages([CompanyOverview::class, CompanyTeam::class, FiscalDocuments::class, DreReport::class])
+            ->pages([CompanyOverview::class, CompanyTeam::class, FiscalDocuments::class, DreReport::class, Sales::class, SaleTemplates::class])
             ->discoverResources(in: app_path('Filament/Bpo/Resources'), for: 'App\\Filament\\Bpo\\Resources')
             ->authenticatedRoutes(function (): void {
                 Route::get('/carteira', Portfolio::class)->name('portfolio');

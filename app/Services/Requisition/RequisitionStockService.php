@@ -22,6 +22,9 @@ class RequisitionStockService
 
     public function pendingItems(Requisition $requisition, bool $withProduct = false): Collection
     {
+        if ($requisition->stock_control_enabled === false) {
+            return new Collection;
+        }
         $query = $requisition->items()->whereNull('stock_consumed_at');
 
         if ($withProduct) {
@@ -78,7 +81,7 @@ class RequisitionStockService
     public function markItemAsConsumed(RequisitionItem $item): void
     {
         Log::debug('RequisitionStockService: marcando item como consumido', [
-            'metodo' => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'requisition_id' => $item->requisition_id,
             'item_id' => $item->id,
         ]);
@@ -129,8 +132,8 @@ class RequisitionStockService
 
         if (! $movement) {
             throw new RuntimeException(
-                'Falha ao recriar reserva de estoque para produto #' . $item->product_id
-                . ': ' . $this->stockMovementService->getMessage()
+                'Falha ao recriar reserva de estoque para produto #'.$item->product_id
+                .': '.$this->stockMovementService->getMessage()
             );
         }
 
@@ -168,8 +171,8 @@ class RequisitionStockService
 
         if (! $movement) {
             throw new RuntimeException(
-                'Falha ao liberar reserva de estoque para produto #' . $item->product_id
-                . ': ' . $this->stockMovementService->getMessage()
+                'Falha ao liberar reserva de estoque para produto #'.$item->product_id
+                .': '.$this->stockMovementService->getMessage()
             );
         }
 
@@ -196,8 +199,8 @@ class RequisitionStockService
 
         if (! $movement) {
             throw new RuntimeException(
-                'Falha ao criar saída de estoque para produto #' . $item->product_id
-                . ': ' . $this->stockMovementService->getMessage()
+                'Falha ao criar saída de estoque para produto #'.$item->product_id
+                .': '.$this->stockMovementService->getMessage()
             );
         }
 
@@ -218,7 +221,7 @@ class RequisitionStockService
         $productStock = $this->findProductStock($requisition, $item);
 
         if (! $productStock) {
-            throw new RuntimeException('Estoque não encontrado para o produto #' . $item->product_id);
+            throw new RuntimeException('Estoque não encontrado para o produto #'.$item->product_id);
         }
 
         return $productStock;

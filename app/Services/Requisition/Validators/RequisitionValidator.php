@@ -5,6 +5,7 @@ namespace App\Services\Requisition\Validators;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Requisition\Status;
+use App\Support\Financial\PaymentTerms;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -17,19 +18,20 @@ class RequisitionValidator
     private static function commonRules(): array
     {
         return [
-            'quote_id'          => 'nullable|integer|exists:quotes,id',
-            'service_order_id'  => 'nullable|integer|exists:service_orders,id',
-            'payment_method'    => ['nullable', Rule::enum(PaymentMethod::class)],
+            'quote_id' => 'nullable|integer|exists:quotes,id',
+            'service_order_id' => 'nullable|integer|exists:service_orders,id',
+            'payment_method' => ['nullable', Rule::enum(PaymentMethod::class)],
             'payment_condition' => ['nullable', Rule::enum(PaymentCondition::class)],
-            ...\App\Support\Financial\PaymentTerms::rules(),
-            'observations'      => 'nullable|string',
-            'delivery_address'  => 'nullable|string|max:500',
-            'salesperson_id'    => 'nullable|integer|exists:users,id',
-            'invoice_id'        => 'nullable|integer|exists:invoices,id',
-            'invoiced_at'       => 'nullable|date',
-            'equipment_id'      => 'nullable|integer|exists:equipments,id',
-            'stock_consumed'    => 'nullable|boolean',
-            'additional_info'   => 'nullable|array',
+            ...PaymentTerms::rules(),
+            'observations' => 'nullable|string',
+            'delivery_address' => 'nullable|string|max:500',
+            'salesperson_id' => 'nullable|integer|exists:users,id',
+            'invoice_id' => 'nullable|integer|exists:invoices,id',
+            'invoiced_at' => 'nullable|date',
+            'equipment_id' => 'nullable|integer|exists:equipments,id',
+            'stock_consumed' => 'nullable|boolean',
+            'stock_control_enabled' => 'sometimes|boolean',
+            'additional_info' => 'nullable|array',
         ];
     }
 
@@ -39,22 +41,22 @@ class RequisitionValidator
     private static function messages(): array
     {
         return [
-            'number.required'              => 'O número da requisição é obrigatório.',
-            'number.unique'                => 'Já existe uma requisição com este número para a empresa.',
-            'company_id.required'          => 'A empresa é obrigatória.',
-            'company_id.exists'            => 'Empresa não encontrada.',
-            'customer_id.required'         => 'O cliente é obrigatório.',
-            'customer_id.exists'           => 'Cliente não encontrado.',
-            'service_order_id.exists'      => 'Ordem de serviço não encontrada.',
-            'service_order_id.unique'      => 'Já existe uma requisição vinculada a esta ordem de serviço.',
-            'sale_date.required'           => 'A data da venda é obrigatória.',
-            'sale_date.date'               => 'A data da venda deve ser uma data válida.',
-            'status.required'              => 'O status é obrigatório.',
-            'status.in'                    => 'Status inválido.',
+            'number.required' => 'O número da requisição é obrigatório.',
+            'number.unique' => 'Já existe uma requisição com este número para a empresa.',
+            'company_id.required' => 'A empresa é obrigatória.',
+            'company_id.exists' => 'Empresa não encontrada.',
+            'customer_id.required' => 'O cliente é obrigatório.',
+            'customer_id.exists' => 'Cliente não encontrado.',
+            'service_order_id.exists' => 'Ordem de serviço não encontrada.',
+            'service_order_id.unique' => 'Já existe uma requisição vinculada a esta ordem de serviço.',
+            'sale_date.required' => 'A data da venda é obrigatória.',
+            'sale_date.date' => 'A data da venda deve ser uma data válida.',
+            'status.required' => 'O status é obrigatório.',
+            'status.in' => 'Status inválido.',
             'delivery_date.after_or_equal' => 'A data de entrega deve ser igual ou posterior à data da venda.',
-            'salesperson_id.exists'        => 'Vendedor não encontrado.',
-            'invoice_id.exists'            => 'Fatura não encontrada.',
-            'equipment_id.exists'          => 'Equipamento não encontrado.',
+            'salesperson_id.exists' => 'Vendedor não encontrado.',
+            'invoice_id.exists' => 'Fatura não encontrada.',
+            'equipment_id.exists' => 'Equipamento não encontrado.',
         ];
     }
 
@@ -62,7 +64,8 @@ class RequisitionValidator
      * Valida dados para criação de requisição.
      *
      * @param  array  $data  Dados a validar
-     * @return array         Retorna dados validados
+     * @return array Retorna dados validados
+     *
      * @throws ValidationException Se a validação falhar
      */
     public static function validateCreate(array $data): array
@@ -70,7 +73,7 @@ class RequisitionValidator
         $statusValues = array_map(fn ($s) => $s->value, Status::cases());
 
         $rules = array_merge(self::commonRules(), [
-            'number'        => [
+            'number' => [
                 'required',
                 'string',
                 'max:50',
@@ -82,10 +85,10 @@ class RequisitionValidator
                 'exists:service_orders,id',
                 Rule::unique('requisitions', 'service_order_id'),
             ],
-            'company_id'    => 'required|integer|exists:companies,id',
-            'customer_id'   => 'required|integer|exists:partners,id',
-            'sale_date'     => 'required|date',
-            'status'        => ['required', Rule::enum(Status::class)],
+            'company_id' => 'required|integer|exists:companies,id',
+            'customer_id' => 'required|integer|exists:partners,id',
+            'sale_date' => 'required|date',
+            'status' => ['required', Rule::enum(Status::class)],
             'delivery_date' => 'nullable|date|after_or_equal:sale_date',
         ]);
 
@@ -95,18 +98,19 @@ class RequisitionValidator
     /**
      * Valida dados para atualização de requisição.
      *
-     * @param  array  $data           Dados a validar
-     * @param  int    $requisitionId  ID da requisição sendo atualizada
-     * @param  int    $companyId      ID da empresa da requisição
-     * @return array                  Retorna dados validados
-     * @throws ValidationException    Se a validação falhar
+     * @param  array  $data  Dados a validar
+     * @param  int  $requisitionId  ID da requisição sendo atualizada
+     * @param  int  $companyId  ID da empresa da requisição
+     * @return array Retorna dados validados
+     *
+     * @throws ValidationException Se a validação falhar
      */
     public static function validateUpdate(array $data, int $requisitionId, int $companyId): array
     {
         $statusValues = array_map(fn ($s) => $s->value, Status::cases());
 
         $rules = array_merge(self::commonRules(), [
-            'number'        => [
+            'number' => [
                 'sometimes',
                 'required',
                 'string',
@@ -121,10 +125,10 @@ class RequisitionValidator
                 'exists:service_orders,id',
                 Rule::unique('requisitions', 'service_order_id')->ignore($requisitionId),
             ],
-            'company_id'    => 'sometimes|required|integer|exists:companies,id',
-            'customer_id'   => 'sometimes|required|integer|exists:partners,id',
-            'sale_date'     => 'sometimes|required|date',
-            'status'        => ['sometimes', 'required', Rule::enum(Status::class)],
+            'company_id' => 'sometimes|required|integer|exists:companies,id',
+            'customer_id' => 'sometimes|required|integer|exists:partners,id',
+            'sale_date' => 'sometimes|required|date',
+            'status' => ['sometimes', 'required', Rule::enum(Status::class)],
             'delivery_date' => 'nullable|date',
         ]);
 

@@ -5,6 +5,7 @@ namespace App\Services\RequisitionItem\Actions;
 use App\Events\RequisitionItem\RequisitionItemCreated;
 use App\Models\Product;
 use App\Models\ProductStock;
+use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Services\Product\ProductUnitConversionService;
 use App\Services\RequisitionItem\Validators\RequisitionItemValidator;
@@ -16,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class CreateRequisitionItemAction
 {
-    use HandlesActionResponse, AuthorizesRequisitionItemActions;
+    use AuthorizesRequisitionItemActions, HandlesActionResponse;
 
     public function __construct(
         private int $createdBy,
@@ -24,19 +25,18 @@ class CreateRequisitionItemAction
 
     /**
      * Cria um novo item de requisição.
-     *
-     * @param array $data
-     * @return RequisitionItem|null
      */
     public function execute(array $data): ?RequisitionItem
     {
         if (! isset($data['requisition_id']) || ! self::canModifyItems($data['requisition_id'])) {
             $this->setError('Não é permitido adicionar itens a esta requisição.');
+
             return null;
         }
 
         // Validação de saldo disponível no estoque
-        if (isset($data['product_id']) && isset($data['quantity'])) {
+        if (isset($data['product_id']) && isset($data['quantity'])
+            && Requisition::findOrFail($data['requisition_id'])->stock_control_enabled !== false) {
             $stockError = $this->validateStockAvailability(
                 (int) $data['product_id'],
                 (float) $data['quantity'],
@@ -45,6 +45,7 @@ class CreateRequisitionItemAction
 
             if ($stockError) {
                 $this->setError($stockError);
+
                 return null;
             }
         }
@@ -54,6 +55,7 @@ class CreateRequisitionItemAction
             $priceError = $this->validateMinSalePrice((int) $data['product_id'], (float) $data['unit_price']);
             if ($priceError) {
                 $this->setError($priceError);
+
                 return null;
             }
         }
@@ -75,17 +77,18 @@ class CreateRequisitionItemAction
             RequisitionItemCreated::dispatch($item, $this->createdBy);
 
             $this->setSuccess();
+
             return $item;
 
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'errors'     => $e->errors(),
-                'data'       => $data,
+                'errors' => $e->errors(),
+                'data' => $data,
             ]);
 
             return null;
@@ -94,11 +97,11 @@ class CreateRequisitionItemAction
             $this->setError('Erro ao criar item da requisição');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'data'       => $data,
+                'exception' => $e->getMessage(),
+                'data' => $data,
             ]);
 
             return null;
@@ -107,12 +110,12 @@ class CreateRequisitionItemAction
             $this->setError('Erro inesperado ao criar item da requisição');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
             ]);
 
             return null;
@@ -185,7 +188,7 @@ class CreateRequisitionItemAction
             ->with('alternativeUnitConversions')
             ->find($validated['product_id'] ?? null);
 
-        if (!$product) {
+        if (! $product) {
             return $validated;
         }
 

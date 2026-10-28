@@ -16,37 +16,37 @@ use Illuminate\Validation\ValidationException;
 
 class UpdateRequisitionItemAction
 {
-    use HandlesActionResponse, AuthorizesRequisitionItemActions;
+    use AuthorizesRequisitionItemActions, HandlesActionResponse;
 
     public function __construct(
-        private int             $updatedBy,
+        private int $updatedBy,
         private RequisitionItem $requisitionItem,
     ) {}
 
     /**
      * Atualiza um item de requisição existente.
-     *
-     * @param array $data
-     * @return RequisitionItem|null
      */
     public function execute(array $data): ?RequisitionItem
     {
         if (! self::canModifyItems($this->requisitionItem->requisition_id)) {
             $this->setError('Não é permitido atualizar itens desta requisição.');
+
             return null;
         }
 
         // Captura os valores atuais antes da atualização (necessário para o evento)
         $oldProductId = (int) $this->requisitionItem->product_id;
         $oldUnitOfMeasure = (string) ($this->requisitionItem->unit_of_measure ?? '');
-        $oldQuantity  = (float) $this->requisitionItem->quantity;
+        $oldQuantity = (float) $this->requisitionItem->quantity;
         $oldBaseQuantity = $this->requisitionItem->resolvedBaseQuantity();
         $oldUnitPrice = (float) $this->requisitionItem->unit_price;
 
         // Validação de saldo disponível no estoque
-        $stockError = $this->validateStockAvailability($data, $oldProductId, $oldQuantity);
+        $stockError = $this->requisitionItem->requisition?->stock_control_enabled === false
+            ? null : $this->validateStockAvailability($data, $oldProductId, $oldQuantity);
         if ($stockError) {
             $this->setError($stockError);
+
             return null;
         }
 
@@ -56,6 +56,7 @@ class UpdateRequisitionItemAction
             $priceError = $this->validateMinSalePrice($productIdForPrice, (float) $data['unit_price']);
             if ($priceError) {
                 $this->setError($priceError);
+
                 return null;
             }
         }
@@ -82,16 +83,17 @@ class UpdateRequisitionItemAction
             );
 
             $this->setSuccess();
+
             return $this->requisitionItem;
 
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'message'             => $this->getMessage(),
-                'error_code'          => $this->getErrorCode(),
-                'errors'              => $e->errors(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'errors' => $e->errors(),
                 'requisition_item_id' => $this->requisitionItem->id,
             ]);
 
@@ -101,10 +103,10 @@ class UpdateRequisitionItemAction
             $this->setError('Erro ao atualizar item da requisição');
 
             Log::error($this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'message'             => $this->getMessage(),
-                'error_code'          => $this->getErrorCode(),
-                'exception'           => $e->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
                 'requisition_item_id' => $this->requisitionItem->id,
             ]);
 
@@ -114,11 +116,11 @@ class UpdateRequisitionItemAction
             $this->setError('Erro inesperado ao atualizar item da requisição');
 
             Log::error($this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'message'             => $this->getMessage(),
-                'error_code'          => $this->getErrorCode(),
-                'exception'           => $e->getMessage(),
-                'trace'               => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'requisition_item_id' => $this->requisitionItem->id,
             ]);
 
@@ -161,9 +163,9 @@ class UpdateRequisitionItemAction
     private function validateStockAvailability(array $data, int $oldProductId, float $oldQuantity): ?string
     {
         $newProductId = isset($data['product_id']) ? (int) $data['product_id'] : $oldProductId;
-        $newQuantity  = isset($data['quantity']) ? (float) $data['quantity'] : null;
-        $newUnit      = $data['unit_of_measure'] ?? $this->requisitionItem->unit_of_measure;
-        $oldUnit      = $this->requisitionItem->unit_of_measure;
+        $newQuantity = isset($data['quantity']) ? (float) $data['quantity'] : null;
+        $newUnit = $data['unit_of_measure'] ?? $this->requisitionItem->unit_of_measure;
+        $oldUnit = $this->requisitionItem->unit_of_measure;
 
         if ($newQuantity === null && $newProductId === $oldProductId) {
             return null; // Nem produto nem quantidade mudaram
@@ -235,7 +237,7 @@ class UpdateRequisitionItemAction
             ->with('alternativeUnitConversions')
             ->find($productId);
 
-        if (!$product) {
+        if (! $product) {
             return $validated;
         }
 

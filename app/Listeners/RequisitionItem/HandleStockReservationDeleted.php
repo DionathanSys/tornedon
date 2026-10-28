@@ -17,7 +17,10 @@ class HandleStockReservationDeleted
 
     public function handle(RequisitionItemDeleted $event): void
     {
-        $item    = $event->item;
+        if ($event->item->requisition?->stock_control_enabled === false) {
+            return;
+        }
+        $item = $event->item;
         $product = $item->product;
 
         if (! $product || ! $product->has_stock_control) {
@@ -30,10 +33,11 @@ class HandleStockReservationDeleted
 
         if (! $stock) {
             Log::warning('HandleStockReservationDeleted: Estoque não encontrado para o produto', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
-                'item_id'    => $item->id,
+                'item_id' => $item->id,
             ]);
+
             return;
         }
 
@@ -57,7 +61,7 @@ class HandleStockReservationDeleted
 
         if ($releaseBaseQuantity <= 0.0001) {
             Log::info('HandleStockReservationDeleted: Nenhuma reserva pendente para liberar', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
                 'item_id' => $item->id,
             ]);
@@ -78,27 +82,27 @@ class HandleStockReservationDeleted
 
         $movement = $this->stockMovementService->create([
             'product_stock_id' => $stock->id,
-            'product_id'       => $product->id,
-            'company_id'       => $stock->company_id,
-            'type'             => Type::RESERVATION_RELEASE->value,
+            'product_id' => $product->id,
+            'company_id' => $stock->company_id,
+            'type' => Type::RESERVATION_RELEASE->value,
             'operational_unit' => $item->unit_of_measure ?? $product->unit?->value,
             'operational_quantity' => $releaseOperationalQuantity,
-            'base_unit'        => $product->unit?->value,
-            'base_quantity'    => $releaseBaseQuantity,
+            'base_unit' => $product->unit?->value,
+            'base_quantity' => $releaseBaseQuantity,
             'conversion_factor_snapshot' => $conversionFactor,
-            'quantity'         => $releaseBaseQuantity,
-            'unit_price'       => (float) ($item->unit_price ?? 0),
-            'reason'           => 'Liberação de reserva por exclusão de item de requisição',
-            'source_type'      => 'requisition_item',
-            'source_id'        => $item->id,
+            'quantity' => $releaseBaseQuantity,
+            'unit_price' => (float) ($item->unit_price ?? 0),
+            'reason' => 'Liberação de reserva por exclusão de item de requisição',
+            'source_type' => 'requisition_item',
+            'source_id' => $item->id,
         ], $event->deletedBy);
 
         if (! $movement) {
             Log::error('HandleStockReservationDeleted: Erro ao liberar reserva de estoque', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
-                'item_id'    => $item->id,
-                'error'      => $this->stockMovementService->getMessage(),
+                'item_id' => $item->id,
+                'error' => $this->stockMovementService->getMessage(),
             ]);
         }
     }
