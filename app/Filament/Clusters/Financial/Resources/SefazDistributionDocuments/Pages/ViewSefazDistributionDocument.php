@@ -111,7 +111,7 @@ class ViewSefazDistributionDocument extends ViewRecord
                                         ->label('Nome')
                                         ->required()
                                         ->maxLength(255)
-                                        ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                                        ->unique(table: 'categories', column: 'name', ignoreRecord: true, modifyRuleUsing: function ($rule) {
                                             $tenant = $this->record->company ?? Filament::getTenant();
                                             $companyId = $tenant?->id ?? $this->record->company_id;
                                             return $rule->where('company_id', $companyId);
