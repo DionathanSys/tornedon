@@ -105,7 +105,35 @@ class ViewSefazDistributionDocument extends ViewRecord
                                     ->where('is_active', true)
                                     ->orderBy('name')
                                     ->pluck('name', 'id')
-                                    ->all()),
+                                    ->all())
+                                ->createOptionForm([
+                                    TextInput::make('name')
+                                        ->label('Nome')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->unique(
+                                            table: Category::class,
+                                            column: 'name',
+                                            ignoreRecord: false,
+                                            modifyRuleUsing: fn ($rule) => $rule->where('company_id', $this->record->company_id),
+                                        )
+                                        ->autocomplete(false),
+                                    Textarea::make('description')
+                                        ->label('Descrição')
+                                        ->rows(2)
+                                        ->maxLength(500)
+                                        ->autocomplete(false),
+                                ])
+                                ->createOptionUsing(function (array $data): int {
+                                    return Category::create([
+                                        'name' => $data['name'],
+                                        'description' => $data['description'] ?? null,
+                                        'company_id' => $this->record->company_id,
+                                        'is_active' => true,
+                                        'created_by' => Auth::id(),
+                                        'updated_by' => Auth::id(),
+                                    ])->getKey();
+                                }),
                             Select::make('unit')
                                 ->label('Unidade')
                                 ->required()
