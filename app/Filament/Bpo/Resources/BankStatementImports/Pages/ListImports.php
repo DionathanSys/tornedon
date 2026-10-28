@@ -10,6 +10,20 @@ use Illuminate\Support\Facades\Gate;
 
 class ListImports extends ListRecords
 {
+    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+
+    protected string $view = 'filament.bpo.pages.workbench-list';
+
+    public function workbenchEyebrow(): string
+    {
+        return 'TESOURARIA · CONCILIAÇÃO';
+    }
+
+    public function workbenchDescription(): string
+    {
+        return 'Importe extratos e acompanhe a conciliação entre os movimentos bancários e os registros do sistema.';
+    }
+
     protected static string $resource = BankStatementImportResource::class;
 
     protected static string $layout = 'components.bpo.layout';

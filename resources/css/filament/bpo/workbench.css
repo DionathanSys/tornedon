@@ -1,0 +1,45 @@
+/* Shared page structure follows the financial title detail workbench. */
+.bpo-shell .bpo-workbench-page-heading { margin-bottom:0; }
+.bpo-workbench-page-heading > div:first-child { max-width:760px; }
+.bpo-workbench-page-heading .bpo-account-actions:empty { display:none; }
+.bpo-workbench-page-heading .fi-ac { flex-wrap:wrap; justify-content:flex-end; }
+.bpo-list-workbench { min-width:0; }
+.bpo-list-workbench > .fi-sc { gap:0; }
+.bpo-shell .bpo-list-workbench .fi-ta { border:0; border-radius:0; box-shadow:none; }
+.bpo-list-workbench .fi-ta-ctn { box-shadow:none; border-radius:0; }
+.bpo-list-workbench .fi-tabs { margin:18px 24px; width:fit-content; max-width:calc(100% - 48px); overflow-x:auto; }
+.bpo-list-workbench .fi-ta-header-toolbar { padding:18px 24px; }
+.bpo-list-workbench .fi-ta-header-cell { background:var(--bpo-raised); }
+.bpo-list-workbench .fi-ta-row:hover { background:var(--bpo-hover); }
+.bpo-list-workbench .bpo-badge { max-width:35%; overflow:hidden; text-overflow:ellipsis; }
+.bpo-form-grid { display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:22px; align-items:start; }
+.bpo-form-content { min-width:0; }
+.bpo-form-guide { position:sticky; top:98px; }
+.bpo-form-guide .bpo-workbench-header { align-items:start; padding:20px; }
+.bpo-form-guide h2 { margin-top:8px; }
+.bpo-form-guide .bpo-account-fields { grid-template-columns:1fr; padding:20px; gap:20px; }
+.bpo-form-guide .bpo-account-fields dd { font-size:11px; font-weight:400; }
+.bpo-form-content .fi-sc-form { gap:22px; }
+.bpo-shell .ctw-intro { padding:20px 24px; border:1px solid var(--bpo-border); border-radius:12px; background:var(--bpo-surface); }
+.bpo-shell .ctw-list,.bpo-shell .ctw-detail { border-radius:12px; box-shadow:none; }
+
+/* The shared report has legacy inline colors: honor the BPO theme selection. */
+.bpo-shell .dre-report-table { color:var(--bpo-ink); background:var(--bpo-surface); font-size:12px; }
+.bpo-shell .dre-report-table thead { background:var(--bpo-raised); }
+.bpo-shell .dre-report-table thead th { color:var(--bpo-muted); font-size:10px; }
+.bpo-shell .dre-report-table td,.bpo-shell .dre-report-table th { border-color:var(--bpo-divider); padding:14px 18px; }
+.bpo-shell .dre-report-table tbody tr:nth-child(even) { background:var(--bpo-soft); }
+.bpo-shell .dre-report-table tbody tr:hover { background:var(--bpo-hover); }
+.bpo-shell .dre-report-table tbody .dre-summary-row { background:var(--bpo-icon-bg); color:var(--bpo-info-text); }
+
+@media (max-width:1400px) {
+    .bpo-form-grid { grid-template-columns:minmax(0,1fr); }
+    .bpo-form-guide { position:static; }
+    .bpo-form-guide .bpo-account-fields { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media (max-width:1200px) {
+    .bpo-account-top-grid { grid-template-columns:minmax(0,1fr); }
+    .bpo-account-relationship-grid { grid-template-columns:minmax(0,1fr); }
+    .bpo-page-heading { align-items:flex-start; flex-wrap:wrap; }
+    .bpo-workbench-page-heading .fi-ac { justify-content:flex-start; }
+}

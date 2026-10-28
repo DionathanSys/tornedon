@@ -16,7 +16,18 @@ use Illuminate\Support\Facades\Gate;
 
 class FiscalDocuments extends Page implements HasTable
 {
+    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
     use InteractsWithTable;
+
+    public function workbenchEyebrow(): string
+    {
+        return 'DOCUMENTOS · FISCAL';
+    }
+
+    public function workbenchDescription(): string
+    {
+        return 'Consulte documentos, acompanhe a situação fiscal e confira os retornos de emissão.';
+    }
 
     protected static string $layout = 'components.bpo.layout';
 

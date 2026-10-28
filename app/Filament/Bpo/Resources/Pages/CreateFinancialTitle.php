@@ -9,7 +9,21 @@ use Illuminate\Validation\ValidationException;
 
 abstract class CreateFinancialTitle extends CreateRecord
 {
+    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+
     protected static string $layout = 'components.bpo.layout';
+
+    protected string $view = 'filament.bpo.pages.workbench-form';
+
+    public function workbenchEyebrow(): string
+    {
+        return static::getResource()::$module === 'account_payables' ? 'DESPESA · NOVO LANÇAMENTO' : 'RECEITA · NOVO LANÇAMENTO';
+    }
+
+    public function workbenchDescription(): string
+    {
+        return 'Informe os dados do título e organize seus vencimentos e sua classificação financeira.';
+    }
 
     protected ?bool $hasDatabaseTransactions = true;
 

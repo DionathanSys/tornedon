@@ -9,7 +9,21 @@ use Illuminate\Validation\ValidationException;
 
 abstract class EditFinancialTitle extends EditRecord
 {
+    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+
     protected static string $layout = 'components.bpo.layout';
+
+    protected string $view = 'filament.bpo.pages.workbench-form';
+
+    public function workbenchEyebrow(): string
+    {
+        return (static::getResource()::$module === 'account_payables' ? 'DESPESA' : 'RECEITA').' · LANÇAMENTO #'.$this->getRecord()->getKey();
+    }
+
+    public function workbenchDescription(): string
+    {
+        return 'Revise os dados do lançamento e salve as alterações para atualizar a visão financeira.';
+    }
 
     protected ?bool $hasDatabaseTransactions = true;
 

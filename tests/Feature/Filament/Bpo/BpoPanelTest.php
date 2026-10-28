@@ -3,6 +3,9 @@
 namespace Tests\Feature\Filament\Bpo;
 
 use App\Filament\Bpo\Pages\CompanyOverview;
+use App\Filament\Bpo\Pages\CompanyTeam;
+use App\Filament\Bpo\Pages\DreReport;
+use App\Filament\Bpo\Pages\FiscalDocuments;
 use App\Filament\Bpo\Pages\Portfolio;
 use App\Filament\Bpo\Resources\AccountPayableResource;
 use App\Filament\Bpo\Resources\AccountPayables\Pages\CreateAccount;
@@ -136,11 +139,17 @@ class BpoPanelTest extends TestCase
         $record = $this->payable($this->bpo, 'Fornecedor da empresa');
         $this->authenticate(company: $this->company);
         foreach ([AccountPayableResource::class, AccountReceivableResource::class, CashMovementResource::class, BankStatementImportResource::class] as $resource) {
-            $this->get($resource::getUrl(panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-shell', false)->assertDontSee('operation-ui', false);
+            $this->get($resource::getUrl(panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-shell', false)
+                ->assertSee('bpo-list-workbench', false)->assertSee('bpo-workbench-page-heading', false)->assertDontSee('operation-ui', false);
         }
-        $this->get(AccountPayableResource::getUrl('create', panel: 'bpo', tenant: $this->company))->assertOk();
+        foreach ([AccountPayableResource::class, AccountReceivableResource::class, CashMovementResource::class] as $resource) {
+            $this->get($resource::getUrl('create', panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('Confira antes de salvar');
+        }
         $this->get(AccountPayableResource::getUrl('edit', ['record' => $record], panel: 'bpo', tenant: $this->company))->assertOk();
         $this->get(AccountPayableResource::getUrl('view', ['record' => $record], panel: 'bpo', tenant: $this->company))->assertOk();
+        foreach ([FiscalDocuments::class, DreReport::class, CompanyTeam::class] as $page) {
+            $this->get($page::getUrl(panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-workbench-page-heading', false);
+        }
     }
 
     public function test_ending_an_engagement_blocks_already_mounted_portfolio_and_workspace(): void
@@ -218,7 +227,8 @@ class BpoPanelTest extends TestCase
         $line = $import->lines()->create(['company_id' => $this->company->id, 'financial_account_id' => $financial->id, 'transaction_date' => today(), 'amount' => 100,
             'description' => 'Lançamento BPO', 'external_id' => 'BPO-1', 'transaction_key' => 'bpo-1', 'reconciliation_status' => 'pending', 'metadata' => ['direction' => 'outflow']]);
         $this->authenticate(company: $this->company);
-        $this->get(BankStatementImportResource::getUrl('view', ['record' => $import], panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-shell', false);
+        $this->get(BankStatementImportResource::getUrl('view', ['record' => $import], panel: 'bpo', tenant: $this->company))->assertOk()
+            ->assertSee('bpo-account-top-grid', false)->assertSee('Sicoob BPO')->assertSee('bpo.ofx')->assertSeeLivewire(LinesRelationManager::class);
         $page = Livewire::test(LinesRelationManager::class, [
             'ownerRecord' => $import, 'pageClass' => ViewImport::class,
         ])->assertCanSeeTableRecords([$line]);

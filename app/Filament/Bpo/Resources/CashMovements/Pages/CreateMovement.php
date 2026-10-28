@@ -7,7 +7,21 @@ use App\Filament\Clusters\Financial\Resources\CashMovements\Pages\CreateCashMove
 
 class CreateMovement extends CreateCashMovement
 {
+    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+
     protected static string $layout = 'components.bpo.layout';
+
+    protected string $view = 'filament.bpo.pages.workbench-form';
+
+    public function workbenchEyebrow(): string
+    {
+        return 'TESOURARIA · NOVO MOVIMENTO';
+    }
+
+    public function workbenchDescription(): string
+    {
+        return 'Registre uma entrada ou saída manual e defina a conta e a classificação da movimentação.';
+    }
 
     protected static string $resource = CashMovementResource::class;
 }
