@@ -157,12 +157,36 @@ class QuickSalesTest extends TestCase
 
     public function test_livewire_creates_a_draft_and_finalizes_it_through_table_action(): void
     {
-        Livewire::test(Sales::class)->callAction('newSale', $this->payload())->assertHasNoActionErrors();
+        $page = Livewire::test(Sales::class)->mountAction('newSale')
+            ->set('mountedActions.0.data.sale_template_id', $this->template->id)
+            ->set('mountedActions.0.data.customer_id', $this->customer->id);
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+        $page->set("mountedActions.0.data.items.{$key}", $this->payload()['items'][0])
+            ->callMountedAction()->assertHasNoActionErrors();
         $sale = BpoSale::sole();
         Livewire::test(Sales::class)->callAction(TestAction::make('finalize')->table($sale), ['revision' => $sale->revision] + $this->payment())
             ->assertHasNoActionErrors();
         $this->assertNotNull($sale->fresh()->finalized_at);
         $this->assertDatabaseCount('account_receivables', 1);
+    }
+
+    public function test_service_selection_survives_reactive_model_and_item_updates(): void
+    {
+        $page = Livewire::test(Sales::class)->mountAction('newSale')
+            ->set('mountedActions.0.data.sale_template_id', $this->template->id)
+            ->set('mountedActions.0.data.customer_id', $this->customer->id);
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+        $this->assertTrue(Str::isUuid((string) $key), 'Reactive item replacement must keep UUID keys so browser selects are remounted.');
+        $this->assertArrayHasKey('catalog_id', $page->get("mountedActions.0.data.items.{$key}"));
+        $this->assertArrayHasKey('unit_price', $page->get("mountedActions.0.data.items.{$key}"));
+
+        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $this->service->id)
+            ->assertSet("mountedActions.0.data.items.{$key}.catalog_id", $this->service->id)
+            ->assertSet("mountedActions.0.data.items.{$key}.unit_price", 100)
+            ->callMountedAction()->assertHasNoActionErrors();
+
+        $sale = BpoSale::sole();
+        $this->assertSame($this->service->id, $sale->source()->items()->sole()->service_id);
     }
 
     public function test_template_can_be_created_through_the_page_with_server_owned_company(): void

@@ -105,7 +105,11 @@ class Sales extends Page implements HasTable
                     ->required()->searchable()->live()->disabled($editing)->dehydrated()->afterStateUpdated(function ($state, Set $set): void {
                         $template = SaleTemplate::where('company_id', Filament::getTenant()->id)->find($state);
                         $set('document_type', $template?->document_type?->value);
-                        $set('items', [['quantity' => 1, 'discount_amount' => 0]]);
+                        // Replacing hydrated rows must preserve UUID keys and initialize every
+                        // field, including null values required by Livewire's Alpine entanglement.
+                        $set('items', [(string) Str::uuid() => [
+                            'catalog_id' => null, 'quantity' => 1, 'unit_price' => null, 'discount_amount' => 0,
+                        ]]);
                     }),
                 Select::make('customer_id')->label('Cliente')->options(fn () => CompanyPartner::where('company_id', Filament::getTenant()->id)->where('is_active', true)
                     ->whereJsonContains('company_partner.type', 'customer')->with('partner')->get()->mapWithKeys(fn ($link) => [$link->partner_id => $link->partner->name]))->searchable()->required(),
