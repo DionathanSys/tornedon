@@ -121,45 +121,53 @@ class BankAccountConnectionResource extends Resource
                 ->schema([
                     TextInput::make('credential_client_id')
                         ->label('Client ID')
+                        ->autocomplete(false)
                         ->maxLength(255)
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_client_secret')
                         ->label('Client Secret')
                         ->password()
+                        ->autocomplete('new-password')
                         ->revealable()
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_username')
                         ->label('Usuario OAuth')
+                        ->autocomplete(false)
                         ->maxLength(255)
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_password')
                         ->label('Senha OAuth')
                         ->password()
+                        ->autocomplete('new-password')
                         ->revealable()
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_x_api_key')
                         ->label('x_api_key do emitente')
                         ->password()
+                        ->autocomplete('new-password')
                         ->revealable()
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_secret_key')
                         ->label('Chave de encriptacao')
                         ->password()
+                        ->autocomplete('new-password')
                         ->revealable()
                         ->maxLength(32)
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_access_token')
                         ->label('Access token opcional')
                         ->password()
+                        ->autocomplete('new-password')
                         ->revealable()
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_refresh_token')
                         ->label('Refresh token opcional')
                         ->password()
+                        ->autocomplete('new-password')
                         ->revealable()
                         ->dehydrated(fn (mixed $state): bool => filled($state)),
                     TextInput::make('credential_webhook_token')->label('Token opcional do header X-Webhook-Token')
-                        ->password()->revealable()->dehydrated(fn (mixed $state): bool => filled($state)),
+                        ->password()->autocomplete('new-password')->revealable()->dehydrated(fn (mixed $state): bool => filled($state)),
                 ]),
             Section::make('Contrato do banco')
                 ->description('Configuração por modalidade, conforme o schema IntegraBancos. Não informe senhas aqui. Identificação, valor e pagador são preenchidos pelo sistema.')

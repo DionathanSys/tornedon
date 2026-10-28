@@ -39,10 +39,16 @@ class IntegraBancosTokenManager
                     $result = $this->client->request($oauth, null, in_array($connection->environment, ['production', 'prod'], true));
                 }
             } catch (\Throwable $exception) {
-                throw new IntegraBancosAuthenticationException('Não foi possível autenticar a conexão na IntegraBancos.', 0, $exception);
+                throw new IntegraBancosAuthenticationException(
+                    'Não foi possível autenticar a conexão na IntegraBancos. '.IntegraBancosExceptionFormatter::message($exception),
+                    0,
+                    $exception,
+                );
             }
             if (empty($result['access_token'])) {
-                throw new IntegraBancosAuthenticationException('A renovação OAuth não retornou access_token. Verifique as credenciais da conexão.');
+                throw new IntegraBancosAuthenticationException(
+                    'A renovação OAuth não retornou access_token. '.IntegraBancosExceptionFormatter::dataMessage($result),
+                );
             }
             DB::transaction(function () use ($connection, $credentials, $result, $invalidRefresh): void {
                 $locked = BankAccountConnection::query()->lockForUpdate()->findOrFail($connection->id);

@@ -33,6 +33,7 @@ use App\Services\Financial\Banking\BankingResolutionService;
 use App\Services\Financial\Banking\BankSlipProviderRegistry;
 use App\Services\Financial\Banking\BankSlipWebhookService;
 use App\Services\Financial\Banking\DTO\BankSlipProviderResult;
+use App\Services\Financial\Banking\Providers\IntegraBancosAuthenticationException;
 use App\Services\Financial\Banking\Providers\IntegraBancosClientInterface;
 use App\Services\Financial\Banking\Providers\IntegraBancosOAuthClient;
 use App\Services\Financial\Banking\Providers\IntegraBancosPayloadBuilder;
@@ -320,6 +321,48 @@ class BankingOperationsTest extends TestCase
         $this->assertSame('renewed', $manager->token($this->connection));
         $this->assertSame('keep', $this->connection->fresh()->credentials['x_api_key']);
         $this->assertSame('new-refresh', $this->connection->fresh()->credentials['refresh_token']);
+    }
+
+    public function test_oauth_transport_failure_preserves_diagnostics_without_credentials(): void
+    {
+        $this->connection->update(['credentials' => ['client_id' => 'id', 'client_secret' => 'private-client-secret']]);
+        $client = Mockery::mock(IntegraBancosOAuthClient::class);
+        $client->shouldReceive('request')->once()->andThrow(new \RuntimeException(json_encode([
+            'message' => 'Erro na Requisição cURL',
+            'error' => 'Could not resolve host',
+            'http_code' => 0,
+            'credentials' => ['client_secret' => 'private-client-secret', 'password' => 'private-password'],
+        ])));
+
+        try {
+            (new IntegraBancosTokenManager($client))->token($this->connection);
+            $this->fail('Falha OAuth deveria ser informada.');
+        } catch (IntegraBancosAuthenticationException $exception) {
+            $this->assertStringContainsString('Could not resolve host', $exception->getMessage());
+            $this->assertStringContainsString('http_code: 0', $exception->getMessage());
+            $this->assertStringNotContainsString('private-client-secret', $exception->getMessage());
+            $this->assertStringNotContainsString('private-password', $exception->getMessage());
+        }
+    }
+
+    public function test_oauth_rejection_preserves_provider_reason_without_tokens(): void
+    {
+        $this->connection->update(['credentials' => ['client_id' => 'id', 'client_secret' => 'secret']]);
+        $client = Mockery::mock(IntegraBancosOAuthClient::class);
+        $client->shouldReceive('request')->once()->andReturn([
+            'error' => 'invalid_client',
+            'error_description' => 'Client authentication failed.',
+            'refresh_token' => 'private-refresh-token',
+        ]);
+
+        try {
+            (new IntegraBancosTokenManager($client))->token($this->connection);
+            $this->fail('Rejeição OAuth deveria ser informada.');
+        } catch (IntegraBancosAuthenticationException $exception) {
+            $this->assertStringContainsString('invalid_client', $exception->getMessage());
+            $this->assertStringContainsString('Client authentication failed.', $exception->getMessage());
+            $this->assertStringNotContainsString('private-refresh-token', $exception->getMessage());
+        }
     }
 
     public function test_explicit_queries_dispatch_jobs_for_boleto_and_pix(): void
