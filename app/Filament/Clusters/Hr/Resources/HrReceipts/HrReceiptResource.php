@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Hr\Resources\HrReceipts;
 
 use App\Filament\Clusters\Hr\HrCluster;
+use App\Filament\Clusters\Hr\Resources\HrEntries\HrEntryResource;
 use App\Filament\Clusters\Hr\Resources\HrReceipts\Pages\ManageHrReceipts;
 use App\Filament\Concerns\AuthorizesHrResource;
 use App\Models\HrReceipt;
@@ -35,11 +36,14 @@ class HrReceiptResource extends Resource
     {
         return $table->columns([
             TextColumn::make('id')->label('Recibo')->sortable(),
+            TextColumn::make('hr_entry_id')->label('Lançamento RH')
+                ->url(fn (HrReceipt $record) => HrEntryResource::getUrl('edit', ['record' => $record->hr_entry_id])),
             TextColumn::make('snapshot.person_name')->label('Beneficiário'),
             TextColumn::make('snapshot.competence')->label('Competência'),
             TextColumn::make('snapshot.nature')->label('Natureza'),
             TextColumn::make('snapshot.payment_amount')->label('Valor pago')->money('BRL'),
             TextColumn::make('snapshot.payment_date')->label('Data do pagamento'),
+            TextColumn::make('signature.signed_at')->label('Assinado em')->dateTime('d/m/Y H:i')->placeholder('Pendente / manual'),
             TextColumn::make('validity')->label('Situação')->badge()->state(fn (HrReceipt $record) => app(HrService::class)->receiptIsValid($record) ? 'Válido' : 'Invalidado'),
             TextColumn::make('created_at')->label('Emissão')->dateTime('d/m/Y H:i'),
         ])->recordActions([

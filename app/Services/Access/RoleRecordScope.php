@@ -3,6 +3,7 @@
 namespace App\Services\Access;
 
 use App\Models\HrReceipt;
+use App\Models\HrReceiptSignature;
 use App\Models\User;
 use App\Services\Hr\HrAccess;
 use Filament\Facades\Filament;
@@ -17,7 +18,7 @@ class RoleRecordScope implements Scope
     public function apply(Builder $builder, Model $model): void
     {
         $user = Auth::user();
-        $hr = str_starts_with(PermissionCatalog::definition($model::class)['module'] ?? '', 'hr_');
+        $hr = $model instanceof HrReceiptSignature || str_starts_with(PermissionCatalog::definition($model::class)['module'] ?? '', 'hr_');
         if (! $user instanceof User || (! $hr && ! app(CompanyAuthorization::class)->isScopedUser($user) && Filament::getCurrentPanel()?->getId() !== 'bpo')) {
             return;
         }

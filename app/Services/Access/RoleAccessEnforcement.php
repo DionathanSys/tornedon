@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\HrEntry;
 use App\Models\HrReceipt;
+use App\Models\HrReceiptSignature;
 use App\Models\User;
 use App\Policies\ScopedRecordPolicy;
 use App\Services\Hr\HrAccess;
@@ -42,8 +43,8 @@ class RoleAccessEnforcement
         $companyId = $subject instanceof Model ? $subject->getAttribute('company_id') : null;
         $company = $subject instanceof Company ? $subject : ($companyId ? Company::find($companyId) : Filament::getTenant());
         if ($company instanceof Company && (is_string($subject) || $subject instanceof Model)) {
-            $definition = PermissionCatalog::definition(is_string($subject) ? $subject : $subject::class);
-            if (str_starts_with($definition['module'] ?? '', 'hr_') && ! app(HrAccess::class)->allows($user, $company, $definition['module'].'.'.$this->action($ability), $subject instanceof Model ? $subject : null)) {
+            [$hrRecord, $definition] = $this->resolveSubject($subject);
+            if (str_starts_with($definition['module'] ?? '', 'hr_') && ! app(HrAccess::class)->allows($user, $company, $definition['module'].'.'.$this->action($ability), $hrRecord)) {
                 return false;
             }
         }
@@ -90,7 +91,7 @@ class RoleAccessEnforcement
         $company = Company::find($record->getAttribute('company_id') ?? $parent?->getAttribute('company_id'));
         $createAction = $record instanceof HrReceipt ? 'issue' : 'create';
         if ($company && str_starts_with($definition['module'] ?? '', 'hr_')) {
-            app(HrAccess::class)->authorize($user, $company, $definition['module'].'.'.$createAction);
+            app(HrAccess::class)->authorize($user, $company, $definition['module'].'.'.($parent === $record ? $createAction : $this->childAction($record, 'create')), $parent === $record ? null : $parent);
         }
         if ($this->access->isScopedUser($user)) {
             throw_unless($company && $user->canAccessTenant($company), AuthorizationException::class);
@@ -190,6 +191,9 @@ class RoleAccessEnforcement
 
     private function childAction(Model $record, string $action): string
     {
+        if ($record instanceof HrReceiptSignature) {
+            return 'sign';
+        }
         if ($record instanceof AccountPayableInstallmentPayment || $record instanceof AccountReceivableInstallmentPayment) {
             return $action === 'delete' ? 'reverse' : 'settle';
         }

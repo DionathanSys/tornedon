@@ -2,6 +2,7 @@
 
 namespace App\Services\Hr;
 
+use App\Enum\AccountPayable\Status;
 use App\Enum\Hr\PaymentNature;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallmentPayment;
@@ -10,6 +11,7 @@ use App\Models\CompanyPartner;
 use App\Models\HrEntry;
 use App\Models\HrPerson;
 use App\Models\HrReceipt;
+use App\Models\HrReceiptSignature;
 use App\Models\User;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
@@ -170,6 +172,7 @@ class HrService
             $entry->fill([
                 ...$classification, 'status' => 'confirmed', 'confirmed_at' => now(), 'account_payable_id' => $payable?->id,
                 'snapshot' => ['company_name' => $company->name, 'company_document' => $company->document_number,
+                    'company_city' => $company->address['city'] ?? null, 'company_state' => $company->address['state'] ?? null,
                     'person_name' => $link->partner->name, 'person_document' => $link->partner->document_number,
                     'position' => $person->position],
             ])->save();
@@ -235,6 +238,110 @@ class HrService
         }, 3);
     }
 
+    public function registerPayment(User $actor, Company $company, HrEntry $entry, array $data): AccountPayableInstallmentPayment
+    {
+        return DB::transaction(function () use ($actor, $company, $entry, $data) {
+            $entry = HrEntry::withoutGlobalScopes()->where('company_id', $company->id)->lockForUpdate()->findOrFail($entry->id);
+            $this->access->authorize($actor, $company, 'hr_entries.view', $entry);
+            if ($entry->status !== 'confirmed' || ! $entry->account_payable_id) {
+                $this->fail('payment', 'Confirme um lançamento com valor líquido a pagar antes de registrar a baixa.');
+            }
+            $payable = AccountPayable::withoutGlobalScopes()->where('company_id', $company->id)->findOrFail($entry->account_payable_id);
+            $this->authorizeFinancial($actor, $company, 'settle', $payable);
+            $validated = Validator::make($data, [
+                'payment_date' => ['required', 'date'], 'amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
+                'interest_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+                'fine_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+                'discount_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+                'financial_account_id' => ['required', 'integer', Rule::exists('financial_accounts', 'id')->where('company_id', $company->id)->where('is_active', true)],
+                'description' => ['nullable', 'string', 'max:255'], 'notes' => ['nullable', 'string', 'max:10000'],
+            ])->validate();
+            $installment = $payable->installments()->firstOrFail();
+            $finance = app(AccountPayableService::class);
+            // The HR competence remains the competence of the obligation, even when paid in another month.
+            $payment = $finance->registerInstallmentPayment($installment, (float) $validated['amount'], $validated['payment_date'], [
+                ...Arr::except($validated, ['amount', 'payment_date']), 'user_id' => $actor->id,
+            ]);
+            if (! $payment || $finance->hasError()) {
+                throw ValidationException::withMessages($finance->getErrors() ?: ['payment' => $finance->getMessage()]);
+            }
+
+            return $payment;
+        }, 3);
+    }
+
+    public function reversePayment(User $actor, Company $company, HrEntry $entry, int $paymentId): void
+    {
+        DB::transaction(function () use ($actor, $company, $entry, $paymentId): void {
+            $entry = HrEntry::withoutGlobalScopes()->where('company_id', $company->id)->lockForUpdate()->findOrFail($entry->id);
+            $this->access->authorize($actor, $company, 'hr_entries.view', $entry);
+            $payable = AccountPayable::withoutGlobalScopes()->where('company_id', $company->id)->findOrFail($entry->account_payable_id);
+            $this->authorizeFinancial($actor, $company, 'reverse', $payable);
+            $payment = $this->payments($entry)->whereKey($paymentId)->firstOrFail();
+            $finance = app(AccountPayableService::class);
+            if (! $finance->deleteInstallmentPayment($payment)) {
+                throw ValidationException::withMessages($finance->getErrors() ?: ['payment' => $finance->getMessage()]);
+            }
+        }, 3);
+    }
+
+    public function signReceipt(User $actor, Company $company, HrReceipt $receipt, array $data): HrReceiptSignature
+    {
+        return DB::transaction(function () use ($actor, $company, $receipt, $data) {
+            $receipt = HrReceipt::withoutGlobalScopes()->where('company_id', $company->id)->findOrFail($receipt->id);
+            $entry = HrEntry::withoutGlobalScopes()->where('company_id', $company->id)->lockForUpdate()->findOrFail($receipt->hr_entry_id);
+            $this->access->authorize($actor, $company, 'hr_entries.view', $entry);
+            $this->access->authorize($actor, $company, 'hr_receipts.view', $receipt);
+            $this->access->authorize($actor, $company, 'hr_receipts.sign', $receipt);
+            $this->payments($entry)->whereKey($receipt->payment_id)->lockForUpdate()->first();
+            $receipt = HrReceipt::withoutGlobalScopes()->lockForUpdate()->findOrFail($receipt->id);
+            if (! $this->receiptIsValid($receipt)) {
+                $this->fail('signature', 'Não é possível assinar um recibo invalidado.');
+            }
+            if (HrReceiptSignature::withoutGlobalScopes()->where('hr_receipt_id', $receipt->id)->exists()) {
+                $this->fail('signature', 'Este recibo já possui assinatura.');
+            }
+            $validated = Validator::make($data, [
+                'signed_by_name' => ['required', 'string', 'max:255'],
+                'signature' => ['required', 'string', 'starts_with:data:image/png;base64,', 'max:2500000'],
+            ])->validate();
+            $binary = base64_decode(substr($validated['signature'], strlen('data:image/png;base64,')), true);
+            $image = $binary !== false ? @getimagesizefromstring($binary) : false;
+            if (! $image || $image[2] !== IMAGETYPE_PNG || $image[0] > 4096 || $image[1] > 4096) {
+                $this->fail('signature', 'Envie uma assinatura PNG válida, com dimensões de até 4096 pixels.');
+            }
+            $signature = HrReceiptSignature::create([
+                'company_id' => $company->id, 'hr_receipt_id' => $receipt->id,
+                'signed_by_name' => trim($validated['signed_by_name']), 'signature' => $validated['signature'],
+                'signed_at' => now(), 'recorded_by' => $actor->id,
+                'document_hash' => hash('sha256', json_encode(['id' => $receipt->id, 'snapshot' => $receipt->snapshot, 'fingerprint' => $receipt->fingerprint], JSON_THROW_ON_ERROR)),
+                'metadata' => ['ip' => request()->ip(), 'user_agent' => mb_substr((string) request()->userAgent(), 0, 1000), 'channel' => 'hr_panel'],
+            ]);
+            app(AuditRecorder::class)->recordModelEvent($signature, 'hr.receipt.signed', 'Recibo de RH #'.$receipt->id.' assinado em tela', null,
+                ['signed_by_name' => $signature->signed_by_name, 'signed_at' => $signature->signed_at->toIso8601String(), 'document_hash' => $signature->document_hash, 'signature_hash' => hash('sha256', $signature->signature)], $actor->id);
+
+            return $signature;
+        }, 3);
+    }
+
+    public function canPerformFinancialAction(User $actor, Company $company, HrEntry $entry, string $action): bool
+    {
+        if (! in_array($action, ['settle', 'reverse'], true) || ! $this->access->allows($actor, $company, 'hr_entries.view', $entry) || ! $entry->account_payable_id || $entry->status !== 'confirmed') {
+            return false;
+        }
+        $payable = AccountPayable::withoutGlobalScopes()->where('company_id', $company->id)->find($entry->account_payable_id);
+        if (! $payable || $payable->status === Status::CANCELLED || ($action === 'settle' && ! $payable->is_effective)) {
+            return false;
+        }
+        try {
+            $this->authorizeFinancial($actor, $company, $action, $payable);
+
+            return true;
+        } catch (AuthorizationException) {
+            return false;
+        }
+    }
+
     public function receiptIsValid(HrReceipt $receipt): bool
     {
         $entry = HrEntry::withoutGlobalScopes()->find($receipt->hr_entry_id);
@@ -251,11 +358,11 @@ class HrService
             $company = Company::findOrFail($entry->company_id);
             $person = HrPerson::withoutGlobalScopes()->findOrFail($entry->hr_person_id);
             $partner = CompanyPartner::withoutGlobalScopes()->where('company_id', $company->id)->findOrFail($person->company_partner_id)->partner;
-            $identity = ['company_name' => $company->name, 'company_document' => $company->document_number, 'person_name' => $partner->name, 'person_document' => $partner->document_number, 'position' => $person->position];
+            $identity = ['company_name' => $company->name, 'company_document' => $company->document_number, 'company_city' => $company->address['city'] ?? null, 'company_state' => $company->address['state'] ?? null, 'person_name' => $partner->name, 'person_document' => $partner->document_number, 'position' => $person->position];
         }
 
         return [...$identity, 'entry_id' => $entry->id, 'nature' => PaymentNature::options()[$entry->nature],
-            'competence' => $entry->competence_date->format('m/Y'), 'items' => $entry->items,
+            'competence' => $entry->competence_date->format('m/Y'), 'due_date' => $entry->due_date->format('d/m/Y'), 'items' => $entry->items,
             'advances' => $entry->advance_deductions ?? [], 'gross_amount' => $entry->gross_amount,
             'deduction_amount' => $entry->deduction_amount, 'net_amount' => $entry->net_amount, 'notes' => $entry->notes];
     }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Validation\ValidationException;
 
 class HrReceipt extends Model
@@ -32,5 +33,10 @@ class HrReceipt extends Model
     public function entry(): BelongsTo
     {
         return $this->belongsTo(HrEntry::class, 'hr_entry_id');
+    }
+
+    public function signature(): HasOne
+    {
+        return $this->hasOne(HrReceiptSignature::class);
     }
 }

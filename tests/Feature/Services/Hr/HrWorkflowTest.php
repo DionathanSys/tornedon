@@ -3,7 +3,11 @@
 namespace Tests\Feature\Services\Hr;
 
 use App\Enum\Hr\PaymentNature;
+use App\Filament\Clusters\Hr\Resources\HrEntries\Pages\CreateHrEntry;
+use App\Filament\Clusters\Hr\Resources\HrEntries\Pages\EditHrEntry;
 use App\Filament\Clusters\Hr\Resources\HrEntries\Pages\ManageHrEntries;
+use App\Filament\Clusters\Hr\Resources\HrPeople\Pages\CreateHrPerson;
+use App\Filament\Clusters\Hr\Resources\HrPeople\Pages\EditHrPerson;
 use App\Filament\Clusters\Hr\Resources\HrPeople\Pages\ManageHrPeople;
 use App\Filament\Clusters\Hr\Resources\HrReceipts\Pages\ManageHrReceipts;
 use App\Filament\Pages\CompanyTeam;
@@ -12,9 +16,11 @@ use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\CompanyRole;
 use App\Models\FinancialAccount;
+use App\Models\FinancialCategory;
 use App\Models\HrEntry;
 use App\Models\HrPerson;
 use App\Models\HrReceipt;
+use App\Models\HrReceiptSignature;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
@@ -22,6 +28,8 @@ use App\Services\Access\PermissionCatalog;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\Hr\HrAccess;
 use App\Services\Hr\HrService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -252,16 +260,16 @@ class HrWorkflowTest extends TestCase
     public function test_forms_create_and_edit_entries_through_the_domain_service(): void
     {
         $this->beforeApplicationDestroyed(Repeater::fake());
-        Livewire::test(ManageHrEntries::class)->callAction('create', data: [
+        Livewire::test(CreateHrEntry::class)->fillForm([
             'hr_person_id' => $this->person->id, 'competence_date' => '2026-09-15', 'due_date' => '2026-10-05', 'nature' => 'salary',
-            'items' => [['description' => 'Base', 'type' => 'earning', 'amount' => 100]],
-        ])->assertHasNoActionErrors();
+            'items' => [['description' => 'Base', 'type' => 'earning', 'amount' => '100,00']],
+        ])->call('create')->assertHasNoFormErrors();
         $entry = HrEntry::firstOrFail();
         $this->assertEquals(100, $entry->net_amount);
-        Livewire::test(ManageHrEntries::class)->callTableAction('edit', $entry, data: [
+        Livewire::test(EditHrEntry::class, ['record' => $entry->id])->fillForm([
             'hr_person_id' => $this->person->id, 'competence_date' => '2026-09-01', 'due_date' => '2026-10-05', 'nature' => 'salary',
-            'items' => [['description' => 'Base corrigida', 'type' => 'earning', 'amount' => 200]],
-        ])->assertHasNoTableActionErrors();
+            'items' => [['description' => 'Base corrigida', 'type' => 'earning', 'amount' => '200,00']],
+        ])->call('save')->assertHasNoFormErrors();
         $this->assertEquals(200, $entry->fresh()->net_amount);
     }
 
@@ -397,5 +405,163 @@ class HrWorkflowTest extends TestCase
         $this->get($url)->assertOk();
         $role->update(['permissions' => ['hr_entries.view' => 'company', 'hr_receipts.view' => 'company']]);
         $this->get($url)->assertForbidden();
+    }
+
+    private function signatureImage(): string
+    {
+        $image = imagecreatetruecolor(400, 120);
+        imagefill($image, 0, 0, imagecolorallocate($image, 255, 255, 255));
+        imageline($image, 20, 80, 300, 30, imagecolorallocate($image, 20, 30, 40));
+        ob_start();
+        imagepng($image);
+        $png = ob_get_clean();
+        imagedestroy($image);
+
+        return 'data:image/png;base64,'.base64_encode($png);
+    }
+
+    public function test_employee_pages_use_brazilian_money_and_save_through_hr_service(): void
+    {
+        $link = CompanyPartner::create(['company_id' => $this->company->id, 'partner_id' => Partner::factory()->create()->id, 'type' => ['employee'], 'is_active' => true]);
+        Livewire::test(CreateHrPerson::class)->fillForm(['company_partner_id' => $link->id, 'roles' => ['employee'], 'base_amount' => '4.321,87', 'position' => 'Administrativo', 'is_active' => true])->call('create')->assertHasNoFormErrors();
+        $person = HrPerson::where('company_partner_id', $link->id)->firstOrFail();
+        $this->assertEquals(4321.87, $person->base_amount);
+        Livewire::test(EditHrPerson::class, ['record' => $person->id])->fillForm(['base_amount' => '5.400,00'])->call('save')->assertHasNoFormErrors();
+        $this->assertEquals(5400, $person->fresh()->base_amount);
+    }
+
+    public function test_financial_category_can_be_created_from_employee_page_with_tenant_and_cash_scope(): void
+    {
+        Livewire::test(CreateHrPerson::class)
+            ->callFormComponentAction('financial_category_id', 'createOption', data: ['name' => 'Remuneração de pessoal', 'sort_order' => 0])
+            ->assertHasNoActionErrors();
+        $category = FinancialCategory::where('name', 'Remuneração de pessoal')->firstOrFail();
+        $this->assertSame($this->company->id, $category->company_id);
+        $this->assertTrue($category->allow_payable);
+        $this->assertTrue($category->allow_cash_movement);
+    }
+
+    public function test_complete_process_is_available_inside_entry_page_including_pdf_and_signature(): void
+    {
+        $entry = $this->draft();
+        $page = Livewire::test(EditHrEntry::class, ['record' => $entry->id])
+            ->callAction('confirm')->assertHasNoActionErrors();
+        $this->assertSame('confirmed', $entry->fresh()->status);
+        $page->callAction('registerPayment', data: [
+            'payment_date' => '2026-10-05', 'amount' => '1.000,00', 'financial_account_id' => $this->account->id,
+            'interest_amount' => '0,00', 'fine_amount' => '0,00', 'discount_amount' => '0,00',
+        ])->assertHasNoActionErrors();
+        $payment = $this->hr->payments($entry->fresh())->firstOrFail();
+        $this->assertEquals(1000, $payment->amount);
+        $this->assertSame('2026-09-01', $payment->installment->competence_date->toDateString());
+        $page->callAction('issueReceipt', data: ['payment_id' => $payment->id], arguments: ['payment_id' => $payment->id])->assertHasNoActionErrors();
+        $receipt = HrReceipt::where('hr_entry_id', $entry->id)->firstOrFail();
+        $snapshot = $receipt->snapshot;
+        $unsigned = view('pdf.hr-receipt', ['data' => $snapshot, 'receipt' => $receipt])->render();
+        $this->assertStringContainsString('Data da assinatura manual', $unsigned);
+        $this->assertStringContainsString('____ / ____ / ________', $unsigned);
+        $this->travelTo(Carbon::parse('2026-11-03 14:37:25'));
+        $page->callAction('signReceipt', data: ['signed_by_name' => $snapshot['person_name'], 'signature' => $this->signatureImage()], arguments: ['receipt_id' => $receipt->id])->assertHasNoActionErrors();
+        $signature = $receipt->fresh()->signature;
+        $this->assertNotNull($signature);
+        $this->assertSame('2026-11-03 14:37:25', $signature->signed_at->format('Y-m-d H:i:s'));
+        $this->assertSame($this->owner->id, $signature->recorded_by);
+        $this->assertSame($snapshot, $receipt->fresh()->snapshot);
+        $html = view('pdf.hr-receipt', ['data' => $snapshot, 'receipt' => $receipt->fresh()])->render();
+        $this->assertStringContainsString('03/11/2026', $html);
+        $this->assertStringContainsString('14:37:25', $html);
+        $this->assertStringNotContainsString('Data da assinatura manual', $html);
+        $pdf = Pdf::loadView('pdf.hr-receipt', ['data' => $snapshot, 'receipt' => $receipt->fresh()])->setPaper('a4');
+        $pdf->render();
+        $this->assertSame(1, $pdf->getDomPDF()->getCanvas()->get_page_count(), 'O recibo padrão deve acomodar a assinatura na mesma página.');
+        $this->get(URL::temporarySignedRoute('hr.receipt', now()->addMinutes(10), ['company' => $this->company->id, 'receipt' => $receipt->id]))->assertOk()->assertHeader('content-type', 'application/pdf');
+        $page->callAction('reversePayment', arguments: ['payment_id' => $payment->id])->assertHasNoActionErrors();
+        $this->assertFalse($this->hr->receiptIsValid($receipt->fresh()));
+        $this->assertDatabaseHas('hr_receipt_signatures', ['id' => $signature->id]);
+    }
+
+    public function test_hr_page_does_not_bypass_financial_permissions_for_payment(): void
+    {
+        $entry = $this->confirmed();
+        [$manager] = $this->userWith(PermissionCatalog::templates()['Gestor de RH']);
+        $this->actingAs($manager);
+        Livewire::test(EditHrEntry::class, ['record' => $entry->id])->assertSuccessful()->assertActionHidden('registerPayment');
+        $this->expectException(AuthorizationException::class);
+        $this->hr->registerPayment($manager, $this->company, $entry, ['payment_date' => '2026-10-05', 'amount' => 100, 'financial_account_id' => $this->account->id]);
+    }
+
+    public function test_signature_has_specific_permission_and_cannot_be_replaced(): void
+    {
+        $entry = $this->confirmed();
+        $payment = $this->pay($entry, 100);
+        $receipt = $this->hr->issueReceipt($this->owner, $this->company, $entry, $payment->id);
+        [$viewer] = $this->userWith(['hr_entries.view' => 'company', 'hr_receipts.view' => 'company']);
+        $this->actingAs($viewer);
+        Livewire::test(EditHrEntry::class, ['record' => $entry->id])->assertActionHidden('signReceipt');
+        try {
+            $this->hr->signReceipt($viewer, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()]);
+            $this->fail('Signature accepted without permission.');
+        } catch (AuthorizationException) {
+            $this->assertSame(0, HrReceiptSignature::count());
+        }
+        $this->actingAs($this->owner);
+        $signature = $this->hr->signReceipt($this->owner, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage(), 'signed_at' => '1999-01-01']);
+        $this->assertTrue($signature->signed_at->isSameDay(now()));
+        $this->expectException(ValidationException::class);
+        $this->hr->signReceipt($this->owner, $this->company, $receipt, ['signed_by_name' => 'Outra pessoa', 'signature' => $this->signatureImage()]);
+    }
+
+    public function test_scoped_signer_only_needs_signature_permission_not_receipt_edit_permission(): void
+    {
+        $entry = $this->confirmed();
+        $payment = $this->pay($entry, 100);
+        $receipt = $this->hr->issueReceipt($this->owner, $this->company, $entry, $payment->id);
+        [$signer] = $this->userWith(['hr_entries.view' => 'company', 'hr_receipts.view' => 'company', 'hr_receipts.sign' => 'company']);
+        $this->actingAs($signer);
+        $signature = $this->hr->signReceipt($signer, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()]);
+        $this->assertSame($signer->id, $signature->recorded_by);
+        $this->assertSame($signature->id, $receipt->fresh()->signature->id);
+    }
+
+    public function test_category_creation_is_hidden_without_permission_and_rejects_foreign_parent(): void
+    {
+        $other = Company::factory()->create();
+        $foreign = FinancialCategory::create(['company_id' => $other->id, 'name' => 'Outra empresa', 'is_active' => true]);
+        Livewire::test(CreateHrPerson::class)->callFormComponentAction('financial_category_id', 'createOption', data: ['name' => 'Não deve criar', 'parent_id' => $foreign->id])->assertHasFormComponentActionErrors(['parent_id']);
+        $this->assertDatabaseMissing('financial_categories', ['name' => 'Não deve criar']);
+        [$assistant] = $this->userWith(PermissionCatalog::templates()['Assistente de RH']);
+        $this->actingAs($assistant);
+        Livewire::test(CreateHrPerson::class)->assertFormComponentActionHidden('financial_category_id', 'createOption');
+    }
+
+    public function test_malformed_signature_and_invalidated_receipt_cannot_be_signed(): void
+    {
+        $entry = $this->confirmed();
+        $payment = $this->pay($entry, 100);
+        $receipt = $this->hr->issueReceipt($this->owner, $this->company, $entry, $payment->id);
+        try {
+            $this->hr->signReceipt($this->owner, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => 'data:image/png;base64,'.base64_encode('not an image')]);
+            $this->fail('Malformed PNG accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('signature', $e->errors());
+        }
+        $this->hr->reversePayment($this->owner, $this->company, $entry, $payment->id);
+        $this->expectException(ValidationException::class);
+        $this->hr->signReceipt($this->owner, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()]);
+    }
+
+    public function test_confirmed_entry_page_is_read_only_and_signature_data_is_not_exposed_to_other_tenant(): void
+    {
+        $entry = $this->confirmed();
+        $page = Livewire::test(EditHrEntry::class, ['record' => $entry->id])->assertSuccessful();
+        $page->call('save')->assertForbidden();
+        $payment = $this->pay($entry, 100);
+        $receipt = $this->hr->issueReceipt($this->owner, $this->company, $entry, $payment->id);
+        $this->hr->signReceipt($this->owner, $this->company, $receipt, ['signed_by_name' => 'Beneficiário', 'signature' => $this->signatureImage()]);
+        $outsider = User::factory()->create();
+        $this->actingAs($outsider);
+        $this->assertSame(0, HrReceiptSignature::count());
+        $this->expectException(AuthorizationException::class);
+        $this->hr->signReceipt($outsider, $this->company, $receipt, ['signed_by_name' => 'Outra pessoa', 'signature' => $this->signatureImage()]);
     }
 }

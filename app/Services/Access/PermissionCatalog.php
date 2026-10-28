@@ -59,7 +59,7 @@ class PermissionCatalog
 
     public static function actions(): array
     {
-        return ['view' => 'Consultar', 'create' => 'Criar', 'update' => 'Alterar', 'delete' => 'Excluir', 'approve' => 'Aprovar', 'settle' => 'Registrar baixa', 'reverse' => 'Estornar', 'cancel' => 'Cancelar', 'export' => 'Exportar', 'issue' => 'Emitir/faturar', 'assign' => 'Alterar responsável'];
+        return ['view' => 'Consultar', 'create' => 'Criar', 'update' => 'Alterar', 'delete' => 'Excluir', 'approve' => 'Aprovar', 'settle' => 'Registrar baixa', 'reverse' => 'Estornar', 'cancel' => 'Cancelar', 'export' => 'Exportar', 'issue' => 'Emitir/faturar', 'sign' => 'Coletar assinatura', 'assign' => 'Alterar responsável'];
     }
 
     public static function labels(): array
@@ -105,7 +105,7 @@ class PermissionCatalog
         $basic = ['view', 'create', 'update', 'delete', 'export'];
         $actions = [
             'hr_entries' => [...$basic, 'approve', 'cancel'],
-            'hr_receipts' => ['view', 'issue', 'export'],
+            'hr_receipts' => ['view', 'issue', 'export', 'sign'],
             'quotes' => [...$basic, 'approve'],
             'service_orders' => [...$basic, 'approve', 'cancel', 'issue', 'assign'],
             'requisitions' => [...$basic, 'cancel', 'issue', 'assign'],
@@ -145,6 +145,7 @@ class PermissionCatalog
             'cancel' => 'Cancelar registros conforme o fluxo do módulo.',
             'export' => 'Exportar registros e documentos autorizados.',
             'issue' => 'Emitir documentos ou faturar a operação.',
+            'sign' => 'Coletar a assinatura eletrônica do beneficiário no recibo, com data e hora do ato.',
             'assign' => 'Definir ou alterar os responsáveis pelo registro.',
             'change_status_without_movement' => 'Desconsiderar ou restaurar títulos, sem registrar movimentação financeira.',
         ];
@@ -206,6 +207,7 @@ class PermissionCatalog
     public static function children(): array
     {
         return [
+            Models\HrReceiptSignature::class => ['receipt', Models\HrReceipt::class],
             Models\QuoteItem::class => ['quote', Models\Quote::class],
             Models\ServiceOrderItem::class => ['serviceOrder', Models\ServiceOrder::class],
             Models\RequisitionItem::class => ['requisition', Models\Requisition::class],
@@ -238,7 +240,7 @@ class PermissionCatalog
 
         return [
             'Administrador da empresa' => $all,
-            'Gestor de RH' => $hr + $hrReferences + ['account_payables.create' => 'company', 'account_payables.view' => 'company', 'account_payables.update' => 'own', 'account_payables.cancel' => 'company'],
+            'Gestor de RH' => $hr + $hrReferences + ['financial_categories.create' => 'company', 'account_payables.create' => 'company', 'account_payables.view' => 'company', 'account_payables.update' => 'own', 'account_payables.cancel' => 'company'],
             'Assistente de RH' => array_intersect_key($hr, array_flip(['hr_people.view', 'hr_people.create', 'hr_people.update', 'hr_entries.view', 'hr_entries.create', 'hr_entries.update'])) + $hrReferences,
             'Financeiro' => $financial,
             'BPO responsável' => $financial,
