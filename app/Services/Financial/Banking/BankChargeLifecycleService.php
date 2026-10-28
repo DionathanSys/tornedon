@@ -54,7 +54,8 @@ final class BankChargeLifecycleService
                 && $charge->request_sent_at === null && $charge->request_snapshot === null;
             // request_sent_at is reserved before the call, including requests that
             // are explicitly refused by validation/authentication without issuance.
-            $rejectedRegistration = $charge->status->value === 'registration_failed'
+            $rejectedRegistration = in_array($charge->status->value, ['registration_failed', 'processing'], true)
+                && $charge->operation_status === 'failed'
                 && $charge->operation_kind === 'register'
                 && in_array($charge->provider_response_code, ['1', '23', 'LOCAL_VALIDATION'], true)
                 && $charge->registered_at === null && $charge->paid_at === null

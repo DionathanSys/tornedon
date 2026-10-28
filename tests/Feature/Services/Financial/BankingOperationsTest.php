@@ -895,6 +895,23 @@ class BankingOperationsTest extends TestCase
         Queue::assertNotPushed(CancelPixChargeJob::class);
     }
 
+    public function test_processing_charge_with_failed_operation_and_refusal_code_can_be_removed(): void
+    {
+        Queue::fake();
+        $pix = $this->pix();
+        $pix->update([
+            'status' => 'processing', 'operation_kind' => 'register', 'operation_status' => 'failed',
+            'request_sent_at' => now(), 'request_snapshot' => ['pagamento' => ['valor' => '0.50']],
+            'provider_response_code' => '1', 'last_error' => 'O valor da cobrança é inferior ao mínimo permitido.',
+        ]);
+        Livewire::test(ListPixCharges::class)
+            ->callTableAction('remove_charge', $pix, ['reason' => 'Emissão recusada por valor abaixo do mínimo.'])
+            ->assertHasNoTableActionErrors()
+            ->assertNotified('Cobrança movida para a lixeira.');
+        $this->assertSoftDeleted($pix);
+        Queue::assertNotPushed(CancelPixChargeJob::class);
+    }
+
     #[DataProvider('unremovableFailedRegistrations')]
     public function test_failed_registration_with_uncertainty_or_registration_evidence_still_requires_cancellation(array $attributes): void
     {
