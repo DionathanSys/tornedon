@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\CompanyTeamService;
 use App\Services\Access\PanelAccess;
+use App\Services\Access\PermissionCatalog;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
@@ -110,6 +111,16 @@ class CompanyTeam extends Page
                         ->options(PanelAccess::options())
                         ->columns(2)->required()->helperText('O painel dá acesso à interface. O BPO exige também um atendimento autorizado. As ações permitidas são definidas abaixo.'),
                 ])->columns(2),
+                Select::make('hr_template')->label('Adicionar permissões de um modelo de RH')
+                    ->options(['Gestor de RH' => 'Gestor de RH', 'Assistente de RH' => 'Assistente de RH'])
+                    ->placeholder('Opcional: escolha um modelo')->live()->dehydrated(false)
+                    ->helperText('Acrescenta permissões ausentes, incluindo as dependências financeiras do modelo. As permissões atuais são preservadas. Confira abaixo e salve o papel para aplicar.')
+                    ->afterStateUpdated(function ($state, Get $get, Set $set): void {
+                        if (in_array($state, ['Gestor de RH', 'Assistente de RH'], true)) {
+                            $permissions = Arr::dot($get('permissions') ?? []);
+                            $set('permissions', $permissions + PermissionCatalog::templates()[$state]);
+                        }
+                    }),
                 CompanyPermissionWorkbench::make('permissions')->label('Permissões por módulo')->default([])->rules(['array']),
             ])->action(function (array $data): void {
                 $role = app(CompanyTeamService::class)->saveRole(auth()->user(), Filament::getTenant(), [
@@ -125,7 +136,7 @@ class CompanyTeam extends Page
     public function templatesAction(): Action
     {
         return Action::make('templates')->label('Usar papéis sugeridos')->icon('heroicon-o-squares-plus')->color('gray')->visible(fn () => $this->isManager())
-            ->modalHeading('Adicionar papéis sugeridos')->modalDescription('Inclui Administrador, Financeiro, Vendedor, Técnico e outros modelos. Seus papéis existentes são preservados e nenhum acesso é atribuído automaticamente.')
+            ->modalHeading('Adicionar papéis sugeridos')->modalDescription('Inclui Administrador, Financeiro, Gestor de RH, Assistente de RH e outros modelos. Seus papéis existentes são preservados e nenhum acesso é atribuído automaticamente.')
             ->requiresConfirmation()->action(function (): void {
                 app(CompanyTeamService::class)->installTemplates(auth()->user(), Filament::getTenant());
                 $this->activeTab = 'roles';

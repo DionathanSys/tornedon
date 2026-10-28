@@ -7,8 +7,11 @@ use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FiscalDocument;
+use App\Models\HrEntry;
+use App\Models\HrReceipt;
 use App\Models\User;
 use App\Policies\ScopedRecordPolicy;
+use App\Services\Hr\HrAccess;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +41,12 @@ class RoleAccessEnforcement
         $subject = $arguments[0] ?? null;
         $companyId = $subject instanceof Model ? $subject->getAttribute('company_id') : null;
         $company = $subject instanceof Company ? $subject : ($companyId ? Company::find($companyId) : Filament::getTenant());
+        if ($company instanceof Company && (is_string($subject) || $subject instanceof Model)) {
+            $definition = PermissionCatalog::definition(is_string($subject) ? $subject : $subject::class);
+            if (str_starts_with($definition['module'] ?? '', 'hr_') && ! app(HrAccess::class)->allows($user, $company, $definition['module'].'.'.$this->action($ability), $subject instanceof Model ? $subject : null)) {
+                return false;
+            }
+        }
         if ($company instanceof Company && $this->access->isScopedUser($user) && ! $user->canAccessTenant($company)) {
             return false;
         }
@@ -79,6 +88,10 @@ class RoleAccessEnforcement
         }
         [$parent, $definition] = $this->resolveSubject($record);
         $company = Company::find($record->getAttribute('company_id') ?? $parent?->getAttribute('company_id'));
+        $createAction = $record instanceof HrReceipt ? 'issue' : 'create';
+        if ($company && str_starts_with($definition['module'] ?? '', 'hr_')) {
+            app(HrAccess::class)->authorize($user, $company, $definition['module'].'.'.$createAction);
+        }
         if ($this->access->isScopedUser($user)) {
             throw_unless($company && $user->canAccessTenant($company), AuthorizationException::class);
         }
@@ -86,7 +99,7 @@ class RoleAccessEnforcement
             return;
         }
         throw_unless($definition && ($parent === $record
-            ? $this->access->allows($user, $company, $definition['module'].'.create')
+            ? $this->access->allows($user, $company, $definition['module'].'.'.$createAction)
             : $parent && $this->access->allowsRecord($user, $company, $definition['module'].'.'.$this->childAction($record, 'create'), $parent)), AuthorizationException::class);
         if ($parent !== $record && $record->getAttribute('company_id') !== null) {
             throw_unless((int) $record->company_id === (int) $parent->company_id, AuthorizationException::class);
@@ -105,12 +118,22 @@ class RoleAccessEnforcement
 
     public function writing(Model $record, string $action): void
     {
+        if ($record instanceof HrEntry && $record->isDirty('status')) {
+            $action = match ($record->status) {
+                'confirmed' => 'approve',
+                'cancelled' => 'cancel',
+                default => $action,
+            };
+        }
         $user = Auth::user();
         if (! $user) {
             return;
         }
         [$parent, $definition] = $this->resolveSubject($record);
         $company = Company::find($record->getRawOriginal('company_id') ?? $parent?->getAttribute('company_id'));
+        if ($company && str_starts_with($definition['module'] ?? '', 'hr_')) {
+            app(HrAccess::class)->authorize($user, $company, $definition['module'].'.'.$action, $parent);
+        }
         if ($this->access->isScopedUser($user)) {
             throw_unless($company && $user->canAccessTenant($company), AuthorizationException::class);
         }

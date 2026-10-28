@@ -8,19 +8,21 @@ enum Type: string
     case CUSTOMER = 'customer';
     case SALESPERSON = 'salesperson';
     case EMPLOYEE = 'employee';
+    case SHAREHOLDER = 'shareholder';
     case CARRIER = 'carrier';
     case TECHNICIAN = 'technician';
-    
+
     public function description(): string
     {
         return match ($this) {
-            self::SUPPLIER      => 'Fornecedor',
-            self::CUSTOMER      => 'Cliente',
-            self::SALESPERSON   => 'Vendedor',
-            self::EMPLOYEE      => 'Funcionário',
-            self::CARRIER       => 'Transportadora',
-            self::TECHNICIAN    => 'Técnico',
-        };  
+            self::SUPPLIER => 'Fornecedor',
+            self::CUSTOMER => 'Cliente',
+            self::SALESPERSON => 'Vendedor',
+            self::EMPLOYEE => 'Funcionário',
+            self::SHAREHOLDER => 'Sócio',
+            self::CARRIER => 'Transportadora',
+            self::TECHNICIAN => 'Técnico',
+        };
     }
 
     public static function toSelectArray(): array

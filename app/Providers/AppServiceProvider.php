@@ -10,6 +10,7 @@ use App\Events\RequisitionItem\RequisitionItemUpdated;
 use App\Filament\Operation\Resources\ProductionRequests\Widgets\ProductionRequestOverview;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\Livewire\AutoSubmitTableSelectLivewireComponent;
+use App\Http\Responses\LoginResponse;
 use App\Listeners\Quote\CreateProductionOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateServiceOrderFromApprovedQuoteListener;
@@ -47,8 +48,10 @@ use App\Policies\CommitmentRecordPolicy;
 use App\Policies\CompanyPolicy;
 use App\Policies\ServiceOrderPolicy;
 use App\Policies\UserPolicy;
+use App\Services\Access\RoleAccessEnforcement;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\Providers\ResendEmailProvider;
+use App\Services\Hr\HrFinancialGuard;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
@@ -68,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class, \App\Http\Responses\LoginResponse::class);
+        $this->app->bind(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class, LoginResponse::class);
 
         $this->app->bind(EmailProviderInterface::class, function ($app) {
             $provider = (string) config('email_notifications.provider', 'resend');
@@ -96,7 +99,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        app(\App\Services\Access\RoleAccessEnforcement::class)->register();
+        app(RoleAccessEnforcement::class)->register();
+        app(HrFinancialGuard::class)->register();
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::HEAD_START,

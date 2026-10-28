@@ -11,6 +11,9 @@ class PermissionCatalog
     public static function modules(): array
     {
         $modules = [
+            'hr_people' => ['label' => 'Funcionários e sócios', 'model' => Models\HrPerson::class, 'owner' => null, 'assigned' => []],
+            'hr_entries' => ['label' => 'Lançamentos de RH', 'model' => Models\HrEntry::class, 'owner' => 'created_by', 'assigned' => []],
+            'hr_receipts' => ['label' => 'Recibos de RH', 'model' => Models\HrReceipt::class, 'owner' => null, 'assigned' => []],
             'quotes' => ['label' => 'Orçamentos', 'model' => Models\Quote::class, 'owner' => 'created_by', 'assigned' => []],
             'service_orders' => ['label' => 'Ordens de serviço', 'model' => Models\ServiceOrder::class, 'owner' => 'created_by', 'assigned' => ['technician_id', 'supervisor_id', 'salesperson_id']],
             'requisitions' => ['label' => 'Requisições', 'model' => Models\Requisition::class, 'owner' => 'created_by', 'assigned' => ['salesperson_id']],
@@ -101,6 +104,8 @@ class PermissionCatalog
     {
         $basic = ['view', 'create', 'update', 'delete', 'export'];
         $actions = [
+            'hr_entries' => [...$basic, 'approve', 'cancel'],
+            'hr_receipts' => ['view', 'issue', 'export'],
             'quotes' => [...$basic, 'approve'],
             'service_orders' => [...$basic, 'approve', 'cancel', 'issue', 'assign'],
             'requisitions' => [...$basic, 'cancel', 'issue', 'assign'],
@@ -114,6 +119,7 @@ class PermissionCatalog
             'bank_statements' => [...$basic, 'reverse'],
         ];
         $areas = [
+            'Recursos Humanos' => ['hr_people', 'hr_entries', 'hr_receipts'],
             'Vendas e atendimento' => ['quotes', 'service_orders', 'requisitions', 'production_requests', 'production_orders', 'warranty_claims'],
             'Financeiro' => ['account_payables', 'account_receivables', 'cash_movements', 'invoices', 'financial_accounts', 'bank_statements', 'financial_categories', 'chart_accounts', 'cost_centers', 'result_centers', 'dre_models', 'card_institutions', 'company_credit_cards', 'company_card_statements', 'company_card_transactions', 'banking_events', 'purchase_closings'],
             'Fiscal' => ['fiscal_documents', 'sefaz_documents', 'fiscal_rules'],
@@ -227,9 +233,13 @@ class PermissionCatalog
         $financialModules = ['account_payables', 'account_receivables', 'cash_movements', 'invoices', 'financial_accounts', 'bank_statements', 'financial_categories', 'chart_accounts', 'cost_centers', 'result_centers', 'dre_models', 'card_institutions', 'company_credit_cards', 'company_card_statements', 'company_card_transactions', 'banking_events'];
         $financial = array_filter($all, fn ($key) => in_array(explode('.', $key)[0], $financialModules, true) || $key === 'reports.view', ARRAY_FILTER_USE_KEY);
         $financial += ['partners.view' => 'company', 'partners.create' => 'company', 'partners.update' => 'company'];
+        $hr = array_filter($all, fn ($key) => str_starts_with($key, 'hr_'), ARRAY_FILTER_USE_KEY);
+        $hrReferences = array_fill_keys(['partners.view', 'financial_categories.view', 'chart_accounts.view', 'cost_centers.view', 'result_centers.view'], 'company');
 
         return [
             'Administrador da empresa' => $all,
+            'Gestor de RH' => $hr + $hrReferences + ['account_payables.create' => 'company', 'account_payables.view' => 'company', 'account_payables.update' => 'own', 'account_payables.cancel' => 'company'],
+            'Assistente de RH' => array_intersect_key($hr, array_flip(['hr_people.view', 'hr_people.create', 'hr_people.update', 'hr_entries.view', 'hr_entries.create', 'hr_entries.update'])) + $hrReferences,
             'Financeiro' => $financial,
             'BPO responsável' => $financial,
             'Auxiliar BPO' => array_intersect_key($financial, array_flip(['account_payables.view', 'account_payables.create', 'account_receivables.view', 'account_receivables.create', 'cash_movements.view']))
@@ -237,7 +247,7 @@ class PermissionCatalog
             'Vendedor' => ['quotes.view' => 'own', 'quotes.create' => 'company', 'quotes.update' => 'own', 'requisitions.view' => 'assigned', 'products.view' => 'company', 'services.view' => 'company', 'partners.view' => 'company'],
             'Técnico' => ['service_orders.view' => 'assigned', 'service_orders.update' => 'assigned', 'services.view' => 'company', 'equipments.view' => 'company', 'partners.view' => 'company'],
             'Emissor fiscal' => ['fiscal_documents.view' => 'company', 'fiscal_documents.create' => 'company', 'fiscal_documents.update' => 'company', 'fiscal_documents.issue' => 'company'],
-            'Consulta' => array_filter($all, fn ($key) => str_ends_with($key, '.view'), ARRAY_FILTER_USE_KEY),
+            'Consulta' => array_filter($all, fn ($key) => str_ends_with($key, '.view') && ! str_starts_with($key, 'hr_'), ARRAY_FILTER_USE_KEY),
         ];
     }
 }

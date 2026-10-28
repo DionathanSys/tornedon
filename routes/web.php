@@ -2,30 +2,33 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\BankSlipWebhookController;
+use App\Http\Controllers\CompanyAccessInvitationController;
 use App\Http\Controllers\CompanyLogoController;
 use App\Http\Controllers\EmailDispatchAttachmentController;
 use App\Http\Controllers\ErrorTicketController;
 use App\Http\Controllers\FiscalDocumentCorrectionLetterController;
 use App\Http\Controllers\FiscalDocumentXmlExportDownloadController;
+use App\Http\Controllers\HrDocumentController;
 use App\Http\Controllers\NfeWebhookController;
 use App\Http\Controllers\PdfPreviewController;
 use App\Http\Controllers\PublicPixChargeController;
 use App\Http\Controllers\PublicServiceOrderSignatureController;
+use App\Services\Bpo\BpoAccessService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     $user = auth()->user();
-    if ($user && app(\App\Services\Bpo\BpoAccessService::class)->canAccessPanel($user)) {
+    if ($user && app(BpoAccessService::class)->canAccessPanel($user)) {
         return redirect()->route('filament.bpo.portfolio');
     }
 
     return redirect()->to('/mobile');
 });
 
-Route::get('/convites-equipe/{token}', [\App\Http\Controllers\CompanyAccessInvitationController::class, 'show'])
+Route::get('/convites-equipe/{token}', [CompanyAccessInvitationController::class, 'show'])
     ->middleware('throttle:30,1')->name('company-access.invitation.show');
-Route::post('/convites-equipe/{token}', [\App\Http\Controllers\CompanyAccessInvitationController::class, 'accept'])
+Route::post('/convites-equipe/{token}', [CompanyAccessInvitationController::class, 'accept'])
     ->middleware('throttle:10,1')->name('company-access.invitation.accept');
 
 /*
@@ -77,6 +80,13 @@ Route::get('/companies/{company}/logo', [CompanyLogoController::class, 'show'])
 Route::get('/pdf-preview/{token}', [PdfPreviewController::class, 'show'])
     ->name('pdf-preview.show')
     ->middleware(['web', 'auth', 'signed']);
+
+Route::get('/rh/{company}/demonstrativos/{entry}', [HrDocumentController::class, 'statement'])
+    ->whereNumber('entry')->middleware(['auth', 'signed'])->name('hr.statement');
+Route::get('/rh/{company}/exportar/{module}', [HrDocumentController::class, 'export'])
+    ->whereIn('module', ['people', 'entries'])->middleware(['auth', 'signed'])->name('hr.export');
+Route::get('/rh/{company}/recibos/{receipt}', [HrDocumentController::class, 'receipt'])
+    ->whereNumber('receipt')->middleware(['auth', 'signed'])->name('hr.receipt');
 
 Route::get('/pix/cobrancas/{pixCharge}/pagamento', [PublicPixChargeController::class, 'show'])
     ->whereNumber('pixCharge')

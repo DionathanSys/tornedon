@@ -60,7 +60,7 @@ class CompanyTeamService
             $this->lock($company);
             $this->assertManager($actor, $company);
             foreach (PermissionCatalog::templates() as $name => $permissions) {
-                CompanyRole::firstOrCreate(['company_id' => $company->id, 'name' => $name], ['permissions' => $permissions, 'panels' => array_keys(PanelAccess::options())]);
+                CompanyRole::firstOrCreate(['company_id' => $company->id, 'name' => $name], ['permissions' => $permissions, 'panels' => in_array($name, ['Gestor de RH', 'Assistente de RH'], true) ? ['admin'] : array_keys(PanelAccess::options())]);
             }
         });
     }

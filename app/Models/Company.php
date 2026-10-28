@@ -42,6 +42,21 @@ class Company extends Model
         return $this->belongsToMany(User::class);
     }
 
+    public function hrPeople(): HasMany
+    {
+        return $this->hasMany(HrPerson::class);
+    }
+
+    public function hrEntries(): HasMany
+    {
+        return $this->hasMany(HrEntry::class);
+    }
+
+    public function hrReceipts(): HasMany
+    {
+        return $this->hasMany(HrReceipt::class);
+    }
+
     public function partners(): BelongsToMany
     {
         return $this->belongsToMany(Partner::class, 'company_partner', 'company_id', 'partner_id');
