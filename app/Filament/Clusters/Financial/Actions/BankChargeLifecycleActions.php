@@ -30,7 +30,7 @@ final class BankChargeLifecycleActions
                 }),
             self::action('remove_charge', 'Remover', Heroicon::Trash)
                 ->visible(fn (BankSlip|PixCharge $record): bool => ! $record->trashed())
-                ->modalDescription('Move o registro para a lixeira, preservando seu histórico. Uma cobrança enviada ao banco precisa estar com cancelamento confirmado.')
+                ->modalDescription('Move o registro para a lixeira, preservando seu histórico. Cobranças registradas precisam de cancelamento confirmado. Emissões não enviadas ou recusadas por validação/autenticação podem ser removidas sem cancelamento.')
                 ->action(function (BankSlip|PixCharge $record, array $data): void {
                     Gate::authorize('delete', $record);
                     self::run(fn () => app(BankChargeLifecycleService::class)->remove($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']));

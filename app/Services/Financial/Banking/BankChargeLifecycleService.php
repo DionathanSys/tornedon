@@ -52,7 +52,15 @@ final class BankChargeLifecycleService
         $this->change($charge, $companyId, $user, $reason, $permanent ? 'permanently_removed' : 'removed', function ($charge) use ($permanent, $user): void {
             $unsent = in_array($charge->status->value, ['pending_registration', 'registration_failed'], true)
                 && $charge->request_sent_at === null && $charge->request_snapshot === null;
-            if ($charge->status->value !== 'canceled' && ! $unsent) {
+            // request_sent_at is reserved before the call, including requests that
+            // are explicitly refused by validation/authentication without issuance.
+            $rejectedRegistration = $charge->status->value === 'registration_failed'
+                && $charge->operation_kind === 'register'
+                && in_array($charge->provider_response_code, ['1', '23', 'LOCAL_VALIDATION'], true)
+                && $charge->registered_at === null && $charge->paid_at === null
+                && blank($charge->provider_charge_id)
+                && ! in_array((string) $charge->provider_status_code, ['2', '3', '7'], true);
+            if ($charge->status->value !== 'canceled' && ! $unsent && ! $rejectedRegistration) {
                 $this->invalid('Confirme o cancelamento no provedor antes de remover a cobrança.');
             }
             $this->resolveObsoleteOperationalEvents($charge, $user);

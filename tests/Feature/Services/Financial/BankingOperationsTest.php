@@ -867,6 +867,65 @@ class BankingOperationsTest extends TestCase
         }
     }
 
+    public function test_registration_refused_for_low_value_can_be_removed_without_cancellation(): void
+    {
+        Queue::fake();
+        foreach ([[ListBankSlips::class, $this->slip], [ListPixCharges::class, $this->pix()]] as [$page, $charge]) {
+            $charge->update([
+                'status' => 'processing', 'operation_kind' => 'register', 'operation_status' => 'sending',
+                'request_sent_at' => now(), 'request_snapshot' => ['pagamento' => ['valor' => '0.50']],
+            ]);
+            $event = $this->observe([
+                'sucesso' => false, 'codigo' => 1, 'mensagem' => 'O valor da cobrança é inferior ao mínimo permitido.',
+            ], 'register', 'request', $charge);
+            $this->assertSame('registration_failed', $charge->fresh()->status->value);
+
+            Livewire::test($page)
+                ->callTableAction('remove_charge', $charge, ['reason' => 'Emissão recusada por valor abaixo do mínimo.'])
+                ->assertHasNoTableActionErrors()
+                ->assertNotified('Cobrança movida para a lixeira.');
+            $this->assertSoftDeleted($charge);
+            app(BankChargeLifecycleService::class)->remove($charge, $this->company->id, $this->user,
+                'Exclusão definitiva de emissão recusada.', permanent: true);
+            $this->assertDatabaseMissing($charge->getTable(), ['id' => $charge->id]);
+            $this->assertSame('processed', $event->fresh()->status);
+            $this->assertSame('1', data_get($event->fresh()->payload, 'response_code'));
+        }
+        Queue::assertNotPushed(CancelBankSlipJob::class);
+        Queue::assertNotPushed(CancelPixChargeJob::class);
+    }
+
+    #[DataProvider('unremovableFailedRegistrations')]
+    public function test_failed_registration_with_uncertainty_or_registration_evidence_still_requires_cancellation(array $attributes): void
+    {
+        $pix = $this->pix();
+        $pix->update([
+            'status' => 'registration_failed', 'operation_kind' => 'register', 'operation_status' => 'failed',
+            'request_sent_at' => now(), 'request_snapshot' => ['pagamento' => ['valor' => '0.50']],
+            'provider_response_code' => '1', ...$attributes,
+        ]);
+        try {
+            app(BankChargeLifecycleService::class)->remove($pix, $this->company->id, $this->user, 'Não remover emissão sem recusa comprovada.');
+            $this->fail('A cobrança precisa ser consultada/cancelada antes da remoção.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('charge', $exception->errors());
+        }
+        $this->assertFalse($pix->fresh()->trashed());
+    }
+
+    public static function unremovableFailedRegistrations(): array
+    {
+        return [
+            'timeout' => [['status' => 'uncertain', 'provider_response_code' => null]],
+            'falha sem código de recusa' => [['provider_response_code' => null]],
+            'falha transitória' => [['provider_response_code' => '17']],
+            'já registrada' => [['registered_at' => '2026-10-27 10:00:00']],
+            'id no banco' => [['provider_charge_id' => 'pay-existing']],
+            'status registrado no banco' => [['provider_status_code' => '2']],
+            'status pago no banco' => [['provider_status_code' => '3']],
+        ];
+    }
+
     public function test_confirmed_cancellation_resolves_older_operational_failures_before_removal(): void
     {
         $service = app(BankChargeLifecycleService::class);
