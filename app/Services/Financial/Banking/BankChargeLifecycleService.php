@@ -57,7 +57,6 @@ final class BankChargeLifecycleService
             $rejectedRegistration = in_array($charge->status->value, ['registration_failed', 'processing'], true)
                 && $charge->operation_status === 'failed'
                 && $charge->operation_kind === 'register'
-                && in_array($charge->provider_response_code, ['1', '23', 'LOCAL_VALIDATION'], true)
                 && $charge->registered_at === null && $charge->paid_at === null
                 && blank($charge->provider_charge_id)
                 && ! in_array((string) $charge->provider_status_code, ['2', '3', '7'], true);

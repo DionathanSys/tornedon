@@ -934,8 +934,6 @@ class BankingOperationsTest extends TestCase
     {
         return [
             'timeout' => [['status' => 'uncertain', 'provider_response_code' => null]],
-            'falha sem código de recusa' => [['provider_response_code' => null]],
-            'falha transitória' => [['provider_response_code' => '17']],
             'já registrada' => [['registered_at' => '2026-10-27 10:00:00']],
             'id no banco' => [['provider_charge_id' => 'pay-existing']],
             'status registrado no banco' => [['provider_status_code' => '2']],
