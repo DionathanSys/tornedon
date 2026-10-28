@@ -12,6 +12,7 @@ use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers\InstallmentsR
 use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager as ReceivablePayments;
 use App\Livewire\Bpo\RecordAttachments;
 use App\Models\AccountPayable;
+use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
 use App\Models\User;
@@ -22,6 +23,7 @@ use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Attachments\AttachmentService;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -208,5 +210,38 @@ class FinancialTitleWorkspaceTest extends TestCase
         $this->teams->endBpo($this->owner, $this->company, $this->engagementId);
         $widget->call('viewAttachment', $attachment->id)->assertForbidden();
         $relation->call('$refresh')->assertForbidden();
+    }
+
+    public function test_receipt_menu_shows_named_actions_and_editing_preserves_money_and_refreshes_relationships(): void
+    {
+        $record = $this->title(false);
+        $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa dos recebimentos', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
+        $this->authenticate();
+        $service = app(AccountReceivableService::class);
+        $payment = $service->registerInstallmentPayment($record->installments()->firstOrFail(), 40, today()->toDateString(), ['financial_account_id' => $account->id]);
+        $this->assertNotNull($payment, $service->getMessage());
+        $page = Livewire::test(ReceivablePayments::class, ['ownerRecord' => $record, 'pageClass' => ViewReceivable::class]);
+        $group = $page->instance()->getTable()->getRecordActions()[0];
+        $this->assertSame(Heroicon::Bars3, $group->getIcon());
+        foreach ($group->getFlatActions() as $action) {
+            $this->assertFalse($action->isIconButton());
+            $this->assertFalse($action->isLabelHidden());
+        }
+        $page->assertSee('Editar recebimento')->assertSee('Excluir recebimento')
+            ->mountAction(TestAction::make('edit_payment')->table($payment))
+            ->assertActionDataSet(['amount' => '40,00', 'financial_account_id' => $account->id]);
+        $modal = $page->getMountedActionModalHtml();
+        $this->assertStringContainsString('Encargos e descontos', $modal);
+        $this->assertStringContainsString('Detalhes', $modal);
+        $this->assertStringContainsString('Salvar alterações', $modal);
+        $page->callMountedAction()->assertHasNoActionErrors()->assertDispatched('refresh-payments')->assertDispatched('refresh-installments');
+        $this->assertSame(40.0, (float) $payment->fresh()->amount);
+        $this->assertSame(40.0, (float) CashMovement::sole()->amount);
+        $page->callAction(TestAction::make('edit_payment')->table($payment->fresh()), data: ['amount' => '45,50', 'description' => 'Recebimento corrigido'])
+            ->assertHasNoActionErrors();
+        $this->assertSame(45.5, (float) $payment->fresh()->amount);
+        $this->assertSame(45.5, (float) CashMovement::sole()->amount);
+        $this->assertSame('Recebimento corrigido', $payment->fresh()->description);
+        $this->assertDatabaseCount('cash_movements', 1);
     }
 }
