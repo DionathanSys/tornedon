@@ -4,6 +4,7 @@ namespace Tests\Feature\Filament\Bpo;
 
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Enum\ServiceOrder\State;
@@ -27,12 +28,14 @@ use App\Services\Access\PermissionCatalog;
 use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Bpo\QuickSaleWorkflow;
+use App\Services\Bpo\SalesReportingService;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\Actions\GenerateInvoiceAccountReceivablesAction;
 use App\Services\Invoice\Actions\ReturnInvoiceToPendingAction;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -89,6 +92,123 @@ class QuickSalesTest extends TestCase
     private function payment(string $policy = 'create_receivable'): array
     {
         return ['financial_policy' => $policy, 'payment_method' => Method::PIX->value, 'payment_condition' => Condition::DAYS_30_60_90->value];
+    }
+
+    private function reportSale(float $price, bool $finalize = true, ?string $date = null, float $travel = 0): BpoSale
+    {
+        $data = $this->payload();
+        $data['sale_date'] = $date ?? today()->toDateString();
+        $data['items'][0] = ['catalog_id' => $this->service->id, 'quantity' => 1, 'unit_price' => $price, 'discount_amount' => 0];
+        $sale = $this->workflow->save($this->bpo, $this->company, $data, (string) Str::uuid());
+        if ($travel) {
+            $sale->source()->update(['travel_value' => $travel]);
+        }
+
+        return $finalize ? $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, $this->payment('fiscal_only')) : $sale;
+    }
+
+    public function test_sales_cards_use_net_commercial_totals_and_exclude_cancelled_and_outside_period(): void
+    {
+        $serviceSale = $this->reportSale(190, travel: 12.34);
+        $draft = $this->reportSale(25.50, false);
+        $cancelled = $this->reportSale(600);
+        $cancelled->invoice->update(['canceled' => true, 'status' => Status::CANCELLED]);
+        $outside = $this->reportSale(700, date: today()->startOfMonth()->subDay()->toDateString());
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Produtos para relatório', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id]);
+        $data = $this->payload();
+        $data['sale_template_id'] = $template->id;
+        $data['items'][0] = ['catalog_id' => $product->id, 'quantity' => 3, 'unit_price' => 50, 'discount_amount' => 5];
+        $productSale = $this->workflow->save($this->bpo, $this->company, $data, (string) Str::uuid());
+        $productSale = $this->workflow->finalize($this->bpo, $this->company, $productSale->id, $productSale->revision, $this->payment('fiscal_only'));
+
+        $page = Livewire::test(Sales::class)->assertCanSeeTableRecords([$serviceSale, $productSale, $draft, $cancelled])->assertCanNotSeeTableRecords([$outside]);
+        $summary = $page->instance()->salesSummary();
+        $this->assertSame(347.34, $summary['billed_amount']);
+        $this->assertSame(2, $summary['billed_count']);
+        $this->assertSame(173.67, $summary['average_amount']);
+        $this->assertSame(1, $summary['draft_count']);
+        $this->assertSame(25.50, $summary['draft_amount']);
+
+        $page->filterTable('document_type', 'nfe')->assertCanSeeTableRecords([$productSale])->assertCanNotSeeTableRecords([$serviceSale, $draft]);
+        $this->assertSame(145.0, $page->instance()->salesSummary()['billed_amount']);
+        $page->filterTable('commercial_status', 'cancelled')->filterTable('document_type', null)->assertCanSeeTableRecords([$cancelled]);
+        $this->assertSame(0.0, $page->instance()->salesSummary()['billed_amount']);
+    }
+
+    public function test_period_filters_support_sale_and_finalization_dates_and_search_updates_cards(): void
+    {
+        $first = $this->reportSale(100, date: '2026-02-01');
+        $last = $this->reportSale(200, date: '2026-02-28');
+        $outside = $this->reportSale(900, date: '2026-03-01');
+        $page = Livewire::test(Sales::class)->filterTable('period', ['date_basis' => 'sale_date', 'from' => '2026-02-01', 'until' => '2026-02-28'])
+            ->assertCanSeeTableRecords([$first, $last])->assertCanNotSeeTableRecords([$outside]);
+        $this->assertSame(300.0, $page->instance()->salesSummary()['billed_amount']);
+
+        $page->searchTable($first->invoice->invoice_number)->assertCanSeeTableRecords([$first]);
+        $this->assertSame(100.0, $page->instance()->salesSummary()['billed_amount']);
+        $page->searchTable('')->filterTable('period', ['date_basis' => 'finalized_at', 'from' => today()->toDateString(), 'until' => today()->toDateString()])
+            ->assertCanSeeTableRecords([$first, $last, $outside]);
+        $this->assertSame(1200.0, $page->instance()->salesSummary()['billed_amount']);
+
+        $page->filterTable('period', ['date_basis' => 'sale_date', 'from' => '2026-02-31', 'until' => '2026-03-01'])->assertCountTableRecords(0);
+        $this->assertSame(0.0, $page->instance()->salesSummary()['billed_amount']);
+    }
+
+    public function test_customer_model_fiscal_and_financial_filters_share_the_same_summary_query(): void
+    {
+        $first = $this->reportSale(100);
+        $second = $this->reportSale(200);
+        $first->invoice->fiscalDocuments()->sole()->update(['nfse_status' => NfeStatus::AUTHORIZED]);
+        $page = Livewire::test(Sales::class)->filterTable('customer_id', $this->customer->id)->filterTable('sale_template_id', $this->template->id)
+            ->filterTable('financial_policy', 'fiscal_only')->filterTable('fiscal_status', NfeStatus::AUTHORIZED->value)
+            ->assertCanSeeTableRecords([$first])->assertCanNotSeeTableRecords([$second]);
+        $this->assertSame(100.0, $page->instance()->salesSummary()['billed_amount']);
+        $page->filterTable('fiscal_status', 'not_requested')->assertCanSeeTableRecords([$second])->assertCanNotSeeTableRecords([$first]);
+        $this->assertSame(200.0, $page->instance()->salesSummary()['billed_amount']);
+        $page->filterTable('customer_id', 999999)->assertCountTableRecords(0);
+        $this->assertSame(0, $page->instance()->salesSummary()['billed_count']);
+    }
+
+    public function test_sales_summary_respects_own_scope_and_hides_invoice_metrics_without_permission(): void
+    {
+        $own = $this->reportSale(100);
+        $other = $this->reportSale(900);
+        $otherUser = User::factory()->create();
+        DB::table('bpo_sales')->where('id', $other->id)->update(['created_by' => $otherUser->id]);
+        $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
+        $permissions = $role->permissions;
+        $permissions['bpo_sales.view'] = 'own';
+        $role->update(['permissions' => $permissions]);
+        $page = Livewire::test(Sales::class)->assertCanSeeTableRecords([$own])->assertCanNotSeeTableRecords([$other]);
+        $this->assertSame(100.0, $page->instance()->salesSummary()['billed_amount']);
+        Auth::logout();
+        $summary = app(SalesReportingService::class)->summary($this->bpo, $this->company, BpoSale::query());
+        $this->assertSame(100.0, $summary['billed_amount']);
+        $this->actingAs($this->bpo);
+
+        unset($permissions['invoices.view']);
+        $role->update(['permissions' => $permissions]);
+        $summary = $page->instance()->salesSummary();
+        $this->assertNull($summary['billed_amount']);
+        $this->assertNull($summary['billed_count']);
+        $this->assertNull($summary['average_amount']);
+    }
+
+    public function test_sales_cards_include_records_outside_the_current_table_page(): void
+    {
+        $this->reportSale(100);
+        $this->reportSale(200);
+        foreach (range(1, 16) as $index) {
+            $this->reportSale(10, false);
+        }
+        $page = Livewire::test(Sales::class);
+        $this->assertCount(15, $page->instance()->getTableRecords());
+        $summary = $page->instance()->salesSummary();
+        $this->assertSame(300.0, $summary['billed_amount']);
+        $this->assertSame(2, $summary['billed_count']);
+        $this->assertSame(16, $summary['draft_count']);
+        $this->assertSame(160.0, $summary['draft_amount']);
     }
 
     public function test_service_sale_uses_real_os_and_finalizes_once_without_requesting_emission(): void
@@ -187,6 +307,88 @@ class QuickSalesTest extends TestCase
 
         $sale = BpoSale::sole();
         $this->assertSame($this->service->id, $sale->source()->items()->sole()->service_id);
+    }
+
+    public function test_nfe_draft_with_multiple_products_is_saved_and_can_be_edited(): void
+    {
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Venda NF-e', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $first = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id, 'sale_price_value' => 100]);
+        $second = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id, 'sale_price_value' => 75]);
+        $page = Livewire::test(Sales::class)->mountAction('newSale')
+            ->set('mountedActions.0.data.sale_template_id', $template->id)
+            ->set('mountedActions.0.data.customer_id', $this->customer->id);
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $first->id)
+            ->callAction(TestAction::make('add')->schemaComponent('items', 'mountedActionSchema0'));
+        $keys = array_keys($page->get('mountedActions.0.data.items'));
+        $this->assertCount(2, $keys);
+        $page->set("mountedActions.0.data.items.{$keys[1]}.catalog_id", $second->id)
+            ->set("mountedActions.0.data.items.{$key}.quantity", 1000000)
+            ->callMountedAction()->assertHasActionErrors(["items.{$key}.quantity"])
+            ->set("mountedActions.0.data.items.{$key}.quantity", 1)
+            ->callMountedAction()->assertHasNoActionErrors();
+        $sale = BpoSale::sole();
+        $this->assertSame(2, $sale->source()->items()->count());
+        $this->assertSame(175.0, (float) $sale->source()->total_amount);
+        $page->mountAction(TestAction::make('editSale')->table($sale));
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+        $page->set("mountedActions.0.data.items.{$key}.quantity", 2)->callMountedAction()->assertHasNoActionErrors();
+        $this->assertSame(275.0, (float) $sale->fresh()->source()->total_amount);
+    }
+
+    public function test_nfe_business_validation_is_visible_and_preserves_the_unsaved_items(): void
+    {
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Venda NF-e', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id,
+            'name' => 'Produto com mínimo', 'sale_price_value' => 50, 'min_sale_price' => 100]);
+        $page = Livewire::test(Sales::class)->mountAction('newSale')
+            ->set('mountedActions.0.data.sale_template_id', $template->id)
+            ->set('mountedActions.0.data.customer_id', $this->customer->id);
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $product->id)
+            ->callMountedAction()
+            ->assertActionMounted('newSale')
+            ->assertHasActionErrors(['items'])
+            ->assertNotified('Não foi possível salvar o rascunho')
+            ->assertSet("mountedActions.0.data.items.{$key}.catalog_id", $product->id);
+        $this->assertDatabaseCount('bpo_sales', 0);
+        $this->assertDatabaseCount('requisitions', 0);
+        $page->set("mountedActions.0.data.items.{$key}.unit_price", 100)->callMountedAction()->assertHasNoActionErrors();
+        $this->assertDatabaseCount('bpo_sales', 1);
+    }
+
+    public function test_nfe_missing_stock_is_reported_in_the_modal_without_losing_items(): void
+    {
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'NF-e com estoque', 'document_type' => 'nfe', 'stock_control_enabled' => true, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id, 'has_stock_control' => true, 'sale_price_value' => 100]);
+        $page = Livewire::test(Sales::class)->mountAction('newSale')
+            ->set('mountedActions.0.data.sale_template_id', $template->id)
+            ->set('mountedActions.0.data.customer_id', $this->customer->id);
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $product->id)->callMountedAction()
+            ->assertHasActionErrors(['items'])->assertActionMounted('newSale')
+            ->assertNotified(Notification::make()->title('Não foi possível salvar o rascunho')
+                ->body('Cadastre o estoque do produto antes de usar um modelo com controle de estoque.')->danger())
+            ->assertSet("mountedActions.0.data.items.{$key}.catalog_id", $product->id);
+        $this->assertDatabaseCount('requisitions', 0);
+        $this->assertDatabaseCount('stock_movements', 0);
+    }
+
+    public function test_nfe_item_validation_details_are_not_replaced_with_a_generic_message(): void
+    {
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'NF-e', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id,
+            'name' => 'Produto com mínimo', 'sale_price_value' => 50, 'min_sale_price' => 100]);
+        try {
+            $data = $this->payload();
+            $data['sale_template_id'] = $template->id;
+            $data['items'][0] = ['catalog_id' => $product->id, 'quantity' => 1, 'unit_price' => 50, 'discount_amount' => 0];
+            $this->workflow->save($this->bpo, $this->company, $data, (string) Str::uuid());
+            $this->fail('A venda abaixo do preço mínimo deve ser recusada.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('abaixo do preço mínimo', $exception->errors()['items'][0]);
+            $this->assertStringContainsString('Produto com mínimo', $exception->errors()['items'][0]);
+        }
     }
 
     public function test_template_can_be_created_through_the_page_with_server_owned_company(): void

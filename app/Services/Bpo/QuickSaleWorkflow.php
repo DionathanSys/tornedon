@@ -132,6 +132,9 @@ class QuickSaleWorkflow
             foreach ($data['items'] as $input) {
                 $catalog = ($isService ? Service::query() : Product::query())->where('company_id', $company->id)->where('is_active', true)->findOrFail($input['catalog_id']);
                 $this->authorize($user, $company, ($isService ? 'services' : 'products').'.view', $catalog);
+                if (! $isService && ! $catalog->unit) {
+                    $this->fail('O produto "'.$catalog->name.'" está sem unidade de medida. Complete o cadastro antes de salvar a venda.');
+                }
                 if (! $isService && ($snapshot['stock_control_enabled'] ?? false) && $catalog->has_stock_control) {
                     $stock = ProductStock::where('company_id', $company->id)->where('product_id', $catalog->id)->lockForUpdate()->first();
                     if (! $stock) {
@@ -275,7 +278,8 @@ class QuickSaleWorkflow
     private function requireResult(mixed $result, object $service): mixed
     {
         if ($result === null || $result === false || $service->hasError()) {
-            $this->fail($service->getMessage() ?: 'Não foi possível concluir a operação.');
+            $messages = array_filter(Arr::flatten($service->getErrors()), fn ($message) => is_string($message) && filled($message));
+            $this->fail($messages ? implode("\n", $messages) : ($service->getMessage() ?: 'Não foi possível concluir a operação.'));
         }
 
         return $result;
@@ -283,6 +287,6 @@ class QuickSaleWorkflow
 
     private function fail(string $message): never
     {
-        throw ValidationException::withMessages(['data.items' => $message]);
+        throw ValidationException::withMessages(['items' => $message]);
     }
 }

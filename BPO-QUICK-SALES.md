@@ -24,6 +24,16 @@
 
 ## Integridade e permissões
 
+### Indicadores e filtros da bancada
+
+A tela apresenta **Valor faturado**, **Vendas faturadas**, **Ticket médio** e **Em rascunho** (quantidade e valor em preparação). O faturamento é o total comercial líquido dos itens, incluindo deslocamento de OS quando houver, de vendas finalizadas com fatura confirmada e não cancelada. Não depende da autorização fiscal, da geração de recebível ou de pagamento. Rascunhos são apresentados separadamente.
+
+O período inicial é o mês atual pela data da venda (`order_date` da OS ou `sale_date` da requisição). É possível selecionar **Data da finalização**, mudar as datas ou deixá-las vazias para consultar o histórico. Os limites inicial/final são inclusivos. Há filtros por situação da venda, NF-e/NFS-e, cliente, modelo, situação fiscal e política financeira; a busca encontra cliente, modelo, número da venda ou fatura.
+
+Todos os cards acompanham a mesma consulta filtrada/pesquisada da tabela e consideram todas as páginas. Consultas e agregações obedecem às permissões da venda e da origem operacional. As métricas de faturamento exigem também consulta às faturas; sem essa permissão, aparecem indisponíveis. A soma usa totais persistidos em centavos, sem multiplicar valores por parcelas ou documentos.
+
+### Regras de acesso e coordenação
+
 - Empresa e ator são fornecidos pelo contexto autorizado; IDs de clientes, catálogo, categoria, título e modelo são relidos no servidor.
 - Criação é protegida por UUID único por empresa e lock empresarial; finalização bloqueia a coordenação e verifica revisão. Repetir finalização reconhece a fatura já vinculada. Editar rascunho com revisão antiga é recusado.
 - Serviços que retornam `null`/`false` provocam falha e rollback do workflow externo, inclusive após preparar documentos.
