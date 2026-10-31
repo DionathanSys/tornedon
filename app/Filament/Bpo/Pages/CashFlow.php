@@ -121,6 +121,13 @@ class CashFlow extends Page implements HasForms
         $this->setPeriod('month');
     }
 
+    public function selectMonth(string $month): void
+    {
+        Validator::make(['month' => $month], ['month' => ['required', 'date_format:Y-m']])->validate();
+        $this->month = $month;
+        $this->setPeriod('month');
+    }
+
     public function moveMonth(int $direction): void
     {
         abort_unless(in_array($direction, [-1, 1], true), 422);

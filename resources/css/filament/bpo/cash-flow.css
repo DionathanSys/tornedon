@@ -1,6 +1,6 @@
 .bpo-cash-flow .bpo-workbench { margin-bottom: 24px; }
 .bpo-flow-filter-body { padding: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.bpo-flow-company-filter { flex: 1; min-width: 220px; }
+.bpo-flow-company-filter { flex: 0 1 240px; min-width: 210px; }
 .bpo-flow-company-filter .bpo-button { width: 100%; justify-content: space-between; min-height: 40px; }
 .bpo-flow-company-filter .bpo-button span { overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
 .bpo-flow-company-options { max-height: 350px; overflow: auto; border-block: 1px solid var(--bpo-divider); padding: 8px 0; }
@@ -8,19 +8,26 @@
 .bpo-flow-company-options label:hover { background: var(--bpo-hover); }
 .bpo-flow-company-options input { accent-color: var(--bpo-button-bg); }
 .bpo-flow-company-options small { display: block; color: var(--bpo-muted); font-size: 11px; }
-.bpo-flow-month-selector { display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid var(--bpo-border); border-radius: 9px; background: var(--bpo-raised); height: 40px; }
+.bpo-flow-month-selector { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 3px; padding: 3px; border: 1px solid var(--bpo-border); border-radius: 9px; background: var(--bpo-raised); height: 40px; white-space: nowrap; }
 .bpo-flow-month-selector.is-active { border-color: var(--bpo-teal); background: var(--bpo-badge-bg); }
-.bpo-flow-month-selector button,.bpo-flow-month-picker { display: grid; place-items: center; height: 32px; border-radius: 6px; color: var(--bpo-muted); transition: background .15s, color .15s; }
-.bpo-flow-month-selector button:hover,.bpo-flow-month-picker:hover { background: var(--bpo-surface); color: var(--bpo-teal); }
+.bpo-flow-month-selector button { display: grid; place-items: center; height: 32px; border-radius: 6px; color: var(--bpo-muted); transition: background .15s, color .15s; }
+.bpo-flow-month-selector button:hover { background: var(--bpo-surface); color: var(--bpo-teal); }
 .bpo-flow-month-arrow { width: 30px; }
-.bpo-flow-month-selector .bpo-flow-month-current { min-width: 126px; padding: 0 10px; color: var(--bpo-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.bpo-flow-month-selector .bpo-flow-month-current { display: flex; gap: 8px; justify-content: center; min-width: 172px; padding: 0 10px; color: var(--bpo-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .bpo-flow-month-selector.is-active .bpo-flow-month-current { color: var(--bpo-teal); }
 .bpo-shell .bpo-flow-month-selector svg { width: 16px; height: 16px; }
-.bpo-flow-month-picker { position: relative; width: 30px; cursor: pointer; }
-.bpo-flow-month-picker input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
-.bpo-flow-month-picker:focus-within { outline: 2px solid var(--bpo-teal); outline-offset: 2px; }
-.bpo-flow-range-filter { flex: 1; min-width: 280px; }
-.bpo-flow-range-filter .fi-input-wrp { min-height: 40px; }
+.bpo-flow-month-calendar { padding: 14px; background: var(--bpo-surface); color: var(--bpo-ink); border-radius: 10px; }
+.bpo-flow-year-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.bpo-flow-year-nav button { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; }
+.bpo-flow-year-nav button:hover { background: var(--bpo-hover); }
+.bpo-flow-month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.bpo-flow-month-grid button { padding: 10px 6px; border: 1px solid var(--bpo-divider); border-radius: 7px; font-size: 12px; }
+.bpo-flow-month-grid button:hover { background: var(--bpo-hover); color: var(--bpo-teal); }
+.bpo-flow-month-grid button.is-active { background: var(--bpo-badge-bg); border-color: var(--bpo-teal); color: var(--bpo-teal); font-weight: 600; }
+.bpo-flow-month-calendar p { margin-top: 12px; color: var(--bpo-muted); font-size: 10px; text-align: center; }
+.bpo-flow-range-filter { flex: 0 1 280px; min-width: 260px; }
+.bpo-flow-range-filter .fi-input-wrp { height: 40px; min-height: 40px; }
+.bpo-flow-range-filter .fi-input { height: 38px; font-size: 12px; }
 .bpo-flow-periods { flex-wrap: wrap; min-height: 40px; width: fit-content; }
 .bpo-flow-company-search { width: 100%; }
 .bpo-flow-modal-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-block: 16px; }

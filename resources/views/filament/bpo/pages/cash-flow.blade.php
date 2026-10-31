@@ -18,11 +18,24 @@
             <div class="bpo-flow-month-filter">
                 <div class="bpo-flow-month-selector {{ $period === 'month' ? 'is-active' : '' }}">
                     <button type="button" class="bpo-flow-month-arrow" wire:click="moveMonth(-1)" wire:loading.attr="disabled" aria-label="Mês anterior"><x-filament::icon icon="heroicon-o-chevron-left" /></button>
-                    <button type="button" class="bpo-flow-month-current" wire:click="setPeriod('month')" aria-label="Analisar mês completo" aria-pressed="{{ $period === 'month' ? 'true' : 'false' }}">{{ \Illuminate\Support\Str::ucfirst(\Carbon\CarbonImmutable::createFromFormat('!Y-m', $month)->locale('pt_BR')->translatedFormat('F Y')) }}</button>
-                    <label class="bpo-flow-month-picker" title="Escolher mês" x-data>
-                        <x-filament::icon icon="heroicon-o-calendar-days" />
-                        <input id="cash-flow-month" type="month" wire:model.live="month" aria-label="Selecionar mês completo" x-on:click="if ($el.showPicker) { try { $el.showPicker() } catch (error) {} }" />
-                    </label>
+                    <x-filament::dropdown placement="bottom-start" width="xs" teleport class="bpo-flow-month-dropdown">
+                        <x-slot name="trigger">
+                            <button type="button" class="bpo-flow-month-current" aria-label="Escolher mês completo" aria-haspopup="true"><x-filament::icon icon="heroicon-o-calendar-days" /><span>{{ \Illuminate\Support\Str::ucfirst(\Carbon\CarbonImmutable::createFromFormat('!Y-m', $month)->locale('pt_BR')->translatedFormat('F Y')) }}</span><x-filament::icon icon="heroicon-o-chevron-down" /></button>
+                        </x-slot>
+                        <div class="bpo-flow-month-calendar" x-data="{ year: Number($wire.month.slice(0, 4)) }" x-effect="year = Number($wire.month.slice(0, 4))">
+                            <div class="bpo-flow-year-nav">
+                                <button type="button" x-on:click="year = Math.max(1, year - 1)" aria-label="Ano anterior"><x-filament::icon icon="heroicon-o-chevron-left" /></button>
+                                <strong x-text="year"></strong>
+                                <button type="button" x-on:click="year = Math.min(9999, year + 1)" aria-label="Próximo ano"><x-filament::icon icon="heroicon-o-chevron-right" /></button>
+                            </div>
+                            <div class="bpo-flow-month-grid">
+                                @foreach (['01' => 'Jan', '02' => 'Fev', '03' => 'Mar', '04' => 'Abr', '05' => 'Mai', '06' => 'Jun', '07' => 'Jul', '08' => 'Ago', '09' => 'Set', '10' => 'Out', '11' => 'Nov', '12' => 'Dez'] as $number => $label)
+                                    <button type="button" x-on:click="$wire.selectMonth(String(year).padStart(4, '0') + '-{{ $number }}'); close()" x-bind:class="{ 'is-active': $wire.period === 'month' && $wire.month === String(year).padStart(4, '0') + '-{{ $number }}' }">{{ $label }}</button>
+                                @endforeach
+                            </div>
+                            <p>Selecione para analisar o mês completo.</p>
+                        </div>
+                    </x-filament::dropdown>
                     <button type="button" class="bpo-flow-month-arrow" wire:click="moveMonth(1)" wire:loading.attr="disabled" aria-label="Próximo mês"><x-filament::icon icon="heroicon-o-chevron-right" /></button>
                 </div>
             </div>

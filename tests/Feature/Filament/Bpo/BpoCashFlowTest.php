@@ -229,7 +229,8 @@ class BpoCashFlowTest extends TestCase
             ->set('month', '2026-12')->call('moveMonth', 1)
             ->assertSet('month', '2027-01')->assertSet('startDate', '2027-01-01')->assertSet('endDate', '2027-01-31')
             ->call('moveMonth', -1)->assertSet('month', '2026-12')
-            ->set('month', '2028-02')->assertSet('endDate', '2028-02-29');
+            ->set('month', '2028-02')->assertSet('endDate', '2028-02-29')
+            ->call('selectMonth', '2026-04')->assertSet('startDate', '2026-04-01')->assertSet('endDate', '2026-04-30');
 
         $page->set('rangeData.date_range', '05/10/2026 - 20/10/2026')
             ->assertSet('period', 'custom')->assertSet('startDate', '2026-10-05')->assertSet('endDate', '2026-10-20')
