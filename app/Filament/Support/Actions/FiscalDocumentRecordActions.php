@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -69,7 +70,7 @@ final class FiscalDocumentRecordActions
                 ->color('gray')
                 ->visible(fn (FiscalDocument $record) => $record->isNfe())
                 ->modalHeading('Preview da NF-e')
-                ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                ->modalContent(function (FiscalDocument $record): Htmlable {
                     $record = self::resolveFullRecord($record);
 
                     $service = app(NfeDocumentService::class);
@@ -206,7 +207,7 @@ final class FiscalDocumentRecordActions
                 ->label('Baixar Carta de Correção')
                 ->icon(Heroicon::DocumentArrowDown)
                 ->color('info')
-                ->visible(fn (FiscalDocument $record) => $record->isNfe() && self::buildCorrectionOptions($record) !== [])
+                ->visible(fn (FiscalDocument $record) => $record->isNfe() && self::hasCorrections($record))
                 ->schema([
                     Select::make('correction_index')
                         ->label('Carta de Correção')
@@ -282,7 +283,7 @@ final class FiscalDocumentRecordActions
                 ->color('gray')
                 ->visible(fn (FiscalDocument $record) => $record->isNfse())
                 ->modalHeading('Preview da NFS-e')
-                ->modalContent(function (FiscalDocument $record): \Illuminate\Contracts\Support\Htmlable {
+                ->modalContent(function (FiscalDocument $record): Htmlable {
                     $record = self::resolveFullRecord($record);
 
                     $service = app(NfseDocumentService::class);
@@ -392,6 +393,15 @@ final class FiscalDocumentRecordActions
     private static function isNationalNfse(FiscalDocument $record): bool
     {
         return ($record->nfse_model?->value ?? $record->nfse_model) === 'nacional';
+    }
+
+    private static function hasCorrections(FiscalDocument $record): bool
+    {
+        if (array_key_exists('has_corrections', $record->getAttributes())) {
+            return (bool) $record->getAttribute('has_corrections');
+        }
+
+        return self::buildCorrectionOptions($record) !== [];
     }
 
     private static function resolveFullRecord(FiscalDocument $record): FiscalDocument

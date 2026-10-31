@@ -38,6 +38,9 @@ class FiscalDocuments extends Page implements HasTable
     use HasWorkbenchHeader;
     use InteractsWithTable;
 
+    /** Private, request-local only: never persisted in the Livewire snapshot. */
+    private ?array $fiscalPermissions = null;
+
     public function workbenchEyebrow(): string
     {
         return 'DOCUMENTOS · FISCAL';
@@ -61,71 +64,102 @@ class FiscalDocuments extends Page implements HasTable
 
     public function booted(): void
     {
+        $this->fiscalPermissions = null;
         abort_unless(static::canAccess(), 403);
     }
 
     public function table(Table $table): Table
     {
-        return $table->query(FiscalDocument::where('company_id', Filament::getTenant()->id)->with('customer'))->columns([
-            TextColumn::make('document_number')->label('Número')->searchable()->placeholder('Em preparação'),
-            TextColumn::make('operation_type')->label('Operação')->badge()
-                ->formatStateUsing(fn ($state) => $state?->description())->color(fn ($state) => $state?->color() ?? 'gray'),
-            TextColumn::make('document_type')->label('Documento')->formatStateUsing(fn ($state) => $state?->description()),
-            TextColumn::make('customer.name')->label('Cliente / Fornecedor')->searchable()->sortable(),
-            TextColumn::make('issued_at')->label('Emissão')->dateTime('d/m/Y H:i')->sortable(),
-            TextColumn::make('emission_status')->label('Situação fiscal')->state(fn ($record) => $record->isNfse() ? $record->nfse_status : $record->nfe_status)
-                ->badge()->formatStateUsing(fn ($state) => $state?->description() ?? 'Em preparação')->color(fn ($state) => $state?->color() ?? 'gray'),
-            TextColumn::make('document_series')->label('Série')->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('rps_number')->label('RPS')->searchable()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('rps_series')->label('Série RPS')->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('status')->label('Situação interna')->badge()
-                ->formatStateUsing(fn ($state) => $state?->description())->color(fn ($state) => $state?->color() ?? 'gray')
-                ->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('document_key')->label('Chave')->searchable()->copyable()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('nfe_protocolo')->label('Protocolo NF-e')->searchable()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('nfse_protocol')->label('Protocolo NFS-e')->searchable()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('authorized_at')->label('Autorizado em')->dateTime('d/m/Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
-        ])->filters([
-            SelectFilter::make('operation_type')->label('Operação')->options(OperationType::toSelectArray()),
-            SelectFilter::make('document_type')->label('Documento')->options(DocumentModel::toSelectArray()),
-            SelectFilter::make('emission_status')->label('Situação fiscal')->options(NfeStatus::toSelectArray())->multiple()
-                ->query(function (Builder $query, array $data): Builder {
-                    $values = $data['values'] ?? [];
+        return $table->query(FiscalDocument::query()
+            ->select(['id', 'company_id', 'created_by', 'customer_id', 'document_number', 'document_series',
+                'operation_type', 'document_type', 'nfse_model', 'issued_at', 'nfe_status', 'nfse_status', 'status',
+                'rps_number', 'rps_series', 'document_key', 'nfe_protocolo', 'nfse_protocol',
+                'authorized_at', 'created_at', 'operational_reset_at'])
+            ->where('company_id', Filament::getTenant()->id)->with('customer:id,name')
+            ->withExists(['payload as has_corrections' => fn (Builder $query) => $query->whereJsonLength('nfe_payload->correcoes', '>', 0)]))->columns([
+                TextColumn::make('document_number')->label('Número')->searchable()->placeholder('Em preparação'),
+                TextColumn::make('operation_type')->label('Operação')->badge()
+                    ->formatStateUsing(fn ($state) => $state?->description())->color(fn ($state) => $state?->color() ?? 'gray'),
+                TextColumn::make('document_type')->label('Documento')->formatStateUsing(fn ($state) => $state?->description()),
+                TextColumn::make('customer.name')->label('Cliente / Fornecedor')->searchable()->sortable(),
+                TextColumn::make('issued_at')->label('Emissão')->dateTime('d/m/Y H:i')->sortable(),
+                TextColumn::make('emission_status')->label('Situação fiscal')->state(fn ($record) => $record->isNfse() ? $record->nfse_status : $record->nfe_status)
+                    ->badge()->formatStateUsing(fn ($state) => $state?->description() ?? 'Em preparação')->color(fn ($state) => $state?->color() ?? 'gray'),
+                TextColumn::make('document_series')->label('Série')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('rps_number')->label('RPS')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('rps_series')->label('Série RPS')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('status')->label('Situação interna')->badge()
+                    ->formatStateUsing(fn ($state) => $state?->description())->color(fn ($state) => $state?->color() ?? 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('document_key')->label('Chave')->searchable()->copyable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('nfe_protocolo')->label('Protocolo NF-e')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('nfse_protocol')->label('Protocolo NFS-e')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('authorized_at')->label('Autorizado em')->dateTime('d/m/Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
+            ])->filters([
+                SelectFilter::make('operation_type')->label('Operação')->options(OperationType::toSelectArray()),
+                SelectFilter::make('document_type')->label('Documento')->options(DocumentModel::toSelectArray()),
+                SelectFilter::make('emission_status')->label('Situação fiscal')->options(NfeStatus::toSelectArray())->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $values = $data['values'] ?? [];
 
-                    return $query->when($values !== [], fn (Builder $query) => $query->where(function (Builder $query) use ($values): void {
-                        $query->where(fn (Builder $query) => $query->where('document_type', DocumentModel::NFSE->value)->whereIn('nfse_status', $values))
-                            ->orWhere(fn (Builder $query) => $query->where('document_type', DocumentModel::NFE->value)->whereIn('nfe_status', $values));
+                        return $query->when($values !== [], fn (Builder $query) => $query->where(function (Builder $query) use ($values): void {
+                            $query->where(fn (Builder $query) => $query->where('document_type', DocumentModel::NFSE->value)->whereIn('nfse_status', $values))
+                                ->orWhere(fn (Builder $query) => $query->where('document_type', DocumentModel::NFE->value)->whereIn('nfe_status', $values));
 
-                        if (in_array(NfeStatus::PENDING->value, $values, true)) {
-                            $query->orWhere(fn (Builder $query) => $query->whereNull('nfe_status')->whereNull('nfse_status'));
-                        }
-                    }));
-                }),
-            SelectFilter::make('status')->label('Situação interna')->options(Status::toSelectArray())->multiple(),
-            DateRangeFilter::make('issued_at')->label('Emissão')->autoApply(),
-        ])->recordActions([
-            Action::make('details')->label('Detalhes')->icon('heroicon-o-eye')->modalHeading('Documento fiscal')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
-                ->authorize(fn (FiscalDocument $record) => $this->canOperate($record, 'view'))
-                ->schema([
-                    TextEntry::make('document_number')->label('Número')->placeholder('Em preparação'),
-                    TextEntry::make('customer.name')->label('Cliente'),
-                    TextEntry::make('document_key')->label('Chave do documento')->placeholder('Ainda não autorizada'),
-                    TextEntry::make('nfe_protocolo')->label('Protocolo NF-e')->placeholder('—'),
-                    TextEntry::make('nfse_protocol')->label('Protocolo NFS-e')->placeholder('—'),
-                    TextEntry::make('rps_number')->label('RPS')->placeholder('—'),
-                    TextEntry::make('authorized_at')->label('Autorizado em')->dateTime('d/m/Y H:i')->placeholder('—'),
-                    TextEntry::make('errors_messages')->label('Retorno da emissão')->state(fn (FiscalDocument $record) => is_array($record->errors_messages)
-                        ? json_encode($record->errors_messages, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : $record->errors_messages)->placeholder('Sem rejeições registradas'),
-                ]),
-            ActionGroup::make($this->fiscalActions())->label('Ações fiscais')->icon('heroicon-o-ellipsis-vertical'),
-        ])->toolbarActions($this->exportActions())->poll('15s')->defaultSort('created_at', 'desc')->paginated([15, 30, 50]);
+                            if (in_array(NfeStatus::PENDING->value, $values, true)) {
+                                $query->orWhere(fn (Builder $query) => $query->whereNull('nfe_status')->whereNull('nfse_status'));
+                            }
+                        }));
+                    }),
+                SelectFilter::make('status')->label('Situação interna')->options(Status::toSelectArray())->multiple(),
+                DateRangeFilter::make('issued_at')->label('Emissão')->autoApply(),
+            ])->recordActions([
+                Action::make('details')->label('Detalhes')->icon('heroicon-o-eye')->modalHeading('Documento fiscal')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
+                    ->authorize(fn (FiscalDocument $record) => $this->canOperate($record, 'view'))
+                    ->beforeFormFilled(function (FiscalDocument $record): void {
+                        $this->authorizeOperation($record, 'view');
+                        $record->refresh();
+                    })
+                    ->schema([
+                        TextEntry::make('document_number')->label('Número')->placeholder('Em preparação'),
+                        TextEntry::make('customer.name')->label('Cliente'),
+                        TextEntry::make('document_key')->label('Chave do documento')->placeholder('Ainda não autorizada'),
+                        TextEntry::make('nfe_protocolo')->label('Protocolo NF-e')->placeholder('—'),
+                        TextEntry::make('nfse_protocol')->label('Protocolo NFS-e')->placeholder('—'),
+                        TextEntry::make('rps_number')->label('RPS')->placeholder('—'),
+                        TextEntry::make('authorized_at')->label('Autorizado em')->dateTime('d/m/Y H:i')->placeholder('—'),
+                        TextEntry::make('errors_messages')->label('Retorno da emissão')->state(fn (FiscalDocument $record) => is_array($record->errors_messages)
+                            ? json_encode($record->errors_messages, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : $record->errors_messages)->placeholder('Sem rejeições registradas'),
+                    ]),
+                ActionGroup::make($this->fiscalActions())->label('Ações fiscais')->icon('heroicon-o-ellipsis-vertical'),
+            ])->toolbarActions([
+                Action::make('refresh')->label('Atualizar')->icon('heroicon-o-arrow-path')->action(fn () => null),
+                ...$this->exportActions(),
+            ])->defaultSort('created_at', 'desc')->paginated([15, 30, 50]);
     }
 
     private function canOperate(FiscalDocument $record, string $ability): bool
     {
-        return (int) $record->company_id === (int) Filament::getTenant()?->id
-            && Gate::allows('view', $record)
-            && app(CompanyAuthorization::class)->allowsRecord(Filament::auth()->user(), Filament::getTenant(), 'fiscal_documents.'.$ability, $record);
+        if ((int) $record->company_id !== (int) Filament::getTenant()?->id) {
+            return false;
+        }
+
+        $access = app(CompanyAuthorization::class);
+        $this->fiscalPermissions ??= $access->effectivePermissions(Filament::auth()->user(), Filament::getTenant());
+
+        return $access->recordMatchesScopes($record, Filament::auth()->user(), $this->fiscalPermissions['fiscal_documents.view'] ?? [])
+            && $access->recordMatchesScopes($record, Filament::auth()->user(), $this->fiscalPermissions['fiscal_documents.'.$ability] ?? []);
+    }
+
+    private function authorizeOperation(FiscalDocument $record, string $ability): void
+    {
+        abort_unless((int) $record->company_id === (int) Filament::getTenant()?->id, 403);
+        Gate::authorize('view', $record);
+        abort_unless(app(CompanyAuthorization::class)->allowsRecord(Filament::auth()->user(), Filament::getTenant(), 'fiscal_documents.'.$ability, $record), 403);
+
+        if ($ability !== 'view') {
+            abort_unless($record->operation_type === OperationType::SAIDA && ! $record->isOperationalHistory(), 403);
+        }
     }
 
     private function fiscalActions(): array
@@ -141,7 +175,9 @@ class FiscalDocuments extends Page implements HasTable
                 default => null,
             };
             $action->authorize(fn (FiscalDocument $record) => $ability !== null && $this->canOperate($record, $ability)
-                && ($ability === 'view' || ($record->operation_type === OperationType::SAIDA && ! $record->isOperationalHistory())));
+                && ($ability === 'view' || ($record->operation_type === OperationType::SAIDA && $record->operational_reset_at === null)))
+                ->beforeFormFilled(fn (FiscalDocument $record) => $this->authorizeOperation($record, $ability))
+                ->before(fn (FiscalDocument $record) => $this->authorizeOperation($record, $ability));
 
             if (in_array($action->getName(), ['preview', 'preview_nfse'], true)) {
                 $action->modalSubmitAction(false)->modalCancelActionLabel('Fechar')->action(null);
@@ -151,7 +187,9 @@ class FiscalDocuments extends Page implements HasTable
         $actions[] = Action::make('reconciliar_rps_nfse')->label('Conciliar RPS')->icon('heroicon-o-wrench-screwdriver')->color('warning')
             ->visible(fn (FiscalDocument $record) => $record->isNfse() && $record->isNfsePendingReconciliation())
             ->authorize(fn (FiscalDocument $record) => $this->canOperate($record, 'update')
-                && $record->operation_type === OperationType::SAIDA && ! $record->isOperationalHistory())
+                && $record->operation_type === OperationType::SAIDA && $record->operational_reset_at === null)
+            ->beforeFormFilled(fn (FiscalDocument $record) => $this->authorizeOperation($record, 'update'))
+            ->before(fn (FiscalDocument $record) => $this->authorizeOperation($record, 'update'))
             ->schema([
                 Textarea::make('reason')->label('Justificativa')->required()->minLength(15)->rows(4),
                 Select::make('resolution')->label('Destino do documento')->options([

@@ -130,11 +130,17 @@ class CompanyAuthorization
         if ((int) $record->getAttribute('company_id') !== (int) $company->id) {
             return false;
         }
+
+        return $this->recordMatchesScopes($record, $user, $this->scopes($user, $company, $permission));
+    }
+
+    /** Evaluate an already-resolved permission without reloading role assignments. */
+    public function recordMatchesScopes(Model $record, User $user, array $scopes): bool
+    {
         $definition = PermissionCatalog::definition($record::class);
         if (! $definition) {
             return false;
         }
-        $scopes = $this->scopes($user, $company, $permission);
         if (in_array('company', $scopes, true)) {
             return true;
         }

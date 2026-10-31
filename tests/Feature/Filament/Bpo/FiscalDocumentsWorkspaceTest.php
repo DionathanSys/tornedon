@@ -8,6 +8,7 @@ use App\Filament\Bpo\Pages\FiscalDocuments;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
 use App\Models\Company;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentPayload;
 use App\Models\FiscalDocumentXmlExport;
 use App\Models\Partner;
 use App\Models\User;
@@ -18,6 +19,7 @@ use App\Services\FiscalDocument\NfseDocumentService;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -91,6 +93,60 @@ class FiscalDocumentsWorkspaceTest extends TestCase
             ->filterTable('emission_status', [NfeStatus::REJECTED->value])->assertCanSeeTableRecords([$nfe])->assertCanNotSeeTableRecords([$nfse, $pending])
             ->resetTableFilters()->filterTable('emission_status', [NfeStatus::PENDING->value])->assertCanSeeTableRecords([$pending])->assertCanNotSeeTableRecords([$nfe, $nfse])
             ->resetTableFilters()->searchTable('CHAVE-PESQUISAVEL')->assertCanSeeTableRecords([$nfe])->assertCanNotSeeTableRecords([$nfse, $pending]);
+    }
+
+    public function test_listing_does_not_repeat_authorization_queries_for_every_row_action(): void
+    {
+        for ($i = 0; $i < 15; $i++) {
+            $this->document(['nfe_status' => NfeStatus::AUTHORIZED]);
+        }
+        $this->permissions(['fiscal_documents.update' => 'company', 'fiscal_documents.issue' => 'company', 'fiscal_documents.cancel' => 'company']);
+        $this->authenticate();
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        Livewire::test(FiscalDocuments::class)->assertSuccessful();
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $counts = collect($queries)->countBy(fn (array $query) => $query['query'])->sortDesc()->take(8)->all();
+        $this->assertLessThan(250, count($queries), json_encode(['total' => count($queries), 'repeated' => $counts], JSON_PRETTY_PRINT));
+    }
+
+    public function test_details_load_emission_errors_only_when_opened(): void
+    {
+        $record = $this->document(['errors_messages' => [['mensagem' => 'Retorno fiscal detalhado']]]);
+        $this->authenticate();
+        $page = Livewire::test(FiscalDocuments::class);
+        $this->assertArrayNotHasKey('errors_messages', $page->instance()->getTableRecords()->first()->getAttributes());
+
+        $page->mountAction(TestAction::make('details')->table($record))->assertActionMounted(TestAction::make('details')->table($record));
+        $this->assertSame($record->errors_messages, $page->instance()->getMountedAction()->getRecord()->errors_messages);
+    }
+
+    public function test_correction_download_visibility_does_not_load_full_payloads_in_the_listing(): void
+    {
+        $withCorrection = $this->document(['nfe_status' => NfeStatus::AUTHORIZED]);
+        $withoutCorrection = $this->document(['nfe_status' => NfeStatus::AUTHORIZED]);
+        FiscalDocumentPayload::create(['company_id' => $this->company->id, 'fiscal_document_id' => $withCorrection->id, 'nfe_payload' => ['correcoes' => [['sequencial' => 1, 'pdf_base64' => base64_encode('%PDF-1.4')]]]]);
+        $this->authenticate();
+        $page = Livewire::test(FiscalDocuments::class)
+            ->assertActionVisible(TestAction::make('baixar_carta_correcao_nfe')->table($withCorrection))
+            ->assertActionHidden(TestAction::make('baixar_carta_correcao_nfe')->table($withoutCorrection));
+        foreach ($page->instance()->getTableRecords() as $record) {
+            $this->assertFalse($record->relationLoaded('payload'));
+        }
+    }
+
+    public function test_request_local_permissions_preserve_own_scope_and_are_reloaded_after_revocation(): void
+    {
+        $own = $this->document(['nfe_status' => NfeStatus::AUTHORIZED]);
+        $other = $this->document(['nfe_status' => NfeStatus::AUTHORIZED, 'created_by' => $this->owner->id]);
+        $this->permissions(['fiscal_documents.cancel' => 'own']);
+        $this->authenticate();
+        $page = Livewire::test(FiscalDocuments::class)->assertActionVisible(TestAction::make('cancelar_nfe')->table($own))
+            ->assertActionHidden(TestAction::make('cancelar_nfe')->table($other));
+        $this->permissions([]);
+        $page->call('$refresh')->assertActionHidden(TestAction::make('cancelar_nfe')->table($own));
     }
 
     public function test_read_only_preview_has_no_emission_submit_and_mutations_are_hidden(): void
