@@ -216,4 +216,48 @@ class BpoCashFlowTest extends TestCase
         $data = json_decode($update->json('components.0.snapshot'), true);
         $this->assertSame([(string) $this->company->id], $data['data']['companyIds'][0]);
     }
+
+    public function test_month_navigation_and_custom_range_keep_the_calendar_and_report_in_sync(): void
+    {
+        $page = Livewire::test(CashFlow::class)
+            ->assertSet('rangeData.date_range', '28/10/2026 - 03/11/2026')
+            ->call('setPeriod', 'month')
+            ->assertSet('startDate', '2026-10-01')->assertSet('endDate', '2026-10-31')
+            ->call('moveMonth', 1)
+            ->assertSet('month', '2026-11')->assertSet('endDate', '2026-11-30')
+            ->assertSet('rangeData.date_range', '01/11/2026 - 30/11/2026')
+            ->set('month', '2026-12')->call('moveMonth', 1)
+            ->assertSet('month', '2027-01')->assertSet('startDate', '2027-01-01')->assertSet('endDate', '2027-01-31')
+            ->call('moveMonth', -1)->assertSet('month', '2026-12')
+            ->set('month', '2028-02')->assertSet('endDate', '2028-02-29');
+
+        $page->set('rangeData.date_range', '05/10/2026 - 20/10/2026')
+            ->assertSet('period', 'custom')->assertSet('startDate', '2026-10-05')->assertSet('endDate', '2026-10-20')
+            ->call('setPeriod', 'next_7_days')
+            ->assertSet('rangeData.date_range', '28/10/2026 - 03/11/2026');
+    }
+
+    public function test_company_modal_applies_only_confirmed_selection_and_rejects_companies_outside_the_portfolio(): void
+    {
+        $second = $this->authorizeCompany('Segunda empresa no modal');
+        $allIds = [(string) $this->company->id, (string) $second->id];
+        $page = Livewire::test(CashFlow::class)
+            ->assertSet('companyIds', $allIds)
+            ->call('openCompanies')->assertDispatched('open-modal', id: 'cash-flow-companies')
+            ->assertSet('draftCompanyIds', $allIds)
+            ->set('draftCompanyIds', [(string) $second->id])
+            ->assertSet('companyIds', $allIds)
+            ->call('applyCompanies')->assertSet('companyIds', [(string) $second->id])
+            ->assertDispatched('close-modal', id: 'cash-flow-companies');
+
+        $page->call('openCompanies')->set('draftCompanyIds', [])->call('openCompanies')
+            ->assertSet('draftCompanyIds', [(string) $second->id])
+            ->call('selectAllCompanies')->assertSet('draftCompanyIds', $allIds)
+            ->assertSet('companyIds', [(string) $second->id])
+            ->set('draftCompanyIds', [])->call('applyCompanies')->assertSet('companyIds', [])
+            ->assertSee('Selecione uma ou mais empresas');
+
+        $foreign = Company::factory()->create();
+        $page->set('draftCompanyIds', [$foreign->id])->call('applyCompanies')->assertForbidden();
+    }
 }

@@ -185,20 +185,23 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "f7c4caca2f95ccf5",
+  "active": "28231c60887a0f1b",
   "lastOpenFiles": [
+    "public/build/workbox-a81574c5.js",
+    "public/build/sw.js",
+    "public/build/assets/operation-BiFMa8q_.css",
+    "public/build/assets/app-T1DpEqax.js",
+    "public/build/assets/theme-DdGCFYl2.css",
+    "public/build/manifest.json",
+    "public/build/assets/operation-BZWOWwng.js",
+    "public/build/assets/app-DWCHM5GL.css",
+    "public/build/assets",
+    "database/migrations/2026_10_31_000001_add_import_status_index_to_bank_statement_lines_table.php",
+    "docs/deploy-script.md",
+    "plans/Demandar DAZZ.md",
     "docs/TEMPORARY_PARTNER_MIGRATION_IMPORT.md",
     "docs/levantamento-conciliacao-bancaria.md",
     "storage/framework/views/48b3c2297ff8ffa4ae6e0d3f6c65df1e.php",
-    "storage/framework/views/3b5f4077e1ccef482c78e4c1eb9455b3.php",
-    "storage/framework/views/9994520b217a11360fa029b638119374.php",
-    "storage/framework/views/84302e1f9cc582cf1c83ebaec909ba11.php",
-    "storage/framework/views/48d413f8e124d1f051cf3b411879982f.php",
-    "storage/framework/views/0e5bcc11de53de0dd0435f3e3c1dc63d.php",
-    "storage/framework/views/9f42f2e6a44b5ea80503ed7f4d9ea079.php",
-    "storage/framework/views/8bae4344dbc9eba95c555b849caa960d.php",
-    "storage/framework/views/b6d7855dcb2771489de6a73f769f5699.php",
-    "storage/framework/views/030ff1df98576c3a7b13019f9783e2fa.php",
     "como-preencher-dre.md",
     "notas.md"
   ]
