@@ -16,28 +16,7 @@
                 <button type="button" class="bpo-button is-secondary" wire:click="openCompanies" wire:loading.attr="disabled" wire:target="openCompanies" aria-haspopup="dialog" aria-controls="cash-flow-companies"><x-filament::icon icon="heroicon-o-building-office-2" /><span>{{ count($companyIds) === 1 ? $options->firstWhere('id', $companyIds[0])?->name : (count($companyIds).' empresas selecionadas') }}</span><x-filament::icon icon="heroicon-o-adjustments-horizontal" /></button>
             </div>
             <div class="bpo-flow-month-filter">
-                <div class="bpo-flow-month-selector {{ $period === 'month' ? 'is-active' : '' }}">
-                    <button type="button" class="bpo-flow-month-arrow" wire:click="moveMonth(-1)" wire:loading.attr="disabled" aria-label="Mês anterior"><x-filament::icon icon="heroicon-o-chevron-left" /></button>
-                    <x-filament::dropdown placement="bottom-start" width="xs" teleport class="bpo-flow-month-dropdown">
-                        <x-slot name="trigger">
-                            <button type="button" class="bpo-flow-month-current" aria-label="Escolher mês completo" aria-haspopup="true"><x-filament::icon icon="heroicon-o-calendar-days" /><span>{{ \Illuminate\Support\Str::ucfirst(\Carbon\CarbonImmutable::createFromFormat('!Y-m', $month)->locale('pt_BR')->translatedFormat('F Y')) }}</span><x-filament::icon icon="heroicon-o-chevron-down" /></button>
-                        </x-slot>
-                        <div class="bpo-flow-month-calendar" x-data="{ year: Number($wire.month.slice(0, 4)) }" x-effect="year = Number($wire.month.slice(0, 4))">
-                            <div class="bpo-flow-year-nav">
-                                <button type="button" x-on:click="year = Math.max(1, year - 1)" aria-label="Ano anterior"><x-filament::icon icon="heroicon-o-chevron-left" /></button>
-                                <strong x-text="year"></strong>
-                                <button type="button" x-on:click="year = Math.min(9999, year + 1)" aria-label="Próximo ano"><x-filament::icon icon="heroicon-o-chevron-right" /></button>
-                            </div>
-                            <div class="bpo-flow-month-grid">
-                                @foreach (['01' => 'Jan', '02' => 'Fev', '03' => 'Mar', '04' => 'Abr', '05' => 'Mai', '06' => 'Jun', '07' => 'Jul', '08' => 'Ago', '09' => 'Set', '10' => 'Out', '11' => 'Nov', '12' => 'Dez'] as $number => $label)
-                                    <button type="button" x-on:click="$wire.selectMonth(String(year).padStart(4, '0') + '-{{ $number }}'); close()" x-bind:class="{ 'is-active': $wire.period === 'month' && $wire.month === String(year).padStart(4, '0') + '-{{ $number }}' }">{{ $label }}</button>
-                                @endforeach
-                            </div>
-                            <p>Selecione para analisar o mês completo.</p>
-                        </div>
-                    </x-filament::dropdown>
-                    <button type="button" class="bpo-flow-month-arrow" wire:click="moveMonth(1)" wire:loading.attr="disabled" aria-label="Próximo mês"><x-filament::icon icon="heroicon-o-chevron-right" /></button>
-                </div>
+                <x-bpo.month-selector :month="$month" :active="$period === 'month'" />
             </div>
             <div class="bpo-flow-range-filter">{{ $this->form }}</div>
             <div class="bpo-segmented bpo-flow-periods" role="group" aria-label="Períodos rápidos">
@@ -49,30 +28,7 @@
         @if ($this->getErrorBag()->any())<div class="bpo-flow-notice is-danger" role="alert">{{ $this->getErrorBag()->first() }}</div>@endif
     </section>
 
-    <x-filament::modal id="cash-flow-companies" width="2xl" class="bpo-flow-company-modal">
-        <x-slot name="heading">Selecionar empresas da carteira</x-slot>
-        <x-slot name="description">Escolha as empresas para consolidar. A análise será atualizada ao aplicar a seleção.</x-slot>
-        <div x-data="{ search: '', normalize(value) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.\/\s-]/g, '').toLowerCase() } }" x-on:open-modal.window="if ($event.detail.id === 'cash-flow-companies') search = ''">
-            <label class="bpo-search bpo-flow-company-search"><x-filament::icon icon="heroicon-o-magnifying-glass" /><span class="bpo-sr-only">Buscar empresa por nome ou CNPJ</span><input type="search" x-model="search" placeholder="Buscar por nome ou CNPJ…" /></label>
-            <div class="bpo-flow-modal-toolbar">
-                <button type="button" class="bpo-button is-small is-secondary" wire:click="selectAllCompanies">Selecionar todas</button>
-                <button type="button" class="bpo-button is-small is-secondary" x-on:click="$wire.$set('draftCompanyIds', [], false)">Limpar seleção</button>
-                <span aria-live="polite"><span x-text="$wire.draftCompanyIds.length"></span> selecionadas</span>
-            </div>
-            <div class="bpo-flow-company-options">
-                @foreach ($options as $option)
-                    <label wire:key="flow-company-{{ $option->id }}" x-show="normalize(@js($option->name.' '.$option->document_number)).includes(normalize(search))"><input type="checkbox" wire:model="draftCompanyIds" value="{{ $option->id }}" /><span>{{ $option->name }}<small>{{ $option->document_number }}</small></span></label>
-                @endforeach
-            </div>
-            <p class="bpo-flow-search-hint">{{ $options->count() }} empresas disponíveis. Limpe a busca para ver toda a carteira.</p>
-        </div>
-        <x-slot name="footer">
-            <div class="bpo-flow-modal-footer">
-                <button type="button" class="bpo-button is-secondary" x-on:click="$dispatch('close-modal', { id: 'cash-flow-companies' })">Cancelar</button>
-                <button type="button" class="bpo-button" wire:click="applyCompanies" wire:loading.attr="disabled" wire:target="applyCompanies">Aplicar seleção</button>
-            </div>
-        </x-slot>
-    </x-filament::modal>
+    <x-bpo.company-selection-modal :companies="$options" />
 
     @if ($report && count($companyIds))
         @if ($report['partial'])<div class="bpo-flow-notice" role="status"><x-filament::icon icon="heroicon-o-information-circle" /><span><strong>Análise parcial.</strong> Os valores incluem apenas contas e registros permitidos pelos seus papéis. A suficiência de caixa não representa a totalidade das empresas.</span></div>@endif

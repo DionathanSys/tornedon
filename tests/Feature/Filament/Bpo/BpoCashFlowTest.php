@@ -180,7 +180,9 @@ class BpoCashFlowTest extends TestCase
     {
         $this->title('payable', '2026-10-28', 100);
         $this->get(route('filament.bpo.cash-flow'))->assertOk()->assertSee('Fluxo de caixa e previsão')
-            ->assertSee('bpo-shell', false)->assertSee('Evolução do saldo diário')->assertSee('Parceiro de teste');
+            ->assertSee('bpo-shell', false)->assertSee('Evolução do saldo diário')->assertSee('Parceiro de teste')
+            ->assertSee('.bpo-month-control { display: inline-grid', false)
+            ->assertSee('.bpo-company-dialog-body { display: flex', false);
         $page = Livewire::test(CashFlow::class)->assertSet('startDate', '2026-10-28')->assertSet('endDate', '2026-11-03');
         $page->call('setPeriod', 'next_30_days')->assertSet('endDate', '2026-11-26');
         $page->set('endDate', '2026-10-01')->assertSee('A data final deve ser igual ou posterior');
