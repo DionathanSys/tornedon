@@ -1,6 +1,7 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 @import './financial-title.css';
 @import './workbench.css';
+@import './cash-flow.css';
 
 @source '../../../../app/Filament/Bpo/**/*';
 @source '../../../../app/Filament/Clusters/Financial/**/*';

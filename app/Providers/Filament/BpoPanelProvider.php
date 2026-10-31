@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Bpo\Auth\Login;
+use App\Filament\Bpo\Pages\CashFlow;
 use App\Filament\Bpo\Pages\CompanyOverview;
 use App\Filament\Bpo\Pages\CompanyTeam;
 use App\Filament\Bpo\Pages\DreReport;
@@ -43,6 +44,7 @@ class BpoPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Bpo/Resources'), for: 'App\\Filament\\Bpo\\Resources')
             ->authenticatedRoutes(function (): void {
                 Route::get('/carteira', Portfolio::class)->name('portfolio');
+                Route::get('/fluxo-de-caixa', CashFlow::class)->name('cash-flow');
             })
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, AuthenticateSession::class,

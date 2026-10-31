@@ -30,7 +30,8 @@
     <aside class="bpo-sidebar" aria-label="Navegação BPO">
         <a class="bpo-brand" href="{{ $portfolioUrl }}"><span class="bpo-brand-mark"><x-filament::icon icon="heroicon-o-chart-pie" /></span><span>tornedon<strong>BPO FINANCEIRO</strong></span></a>
         <div class="bpo-sidebar-label">ÁREA DE TRABALHO</div>
-        <a href="{{ $portfolioUrl }}" class="bpo-nav-link {{ ! $company ? 'is-active' : '' }}" @if (! $company) aria-current="page" @endif><x-filament::icon icon="heroicon-o-squares-plus" /><span>Minha carteira</span><small>{{ $companies->count() }}</small></a>
+        <a href="{{ $portfolioUrl }}" class="bpo-nav-link {{ request()->routeIs('filament.bpo.portfolio') ? 'is-active' : '' }}" @if (request()->routeIs('filament.bpo.portfolio')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-squares-plus" /><span>Minha carteira</span><small>{{ $companies->count() }}</small></a>
+        <a href="{{ route('filament.bpo.cash-flow') }}" class="bpo-nav-link {{ request()->routeIs('filament.bpo.cash-flow') ? 'is-active' : '' }}" @if (request()->routeIs('filament.bpo.cash-flow')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-presentation-chart-line" /><span>Fluxo de caixa e previsão</span></a>
         @if ($company)
             <div class="bpo-current-company"><span>EMPRESA EM OPERAÇÃO</span><strong>{{ $company->name }}</strong><small>{{ $company->document_number ?: 'Cadastro empresarial' }}</small></div>
             <nav aria-label="Operação da empresa">@foreach ($links as $link)<a href="{{ $link['url'] }}" class="bpo-nav-link {{ request()->url() === $link['url'] || ($link['key'] !== 'overview' && str_starts_with(request()->url(), $link['url'].'/')) ? 'is-active' : '' }}"><x-filament::icon :icon="$link['icon']" /><span>{{ $link['label'] }}</span></a>@endforeach</nav>

@@ -18,6 +18,7 @@ class BpoNavigation
         $permissions = app(CompanyAuthorization::class)->effectivePermissions($user, $company);
         $items = [
             ['overview', 'Visão geral', 'heroicon-o-squares-2x2', null, Pages\CompanyOverview::getUrl(panel: 'bpo', tenant: $company)],
+            ['cash_flow', 'Previsão de caixa', 'heroicon-o-presentation-chart-line', null, route('filament.bpo.cash-flow', ['company' => $company->id])],
             ['sales', 'Vendas e faturamento', 'heroicon-o-shopping-cart', 'bpo_sales.view', Pages\Sales::getUrl(panel: 'bpo', tenant: $company)],
             ['sale_templates', 'Modelos de venda', 'heroicon-o-document-duplicate', 'sale_templates.view', Pages\SaleTemplates::getUrl(panel: 'bpo', tenant: $company)],
             ['payables', 'Contas a pagar', 'heroicon-o-arrow-up-right', 'account_payables.view', Resources\AccountPayableResource::getUrl(panel: 'bpo', tenant: $company)],
