@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
+use App\Services\Access\CompanyAuthorization;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -12,6 +13,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
@@ -68,7 +70,7 @@ final class ExportOutputFiscalDocumentsAction
             return new Collection;
         }
 
-        return FiscalDocument::query()
+        $query = FiscalDocument::query()
             ->with(['customer', 'items.service'])
             ->withSum('items as items_total', 'total_price')
             ->where('company_id', $tenantId)
@@ -77,11 +79,18 @@ final class ExportOutputFiscalDocumentsAction
             ->when(
                 $dateColumn === 'created_at',
                 fn ($query) => $query->whereBetween('created_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()]),
-                fn ($query) => $query->whereBetween('issued_at', [$startDate->toDateString(), $endDate->toDateString()]),
+                fn ($query) => $query->whereDate('issued_at', '>=', $startDate->toDateString())->whereDate('issued_at', '<=', $endDate->toDateString()),
             )
             ->orderByRaw('document_number + 0')
-            ->orderBy($dateColumn)
-            ->get();
+            ->orderBy($dateColumn);
+
+        if (Filament::getCurrentPanel()?->getId() === 'bpo') {
+            $access = app(CompanyAuthorization::class);
+            abort_unless($access->allows(Auth::user(), Filament::getTenant(), 'fiscal_documents.export'), 403);
+            $access->scopeQuery($query, Auth::user(), Filament::getTenant(), 'fiscal_documents.export');
+        }
+
+        return $query->get();
     }
 
     public static function getColumns(): array
