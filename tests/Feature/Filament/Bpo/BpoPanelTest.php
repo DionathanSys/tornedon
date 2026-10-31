@@ -13,8 +13,10 @@ use App\Filament\Bpo\Resources\AccountPayables\Pages\EditAccount;
 use App\Filament\Bpo\Resources\AccountReceivableResource;
 use App\Filament\Bpo\Resources\BankStatementImportResource;
 use App\Filament\Bpo\Resources\BankStatementImports\LinesRelationManager;
+use App\Filament\Bpo\Resources\BankStatementImports\Pages\ListImports;
 use App\Filament\Bpo\Resources\BankStatementImports\Pages\ViewImport;
 use App\Filament\Bpo\Resources\CashMovementResource;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ListBankStatementImports;
 use App\Http\Responses\LoginResponse;
 use App\Models\AccountPayable;
 use App\Models\BankStatementImport;
@@ -34,6 +36,7 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -149,6 +152,67 @@ class BpoPanelTest extends TestCase
         $this->get(AccountPayableResource::getUrl('view', ['record' => $record], panel: 'bpo', tenant: $this->company))->assertOk();
         foreach ([FiscalDocuments::class, DreReport::class, CompanyTeam::class] as $page) {
             $this->get($page::getUrl(panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-workbench-page-heading', false);
+        }
+    }
+
+    public function test_ofx_reconciliation_summary_is_shared_and_aggregated_in_both_panels(): void
+    {
+        $account = FinancialAccount::create([
+            'company_id' => $this->company->id, 'name' => 'Conta OFX', 'type' => 'bank', 'is_active' => true,
+        ]);
+        $scenarios = [
+            'parcial.ofx' => [['pending', 'needs_review', 'reversed', 'reconciled', 'ignored'], '3 pendentes de 5'],
+            'conciliado.ofx' => [['reconciled', 'reconciled'], '100% conciliado'],
+            'ignorado.ofx' => [['reconciled', 'ignored'], 'Concluído · 1 ignorado'],
+            'vazio.ofx' => [[], 'Sem registros'],
+        ];
+        $imports = [];
+        foreach ($scenarios as $file => [$statuses, $label]) {
+            $import = BankStatementImport::create([
+                'company_id' => $this->company->id, 'financial_account_id' => $account->id,
+                'file_name' => $file, 'status' => 'completed', 'line_count' => 99, 'created_by' => $this->bpo->id,
+            ]);
+            foreach ($statuses as $status) {
+                $import->lines()->create([
+                    'company_id' => $this->company->id, 'financial_account_id' => $account->id,
+                    'transaction_date' => today(), 'amount' => 10, 'description' => 'Lançamento OFX',
+                    'reconciliation_status' => $status,
+                ]);
+            }
+            $imports[] = [$import, $label];
+        }
+        $foreign = BankStatementImport::create([
+            'company_id' => Company::factory()->create()->id, 'financial_account_id' => $account->id,
+            'file_name' => 'outra-empresa.ofx', 'status' => 'completed',
+        ]);
+
+        foreach ([
+            ['bpo', $this->bpo, ListImports::class],
+            ['admin', $this->owner, ListBankStatementImports::class],
+        ] as [$panel, $user, $pageClass]) {
+            $this->actingAs($user);
+            Filament::setCurrentPanel(Filament::getPanel($panel));
+            Filament::setTenant($this->company);
+            $page = Livewire::test($pageClass)->assertSuccessful()->assertCanNotSeeTableRecords([$foreign]);
+            foreach ($imports as [$import, $label]) {
+                $page->assertTableColumnStateSet('reconciliation_summary', $label, $import);
+            }
+
+            $query = $page->instance()->getFilteredTableQuery()->withoutEagerLoads()->limit(10);
+            DB::enableQueryLog();
+            DB::flushQueryLog();
+            $records = $query->get();
+            $queries = DB::getQueryLog();
+            DB::disableQueryLog();
+
+            // All three counts travel in the paginated SELECT, without loading any statement lines.
+            $statementQueries = array_values(array_filter($queries, fn (array $query): bool => str_contains($query['query'], 'bank_statement_imports') || str_contains($query['query'], 'bank_statement_lines')));
+            $this->assertCount(1, $statementQueries);
+            $this->assertCount(count($imports), $records);
+            $this->assertStringContainsString('pending_lines_count', $statementQueries[0]['query']);
+            foreach ($records as $record) {
+                $this->assertFalse($record->relationLoaded('lines'));
+            }
         }
     }
 
