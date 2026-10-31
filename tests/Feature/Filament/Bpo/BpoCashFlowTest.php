@@ -190,4 +190,30 @@ class BpoCashFlowTest extends TestCase
         $this->bpo->companies()->updateExistingPivot($this->company->id, ['is_active' => false]);
         $mounted->call('$refresh')->assertForbidden();
     }
+
+    public function test_company_can_be_unchecked_through_the_http_livewire_endpoint_with_csrf_validation(): void
+    {
+        $this->authorizeCompany('Empresa para desmarcar');
+        $response = $this->get(route('filament.bpo.cash-flow'))->assertOk();
+        preg_match('/wire:snapshot="([^"]+)"/', $response->getContent(), $snapshotMatch);
+        preg_match('/<meta name="csrf-token" content="([^"]+)"/', $response->getContent(), $tokenMatch);
+        $snapshot = html_entity_decode($snapshotMatch[1], ENT_QUOTES);
+        $cookie = $response->getCookie(config('session.cookie'), false);
+        $this->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+
+        // Unlike Livewire::test(), exercise the real route, session, CSRF and persistent middleware.
+        $this->app['env'] = 'local';
+        try {
+            $update = $this->postJson('/livewire/update', [
+                '_token' => $tokenMatch[1],
+                'components' => [['snapshot' => $snapshot, 'updates' => ['companyIds' => [(string) $this->company->id]], 'calls' => []]],
+            ], ['X-Livewire' => '']);
+        } finally {
+            $this->app['env'] = 'testing';
+        }
+
+        $update->assertOk();
+        $data = json_decode($update->json('components.0.snapshot'), true);
+        $this->assertSame([(string) $this->company->id], $data['data']['companyIds'][0]);
+    }
 }

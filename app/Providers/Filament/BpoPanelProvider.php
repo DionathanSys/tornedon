@@ -41,6 +41,7 @@ class BpoPanelProvider extends PanelProvider
             ->colors(['primary' => [50 => '#effaf8', 100 => '#d8f1ed', 200 => '#b2e3dd', 300 => '#79cbc6', 400 => '#35adb2', 500 => '#16929d', 600 => '#087f8c', 700 => '#096572', 800 => '#0d505d', 900 => '#10434e', 950 => '#062a34'], 'gray' => Color::Slate])
             ->viteTheme('resources/css/filament/bpo/theme.css')
             ->pages([CompanyOverview::class, CompanyTeam::class, FiscalDocuments::class, DreReport::class, Sales::class, SaleTemplates::class])
+            ->livewireComponents([Portfolio::class, CashFlow::class])
             ->discoverResources(in: app_path('Filament/Bpo/Resources'), for: 'App\\Filament\\Bpo\\Resources')
             ->authenticatedRoutes(function (): void {
                 Route::get('/carteira', Portfolio::class)->name('portfolio');
