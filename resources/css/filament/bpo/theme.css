@@ -105,7 +105,8 @@
 .bpo-topbar-actions { display:flex; align-items:center; gap:14px; }
 .bpo-company-switch,.bpo-theme-switch { display:flex; align-items:center; gap:8px; color:var(--bpo-muted); border:1px solid var(--bpo-border); border-radius:8px; padding:0 10px; background:var(--bpo-surface); }
 .bpo-company-switch svg,.bpo-theme-switch svg { width:16px; height:16px; }
-.bpo-company-switch select,.bpo-theme-switch select { border:0; background-color:transparent; box-shadow:none; font-size:11px; padding:10px 25px 10px 0; color:var(--bpo-ink); text-overflow:ellipsis; }
+.bpo-company-switch select,.bpo-theme-switch select { border:0; background-color:var(--bpo-surface); color-scheme:var(--bpo-color-scheme); box-shadow:none; font-size:11px; padding:10px 25px 10px 0; color:var(--bpo-ink); text-overflow:ellipsis; }
+.bpo-company-switch select option,.bpo-theme-switch select option { background-color:var(--bpo-surface); color:var(--bpo-ink); }
 .bpo-company-switch select { width:205px; }
 .bpo-theme-switch select { width:90px; }
 .bpo-theme-dark-icon,.dark .bpo-theme-light-icon { display:none; }
