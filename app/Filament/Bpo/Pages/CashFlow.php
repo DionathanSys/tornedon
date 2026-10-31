@@ -83,6 +83,7 @@ class CashFlow extends Page implements HasForms
         return $schema->statePath('rangeData')->schema([
             DateRangePicker::make('date_range')
                 ->label('Período personalizado')
+                ->hiddenLabel()
                 ->format('d/m/Y')
                 ->firstDayOfWeek(1)
                 ->alwaysShowCalendar()

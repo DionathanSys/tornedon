@@ -13,17 +13,18 @@
         <header class="bpo-workbench-header"><div><h2>Seu recorte financeiro</h2><p>Selecione uma empresa ou consolide a carteira.</p></div><span class="bpo-badge">{{ count($companyIds) }} selecionadas</span></header>
         <div class="bpo-flow-filter-body">
             <div class="bpo-flow-company-filter">
-                <span class="bpo-flow-filter-label">Empresas da carteira</span>
                 <button type="button" class="bpo-button is-secondary" wire:click="openCompanies" wire:loading.attr="disabled" wire:target="openCompanies" aria-haspopup="dialog" aria-controls="cash-flow-companies"><x-filament::icon icon="heroicon-o-building-office-2" /><span>{{ count($companyIds) === 1 ? $options->firstWhere('id', $companyIds[0])?->name : (count($companyIds).' empresas selecionadas') }}</span><x-filament::icon icon="heroicon-o-adjustments-horizontal" /></button>
             </div>
             <div class="bpo-flow-month-filter">
-                <label class="bpo-flow-filter-label" for="cash-flow-month">Mês completo</label>
                 <div class="bpo-flow-month-selector {{ $period === 'month' ? 'is-active' : '' }}">
-                    <button type="button" wire:click="moveMonth(-1)" wire:loading.attr="disabled" aria-label="Mês anterior"><x-filament::icon icon="heroicon-o-chevron-left" /></button>
-                    <input id="cash-flow-month" type="month" wire:model.live="month" aria-label="Selecionar mês completo" />
-                    <button type="button" wire:click="moveMonth(1)" wire:loading.attr="disabled" aria-label="Próximo mês"><x-filament::icon icon="heroicon-o-chevron-right" /></button>
+                    <button type="button" class="bpo-flow-month-arrow" wire:click="moveMonth(-1)" wire:loading.attr="disabled" aria-label="Mês anterior"><x-filament::icon icon="heroicon-o-chevron-left" /></button>
+                    <button type="button" class="bpo-flow-month-current" wire:click="setPeriod('month')" aria-label="Analisar mês completo" aria-pressed="{{ $period === 'month' ? 'true' : 'false' }}">{{ \Illuminate\Support\Str::ucfirst(\Carbon\CarbonImmutable::createFromFormat('!Y-m', $month)->locale('pt_BR')->translatedFormat('F Y')) }}</button>
+                    <label class="bpo-flow-month-picker" title="Escolher mês" x-data>
+                        <x-filament::icon icon="heroicon-o-calendar-days" />
+                        <input id="cash-flow-month" type="month" wire:model.live="month" aria-label="Selecionar mês completo" x-on:click="if ($el.showPicker) { try { $el.showPicker() } catch (error) {} }" />
+                    </label>
+                    <button type="button" class="bpo-flow-month-arrow" wire:click="moveMonth(1)" wire:loading.attr="disabled" aria-label="Próximo mês"><x-filament::icon icon="heroicon-o-chevron-right" /></button>
                 </div>
-                @if ($period !== 'month')<button type="button" class="bpo-flow-month-apply" wire:click="setPeriod('month')">Usar mês completo</button>@endif
             </div>
             <div class="bpo-flow-range-filter">{{ $this->form }}</div>
             <div class="bpo-segmented bpo-flow-periods" role="group" aria-label="Períodos rápidos">

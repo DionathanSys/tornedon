@@ -1,7 +1,6 @@
 .bpo-cash-flow .bpo-workbench { margin-bottom: 24px; }
-.bpo-flow-filter-body { padding: 20px; display: flex; gap: 18px; flex-wrap: wrap; align-items: start; }
+.bpo-flow-filter-body { padding: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .bpo-flow-company-filter { flex: 1; min-width: 220px; }
-.bpo-flow-filter-label { display: block; margin-bottom: 8px; color: var(--bpo-muted); font-size: 12px; font-weight: 500; }
 .bpo-flow-company-filter .bpo-button { width: 100%; justify-content: space-between; min-height: 40px; }
 .bpo-flow-company-filter .bpo-button span { overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
 .bpo-flow-company-options { max-height: 350px; overflow: auto; border-block: 1px solid var(--bpo-divider); padding: 8px 0; }
@@ -9,15 +8,20 @@
 .bpo-flow-company-options label:hover { background: var(--bpo-hover); }
 .bpo-flow-company-options input { accent-color: var(--bpo-button-bg); }
 .bpo-flow-company-options small { display: block; color: var(--bpo-muted); font-size: 11px; }
-.bpo-flow-month-selector { display: flex; align-items: center; border: 1px solid var(--bpo-border); border-radius: 8px; background: var(--bpo-surface); overflow: hidden; min-height: 40px; }
-.bpo-flow-month-selector.is-active { border-color: var(--bpo-teal); }
-.bpo-flow-month-selector button { display: grid; place-items: center; padding: 10px; color: var(--bpo-muted); }
-.bpo-flow-month-selector button:hover { background: var(--bpo-hover); }
-.bpo-flow-month-selector input { color: var(--bpo-ink); background: transparent; border: 0; box-shadow: none; padding: 8px 4px; font-size: 12px; width: 170px; }
-.bpo-flow-month-apply { font-size: 11px; color: var(--bpo-teal); margin-top: 5px; }
+.bpo-flow-month-selector { display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid var(--bpo-border); border-radius: 9px; background: var(--bpo-raised); height: 40px; }
+.bpo-flow-month-selector.is-active { border-color: var(--bpo-teal); background: var(--bpo-badge-bg); }
+.bpo-flow-month-selector button,.bpo-flow-month-picker { display: grid; place-items: center; height: 32px; border-radius: 6px; color: var(--bpo-muted); transition: background .15s, color .15s; }
+.bpo-flow-month-selector button:hover,.bpo-flow-month-picker:hover { background: var(--bpo-surface); color: var(--bpo-teal); }
+.bpo-flow-month-arrow { width: 30px; }
+.bpo-flow-month-selector .bpo-flow-month-current { min-width: 126px; padding: 0 10px; color: var(--bpo-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.bpo-flow-month-selector.is-active .bpo-flow-month-current { color: var(--bpo-teal); }
+.bpo-shell .bpo-flow-month-selector svg { width: 16px; height: 16px; }
+.bpo-flow-month-picker { position: relative; width: 30px; cursor: pointer; }
+.bpo-flow-month-picker input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
+.bpo-flow-month-picker:focus-within { outline: 2px solid var(--bpo-teal); outline-offset: 2px; }
 .bpo-flow-range-filter { flex: 1; min-width: 280px; }
-.bpo-flow-range-filter .fi-fo-field-label-content { color: var(--bpo-muted); font-size: 12px; font-weight: 500; }
-.bpo-flow-periods { flex-wrap: wrap; flex-basis: 100%; width: fit-content; }
+.bpo-flow-range-filter .fi-input-wrp { min-height: 40px; }
+.bpo-flow-periods { flex-wrap: wrap; min-height: 40px; width: fit-content; }
 .bpo-flow-company-search { width: 100%; }
 .bpo-flow-modal-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-block: 16px; }
 .bpo-flow-modal-toolbar > span { margin-left: auto; font-size: 12px; color: var(--bpo-muted); }
