@@ -82,7 +82,7 @@ class OperationPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn () => new HtmlString(Filament::getCurrentPanel()?->getId() === 'operation' ? view('filament.operation.head', [
-                    'appName' => 'Tornedon Operação',
+                    'appName' => config('app.name').' Operação',
                     'manifest' => 'manifest-operation.webmanifest',
                 ])->render() : '')
             )

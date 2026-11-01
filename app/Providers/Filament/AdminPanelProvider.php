@@ -74,7 +74,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn () => new HtmlString(view('pwa.meta', [
-                    'appName' => 'Tornedon Admin',
+                    'appName' => config('app.name').' Admin',
                     'manifest' => 'manifest-admin.webmanifest',
                 ])->render())
             )

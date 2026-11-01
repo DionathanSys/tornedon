@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     @include('partials.translation-meta')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $livewire->getTitle() }} · Tornedon Operação</title>
+    <title>{{ $livewire->getTitle() }} · {{ config('app.name') }} Operação</title>
     @filamentStyles
     {{ filament()->getTheme()->getHtml() }}
     @include('filament.operation.head')

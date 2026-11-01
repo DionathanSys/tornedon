@@ -1,5 +1,5 @@
 @php($manifest = $manifest ?? 'manifest.webmanifest')
-@php($appName = $appName ?? 'Tornedon')
+@php($appName = $appName ?? config('app.name'))
 
 <meta name="application-name" content="{{ $appName }}">
 <meta name="apple-mobile-web-app-capable" content="yes">

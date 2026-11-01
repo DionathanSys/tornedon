@@ -1,7 +1,7 @@
 {
-    "name": "Tornedon",
-    "short_name": "Tornedon",
-    "description": "Gestao operacional, comercial e financeira do Tornedon.",
+    "name": "Axion Gestão",
+    "short_name": "Axion Gestão",
+    "description": "Gestão operacional, comercial e financeira do Axion Gestão.",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",

@@ -1,16 +1,22 @@
-# Tornedon
+# Axion Gestão
 
 Sistema de gestão empresarial para controle de estoque, produção e vendas.
 
 ## Sobre o Projeto
 
-Tornedon é uma aplicação Laravel desenvolvida para gerenciar processos empresariais, incluindo:
+Axion Gestão é uma aplicação Laravel desenvolvida para gerenciar processos empresariais, incluindo:
 
 - Controle de estoque e movimentações
 - Ordens de produção
 - Requisições e vendas
 - Cotações e aprovações
 - Multi-tenant
+
+## Nome da aplicação
+
+Configure `APP_NAME="Axion Gestão"` no `.env` de cada ambiente. Os painéis e e-mails usam essa configuração; os nomes dos aplicativos instaláveis ficam em `public/manifest*.webmanifest`.
+
+Ao atualizar uma instalação existente, preserve os valores atuais de `session.cookie`, `cache.prefix`, `database.redis.options.prefix` e `horizon.prefix` nas variáveis `SESSION_COOKIE`, `CACHE_PREFIX`, `REDIS_PREFIX` e `HORIZON_PREFIX` antes de mudar `APP_NAME`. Isso mantém os identificadores de sessão, cache e Redis. Depois, execute `php artisan config:clear` e `npm run build` e reinicie os processos persistentes da aplicação.
 
 ## Tecnologias
 

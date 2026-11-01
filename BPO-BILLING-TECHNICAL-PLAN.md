@@ -2,7 +2,7 @@
 
 ## Faturamento direto, NFS-e Nacional e operação financeira
 
-**Tornedon · Versão 1.0 · 25 de outubro de 2026**
+**Axion Gestão · Versão 1.0 · 25 de outubro de 2026**
 
 **Referência de código:** painel BPO entregue no commit `6c5066de`.
 

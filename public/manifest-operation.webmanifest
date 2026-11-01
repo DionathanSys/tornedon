@@ -1,8 +1,8 @@
 {
     "id": "/operacao",
-    "name": "Tornedon Operação",
+    "name": "Axion Gestão Operação",
     "short_name": "Operação",
-    "description": "Painel operacional do Tornedon.",
+    "description": "Painel operacional do Axion Gestão.",
     "start_url": "/operacao",
     "scope": "/operacao",
     "display": "standalone",

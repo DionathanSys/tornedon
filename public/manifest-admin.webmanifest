@@ -1,8 +1,8 @@
 {
     "id": "/admin",
-    "name": "Tornedon Admin",
+    "name": "Axion Gestão Admin",
     "short_name": "Admin",
-    "description": "Painel administrativo do Tornedon.",
+    "description": "Painel administrativo do Axion Gestão.",
     "start_url": "/admin",
     "scope": "/admin",
     "display": "standalone",

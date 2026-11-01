@@ -1,8 +1,8 @@
 {
     "id": "/mobile",
-    "name": "Tornedon Mobile",
+    "name": "Axion Gestão Mobile",
     "short_name": "Mobile",
-    "description": "Painel mobile do Tornedon.",
+    "description": "Painel mobile do Axion Gestão.",
     "start_url": "/mobile",
     "scope": "/mobile",
     "display": "standalone",

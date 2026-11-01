@@ -68,7 +68,7 @@
                     @endforeach
                 </svg>
             </div>
-            <footer class="bpo-workbench-footer"><x-filament::icon icon="heroicon-o-information-circle" /><span>Histórico do Tornedon, conforme os registros atuais. Não é uma consulta ao banco. Datas futuras incluem compromissos intermediários até o início do período. Saldos iniciais de contas abertas no período entram na respectiva data. Transferências entre contas visíveis da mesma empresa não compõem entradas e saídas.</span></footer>
+            <footer class="bpo-workbench-footer"><x-filament::icon icon="heroicon-o-information-circle" /><span>Histórico do {{ config('app.name') }}, conforme os registros atuais. Não é uma consulta ao banco. Datas futuras incluem compromissos intermediários até o início do período. Saldos iniciais de contas abertas no período entram na respectiva data. Transferências entre contas visíveis da mesma empresa não compõem entradas e saídas.</span></footer>
         </section>
 
         <section class="bpo-workbench">

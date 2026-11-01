@@ -17,7 +17,7 @@ class CompanyTeamInvitation extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)->subject('Convite para '.$this->companyName)
-            ->line('Você recebeu um convite para acessar '.$this->companyName.' no Tornedon.')
+            ->line('Você recebeu um convite para acessar '.$this->companyName.' no '.config('app.name').'.')
             ->action('Consultar e aceitar convite', $this->invitationUrl)
             ->line('O convite é pessoal, vinculado ao seu e-mail e válido por 7 dias.');
     }

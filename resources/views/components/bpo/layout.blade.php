@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
     @include('partials.translation-meta')
-    <title>{{ $livewire->getTitle() }} · Tornedon BPO</title>
+    <title>{{ $livewire->getTitle() }} · {{ config('app.name') }} BPO</title>
     @include('components.bpo.theme-script')
     @filamentStyles
     {{ filament()->getTheme()->getHtml() }}
@@ -28,7 +28,7 @@
     @endphp
     <a class="bpo-skip-link" href="#bpo-main">Ir para o conteúdo</a>
     <aside class="bpo-sidebar" aria-label="Navegação BPO">
-        <a class="bpo-brand" href="{{ $portfolioUrl }}"><span class="bpo-brand-mark"><x-filament::icon icon="heroicon-o-chart-pie" /></span><span>tornedon<strong>BPO FINANCEIRO</strong></span></a>
+        <a class="bpo-brand" href="{{ $portfolioUrl }}"><span class="bpo-brand-mark"><x-filament::icon icon="heroicon-o-chart-pie" /></span><span>{{ config('app.name') }}<strong>BPO FINANCEIRO</strong></span></a>
         <div class="bpo-sidebar-label">ÁREA DE TRABALHO</div>
         <a href="{{ $portfolioUrl }}" class="bpo-nav-link {{ request()->routeIs('filament.bpo.portfolio') ? 'is-active' : '' }}" @if (request()->routeIs('filament.bpo.portfolio')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-squares-plus" /><span>Minha carteira</span><small>{{ $companies->count() }}</small></a>
         <a href="{{ route('filament.bpo.cash-flow') }}" class="bpo-nav-link {{ request()->routeIs('filament.bpo.cash-flow') ? 'is-active' : '' }}" @if (request()->routeIs('filament.bpo.cash-flow')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-presentation-chart-line" /><span>Fluxo de caixa e previsão</span></a>
@@ -50,7 +50,7 @@
             </div>
         </header>
         <main id="bpo-main" class="bpo-main">{{ $slot }}</main>
-        <footer class="bpo-shell-footer"><span>Tornedon · Área de trabalho BPO</span><span>Dados separados por empresa. Operação conforme suas permissões.</span></footer>
+        <footer class="bpo-shell-footer"><span>{{ config('app.name') }} · Área de trabalho BPO</span><span>Dados separados por empresa. Operação conforme suas permissões.</span></footer>
     </div>
     @livewire(\Filament\Livewire\Notifications::class)
     @filamentScripts(withCore: true)

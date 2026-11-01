@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Tornedon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Axion Gestão">
   <rect width="192" height="192" rx="40" fill="#18181b"/>
   <rect x="24" y="24" width="144" height="144" rx="28" fill="#27272a"/>
-  <path d="M54 64h84v16H104v48H88V80H54z" fill="#fff"/>
+  <path d="M56 136 84 56h24l28 80h-20l-6-18H82l-6 18zm32-36h16L96 76z" fill="#fff" fill-rule="evenodd"/>
 </svg>

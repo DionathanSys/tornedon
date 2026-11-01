@@ -76,7 +76,7 @@ class PdfDoc:
         self.canvas.line(MARGIN_X, MARGIN_BOTTOM - 8, PAGE_WIDTH - MARGIN_X, MARGIN_BOTTOM - 8)
         self.canvas.setFont(FONT_REGULAR, 8)
         self.canvas.setFillColor(COLOR_MUTED)
-        self.canvas.drawString(MARGIN_X, MARGIN_BOTTOM - 22, "Tornedon - Fluxo da feature de emissao fiscal")
+        self.canvas.drawString(MARGIN_X, MARGIN_BOTTOM - 22, "Axion Gestão - Fluxo da feature de emissao fiscal")
         self.canvas.drawRightString(PAGE_WIDTH - MARGIN_X, MARGIN_BOTTOM - 22, f"Pagina {self.page_number}")
 
     def ensure_space(self, needed: float) -> None:

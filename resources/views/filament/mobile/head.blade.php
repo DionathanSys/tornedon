@@ -1,5 +1,5 @@
 @include('pwa.meta', [
-    'appName' => $appName ?? 'Tornedon Mobile',
+    'appName' => $appName ?? config('app.name').' Mobile',
     'manifest' => $manifest ?? 'manifest-mobile.webmanifest',
 ])
 
