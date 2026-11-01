@@ -2,28 +2,34 @@
 
 namespace App\Filament\Bpo\Resources;
 
+use App\Filament\Bpo\Resources\CashMovements\Actions\MovementActions;
 use App\Filament\Bpo\Resources\CashMovements\Pages;
-use Filament\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
+use App\Filament\Clusters\Financial\Resources\CashMovements\Tables\CashMovementsTable;
+use Filament\Actions\ActionGroup;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class CashMovementResource extends \App\Filament\Clusters\Financial\Resources\CashMovements\CashMovementResource
 {
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('transaction_date')->label('Data')->date('d/m/Y')->sortable(),
-            TextColumn::make('description')->label('Descrição')->searchable()->wrap(),
-            TextColumn::make('financialAccount.name')->label('Conta')->searchable(),
-            TextColumn::make('direction')->label('Tipo')->badge()->formatStateUsing(fn ($state) => $state?->value === 'inflow' ? 'Entrada' : 'Saída')->color(fn ($state) => $state?->value === 'inflow' ? 'success' : 'danger'),
-            TextColumn::make('amount')->label('Valor')->money('BRL'),
-            TextColumn::make('financialCategory.name')->label('Categoria')->placeholder('—'),
-        ])->recordActions([EditAction::make()->visible(fn ($record) => $record->origin_type === 'manual' && ! $record->isTransfer())])
-            ->recordUrl(null)->defaultSort('transaction_date', 'desc')->paginated([15, 30, 50]);
+        $table = CashMovementsTable::configure($table);
+
+        return $table->recordActions([ActionGroup::make(MovementActions::records())->label('Ações')->icon('heroicon-o-ellipsis-vertical')], RecordActionsPosition::AfterColumns)
+            ->toolbarActions(MovementActions::toolbar())
+            ->defaultPaginationPageOption(15)->paginated([15, 30, 50]);
     }
 
     public static function getPages(): array
     {
         return ['index' => Pages\ListMovements::route('/'), 'create' => Pages\CreateMovement::route('/create'), 'edit' => Pages\EditMovement::route('/{record}/edit')];
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return parent::canEdit($record) && $record->origin_type === 'manual'
+            && blank($record->transfer_group_id) && $record->reversal_of_id === null && $record->reversed_at === null
+            && ! $record->hasStatementLinks();
     }
 }

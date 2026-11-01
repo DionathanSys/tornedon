@@ -31,6 +31,13 @@ class CashMovementsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query
+                ->with(['financialAccount', 'financialCategory', 'counterpartyPartner', 'counterpartyFinancialAccount', 'company',
+                    'transferGroupRecords' => fn ($query) => $query->where('company_id', Filament::getTenant()->id)->withExists(['statementLines', 'statementAllocations']),
+                    'payablePayment.installment.accountPayable.supplier', 'receivablePayment.installment.accountReceivable.customer'])
+                // Filament rebuilds the table query for each action context. Compile these
+                // scoped subqueries only when the records are actually fetched.
+                ->withGlobalScope('statement_flags', fn (Builder $query) => $query->withExists(['statementLines', 'statementAllocations'])))
             ->columns([
                 TextColumn::make('transaction_date')
                     ->label('Data')
@@ -43,7 +50,8 @@ class CashMovementsTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('financialCategory.full_name')
                     ->label('Categoria')
-                    ->searchable()
+                    ->state(fn (CashMovement $record): ?string => self::categoryLabel($record))
+                    ->searchable(query: fn (Builder $query, string $search) => $query->whereHas('financialCategory', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('counterparty_label')
                     ->label('Parceiro')
@@ -111,7 +119,7 @@ class CashMovementsTable
                     ->native(false),
                 SelectFilter::make('financial_account_id')
                     ->label('Conta')
-                    ->relationship('financialAccount', 'name')
+                    ->relationship('financialAccount', 'name', fn (Builder $query) => $query->where('company_id', Filament::getTenant()->id))
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('financial_category_id')
@@ -187,5 +195,18 @@ class CashMovementsTable
             ])
             ->defaultSort('transaction_date', 'desc')
             ->emptyStateHeading('Nenhum movimento financeiro encontrado');
+    }
+
+    private static function categoryLabel(CashMovement $record): ?string
+    {
+        // Labels are presentation-only and shared by all rows in this request.
+        $key = 'cash_movement_category_labels.'.Filament::getTenant()->id.'.'.Auth::id();
+        $labels = request()->attributes->get($key);
+        if ($labels === null) {
+            $labels = FinancialCategory::hierarchyOptionsForCompany(Filament::getTenant()->id);
+            request()->attributes->set($key, $labels);
+        }
+
+        return $labels[$record->financial_category_id] ?? $record->financialCategory?->name;
     }
 }

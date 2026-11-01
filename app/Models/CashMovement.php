@@ -125,7 +125,27 @@ class CashMovement extends Model
 
     public function hasStatementLinks(): bool
     {
+        if (array_key_exists('statement_lines_exists', $this->attributes) && array_key_exists('statement_allocations_exists', $this->attributes)) {
+            return (bool) $this->statement_lines_exists || (bool) $this->statement_allocations_exists;
+        }
+
         return $this->statementLines()->exists() || $this->statementAllocations()->exists();
+    }
+
+    public function transferGroupRecords(): HasMany
+    {
+        return $this->hasMany(self::class, 'transfer_group_id', 'transfer_group_id')
+            ->where('origin_type', 'manual')->whereNull('reversal_of_id')->orderBy('id');
+    }
+
+    public function payablePayment(): BelongsTo
+    {
+        return $this->belongsTo(AccountPayableInstallmentPayment::class, 'origin_id');
+    }
+
+    public function receivablePayment(): BelongsTo
+    {
+        return $this->belongsTo(AccountReceivableInstallmentPayment::class, 'origin_id');
     }
 
     public function scopeReconciled(Builder $query): Builder
@@ -197,7 +217,12 @@ class CashMovement extends Model
             return new Collection;
         }
 
+        if ($this->relationLoaded('transferGroupRecords')) {
+            return $this->transferGroupRecords->where('company_id', $this->company_id)->values();
+        }
+
         return self::query()
+            ->where('company_id', $this->company_id)
             ->where('transfer_group_id', $this->transfer_group_id)
             ->where('origin_type', 'manual')
             ->whereNull('reversal_of_id')
@@ -302,18 +327,14 @@ class CashMovement extends Model
     private function resolveOriginCounterpartyLabel(): ?string
     {
         if ($this->origin_type === AccountReceivableInstallmentPayment::class && $this->origin_id !== null) {
-            return AccountReceivableInstallmentPayment::query()
-                ->with('installment.accountReceivable.customer')
-                ->find($this->origin_id)
+            return $this->receivablePayment
                 ?->installment
                 ?->accountReceivable
                 ?->counterparty_label;
         }
 
         if ($this->origin_type === AccountPayableInstallmentPayment::class && $this->origin_id !== null) {
-            return AccountPayableInstallmentPayment::query()
-                ->with('installment.accountPayable.supplier')
-                ->find($this->origin_id)
+            return $this->payablePayment
                 ?->installment
                 ?->accountPayable
                 ?->counterparty_label;

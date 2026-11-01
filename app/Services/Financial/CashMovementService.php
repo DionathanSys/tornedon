@@ -493,6 +493,7 @@ class CashMovementService
                 $commonData = [
                     'company_id' => $companyId,
                     'financial_category_id' => $category->id,
+                    'chart_account_id' => $category->chart_account_id,
                     'transaction_date' => $data['transaction_date'],
                     'amount' => $amount,
                     'description' => $data['description'],
@@ -595,8 +596,12 @@ class CashMovementService
                     'company_id' => $outflow->company_id,
                     'financial_account_id' => $outflow->financial_account_id,
                     'financial_category_id' => $outflow->financial_category_id,
+                    'chart_account_id' => $outflow->chart_account_id,
+                    'cost_center_id' => $outflow->cost_center_id,
+                    'result_center_id' => $outflow->result_center_id,
                     'direction' => CashMovementDirection::INFLOW->value,
                     'transaction_date' => now()->toDateString(),
+                    'competence_date' => now()->toDateString(),
                     'amount' => $outflow->amount,
                     'description' => 'Estorno: '.$outflow->description,
                     'origin_type' => 'manual',
@@ -615,8 +620,12 @@ class CashMovementService
                     'company_id' => $inflow->company_id,
                     'financial_account_id' => $inflow->financial_account_id,
                     'financial_category_id' => $inflow->financial_category_id,
+                    'chart_account_id' => $inflow->chart_account_id,
+                    'cost_center_id' => $inflow->cost_center_id,
+                    'result_center_id' => $inflow->result_center_id,
                     'direction' => CashMovementDirection::OUTFLOW->value,
                     'transaction_date' => now()->toDateString(),
+                    'competence_date' => now()->toDateString(),
                     'amount' => $inflow->amount,
                     'description' => 'Estorno: '.$inflow->description,
                     'origin_type' => 'manual',
@@ -1026,6 +1035,7 @@ class CashMovementService
 
         /** @var Collection<int, CashMovement> $group */
         $group = CashMovement::query()
+            ->where('company_id', $movement->company_id)
             ->where('transfer_group_id', $movement->transfer_group_id)
             ->where('origin_type', 'manual')
             ->whereNull('reversal_of_id')
