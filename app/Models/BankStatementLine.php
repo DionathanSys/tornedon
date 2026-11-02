@@ -5,12 +5,15 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\Financial\BankStatementLineStatus;
 use App\Enum\Financial\CashMovementDirection;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class BankStatementLine extends Model
 {
+    public const SUGGESTIONS_VERSION = 1;
+
     protected $fillable = [
         'bank_statement_import_id',
         'company_id',
@@ -100,5 +103,29 @@ class BankStatementLine extends Model
         $suggestions = data_get($this->metadata, 'suggestions', []);
 
         return is_array($suggestions) ? $suggestions : [];
+    }
+
+    public function suggestionsStatus(): string
+    {
+        if (data_get($this->metadata, 'suggestions_status') === 'error') {
+            return 'error';
+        }
+
+        $suggestedAt = data_get($this->metadata, 'suggested_at');
+        if (data_get($this->metadata, 'suggestions_version') !== self::SUGGESTIONS_VERSION || ! is_string($suggestedAt) || trim($suggestedAt) === '') {
+            return 'stale';
+        }
+
+        try {
+            $expiresAt = Carbon::parse($suggestedAt)->addMinutes(max(1, (int) config('bank_reconciliation.suggestions_ttl_minutes', 1440)));
+        } catch (\Throwable) {
+            return 'stale';
+        }
+
+        if ($expiresAt->lessThanOrEqualTo(now())) {
+            return 'stale';
+        }
+
+        return $this->suggestions() === [] ? 'empty' : 'ready';
     }
 }

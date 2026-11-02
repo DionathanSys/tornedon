@@ -14,13 +14,7 @@ class BankStatementMovementEligibilityService
         [$amountTolerance, $dateToleranceDays] = $this->tolerancesFor($line);
         $transactionDate = $line->transaction_date;
 
-        return CashMovement::query()
-            ->where('company_id', $line->company_id)
-            ->where('financial_account_id', $line->financial_account_id)
-            ->where('direction', $line->direction()?->value)
-            ->whereNull('reversed_at')
-            ->whereNull('reversal_of_id')
-            ->whereDoesntHave('statementAllocations')
+        return app(BankStatementCandidateEligibilityService::class)->movementsForLine($line)
             ->whereBetween('amount', [
                 max(0, ((float) $line->amount - $amountTolerance) * 100),
                 ((float) $line->amount + $amountTolerance) * 100,
@@ -28,8 +22,7 @@ class BankStatementMovementEligibilityService
             ->whereBetween('transaction_date', [
                 $transactionDate?->copy()->subDays($dateToleranceDays)->toDateString(),
                 $transactionDate?->copy()->addDays($dateToleranceDays)->toDateString(),
-            ])
-            ->whereDoesntHave('statementLines', fn (Builder $query) => $query->where('id', '!=', $line->id));
+            ]);
     }
 
     /**
@@ -78,7 +71,7 @@ class BankStatementMovementEligibilityService
         [$amountTolerance, $dateToleranceDays] = $this->tolerancesFor($line);
         $exceptions = [];
         $amountDifference = abs((float) $movement->amount - (float) $line->amount);
-        $dateDifference = $line->transaction_date?->diffInDays($movement->transaction_date) ?? 0;
+        $dateDifference = abs($line->transaction_date?->diffInDays($movement->transaction_date) ?? 0);
 
         if ($amountDifference > $amountTolerance) {
             $exceptions[] = sprintf(

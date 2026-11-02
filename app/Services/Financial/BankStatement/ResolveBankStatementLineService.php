@@ -3,9 +3,7 @@
 namespace App\Services\Financial\BankStatement;
 
 use App\Enum\Financial\BankStatementLineStatus;
-use App\Models\AccountPayableInstallment;
 use App\Models\AccountPayableInstallmentPayment;
-use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
@@ -84,8 +82,7 @@ class ResolveBankStatementLineService
                     ]);
                 }
 
-                $installment = AccountPayableInstallment::query()
-                    ->where('company_id', $line->company_id)
+                $installment = app(BankStatementCandidateEligibilityService::class)->installmentsForLine($line)
                     ->lockForUpdate()
                     ->find($installmentId);
 
@@ -164,8 +161,7 @@ class ResolveBankStatementLineService
                     ]);
                 }
 
-                $installment = AccountReceivableInstallment::query()
-                    ->where('company_id', $line->company_id)
+                $installment = app(BankStatementCandidateEligibilityService::class)->installmentsForLine($line)
                     ->lockForUpdate()
                     ->find($installmentId);
 
@@ -345,7 +341,21 @@ class ResolveBankStatementLineService
 
     public function refreshSuggestions(BankStatementLine $line): array
     {
-        return $this->suggestService->suggestForLine($line->fresh());
+        $this->resetResponse();
+        $suggestions = $this->suggestService->suggestForLine($line->fresh());
+
+        if ($this->suggestService->hasError()) {
+            $this->setError(
+                $this->suggestService->getMessage(),
+                $this->suggestService->getErrors(),
+                $this->suggestService->getStatus(),
+                $this->suggestService->getErrorCode(),
+            );
+        } else {
+            $this->setSuccess($this->suggestService->getMessage(), $this->suggestService->getData());
+        }
+
+        return $suggestions;
     }
 
     public function reopenIgnored(BankStatementLine $line, int $userId, string $reason): ?BankStatementLine

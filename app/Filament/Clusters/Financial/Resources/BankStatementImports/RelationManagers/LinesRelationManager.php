@@ -97,8 +97,24 @@ class LinesRelationManager extends RelationManager
                 TextColumn::make('suggestions_count')
                     ->label('Sugestões')
                     ->badge()
-                    ->getStateUsing(fn (BankStatementLine $record): int => count($record->suggestions()))
-                    ->color(fn (int $state): string => $state > 1 ? 'info' : ($state === 1 ? 'success' : 'gray'))
+                    ->getStateUsing(fn (BankStatementLine $record): string => match ($record->suggestionsStatus()) {
+                        'error' => 'Erro ao buscar',
+                        'stale' => 'Desatualizadas',
+                        'empty' => 'Sem correspondência',
+                        default => (string) count($record->suggestions()),
+                    })
+                    ->color(fn (BankStatementLine $record): string => match ($record->suggestionsStatus()) {
+                        'error' => 'danger',
+                        'stale' => 'warning',
+                        'empty' => 'gray',
+                        default => count($record->suggestions()) > 1 ? 'info' : 'success',
+                    })
+                    ->tooltip(fn (BankStatementLine $record): ?string => match ($record->suggestionsStatus()) {
+                        'error' => 'A última atualização falhou. Tente atualizar as sugestões novamente.',
+                        'stale' => 'Atualize as sugestões para consultar os critérios atuais e os registros disponíveis.',
+                        'empty' => 'A última busca foi concluída sem encontrar correspondências.',
+                        default => null,
+                    })
                     ->toggleable(),
             ])
             ->defaultSort('transaction_date', 'desc')
@@ -116,8 +132,9 @@ class LinesRelationManager extends RelationManager
                         $service->refreshSuggestions($record);
 
                         Notification::make()
-                            ->title('Sugestões atualizadas.')
-                            ->success()
+                            ->title($service->getMessage())
+                            ->body($service->hasError() ? 'Não foi possível atualizar as sugestões. Tente novamente.' : null)
+                            ->{$service->hasError() ? 'danger' : 'success'}()
                             ->send();
                     }),
                 Action::make('use_single_suggestion')
@@ -125,7 +142,7 @@ class LinesRelationManager extends RelationManager
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->iconButton()
-                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestions() !== [])
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestionsStatus() === 'ready')
                     ->modalHidden(fn (BankStatementLine $record): bool => ! $this->suggestionRequiresExceptionReason($record, $record->suggestions()[0]))
                     ->schema(fn (Schema $schema): Schema => $schema->components([
                         Textarea::make('exception_reason')
@@ -142,7 +159,7 @@ class LinesRelationManager extends RelationManager
                     ->icon('heroicon-o-sparkles')
                     ->color('info')
                     ->iconButton()
-                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && count($record->suggestions()) > 1)
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true && $record->suggestionsStatus() === 'ready' && count($record->suggestions()) > 1)
                     ->schema(fn (Schema $schema, BankStatementLine $record): Schema => $schema->components([
                         Radio::make('suggestion_index')
                             ->label('Sugestão')

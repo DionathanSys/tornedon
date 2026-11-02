@@ -28,17 +28,22 @@ use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\Company\CompanyOperationalResetService;
+use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService;
 use App\Services\Financial\BankStatement\ImportBankStatementService;
 use App\Services\Financial\BankStatement\ReconcileBankStatementGroupService;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
+use App\Services\Financial\BankStatement\SuggestBankStatementMatchesService;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -1561,6 +1566,257 @@ OFX;
         ]);
     }
 
+    public static function suggestionDateDistances(): array
+    {
+        return [
+            'mesmo dia' => [0, 55, 75],
+            'um dia antes' => [-1, 47, 67],
+            'um dia depois' => [1, 47, 67],
+            'vinte dias antes' => [-20, 35, 55],
+            'vinte dias depois' => [20, 35, 55],
+        ];
+    }
+
+    #[DataProvider('suggestionDateDistances')]
+    public function test_suggestions_score_absolute_date_distances_and_award_the_same_day_bonus(int $days, int $installmentScore, int $movementScore): void
+    {
+        $this->financialAccount->update(['reconciliation_date_tolerance_days' => 30]);
+        $service = app(SuggestBankStatementMatchesService::class);
+
+        foreach (self::reconciliationTypes() as [$type, $bankType, $amount]) {
+            $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+            $line = $this->importLine($bankType, $amount, 'suggestion-dates-'.$type);
+            $line->update(['description' => 'ABC']);
+            $date = $line->transaction_date->copy()->addDays($days)->toDateString();
+            $installment->update(['due_date' => $date]);
+            $movement = $this->createCashMovement($line->direction(), 100, ['description' => 'XYZ', 'transaction_date' => $date]);
+            $suggestions = collect($service->suggestForLine($line));
+
+            $this->assertTrue($service->isSuccess(), $service->getMessageUser());
+            $this->assertSame($installmentScore, $suggestions->firstWhere('origin_type', 'account_'.$type.'_installment')['score']);
+            $this->assertSame($movementScore, $suggestions->firstWhere('origin_type', 'cash_movement')['score']);
+            $this->assertSame($movement->id, $suggestions->firstWhere('origin_type', 'cash_movement')['origin_id']);
+            $this->assertStringContainsString('diferenca de '.abs($days).' dia(s)', $suggestions->firstWhere('origin_type', 'cash_movement')['reason']);
+        }
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_suggestions_rank_installments_beyond_the_first_thirty_and_across_query_batches(string $type, string $bankType, string $amount): void
+    {
+        $first = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $first->update(['original_amount' => 500, 'due_amount' => 500, 'balance_amount' => 500]);
+        for ($i = 1; $i < 205; $i++) {
+            $copy = $first->replicate();
+            $copy->sequence_number = (string) ($i + 1);
+            $copy->save();
+        }
+        for ($i = 0; $i < 6; $i++) {
+            $near = $first->replicate();
+            $near->fill(['sequence_number' => (string) (206 + $i), 'original_amount' => 100.5, 'due_amount' => 100.5, 'balance_amount' => 100.5]);
+            $near->save();
+        }
+        $target = $first->replicate();
+        $target->fill(['sequence_number' => '212', 'original_amount' => 100, 'due_amount' => 100, 'balance_amount' => 100]);
+        $target->save();
+        $line = $this->importLine($bankType, $amount, 'suggestion-batches');
+
+        $this->assertCount(5, $line->suggestions());
+        $this->assertSame($target->id, $line->suggestions()[0]['origin_id']);
+        $this->assertGreaterThan($line->suggestions()[1]['score'], $line->suggestions()[0]['score']);
+        $this->assertSame('ready', $line->suggestionsStatus());
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_suggestions_and_manual_search_share_installment_eligibility(string $type, string $bankType, string $amount): void
+    {
+        $eligible = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $foreignCompany = Company::factory()->create();
+        foreach ([
+            ['ignored_at' => now()],
+            ['status' => 'cancelled'],
+            ['balance_amount' => 0],
+            ['status' => $type === 'receivable' ? 'received' : 'paid'],
+            ['company_id' => $foreignCompany->id],
+        ] as $attributes) {
+            $copy = $eligible->replicate();
+            $copy->save();
+            // Include inconsistent legacy balances/statuses to verify eligibility, not model recalculation.
+            if (array_key_exists('balance_amount', $attributes)) {
+                $attributes['balance_amount'] *= 100;
+            }
+            DB::table($copy->getTable())->where('id', $copy->id)->update($attributes);
+        }
+        $parentRelation = $type === 'receivable' ? 'accountReceivable' : 'accountPayable';
+        $parentKey = $type === 'receivable' ? 'account_receivable_id' : 'account_payable_id';
+        foreach ([['status' => 'cancelled'], ['company_id' => $foreignCompany->id]] as $attributes) {
+            $parent = $eligible->{$parentRelation}->replicate();
+            $parent->save();
+            DB::table($parent->getTable())->where('id', $parent->id)->update($attributes);
+            $copy = $eligible->replicate();
+            $copy->{$parentKey} = $parent->id;
+            $copy->save();
+        }
+        $line = $this->importLine($bankType, $amount, 'suggestion-eligibility');
+        $records = app(SearchBankReconciliationCandidates::class)->search($this->company->id, collect([$line]), $type)['records'];
+
+        $this->assertSame([$eligible->id], array_column($line->suggestions(), 'origin_id'));
+        $this->assertSame([$eligible->id], array_column($records, 'id'));
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_reconciliation_revalidates_ignored_installments_before_creating_payments(string $type, string $bankType, string $amount): void
+    {
+        $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $line = $this->importLine($bankType, $amount, 'suggestion-revalidate');
+        $this->assertNotEmpty($line->suggestions());
+        DB::table($installment->getTable())->where('id', $installment->id)->update(['ignored_at' => now()]);
+        $resolved = $type === 'receivable'
+            ? $this->resolveService->reconcileWithReceivableInstallment($line, $installment->id)
+            : $this->resolveService->reconcileWithPayableInstallment($line, $installment->id);
+
+        $this->assertNull($resolved);
+        $this->assertTrue($this->resolveService->hasError());
+        $this->assertDatabaseCount('cash_movements', 0);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+
+        try {
+            app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], $type, [['id' => $installment->id, 'amount' => 100]], $this->user->id);
+            $this->fail('An ignored installment must not be settled by a group.');
+        } catch (ValidationException) {
+            $this->assertDatabaseCount('cash_movements', 0);
+            $this->assertDatabaseCount('bank_reconciliation_groups', 0);
+            $this->assertEquals(100, $installment->fresh()->balance_amount);
+        }
+    }
+
+    public function test_suggestions_exclude_movements_already_linked_to_the_current_line_or_a_group(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'suggestion-linked');
+        $legacy = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $grouped = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $eligible = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $line->update(['cash_movement_id' => $legacy->id]);
+        $groupLine = $this->duplicatePendingLine($line, 100);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$groupLine->id], 'cash_movement', [['id' => $grouped->id]], $this->user->id);
+
+        $suggestions = app(SuggestBankStatementMatchesService::class)->suggestForLine($line->fresh());
+        $records = app(SearchBankReconciliationCandidates::class)->search($this->company->id, collect([$line->fresh()]), 'cash_movement')['records'];
+
+        $this->assertSame([$eligible->id], array_column($suggestions, 'origin_id'));
+        $this->assertSame([$eligible->id], array_column($records, 'id'));
+    }
+
+    public function test_date_exceptions_are_required_for_movements_before_and_after_the_bank_date(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'suggestion-date-exceptions');
+        foreach ([-10, 10] as $days) {
+            $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, [
+                'transaction_date' => $line->transaction_date->copy()->addDays($days)->toDateString(),
+            ]);
+            $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $movement->id));
+            $this->assertArrayHasKey('exception_reason', $this->resolveService->getErrors());
+        }
+    }
+
+    public function test_suggestion_states_distinguish_empty_stale_legacy_and_refreshed_results(): void
+    {
+        config(['bank_reconciliation.suggestions_ttl_minutes' => 60]);
+        $line = $this->importLine('CREDIT', '100.00', 'suggestion-states');
+        $this->assertSame('empty', $line->suggestionsStatus());
+        $this->assertSame([], $line->suggestions());
+        $metadata = $line->metadata;
+        $line->metadata = array_diff_key($metadata, ['suggestions_version' => true]);
+        $this->assertSame('stale', $line->suggestionsStatus());
+        $line->metadata = array_merge($metadata, ['suggested_at' => 'not-a-date']);
+        $this->assertSame('stale', $line->suggestionsStatus());
+        $line->metadata = $metadata;
+
+        $this->travel(60)->minutes();
+        $this->assertSame('stale', $line->suggestionsStatus());
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $suggestions = $this->resolveService->refreshSuggestions($line);
+        $this->assertTrue($this->resolveService->isSuccess());
+        $this->assertSame($movement->id, $suggestions[0]['origin_id']);
+        $this->assertSame('ready', $line->fresh()->suggestionsStatus());
+    }
+
+    public function test_refresh_suggestions_reports_failure_preserves_previous_results_and_recovers(): void
+    {
+        Log::spy();
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $line = $this->importLine('CREDIT', '100.00', 'suggestion-failure');
+        $metadata = $line->metadata;
+        $this->mock(BankStatementMovementEligibilityService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('queryForLine')->once()->andThrow(new \RuntimeException('Internal database detail'));
+        });
+
+        $this->assertSame([], $this->resolveService->refreshSuggestions($line));
+        $this->assertTrue($this->resolveService->hasError());
+        $this->assertStringNotContainsString('Internal database detail', $this->resolveService->getMessageUser());
+        $line->refresh();
+        $this->assertSame('error', $line->suggestionsStatus());
+        $this->assertSame($metadata['suggestions'], $line->suggestions());
+        $this->assertSame($metadata['suggested_at'], $line->metadata['suggested_at']);
+        $this->assertSame($this->resolveService->getErrorCode(), $line->metadata['suggestions_error_code']);
+        Log::shouldHaveReceived('error')->once();
+
+        $this->app->forgetInstance(BankStatementMovementEligibilityService::class);
+        $this->assertSame($movement->id, $this->resolveService->refreshSuggestions($line)[0]['origin_id']);
+        $this->assertTrue($this->resolveService->isSuccess());
+        $this->assertSame('ready', $line->fresh()->suggestionsStatus());
+        $this->assertNull($line->fresh()->metadata['suggestions_error_code']);
+    }
+
+    public function test_import_records_suggestion_failure_instead_of_an_empty_successful_search(): void
+    {
+        Log::spy();
+        $this->mock(BankStatementMovementEligibilityService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('queryForLine')->once()->andThrow(new \RuntimeException('Search unavailable'));
+        });
+        $line = $this->importLine('CREDIT', '100.00', 'suggestion-import-failure');
+
+        $this->assertSame('error', $line->suggestionsStatus());
+        $this->assertSame([], $line->suggestions());
+        $this->assertNotEmpty($line->metadata['suggestions_error_code']);
+        $this->assertArrayNotHasKey('suggested_at', $line->metadata);
+        $this->assertSame('pending', $line->reconciliation_status->value);
+        $this->assertTrue($this->importService->isSuccess());
+        Log::shouldHaveReceived('error')->once();
+    }
+
+    public function test_refresh_suggestions_action_displays_failures_and_empty_results_without_false_success(): void
+    {
+        $this->user->companies()->attach($this->company, ['role' => 'member', 'is_active' => true]);
+        $this->actingAs($this->user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($this->company);
+        $this->user->companyAccesses()->create([
+            'company_id' => $this->company->id, 'permissions' => ['cash_movements.access'],
+            'panels' => ['admin' => true], 'navigation' => [],
+        ]);
+        $line = $this->importLine('CREDIT', '100.00', 'suggestion-action');
+        $this->mock(BankStatementMovementEligibilityService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('queryForLine')->once()->andThrow(new \RuntimeException('Search unavailable'));
+        });
+
+        Livewire::test(LinesRelationManager::class, [
+            'ownerRecord' => $line->import,
+            'pageClass' => ViewBankStatementImport::class,
+        ])->callTableAction('refresh_suggestions', $line)
+            ->assertNotified(Notification::make()->title('Erro ao gerar sugestões de conciliação.')
+                ->body('Não foi possível atualizar as sugestões. Tente novamente.')->danger());
+        $this->assertSame('error', $line->fresh()->suggestionsStatus());
+
+        $this->app->forgetInstance(BankStatementMovementEligibilityService::class);
+        Livewire::test(LinesRelationManager::class, [
+            'ownerRecord' => $line->import,
+            'pageClass' => ViewBankStatementImport::class,
+        ])->callTableAction('refresh_suggestions', $line)
+            ->assertNotified(Notification::make()->title('Nenhuma correspondência encontrada para esta linha.')->success())
+            ->assertTableActionHidden('use_single_suggestion', $line->fresh());
+        $this->assertSame('empty', $line->fresh()->suggestionsStatus());
+    }
+
     private function importLine(string $type, string $amount, string $fitid): BankStatementLine
     {
         $import = $this->importService->importFromString(
@@ -1577,7 +1833,7 @@ OFX;
             $this->user->id,
         );
 
-        return $import?->lines()->sole() ?? throw new \RuntimeException('Não foi possível importar a linha de teste.');
+        return $import?->lines()->where('external_id', $fitid)->sole() ?? throw new \RuntimeException('Não foi possível importar a linha de teste.');
     }
 
     /**

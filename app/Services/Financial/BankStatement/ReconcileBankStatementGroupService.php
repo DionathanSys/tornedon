@@ -43,7 +43,10 @@ class ReconcileBankStatementGroupService
                     'payable' => AccountPayableInstallment::class,
                     default => CashMovement::class,
                 };
-                $target = $model::query()->where('company_id', $companyId)->lockForUpdate()->find($item['id']);
+                $query = $type === 'cash_movement'
+                    ? $model::query()->where('company_id', $companyId)
+                    : app(BankStatementCandidateEligibilityService::class)->installmentsForLine($first);
+                $target = $query->lockForUpdate()->find($item['id']);
                 $this->ensure($target !== null, 'Item não encontrado na empresa atual.');
                 $amount = $type === 'cash_movement' ? $this->cents($target->amount) : $this->cents($item['amount'] ?? 0);
                 $this->ensure($amount > 0, 'Informe um valor positivo para cada parcela.');

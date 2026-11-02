@@ -3,14 +3,13 @@
 namespace App\Services\Financial\BankStatement;
 
 use App\Domain\DTO\Financial\BankStatementSuggestionDTO;
-use App\Enum\AccountPayable\Status as PayableStatus;
-use App\Enum\AccountReceivable\Status as ReceivableStatus;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivableInstallment;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Traits\HandlesServiceResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class SuggestBankStatementMatchesService
 {
@@ -29,7 +28,9 @@ class SuggestBankStatementMatchesService
                 ...$this->suggestInstallments($line),
             ];
 
-            usort($suggestions, fn (array $left, array $right) => $right['score'] <=> $left['score']);
+            usort($suggestions, fn (array $left, array $right) => ($right['score'] <=> $left['score'])
+                ?: strcmp($left['origin_type'], $right['origin_type'])
+                ?: ($left['origin_id'] <=> $right['origin_id']));
 
             $limited = array_slice($suggestions, 0, 5);
 
@@ -37,18 +38,44 @@ class SuggestBankStatementMatchesService
                 'metadata' => array_merge($line->metadata ?? [], [
                     'suggestions' => $limited,
                     'suggested_at' => now()->toDateTimeString(),
+                    'suggestions_version' => BankStatementLine::SUGGESTIONS_VERSION,
+                    'suggestions_status' => $limited === [] ? 'empty' : 'ready',
+                    'suggestions_attempted_at' => now()->toDateTimeString(),
+                    'suggestions_error_code' => null,
                 ]),
             ]);
 
-            $this->setSuccess('Sugestões de conciliação geradas com sucesso.', [
+            $this->setSuccess($limited === [] ? 'Nenhuma correspondência encontrada para esta linha.' : 'Sugestões atualizadas.', [
                 'suggestions' => $limited,
             ]);
 
             return $limited;
         } catch (\Throwable $e) {
             $this->setError('Erro ao gerar sugestões de conciliação.', [
-                'exception' => [$e->getMessage()],
+                'suggestions' => ['Não foi possível atualizar as sugestões. Tente novamente.'],
             ]);
+
+            Log::error('Erro ao gerar sugestões de conciliação.', [
+                'bank_statement_line_id' => $line->id,
+                'company_id' => $line->company_id,
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e,
+            ]);
+
+            try {
+                $line->update([
+                    'metadata' => array_merge($line->metadata ?? [], [
+                        'suggestions_status' => 'error',
+                        'suggestions_attempted_at' => now()->toDateTimeString(),
+                        'suggestions_error_code' => $this->getErrorCode(),
+                    ]),
+                ]);
+            } catch (\Throwable $metadataException) {
+                Log::error('Não foi possível registrar a falha das sugestões.', [
+                    'bank_statement_line_id' => $line->id,
+                    'exception' => $metadataException,
+                ]);
+            }
 
             return [];
         }
@@ -63,10 +90,11 @@ class SuggestBankStatementMatchesService
 
         return app(BankStatementMovementEligibilityService::class)
             ->queryForLine($line)
-            ->get()
+            ->orderBy('id')
+            ->lazy(200)
             ->map(function (CashMovement $movement) use ($line, $date) {
                 $amountDiff = abs((float) $movement->amount - (float) $line->amount);
-                $dateDiff = $date->diffInDays(Carbon::parse($movement->transaction_date));
+                $dateDiff = (int) abs($date->diffInDays(Carbon::parse($movement->transaction_date)));
                 $score = 0;
 
                 if ($movement->direction?->value === $line->direction()?->value) {
@@ -119,6 +147,8 @@ class SuggestBankStatementMatchesService
                 ))->toArray();
             })
             ->filter()
+            ->sortByDesc('score')
+            ->take(5)
             ->values()
             ->all();
     }
@@ -140,22 +170,14 @@ class SuggestBankStatementMatchesService
     {
         $date = Carbon::parse($line->transaction_date);
 
-        return AccountPayableInstallment::query()
-            ->considered()
+        return app(BankStatementCandidateEligibilityService::class)->installmentsForLine($line)
             ->with('accountPayable.supplier')
-            ->where('company_id', $line->company_id)
-            ->whereIn('status', [
-                PayableStatus::PENDING->value,
-                PayableStatus::PARTIALLY_PAID->value,
-                PayableStatus::OVERDUE->value,
-            ])
-            ->where('balance_amount', '>', 0)
             ->whereBetween('due_date', [
                 $date->copy()->subDays(30)->toDateString(),
                 $date->copy()->addDays(30)->toDateString(),
             ])
-            ->limit(30)
-            ->get()
+            ->orderBy('id')
+            ->lazy(200)
             ->map(function (AccountPayableInstallment $installment) use ($line, $date) {
                 $score = $this->scoreInstallmentSuggestion(
                     lineDescription: $line->description,
@@ -194,6 +216,8 @@ class SuggestBankStatementMatchesService
                 ))->toArray();
             })
             ->filter()
+            ->sortByDesc('score')
+            ->take(5)
             ->values()
             ->all();
     }
@@ -205,22 +229,14 @@ class SuggestBankStatementMatchesService
     {
         $date = Carbon::parse($line->transaction_date);
 
-        return AccountReceivableInstallment::query()
-            ->considered()
+        return app(BankStatementCandidateEligibilityService::class)->installmentsForLine($line)
             ->with('accountReceivable.customer')
-            ->where('company_id', $line->company_id)
-            ->whereIn('status', [
-                ReceivableStatus::PENDING->value,
-                ReceivableStatus::PARTIALLY_RECEIVED->value,
-                ReceivableStatus::OVERDUE->value,
-            ])
-            ->where('balance_amount', '>', 0)
             ->whereBetween('due_date', [
                 $date->copy()->subDays(30)->toDateString(),
                 $date->copy()->addDays(30)->toDateString(),
             ])
-            ->limit(30)
-            ->get()
+            ->orderBy('id')
+            ->lazy(200)
             ->map(function (AccountReceivableInstallment $installment) use ($line, $date) {
                 $score = $this->scoreInstallmentSuggestion(
                     lineDescription: $line->description,
@@ -259,6 +275,8 @@ class SuggestBankStatementMatchesService
                 ))->toArray();
             })
             ->filter()
+            ->sortByDesc('score')
+            ->take(5)
             ->values()
             ->all();
     }
@@ -272,7 +290,7 @@ class SuggestBankStatementMatchesService
         string $referenceText,
     ): int {
         $amountDiff = abs($targetAmount - $lineAmount);
-        $dateDiff = $lineDate->diffInDays($targetDate);
+        $dateDiff = (int) abs($lineDate->diffInDays($targetDate));
         $score = 0;
 
         $score += match (true) {

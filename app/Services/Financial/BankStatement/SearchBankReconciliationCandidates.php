@@ -2,10 +2,7 @@
 
 namespace App\Services\Financial\BankStatement;
 
-use App\Models\AccountPayableInstallment;
-use App\Models\AccountReceivableInstallment;
 use App\Models\BankStatementLine;
-use App\Models\CashMovement;
 use App\Models\Partner;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -25,20 +22,14 @@ class SearchBankReconciliationCandidates
         }
 
         $movement = $type === 'cash_movement';
-        $model = $movement ? CashMovement::class : ($type === 'receivable' ? AccountReceivableInstallment::class : AccountPayableInstallment::class);
         $amountColumn = $movement ? 'amount' : 'balance_amount';
         $dateColumn = $movement ? 'transaction_date' : 'due_date';
         $parent = $type === 'receivable' ? 'accountReceivable' : 'accountPayable';
         $party = $type === 'receivable' ? 'customer' : 'supplier';
-        $query = $model::query()->where('company_id', $companyId);
-        if ($movement) {
-            $query->where('financial_account_id', $first->financial_account_id)
-                ->where('direction', $first->direction()?->value)
-                ->whereNull('reversed_at')->whereNull('reversal_of_id')->unreconciled();
-        } else {
-            $query->with($parent.'.'.$party)->where('balance_amount', '>', 0)->where('status', '!=', 'cancelled')
-                ->whereHas($parent, fn (Builder $query) => $query->where('company_id', $companyId)->where('status', '!=', 'cancelled'));
-        }
+        $eligibility = app(BankStatementCandidateEligibilityService::class);
+        $query = $movement
+            ? $eligibility->movementsForLine($first)
+            : $eligibility->installmentsForLine($first)->with($parent.'.'.$party);
 
         $search = mb_substr(trim($search), 0, 150);
         if ($search !== '') {
