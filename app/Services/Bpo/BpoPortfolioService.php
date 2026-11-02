@@ -21,6 +21,32 @@ class BpoPortfolioService
         return $this->access->companies($user)->map(fn (Company $company) => $this->summary($user, $company));
     }
 
+    public function priorities(User $user, Company $company, string $search, ?string $from, string $until): Collection
+    {
+        throw_unless($this->access->canAccessCompany($user, $company), AuthorizationException::class);
+        $rows = collect();
+        foreach (['payable' => AccountPayableInstallment::class, 'receivable' => AccountReceivableInstallment::class] as $type => $model) {
+            $relation = $type === 'payable' ? 'accountPayable' : 'accountReceivable';
+            $partner = $type === 'payable' ? 'supplier' : 'customer';
+            $permission = $type === 'payable' ? 'account_payables.view' : 'account_receivables.view';
+            $records = $model::where('company_id', $company->id)->open()->whereDate('due_date', '<=', $until)
+                ->when($from, fn ($q) => $q->whereDate('due_date', '>=', $from))
+                ->whereHas($relation, function ($query) use ($user, $company, $permission, $search, $partner): void {
+                    $this->authorization->scopeQuery($query, $user, $company, $permission);
+                    if ($search !== '') {
+                        $query->where(fn ($q) => $q->where('description', 'like', '%'.$search.'%')->orWhere('document_number', 'like', '%'.$search.'%')
+                            ->orWhere('manual_counterparty_name', 'like', '%'.$search.'%')->orWhereHas($partner, fn ($q) => $q->where('name', 'like', '%'.$search.'%')));
+                    }
+                })->with($relation.'.'.$partner)->orderBy('due_date')->limit(10)->get();
+            foreach ($records as $installment) {
+                $rows->push(['type' => $type, 'record' => $installment->$relation, 'date' => $installment->due_date,
+                    'party' => $installment->$relation->counterparty_label, 'description' => $installment->$relation->description, 'balance' => $installment->balance_amount]);
+            }
+        }
+
+        return $rows->sortBy('date');
+    }
+
     public function summary(User $user, Company $company): array
     {
         throw_unless($this->access->canAccessCompany($user, $company), AuthorizationException::class);

@@ -11,6 +11,7 @@ use App\Models\RemittanceAsset;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\FiscalDocumentServiceOrderService;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -94,7 +95,8 @@ final class CreateServiceOrderFromEntryAction
                                             ->required(),
                                         Toggle::make('open_service_order')
                                             ->label('Abrir OS após criar')
-                                            ->default(true)
+                                            ->default(fn () => Filament::getCurrentPanel()?->getId() !== 'bpo')
+                                            ->hidden(fn () => Filament::getCurrentPanel()?->getId() === 'bpo')
                                             ->inline(false),
                                     ])
                                     ->columns(2),

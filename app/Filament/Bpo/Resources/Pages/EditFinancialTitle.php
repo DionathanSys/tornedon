@@ -2,6 +2,9 @@
 
 namespace App\Filament\Bpo\Resources\Pages;
 
+use App\Filament\Bpo\Concerns\HasFinancialTitlePermissions;
+use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+use App\Filament\Bpo\Resources\Actions\FinancialTitleActions;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +12,13 @@ use Illuminate\Validation\ValidationException;
 
 abstract class EditFinancialTitle extends EditRecord
 {
-    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+    use HasFinancialTitlePermissions;
+    use HasWorkbenchHeader;
+
+    protected function getHeaderActions(): array
+    {
+        return [FinancialTitleActions::delete(static::getResource())];
+    }
 
     protected static string $layout = 'components.bpo.layout';
 

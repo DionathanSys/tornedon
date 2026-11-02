@@ -2,11 +2,17 @@
 
 namespace App\Filament\Bpo\Pages;
 
+use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
 use App\Filament\Pages\DreReportPage;
 
 class DreReport extends DreReportPage
 {
-    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+    use HasWorkbenchHeader;
+
+    public function booted(): void
+    {
+        abort_unless(static::canAccess(), 403);
+    }
 
     public function workbenchEyebrow(): string
     {
@@ -15,7 +21,7 @@ class DreReport extends DreReportPage
 
     public function workbenchDescription(): string
     {
-        return 'Analise receitas, despesas e resultados por período, com visões projetadas, realizadas e comparativas.';
+        return 'Analise resultados por período e consolide empresas autorizadas que possuam modelos DRE equivalentes.';
     }
 
     protected static string $layout = 'components.bpo.layout';

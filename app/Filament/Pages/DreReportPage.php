@@ -6,10 +6,14 @@ use App\Enum\Financial\DreDisplaySign;
 use App\Enum\Financial\DreMode;
 use App\Enum\Financial\DreView;
 use App\Filament\Clusters\Financial\FinancialReportsCluster;
+use App\Filament\Concerns\AuthorizesCompanyPermission;
 use App\Models\Company;
 use App\Models\CostCenter;
 use App\Models\DreModel;
 use App\Models\ResultCenter;
+use App\Services\Access\CompanyAuthorization;
+use App\Services\Access\UserAccessService;
+use App\Services\Bpo\BpoAccessService;
 use App\Services\Financial\Dre\GenerateDreReportService;
 use BackedEnum;
 use Carbon\Carbon;
@@ -27,8 +31,8 @@ use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 
 class DreReportPage extends Page implements Forms\Contracts\HasForms
 {
+    use AuthorizesCompanyPermission;
     use Forms\Concerns\InteractsWithForms;
-    use \App\Filament\Concerns\AuthorizesCompanyPermission;
 
     protected static function rolePagePermission(): string
     {
@@ -55,8 +59,8 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
         $company = Filament::getTenant();
 
         return $user && $company && $user->canAccessTenant($company)
-            && (! app(\App\Services\Access\CompanyAuthorization::class)->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId())
-                || app(\App\Services\Access\CompanyAuthorization::class)->allows($user, $company, 'reports.view'));
+            && (! app(CompanyAuthorization::class)->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId())
+                || app(CompanyAuthorization::class)->allows($user, $company, 'reports.view'));
     }
 
     public ?array $data = [];
@@ -198,7 +202,7 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
             throw new AuthorizationException('Você não possui acesso às empresas selecionadas.');
         }
         foreach (Company::whereIn('id', $companyIds)->get() as $reportCompany) {
-            $authorization = app(\App\Services\Access\CompanyAuthorization::class);
+            $authorization = app(CompanyAuthorization::class);
             if ($authorization->requiresRoleAuthorization(auth()->user(), $reportCompany, Filament::getCurrentPanel()?->getId()) && ! $authorization->allows(auth()->user(), $reportCompany, 'reports.view')) {
                 throw new AuthorizationException('Você não possui permissão para consultar relatórios desta empresa.');
             }
@@ -348,7 +352,9 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
      */
     private function resolveEquivalentModels(DreModel $baseModel, array $companyIds): array
     {
-        $baseModel->refreshStructureHash();
+        if (! $baseModel->structure_hash) {
+            $baseModel->refreshStructureHash();
+        }
         $models = [];
 
         foreach ($companyIds as $companyId) {
@@ -392,10 +398,11 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     private function companyOptions(): array
     {
         if (Filament::getCurrentPanel()?->getId() === 'bpo') {
-            $company = Filament::getTenant();
-
-            return $company ? [$company->id => $company->name] : [];
+            return app(BpoAccessService::class)->companies(Filament::auth()->user())
+                ->filter(fn ($company) => app(UserAccessService::class)->allows(Filament::auth()->user(), $company, 'reports.view', 'bpo'))
+                ->pluck('name', 'id')->all();
         }
+
         return auth()->user()?->companies()
             ->where('companies.is_active', true)
             ->wherePivot('is_active', true)

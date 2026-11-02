@@ -3,10 +3,12 @@
 namespace Tests\Feature\Filament\Bpo;
 
 use App\Filament\Bpo\Resources\AccountPayableResource;
+use App\Filament\Bpo\Resources\AccountPayables\Pages\ListAccounts as ListPayables;
 use App\Filament\Bpo\Resources\AccountPayables\Pages\ViewAccount as ViewPayable;
 use App\Filament\Bpo\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager as PayableInstallments;
 use App\Filament\Bpo\Resources\AccountPayables\RelationManagers\PaymentsRelationManager as PayablePayments;
 use App\Filament\Bpo\Resources\AccountReceivableResource;
+use App\Filament\Bpo\Resources\AccountReceivables\Pages\ListAccounts as ListReceivables;
 use App\Filament\Bpo\Resources\AccountReceivables\Pages\ViewAccount as ViewReceivable;
 use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager as ReceivableInstallments;
 use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager as ReceivablePayments;
@@ -26,6 +28,7 @@ use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -83,6 +86,48 @@ class FinancialTitleWorkspaceTest extends TestCase
         return Livewire::test(RecordAttachments::class, ['module' => $record instanceof AccountPayable ? 'account_payables' : 'account_receivables', 'recordId' => $record->id, ...$options]);
     }
 
+    public function test_titles_can_be_ignored_restored_and_deleted_through_the_bpo_list(): void
+    {
+        $payable = $this->title();
+        $receivable = $this->title(false);
+        $this->authenticate();
+        foreach ([[$payable, ListPayables::class], [$receivable, ListReceivables::class]] as [$record, $page]) {
+            Livewire::test($page)->callAction(TestAction::make('ignore_financial')->table($record), data: ['reason' => 'Título desconsiderado para revisão'])->assertHasNoActionErrors();
+            $this->assertSame(2, $record->installments()->whereNotNull('ignored_at')->count());
+            Livewire::test($page)->set('activeTab', 'ignored')->callAction(TestAction::make('restore_consideration')->table($record), data: ['reason' => 'Revisão concluída para considerar novamente'])->assertHasNoActionErrors();
+            $this->assertSame(0, $record->installments()->whereNotNull('ignored_at')->count());
+            Livewire::test($page)->callAction(TestAction::make('delete')->table($record))->assertHasNoActionErrors();
+            $this->assertDatabaseMissing($record->getTable(), ['id' => $record->id]);
+        }
+    }
+
+    public function test_bulk_delete_checks_every_record_and_rolls_back_an_unauthorized_selection(): void
+    {
+        $own = $this->title();
+        $other = $this->title();
+        $other->update(['created_by' => $this->owner->id]);
+        $role = $this->teams->saveRole($this->owner, $this->company, ['name' => 'Exclusão própria', 'panels' => ['bpo'], 'permissions' => ['account_payables.view' => 'company', 'account_payables.delete' => 'own']]);
+        $this->teams->assign($this->owner, $this->company, $this->user, [$role->id], $this->engagementId);
+        $this->authenticate();
+        Livewire::test(ListPayables::class)->selectTableRecords([$own->id, $other->id])->callAction(TestAction::make('delete')->table()->bulk())->assertForbidden();
+        $this->assertDatabaseHas($own->getTable(), ['id' => $own->id]);
+        $this->assertDatabaseHas($other->getTable(), ['id' => $other->id]);
+    }
+
+    public function test_title_listing_keeps_admin_filters_columns_and_bounded_authorization_queries(): void
+    {
+        for ($i = 0; $i < 15; $i++) {
+            $this->title();
+        }
+        $this->authenticate();
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        Livewire::test(ListPayables::class)->assertTableColumnExists('paid_amount')->assertTableColumnExists('bank_slip_number')->assertCountTableRecords(15);
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+        $this->assertLessThan(500, count($queries), 'Consultas na listagem: '.count($queries));
+    }
+
     public function test_both_account_types_render_the_custom_header_attachments_and_two_managers_without_tabs(): void
     {
         $payable = $this->title();
@@ -132,7 +177,8 @@ class FinancialTitleWorkspaceTest extends TestCase
             ->set('files', [UploadedFile::fake()->create('comprovante.pdf', 2, 'application/pdf')])->call('uploadAttachments')->assertHasNoErrors();
         $attachment = $record->currentAttachments()->sole();
         Storage::disk('local')->assertExists($attachment->path);
-        $widget->assertSee('comprovante.pdf')->assertSet('files', [])->call('viewAttachment', $attachment->id)->assertDispatched('open-modal')
+        $widget->assertSee('comprovante.pdf')->assertSee('Versão 1')->set('attachmentSearch', 'arquivo inexistente')->assertDontSee('comprovante.pdf')->set('attachmentSearch', '')
+            ->assertSet('files', [])->call('viewAttachment', $attachment->id)->assertDispatched('open-modal')
             ->call('editDescription', $attachment->id)->set('editingDescription', 'Comprovante revisado')->call('saveDescription')->assertHasNoErrors();
         $this->assertSame('Comprovante revisado', $attachment->fresh()->description);
         $widget->call('deleteAttachment', $attachment->id)->assertDontSee('comprovante.pdf');

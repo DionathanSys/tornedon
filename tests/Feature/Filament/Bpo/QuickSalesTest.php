@@ -12,10 +12,19 @@ use App\Enum\StockMovement\Type;
 use App\Enum\Tax\TaxRegime;
 use App\Filament\Bpo\Pages\Sales;
 use App\Filament\Bpo\Pages\SaleTemplates;
+use App\Filament\Bpo\Resources\InvoiceResource;
+use App\Filament\Bpo\Resources\Invoices\Pages\ListInvoices;
+use App\Jobs\ScheduleBankSlipIssuanceJob;
+use App\Jobs\SchedulePixChargeIssuanceJob;
+use App\Jobs\SendInvoiceEmailJob;
 use App\Models\BpoSale;
+use App\Models\CardInstitution;
+use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\CompanyRoleAssignment;
+use App\Models\FinancialAccount;
 use App\Models\FiscalProfile;
+use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Product;
 use App\Models\ProductStock;
@@ -33,16 +42,19 @@ use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\Actions\GenerateInvoiceAccountReceivablesAction;
 use App\Services\Invoice\Actions\ReturnInvoiceToPendingAction;
+use App\Services\Invoice\InvoiceService;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class QuickSalesTest extends TestCase
@@ -532,5 +544,129 @@ class QuickSalesTest extends TestCase
         $generate = new GenerateInvoiceAccountReceivablesAction($sale->invoice, $this->bpo->id);
         $this->assertNull($generate->execute($this->payment()));
         $this->assertDatabaseCount('account_receivables', 0);
+    }
+
+    public function test_credit_card_finalization_uses_the_institution_settlement_date_without_assuming_receipt(): void
+    {
+        $card = CardInstitution::create(['company_id' => $this->company->id, 'name' => 'Adquirente', 'active' => true, 'settlement_days' => 30]);
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $sale = $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, [
+            ...$this->payment(), 'payment_method' => Method::CREDIT_CARD->value, 'card_payment_profile_id' => $card->id, 'payment_date' => today()->toDateString(),
+        ]);
+        $receivable = $sale->invoice->accountReceivables()->sole();
+        $this->assertSame($card->id, $receivable->card_payment_profile_id);
+        $this->assertSame(today()->addDays(30)->toDateString(), $receivable->installments()->orderBy('due_date')->first()->due_date->toDateString());
+        $this->assertSame(0, $receivable->payments()->count());
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    public function test_finalization_modal_initializes_dates_and_keeps_the_financial_choice_explicit(): void
+    {
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        Livewire::test(Sales::class)->mountAction(TestAction::make('finalize')->table($sale))
+            ->assertActionDataSet(['payment_date' => today()->toDateString(), 'received_at' => today()->toDateString(), 'financial_policy' => 'create_receivable']);
+    }
+
+    public function test_explicit_receipt_generates_real_payments_and_cash_once(): void
+    {
+        $bank = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Banco do recebimento', 'type' => 'bank', 'is_active' => true]);
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $settings = [...$this->payment(), 'mark_as_received' => true, 'received_at' => today()->toDateString(), 'financial_account_id' => $bank->id];
+        $sale = $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, $settings);
+        $receivable = $sale->invoice->accountReceivables()->sole();
+        $this->assertSame(190.0, (float) $receivable->payments()->sum('amount') / 100);
+        $this->assertSame(190.0, (float) CashMovement::query()->get()->sum('amount'));
+        $before = $receivable->payments()->count();
+        $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, $settings);
+        $this->assertSame($before, $receivable->payments()->count());
+    }
+
+    public function test_bank_charge_options_are_persisted_only_when_selected(): void
+    {
+        Bus::fake();
+        $bank = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Banco de cobrança', 'type' => 'bank', 'is_active' => true]);
+        foreach ([Method::BANK_SLIP->value => 'auto_bank_slip_issuance', Method::PIX->value => 'auto_pix_charge_issuance'] as $method => $flag) {
+            $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+            $sale = $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, [...$this->payment(), 'payment_method' => $method, $flag => true, 'financial_account_id' => $bank->id]);
+            $this->assertTrue($sale->invoice->$flag);
+            $this->assertSame(0, $sale->invoice->accountReceivables()->sole()->payments()->count());
+        }
+        Bus::assertDispatched(ScheduleBankSlipIssuanceJob::class);
+        Bus::assertDispatched(SchedulePixChargeIssuanceJob::class);
+    }
+
+    public function test_banking_options_cannot_bypass_the_operators_issue_permission(): void
+    {
+        $bank = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Banco', 'type' => 'bank', 'is_active' => true]);
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
+        $permissions = $role->permissions;
+        unset($permissions['account_receivables.issue']);
+        $role->update(['permissions' => $permissions]);
+        try {
+            $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, [...$this->payment(), 'auto_pix_charge_issuance' => true, 'financial_account_id' => $bank->id]);
+            $this->fail('A geração de cobrança exige permissão específica.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+        $this->assertNull($sale->fresh()->finalized_at);
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_finalized_sale_summary_contains_items_and_links_to_its_real_documents(): void
+    {
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $sale = $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, $this->payment());
+        $page = Livewire::test(Sales::class)->mountAction(TestAction::make('details')->table($sale));
+        $html = $page->instance()->getMountedAction()->getModalContent()->render();
+        $this->assertStringContainsString($this->service->name, $html);
+        $this->assertStringContainsString('Abrir fatura', $html);
+        $this->assertStringContainsString('Abrir recebível', $html);
+        $this->assertStringContainsString('Documentos fiscais', $html);
+        $this->get(InvoiceResource::getUrl('view', ['record' => $sale->invoice], panel: 'bpo', tenant: $this->company))->assertOk();
+    }
+
+    public function test_invoice_delivery_uses_existing_pdf_service_and_email_job(): void
+    {
+        $sale = $this->reportSale(190);
+        $this->mock(InvoiceService::class, fn ($mock) => $mock->shouldReceive('pdf')->once()->andReturn(base64_encode('%PDF-1.4')));
+        Livewire::test(Sales::class)->callAction(TestAction::make('invoiceDownload')->table($sale))->assertFileDownloaded('fatura-'.$sale->invoice->invoice_number.'.pdf');
+        Bus::fake([SendInvoiceEmailJob::class]);
+        Livewire::test(Sales::class)->callAction(TestAction::make('invoiceEmail')->table($sale), data: ['subject' => 'Documentos da venda', 'body' => 'Segue a documentação.'])->assertHasNoActionErrors();
+        Bus::assertDispatched(SendInvoiceEmailJob::class);
+    }
+
+    public function test_invoice_bulk_exports_are_available_in_bpo_and_enforce_the_export_scope(): void
+    {
+        $sale = $this->reportSale(190);
+        Livewire::test(ListInvoices::class)->selectTableRecords([$sale->invoice_id])
+            ->callAction(TestAction::make('exportSelectedInvoices')->table()->bulk(), data: ['columns' => ['invoice_number', 'net_value']])->assertFileDownloaded();
+        $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
+        $permissions = $role->permissions;
+        unset($permissions['invoices.export']);
+        $role->update(['permissions' => $permissions]);
+        Livewire::test(ListInvoices::class)->assertActionHidden(TestAction::make('exportSelectedInvoices')->table()->bulk());
+    }
+
+    public function test_invoice_export_totals_are_batched_and_preserve_discounts_and_travel_without_source_view_grants(): void
+    {
+        $travelSale = $this->reportSale(190, travel: 12.34);
+        $discountSale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $discountSale = $this->workflow->finalize($this->bpo, $this->company, $discountSale->id, $discountSale->revision, $this->payment());
+        $invoices = Invoice::whereIn('id', [$travelSale->invoice_id, $discountSale->invoice_id])->get();
+        $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
+        $permissions = $role->permissions;
+        unset($permissions['service_orders.view'], $permissions['requisitions.view']);
+        $role->update(['permissions' => $permissions]);
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        Invoice::preloadAmounts($invoices);
+        $this->assertSame(202.34, (float) $invoices->firstWhere('id', $travelSale->invoice_id)->net_value);
+        $discount = $invoices->firstWhere('id', $discountSale->invoice_id);
+        $this->assertSame(200.0, (float) $discount->gross_amount);
+        $this->assertSame(10.0, (float) $discount->discount_amount);
+        $this->assertSame(190.0, (float) $discount->net_value);
+        $this->assertCount(3, DB::getQueryLog());
+        DB::disableQueryLog();
     }
 }

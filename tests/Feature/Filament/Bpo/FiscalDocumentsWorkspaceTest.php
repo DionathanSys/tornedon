@@ -2,20 +2,34 @@
 
 namespace Tests\Feature\Filament\Bpo;
 
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\FreightModality;
+use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Bpo\Pages\FiscalDocuments;
+use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditIncomingDocument;
+use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditOutgoingDocument;
+use App\Filament\Bpo\Resources\FiscalDocuments\RelationManagers\OutgoingItemsRelationManager;
+use App\Filament\Bpo\Resources\IncomingFiscalDocumentResource;
+use App\Filament\Bpo\Resources\OutgoingFiscalDocumentResource;
+use App\Filament\Bpo\Resources\PurchaseClosingResource;
+use App\Filament\Bpo\Resources\PurchaseClosings\Pages\EditPurchaseClosing;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentPayload;
 use App\Models\FiscalDocumentXmlExport;
 use App\Models\Partner;
+use App\Models\PurchaseClosing;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
+use App\Services\Access\PermissionCatalog;
 use App\Services\FiscalDocument\Actions\ReconcileNfseRpsSequenceAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
+use App\Services\PurchaseClosing\PurchaseClosingService;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -79,6 +93,83 @@ class FiscalDocumentsWorkspaceTest extends TestCase
             'nfe_status' => NfeStatus::PENDING,
             ...$data,
         ]);
+    }
+
+    public function test_fiscal_create_and_edit_pages_render_inside_bpo_and_keep_operation_scoping(): void
+    {
+        $outgoing = $this->document(['nfe_status' => NfeStatus::REJECTED]);
+        $incoming = $this->document(['operation_type' => '0']);
+        $foreign = $this->document(['company_id' => Company::factory()->create()->id]);
+        $this->permissions(PermissionCatalog::templates()['Administrador da empresa']);
+        $this->authenticate();
+        $this->get(OutgoingFiscalDocumentResource::getUrl('edit', ['record' => $outgoing]))->assertOk()->assertSee('bpo-workbench-page', false);
+        $this->get(IncomingFiscalDocumentResource::getUrl('edit', ['record' => $incoming]))->assertOk()->assertSee('Confirmar');
+        $this->get(IncomingFiscalDocumentResource::getUrl('create'))->assertOk();
+        $this->get(OutgoingFiscalDocumentResource::getUrl('create'))->assertOk();
+        $this->get(OutgoingFiscalDocumentResource::getUrl('edit', ['record' => $incoming]))->assertNotFound();
+        $this->get(OutgoingFiscalDocumentResource::getUrl('edit', ['record' => $foreign]))->assertNotFound();
+    }
+
+    public function test_entry_confirmation_reuses_the_stock_workflow_and_marks_the_record_once(): void
+    {
+        $entry = $this->document(['operation_type' => '0']);
+        $this->permissions(PermissionCatalog::templates()['Administrador da empresa']);
+        $this->authenticate();
+        Livewire::test(EditIncomingDocument::class, ['record' => $entry->id])->callAction('confirmEntry', data: ['generate_account_payable_now' => false])->assertHasNoActionErrors();
+        $this->assertTrue($entry->fresh()->confirmed);
+        Livewire::test(EditIncomingDocument::class, ['record' => $entry->id])->assertActionHidden('confirmEntry');
+    }
+
+    public function test_revoking_fiscal_view_also_blocks_refresh_on_an_already_open_edit_page(): void
+    {
+        $record = $this->document();
+        $permissions = PermissionCatalog::templates()['Administrador da empresa'];
+        $this->permissions($permissions);
+        $this->authenticate();
+        $page = Livewire::test(EditOutgoingDocument::class, ['record' => $record->id]);
+        $this->permissions([...$permissions, 'fiscal_documents.view' => 'none']);
+        $page->call('refreshFiscalDocumentState')->assertForbidden();
+    }
+
+    public function test_rejected_documents_can_be_corrected_but_queued_document_items_cannot_be_changed(): void
+    {
+        $record = $this->document(['nfe_status' => NfeStatus::REJECTED,
+            'operation_nature' => OperationNature::VENDA_DENTRO_ESTADO,
+            'issue_purpose' => IssuePurpose::NORMAL,
+            'buyer_presence_indicator' => BuyerPresenceIndicator::OUTROS, 'is_final_consumer' => true]);
+        $this->permissions(PermissionCatalog::templates()['Administrador da empresa']);
+        $this->authenticate();
+        Livewire::test(EditOutgoingDocument::class, ['record' => $record->id])->fillForm([
+            'additional_taxpayer_information' => 'Informação corrigida após a rejeição',
+            'freight_data' => ['modalidade_frete' => FreightModality::SEM_FRETE->value],
+        ])->call('save')->assertHasNoFormErrors();
+        $this->assertSame('Informação corrigida após a rejeição', $record->fresh()->additional_taxpayer_information);
+        $record->update(['nfe_status' => NfeStatus::QUEUED]);
+        Livewire::test(OutgoingItemsRelationManager::class, ['ownerRecord' => $record->fresh(), 'pageClass' => EditOutgoingDocument::class])
+            ->assertActionHidden(TestAction::make('create')->table());
+    }
+
+    public function test_purchase_closing_from_entry_notes_stays_in_bpo_and_generates_a_payable(): void
+    {
+        $entry = $this->document(['operation_type' => '0', 'status' => Status::CONFIRMED, 'confirmed' => true, 'document_number' => 'ENT-01']);
+        $entry->customer->companies()->attach($this->company, ['is_active' => true, 'type' => '["supplier"]']);
+        $entry->items()->create(['item_number' => 1, 'description' => 'Material da entrada', 'quantity' => 1, 'unit_of_measure' => 'UN', 'unit_price' => 150, 'total_price' => 150, 'included_in_total' => true, 'created_by' => $this->user->id]);
+        $this->permissions(PermissionCatalog::templates()['Administrador da empresa']);
+        $this->authenticate();
+        $closingService = app(PurchaseClosingService::class);
+        app()->instance(PurchaseClosingService::class, $closingService);
+        $page = Livewire::test(FiscalDocuments::class)->selectTableRecords([$entry->id])->mountAction(TestAction::make('createPurchaseClosing')->table()->bulk());
+        $key = array_key_first($page->get('mountedActions.0.data.documents'));
+        $page->setActionData(['reference' => 'FECH-BPO-01', 'documents' => [$key => ['fiscal_document_id' => $entry->id, 'discount_amount' => '10,00']]])
+            ->callMountedAction()->assertHasNoActionErrors();
+        $closing = PurchaseClosing::first();
+        $this->assertNotNull($closing, $closingService->getMessageUser());
+        $this->assertSame(140.0, (float) $closing->net_amount);
+        $this->get(PurchaseClosingResource::getUrl('edit', ['record' => $closing]))->assertOk();
+        Livewire::test(EditPurchaseClosing::class, ['record' => $closing->id])
+            ->callAction('generateAccountPayable', data: ['due_date' => today()->addDays(30)->toDateString(), 'installment_count' => 1, 'payment_method' => 'boleto'])->assertHasNoActionErrors();
+        $this->assertNotNull($closing->fresh()->account_payable_id);
+        $this->assertSame(140.0, (float) $closing->fresh()->accountPayable->due_amount);
     }
 
     public function test_filters_and_search_keep_tenant_and_document_type_boundaries(): void

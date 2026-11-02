@@ -2,17 +2,20 @@
 
 namespace App\Filament\Bpo\Resources;
 
+use App\Filament\Bpo\Resources\Actions\FinancialTitleActions;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\Schemas\AccountPayableForm;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\Tables\AccountPayablesTable;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\Schemas\AccountReceivableForm;
+use App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables\AccountReceivablesTable;
 use App\Filament\Clusters\Financial\Resources\Components\AccountSummary;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -39,23 +42,29 @@ abstract class FinancialTitleResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('company_id', Filament::getTenant()->id);
+        return parent::getEloquentQuery()->where('company_id', Filament::getTenant()->id)
+            ->with(static::$module === 'account_payables' ? 'supplier' : 'customer')
+            ->withGlobalScope('title_payment_flags', fn (Builder $query) => $query->withExists('payments'));
     }
 
     public static function table(Table $table): Table
     {
-        return $table->modifyQueryUsing(fn ($query) => AccountSummary::query($query))
-            ->columns([
-                TextColumn::make('counterparty_label')->label(static::$module === 'account_payables' ? 'Fornecedor' : 'Cliente')
-                    ->description(fn ($record) => $record->description)->searchable(query: fn ($query, $search) => $query->where(fn ($query) => $query
-                    ->where('description', 'like', '%'.$search.'%')->orWhere('manual_counterparty_name', 'like', '%'.$search.'%')
-                    ->orWhereHas(static::$module === 'account_payables' ? 'supplier' : 'customer', fn ($party) => $party->where('name', 'like', '%'.$search.'%')))),
-                TextColumn::make('document_number')->label('Documento')->searchable()->placeholder('—'),
-                TextColumn::make('next_open_due_date')->label('Próximo vencimento')->date('d/m/Y'),
-                TextColumn::make('due_amount')->label('Valor do título')->money('BRL'),
-                TextColumn::make('considered_balance')->label('Saldo em aberto')->state(fn ($record) => (float) $record->considered_balance / 100)->money('BRL'),
-                TextColumn::make('status')->label('Situação')->badge()->formatStateUsing(fn ($state) => $state?->description())->color(fn ($state) => $state?->color() ?? 'gray'),
-            ])->recordActions([ViewAction::make()->label('Abrir'), EditAction::make()->label('Editar')])
-            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]))->defaultSort('due_date')->paginated([15, 30, 50]);
+        $table = static::$module === 'account_payables'
+            ? AccountPayablesTable::configure($table)
+            : AccountReceivablesTable::configure($table);
+        foreach ($table->getColumns() as $column) {
+            $column->toggleable(isToggledHiddenByDefault: ! in_array($column->getName(), ['counterparty_label', 'document_number', 'next_due_date', 'open_balance', 'due_amount', 'status'], true));
+        }
+
+        return $table->recordActions([
+            ActionGroup::make([
+                ViewAction::make()->label('Abrir')->authorize(fn ($livewire, $record) => $livewire->canOperateTitle('view', $record)),
+                EditAction::make()->label('Editar')->authorize(fn ($livewire, $record) => $livewire->canOperateTitle('update', $record) && ! $record->payments_exists),
+                FinancialTitleActions::ignore(),
+                FinancialTitleActions::ignore(true),
+                FinancialTitleActions::delete(static::class),
+            ])->label('Ações')->icon('heroicon-o-ellipsis-vertical'),
+        ])->toolbarActions([])->bulkActions([FinancialTitleActions::deleteBulk(static::class)])
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]))->defaultSort('due_date')->defaultPaginationPageOption(15)->paginated([15, 30, 50]);
     }
 }

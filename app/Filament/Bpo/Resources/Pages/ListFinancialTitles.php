@@ -2,14 +2,17 @@
 
 namespace App\Filament\Bpo\Resources\Pages;
 
+use App\Filament\Bpo\Concerns\HasFinancialTitlePermissions;
+use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
 use App\Filament\Clusters\Financial\Concerns\HasFinancialTabs;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 abstract class ListFinancialTitles extends ListRecords
 {
-    use \App\Filament\Bpo\Concerns\HasWorkbenchHeader;
     use HasFinancialTabs;
+    use HasFinancialTitlePermissions;
+    use HasWorkbenchHeader;
 
     protected static string $layout = 'components.bpo.layout';
 
@@ -33,5 +36,14 @@ abstract class ListFinancialTitles extends ListRecords
     protected function getHeaderActions(): array
     {
         return [CreateAction::make()->label('Novo lançamento')];
+    }
+
+    protected function installmentTabCount(string $tab): int
+    {
+        $query = static::getResource()::getEloquentQuery()->withoutGlobalScope('title_payment_flags');
+        $this->applyFiltersToTableQuery($query);
+        $this->applySearchToTableQuery($query);
+
+        return $this->installmentTabQuery($tab, $query)->count();
     }
 }

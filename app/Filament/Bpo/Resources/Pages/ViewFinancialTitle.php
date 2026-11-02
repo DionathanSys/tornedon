@@ -2,12 +2,15 @@
 
 namespace App\Filament\Bpo\Resources\Pages;
 
+use App\Filament\Bpo\Concerns\HasFinancialTitlePermissions;
 use App\Filament\Bpo\Resources\AccountPayables\RelationManagers as PayableRelations;
 use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers as ReceivableRelations;
+use App\Filament\Bpo\Resources\Actions\FinancialTitleActions;
 use App\Filament\Clusters\Financial\Concerns\RefreshesAccountSummary;
 use App\Models\AccountPayable;
 use App\Models\AccountReceivable;
 use Carbon\Carbon;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\ViewRecord;
@@ -15,7 +18,17 @@ use Illuminate\Support\Facades\Gate;
 
 abstract class ViewFinancialTitle extends ViewRecord
 {
+    use HasFinancialTitlePermissions;
     use RefreshesAccountSummary;
+
+    protected function getHeaderActions(): array
+    {
+        return [ActionGroup::make([
+            FinancialTitleActions::ignore(),
+            FinancialTitleActions::ignore(true),
+            FinancialTitleActions::delete(static::getResource()),
+        ])->label('Ações do título')->button()];
+    }
 
     protected static string $layout = 'components.bpo.layout';
 

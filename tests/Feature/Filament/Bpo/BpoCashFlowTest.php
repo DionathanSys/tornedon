@@ -3,13 +3,16 @@
 namespace Tests\Feature\Filament\Bpo;
 
 use App\Filament\Bpo\Pages\CashFlow;
+use App\Filament\Bpo\Pages\DreReport;
 use App\Models\AccountPayable;
 use App\Models\AccountReceivable;
 use App\Models\CashMovement;
 use App\Models\Company;
+use App\Models\DreModel;
 use App\Models\FinancialAccount;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
+use App\Services\Access\PermissionCatalog;
 use App\Services\Bpo\BpoCashFlowService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,6 +90,43 @@ class BpoCashFlowTest extends TestCase
     private function report(string $start = '2026-10-28', string $end = '2026-11-03', ?array $ids = null): array
     {
         return app(BpoCashFlowService::class)->report($this->bpo, $ids ?? [$this->company->id], $start, $end);
+    }
+
+    public function test_overdue_search_investigates_original_dates_without_changing_the_forecast(): void
+    {
+        $payable = $this->title('payable', '2026-09-10', 150);
+        $this->title('receivable', '2026-10-27', 80);
+        $this->title('payable', '2026-10-29', 40);
+        $before = $this->report();
+        $page = Livewire::test(CashFlow::class)->set('titleScope', 'overdue')->set('titleSearch', 'Parceiro de teste')->call('applyTitleFilters');
+        $report = $page->instance()->report();
+        $this->assertSame(2, $report['title_total']);
+        $this->assertTrue($report['titles']->contains(fn ($row) => $row['date'] === '2026-09-10'));
+        $this->assertSame($before['closing'], $report['closing']);
+        $page->set('titleSearch', 'inexistente')->call('applyTitleFilters');
+        $this->assertSame(0, $page->instance()->report()['title_total']);
+    }
+
+    public function test_dre_consolidates_only_authorized_bpo_companies_with_equivalent_models(): void
+    {
+        $permissions = PermissionCatalog::templates()['Administrador da empresa'];
+        $first = $this->authorizeCompany('Empresa DRE A', $permissions);
+        $second = $this->authorizeCompany('Empresa DRE B', $permissions);
+        $models = [];
+        foreach ([$first, $second] as $company) {
+            $model = DreModel::create(['company_id' => $company->id, 'name' => 'DRE consolidável', 'template_key' => 'consolidacao-teste', 'is_active' => true]);
+            $model->lines()->create(['name' => 'Receitas', 'code' => '01', 'line_type' => 'account_group', 'operation' => 'add', 'display_sign' => 'natural', 'is_visible' => true]);
+            $models[] = $model->fresh();
+        }
+        Filament::setTenant($first);
+        $page = new DreReport;
+        $page->data = ['dre_model_id' => $models[0]->id, 'company_ids' => [$first->id, $second->id], 'date_range' => '01/10/2026 - 31/10/2026', 'mode' => 'competence', 'view' => 'projected_and_realized'];
+        $rows = $page->getRowsProperty();
+        $this->assertNotEmpty($rows);
+        $this->assertArrayHasKey($first->id, $rows->first()['amounts']);
+        $this->assertArrayHasKey($second->id, $rows->first()['amounts']);
+        $page->data['company_ids'][] = Company::factory()->create()->id;
+        $this->assertTrue($page->getRowsProperty()->isEmpty());
     }
 
     public function test_historical_closing_uses_the_previous_day_and_reversals_on_their_dates(): void

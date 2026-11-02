@@ -11,6 +11,8 @@ use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Enum\Product\Unit;
+use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditOutgoingDocument;
+use App\Filament\Bpo\Resources\FiscalDocuments\RelationManagers\OutgoingItemsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\InvoiceResource;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
@@ -40,6 +42,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Operation;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 
 class FiscalDocumentForm
@@ -307,9 +310,9 @@ class FiscalDocumentForm
                                         && self::shouldShowLatestErrorCallout($record)
                                         && filled(self::getLatestPersistedErrorMessage($record))),
 
-                                Livewire::make(ItemsRelationManager::class, fn (FiscalDocument $record) => [
+                                Livewire::make(Filament::getCurrentPanel()?->getId() === 'bpo' ? OutgoingItemsRelationManager::class : ItemsRelationManager::class, fn (FiscalDocument $record) => [
                                     'ownerRecord' => $record,
-                                    'pageClass' => EditFiscalDocument::class,
+                                    'pageClass' => Filament::getCurrentPanel()?->getId() === 'bpo' ? EditOutgoingDocument::class : EditFiscalDocument::class,
                                 ])
                                     ->key('items-relation-manager')
                                     ->columnSpanFull()
@@ -895,7 +898,7 @@ class FiscalDocumentForm
         }
 
         try {
-            return \Illuminate\Support\Carbon::parse($state)->format('d/m/Y H:i:s');
+            return Carbon::parse($state)->format('d/m/Y H:i:s');
         } catch (\Throwable) {
             return $state;
         }

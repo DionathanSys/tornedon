@@ -88,6 +88,36 @@ class BpoPanelTest extends TestCase
         return $account;
     }
 
+    public function test_only_fully_pending_statement_imports_can_be_deleted(): void
+    {
+        $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Conta dos extratos', 'type' => 'bank', 'is_active' => true]);
+        $imports = [];
+        foreach (['pending', 'ignored'] as $status) {
+            $import = BankStatementImport::create(['company_id' => $this->company->id, 'financial_account_id' => $account->id, 'source' => 'ofx', 'status' => 'completed', 'created_by' => $this->bpo->id]);
+            $import->lines()->create(['company_id' => $this->company->id, 'financial_account_id' => $account->id, 'transaction_date' => today(), 'amount' => 50, 'description' => 'Linha '.$status, 'reconciliation_status' => $status, 'external_id' => $status, 'transaction_key' => $status]);
+            $imports[$status] = $import;
+        }
+        $this->authenticate(company: $this->company);
+        Livewire::test(ViewImport::class, ['record' => $imports['ignored']->id])->callAction('delete_import')->assertHasNoActionErrors();
+        $this->assertDatabaseHas('bank_statement_imports', ['id' => $imports['ignored']->id]);
+        Livewire::test(ViewImport::class, ['record' => $imports['pending']->id])->callAction('delete_import')->assertHasNoActionErrors();
+        $this->assertDatabaseMissing('bank_statement_imports', ['id' => $imports['pending']->id]);
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    public function test_overview_priority_search_keeps_record_scope_and_does_not_query_foreign_records(): void
+    {
+        $own = $this->payable($this->bpo, 'Prioridade própria');
+        $this->payable($this->owner, 'Prioridade alheia');
+        $role = $this->role('Consulta própria', ['account_payables.view' => 'own']);
+        $this->teams->assign($this->owner, $this->company, $this->bpo, [$role->id], $this->engagement->id);
+        $this->authenticate(company: $this->company);
+        $rows = app(BpoPortfolioService::class)->priorities($this->bpo, $this->company, 'Prioridade', null, today()->toDateString());
+        $this->assertCount(1, $rows);
+        $this->assertSame($own->id, $rows->first()['record']->id);
+        Livewire::test(CompanyOverview::class)->set('prioritySearch', 'alheia')->assertDontSee('Prioridade alheia');
+    }
+
     public function test_authorized_bpo_gets_a_custom_desktop_portfolio_and_tenant_workspace(): void
     {
         $this->authenticate();

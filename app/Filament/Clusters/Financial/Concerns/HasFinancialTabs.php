@@ -11,6 +11,11 @@ trait HasFinancialTabs
 {
     protected function installmentTabQuery(string $tab, Builder $query): Builder
     {
+        return $query->withGlobalScope('financial_tab', fn (Builder $scoped) => $this->applyInstallmentTabQuery($tab, $scoped));
+    }
+
+    private function applyInstallmentTabQuery(string $tab, Builder $query): Builder
+    {
         if ($query->getModel() instanceof AccountPayable || $query->getModel() instanceof AccountReceivable) {
             return match ($tab) {
                 'pending' => $query->whereHas('installments', fn (Builder $q) => $q->open()),

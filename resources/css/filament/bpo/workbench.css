@@ -4,6 +4,7 @@
 .bpo-workbench-page-heading .bpo-account-actions:empty { display:none; }
 .bpo-workbench-page-heading .fi-ac { flex-wrap:wrap; justify-content:flex-end; }
 .bpo-list-workbench { min-width:0; }
+.bpo-priority-filters input[type="date"] { min-width:0; border:0; background:transparent; box-shadow:none; color:var(--bpo-ink); color-scheme:var(--bpo-color-scheme); font-size:11px; padding:10px 0; }
 .bpo-list-workbench > .fi-sc { gap:0; }
 .bpo-shell .bpo-list-workbench .fi-ta { border:0; border-radius:0; box-shadow:none; }
 .bpo-list-workbench .fi-ta-ctn { box-shadow:none; border-radius:0; }

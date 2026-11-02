@@ -87,6 +87,10 @@
             </tbody></table></div>
         </section>
 
+        <section class="bpo-workbench"><header class="bpo-workbench-header"><div><h2>Investigar lançamentos</h2><p>Busca por documento, descrição, contraparte ou empresa. O filtro altera apenas as listas abaixo; os valores da previsão são preservados.</p></div></header>
+            <form wire:submit="applyTitleFilters" class="bpo-toolbar"><label class="bpo-search"><x-filament::icon icon="heroicon-o-magnifying-glass" /><input wire:model="titleSearch" aria-label="Buscar lançamentos" placeholder="Documento, descrição ou contraparte" maxlength="150" /></label><label class="bpo-company-switch"><span class="bpo-sr-only">Recorte dos lançamentos</span><select wire:model="titleScope" aria-label="Recorte dos lançamentos"><option value="forecast">Compromissos da previsão</option><option value="overdue">Todos os vencidos em aberto</option></select></label><button class="bpo-button" type="submit">Buscar</button></form>
+            <footer class="bpo-workbench-footer"><span>{{ $report['title_total'] }} parcela(s) · página {{ $this->titlePage }} de {{ $report['title_pages'] }}</span><button class="bpo-button is-small is-secondary" type="button" wire:click="moveTitlePage(-1)" @disabled($this->titlePage <= 1)>Anterior</button><button class="bpo-button is-small is-secondary" type="button" wire:click="moveTitlePage(1)" @disabled($this->titlePage >= $report['title_pages'])>Próxima</button></footer>
+        </section>
         @foreach (['payable' => 'Contas a pagar em aberto', 'receivable' => 'Contas a receber em aberto'] as $type => $label)
             <section class="bpo-workbench"><header class="bpo-workbench-header"><div><h2>{{ $label }}</h2><p>{{ $type === 'payable' ? 'Vencidas alocadas em hoje; demais parcelas pelo vencimento.' : 'Recebíveis vencidos identificados à parte e excluídos da previsão.' }}</p></div></header>
                 <div class="bpo-flow-daily-scroll"><table class="bpo-portfolio-table"><thead><tr><th>Empresa</th><th>Favorecido / cliente</th><th>Descrição</th><th>Vencimento</th><th>Saldo em aberto</th><th></th></tr></thead><tbody>

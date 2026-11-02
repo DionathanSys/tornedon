@@ -2,7 +2,7 @@
     @php($account = $this->accountDetails())
     <header class="bpo-page-heading">
         <div><span class="bpo-eyebrow">{{ $account['payable'] ? 'DESPESA' : 'RECEITA' }} · LANÇAMENTO #{{ $account['id'] }}</span><h1>{{ $account['title'] }}</h1><p>Dados, documentos e movimentações financeiras em uma única visão.</p></div>
-        <div class="bpo-account-actions"><a class="bpo-button is-secondary" href="{{ $account['back_url'] }}"><x-filament::icon icon="heroicon-o-arrow-left" />Voltar à lista</a>@if ($this->editAccountAction->isVisible()){{ $this->editAccountAction }}@endif</div>
+        <div class="bpo-account-actions"><a class="bpo-button is-secondary" href="{{ $account['back_url'] }}"><x-filament::icon icon="heroicon-o-arrow-left" />Voltar à lista</a>@if ($this->editAccountAction->isVisible()){{ $this->editAccountAction }}@endif @foreach ($this->getCachedHeaderActions() as $action){{ $action }}@endforeach</div>
     </header>
 
     <div class="bpo-account-top-grid">

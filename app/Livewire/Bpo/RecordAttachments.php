@@ -54,6 +54,8 @@ class RecordAttachments extends Component
 
     public string $description = '';
 
+    public string $attachmentSearch = '';
+
     #[Locked]
     public ?int $editingId = null;
 
@@ -240,7 +242,10 @@ class RecordAttachments extends Component
     {
         $owner = $this->resolveOwner();
         $canWrite = $this->canWrite();
-        $attachments = $owner->currentAttachments()->where('company_id', $this->companyId)->with('uploader:id,name')->latest()->orderByDesc('id')->get();
+        $search = mb_substr(trim($this->attachmentSearch), 0, 150);
+        $attachments = $owner->currentAttachments()->where('company_id', $this->companyId)
+            ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('original_name', 'like', '%'.$search.'%')->orWhere('description', 'like', '%'.$search.'%')))
+            ->with('uploader:id,name')->latest()->orderByDesc('id')->get();
         $types = collect(AttachmentType::cases())->filter(fn ($type) => in_array($type->value, $this->allowedTypes, true));
         $acceptedMimes = config('attachments.types.'.$this->attachmentType.'.allowed_mimes', []);
         $pendingFiles = collect($this->files)->filter(fn ($file) => $file instanceof UploadedFile)

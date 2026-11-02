@@ -37,6 +37,23 @@ class CashFlow extends Page implements HasForms
 
     public string $period = 'next_7_days';
 
+    public string $titleSearch = '';
+
+    public string $titleScope = 'forecast';
+
+    public int $titlePage = 1;
+
+    public function applyTitleFilters(): void
+    {
+        $this->titlePage = 1;
+    }
+
+    public function moveTitlePage(int $direction): void
+    {
+        abort_unless(in_array($direction, [-1, 1], true), 422);
+        $this->titlePage = max(1, $this->titlePage + $direction);
+    }
+
     public static function canAccess(): bool
     {
         $user = Filament::auth()->user();
@@ -203,7 +220,19 @@ class CashFlow extends Page implements HasForms
         }
         $this->resetValidation();
 
-        return app(BpoCashFlowService::class)->report(Filament::auth()->user(), $this->companyIds, $this->startDate, $this->endDate);
+        Validator::make(['search' => $this->titleSearch, 'scope' => $this->titleScope], ['search' => 'string|max:150', 'scope' => 'in:forecast,overdue'])->validate();
+        $report = app(BpoCashFlowService::class)->report(Filament::auth()->user(), $this->companyIds, $this->startDate, $this->endDate);
+        $titles = $report[$this->titleScope === 'overdue' ? 'overdue_titles' : 'titles'];
+        $search = mb_strtolower(trim($this->titleSearch));
+        if ($search !== '') {
+            $titles = $titles->filter(fn ($title) => str_contains(mb_strtolower(implode(' ', [$title['document'], $title['description'], $title['party'], $title['company']->name])), $search));
+        }
+        $report['title_total'] = $titles->count();
+        $report['title_pages'] = max(1, (int) ceil($titles->count() / 50));
+        $this->titlePage = min(max(1, $this->titlePage), $report['title_pages']);
+        $report['titles'] = $titles->forPage($this->titlePage, 50);
+
+        return $report;
     }
 
     public function money(int|float $cents): string

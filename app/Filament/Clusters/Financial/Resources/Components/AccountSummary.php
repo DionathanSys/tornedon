@@ -13,9 +13,9 @@ final class AccountSummary
 {
     public static function query(Builder $query): Builder
     {
-        return $query->withSum(['installments as considered_balance' => fn (Builder $q) => $q->open()], 'balance_amount')
+        return $query->withGlobalScope('account_summary', fn (Builder $query) => $query->withSum(['installments as considered_balance' => fn (Builder $q) => $q->open()], 'balance_amount')
             ->withMin(['installments as next_open_due_date' => fn (Builder $q) => $q->open()], 'due_date')
-            ->withCount(['installments as ignored_count' => fn (Builder $q) => $q->whereNotNull('ignored_at')]);
+            ->withCount(['installments as ignored_count' => fn (Builder $q) => $q->whereNotNull('ignored_at')]));
     }
 
     public static function configure(Schema $schema): Schema

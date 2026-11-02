@@ -8,6 +8,7 @@ use App\Models\AccountPayableInstallment;
 use App\Models\AccountReceivableInstallment;
 use App\Models\Company;
 use App\Models\User;
+use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,11 @@ final class ChangeInstallmentStatusService
         $access = app(UserAccessService::class);
         $module = self::module($model);
 
+        if (app(CompanyAuthorization::class)->requiresRoleAuthorization($user, $company, $panel)) {
+            return $access->allows($user, $company, "$module.view", $panel)
+                && $access->allows($user, $company, "$module.change_status_without_movement", $panel);
+        }
+
         return $access->allows($user, $company, "$module.access", $panel)
             && in_array("$module.change_status_without_movement", $access->settings($user, $company)?->permissions ?? [], true);
     }
@@ -47,7 +53,7 @@ final class ChangeInstallmentStatusService
             'status' => ['required', Rule::in(array_keys(self::options($model)))],
         ])->validate();
 
-        return DB::transaction(function () use ($records, $model, $status, $company): int {
+        return DB::transaction(function () use ($records, $model, $status, $company, $user, $panel): int {
             abort_unless($records->every(fn ($record) => $record instanceof $model), 403);
             $locked = $model::query()->whereKey($records->modelKeys())->orderBy('id')->lockForUpdate()->get();
             abort_unless($locked->count() === $records->count()
@@ -55,6 +61,11 @@ final class ChangeInstallmentStatusService
 
             $updated = 0;
             foreach ($locked as $record) {
+                $authorization = app(CompanyAuthorization::class);
+                if ($authorization->requiresRoleAuthorization($user, $company, $panel)) {
+                    $parent = $record instanceof AccountPayableInstallment ? $record->accountPayable : $record->accountReceivable;
+                    abort_unless($parent && $authorization->allowsRecord($user, $company, self::module($model).'.change_status_without_movement', $parent), 403);
+                }
                 if ($record->status->value === $status) {
                     continue;
                 }

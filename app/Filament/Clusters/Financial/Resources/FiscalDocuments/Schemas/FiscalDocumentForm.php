@@ -6,12 +6,15 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
+use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditIncomingDocument;
+use App\Filament\Bpo\Resources\FiscalDocuments\RelationManagers\IncomingItemsRelationManager;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Models\FiscalDocument;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\DatePicker;
@@ -183,9 +186,9 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 2, 'lg' => 3])
                                             ->placeholder('-'),
                                     ]),
-                                Livewire::make(ItemsRelationManager::class, fn (FiscalDocument $record) => [
+                                Livewire::make(Filament::getCurrentPanel()?->getId() === 'bpo' ? IncomingItemsRelationManager::class : ItemsRelationManager::class, fn (FiscalDocument $record) => [
                                     'ownerRecord' => $record,
-                                    'pageClass' => EditFiscalDocument::class,
+                                    'pageClass' => Filament::getCurrentPanel()?->getId() === 'bpo' ? EditIncomingDocument::class : EditFiscalDocument::class,
                                 ])
                                     ->visibleOn('edit')
                                     ->key('items-relation-manager')

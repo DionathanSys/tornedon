@@ -5,6 +5,8 @@
         <small>Arquivos vinculados a esta conta</small>
     </div>
 
+    <form wire:submit="$refresh" class="bpo-attachment-toolbar"><label class="bpo-search"><x-filament::icon icon="heroicon-o-magnifying-glass" /><input wire:model="attachmentSearch" aria-label="Buscar anexos por nome ou descrição" placeholder="Nome ou descrição do arquivo" maxlength="150" /></label><x-filament::button color="gray" size="sm" type="submit">Buscar</x-filament::button></form>
+
     @if ($showUpload && $uploadsEnabled && $canWrite)
         <form class="bpo-attachment-upload" wire:submit="uploadAttachments">
             <label class="bpo-attachment-field"><span>Tipo do documento</span><select wire:model.live="attachmentType" aria-label="Tipo do documento">@foreach ($types as $type)<option value="{{ $type->value }}">{{ $type->getLabel() }}</option>@endforeach</select></label>
@@ -28,11 +30,11 @@
                 @elseif ($attachment->description)
                     <p class="bpo-attachment-description">{{ $attachment->description }}</p>
                 @endif
-                <div class="bpo-attachment-meta"><span>{{ $attachment->created_at->format('d/m/Y H:i') }}</span>@if ($attachment->uploader)<span>{{ $attachment->uploader->name }}</span>@endif</div>
+                <div class="bpo-attachment-meta"><span>{{ $attachment->created_at->format('d/m/Y H:i') }}</span><span>Versão {{ $attachment->version ?? 1 }}</span>@if ($attachment->uploader)<span>{{ $attachment->uploader->name }}</span>@endif</div>
                 <div class="bpo-attachment-item-actions">@if ($attachment->isPreviewable())<button type="button" wire:click="viewAttachment({{ $attachment->id }})"><x-filament::icon icon="heroicon-o-eye" />Visualizar</button>@endif<a href="{{ $attachment->url }}" target="_blank" rel="noopener"><x-filament::icon icon="heroicon-o-arrow-down-tray" />Baixar</a>@if ($uploadsEnabled && $canWrite)<button type="button" wire:click="editDescription({{ $attachment->id }})" aria-label="Editar descrição de {{ $attachment->original_name }}" title="Editar descrição"><x-filament::icon icon="heroicon-o-pencil-square" /></button>@endif @if ($deletionsEnabled && $canWrite)<button type="button" class="is-danger" wire:click="deleteAttachment({{ $attachment->id }})" wire:confirm="Remover o anexo '{{ $attachment->original_name }}' deste lançamento?" aria-label="Remover {{ $attachment->original_name }}" title="Remover anexo"><x-filament::icon icon="heroicon-o-trash" /></button>@endif</div>
             </article>
         @empty
-            <div class="bpo-attachment-empty"><x-filament::icon icon="heroicon-o-document-plus" /><strong>Nenhum anexo neste lançamento</strong><p>{{ $uploadsEnabled && $canWrite ? 'Adicione notas, contratos e comprovantes para manter os documentos junto da conta.' : 'Os documentos vinculados a este registro aparecerão aqui.' }}</p></div>
+            <div class="bpo-attachment-empty"><x-filament::icon icon="heroicon-o-document-plus" /><strong>{{ trim($attachmentSearch) ? 'Nenhum anexo encontrado' : 'Nenhum anexo neste lançamento' }}</strong><p>{{ trim($attachmentSearch) ? 'Ajuste a busca por nome ou descrição do arquivo.' : ($uploadsEnabled && $canWrite ? 'Adicione notas, contratos e comprovantes para manter os documentos junto da conta.' : 'Os documentos vinculados a este registro aparecerão aqui.') }}</p></div>
         @endforelse
     </div>
     <footer class="bpo-workbench-footer"><x-filament::icon icon="heroicon-o-lock-closed" /><span>Documentos protegidos pelo acesso ao lançamento.</span></footer>

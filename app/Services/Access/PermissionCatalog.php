@@ -116,7 +116,7 @@ class PermissionCatalog
             'production_requests' => [...$basic, 'approve', 'cancel'],
             'production_orders' => [...$basic, 'approve', 'cancel'],
             'account_payables' => [...$basic, 'approve', 'settle', 'reverse', 'cancel', 'change_status_without_movement'],
-            'account_receivables' => [...$basic, 'approve', 'settle', 'reverse', 'cancel', 'change_status_without_movement'],
+            'account_receivables' => [...$basic, 'approve', 'settle', 'reverse', 'cancel', 'issue', 'change_status_without_movement'],
             'cash_movements' => [...$basic, 'reverse'],
             'invoices' => [...$basic, 'approve', 'cancel'],
             'fiscal_documents' => [...$basic, 'approve', 'cancel', 'issue'],
@@ -165,8 +165,8 @@ class PermissionCatalog
                         $options['company'] = 'Permitido';
                     }
                     $permissions[] = [
-                        'key' => $key, 'label' => self::actions()[$action] ?? 'Ignorar / restaurar títulos',
-                        'description' => $hints[$action], 'options' => $options,
+                        'key' => $key, 'label' => $key === 'account_receivables.issue' ? 'Emitir cobranças bancárias' : (self::actions()[$action] ?? 'Ignorar / restaurar títulos'),
+                        'description' => $key === 'account_receivables.issue' ? 'Autorizar a geração opcional de boletos e cobranças PIX na finalização de vendas.' : $hints[$action], 'options' => $options,
                     ];
                 }
                 $groups[] = ['key' => $module, 'label' => $definition['label'], 'area' => $area,

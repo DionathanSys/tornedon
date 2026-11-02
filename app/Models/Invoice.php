@@ -7,6 +7,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -229,6 +230,36 @@ class Invoice extends Model
                 return $this->resolveAmounts()['net_value'];
             }
         );
+    }
+
+    /** Resolve authorized invoice totals in a fixed number of queries, without loading item payloads. */
+    public static function preloadAmounts(Collection $invoices): void
+    {
+        if ($invoices->isEmpty()) {
+            return;
+        }
+        $ids = $invoices->modelKeys();
+        $companies = $invoices->pluck('company_id')->unique()->all();
+        $aggregate = static fn (string $source, string $items, string $foreignKey) => DB::table($source)
+            ->join($items, $items.'.'.$foreignKey, '=', $source.'.id')
+            ->whereIn($source.'.invoice_id', $ids)->whereIn($source.'.company_id', $companies)
+            ->selectRaw($source.'.invoice_id, COALESCE(SUM('.$items.'.gross_amount), 0) as gross_amount, COALESCE(SUM('.$items.'.discount_amount), 0) as discount_amount, COALESCE(SUM('.$items.'.total_amount), 0) as total_amount')
+            ->groupBy($source.'.invoice_id')->get()->keyBy('invoice_id');
+        $services = $aggregate('service_orders', 'service_order_items', 'service_order_id');
+        $products = $aggregate('requisitions', 'requisition_items', 'requisition_id');
+        $travel = DB::table('service_orders')->whereIn('invoice_id', $ids)->whereIn('company_id', $companies)
+            ->selectRaw('invoice_id, COALESCE(SUM(ROUND(COALESCE(travel_value, 0) * 100, 0)), 0) as amount')->groupBy('invoice_id')->pluck('amount', 'invoice_id');
+        foreach ($invoices as $invoice) {
+            $service = $services->get($invoice->id);
+            $product = $products->get($invoice->id);
+            $travelAmount = (float) $travel->get($invoice->id, 0);
+            $serviceAmount = round(((float) ($service->total_amount ?? 0) + $travelAmount) / 100, 2);
+            $productAmount = round((float) ($product->total_amount ?? 0) / 100, 2);
+            $total = round($serviceAmount + $productAmount, 2);
+            $invoice->resolvedAmounts = ['gross_amount' => round(((float) ($service->gross_amount ?? 0) + $travelAmount + (float) ($product->gross_amount ?? 0)) / 100, 2),
+                'discount_amount' => round(((float) ($service->discount_amount ?? 0) + (float) ($product->discount_amount ?? 0)) / 100, 2),
+                'services_amount' => $serviceAmount, 'products_amount' => $productAmount, 'total_amount' => $total, 'net_value' => $total];
+        }
     }
 
     /**

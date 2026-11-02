@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\PurchaseClosings\Schemas;
 
 use App\Enum\FiscalDocument\OperationType;
+use App\Enum\PurchaseClosing\Status;
 use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\FiscalDocument;
 use App\Models\PurchaseClosing;
@@ -53,7 +54,7 @@ class PurchaseClosingForm
                             ->columnSpan(['md' => 2, 'lg' => 4]),
                         TextInput::make('status')
                             ->label('Status')
-                            ->formatStateUsing(fn ($state): string => $state?->description() ?? ($state ?: 'Rascunho'))
+                            ->formatStateUsing(fn ($state): string => ($state instanceof Status ? $state : Status::tryFrom((string) $state))?->description() ?? ($state ?: 'Rascunho'))
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit')
@@ -118,6 +119,7 @@ class PurchaseClosingForm
                                     ->columnSpan(['md' => 1, 'lg' => 2]),
                                 Money::make('discount_amount')
                                     ->label('Desconto')
+                                    ->formatStateUsing(fn ($state) => is_numeric($state) ? number_format((float) $state, 2, ',', '.') : $state)
                                     ->default(0)
                                     ->required()
                                     ->live()
@@ -211,10 +213,11 @@ class PurchaseClosingForm
             ->where('customer_id', $supplierId)
             ->where('confirmed', true)
             ->where('operation_type', OperationType::ENTRADA->value)
-            ->whereBetween('issued_at', [$startDate, $endDate])
+            ->whereBetween('issued_at', [$startDate, $endDate.' 23:59:59'])
             ->whereDoesntHave('purchaseClosingLinks', function (Builder $query) use ($record): void {
                 if ($record) {
                     $query->where('purchase_closing_id', '!=', $record->id);
+
                     return;
                 }
 
@@ -260,7 +263,7 @@ class PurchaseClosingForm
         }
 
         $gross = static::documentAmount((int) $documentId);
-        $discount = round((float) ($discountAmount ?? 0), 2);
+        $discount = static::parseMoney($discountAmount);
 
         return static::formatMoney(max($gross - $discount, 0));
     }
@@ -281,7 +284,7 @@ class PurchaseClosingForm
             }
 
             $gross += static::documentAmount($documentId);
-            $discount += round((float) ($document['discount_amount'] ?? 0), 2);
+            $discount += static::parseMoney($document['discount_amount'] ?? 0);
         }
 
         return [
@@ -299,19 +302,27 @@ class PurchaseClosingForm
             return 0;
         }
 
-        return round((float) $document->items->sum(fn ($item): float => (float) $item->total_price), 2);
+        return (float) $document->items_total;
     }
 
     private static function findDocument(int $documentId): ?FiscalDocument
     {
-        return FiscalDocument::query()
-            ->with('items')
-            ->where('company_id', Filament::getTenant()->id)
-            ->find($documentId);
+        $key = 'purchase_closing_document.'.Filament::getTenant()->id.'.'.auth()->id().'.'.$documentId;
+        if (! request()->attributes->has($key)) {
+            request()->attributes->set($key, FiscalDocument::query()->select(['id', 'company_id', 'document_number', 'issued_at'])
+                ->withSum('items as items_total', 'total_price')->where('company_id', Filament::getTenant()->id)->find($documentId));
+        }
+
+        return request()->attributes->get($key);
     }
 
     private static function formatMoney(float $value): string
     {
-        return 'R$ ' . number_format($value, 2, ',', '.');
+        return 'R$ '.number_format($value, 2, ',', '.');
+    }
+
+    private static function parseMoney(mixed $value): float
+    {
+        return round(is_string($value) && str_contains($value, ',') ? (float) str_replace(',', '.', str_replace('.', '', $value)) : (float) $value, 2);
     }
 }

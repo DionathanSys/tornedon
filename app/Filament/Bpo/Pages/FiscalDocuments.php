@@ -7,6 +7,11 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
+use App\Filament\Bpo\Resources\IncomingFiscalDocumentResource;
+use App\Filament\Bpo\Resources\OutgoingFiscalDocumentResource;
+use App\Filament\Bpo\Resources\PurchaseClosingResource;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\CreatePurchaseClosingBulkAction;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\ImportSefazDfeAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsPdfAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsXmlAction;
@@ -22,14 +27,19 @@ use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Pages\Page;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
@@ -68,14 +78,33 @@ class FiscalDocuments extends Page implements HasTable
         abort_unless(static::canAccess(), 403);
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('new_entry')->label('Nova nota de entrada')->icon('heroicon-o-plus')
+                ->authorize(fn () => $this->canUsePermission('fiscal_documents.create'))
+                ->url(IncomingFiscalDocumentResource::getUrl('create')),
+            Action::make('new_output')->label('Nova nota de saída')
+                ->authorize(fn () => $this->canUsePermission('fiscal_documents.create'))
+                ->url(OutgoingFiscalDocumentResource::getUrl('create')),
+            ImportSefazDfeAction::make()
+                ->authorize(fn () => $this->canUsePermission('fiscal_documents.create') && $this->canUsePermission('sefaz_documents.view'))
+                ->before(fn () => abort_unless(app(UserAccessService::class)->allows(Filament::auth()->user(), Filament::getTenant(), 'fiscal_documents.create', 'bpo'), 403)),
+            Action::make('purchase_closings')->label('Fechamentos de compras')
+                ->authorize(fn () => $this->canUsePermission('purchase_closings.view'))
+                ->url(PurchaseClosingResource::getUrl()),
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table->query(FiscalDocument::query()
             ->select(['id', 'company_id', 'created_by', 'customer_id', 'document_number', 'document_series',
                 'operation_type', 'document_type', 'nfse_model', 'issued_at', 'nfe_status', 'nfse_status', 'status',
                 'rps_number', 'rps_series', 'document_key', 'nfe_protocolo', 'nfse_protocol',
-                'authorized_at', 'created_at', 'operational_reset_at'])
+                'authorized_at', 'created_at', 'operational_reset_at', 'confirmed', 'movement_at'])
             ->where('company_id', Filament::getTenant()->id)->with('customer:id,name')
+            ->withSum('items as items_total', 'total_price')
             ->withExists(['payload as has_corrections' => fn (Builder $query) => $query->whereJsonLength('nfe_payload->correcoes', '>', 0)]))->columns([
                 TextColumn::make('document_number')->label('Número')->searchable()->placeholder('Em preparação'),
                 TextColumn::make('operation_type')->label('Operação')->badge()
@@ -95,7 +124,12 @@ class FiscalDocuments extends Page implements HasTable
                 TextColumn::make('nfe_protocolo')->label('Protocolo NF-e')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('nfse_protocol')->label('Protocolo NFS-e')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('authorized_at')->label('Autorizado em')->dateTime('d/m/Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('items_total')->label('Valor total')->money('BRL')->sortable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('movement_at')->label('Entrada / saída')->date('d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('confirmed')->label('Confirmada')->boolean()->toggleable(isToggledHiddenByDefault: true),
             ])->filters([
+                Filter::make('document_id')->label('Documento específico')->schema([TextInput::make('value')->label('ID do documento')->numeric()])
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn ($query, $id) => $query->whereKey($id))),
                 SelectFilter::make('operation_type')->label('Operação')->options(OperationType::toSelectArray()),
                 SelectFilter::make('document_type')->label('Documento')->options(DocumentModel::toSelectArray()),
                 SelectFilter::make('emission_status')->label('Situação fiscal')->options(NfeStatus::toSelectArray())->multiple()
@@ -113,6 +147,8 @@ class FiscalDocuments extends Page implements HasTable
                     }),
                 SelectFilter::make('status')->label('Situação interna')->options(Status::toSelectArray())->multiple(),
                 DateRangeFilter::make('issued_at')->label('Emissão')->autoApply(),
+                DateRangeFilter::make('movement_at')->label('Entrada / saída')->autoApply(),
+                TernaryFilter::make('confirmed')->label('Confirmação'),
             ])->recordActions([
                 Action::make('details')->label('Detalhes')->icon('heroicon-o-eye')->modalHeading('Documento fiscal')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
                     ->authorize(fn (FiscalDocument $record) => $this->canOperate($record, 'view'))
@@ -132,9 +168,21 @@ class FiscalDocuments extends Page implements HasTable
                             ? json_encode($record->errors_messages, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : $record->errors_messages)->placeholder('Sem rejeições registradas'),
                     ]),
                 ActionGroup::make($this->fiscalActions())->label('Ações fiscais')->icon('heroicon-o-ellipsis-vertical'),
+                Action::make('edit_document')->label('Abrir / tratar')->icon('heroicon-o-pencil-square')
+                    ->authorize(fn (FiscalDocument $record) => $this->canOperate($record, 'update'))
+                    ->url(fn (FiscalDocument $record) => ($record->operation_type === OperationType::ENTRADA ? IncomingFiscalDocumentResource::class : OutgoingFiscalDocumentResource::class)::getUrl('edit', ['record' => $record])),
             ])->toolbarActions([
                 Action::make('refresh')->label('Atualizar')->icon('heroicon-o-arrow-path')->action(fn () => null),
                 ...$this->exportActions(),
+                CreatePurchaseClosingBulkAction::make()
+                    ->authorize(fn () => $this->canUsePermission('purchase_closings.create'))
+                    ->before(function (Collection $records): void {
+                        abort_unless(app(UserAccessService::class)->allows(Filament::auth()->user(), Filament::getTenant(), 'purchase_closings.create', 'bpo'), 403);
+                        foreach ($records as $record) {
+                            abort_unless((int) $record->company_id === (int) Filament::getTenant()->id && $record->operation_type === OperationType::ENTRADA, 403);
+                            Gate::authorize('view', $record);
+                        }
+                    }),
             ])->defaultSort('created_at', 'desc')->paginated([15, 30, 50]);
     }
 
@@ -149,6 +197,13 @@ class FiscalDocuments extends Page implements HasTable
 
         return $access->recordMatchesScopes($record, Filament::auth()->user(), $this->fiscalPermissions['fiscal_documents.view'] ?? [])
             && $access->recordMatchesScopes($record, Filament::auth()->user(), $this->fiscalPermissions['fiscal_documents.'.$ability] ?? []);
+    }
+
+    private function canUsePermission(string $permission): bool
+    {
+        $this->fiscalPermissions ??= app(CompanyAuthorization::class)->effectivePermissions(Filament::auth()->user(), Filament::getTenant());
+
+        return ($this->fiscalPermissions[$permission] ?? []) !== [];
     }
 
     private function authorizeOperation(FiscalDocument $record, string $ability): void
@@ -212,17 +267,16 @@ class FiscalDocuments extends Page implements HasTable
 
     private function exportActions(): array
     {
-        return array_map(fn (Action $action) => $action->authorize(fn () => app(UserAccessService::class)
-            ->allows(Filament::auth()->user(), Filament::getTenant(), 'fiscal_documents.export', 'bpo')), [
-                ExportOutputFiscalDocumentsAction::make(),
-                ExportOutputFiscalDocumentsPdfAction::make(),
-                ExportOutputFiscalDocumentsXmlAction::make(),
-                Action::make('xml_exports')->label('Minhas exportações XML')->icon('heroicon-o-archive-box')
-                    ->modalHeading('Exportações de XML desta empresa')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
-                    ->modalContent(fn () => view('filament.bpo.pages.fiscal-xml-exports', [
-                        'exports' => FiscalDocumentXmlExport::query()->where('company_id', Filament::getTenant()->id)
-                            ->where('user_id', Filament::auth()->id())->latest()->limit(20)->get(),
-                    ])),
-            ]);
+        return array_map(fn (Action $action) => $action->authorize(fn () => $this->canUsePermission('fiscal_documents.export')), [
+            ExportOutputFiscalDocumentsAction::make(),
+            ExportOutputFiscalDocumentsPdfAction::make(),
+            ExportOutputFiscalDocumentsXmlAction::make(),
+            Action::make('xml_exports')->label('Minhas exportações XML')->icon('heroicon-o-archive-box')
+                ->modalHeading('Exportações de XML desta empresa')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
+                ->modalContent(fn () => view('filament.bpo.pages.fiscal-xml-exports', [
+                    'exports' => FiscalDocumentXmlExport::query()->where('company_id', Filament::getTenant()->id)
+                        ->where('user_id', Filament::auth()->id())->latest()->limit(20)->get(),
+                ])),
+        ]);
     }
 }

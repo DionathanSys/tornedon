@@ -58,6 +58,7 @@ final class ExportSelectedInvoicesAction
                     'customer',
                     'createdBy',
                 ]);
+                Invoice::preloadAmounts($records);
 
                 return self::streamDownload($records, $selectedColumns);
             });
@@ -110,7 +111,7 @@ final class ExportSelectedInvoicesAction
 
         $writer->close();
 
-        $fileName = 'faturas-' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+        $fileName = 'faturas-'.now()->format('Y-m-d_H-i-s').'.xlsx';
 
         return response()->streamDownload(function () use ($temporaryFile): void {
             $stream = fopen($temporaryFile, 'rb');
@@ -128,7 +129,7 @@ final class ExportSelectedInvoicesAction
 
     private static function makeNumericStyle(): Style
     {
-        return (new Style())->setFormat('[$-416] #.##0,00');
+        return (new Style)->setFormat('[$-416] #.##0,00');
     }
 
     private static function getColumnOptions(): array

@@ -5,6 +5,7 @@
 
 @source '../../../../app/Filament/Bpo/**/*';
 @source '../../../../app/Filament/Clusters/Financial/**/*';
+@source '../../../../app/Filament/Clusters/Sales/**/*';
 @source '../../../../resources/views/filament/bpo/**/*';
 @source '../../../../resources/views/components/bpo/**/*';
 @source '../../../../resources/views/filament/pages/**/*';

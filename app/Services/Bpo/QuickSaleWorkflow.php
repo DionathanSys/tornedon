@@ -4,14 +4,17 @@ namespace App\Services\Bpo;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\Payment\Condition;
+use App\Enum\Payment\Method;
 use App\Enum\Requisition\Status;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Models\AccountReceivable;
 use App\Models\BpoSale;
+use App\Models\CardInstitution;
 use App\Models\Company;
 use App\Models\CompanyPartner;
+use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Models\Invoice;
 use App\Models\Product;
@@ -202,14 +205,53 @@ class QuickSaleWorkflow
             $this->authorize($user, $company, 'invoices.approve');
             $this->authorize($user, $company, 'fiscal_documents.create');
             $this->authorize($user, $company, 'fiscal_documents.update');
-            $settings = Arr::only($paymentData, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id']) + ($sale->payment_settings ?? []);
+            $settings = Arr::only($paymentData, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id',
+                'card_payment_profile_id', 'payment_date', 'auto_bank_slip_issuance', 'auto_pix_charge_issuance', 'mark_as_received', 'received_at', 'financial_account_id']) + ($sale->payment_settings ?? []);
             $policy = $settings['financial_policy'] ?? 'create_receivable';
             Validator::make($settings + ['financial_policy' => $policy], [
                 'financial_policy' => ['required', Rule::in(['create_receivable', 'link_existing', 'fiscal_only'])],
-                'payment_method' => ['required', Rule::in(['pix', 'transferencia', 'boleto', 'dinheiro', 'outros', 'deposito', 'cheque', 'crediario'])],
+                'payment_method' => ['required', Rule::enum(Method::class)],
                 'payment_condition' => ['required', Rule::enum(Condition::class)],
+                'auto_bank_slip_issuance' => 'sometimes|boolean', 'auto_pix_charge_issuance' => 'sometimes|boolean', 'mark_as_received' => 'sometimes|boolean',
+                'received_at' => 'required_if:mark_as_received,true|nullable|date',
+                'payment_date' => 'required_if:payment_method,cartao_credito|nullable|date',
+                'card_payment_profile_id' => 'required_if:payment_method,cartao_credito|nullable|integer',
                 ...PaymentTerms::rules(),
             ])->validate();
+            $settings['auto_bank_slip_issuance'] = (bool) ($settings['auto_bank_slip_issuance'] ?? false);
+            $settings['auto_pix_charge_issuance'] = (bool) ($settings['auto_pix_charge_issuance'] ?? false);
+            $settings['mark_as_received'] = (bool) ($settings['mark_as_received'] ?? false);
+            $bankSlip = $settings['auto_bank_slip_issuance'];
+            $pix = $settings['auto_pix_charge_issuance'];
+            $received = $settings['mark_as_received'];
+            if (($bankSlip || $pix || $received) && $policy !== 'create_receivable') {
+                $this->fail('Cobrança e recebimento na finalização exigem gerar um novo recebível.');
+            }
+            if (($bankSlip && $settings['payment_method'] !== Method::BANK_SLIP->value)
+                || ($pix && $settings['payment_method'] !== Method::PIX->value) || ($received && ($bankSlip || $pix))) {
+                $this->fail('Escolha gerar a cobrança ou registrar o valor já recebido, conforme a forma de pagamento.');
+            }
+            if ($bankSlip || $pix) {
+                $this->authorize($user, $company, 'account_receivables.issue');
+            }
+            if ($received) {
+                $this->authorize($user, $company, 'account_receivables.settle');
+                $this->authorize($user, $company, 'cash_movements.create');
+            }
+            if ($bankSlip || $pix || $received) {
+                $account = FinancialAccount::where('company_id', $company->id)->where('is_active', true)->find($settings['financial_account_id'] ?? 0);
+                if (! $account) {
+                    $this->fail('Selecione uma conta financeira ativa da empresa para a cobrança ou recebimento.');
+                }
+                $this->authorize($user, $company, 'financial_accounts.view', $account);
+            }
+            if ($settings['payment_method'] === Method::CREDIT_CARD->value) {
+                $card = CardInstitution::where('company_id', $company->id)->where('active', true)->find($settings['card_payment_profile_id']);
+                if (! $card) {
+                    $this->fail('Selecione uma instituição de cartão ativa da empresa.');
+                }
+                $this->authorize($user, $company, 'card_institutions.view', $card);
+            }
             if ($policy === 'create_receivable') {
                 $this->authorize($user, $company, 'account_receivables.create');
                 $this->authorize($user, $company, 'account_receivables.update');
@@ -230,11 +272,11 @@ class QuickSaleWorkflow
             $invoice->update(['financial_policy' => $policy, 'invoice_date' => $isService ? $source->order_date : $source->sale_date]);
             $confirmation = new ConfirmInvoiceAction($invoice->fresh(), $user->id);
             $this->requireResult($confirmation->execute([
-                ...Arr::only($settings, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id']),
+                ...Arr::only($settings, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id',
+                    'card_payment_profile_id', 'payment_date', 'financial_account_id', 'received_at', 'mark_as_received', 'auto_bank_slip_issuance', 'auto_pix_charge_issuance']),
                 'nfse_item_description' => $settings['description'] ?? null,
                 'sale_operation_nature' => $sale->template_snapshot['operation_nature'] ?? null,
                 'nfse_additional_information' => $sale->template_snapshot['additional_information'] ?? null,
-                'auto_bank_slip_issuance' => false, 'auto_pix_charge_issuance' => false, 'mark_as_received' => false,
             ]), $confirmation);
             if ($policy === 'link_existing') {
                 $target = AccountReceivable::where('company_id', $company->id)->lockForUpdate()->findOrFail($settings['financial_target_id'] ?? 0);

@@ -10,9 +10,10 @@ use Filament\Actions\BulkAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
@@ -28,11 +29,12 @@ final class CreatePurchaseClosingBulkAction
             ->icon(Heroicon::DocumentDuplicate)
             ->color('warning')
             ->modalHeading('Criar fechamento de compras')
+            ->modalSubmitActionLabel('Criar fechamento')->modalCancelActionLabel('Voltar')->stickyModalFooter()
             ->modalDescription('Agrupa as notas selecionadas em um único fechamento. Apenas documentos válidos podem ser usados.')
             ->modalWidth('5xl')
             ->deselectRecordsAfterCompletion()
             ->fillForm(fn (Collection $records): array => self::buildFormData($records))
-            ->schema([
+            ->schema([Grid::make(['default' => 1, 'md' => 3])->schema([
                 TextInput::make('supplier_name')
                     ->label('Fornecedor')
                     ->disabled()
@@ -48,6 +50,7 @@ final class CreatePurchaseClosingBulkAction
                 TextInput::make('reference')
                     ->label('Referência')
                     ->maxLength(100)
+                    ->columnSpanFull()
                     ->placeholder('Ex: FECH-05/2026'),
                 Textarea::make('notes')
                     ->label('Observações')
@@ -75,6 +78,7 @@ final class CreatePurchaseClosingBulkAction
                             ->dehydrated(false),
                         Money::make('document_amount')
                             ->label('Valor da Nota')
+                            ->formatStateUsing(fn ($state) => is_numeric($state) ? number_format((float) $state, 2, ',', '.') : $state)
                             ->disabled()
                             ->dehydrated(false),
                         Money::make('discount_amount')
@@ -85,17 +89,18 @@ final class CreatePurchaseClosingBulkAction
                         TextEntry::make('net_amount_preview')
                             ->label('Líquido')
                             ->state(fn (Get $get): string => self::formatMoney(max(
-                                round((float) ($get('document_amount') ?? 0), 2) - round((float) ($get('discount_amount') ?? 0), 2),
+                                self::parseMoney($get('document_amount')) - self::parseMoney($get('discount_amount')),
                                 0
                             ))),
                     ])
                     ->columns(5),
-            ])
+            ])->columnSpanFull()])
             ->action(function (Collection $records, array $data): void {
                 $validationError = self::validateSelection($records);
 
                 if ($validationError !== null) {
                     notify::error(message: $validationError);
+
                     return;
                 }
 
@@ -110,12 +115,12 @@ final class CreatePurchaseClosingBulkAction
 
                 $service = app(PurchaseClosingService::class);
                 $closing = $service->create([
-                    'company_id'    => $first->company_id,
-                    'supplier_id'   => $first->customer_id,
-                    'start_date'    => $issuedDates->first(),
-                    'end_date'      => $issuedDates->last(),
-                    'reference'     => $data['reference'] ?? null,
-                    'notes'         => $data['notes'] ?? null,
+                    'company_id' => $first->company_id,
+                    'supplier_id' => $first->customer_id,
+                    'start_date' => $issuedDates->first(),
+                    'end_date' => $issuedDates->last(),
+                    'reference' => $data['reference'] ?? null,
+                    'notes' => $data['notes'] ?? null,
                     'documents' => collect($data['documents'] ?? [])
                         ->map(fn (array $document): array => [
                             'fiscal_document_id' => (int) $document['fiscal_document_id'],
@@ -126,6 +131,7 @@ final class CreatePurchaseClosingBulkAction
 
                 if ($service->hasError() || $closing === null) {
                     notify::error(message: $service->getMessageUser(), errorCode: $service->getErrorCode());
+
                     return;
                 }
 
@@ -153,7 +159,7 @@ final class CreatePurchaseClosingBulkAction
             'supplier_name' => $first?->customer?->name ?? 'Seleção inválida',
             'period_label' => $issuedDates->isEmpty()
                 ? '-'
-                : $issuedDates->first()->format('d/m/Y') . ' a ' . $issuedDates->last()->format('d/m/Y'),
+                : $issuedDates->first()->format('d/m/Y').' a '.$issuedDates->last()->format('d/m/Y'),
             'selected_count' => (string) $records->count(),
             'documents' => $records
                 ->sortBy(fn (FiscalDocument $record) => sprintf('%s|%s', $record->issued_at?->format('Y-m-d') ?? '', $record->document_number ?? ''))
@@ -202,6 +208,11 @@ final class CreatePurchaseClosingBulkAction
 
     private static function formatMoney(float $value): string
     {
-        return 'R$ ' . number_format($value, 2, ',', '.');
+        return 'R$ '.number_format($value, 2, ',', '.');
+    }
+
+    private static function parseMoney(mixed $value): float
+    {
+        return is_string($value) && str_contains($value, ',') ? (float) str_replace(',', '.', str_replace('.', '', $value)) : (float) $value;
     }
 }

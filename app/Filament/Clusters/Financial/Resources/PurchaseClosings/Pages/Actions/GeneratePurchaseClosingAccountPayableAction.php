@@ -36,6 +36,7 @@ class GeneratePurchaseClosingAccountPayableAction
                 Money::make('closing_net_amount')
                     ->label('Valor Líquido do Fechamento')
                     ->default((float) $record->net_amount)
+                    ->formatStateUsing(fn ($state) => is_numeric($state) ? number_format((float) $state, 2, ',', '.') : $state)
                     ->disabled()
                     ->dehydrated(false),
                 DatePicker::make('due_date')

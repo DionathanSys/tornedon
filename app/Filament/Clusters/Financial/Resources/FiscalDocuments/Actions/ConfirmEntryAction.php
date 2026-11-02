@@ -6,18 +6,22 @@ use App\Enum\FiscalDocument\Status;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
+use App\Filament\Forms\Components\PaymentConditionFields;
 use App\Models\CompanyCreditCard;
 use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
+use App\Services\Access\UserAccessService;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +39,7 @@ final class ConfirmEntryAction
             ->color('success')
             ->modalWidth('lg')
             ->modalHeading('Confirmar Documento Fiscal')
+            ->modalSubmitActionLabel('Confirmar entrada')->modalCancelActionLabel('Manter pendente')->stickyModalFooter()
             ->modalDescription('Confirme a entrada para gerar as movimentações de estoque. O financeiro pode ser gerado agora como conta a pagar ou como lançamento de cartão corporativo.')
             ->visible(fn (FiscalDocument $record): bool => ! $record->confirmed)
             ->schema(fn (FiscalDocument $record): array => self::buildFormSchema($record))
@@ -131,17 +136,25 @@ final class ConfirmEntryAction
         $record->loadMissing('items');
         $totalAmount = $record->items->sum(fn ($i) => (float) $i->total_price);
         $totalFormatted = 'R$ '.number_format($totalAmount, 2, ',', '.');
+        $isBpo = Filament::getCurrentPanel()?->getId() === 'bpo';
+        $allows = fn (string $permission) => ! $isBpo || app(UserAccessService::class)
+            ->allows(Filament::auth()->user(), Filament::getTenant(), $permission, 'bpo');
+        $canPayable = $allows('account_payables.create') && $allows('account_payables.update');
+        $canCard = $allows('company_card_transactions.create') && $allows('company_card_statements.create')
+            && $allows('company_card_statements.update') && $allows('company_credit_cards.view');
+        $methods = array_filter(PaymentMethod::toSelectArray(), fn ($method) => $method === PaymentMethod::CREDIT_CARD->value ? $canCard : $canPayable, ARRAY_FILTER_USE_KEY);
 
         return [
             Toggle::make('generate_account_payable_now')
                 ->label('Gerar conta a pagar agora?')
                 ->default(false)
+                ->visible($canPayable || $canCard)
                 ->live()
                 ->columnSpanFull(),
 
             Select::make('payment_method')
                 ->label('Método de Pagamento')
-                ->options(PaymentMethod::toSelectArray())
+                ->options($methods)
                 ->native(false)
                 ->live()
                 ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
@@ -166,8 +179,8 @@ final class ConfirmEntryAction
                 ->helperText('Será usado para registrar as transações e compor a fatura do cartão.')
                 ->columnSpanFull(),
 
-            \App\Filament\Forms\Components\PaymentConditionFields::make(corporateCard: true)
-                ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => (bool) $get('generate_account_payable_now') && $get('payment_condition') === Condition::CUSTOM->value),
+            PaymentConditionFields::make(corporateCard: true)
+                ->visible(fn (Get $get): bool => (bool) $get('generate_account_payable_now') && $get('payment_condition') === Condition::CUSTOM->value),
             Select::make('payment_condition')->live()
                 ->label('Condição de Pagamento')
                 ->options(Condition::toGroupedSelectArray())

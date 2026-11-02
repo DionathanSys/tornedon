@@ -43,6 +43,7 @@ class BpoCashFlowService
             'partial' => $rows->contains('partial', true),
             'first_shortage' => collect($days)->first(fn ($day) => $day['balance'] < 0),
             'titles' => $rows->flatMap(fn ($row) => $row['titles'])->sortBy('date')->values(),
+            'overdue_titles' => $rows->flatMap(fn ($row) => $row['overdue_titles'])->sortBy('date')->values(),
             'accounts' => $rows->flatMap(fn ($row) => $row['accounts'])->values()];
     }
 
@@ -80,6 +81,7 @@ class BpoCashFlowService
             $out[$date] -= (int) $transfer->outflow;
         }
         $titles = collect();
+        $overdueTitles = collect();
         $overdueReceivables = 0;
         foreach (['payable', 'receivable'] as $type) {
             $payable = $type === 'payable';
@@ -92,6 +94,14 @@ class BpoCashFlowService
             foreach ($installments as $installment) {
                 $amount = (int) $installment->getRawOriginal('balance_amount');
                 $overdue = $installment->due_date->lt(today());
+                $parent = $installment->$relation;
+                $titleRow = ['type' => $type, 'company' => $company, 'record' => $parent,
+                    'description' => $installment->description ?: $parent->description, 'document' => $parent->document_number,
+                    'party' => $parent->counterparty_label, 'date' => $installment->due_date->toDateString(),
+                    'amount' => $amount, 'overdue' => $overdue];
+                if ($overdue) {
+                    $overdueTitles->push($titleRow);
+                }
                 if (! $payable && $overdue) {
                     $overdueReceivables += $amount;
                 }
@@ -107,11 +117,7 @@ class BpoCashFlowService
                     }
                 }
                 if (($date->betweenIncluded($start, $end) && $date->gte(CarbonImmutable::today())) || (! $payable && $overdue)) {
-                    $parent = $installment->$relation;
-                    $titles->push(['type' => $type, 'company' => $company, 'record' => $parent,
-                        'description' => $installment->description ?: $parent->description,
-                        'party' => $parent->counterparty_label, 'date' => $installment->due_date->toDateString(),
-                        'amount' => $amount, 'overdue' => $overdue]);
+                    $titles->push($titleRow);
                 }
             }
         }
@@ -150,6 +156,7 @@ class BpoCashFlowService
         return ['company' => $company, 'partial' => $partial, 'opening' => $opening, 'closing' => $balance,
             'in' => array_sum(array_column($days, 'in')), 'out' => array_sum(array_column($days, 'out')),
             'without_receipts' => $available, 'days' => $days, 'accounts' => $accountRows, 'titles' => $titles,
+            'overdue_titles' => $overdueTitles,
             'overdue_receivables' => $overdueReceivables,
             'first_shortage' => collect($days)->first(fn ($day) => $day['balance'] < 0)];
     }

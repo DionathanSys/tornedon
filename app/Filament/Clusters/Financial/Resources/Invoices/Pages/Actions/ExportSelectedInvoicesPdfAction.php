@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions;
 
+use App\Models\Invoice;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\BulkAction;
 use Filament\Facades\Filament;
@@ -49,6 +50,7 @@ final class ExportSelectedInvoicesPdfAction
                     'customer',
                     'createdBy',
                 ]);
+                Invoice::preloadAmounts($records);
 
                 $pdfBinary = Pdf::loadView('pdf.invoice-report', [
                     'report' => [
@@ -62,7 +64,7 @@ final class ExportSelectedInvoicesPdfAction
                     ],
                 ])->setPaper('a4', 'landscape')->output();
 
-                $fileName = 'faturas-' . now()->format('Y-m-d_H-i-s') . '.pdf';
+                $fileName = 'faturas-'.now()->format('Y-m-d_H-i-s').'.pdf';
 
                 return response()->streamDownload(function () use ($pdfBinary): void {
                     echo $pdfBinary;
