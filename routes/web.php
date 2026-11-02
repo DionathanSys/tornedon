@@ -14,9 +14,12 @@ use App\Http\Controllers\PdfPreviewController;
 use App\Http\Controllers\PublicHrReceiptSignatureController;
 use App\Http\Controllers\PublicPixChargeController;
 use App\Http\Controllers\PublicServiceOrderSignatureController;
+use App\Http\Controllers\PwaServiceWorkerController;
 use App\Services\Bpo\BpoAccessService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/sw.js', PwaServiceWorkerController::class)->name('pwa.service-worker');
 
 Route::get('/', function () {
     $user = auth()->user();

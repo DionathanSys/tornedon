@@ -13,7 +13,7 @@
     $overflow = array_slice(\App\Filament\Operation\OperationModules::navigation(), 4);
 @endphp
 
-<div>
+<div x-data="operationPwaInstall()">
     <x-mary-dropdown no-x-anchor top right scroll max-height="max-h-[calc(100dvh-8rem)]">
         <x-slot:trigger class="operation-bar-button btn btn-ghost">
             <x-mary-icon name="o-bars-3" class="h-5 w-5" />
@@ -26,6 +26,7 @@
             <x-mary-menu-separator />
         @endif
         <x-mary-menu-item title="Mudar empresa" icon="o-arrows-right-left" wire:click="openTenantModal" />
+        <x-mary-menu-item title="Instalar aplicativo" icon="o-arrow-down-tray" x-cloak x-show="available" @click="install()" x-bind:disabled="installing" />
         @if (\App\Filament\Operation\OperationModules::allows('service_orders'))
         <x-mary-menu-item title="Nova ordem" icon="o-plus" @click="$dispatch('operation-create-record', { kind: 'service-order' })" />
         @endif

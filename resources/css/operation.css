@@ -27,6 +27,16 @@
     line-height: 1.5;
 }
 
+.operation-pwa-install {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+    left: max(1rem, env(safe-area-inset-left));
+    z-index: 60;
+    max-width: 26rem;
+    margin-left: auto;
+}
+
 /* Charts use Filament's renderer inside the Operation dashboard. */
 .operation-charts .fi-section {
     border-color: var(--color-base-300);

@@ -1,4 +1,5 @@
 @include('pwa.register-sw')
+@include('filament.operation.install-pwa')
 
 @php
     $pageClass = str(request()->route()?->getActionName() ?? '')->before('@')->toString();

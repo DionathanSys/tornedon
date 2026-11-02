@@ -10,4 +10,4 @@
 <link rel="manifest" href="{{ asset($manifest) }}">
 <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
 <link rel="icon" type="image/svg+xml" href="{{ asset('pwa-192.svg') }}">
-<link rel="apple-touch-icon" href="{{ asset('pwa-192.svg') }}">
+<link rel="apple-touch-icon" sizes="180x180" href="{{ asset('pwa-180.png') }}">

@@ -15,6 +15,11 @@ export default defineConfig({
             manifest: false,
             includeAssets: ['favicon.ico', 'pwa-192.svg', 'pwa-512.svg', 'pwa-maskable.svg'],
             workbox: {
+                // Laravel renders navigation on the server; there is no SPA index.html.
+                navigateFallback: null,
+                // /sw.js is served from the application root, not /build/.
+                inlineWorkboxRuntime: true,
+                modifyURLPrefix: { '': '/build/' },
                 globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2}'],
                 runtimeCaching: [
                     {
