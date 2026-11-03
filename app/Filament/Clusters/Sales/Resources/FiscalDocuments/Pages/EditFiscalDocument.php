@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages;
 
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Actions\ConfigurePurchaseReturnSettlementAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
+use App\Filament\Support\Actions\FiscalDocumentRecordActions;
 use App\Models\FiscalDocument;
 use App\Models\User;
 use App\Notification\NotifyService as notify;
@@ -233,6 +234,8 @@ class EditFiscalDocument extends EditRecord
                             echo base64_decode($pdf);
                         }, $filename, ['Content-Type' => 'application/pdf']);
                     }),
+
+                FiscalDocumentRecordActions::downloadXmlAction(),
 
                 Action::make('cancelar_nfe')
                     ->label('Cancelar NF-e')

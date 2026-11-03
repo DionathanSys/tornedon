@@ -6,6 +6,7 @@ use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
+use App\Services\FiscalDocument\XmlExport\DownloadFiscalDocumentXmlAction;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -126,6 +127,8 @@ final class FiscalDocumentRecordActions
                         echo base64_decode($pdf);
                     }, $filename, ['Content-Type' => 'application/pdf']);
                 }),
+
+            self::downloadXmlAction(),
 
             Action::make('cancelar_nfe')
                 ->label('Cancelar NF-e')
@@ -388,6 +391,34 @@ final class FiscalDocumentRecordActions
         }
 
         return $actions;
+    }
+
+    public static function downloadXmlAction(): Action
+    {
+        return Action::make('download_xml')
+            ->label('Download XML')
+            ->icon(Heroicon::ArrowDownTray)
+            ->color('success')
+            ->visible(fn (FiscalDocument $record) => ($record->isNfe() && $record->isNfeAuthorized())
+                || ($record->isNfse() && $record->isNfseAuthorized()))
+            ->action(function (FiscalDocument $record): ?StreamedResponse {
+                $record = self::resolveFullRecord($record);
+                $action = app(DownloadFiscalDocumentXmlAction::class);
+                $xml = $action->execute($record);
+
+                if ($xml === null) {
+                    notify::error($action->getMessage() ?: 'Não foi possível baixar o XML da nota fiscal.');
+
+                    return null;
+                }
+
+                $prefix = $record->isNfse() ? 'NFSE-' : 'NFE-';
+                $filename = $prefix.($record->document_number ?? $record->id).'.xml';
+
+                return response()->streamDownload(function () use ($xml): void {
+                    echo $xml;
+                }, $filename, ['Content-Type' => 'application/xml']);
+            });
     }
 
     private static function isNationalNfse(FiscalDocument $record): bool

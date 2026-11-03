@@ -29,6 +29,7 @@ use App\Services\Access\PermissionCatalog;
 use App\Services\FiscalDocument\Actions\ReconcileNfseRpsSequenceAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
+use App\Services\FiscalDocument\XmlExport\DownloadFiscalDocumentXmlAction;
 use App\Services\PurchaseClosing\PurchaseClosingService;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -309,6 +310,65 @@ class FiscalDocumentsWorkspaceTest extends TestCase
 
         Livewire::test(FiscalDocuments::class)->callAction(TestAction::make('danfe')->table($nfe))->assertFileDownloaded('DANFE-101.pdf');
         Livewire::test(FiscalDocuments::class)->callAction(TestAction::make('pdf_nfse')->table($nfse))->assertFileDownloaded('NFSE-202.pdf');
+    }
+
+    public function test_authorized_documents_download_xml_from_the_list_with_view_permission(): void
+    {
+        $records = [
+            $this->document(['document_type' => 'nfe', 'nfe_status' => NfeStatus::AUTHORIZED, 'document_number' => '101']),
+            $this->document(['document_type' => 'nfse', 'nfse_status' => NfeStatus::AUTHORIZED, 'document_number' => '202']),
+        ];
+        $this->authenticate();
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><nota>Autorizada</nota>';
+
+        foreach ($records as $record) {
+            $this->mock(DownloadFiscalDocumentXmlAction::class, fn (MockInterface $mock) => $mock->shouldReceive('execute')->once()
+                ->withArgs(fn (FiscalDocument $document) => $document->is($record))
+                ->andReturn($xml));
+
+            $filename = ($record->isNfse() ? 'NFSE-' : 'NFE-').$record->document_number.'.xml';
+            Livewire::test(FiscalDocuments::class)->callAction(TestAction::make('download_xml')->table($record))
+                ->assertFileDownloaded($filename, $xml, 'application/xml');
+        }
+    }
+
+    public function test_authorized_document_downloads_xml_from_the_edit_page(): void
+    {
+        $record = $this->document(['nfe_status' => NfeStatus::AUTHORIZED, 'document_number' => '101']);
+        $this->permissions(PermissionCatalog::templates()['Administrador da empresa']);
+        $this->authenticate();
+        $xml = '<nota>Autorizada</nota>';
+        $this->mock(DownloadFiscalDocumentXmlAction::class, fn (MockInterface $mock) => $mock->shouldReceive('execute')->once()
+            ->withArgs(fn (FiscalDocument $document) => $document->is($record))->andReturn($xml));
+
+        Livewire::test(EditOutgoingDocument::class, ['record' => $record->id])->callAction('download_xml')
+            ->assertFileDownloaded('NFE-101.xml', $xml, 'application/xml');
+    }
+
+    public function test_xml_download_is_hidden_for_pending_and_foreign_documents(): void
+    {
+        $pending = $this->document();
+        $foreign = $this->document(['company_id' => Company::factory()->create()->id, 'nfe_status' => NfeStatus::AUTHORIZED]);
+        $this->authenticate();
+        $this->mock(DownloadFiscalDocumentXmlAction::class, fn (MockInterface $mock) => $mock->shouldNotReceive('execute'));
+
+        Livewire::test(FiscalDocuments::class)
+            ->assertActionHidden(TestAction::make('download_xml')->table($pending))
+            ->assertCanNotSeeTableRecords([$foreign]);
+    }
+
+    public function test_xml_download_failure_notifies_without_downloading_an_empty_file(): void
+    {
+        $record = $this->document(['nfe_status' => NfeStatus::AUTHORIZED]);
+        $this->authenticate();
+        $this->mock(DownloadFiscalDocumentXmlAction::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('execute')->once()->andReturnNull();
+            $mock->shouldReceive('getMessage')->once()->andReturn('XML indisponível na API.');
+        });
+
+        Livewire::test(FiscalDocuments::class)->callAction(TestAction::make('download_xml')->table($record))
+            ->assertNotified('XML indisponível na API.')
+            ->assertNoFileDownloaded();
     }
 
     public function test_rps_reconciliation_validates_the_reason_and_uses_the_existing_action(): void

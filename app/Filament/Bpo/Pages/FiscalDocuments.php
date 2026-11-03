@@ -226,7 +226,7 @@ class FiscalDocuments extends Page implements HasTable
                 'emitir', 'emitir_nfse' => 'issue',
                 'cancelar_nfe', 'cancelar_nfse' => 'cancel',
                 'corrigir_nfe', 'consultar', 'consultar_nfse' => 'update',
-                'preview', 'preview_nfse', 'danfe', 'pdf_nfse', 'baixar_carta_correcao_nfe' => 'view',
+                'preview', 'preview_nfse', 'danfe', 'pdf_nfse', 'download_xml', 'baixar_carta_correcao_nfe' => 'view',
                 default => null,
             };
             $action->authorize(fn (FiscalDocument $record) => $ability !== null && $this->canOperate($record, $ability)
