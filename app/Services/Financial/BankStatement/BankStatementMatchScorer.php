@@ -45,7 +45,8 @@ class BankStatementMatchScorer
             $conflicts[] = 'tax_document_conflict';
             $evidence[] = 'CPF/CNPJ do extrato diverge da contraparte cadastrada.';
         }
-        if (count($bankName) >= 2 && $hasComparableName && $nameScore === 0 && ! $documentMatch && ! $referenceMatch) {
+        $historyPoints = $conflicts === [] ? app(BankReconciliationHistory::class)->bonus($line, $target['party_key']) : 0;
+        if (count($bankName) >= 2 && $hasComparableName && $nameScore === 0 && ! $documentMatch && ! $referenceMatch && $historyPoints === 0) {
             $conflicts[] = 'counterparty_name_conflict';
             $evidence[] = 'Nome informado pelo banco diverge da contraparte cadastrada.';
         }
@@ -68,6 +69,9 @@ class BankStatementMatchScorer
             $evidence[] = sprintf('Distância de %d dia(s) útil(eis), considerando fins de semana e feriados configurados.', $businessDays);
         }
         $textPoints = min(20, count(array_intersect($bankTokens, $text->tokens($target['text']))) * 4);
+        if ($historyPoints > 0) {
+            $evidence[] = 'Contraparte confirmada repetidamente para esta identificação bancária na mesma empresa e conta.';
+        }
         $points = [
             'direction' => $movement ? 20 : 0,
             'amount' => match (true) {
@@ -87,6 +91,7 @@ class BankStatementMatchScorer
             'counterparty_name' => $nameScore,
             'tax_document' => $documentMatch ? 40 : 0,
             'reference' => $referenceMatch ? 30 : 0,
+            'history' => $historyPoints,
             'conflicts' => -(in_array('tax_document_conflict', $conflicts, true) ? 30 : 0) - (in_array('counterparty_name_conflict', $conflicts, true) ? 15 : 0),
         ];
         // These are ranking points, not percentages. Preserve stronger evidence above 100.
@@ -119,6 +124,11 @@ class BankStatementMatchScorer
         ];
     }
 
+    public function counterpartyKey(CashMovement|AccountPayableInstallment|AccountReceivableInstallment $candidate): ?string
+    {
+        return $this->candidateData($candidate)['party_key'];
+    }
+
     private function candidateData(CashMovement|AccountPayableInstallment|AccountReceivableInstallment $candidate): array
     {
         if ($candidate instanceof CashMovement) {
@@ -142,12 +152,15 @@ class BankStatementMatchScorer
         }
 
         $description = implode(' ', array_filter([$candidate->description, $candidate->notes, $parent?->description, ...$names]));
+        $nameTokens = app(BankStatementMatchText::class)->tokens(array_values($names)[0] ?? null);
+        sort($nameTokens);
 
         return [
             'names' => array_values($names),
             'document' => (string) $partner?->document_number,
             'references' => [$parent?->document_number, $parent?->note_number, $parent?->bank_slip_number, ...app(BankStatementMatchText::class)->labeledReferences($description)],
             'text' => $description,
+            'party_key' => $partner?->getKey() ? 'partner:'.$partner->getKey() : ($nameTokens !== [] ? 'manual:'.hash('sha256', implode(' ', $nameTokens)) : null),
         ];
     }
 }

@@ -42,6 +42,7 @@ final class ReconcileMultipleAction
                         Filament::getTenant()->id,
                         $bulk ? $action->getSelectedRecords()->pluck('id')->all() : [$action->getRecord()->id],
                         $selection['type'] ?? '', $selection['items'] ?? [], auth()->id(), $selection['exception_reason'] ?? null,
+                        $selection['evaluation_token'] ?? null,
                     );
                 } catch (ValidationException $e) {
                     Notification::make()->title('Confira a seleção antes de conciliar')

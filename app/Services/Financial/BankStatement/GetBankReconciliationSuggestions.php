@@ -4,6 +4,7 @@ namespace App\Services\Financial\BankStatement;
 
 use App\Models\BankStatementLine;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -11,6 +12,7 @@ class GetBankReconciliationSuggestions
 {
     public function get(int $companyId, Collection $selectedLines): array
     {
+        $startedAt = hrtime(true);
         $ids = $selectedLines->pluck('id')->unique()->all();
         $lines = BankStatementLine::query()->where('company_id', $companyId)
             ->whereIn('id', $ids)->with(['financialAccount', 'import'])->orderBy('id')->get();
@@ -96,7 +98,7 @@ class GetBankReconciliationSuggestions
             }
         }
 
-        return [
+        $response = [
             'bundles' => $advanced['bundles'],
             'advanced_truncated' => $advanced['truncated'],
             'advanced_error' => $advancedError,
@@ -127,5 +129,14 @@ class GetBankReconciliationSuggestions
             })->values()->all(),
             'failed_lines' => $failed,
         ];
+
+        try {
+            $response['evaluation_token'] = app(BankReconciliationQualityService::class)->evaluate($lines, $response, (int) round((hrtime(true) - $startedAt) / 1000000), Auth::id());
+        } catch (\Throwable $exception) {
+            Log::error('Erro ao registrar consulta de sugestões OFX.', ['company_id' => $companyId, 'exception' => $exception]);
+            $response['evaluation_token'] = null;
+        }
+
+        return $response;
     }
 }

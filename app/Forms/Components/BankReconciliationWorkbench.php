@@ -3,6 +3,7 @@
 namespace App\Forms\Components;
 
 use App\Models\BankStatementLine;
+use App\Services\Financial\BankStatement\BankReconciliationQualityService;
 use App\Services\Financial\BankStatement\GetBankReconciliationSuggestions;
 use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
 use Filament\Facades\Filament;
@@ -43,6 +44,15 @@ class BankReconciliationWorkbench extends Field
                 'amount_cents' => (int) round((float) $line->amount * 100),
             ])->values()->all(),
         ];
+    }
+
+    #[ExposedLivewireMethod]
+    #[Renderless]
+    public function rejectSuggestions(string $evaluationToken): void
+    {
+        app(BankReconciliationQualityService::class)->reject(
+            Filament::getTenant()->id, $this->statementLines, $evaluationToken, auth()->id(),
+        );
     }
 
     #[ExposedLivewireMethod]

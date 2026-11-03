@@ -8,6 +8,7 @@ use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\FinancialAccountType;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ListBankStatementImports;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages\ViewBankStatementImport;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\LinesRelationManager;
 use App\Filament\Clusters\Financial\Resources\BankStatementLines\Pages\ListBankStatementLines;
@@ -18,6 +19,8 @@ use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\AuditEntry;
+use App\Models\BankReconciliationDecision;
+use App\Models\BankReconciliationEvaluation;
 use App\Models\BankStatementImport;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
@@ -28,6 +31,9 @@ use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\Company\CompanyOperationalResetService;
+use App\Services\Financial\BankStatement\BankReconciliationQualityReport;
+use App\Services\Financial\BankStatement\BankReconciliationQualityService;
+use App\Services\Financial\BankStatement\BankStatementMatchScorer;
 use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService;
 use App\Services\Financial\BankStatement\GetBankReconciliationSuggestions;
 use App\Services\Financial\BankStatement\ImportBankStatementService;
@@ -2321,6 +2327,203 @@ OFX;
         $this->assertSame([], $response['bundles']);
         $this->assertSame($movement->id, $response['records'][0]['id']);
         Log::shouldHaveReceived('error')->once();
+    }
+
+    public function test_quality_snapshots_track_rejection_rank_and_reversal_without_overwriting_the_consulted_options(): void
+    {
+        $this->actingAs($this->user);
+        $line = $this->importLine('CREDIT', '100.00', 'quality-snapshot');
+        $get = app(GetBankReconciliationSuggestions::class);
+        $get->get($this->company->id, collect([$line]));
+        $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $selected = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $response = $get->get($this->company->id, collect([$line]));
+        $evaluation = BankReconciliationEvaluation::query()->where('token', $response['evaluation_token'])->firstOrFail();
+        $snapshot = $evaluation->recommendations;
+        $quality = app(BankReconciliationQualityService::class);
+        $quality->reject($this->company->id, collect([$line]), $evaluation->token, $this->user->id);
+        $quality->reject($this->company->id, collect([$line]), $evaluation->token, $this->user->id);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $selected->id]], $this->user->id, evaluationToken: $evaluation->token);
+        $decision = BankReconciliationDecision::query()->sole();
+        $this->assertSame($evaluation->id, $decision->evaluation_id);
+        $this->assertSame(2, $decision->individual_rank);
+        $this->assertSame($snapshot, $evaluation->fresh()->recommendations);
+        $metrics = app(BankReconciliationQualityReport::class)->summary($this->company->id);
+        $this->assertSame(2, $metrics['attempts']);
+        $this->assertSame(1, $metrics['evaluated_lines']);
+        $this->assertSame(100.0, $metrics['coverage_percent']);
+        $this->assertSame(0.0, $metrics['top1_percent']);
+        $this->assertSame(100.0, $metrics['top3_percent']);
+        $this->assertSame(1, $metrics['explicit_rejections']);
+        $this->assertNotNull($metrics['average_duration_ms']);
+        $this->assertNotNull($this->resolveService->reverseReconciliation($line->fresh(), $this->user->id, 'Correspondência incorreta.'));
+        $metrics = app(BankReconciliationQualityReport::class)->summary($this->company->id);
+        $this->assertSame(0.0, $metrics['top3_percent']);
+        $this->assertSame(100.0, $metrics['reversal_percent']);
+        $this->assertNotNull($decision->fresh()->reversed_at);
+    }
+
+    public function test_quality_does_not_attribute_a_foreign_stale_or_different_user_consultation(): void
+    {
+        $this->actingAs($this->user);
+        $line = $this->importLine('CREDIT', '100.00', 'quality-context');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        $quality = app(BankReconciliationQualityService::class);
+        foreach ([[$this->company->id, User::factory()->create()->id], [Company::factory()->create()->id, $this->user->id]] as [$companyId, $userId]) {
+            try {
+                $quality->reject($companyId, collect([$line]), $response['evaluation_token'], $userId);
+                $this->fail('A consultation from another user or company cannot receive feedback.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('suggestions', $exception->errors());
+            }
+        }
+        $line->update(['description' => 'Dados alterados depois da consulta']);
+        try {
+            $quality->reject($this->company->id, collect([$line]), $response['evaluation_token'], $this->user->id);
+            $this->fail('Changed bank data must invalidate the previous consultation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('suggestions', $exception->errors());
+        }
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id, evaluationToken: $response['evaluation_token']);
+        $this->assertNull(BankReconciliationDecision::query()->sole()->evaluation_id);
+        $this->assertNull(BankReconciliationEvaluation::query()->sole()->rejected_at);
+    }
+
+    public function test_quality_counts_a_choice_outside_the_snapshot_and_never_invents_rates_without_samples(): void
+    {
+        $this->actingAs($this->user);
+        $report = app(BankReconciliationQualityReport::class);
+        $this->assertNull($report->summary($this->company->id)['top1_percent']);
+        $this->assertNull($report->summary($this->company->id)['coverage_percent']);
+        $line = $this->importLine('CREDIT', '100.00', 'quality-outside');
+        $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $later = $this->createCashMovement(CashMovementDirection::INFLOW, 200);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        $later->update(['amount' => 100]);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $later->id]], $this->user->id, evaluationToken: $response['evaluation_token']);
+        $this->assertSame(1, $report->summary($this->company->id)['outside_suggestions']);
+        $this->assertSame(0.0, $report->summary($this->company->id)['top3_percent']);
+        $foreign = BankReconciliationDecision::query()->sole()->replicate();
+        $foreign->fill(['company_id' => Company::factory()->create()->id, 'financial_account_id' => null, 'import_id' => null, 'line_id' => null, 'evaluation_id' => null, 'group_id' => null])->save();
+        $this->assertSame(1, $report->summary($this->company->id)['confirmed_decisions']);
+    }
+
+    public function test_quality_feedback_is_rolled_back_with_the_financial_transaction(): void
+    {
+        $this->actingAs($this->user);
+        $line = $this->importLine('CREDIT', '100.00', 'quality-rollback');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        try {
+            DB::transaction(function () use ($line, $movement, $response): void {
+                app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id, evaluationToken: $response['evaluation_token']);
+                throw new \RuntimeException('Abort outer transaction');
+            });
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Abort outer transaction', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('bank_reconciliation_decisions', 0);
+        $this->assertDatabaseCount('bank_reconciliation_evaluations', 1);
+        $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
+    }
+
+    public function test_history_requires_distinct_confirmed_lines_and_is_revoked_after_a_reversal(): void
+    {
+        $lines = $this->confirmHistoricalAlias(3);
+        $line = $this->historicalAliasLine();
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+        $scorer = app(BankStatementMatchScorer::class);
+        $assessment = $scorer->assess($line, $movement);
+        $this->assertSame(10, $assessment['points']['history']);
+        $this->assertSame('medium', $assessment['confidence']);
+        $this->assertSame([], $assessment['conflicts']);
+        $this->assertSame(100.0, app(BankReconciliationQualityReport::class)->summary($this->company->id)['top1_percent']);
+        $this->assertNotNull($this->resolveService->reverseReconciliation($lines[0]->fresh(), $this->user->id, 'Escolha revista pelo operador.'));
+        $this->assertSame(0, $scorer->assess($line, $movement)['points']['history']);
+        $this->assertSame(66.7, app(BankReconciliationQualityReport::class)->summary($this->company->id)['top1_percent']);
+        $this->assertDatabaseCount('bank_reconciliation_decisions', 3);
+    }
+
+    public function test_history_does_not_generalize_conflicting_choices_or_override_a_tax_document_conflict(): void
+    {
+        $this->confirmHistoricalAlias(3);
+        $line = $this->historicalAliasLine();
+        $this->customer->update(['document_number' => '52998224725']);
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+        $line->update(['description' => 'PIX 111.444.777-35']);
+        $assessment = app(BankStatementMatchScorer::class)->assess($line, $movement);
+        $this->assertSame(0, $assessment['points']['history']);
+        $this->assertContains('tax_document_conflict', $assessment['conflicts']);
+        $line->update(['description' => 'PIX RECEBIDO']);
+        $other = Partner::create(['name' => 'Maria Pereira', 'document_type' => 'CPF', 'document_number' => '11144477735', 'created_by' => $this->user->id]);
+        $alternative = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $other->id]);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $alternative->id]], $this->user->id);
+        $next = $this->historicalAliasLine();
+        $this->assertSame(0, app(BankStatementMatchScorer::class)->assess($next, $movement)['points']['history']);
+    }
+
+    public function test_history_is_scoped_by_company_and_account_and_can_be_disabled(): void
+    {
+        $this->confirmHistoricalAlias(3);
+        $line = $this->historicalAliasLine();
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+        $scorer = app(BankStatementMatchScorer::class);
+        $this->assertSame(10, $scorer->assess($line, $movement)['points']['history']);
+        $otherAccount = $this->financialAccount->replicate();
+        $otherAccount->name = 'Outra conta';
+        $otherAccount->save();
+        $line->financial_account_id = $otherAccount->id;
+        $this->assertSame(0, $scorer->assess($line, $movement)['points']['history']);
+        $line->financial_account_id = $this->financialAccount->id;
+        $line->company_id = Company::factory()->create()->id;
+        $this->assertSame(0, $scorer->assess($line, $movement)['points']['history']);
+        $line->company_id = $this->company->id;
+        config(['bank_reconciliation.history.enabled' => false]);
+        $this->assertSame(0, $scorer->assess($line, $movement)['points']['history']);
+    }
+
+    public function test_quality_report_and_reviewed_dataset_are_available_in_the_import_list(): void
+    {
+        $this->user->companies()->attach($this->company, ['role' => 'member', 'is_active' => true]);
+        $this->actingAs($this->user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($this->company);
+        $this->user->companyAccesses()->create([
+            'company_id' => $this->company->id, 'permissions' => ['cash_movements.access'],
+            'panels' => ['admin' => true], 'navigation' => [],
+        ]);
+        Livewire::test(ListBankStatementImports::class)->mountAction('reconciliation_quality')
+            ->assertMountedActionModalSee('Cobertura das linhas consultadas')
+            ->assertMountedActionModalSee('Ainda não há decisões registradas')
+            ->callAction('export_reconciliation_reviews')
+            ->assertFileDownloaded('conciliacoes-revisadas.json');
+    }
+
+    private function historicalAliasLine(): BankStatementLine
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'quality-alias-'.Str::uuid());
+        $line->update(['description' => 'PIX RECEBIDO', 'metadata' => array_merge($line->metadata, [
+            'raw' => array_merge(data_get($line->metadata, 'raw', []), ['name' => 'ACME LIQUIDACOES']),
+        ])]);
+
+        return $line;
+    }
+
+    private function confirmHistoricalAlias(int $count): array
+    {
+        $this->actingAs($this->user);
+        $this->customer->update(['name' => 'José da Silva']);
+        $lines = [];
+        for ($index = 0; $index < $count; $index++) {
+            $line = $this->historicalAliasLine();
+            $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+            $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+            app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id, evaluationToken: $response['evaluation_token']);
+            $lines[] = $line;
+        }
+
+        return $lines;
     }
 
     private function importLine(string $type, string $amount, string $fitid): BankStatementLine

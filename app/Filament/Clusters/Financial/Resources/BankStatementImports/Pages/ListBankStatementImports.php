@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages;
 
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\BankReconciliationQualityAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\ImportOfxAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use Filament\Resources\Pages\ListRecords;
@@ -14,6 +15,7 @@ class ListBankStatementImports extends ListRecords
     {
         return [
             ImportOfxAction::make(),
+            BankReconciliationQualityAction::make(),
         ];
     }
 }

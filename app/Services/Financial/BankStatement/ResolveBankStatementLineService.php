@@ -546,6 +546,7 @@ class ResolveBankStatementLineService
                     );
                 }
 
+                app(BankReconciliationQualityService::class)->reverse($line, $reason);
                 $this->setSuccess('Conciliação desfeita com sucesso.');
 
                 return $line->fresh();
@@ -669,6 +670,19 @@ class ResolveBankStatementLineService
             ]);
         }
 
+        $quality = app(BankReconciliationQualityService::class);
+        $target = match ($decision['type'] ?? 'cash_movement') {
+            'account_payable_installment' => $movement->payablePayment->installment,
+            'account_receivable_installment' => $movement->receivablePayment->installment,
+            default => $movement,
+        };
+        $targetType = match ($decision['type'] ?? 'cash_movement') {
+            'account_payable_installment' => 'payable',
+            'account_receivable_installment' => 'receivable',
+            default => 'cash_movement',
+        };
+        $selectedTarget = $quality->target($targetType, $target, (int) round((float) $line->amount * 100));
+
         $line->update([
             'cash_movement_id' => $movement->id,
             'reconciliation_status' => 'reconciled',
@@ -702,6 +716,7 @@ class ResolveBankStatementLineService
             );
         }
 
+        $quality->confirm(collect([$line]), [$selectedTarget], $userId, evaluationToken: $decision['evaluation_token'] ?? null);
         $this->setSuccess('Linha do extrato conciliada com sucesso.');
 
         return $line->fresh();

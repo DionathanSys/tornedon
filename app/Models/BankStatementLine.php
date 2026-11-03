@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class BankStatementLine extends Model
 {
-    public const SUGGESTIONS_VERSION = 3;
+    public const SUGGESTIONS_VERSION = 4;
 
     protected $fillable = [
         'bank_statement_import_id',

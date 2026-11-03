@@ -5,6 +5,7 @@ namespace App\Filament\Bpo\Resources\BankStatementImports\Pages;
 use App\Enum\Financial\BankStatementLineStatus;
 use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
 use App\Filament\Bpo\Resources\BankStatementImportResource;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\BankReconciliationQualityAction;
 use App\Models\BankStatementImport;
 use App\Services\Audit\AuditRecorder;
 use Filament\Actions\Action;
@@ -46,6 +47,7 @@ class ViewImport extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [Action::make('back')->label('Voltar às importações')->url(static::getResource()::getUrl()),
+            BankReconciliationQualityAction::make($this->getRecord()),
             Action::make('delete_import')->label('Excluir importação')->icon('heroicon-o-trash')->color('danger')->requiresConfirmation()
                 ->authorize(fn (BankStatementImport $record) => Gate::allows('delete', $record))
                 ->modalHeading('Excluir extrato importado')->modalDescription('Disponível apenas quando todas as linhas continuam pendentes e sem vínculos financeiros. Nenhum movimento de caixa será excluído por esta ação.')

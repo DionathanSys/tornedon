@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Pages;
 
 use App\Enum\Financial\BankStatementLineStatus;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\Actions\BankReconciliationQualityAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatementImportResource;
 use App\Models\BankStatementImport;
 use Filament\Actions\Action;
@@ -17,6 +18,7 @@ class ViewBankStatementImport extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            BankReconciliationQualityAction::make($this->getRecord()),
             Action::make('delete_import')
                 ->label('Excluir importação')
                 ->icon('heroicon-o-trash')

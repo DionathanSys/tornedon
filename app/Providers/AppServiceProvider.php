@@ -51,6 +51,7 @@ use App\Policies\UserPolicy;
 use App\Services\Access\RoleAccessEnforcement;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\Providers\ResendEmailProvider;
+use App\Services\Financial\BankStatement\BankReconciliationHistory;
 use App\Services\Hr\HrFinancialGuard;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
@@ -71,6 +72,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(BankReconciliationHistory::class);
         $this->app->bind(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class, LoginResponse::class);
 
         $this->app->bind(EmailProviderInterface::class, function ($app) {

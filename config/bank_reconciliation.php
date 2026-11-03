@@ -24,4 +24,11 @@ return [
     // Optional overrides keyed by OFX BANKID (e.g. '237', '077', '756', '748').
     // Supported keys: movement_date_window_days, installment_date_window_days, holidays.
     'bank_profiles' => [],
+
+    'history' => [
+        'enabled' => true,
+        'minimum_confirmations' => 3,
+        'lookback_days' => 180,
+        'bonus_points' => 10,
+    ],
 ];

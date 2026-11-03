@@ -6,6 +6,7 @@
             bank: @js($getBankSummary()),
             searchRecords: (type, search, page) => $wire.callSchemaComponentMethod(@js($getKey()), 'searchRecords', { type, search, page }),
             loadSuggestions: () => $wire.callSchemaComponentMethod(@js($getKey()), 'loadSuggestions', {}),
+            rejectSuggestions: (evaluationToken) => $wire.callSchemaComponentMethod(@js($getKey()), 'rejectSuggestions', { evaluationToken }),
             submit: () => $wire.callMountedAction(),
         })"
     >
@@ -76,6 +77,9 @@
                         </template>
                     </div>
                     <p class="brw-muted" x-show="items.length && suggestions.some(suggestion => suggestion.type !== state.type)" x-cloak>Para selecionar uma sugestão de outra origem, limpe a seleção atual.</p>
+                    <button type="button" class="brw-text-button" x-show="state.evaluation_token && (suggestions.length || bundles.length) && !suggestionsRejected" :disabled="rejectingSuggestions || suggestionsLoading" @click="rejectSuggestions()">Nenhuma destas sugestões corresponde</button>
+                    <p class="brw-muted" x-show="suggestionsRejected" x-cloak role="status">Avaliação registrada. Continue pela busca manual para localizar a correspondência.</p>
+                    <p class="brw-date-warning" x-show="feedbackError" x-text="feedbackError" x-cloak role="alert"></p>
                 </section>
                 <div class="brw-modes" role="group" aria-label="Tipo de conciliação">
                     <button type="button" class="brw-mode" :class="{ 'is-active': isMovement }" :aria-pressed="isMovement" @click="changeType('cash_movement')">

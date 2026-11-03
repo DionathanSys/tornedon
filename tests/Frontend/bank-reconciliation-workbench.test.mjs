@@ -291,3 +291,49 @@ test('carrega propostas avançadas e informa limites sem selecionar nada automat
     assert.equal(component.items.length, 0);
     assert.match(component.suggestionsWarning, /limitada aos candidatos/);
 });
+
+test('mantém o identificador da consulta ao escolher outra origem ou composição', async () => {
+    const component = workbench({ loadSuggestions: async () => ({ records: [], bundles: [], failed_lines: 0, evaluation_token: 'consulta-123' }) });
+    await component.loadSuggestions();
+    component.changeType('cash_movement');
+    assert.equal(component.state.evaluation_token, 'consulta-123');
+    component.selectBundle({ type: 'receivable', kind: 'partial', items: [record(1, 200000, { suggested_amount: 1000 })] });
+    assert.equal(component.state.evaluation_token, 'consulta-123');
+    assert.equal(component.items.length, 1);
+});
+
+test('registra rejeição explícita uma vez e preserva a seleção financeira', async () => {
+    let calls = 0;
+    let finish;
+    const component = workbench({ rejectSuggestions: token => {
+        assert.equal(token, 'consulta-123');
+        calls++;
+        return new Promise(resolve => { finish = resolve; });
+    } });
+    component.state.evaluation_token = 'consulta-123';
+    component.toggle(record(1, 100000));
+    const pending = component.rejectSuggestions();
+    await component.rejectSuggestions();
+    assert.equal(calls, 1);
+    finish();
+    await pending;
+    await component.rejectSuggestions();
+    assert.equal(calls, 1);
+    assert.equal(component.suggestionsRejected, true);
+    assert.equal(component.items[0].id, 1);
+    assert.equal(component.canSubmit, true);
+});
+
+test('falha ao registrar avaliação permite nova tentativa sem impedir conciliação', async () => {
+    let fail = true;
+    const component = workbench({ rejectSuggestions: async () => { if (fail) throw new Error('network'); } });
+    component.state.evaluation_token = 'consulta-123';
+    component.toggle(record(1, 100000));
+    await component.rejectSuggestions();
+    assert.match(component.feedbackError, /Atualize as sugestões/);
+    assert.equal(component.canSubmit, true);
+    fail = false;
+    await component.rejectSuggestions();
+    assert.equal(component.feedbackError, '');
+    assert.equal(component.suggestionsRejected, true);
+});

@@ -34,6 +34,7 @@ class CompanyOperationalResetService
         'bank_slips', 'bank_slip_events', 'pix_charges', 'banking_events', 'cash_movements',
         'bank_statement_imports', 'bank_statement_import_runs', 'bank_statement_lines',
         'bank_reconciliation_groups', 'bank_statement_allocations',
+        'bank_reconciliation_decisions', 'bank_reconciliation_evaluations',
         'company_card_transactions', 'company_card_statements', 'company_card_statement_items',
         'company_card_statement_payments', 'purchase_closings', 'purchase_closing_fiscal_documents',
         'purchase_return_credits', 'purchase_return_credit_usages', 'stock_movements',

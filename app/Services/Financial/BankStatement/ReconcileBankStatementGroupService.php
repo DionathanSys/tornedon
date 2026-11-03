@@ -18,9 +18,9 @@ use Illuminate\Validation\ValidationException;
 class ReconcileBankStatementGroupService
 {
     /** Each item has an id and an amount in reais. Existing movements are linked in full. */
-    public function reconcile(int $companyId, array $lineIds, string $type, array $items, ?int $userId, ?string $exceptionReason = null): void
+    public function reconcile(int $companyId, array $lineIds, string $type, array $items, ?int $userId, ?string $exceptionReason = null, ?string $evaluationToken = null): void
     {
-        DB::transaction(function () use ($companyId, $lineIds, $type, $items, $userId, $exceptionReason) {
+        DB::transaction(function () use ($companyId, $lineIds, $type, $items, $userId, $exceptionReason, $evaluationToken) {
             $lineIds = array_unique($lineIds);
             $lines = BankStatementLine::query()->where('company_id', $companyId)
                 ->whereIn('id', $lineIds)->orderBy('id')->lockForUpdate()->get();
@@ -71,6 +71,8 @@ class ReconcileBankStatementGroupService
                 $prepared[] = ['target' => $target, 'remaining' => $amount, 'charges' => $charges, 'adjustments_applied' => false, 'notes' => $item['notes'] ?? null];
             }
             $this->ensure(array_sum(array_column($prepared, 'remaining')) === $total, 'A soma dos valores distribuídos deve ser igual ao total do extrato.');
+            $quality = app(BankReconciliationQualityService::class);
+            $selectedTargets = array_map(fn ($item) => $quality->target($type, $item['target'], $item['remaining']), $prepared);
             $groupId = DB::table('bank_reconciliation_groups')->insertGetId([
                 'company_id' => $companyId, 'metadata' => json_encode([]), 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -113,6 +115,7 @@ class ReconcileBankStatementGroupService
                 $this->audit($line, 'group_reconciled', $userId, ['group_id' => $groupId, 'type' => $type, 'exception_reason' => $exceptionReason]);
             }
             DB::table('bank_reconciliation_groups')->where('id', $groupId)->update(['metadata' => json_encode(['payments' => $payments, 'type' => $type, 'items' => $items, 'exception_reason' => $exceptionReason, 'resolved_by' => $userId])]);
+            $quality->confirm($lines, $selectedTargets, $userId, $groupId, $evaluationToken);
         });
     }
 
@@ -145,6 +148,7 @@ class ReconcileBankStatementGroupService
                 $member->update(['bank_reconciliation_group_id' => null, 'reconciliation_status' => 'pending', 'reconciled_at' => null, 'needs_review_at' => null, 'review_reason' => null, 'metadata' => $history]);
                 $this->audit($member, 'group_reversed', $userId, ['group_id' => $group->id, 'reason' => $reason]);
             }
+            app(BankReconciliationQualityService::class)->reverse($line, $reason, $group->id);
         });
     }
 

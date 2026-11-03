@@ -17,6 +17,9 @@
         suggestionsError: '',
         suggestionsWarning: '',
         suggestionsRequest: 0,
+        suggestionsRejected: false,
+        rejectingSuggestions: false,
+        feedbackError: '',
 
         init() {
             this.state ??= { type: 'cash_movement', items: [], exception_reason: '' };
@@ -81,7 +84,7 @@
         isSelected(id) { return this.items.some(item => item.id === id); },
         changeType(type) {
             if (this.state.type === type) return;
-            this.state = { type, items: [], exception_reason: '' };
+            this.state = { ...this.state, type, items: [], exception_reason: '' };
             this.search = '';
             this.load();
         },
@@ -99,7 +102,7 @@
         selectBundle(bundle) {
             if (this.items.length) return;
             this.changeType(bundle.type);
-            this.state = { type: bundle.type, exception_reason: '', items: bundle.items.map(item => ({
+            this.state = { ...this.state, type: bundle.type, exception_reason: '', items: bundle.items.map(item => ({
                 ...item, amount: item.suggested_amount, amount_manual: false,
                 interest_amount: 0, fine_amount: 0, discount_amount: 0, notes: '',
                 open_adjustments: bundle.kind === 'adjustment',
@@ -111,6 +114,9 @@
             this.suggestionsLoading = true;
             this.suggestionsError = '';
             this.suggestionsWarning = '';
+            this.suggestionsRejected = false;
+            this.feedbackError = '';
+            this.state = { ...this.state, evaluation_token: null };
             this.suggestions = [];
             this.bundles = [];
             try {
@@ -118,6 +124,7 @@
                 if (request !== this.suggestionsRequest) return;
                 this.suggestions = response.records;
                 this.bundles = response.bundles ?? [];
+                this.state = { ...this.state, evaluation_token: response.evaluation_token ?? null };
                 if (response.failed_lines > 0) {
                     this.suggestionsWarning = 'Não foi possível consultar as sugestões de ' + response.failed_lines
                         + ' lançamento(s). Atualize para tentar novamente.';
@@ -129,6 +136,19 @@
                 this.suggestionsError = 'Não foi possível carregar as sugestões. Você pode tentar novamente ou usar a busca abaixo.';
             } finally {
                 if (request === this.suggestionsRequest) this.suggestionsLoading = false;
+            }
+        },
+        async rejectSuggestions() {
+            if (!this.state.evaluation_token || !config.rejectSuggestions || this.suggestionsRejected || this.rejectingSuggestions) return;
+            this.rejectingSuggestions = true;
+            this.feedbackError = '';
+            try {
+                await config.rejectSuggestions(this.state.evaluation_token);
+                this.suggestionsRejected = true;
+            } catch (error) {
+                this.feedbackError = 'Não foi possível registrar a avaliação. Atualize as sugestões e tente novamente.';
+            } finally {
+                this.rejectingSuggestions = false;
             }
         },
         toggle(record) {
