@@ -56,9 +56,7 @@ class BankStatementCandidateEligibilityService
             (int) round((float) ($line->financialAccount?->reconciliation_amount_tolerance ?? 0.05) * 100),
             min($maximum, max($minimum, intdiv($amount * $basisPoints + 9999, 10000))),
         );
-        $days = $movement
-            ? max((int) ($line->financialAccount?->reconciliation_date_tolerance_days ?? 3), (int) config('bank_reconciliation.suggestions.movement_date_window_days', 7))
-            : (int) config('bank_reconciliation.suggestions.installment_date_window_days', 60);
+        $days = app(BankStatementDatePolicy::class)->windowDays($line, $movement);
         $date = $line->transaction_date;
 
         return $query

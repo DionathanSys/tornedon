@@ -14,5 +14,14 @@ return [
         'high_confidence_score' => 85,
         'medium_confidence_score' => 45,
         'ambiguity_score_gap' => 10,
+        'composition_candidate_limit' => 30,
+        'maximum_composition_size' => 3,
+        'maximum_advanced_suggestions' => 5,
     ],
+
+    'business_day_scoring' => true,
+    'holidays' => [],
+    // Optional overrides keyed by OFX BANKID (e.g. '237', '077', '756', '748').
+    // Supported keys: movement_date_window_days, installment_date_window_days, holidays.
+    'bank_profiles' => [],
 ];

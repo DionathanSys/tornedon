@@ -12,6 +12,7 @@
         error: '',
         request: 0,
         suggestions: [],
+        bundles: [],
         suggestionsLoading: false,
         suggestionsError: '',
         suggestionsWarning: '',
@@ -36,8 +37,15 @@
                 const amount = Math.round(Number(item.amount) * 100);
                 const validCharges = ['interest_amount', 'fine_amount', 'discount_amount'].every(field =>
                     item[field] !== null && Number.isFinite(Number(item[field] ?? 0)) && Number(item[field] ?? 0) >= 0);
-                return validCharges && Number.isFinite(amount) && amount > 0 && amount <= this.adjustedBalance(item);
+                const expected = item.adjustment_expected_cents;
+                const netCharges = Math.round((Number(item.interest_amount || 0) + Number(item.fine_amount || 0) - Number(item.discount_amount || 0)) * 100);
+                return validCharges && Number.isFinite(amount) && amount > 0 && amount <= this.adjustedBalance(item)
+                    && (typeof expected !== 'number' || netCharges === expected);
             });
+        },
+        get pendingAdjustments() {
+            return this.items.some(item => typeof item.adjustment_expected_cents === 'number'
+                && Math.round((Number(item.interest_amount || 0) + Number(item.fine_amount || 0) - Number(item.discount_amount || 0)) * 100) !== item.adjustment_expected_cents);
         },
         get canSubmit() {
             return this.bank.valid && this.items.length > 0 && this.difference === 0
@@ -46,6 +54,7 @@
         get status() {
             if (!this.bank.valid) return 'Selecione lançamentos pendentes da mesma conta e direção.';
             if (!this.items.length) return 'Selecione os registros do sistema que correspondem ao extrato.';
+            if (this.pendingAdjustments) return 'Defina juros, multa ou desconto para explicar a diferença da sugestão de ajuste.';
             if (!this.validAmounts) return 'Confira os ajustes e o valor da baixa: não use valores negativos nem ultrapasse o saldo ajustado.';
             if (this.difference > 0) return 'Faltam ' + this.money(this.difference) + ' para fechar. Adicione outro registro ou ajuste os valores.';
             if (this.difference < 0) return 'A seleção excedeu o extrato em ' + this.money(-this.difference) + '. Remova um registro ou ajuste a baixa.';
@@ -87,6 +96,15 @@
             if (this.state.type !== record.type) this.changeType(record.type);
             this.toggle(record);
         },
+        selectBundle(bundle) {
+            if (this.items.length) return;
+            this.changeType(bundle.type);
+            this.state = { type: bundle.type, exception_reason: '', items: bundle.items.map(item => ({
+                ...item, amount: item.suggested_amount, amount_manual: false,
+                interest_amount: 0, fine_amount: 0, discount_amount: 0, notes: '',
+                open_adjustments: bundle.kind === 'adjustment',
+            })) };
+        },
         async loadSuggestions() {
             if (!config.loadSuggestions || !this.bank.valid) return;
             const request = ++this.suggestionsRequest;
@@ -94,14 +112,18 @@
             this.suggestionsError = '';
             this.suggestionsWarning = '';
             this.suggestions = [];
+            this.bundles = [];
             try {
                 const response = await config.loadSuggestions();
                 if (request !== this.suggestionsRequest) return;
                 this.suggestions = response.records;
+                this.bundles = response.bundles ?? [];
                 if (response.failed_lines > 0) {
                     this.suggestionsWarning = 'Não foi possível consultar as sugestões de ' + response.failed_lines
                         + ' lançamento(s). Atualize para tentar novamente.';
                 }
+                if (response.advanced_truncated) this.suggestionsWarning += ' A busca de composições foi limitada aos candidatos mais relevantes. Use a busca manual para conferir outras opções.';
+                if (response.advanced_error) this.suggestionsWarning += ' Não foi possível consultar as composições. Atualize para tentar novamente.';
             } catch (error) {
                 if (request !== this.suggestionsRequest) return;
                 this.suggestionsError = 'Não foi possível carregar as sugestões. Você pode tentar novamente ou usar a busca abaixo.';

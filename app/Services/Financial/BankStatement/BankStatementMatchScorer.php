@@ -62,6 +62,11 @@ class BankStatementMatchScorer
         $amount = (int) round((float) $line->amount * 100);
         $difference = abs($amount - (int) round((float) $candidate->{$movement ? 'amount' : 'balance_amount'} * 100));
         $days = (int) abs($line->transaction_date->diffInDays($candidate->{$movement ? 'transaction_date' : 'due_date'}));
+        $businessDays = app(BankStatementDatePolicy::class)->businessDays($line, $candidate->{$movement ? 'transaction_date' : 'due_date'});
+        $scoringDays = config('bank_reconciliation.business_day_scoring', true) ? $businessDays : $days;
+        if ($businessDays !== $days) {
+            $evidence[] = sprintf('Distância de %d dia(s) útil(eis), considerando fins de semana e feriados configurados.', $businessDays);
+        }
         $textPoints = min(20, count(array_intersect($bankTokens, $text->tokens($target['text']))) * 4);
         $points = [
             'direction' => $movement ? 20 : 0,
@@ -74,8 +79,8 @@ class BankStatementMatchScorer
             },
             'date' => match (true) {
                 $days === 0 => 20,
-                $days <= ($movement ? 3 : 5) => 12,
-                $days <= ($movement ? 7 : 15) => 6,
+                $scoringDays <= ($movement ? 3 : 5) => 12,
+                $scoringDays <= ($movement ? 7 : 15) => 6,
                 default => 0,
             },
             'text' => $textPoints,
@@ -107,6 +112,7 @@ class BankStatementMatchScorer
             'requires_review' => $requiresReview,
             'amount_difference_cents' => $difference,
             'date_difference_days' => $days,
+            'business_date_difference_days' => $businessDays,
             'points' => $points,
             'conflicts' => $conflicts,
             'evidence' => $evidence,

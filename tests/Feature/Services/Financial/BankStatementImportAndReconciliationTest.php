@@ -34,6 +34,7 @@ use App\Services\Financial\BankStatement\ImportBankStatementService;
 use App\Services\Financial\BankStatement\ReconcileBankStatementGroupService;
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
+use App\Services\Financial\BankStatement\SuggestBankReconciliationCompositions;
 use App\Services\Financial\BankStatement\SuggestBankStatementMatchesService;
 use Filament\Facades\Filament;
 use Filament\Infolists\Components\TextEntry;
@@ -1574,8 +1575,8 @@ OFX;
             'mesmo dia' => [0, 55, 75],
             'um dia antes' => [-1, 47, 67],
             'um dia depois' => [1, 47, 67],
-            'vinte dias antes' => [-20, 35, 55],
-            'vinte dias depois' => [20, 35, 55],
+            'vinte dias antes' => [-20, 41, 55],
+            'vinte dias depois' => [20, 41, 55],
         ];
     }
 
@@ -2159,6 +2160,167 @@ OFX;
             ->assertCanNotSeeTableRecords([$foreign])
             ->mountTableAction('view_statement_line', $foreign)
             ->assertActionNotMounted();
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_advanced_suggestions_find_installment_compositions_and_apply_them_through_the_existing_group_flow(string $type, string $bankType, string $amount): void
+    {
+        $first = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $first->update(['original_amount' => 40, 'due_amount' => 40, 'balance_amount' => 40]);
+        $second = $first->replicate();
+        $second->fill(['sequence_number' => '02', 'original_amount' => 60, 'due_amount' => 60, 'balance_amount' => 60])->save();
+        $line = $this->importLine($bankType, $amount, 'advanced-composition');
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        $this->assertFalse($response['advanced_error']);
+        $bundle = collect($response['bundles'])->firstWhere('kind', 'combination');
+        $this->assertNotNull($bundle);
+        $this->assertSame($type, $bundle['type']);
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], array_column($bundle['items'], 'id'));
+        $this->assertSame(10000, $bundle['total_cents']);
+        $this->assertDatabaseCount('cash_movements', 0);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], $type,
+            array_map(fn ($item) => ['id' => $item['id'], 'amount' => $item['suggested_amount']], $bundle['items']), $this->user->id);
+        $this->assertEquals(0, $first->fresh()->balance_amount);
+        $this->assertEquals(0, $second->fresh()->balance_amount);
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+    }
+
+    public function test_advanced_movement_compositions_link_existing_records_without_creating_payments(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'advanced-movements');
+        $first = $this->createCashMovement(CashMovementDirection::INFLOW, 40);
+        $second = $this->createCashMovement(CashMovementDirection::INFLOW, 60);
+        $reversed = $this->createCashMovement(CashMovementDirection::INFLOW, 40, ['reversed_at' => now()]);
+        $foreign = $this->createCashMovement(CashMovementDirection::INFLOW, 60, ['company_id' => Company::factory()->create()->id]);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        $bundle = collect($response['bundles'])->firstWhere('kind', 'combination');
+        $this->assertFalse($response['advanced_error']);
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], array_column($bundle['items'], 'id'));
+        $this->assertNotContains($reversed->id, array_column($bundle['items'], 'id'));
+        $this->assertNotContains($foreign->id, array_column($bundle['items'], 'id'));
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', $bundle['items'], $this->user->id);
+        $this->assertDatabaseCount('cash_movements', 4);
+        $this->assertCount(2, $line->fresh()->cashMovements);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+    }
+
+    public function test_advanced_compositions_support_three_items_and_expose_search_limits(): void
+    {
+        $first = $this->createPayableInstallmentForRollback();
+        $first->update(['original_amount' => 20, 'due_amount' => 20, 'balance_amount' => 20]);
+        foreach ([30, 50] as $index => $amount) {
+            $copy = $first->replicate();
+            $copy->fill(['sequence_number' => (string) ($index + 2), 'original_amount' => $amount, 'due_amount' => $amount, 'balance_amount' => $amount])->save();
+        }
+        $line = $this->importLine('DEBIT', '-100.00', 'advanced-triple');
+        $service = app(GetBankReconciliationSuggestions::class);
+        $response = $service->get($this->company->id, collect([$line]));
+        $this->assertFalse($response['advanced_error']);
+        $this->assertCount(3, collect($response['bundles'])->firstWhere('kind', 'combination')['items']);
+        config(['bank_reconciliation.suggestions.composition_candidate_limit' => 1]);
+        $response = $service->get($this->company->id, collect([$line]));
+        $this->assertTrue($response['advanced_truncated']);
+        $this->assertSame([], $response['bundles']);
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_advanced_partial_suggestions_explain_and_preserve_the_remaining_installment_balance(string $type, string $bankType, string $amount): void
+    {
+        ($type === 'receivable' ? $this->customer : $this->supplier)->update(['name' => 'José da Silva']);
+        $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $line = $this->importLine($bankType, $type === 'receivable' ? '40.00' : '-40.00', 'advanced-partial');
+        $line->update(['description' => 'PIX JOSE DA SILVA']);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        $this->assertFalse($response['advanced_error']);
+        $bundle = collect($response['bundles'])->firstWhere('kind', 'partial');
+        $this->assertNotNull($bundle);
+        $this->assertSame($installment->id, $bundle['items'][0]['id']);
+        $this->assertEquals(40, $bundle['items'][0]['suggested_amount']);
+        $this->assertStringContainsString('60,00 em aberto', $bundle['reason']);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], $type, [['id' => $installment->id, 'amount' => $bundle['items'][0]['suggested_amount']]], $this->user->id);
+        $this->assertEquals(60, $installment->fresh()->balance_amount);
+    }
+
+    public static function advancedAdjustments(): array
+    {
+        return [
+            'recebimento com acréscimo' => ['receivable', 'CREDIT', '105.00', 500, ['interest_amount' => 3, 'fine_amount' => 2]],
+            'pagamento com acréscimo' => ['payable', 'DEBIT', '-105.00', 500, ['interest_amount' => 3, 'fine_amount' => 2]],
+            'recebimento com desconto' => ['receivable', 'CREDIT', '95.00', -500, ['discount_amount' => 5]],
+            'pagamento com desconto' => ['payable', 'DEBIT', '-95.00', -500, ['discount_amount' => 5]],
+        ];
+    }
+
+    #[DataProvider('advancedAdjustments')]
+    public function test_advanced_adjustment_suggestions_require_explicit_charges_and_apply_them_once(string $type, string $bankType, string $amount, int $difference, array $charges): void
+    {
+        ($type === 'receivable' ? $this->customer : $this->supplier)->update(['name' => 'José da Silva']);
+        $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $line = $this->importLine($bankType, $amount, 'advanced-adjustment');
+        $line->update(['description' => 'PIX JOSE DA SILVA']);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+        $this->assertFalse($response['advanced_error']);
+        $bundle = collect($response['bundles'])->firstWhere('kind', 'adjustment');
+        $this->assertNotNull($bundle);
+        $this->assertSame($difference, $bundle['items'][0]['adjustment_expected_cents']);
+        $this->assertArrayNotHasKey('interest_amount', $bundle['items'][0]);
+        $this->assertEquals(100, $installment->fresh()->balance_amount);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], $type, [[
+            'id' => $installment->id, 'amount' => $bundle['items'][0]['suggested_amount'], ...$charges,
+        ]], $this->user->id);
+        $this->assertEquals(0, $installment->fresh()->balance_amount);
+    }
+
+    public function test_advanced_suggestions_match_multiple_bank_lines_to_one_existing_movement(): void
+    {
+        $line = $this->importLine('CREDIT', '40.00', 'advanced-aggregate');
+        $other = $this->duplicatePendingLine($line, 60);
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line, $other]));
+        $this->assertFalse($response['advanced_error']);
+        $bundle = collect($response['bundles'])->firstWhere('kind', 'aggregate');
+        $this->assertSame($movement->id, $bundle['items'][0]['id']);
+        $this->assertSame(10000, $bundle['total_cents']);
+        app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id, $other->id], 'cash_movement', $bundle['items'], $this->user->id);
+        $this->assertSame('reconciled', $line->fresh()->reconciliation_status->value);
+        $this->assertSame('reconciled', $other->fresh()->reconciliation_status->value);
+        $this->assertDatabaseCount('cash_movements', 1);
+    }
+
+    public function test_business_days_holidays_and_bank_profiles_affect_suggestions_without_waiving_date_exceptions(): void
+    {
+        config(['bank_reconciliation.holidays' => ['2026-04-13']]);
+        $line = $this->importLine('CREDIT', '100.00', 'advanced-business-days');
+        $line->update(['transaction_date' => '2026-04-10']);
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['transaction_date' => '2026-04-14']);
+        $service = app(SuggestBankStatementMatchesService::class);
+        $suggestion = $service->suggestForLine($line)[0];
+        $this->assertSame(4, $suggestion['assessment']['date_difference_days']);
+        $this->assertSame(1, $suggestion['assessment']['business_date_difference_days']);
+        $this->assertSame(12, $suggestion['assessment']['points']['date']);
+        $this->assertTrue($suggestion['assessment']['requires_review']);
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $movement->id));
+        $movement->update(['transaction_date' => '2026-04-18']);
+        $this->assertSame([], $service->suggestForLine($line));
+        config(['bank_reconciliation.bank_profiles.237.movement_date_window_days' => 10]);
+        $this->assertSame($movement->id, $service->suggestForLine($line)[0]['origin_id']);
+    }
+
+    public function test_composition_failures_do_not_discard_individual_recommendations(): void
+    {
+        Log::spy();
+        $line = $this->importLine('CREDIT', '100.00', 'advanced-failure');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $this->mock(SuggestBankReconciliationCompositions::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('suggest')->once()->andThrow(new \RuntimeException('Composition unavailable'));
+        });
+
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+
+        $this->assertTrue($response['advanced_error']);
+        $this->assertSame([], $response['bundles']);
+        $this->assertSame($movement->id, $response['records'][0]['id']);
+        Log::shouldHaveReceived('error')->once();
     }
 
     private function importLine(string $type, string $amount, string $fitid): BankStatementLine

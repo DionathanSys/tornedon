@@ -232,3 +232,62 @@ test('resposta atrasada de sugestões não substitui a atualização mais recent
     assert.equal(component.suggestionsWarning, '');
     assert.equal(component.suggestionsLoading, false);
 });
+
+test('seleciona uma composição completa e preserva a seleção diante de outra proposta', () => {
+    const component = workbench();
+    const bundle = { type: 'receivable', kind: 'combination', items: [
+        record(1, 60000, { suggested_amount: 600 }), record(2, 40000, { suggested_amount: 400 }),
+    ] };
+    component.selectBundle(bundle);
+    assert.equal(component.items.length, 2);
+    assert.equal(component.selectedTotal, 100000);
+    assert.equal(component.canSubmit, true);
+    component.selectBundle({ type: 'cash_movement', kind: 'aggregate', items: [record(3, 100000, { suggested_amount: 1000 })] });
+    assert.equal(component.state.type, 'receivable');
+    assert.equal(component.items.length, 2);
+});
+
+test('baixa parcial sugerida mantém saldo restante sem aplicar desconto', () => {
+    const component = workbench();
+    component.selectBundle({ type: 'receivable', kind: 'partial', items: [record(1, 200000, { suggested_amount: 1000 })] });
+    assert.equal(component.items[0].discount_amount, 0);
+    assert.equal(component.remainingBalance(component.items[0]), 100000);
+    assert.equal(component.pendingAdjustments, false);
+    assert.equal(component.canSubmit, true);
+});
+
+test('proposta de acréscimo exige definir juros e multa que expliquem a diferença', () => {
+    const component = workbench({ bank: { valid: true, inflow: true, total_cents: 112000, lines: [] } });
+    component.selectBundle({ type: 'receivable', kind: 'adjustment', items: [record(1, 100000, { suggested_amount: 1120, adjustment_expected_cents: 12000 })] });
+    assert.equal(component.items[0].open_adjustments, true);
+    assert.equal(component.canSubmit, false);
+    assert.match(component.status, /Defina juros/);
+    component.updateCharge(1, 'interest_amount', '100,00');
+    component.updateCharge(1, 'fine_amount', '50,00');
+    assert.equal(component.canSubmit, false);
+    component.updateCharge(1, 'discount_amount', '30,00');
+    assert.equal(component.pendingAdjustments, false);
+    assert.equal(component.canSubmit, true);
+    assert.equal(component.remainingBalance(component.items[0]), 0);
+});
+
+test('proposta de desconto não pode ser confirmada acidentalmente como baixa parcial', () => {
+    const component = workbench({ bank: { valid: true, inflow: true, total_cents: 95000, lines: [] } });
+    component.selectBundle({ type: 'receivable', kind: 'adjustment', items: [record(1, 100000, { suggested_amount: 950, adjustment_expected_cents: -5000 })] });
+    assert.equal(component.difference, 0);
+    assert.equal(component.canSubmit, false);
+    component.updateCharge(1, 'discount_amount', '50,00');
+    assert.equal(component.canSubmit, true);
+    assert.equal(component.remainingBalance(component.items[0]), 0);
+});
+
+test('carrega propostas avançadas e informa limites sem selecionar nada automaticamente', async () => {
+    const component = workbench({ loadSuggestions: async () => ({
+        records: [], failed_lines: 0, advanced_truncated: true,
+        bundles: [{ key: 'receivable:combination:1-2', type: 'receivable', kind: 'combination', items: [record(1, 50000, { suggested_amount: 500 }), record(2, 50000, { suggested_amount: 500 })] }],
+    }) });
+    await component.loadSuggestions();
+    assert.equal(component.bundles.length, 1);
+    assert.equal(component.items.length, 0);
+    assert.match(component.suggestionsWarning, /limitada aos candidatos/);
+});

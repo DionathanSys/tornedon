@@ -66,6 +66,12 @@
     .brw-suggestion .brw-confidence.is-medium { color: #92400e; background: color-mix(in srgb, #f59e0b 12%, var(--brw-bg)); }
     .dark .brw-suggestion .brw-confidence.is-high { color: #34d399; }
     .dark .brw-suggestion .brw-confidence.is-medium { color: #fbbf24; }
+    .brw-advanced { margin-top: 16px; }
+    .brw-bundle { margin-top: 10px; padding: 12px; border: 1px solid var(--brw-border); border-radius: 8px; background: var(--brw-bg); }
+    .brw-bundle > p { margin: 8px 0; font-size: 11px; }
+    .brw-bundle li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 11px; }
+    .brw-bundle li > span { min-width: 0; overflow-wrap: anywhere; }
+    .brw-bundle li > strong { flex-shrink: 0; }
     .brw-selected-list { max-height: 380px; overflow-y: auto; }
     .brw-selected-entry { border-top: 1px solid var(--brw-border); padding-bottom: 12px; }
     .brw-selected-item { display: flex; align-items: start; gap: 12px; padding: 12px 0; }

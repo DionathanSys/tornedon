@@ -4,6 +4,7 @@ namespace App\Services\Financial\BankStatement;
 
 use App\Models\BankStatementLine;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class GetBankReconciliationSuggestions
@@ -12,7 +13,7 @@ class GetBankReconciliationSuggestions
     {
         $ids = $selectedLines->pluck('id')->unique()->all();
         $lines = BankStatementLine::query()->where('company_id', $companyId)
-            ->whereIn('id', $ids)->with('financialAccount')->orderBy('id')->get();
+            ->whereIn('id', $ids)->with(['financialAccount', 'import'])->orderBy('id')->get();
         $first = $lines->first();
         if (! $first || $lines->count() !== count($ids) || $lines->contains(fn (BankStatementLine $line) => $line->financial_account_id !== $first->financial_account_id
             || $line->direction() === null || $line->direction() !== $first->direction()
@@ -84,7 +85,21 @@ class GetBankReconciliationSuggestions
             }
         }
 
+        $advanced = ['bundles' => [], 'truncated' => false];
+        $advancedError = false;
+        if ($failed === 0) {
+            try {
+                $advanced = app(SuggestBankReconciliationCompositions::class)->suggest($lines);
+            } catch (\Throwable $exception) {
+                $advancedError = true;
+                Log::error('Erro ao consultar composições de conciliação OFX.', ['company_id' => $companyId, 'line_ids' => $ids, 'exception' => $exception]);
+            }
+        }
+
         return [
+            'bundles' => $advanced['bundles'],
+            'advanced_truncated' => $advanced['truncated'],
+            'advanced_error' => $advancedError,
             'records' => collect($recommendations)->sortByDesc('score')->take(5)->map(function (array $recommendation): array {
                 $assessment = $recommendation['assessment'];
                 if (count($recommendation['statement_line_ids']) > 1) {

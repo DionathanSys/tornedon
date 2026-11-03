@@ -40,7 +40,7 @@
                     <p class="brw-muted" x-show="suggestionsLoading" role="status">Consultando sugestões atualizadas…</p>
                     <p class="brw-date-warning" x-show="suggestionsError" x-text="suggestionsError" x-cloak role="alert"></p>
                     <p class="brw-date-warning" x-show="suggestionsWarning" x-text="suggestionsWarning" x-cloak role="alert"></p>
-                    <p class="brw-muted" x-show="!suggestionsLoading && !suggestionsError && !suggestionsWarning && !suggestions.length" x-cloak>Nenhuma sugestão encontrada. Use a busca abaixo para localizar outros registros.</p>
+                    <p class="brw-muted" x-show="!suggestionsLoading && !suggestionsError && !suggestionsWarning && !suggestions.length && !bundles.length" x-cloak>Nenhuma sugestão encontrada. Use a busca abaixo para localizar outros registros.</p>
                     <div class="brw-suggestion-list">
                         <template x-for="suggestion in suggestions" :key="suggestion.type + '-' + suggestion.id">
                             <button type="button" class="brw-record brw-suggestion" :class="{ 'is-selected': isSuggestionSelected(suggestion) }" role="checkbox" :aria-checked="isSuggestionSelected(suggestion)" :disabled="!canSelectSuggestion(suggestion)" @click="selectSuggestion(suggestion)">
@@ -59,6 +59,20 @@
                                 </span>
                                 <span class="brw-record-value"><strong x-text="money(suggestion.amount_cents)"></strong><small class="brw-match" x-show="suggestion.exact_match">Mesmo valor do extrato</small><small class="brw-date-warning" x-show="suggestion.date_exception">Data fora da margem</small></span>
                             </button>
+                        </template>
+                    </div>
+                    <div class="brw-advanced" x-show="bundles.length" x-cloak>
+                        <div class="brw-eyebrow">Composições, baixas parciais e ajustes</div>
+                        <p class="brw-muted" x-show="items.length">Limpe a seleção para usar uma destas propostas.</p>
+                        <template x-for="bundle in bundles" :key="bundle.key">
+                            <div class="brw-bundle">
+                                <div class="brw-row"><strong x-text="bundle.label"></strong><span x-text="bundle.confidence_label"></span></div>
+                                <p class="brw-muted" x-text="bundle.origin_label"></p>
+                                <p class="brw-muted" x-text="bundle.reason"></p>
+                                <ul><template x-for="item in bundle.items" :key="item.id"><li><span x-text="(item.party || item.description) + ' · #' + item.id"></span><strong x-text="money(Math.round(item.suggested_amount * 100))"></strong></li></template></ul>
+                                <p class="brw-date-warning" x-show="bundle.ambiguous">Existem outras composições possíveis. Confira os registros.</p>
+                                <button type="button" class="brw-text-button" :disabled="items.length > 0" @click="selectBundle(bundle)" x-text="bundle.kind === 'adjustment' ? 'Selecionar e revisar ajustes' : 'Usar esta proposta'"></button>
+                            </div>
                         </template>
                     </div>
                     <p class="brw-muted" x-show="items.length && suggestions.some(suggestion => suggestion.type !== state.type)" x-cloak>Para selecionar uma sugestão de outra origem, limpe a seleção atual.</p>
@@ -121,7 +135,7 @@
                                 </div>
                                 <button type="button" class="brw-remove" :aria-label="'Remover registro ' + item.id" @click="remove(item.id)"><x-filament::icon icon="heroicon-o-x-mark" /></button>
                               </div>
-                              <details class="brw-adjustments" x-show="!isMovement">
+                              <details class="brw-adjustments" x-show="!isMovement" :open="item.open_adjustments" @toggle="item.open_adjustments = $event.target.open">
                                   <summary><span>Juros, multa, desconto e observações</span><small x-show="hasAdjustments(item)" x-text="'Saldo ajustado: ' + money(adjustedBalance(item))"></small></summary>
                                   <div class="brw-adjustment-fields">
                                       <template x-for="adjustment in [{ key: 'interest_amount', label: 'Juros (+)' }, { key: 'fine_amount', label: 'Multa (+)' }, { key: 'discount_amount', label: 'Desconto (−)' }]" :key="adjustment.key">
@@ -132,7 +146,8 @@
                                       <span x-text="'Saldo atual: ' + money(item.amount_cents)"></span>
                                       <strong x-text="'Saldo com ajustes: ' + money(adjustedBalance(item))"></strong>
                                   </div>
-                                  <p class="brw-adjustment-hint">Juros e multa aumentam o saldo; desconto reduz o saldo. Os ajustes são aplicados uma única vez à parcela, mesmo com vários lançamentos bancários.</p>
+                                   <p class="brw-adjustment-hint">Juros e multa aumentam o saldo; desconto reduz o saldo. Os ajustes são aplicados uma única vez à parcela, mesmo com vários lançamentos bancários.</p>
+                                   <p class="brw-date-warning" x-show="typeof item.adjustment_expected_cents === 'number'" x-text="'Diferença a explicar nos ajustes: ' + money(item.adjustment_expected_cents || 0)"></p>
                                   <label class="brw-notes"><span>Observações da baixa</span><textarea x-model="item.notes" rows="2" :aria-label="'Observações da baixa do registro ' + item.id" placeholder="Opcional"></textarea></label>
                               </details>
                             </div>
