@@ -8,7 +8,6 @@ use App\Models\AccountReceivableInstallment;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Traits\HandlesServiceResponse;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class SuggestBankStatementMatchesService
@@ -31,6 +30,27 @@ class SuggestBankStatementMatchesService
             usort($suggestions, fn (array $left, array $right) => ($right['score'] <=> $left['score'])
                 ?: strcmp($left['origin_type'], $right['origin_type'])
                 ?: ($left['origin_id'] <=> $right['origin_id']));
+
+            foreach ($suggestions as $index => $suggestion) {
+                $gaps = [];
+                foreach ($suggestions as $otherIndex => $other) {
+                    if ($index !== $otherIndex) {
+                        $gaps[] = abs($suggestion['score'] - $other['score']);
+                    }
+                }
+                $gap = $gaps === [] ? null : min($gaps);
+                $suggestion['assessment']['score_gap'] = $gap;
+                if ($gap !== null && $gap < max(1, (int) config('bank_reconciliation.suggestions.ambiguity_score_gap', 10))) {
+                    $suggestion['assessment']['ambiguous'] = true;
+                    $suggestion['assessment']['requires_review'] = true;
+                    if ($suggestion['assessment']['confidence'] === 'high') {
+                        $suggestion['assessment']['confidence'] = 'medium';
+                    }
+                    $suggestion['assessment']['evidence'][] = 'Há outra opção com pontuação próxima.';
+                    $suggestion['reason'] .= ' Há outra opção com pontuação próxima.';
+                }
+                $suggestions[$index] = $suggestion;
+            }
 
             $limited = array_slice($suggestions, 0, 5);
 
@@ -86,69 +106,19 @@ class SuggestBankStatementMatchesService
      */
     private function suggestCashMovements(BankStatementLine $line): array
     {
-        $date = Carbon::parse($line->transaction_date);
-
         return app(BankStatementMovementEligibilityService::class)
-            ->queryForLine($line)
+            ->queryForLine($line, forSuggestions: true)
+            ->with([
+                'counterpartyPartner',
+                'payablePayment.installment.accountPayable.supplier',
+                'receivablePayment.installment.accountReceivable.customer',
+            ])
             ->orderBy('id')
             ->lazy(200)
-            ->map(function (CashMovement $movement) use ($line, $date) {
-                $amountDiff = abs((float) $movement->amount - (float) $line->amount);
-                $dateDiff = (int) abs($date->diffInDays(Carbon::parse($movement->transaction_date)));
-                $score = 0;
-
-                if ($movement->direction?->value === $line->direction()?->value) {
-                    $score += 20;
-                }
-
-                $score += match (true) {
-                    $amountDiff < 0.01 => 35,
-                    $amountDiff <= 1 => 20,
-                    $amountDiff <= 5 => 10,
-                    default => 0,
-                };
-
-                $score += match (true) {
-                    $dateDiff === 0 => 20,
-                    $dateDiff <= 3 => 12,
-                    $dateDiff <= 7 => 6,
-                    default => 0,
-                };
-
-                $score += $this->tokenOverlapScore($line->description, $movement->description);
-
-                if ($score < 25) {
-                    return null;
-                }
-
-                return (new BankStatementSuggestionDTO(
-                    originType: 'cash_movement',
-                    originId: $movement->id,
-                    score: $score,
-                    label: sprintf(
-                        '%s | %s | R$ %s | %s',
-                        $movement->transaction_date?->format('d/m/Y'),
-                        $movement->description,
-                        number_format((float) $movement->amount, 2, ',', '.'),
-                        $movement->origin_label
-                    ),
-                    reason: sprintf(
-                        'Valor %s e data com diferenca de %s dia(s).',
-                        $amountDiff < 0.01 ? 'igual' : 'proxima',
-                        $dateDiff
-                    ),
-                    payload: [
-                        'direction' => $movement->direction?->value,
-                        'amount' => (float) $movement->amount,
-                        'transaction_date' => $movement->transaction_date?->toDateString(),
-                        'description' => $movement->description,
-                        'origin_label' => $movement->origin_label,
-                    ],
-                ))->toArray();
-            })
+            ->map(fn (CashMovement $movement) => $this->makeSuggestion($line, $movement, 'cash_movement'))
             ->filter()
             ->sortByDesc('score')
-            ->take(5)
+            ->take(6)
             ->values()
             ->all();
     }
@@ -168,56 +138,16 @@ class SuggestBankStatementMatchesService
      */
     private function suggestPayableInstallments(BankStatementLine $line): array
     {
-        $date = Carbon::parse($line->transaction_date);
+        $eligibility = app(BankStatementCandidateEligibilityService::class);
 
-        return app(BankStatementCandidateEligibilityService::class)->installmentsForLine($line)
+        return $eligibility->applySuggestionWindow($eligibility->installmentsForLine($line), $line, movement: false)
             ->with('accountPayable.supplier')
-            ->whereBetween('due_date', [
-                $date->copy()->subDays(30)->toDateString(),
-                $date->copy()->addDays(30)->toDateString(),
-            ])
             ->orderBy('id')
             ->lazy(200)
-            ->map(function (AccountPayableInstallment $installment) use ($line, $date) {
-                $score = $this->scoreInstallmentSuggestion(
-                    lineDescription: $line->description,
-                    lineAmount: (float) $line->amount,
-                    lineDate: $date,
-                    targetDate: Carbon::parse($installment->due_date),
-                    targetAmount: (float) $installment->balance_amount,
-                    referenceText: implode(' ', array_filter([
-                        $installment->accountPayable?->description,
-                        $installment->notes,
-                        $installment->accountPayable?->supplier?->name,
-                    ])),
-                );
-
-                if ($score < 25) {
-                    return null;
-                }
-
-                return (new BankStatementSuggestionDTO(
-                    originType: 'account_payable_installment',
-                    originId: $installment->id,
-                    score: $score,
-                    label: sprintf(
-                        'AP %s | %s | R$ %s',
-                        $installment->sequence_number,
-                        $installment->accountPayable?->supplier?->name ?? 'Sem fornecedor',
-                        number_format((float) $installment->balance_amount, 2, ',', '.')
-                    ),
-                    reason: 'Parcela em aberto com valor e vencimento proximos ao extrato.',
-                    payload: [
-                        'due_date' => $installment->due_date?->toDateString(),
-                        'balance_amount' => (float) $installment->balance_amount,
-                        'description' => $installment->accountPayable?->description,
-                        'partner_name' => $installment->accountPayable?->supplier?->name,
-                    ],
-                ))->toArray();
-            })
+            ->map(fn (AccountPayableInstallment $installment) => $this->makeSuggestion($line, $installment, 'account_payable_installment'))
             ->filter()
             ->sortByDesc('score')
-            ->take(5)
+            ->take(6)
             ->values()
             ->all();
     }
@@ -227,115 +157,58 @@ class SuggestBankStatementMatchesService
      */
     private function suggestReceivableInstallments(BankStatementLine $line): array
     {
-        $date = Carbon::parse($line->transaction_date);
+        $eligibility = app(BankStatementCandidateEligibilityService::class);
 
-        return app(BankStatementCandidateEligibilityService::class)->installmentsForLine($line)
+        return $eligibility->applySuggestionWindow($eligibility->installmentsForLine($line), $line, movement: false)
             ->with('accountReceivable.customer')
-            ->whereBetween('due_date', [
-                $date->copy()->subDays(30)->toDateString(),
-                $date->copy()->addDays(30)->toDateString(),
-            ])
             ->orderBy('id')
             ->lazy(200)
-            ->map(function (AccountReceivableInstallment $installment) use ($line, $date) {
-                $score = $this->scoreInstallmentSuggestion(
-                    lineDescription: $line->description,
-                    lineAmount: (float) $line->amount,
-                    lineDate: $date,
-                    targetDate: Carbon::parse($installment->due_date),
-                    targetAmount: (float) $installment->balance_amount,
-                    referenceText: implode(' ', array_filter([
-                        $installment->accountReceivable?->description,
-                        $installment->notes,
-                        $installment->accountReceivable?->customer?->name,
-                    ])),
-                );
-
-                if ($score < 25) {
-                    return null;
-                }
-
-                return (new BankStatementSuggestionDTO(
-                    originType: 'account_receivable_installment',
-                    originId: $installment->id,
-                    score: $score,
-                    label: sprintf(
-                        'AR %s | %s | R$ %s',
-                        $installment->sequence_number,
-                        $installment->accountReceivable?->customer?->name ?? 'Sem cliente',
-                        number_format((float) $installment->balance_amount, 2, ',', '.')
-                    ),
-                    reason: 'Parcela em aberto com valor e vencimento proximos ao extrato.',
-                    payload: [
-                        'due_date' => $installment->due_date?->toDateString(),
-                        'balance_amount' => (float) $installment->balance_amount,
-                        'description' => $installment->accountReceivable?->description,
-                        'partner_name' => $installment->accountReceivable?->customer?->name,
-                    ],
-                ))->toArray();
-            })
+            ->map(fn (AccountReceivableInstallment $installment) => $this->makeSuggestion($line, $installment, 'account_receivable_installment'))
             ->filter()
             ->sortByDesc('score')
-            ->take(5)
+            ->take(6)
             ->values()
             ->all();
     }
 
-    private function scoreInstallmentSuggestion(
-        string $lineDescription,
-        float $lineAmount,
-        Carbon $lineDate,
-        Carbon $targetDate,
-        float $targetAmount,
-        string $referenceText,
-    ): int {
-        $amountDiff = abs($targetAmount - $lineAmount);
-        $dateDiff = (int) abs($lineDate->diffInDays($targetDate));
-        $score = 0;
-
-        $score += match (true) {
-            $amountDiff < 0.01 => 35,
-            $amountDiff <= 1 => 20,
-            $amountDiff <= 5 => 12,
-            default => 0,
-        };
-
-        $score += match (true) {
-            $dateDiff === 0 => 20,
-            $dateDiff <= 5 => 12,
-            $dateDiff <= 15 => 6,
-            default => 0,
-        };
-
-        return $score + $this->tokenOverlapScore($lineDescription, $referenceText);
-    }
-
-    private function tokenOverlapScore(?string $left, ?string $right): int
+    private function makeSuggestion(BankStatementLine $line, CashMovement|AccountPayableInstallment|AccountReceivableInstallment $candidate, string $originType): ?array
     {
-        $leftTokens = $this->tokenize($left);
-        $rightTokens = $this->tokenize($right);
-
-        if ($leftTokens === [] || $rightTokens === []) {
-            return 0;
+        $assessment = app(BankStatementMatchScorer::class)->assess($line, $candidate);
+        if ($assessment['score'] < (int) config('bank_reconciliation.suggestions.minimum_score', 25)) {
+            return null;
         }
+        $movement = $candidate instanceof CashMovement;
+        $parent = $candidate instanceof AccountPayableInstallment ? $candidate->accountPayable : ($candidate instanceof AccountReceivableInstallment ? $candidate->accountReceivable : null);
+        $amount = (float) $candidate->{$movement ? 'amount' : 'balance_amount'};
+        $party = $movement ? $candidate->counterparty_label : $parent?->counterparty_label;
 
-        $matches = count(array_intersect($leftTokens, $rightTokens));
-
-        return min($matches * 4, 20);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function tokenize(?string $text): array
-    {
-        if (! is_string($text) || trim($text) === '') {
-            return [];
-        }
-
-        $normalized = mb_strtolower(preg_replace('/[^[:alnum:]\s]/u', ' ', $text) ?? '');
-        $tokens = preg_split('/\s+/', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-
-        return array_values(array_filter($tokens, static fn (string $token): bool => mb_strlen($token) >= 3));
+        return (new BankStatementSuggestionDTO(
+            originType: $originType,
+            originId: $candidate->id,
+            score: $assessment['score'],
+            label: sprintf('%s | %s | R$ %s',
+                $movement ? $candidate->transaction_date->format('d/m/Y') : ($candidate instanceof AccountPayableInstallment ? 'AP ' : 'AR ').$candidate->sequence_number,
+                $party && $party !== 'Não informado' ? $party : ($candidate->description ?: $parent?->description),
+                number_format($amount, 2, ',', '.'),
+            ),
+            reason: sprintf('Valor %s e data com diferenca de %d dia(s). %s',
+                $assessment['amount_difference_cents'] === 0 ? 'igual' : 'próximo',
+                $assessment['date_difference_days'],
+                implode(' ', $assessment['evidence']),
+            ),
+            payload: $movement ? [
+                'direction' => $candidate->direction->value,
+                'amount' => $amount,
+                'transaction_date' => $candidate->transaction_date->toDateString(),
+                'description' => $candidate->description,
+                'origin_label' => $candidate->origin_label,
+            ] : [
+                'due_date' => $candidate->due_date->toDateString(),
+                'balance_amount' => $amount,
+                'description' => $parent?->description,
+                'partner_name' => $party,
+            ],
+            assessment: $assessment,
+        ))->toArray();
     }
 }

@@ -64,6 +64,7 @@ class GetBankReconciliationSuggestions
                         ...$presented,
                         'type' => $type,
                         'score' => $suggestion['score'],
+                        'assessment' => $suggestion['assessment'],
                         'origin_label' => match ($type) {
                             'cash_movement' => 'Movimento já lançado',
                             'receivable' => 'Conta a receber em aberto',
@@ -84,7 +85,31 @@ class GetBankReconciliationSuggestions
         }
 
         return [
-            'records' => collect($recommendations)->sortByDesc('score')->take(5)->values()->all(),
+            'records' => collect($recommendations)->sortByDesc('score')->take(5)->map(function (array $recommendation): array {
+                $assessment = $recommendation['assessment'];
+                if (count($recommendation['statement_line_ids']) > 1) {
+                    $assessment['ambiguous'] = true;
+                    $assessment['requires_review'] = true;
+                    $assessment['evidence'][] = 'Mesmo registro compatível com mais de um lançamento do extrato.';
+                    if ($assessment['confidence'] === 'high') {
+                        $assessment['confidence'] = 'medium';
+                    }
+                }
+
+                return [
+                    ...$recommendation,
+                    'assessment' => $assessment,
+                    'confidence' => $assessment['confidence'],
+                    'confidence_label' => match ($assessment['confidence']) {
+                        'high' => 'Alta confiança',
+                        'medium' => 'Média confiança',
+                        default => 'Baixa confiança',
+                    },
+                    'ambiguous' => $assessment['ambiguous'],
+                    'requires_review' => $assessment['requires_review'],
+                    'evidence' => $assessment['evidence'],
+                ];
+            })->values()->all(),
             'failed_lines' => $failed,
         ];
     }

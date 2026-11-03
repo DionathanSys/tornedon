@@ -47,10 +47,14 @@
                                 <span class="brw-check" aria-hidden="true" x-text="isSuggestionSelected(suggestion) ? '✓' : '+'"></span>
                                 <span class="brw-record-main">
                                     <small class="brw-suggestion-origin" x-text="suggestion.origin_label"></small>
+                                    <small class="brw-confidence" :class="'is-' + suggestion.confidence" title="Classificação por critérios de valor, data e identificação; não representa uma probabilidade de acerto." x-text="suggestion.confidence_label"></small>
                                     <strong x-text="suggestion.party || suggestion.description"></strong>
                                     <span x-text="suggestion.party ? suggestion.description : 'Registro #' + suggestion.id"></span>
                                     <small x-text="(suggestion.type === 'cash_movement' ? 'Lançado em ' : 'Vence em ') + (suggestion.date || '—') + ' · #' + suggestion.id"></small>
                                     <small class="brw-suggestion-reason" x-text="suggestion.reason"></small>
+                                    <template x-for="(evidence, index) in suggestion.evidence" :key="index"><small class="brw-suggestion-reason" x-text="evidence"></small></template>
+                                    <small class="brw-date-warning" x-show="suggestion.ambiguous">Correspondência ambígua: confira as alternativas.</small>
+                                    <small class="brw-date-warning" x-show="suggestion.requires_review && !suggestion.ambiguous">Confira as diferenças antes de conciliar.</small>
                                     <small x-show="bank.lines.length > 1" x-text="suggestion.bank_reference + (suggestion.statement_line_ids.length > 1 ? ' · Compatível com ' + suggestion.statement_line_ids.length + ' lançamentos' : '')"></small>
                                 </span>
                                 <span class="brw-record-value"><strong x-text="money(suggestion.amount_cents)"></strong><small class="brw-match" x-show="suggestion.exact_match">Mesmo valor do extrato</small><small class="brw-date-warning" x-show="suggestion.date_exception">Data fora da margem</small></span>

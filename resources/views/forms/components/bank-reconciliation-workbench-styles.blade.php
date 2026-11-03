@@ -61,6 +61,11 @@
     .brw-suggestion-list { max-height: 330px; overflow-y: auto; margin-top: 10px; border-radius: 8px; }
     .brw-suggestion .brw-suggestion-origin { color: var(--brw-accent); font-weight: 650; margin: 0 0 4px; }
     .brw-suggestion .brw-suggestion-reason { white-space: normal; line-height: 1.5; }
+    .brw-suggestion .brw-confidence { display: inline-flex; padding: 2px 6px; margin: 0 0 5px; border-radius: 5px; background: var(--brw-soft); color: var(--brw-muted); font-weight: 600; }
+    .brw-suggestion .brw-confidence.is-high { color: #047857; background: color-mix(in srgb, #10b981 12%, var(--brw-bg)); }
+    .brw-suggestion .brw-confidence.is-medium { color: #92400e; background: color-mix(in srgb, #f59e0b 12%, var(--brw-bg)); }
+    .dark .brw-suggestion .brw-confidence.is-high { color: #34d399; }
+    .dark .brw-suggestion .brw-confidence.is-medium { color: #fbbf24; }
     .brw-selected-list { max-height: 380px; overflow-y: auto; }
     .brw-selected-entry { border-top: 1px solid var(--brw-border); padding-bottom: 12px; }
     .brw-selected-item { display: flex; align-items: start; gap: 12px; padding: 12px 0; }

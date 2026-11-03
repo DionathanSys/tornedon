@@ -8,6 +8,7 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManag
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\RefreshStatementSuggestionsAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ViewStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementLines\BankStatementSuggestionColumns;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
@@ -15,6 +16,7 @@ use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService
 use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -24,6 +26,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 
@@ -48,6 +51,7 @@ class LinesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', Filament::getTenant()->id))
             ->columns([
                 TextColumn::make('transaction_date')
                     ->label('Data')
@@ -59,6 +63,10 @@ class LinesRelationManager extends RelationManager
                     ->searchable()
                     ->wrap()
                     ->limit(60)
+                    ->description(fn (BankStatementLine $record): ?string => filled($name = data_get($record->metadata, 'raw.name')) ? 'Parte: '.$name : null)
+                    ->color('primary')
+                    ->tooltip('Clique para ver os detalhes gravados do lançamento')
+                    ->action(ViewStatementLineAction::make())
                     ->toggleable(),
                 TextColumn::make('amount')
                     ->label('Valor')

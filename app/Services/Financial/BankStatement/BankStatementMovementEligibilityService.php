@@ -9,15 +9,23 @@ use Illuminate\Validation\ValidationException;
 
 class BankStatementMovementEligibilityService
 {
-    public function queryForLine(BankStatementLine $line): Builder
+    public function queryForLine(BankStatementLine $line, bool $forSuggestions = false): Builder
     {
+        $eligibility = app(BankStatementCandidateEligibilityService::class);
+        $query = $eligibility->movementsForLine($line);
+        if ($forSuggestions) {
+            return $eligibility->applySuggestionWindow($query, $line, movement: true);
+        }
+
         [$amountTolerance, $dateToleranceDays] = $this->tolerancesFor($line);
         $transactionDate = $line->transaction_date;
+        $amount = (int) round((float) $line->amount * 100);
+        $tolerance = (int) round($amountTolerance * 100);
 
-        return app(BankStatementCandidateEligibilityService::class)->movementsForLine($line)
+        return $query
             ->whereBetween('amount', [
-                max(0, ((float) $line->amount - $amountTolerance) * 100),
-                ((float) $line->amount + $amountTolerance) * 100,
+                max(0, $amount - $tolerance),
+                $amount + $tolerance,
             ])
             ->whereBetween('transaction_date', [
                 $transactionDate?->copy()->subDays($dateToleranceDays)->toDateString(),
@@ -70,13 +78,14 @@ class BankStatementMovementEligibilityService
     {
         [$amountTolerance, $dateToleranceDays] = $this->tolerancesFor($line);
         $exceptions = [];
-        $amountDifference = abs((float) $movement->amount - (float) $line->amount);
+        $amountDifference = abs((int) round((float) $movement->amount * 100) - (int) round((float) $line->amount * 100));
+        $amountToleranceCents = (int) round($amountTolerance * 100);
         $dateDifference = abs($line->transaction_date?->diffInDays($movement->transaction_date) ?? 0);
 
-        if ($amountDifference > $amountTolerance) {
+        if ($amountDifference > $amountToleranceCents) {
             $exceptions[] = sprintf(
                 'Diferença de valor de R$ %s excede a margem de R$ %s.',
-                number_format($amountDifference, 2, ',', '.'),
+                number_format($amountDifference / 100, 2, ',', '.'),
                 number_format($amountTolerance, 2, ',', '.')
             );
         }

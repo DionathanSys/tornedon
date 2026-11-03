@@ -36,6 +36,7 @@ use App\Services\Financial\BankStatement\ResolveBankStatementLineService;
 use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
 use App\Services\Financial\BankStatement\SuggestBankStatementMatchesService;
 use Filament\Facades\Filament;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -1605,7 +1606,7 @@ OFX;
     public function test_suggestions_rank_installments_beyond_the_first_thirty_and_across_query_batches(string $type, string $bankType, string $amount): void
     {
         $first = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
-        $first->update(['original_amount' => 500, 'due_amount' => 500, 'balance_amount' => 500]);
+        $first->update(['original_amount' => 104.99, 'due_amount' => 104.99, 'balance_amount' => 104.99]);
         for ($i = 1; $i < 205; $i++) {
             $copy = $first->replicate();
             $copy->sequence_number = (string) ($i + 1);
@@ -1971,6 +1972,7 @@ OFX;
             $component = Livewire::test($screen, $options)
                 ->assertTableColumnExists('suggestions_count')
                 ->assertTableColumnExists('metadata.suggestions.0.label')
+                ->assertTableColumnExists('suggestion_confidence')
                 ->assertTableActionExists('refresh_suggestions')
                 ->mountTableAction('reconcile_multiple', $line);
             view()->share('errors', new ViewErrorBag);
@@ -1988,6 +1990,175 @@ OFX;
             $this->assertSame('pending', $line->fresh()->reconciliation_status->value);
             $this->assertDatabaseCount('cash_movements', 0);
         }
+    }
+
+    public function test_discovery_margins_are_broader_than_confirmation_margins(): void
+    {
+        $line = $this->importLine('CREDIT', '100.00', 'scoring-discovery-window');
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 99, ['transaction_date' => '2026-04-16']);
+        $tooFarInValue = $this->createCashMovement(CashMovementDirection::INFLOW, 94.99);
+        $tooFarInDate = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['transaction_date' => '2026-04-19']);
+        $suggestions = app(SuggestBankStatementMatchesService::class)->suggestForLine($line);
+
+        $this->assertSame([$movement->id], array_column($suggestions, 'origin_id'));
+        $this->assertTrue($suggestions[0]['assessment']['requires_review']);
+        $this->assertNotSame('high', $suggestions[0]['assessment']['confidence']);
+        $this->assertNotContains($tooFarInValue->id, array_column($suggestions, 'origin_id'));
+        $this->assertNotContains($tooFarInDate->id, array_column($suggestions, 'origin_id'));
+        $this->assertFalse(app(BankStatementMovementEligibilityService::class)->queryForLine($line)->exists());
+        $this->assertNull($this->resolveService->reconcileWithCashMovement($line, $movement->id));
+        $this->assertArrayHasKey('exception_reason', $this->resolveService->getErrors());
+    }
+
+    public function test_tax_document_identification_ranks_the_correct_installment_above_anonymous_movements(): void
+    {
+        $this->supplier->update(['document_number' => '04252011000110']);
+        $installment = $this->createPayableInstallmentForRollback();
+        $anonymous = $this->createCashMovement(CashMovementDirection::OUTFLOW, 100, ['description' => 'Movimento sem identificação']);
+        $line = $this->importLine('DEBIT', '-100.00', 'scoring-tax-document');
+        $line->update(['description' => 'PIX 04.252.011/0001-10']);
+        $recommendations = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+
+        $this->assertSame('payable', $recommendations['records'][0]['type']);
+        $this->assertSame($installment->id, $recommendations['records'][0]['id']);
+        $this->assertSame('high', $recommendations['records'][0]['confidence']);
+        $this->assertSame('Alta confiança', $recommendations['records'][0]['confidence_label']);
+        $this->assertFalse($recommendations['records'][0]['ambiguous']);
+        $this->assertSame(40, $recommendations['records'][0]['assessment']['points']['tax_document']);
+        $this->assertSame($anonymous->id, $recommendations['records'][1]['id']);
+        $this->assertContains('CPF/CNPJ válido corresponde à contraparte.', $recommendations['records'][0]['evidence']);
+    }
+
+    public function test_equally_plausible_candidates_are_not_presented_as_unique_high_confidence_matches(): void
+    {
+        $this->customer->update(['name' => 'José da Silva']);
+        $first = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+        $second = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['counterparty_partner_id' => $this->customer->id]);
+        $line = $this->importLine('CREDIT', '100.00', 'scoring-ambiguity');
+        $line->update(['description' => 'PIX JOSE DA SILVA']);
+        $response = app(GetBankReconciliationSuggestions::class)->get($this->company->id, collect([$line]));
+
+        $this->assertSame([$first->id, $second->id], array_column($response['records'], 'id'));
+        foreach ($response['records'] as $record) {
+            $this->assertSame('medium', $record['confidence']);
+            $this->assertTrue($record['ambiguous']);
+            $this->assertTrue($record['requires_review']);
+            $this->assertSame(0, $record['assessment']['score_gap']);
+        }
+    }
+
+    public function test_manual_and_snapshot_counterparty_names_are_used_to_identify_movements(): void
+    {
+        $manual = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['description' => 'Registro avulso', 'manual_counterparty_name' => 'José da Silva']);
+        $snapshot = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['description' => 'Registro avulso', 'participants_snapshot' => ['counterparty_partner_name' => 'Maria Pereira']]);
+        $line = $this->importLine('CREDIT', '100.00', 'scoring-counterparty');
+        $line->update(['description' => 'PIX JOSE DA SILVA']);
+        $service = app(SuggestBankStatementMatchesService::class);
+        $this->assertSame($manual->id, $service->suggestForLine($line)[0]['origin_id']);
+        $line->update(['description' => 'PIX MARIA PEREIRA']);
+        $suggestions = $service->suggestForLine($line);
+        $this->assertSame($snapshot->id, $suggestions[0]['origin_id']);
+        $this->assertSame('high', $suggestions[0]['assessment']['confidence']);
+    }
+
+    public function test_an_exact_reference_distinguishes_two_strong_candidates_for_the_same_counterparty(): void
+    {
+        $this->supplier->update(['name' => 'José da Silva', 'document_number' => '04252011000110']);
+        $first = $this->createPayableInstallmentForRollback();
+        $first->accountPayable->update(['document_number' => '12345']);
+        $secondParent = $first->accountPayable->replicate();
+        $secondParent->document_number = '54321';
+        $secondParent->save();
+        $second = $first->replicate();
+        $second->account_payable_id = $secondParent->id;
+        $second->save();
+        $line = $this->importLine('DEBIT', '-100.00', 'scoring-reference-ranking');
+        $line->update(['description' => 'PIX JOSE DA SILVA 04.252.011/0001-10 NF 12345']);
+        $suggestions = app(SuggestBankStatementMatchesService::class)->suggestForLine($line);
+
+        $this->assertSame([$first->id, $second->id], array_column($suggestions, 'origin_id'));
+        $this->assertSame(30, $suggestions[0]['score'] - $suggestions[1]['score']);
+        $this->assertFalse($suggestions[0]['assessment']['ambiguous']);
+        $this->assertSame('high', $suggestions[0]['assessment']['confidence']);
+    }
+
+    #[DataProvider('reconciliationTypes')]
+    public function test_installments_can_be_identified_by_manual_counterparty_names(string $type, string $bankType, string $amount): void
+    {
+        $installment = $type === 'receivable' ? $this->createReceivableInstallmentForRollback() : $this->createPayableInstallmentForRollback();
+        $parent = $type === 'receivable' ? $installment->accountReceivable : $installment->accountPayable;
+        $parent->update([$type === 'receivable' ? 'customer_id' : 'supplier_id' => null, 'manual_counterparty_name' => 'José da Silva']);
+        $line = $this->importLine($bankType, $amount, 'scoring-manual-installment');
+        $line->update(['description' => 'PIX JOSE DA SILVA']);
+        $installment->update(['due_date' => $line->transaction_date]);
+
+        $suggestions = app(SuggestBankStatementMatchesService::class)->suggestForLine($line);
+
+        $this->assertSame($installment->id, $suggestions[0]['origin_id']);
+        $this->assertSame('high', $suggestions[0]['assessment']['confidence']);
+        $this->assertStringContainsString('José da Silva', $suggestions[0]['label']);
+    }
+
+    public function test_relative_discovery_window_has_a_monetary_cap(): void
+    {
+        $line = $this->importLine('CREDIT', '10000.00', 'scoring-relative-window');
+        $within = $this->createCashMovement(CashMovementDirection::INFLOW, 9990);
+        $outside = $this->createCashMovement(CashMovementDirection::INFLOW, 9949.99);
+
+        $suggestions = app(SuggestBankStatementMatchesService::class)->suggestForLine($line);
+
+        $this->assertSame([$within->id], array_column($suggestions, 'origin_id'));
+        $this->assertNotContains($outside->id, array_column($suggestions, 'origin_id'));
+        $this->assertSame(1000, $suggestions[0]['assessment']['amount_difference_cents']);
+        $this->assertSame('medium', $suggestions[0]['assessment']['confidence']);
+    }
+
+    public function test_description_column_opens_read_only_details_with_bank_name_memo_and_stored_data(): void
+    {
+        $this->user->companies()->attach($this->company, ['role' => 'member', 'is_active' => true]);
+        $this->actingAs($this->user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($this->company);
+        $this->user->companyAccesses()->create([
+            'company_id' => $this->company->id, 'permissions' => ['cash_movements.access'],
+            'panels' => ['admin' => true], 'navigation' => [],
+        ]);
+        $memo = 'PIX enviado com histórico completo para conferência do lançamento bancário e identificação do favorecido.';
+        $ofx = str_replace('<FITID>details-name', '<NAME>JOSE DA SILVA</NAME><FITID>details-name', $this->buildOfx('237', [[
+            'type' => 'DEBIT', 'date' => '20260411', 'amount' => '-150.00', 'fitid' => 'details-name', 'memo' => $memo,
+        ]]));
+        $import = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $ofx, 'detalhes.ofx', $this->user->id);
+        $line = $import->lines()->sole();
+        $before = $line->getRawOriginal();
+        $component = Livewire::test(LinesRelationManager::class, ['ownerRecord' => $import, 'pageClass' => ViewBankStatementImport::class])
+            ->assertSee('Parte: JOSE DA SILVA')
+            ->mountTableAction('view_statement_line', $line);
+        $action = $component->instance()->getMountedActions()[0];
+        $this->assertSame('view_statement_line', $action->getName());
+        $this->assertSame('view_statement_line', $component->instance()->getTable()->getColumn('description')->getAction()->getName());
+        $this->assertNull($action->getModalSubmitAction());
+        $renderEntries = fn ($component): string => collect($component->instance()->getSchema('mountedActionSchema0')->getFlatComponents())
+            ->filter(fn ($entry) => $entry instanceof TextEntry)
+            ->map(fn ($entry) => $entry->toHtml())->implode('');
+        $html = $renderEntries($component);
+        foreach (['Parte informada pelo banco (NAME)', 'Histórico original (MEMO)', 'JOSE DA SILVA', $memo, 'details-name', 'Metadados armazenados (JSON)'] as $text) {
+            $this->assertStringContainsString($text, $html);
+        }
+        $this->assertSame($before, $line->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('cash_movements', 0);
+
+        $line->update(['metadata' => array_merge($line->metadata, ['raw' => []]), 'reconciliation_status' => 'ignored']);
+        $component = Livewire::test(LinesRelationManager::class, ['ownerRecord' => $import, 'pageClass' => ViewBankStatementImport::class])
+            ->mountTableAction('view_statement_line', $line);
+        $html = $renderEntries($component);
+        $this->assertStringContainsString('Não informado no OFX', $html);
+
+        $foreign = $this->duplicatePendingLine($line, 100);
+        $foreign->update(['company_id' => Company::factory()->create()->id, 'description' => 'LANCAMENTO_OUTRA_EMPRESA']);
+        Livewire::test(LinesRelationManager::class, ['ownerRecord' => $import, 'pageClass' => ViewBankStatementImport::class])
+            ->assertCanNotSeeTableRecords([$foreign])
+            ->mountTableAction('view_statement_line', $foreign)
+            ->assertActionNotMounted();
     }
 
     private function importLine(string $type, string $amount, string $fitid): BankStatementLine

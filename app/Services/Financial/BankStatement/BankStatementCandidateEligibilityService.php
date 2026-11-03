@@ -46,6 +46,29 @@ class BankStatementCandidateEligibilityService
                 ->where('status', '!=', 'cancelled'));
     }
 
+    public function applySuggestionWindow(Builder $query, BankStatementLine $line, bool $movement): Builder
+    {
+        $amount = (int) round((float) $line->amount * 100);
+        $basisPoints = max(0, (int) config('bank_reconciliation.suggestions.relative_amount_window_basis_points', 200));
+        $minimum = max(0, (int) config('bank_reconciliation.suggestions.minimum_amount_window_cents', 500));
+        $maximum = max($minimum, (int) config('bank_reconciliation.suggestions.maximum_amount_window_cents', 5000));
+        $amountWindow = max(
+            (int) round((float) ($line->financialAccount?->reconciliation_amount_tolerance ?? 0.05) * 100),
+            min($maximum, max($minimum, intdiv($amount * $basisPoints + 9999, 10000))),
+        );
+        $days = $movement
+            ? max((int) ($line->financialAccount?->reconciliation_date_tolerance_days ?? 3), (int) config('bank_reconciliation.suggestions.movement_date_window_days', 7))
+            : (int) config('bank_reconciliation.suggestions.installment_date_window_days', 60);
+        $date = $line->transaction_date;
+
+        return $query
+            ->whereBetween($movement ? 'amount' : 'balance_amount', [max(1, $amount - $amountWindow), $amount + $amountWindow])
+            ->whereBetween($movement ? 'transaction_date' : 'due_date', [
+                $date->copy()->subDays(max(0, $days))->toDateString(),
+                $date->copy()->addDays(max(0, $days))->toDateString(),
+            ]);
+    }
+
     private function assertDirection(BankStatementLine $line): void
     {
         if ($line->direction() === null) {

@@ -16,6 +16,26 @@ final class BankStatementSuggestionColumns
                 ->placeholder('-')
                 ->tooltip(fn (BankStatementLine $record): ?string => data_get($record->metadata, 'suggestions.0.reason'))
                 ->toggleable(),
+            TextColumn::make('suggestion_confidence')
+                ->label('Confiança')
+                ->badge()
+                ->placeholder('-')
+                ->getStateUsing(fn (BankStatementLine $record): ?string => $record->suggestionsStatus() === 'ready'
+                    ? data_get($record->metadata, 'suggestions.0.assessment.confidence') : null)
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    'high' => 'Alta',
+                    'medium' => 'Média',
+                    default => 'Baixa',
+                })
+                ->color(fn (?string $state): string => match ($state) {
+                    'high' => 'success',
+                    'medium' => 'warning',
+                    default => 'gray',
+                })
+                ->tooltip(fn (BankStatementLine $record): string => data_get($record->metadata, 'suggestions.0.assessment.ambiguous')
+                    ? 'Há alternativas com pontuação próxima. Confira a correspondência.'
+                    : 'Classificação por valor, data e identificação; não é uma probabilidade de acerto.')
+                ->toggleable(),
             TextColumn::make('suggestions_count')
                 ->label('Sugestões')
                 ->badge()

@@ -11,6 +11,7 @@ final readonly class BankStatementSuggestionDTO
         public string $label,
         public string $reason,
         public array $payload = [],
+        public array $assessment = [],
     ) {}
 
     public function toArray(): array
@@ -22,6 +23,7 @@ final readonly class BankStatementSuggestionDTO
             'label' => $this->label,
             'reason' => $this->reason,
             'payload' => $this->payload,
+            'assessment' => $this->assessment,
         ];
     }
 }
