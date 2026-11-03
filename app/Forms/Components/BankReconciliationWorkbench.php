@@ -3,6 +3,7 @@
 namespace App\Forms\Components;
 
 use App\Models\BankStatementLine;
+use App\Services\Financial\BankStatement\GetBankReconciliationSuggestions;
 use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Field;
@@ -34,6 +35,7 @@ class BankReconciliationWorkbench extends Field
             'valid' => $this->statementLines->isNotEmpty() && $this->statementLines->every(fn ($line) => (int) $line->company_id === (int) Filament::getTenant()->id
                 && $line->financial_account_id === $first->financial_account_id
                 && $line->direction() === $first->direction()
+                && $line->direction() !== null && ! $line->hasFinancialEffect()
                 && $line->reconciliation_status?->canResolve() === true),
             'lines' => $this->statementLines->map(fn (BankStatementLine $line) => [
                 'id' => $line->id, 'description' => $line->description,
@@ -41,6 +43,15 @@ class BankReconciliationWorkbench extends Field
                 'amount_cents' => (int) round((float) $line->amount * 100),
             ])->values()->all(),
         ];
+    }
+
+    #[ExposedLivewireMethod]
+    #[Renderless]
+    public function loadSuggestions(): array
+    {
+        return app(GetBankReconciliationSuggestions::class)->get(
+            Filament::getTenant()->id, $this->statementLines,
+        );
     }
 
     #[ExposedLivewireMethod]

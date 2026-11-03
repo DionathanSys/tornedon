@@ -5,8 +5,10 @@ namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Relatio
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\RefreshStatementSuggestionsAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementLines\BankStatementSuggestionColumns;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
 use App\Services\Financial\BankStatement\BankStatementMovementEligibilityService;
@@ -86,57 +88,14 @@ class LinesRelationManager extends RelationManager
                     ->tooltip(fn (BankStatementLine $record): ?string => filled($record->cashMovement?->description) ? $record->cashMovement?->description : null)
                     ->limit(40)
                     ->toggleable(),
-                TextColumn::make('metadata.suggestions.0.label')
-                    ->label('Melhor sugestão')
-                    ->wrap()
-                    ->placeholder('-')
-                    ->tooltip(fn (BankStatementLine $record): ?string => filled(data_get($record->metadata, 'suggestions.0.label'))
-                        ? data_get($record->metadata, 'suggestions.0.reason')
-                        : null)
-                    ->toggleable(),
-                TextColumn::make('suggestions_count')
-                    ->label('Sugestões')
-                    ->badge()
-                    ->getStateUsing(fn (BankStatementLine $record): string => match ($record->suggestionsStatus()) {
-                        'error' => 'Erro ao buscar',
-                        'stale' => 'Desatualizadas',
-                        'empty' => 'Sem correspondência',
-                        default => (string) count($record->suggestions()),
-                    })
-                    ->color(fn (BankStatementLine $record): string => match ($record->suggestionsStatus()) {
-                        'error' => 'danger',
-                        'stale' => 'warning',
-                        'empty' => 'gray',
-                        default => count($record->suggestions()) > 1 ? 'info' : 'success',
-                    })
-                    ->tooltip(fn (BankStatementLine $record): ?string => match ($record->suggestionsStatus()) {
-                        'error' => 'A última atualização falhou. Tente atualizar as sugestões novamente.',
-                        'stale' => 'Atualize as sugestões para consultar os critérios atuais e os registros disponíveis.',
-                        'empty' => 'A última busca foi concluída sem encontrar correspondências.',
-                        default => null,
-                    })
-                    ->toggleable(),
+                ...BankStatementSuggestionColumns::make(),
             ])
             ->defaultSort('transaction_date', 'desc')
             ->headerActions([])
             ->toolbarActions([ReconcileMultipleAction::make(bulk: true)])
             ->recordActions([
                 ReconcileMultipleAction::make()->iconButton(),
-                Action::make('refresh_suggestions')
-                    ->label('Atualizar sugestões')
-                    ->icon('heroicon-o-arrow-path')
-                    ->iconButton()
-                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliation_status?->canResolve() === true)
-                    ->action(function (BankStatementLine $record): void {
-                        $service = app(ResolveBankStatementLineService::class);
-                        $service->refreshSuggestions($record);
-
-                        Notification::make()
-                            ->title($service->getMessage())
-                            ->body($service->hasError() ? 'Não foi possível atualizar as sugestões. Tente novamente.' : null)
-                            ->{$service->hasError() ? 'danger' : 'success'}()
-                            ->send();
-                    }),
+                RefreshStatementSuggestionsAction::make(),
                 Action::make('use_single_suggestion')
                     ->label('Usar sugestão')
                     ->icon('heroicon-o-sparkles')

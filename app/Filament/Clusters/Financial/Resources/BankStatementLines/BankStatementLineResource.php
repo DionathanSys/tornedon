@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatement
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\RefreshStatementSuggestionsAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementLines\Pages\ListBankStatementLines;
@@ -47,6 +48,7 @@ class BankStatementLineResource extends Resource
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
                     ->color(fn ($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('linked_movements')->label('Movimentos vinculados')->getStateUsing(fn (BankStatementLine $record) => $record->bank_reconciliation_group_id ? $record->cashMovements->pluck('description')->implode('; ') : $record->cashMovement?->description)->placeholder('-')->limit(60),
+                ...BankStatementSuggestionColumns::make(),
             ])
             ->groups([
                 Group::make('import.file_name')
@@ -66,6 +68,7 @@ class BankStatementLineResource extends Resource
             ]))
             ->recordActions([
                 ReconcileMultipleAction::make()->iconButton(),
+                RefreshStatementSuggestionsAction::make(),
                 CreateManualMovementAction::make()->iconButton(),
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),

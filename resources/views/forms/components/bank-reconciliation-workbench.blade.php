@@ -5,6 +5,7 @@
             state: $wire.entangle(@js($getStatePath())),
             bank: @js($getBankSummary()),
             searchRecords: (type, search, page) => $wire.callSchemaComponentMethod(@js($getKey()), 'searchRecords', { type, search, page }),
+            loadSuggestions: () => $wire.callSchemaComponentMethod(@js($getKey()), 'loadSuggestions', {}),
             submit: () => $wire.callMountedAction(),
         })"
     >
@@ -29,6 +30,35 @@
 
             <section class="brw-system" aria-label="Registros do sistema">
                 <div class="brw-section-heading"><div><div class="brw-eyebrow">Registros do sistema</div><h3>O que corresponde a esse lançamento?</h3></div></div>
+                <section class="brw-suggestions" aria-label="Sugestões recomendadas" :aria-busy="suggestionsLoading">
+                    <div class="brw-suggestions-heading">
+                        <div class="brw-eyebrow"><x-filament::icon icon="heroicon-o-sparkles" /> Sugestões recomendadas</div>
+                        <button type="button" class="brw-text-button" :disabled="suggestionsLoading || !bank.valid" @click="loadSuggestions()">Atualizar sugestões</button>
+                    </div>
+                    <p class="brw-muted">Movimentos e contas em aberto, ordenados por compatibilidade. Confira os dados antes de selecionar.</p>
+                    <p class="brw-muted" x-show="bank.lines.length > 1">As sugestões correspondem aos lançamentos individuais. Confira a composição e o total da seleção.</p>
+                    <p class="brw-muted" x-show="suggestionsLoading" role="status">Consultando sugestões atualizadas…</p>
+                    <p class="brw-date-warning" x-show="suggestionsError" x-text="suggestionsError" x-cloak role="alert"></p>
+                    <p class="brw-date-warning" x-show="suggestionsWarning" x-text="suggestionsWarning" x-cloak role="alert"></p>
+                    <p class="brw-muted" x-show="!suggestionsLoading && !suggestionsError && !suggestionsWarning && !suggestions.length" x-cloak>Nenhuma sugestão encontrada. Use a busca abaixo para localizar outros registros.</p>
+                    <div class="brw-suggestion-list">
+                        <template x-for="suggestion in suggestions" :key="suggestion.type + '-' + suggestion.id">
+                            <button type="button" class="brw-record brw-suggestion" :class="{ 'is-selected': isSuggestionSelected(suggestion) }" role="checkbox" :aria-checked="isSuggestionSelected(suggestion)" :disabled="!canSelectSuggestion(suggestion)" @click="selectSuggestion(suggestion)">
+                                <span class="brw-check" aria-hidden="true" x-text="isSuggestionSelected(suggestion) ? '✓' : '+'"></span>
+                                <span class="brw-record-main">
+                                    <small class="brw-suggestion-origin" x-text="suggestion.origin_label"></small>
+                                    <strong x-text="suggestion.party || suggestion.description"></strong>
+                                    <span x-text="suggestion.party ? suggestion.description : 'Registro #' + suggestion.id"></span>
+                                    <small x-text="(suggestion.type === 'cash_movement' ? 'Lançado em ' : 'Vence em ') + (suggestion.date || '—') + ' · #' + suggestion.id"></small>
+                                    <small class="brw-suggestion-reason" x-text="suggestion.reason"></small>
+                                    <small x-show="bank.lines.length > 1" x-text="suggestion.bank_reference + (suggestion.statement_line_ids.length > 1 ? ' · Compatível com ' + suggestion.statement_line_ids.length + ' lançamentos' : '')"></small>
+                                </span>
+                                <span class="brw-record-value"><strong x-text="money(suggestion.amount_cents)"></strong><small class="brw-match" x-show="suggestion.exact_match">Mesmo valor do extrato</small><small class="brw-date-warning" x-show="suggestion.date_exception">Data fora da margem</small></span>
+                            </button>
+                        </template>
+                    </div>
+                    <p class="brw-muted" x-show="items.length && suggestions.some(suggestion => suggestion.type !== state.type)" x-cloak>Para selecionar uma sugestão de outra origem, limpe a seleção atual.</p>
+                </section>
                 <div class="brw-modes" role="group" aria-label="Tipo de conciliação">
                     <button type="button" class="brw-mode" :class="{ 'is-active': isMovement }" :aria-pressed="isMovement" @click="changeType('cash_movement')">
                         <x-filament::icon icon="heroicon-o-link" />

@@ -2,7 +2,6 @@
 
 namespace App\Services\Financial\BankStatement;
 
-use App\Models\BankStatementLine;
 use App\Models\Partner;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -59,25 +58,11 @@ class SearchBankReconciliationCandidates
         $page = max(1, min($page, 10000));
         $results = $query->orderByRaw('ABS('.$amountColumn.' - ?)', [$total])
             ->orderBy($dateColumn)->orderBy('id')->offset(($page - 1) * 20)->limit(21)->get();
-        $tolerance = max(0, (int) ($first->financialAccount?->reconciliation_date_tolerance_days ?? 3));
+        $presenter = app(BankReconciliationCandidatePresenter::class);
 
         return [
             'has_more' => $results->count() > 20,
-            'records' => $results->take(20)->map(function ($record) use ($movement, $parent, $amountColumn, $dateColumn, $lines, $tolerance, $total): array {
-                $amount = (int) round((float) $record->{$amountColumn} * 100);
-                $dateException = $movement && $lines->contains(fn (BankStatementLine $line) => abs($line->transaction_date->diffInDays($record->transaction_date)) > $tolerance);
-                $counterparty = $movement ? $record->counterparty_label : $record->{$parent}?->counterparty_label;
-
-                return [
-                    'id' => $record->id,
-                    'description' => $record->description ?: ($movement ? 'Sem descrição' : ($record->{$parent}?->description ?: 'Sem descrição')),
-                    'party' => $counterparty === 'Não informado' ? null : $counterparty,
-                    'date' => $record->{$dateColumn}?->format('d/m/Y'),
-                    'amount_cents' => $amount,
-                    'exact_match' => $amount === $total,
-                    'date_exception' => $dateException,
-                ];
-            })->values()->all(),
+            'records' => $results->take(20)->map(fn ($record) => $presenter->present($record, $lines, $type))->values()->all(),
         ];
     }
 

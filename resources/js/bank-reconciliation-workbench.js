@@ -11,10 +11,18 @@
         bankExpanded: false,
         error: '',
         request: 0,
+        suggestions: [],
+        suggestionsLoading: false,
+        suggestionsError: '',
+        suggestionsWarning: '',
+        suggestionsRequest: 0,
 
         init() {
             this.state ??= { type: 'cash_movement', items: [], exception_reason: '' };
-            if (this.bank.valid) this.load();
+            if (this.bank.valid) {
+                this.load();
+                this.loadSuggestions();
+            }
         },
         get items() { return this.state?.items ?? []; },
         get isMovement() { return this.state.type === 'cash_movement'; },
@@ -67,6 +75,39 @@
             this.state = { type, items: [], exception_reason: '' };
             this.search = '';
             this.load();
+        },
+        isSuggestionSelected(record) {
+            return this.state.type === record.type && this.isSelected(record.id);
+        },
+        canSelectSuggestion(record) {
+            return !this.items.length || this.state.type === record.type;
+        },
+        selectSuggestion(record) {
+            if (!this.canSelectSuggestion(record)) return;
+            if (this.state.type !== record.type) this.changeType(record.type);
+            this.toggle(record);
+        },
+        async loadSuggestions() {
+            if (!config.loadSuggestions || !this.bank.valid) return;
+            const request = ++this.suggestionsRequest;
+            this.suggestionsLoading = true;
+            this.suggestionsError = '';
+            this.suggestionsWarning = '';
+            this.suggestions = [];
+            try {
+                const response = await config.loadSuggestions();
+                if (request !== this.suggestionsRequest) return;
+                this.suggestions = response.records;
+                if (response.failed_lines > 0) {
+                    this.suggestionsWarning = 'Não foi possível consultar as sugestões de ' + response.failed_lines
+                        + ' lançamento(s). Atualize para tentar novamente.';
+                }
+            } catch (error) {
+                if (request !== this.suggestionsRequest) return;
+                this.suggestionsError = 'Não foi possível carregar as sugestões. Você pode tentar novamente ou usar a busca abaixo.';
+            } finally {
+                if (request === this.suggestionsRequest) this.suggestionsLoading = false;
+            }
         },
         toggle(record) {
             if (this.isSelected(record.id)) {

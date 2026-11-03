@@ -55,6 +55,12 @@
     .brw-selection-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .brw-count { display: inline-block; background: var(--brw-soft); border-radius: 5px; padding: 1px 7px; margin-left: 5px; font-size: 12px; }
     .brw-text-button { color: var(--brw-accent); font-size: 11px !important; font-weight: 600 !important; background: none; }
+    .brw-suggestions { margin-top: 18px; border: 1px solid var(--brw-border); border-radius: 12px; padding: 14px; background: var(--brw-soft); }
+    .brw-suggestions-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .brw-suggestions > p { margin-top: 8px; font-size: 11px; }
+    .brw-suggestion-list { max-height: 330px; overflow-y: auto; margin-top: 10px; border-radius: 8px; }
+    .brw-suggestion .brw-suggestion-origin { color: var(--brw-accent); font-weight: 650; margin: 0 0 4px; }
+    .brw-suggestion .brw-suggestion-reason { white-space: normal; line-height: 1.5; }
     .brw-selected-list { max-height: 380px; overflow-y: auto; }
     .brw-selected-entry { border-top: 1px solid var(--brw-border); padding-bottom: 12px; }
     .brw-selected-item { display: flex; align-items: start; gap: 12px; padding: 12px 0; }

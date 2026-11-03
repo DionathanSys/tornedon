@@ -157,3 +157,78 @@ test('encargos inválidos e descontos excessivos bloqueiam confirmação; movime
     assert.equal(component.items[0].interest_amount, 0);
     assert.equal(component.adjustedBalance(component.items[0]), 100000);
 });
+
+test('carrega sugestões e busca manual ao abrir, sem selecionar registros automaticamente', async () => {
+    let searches = 0;
+    let suggestions = 0;
+    const component = workbench({
+        searchRecords: async () => { searches++; return { records: [], has_more: false }; },
+        loadSuggestions: async () => { suggestions++; return { records: [record(1, 100000, { type: 'receivable' })], failed_lines: 0 }; },
+    });
+    component.init();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(searches, 1);
+    assert.equal(suggestions, 1);
+    assert.equal(component.suggestions.length, 1);
+    assert.equal(component.items.length, 0);
+    assert.equal(component.canSubmit, false);
+});
+
+test('seleciona sugestão de outra origem e distingue IDs iguais de movimentos e parcelas', () => {
+    const component = workbench({ state: { type: 'cash_movement', items: [], exception_reason: '' } });
+    const installment = record(1, 100000, { type: 'receivable' });
+    const movement = record(1, 100000, { type: 'cash_movement' });
+    component.selectSuggestion(installment);
+    assert.equal(component.state.type, 'receivable');
+    assert.equal(component.items[0].amount, 1000);
+    assert.equal(component.isSuggestionSelected(installment), true);
+    assert.equal(component.isSuggestionSelected(movement), false);
+    assert.equal(component.canSelectSuggestion(movement), false);
+    component.selectSuggestion(movement);
+    assert.equal(component.state.type, 'receivable');
+    assert.equal(component.items[0].id, 1);
+    component.selectSuggestion(installment);
+    assert.equal(component.items.length, 0);
+    component.selectSuggestion(movement);
+    assert.equal(component.state.type, 'cash_movement');
+    assert.equal(component.isSuggestionSelected(movement), true);
+    assert.equal(component.needsReason, false);
+});
+
+test('falha de sugestões preserva busca e seleção, permite recuperação e reporta falha parcial', async () => {
+    let failure = true;
+    const component = workbench({
+        searchRecords: async () => ({ records: [record(1, 100000)], has_more: false }),
+        loadSuggestions: async () => {
+            if (failure) throw new Error('network');
+            return { records: [record(2, 90000, { type: 'receivable' })], failed_lines: 1 };
+        },
+    });
+    await component.load();
+    component.toggle(component.results[0]);
+    await component.loadSuggestions();
+    assert.match(component.suggestionsError, /busca abaixo/);
+    assert.equal(component.results[0].id, 1);
+    assert.equal(component.items[0].id, 1);
+    assert.equal(component.canSubmit, true);
+    failure = false;
+    await component.loadSuggestions();
+    assert.equal(component.suggestionsError, '');
+    assert.equal(component.suggestions.length, 1);
+    assert.match(component.suggestionsWarning, /1 lançamento/);
+    assert.equal(component.items[0].id, 1);
+});
+
+test('resposta atrasada de sugestões não substitui a atualização mais recente', async () => {
+    const requests = [];
+    const component = workbench({ loadSuggestions: () => new Promise(resolve => requests.push(resolve)) });
+    const old = component.loadSuggestions();
+    const current = component.loadSuggestions();
+    requests[1]({ records: [record(2, 100000, { type: 'receivable' })], failed_lines: 0 });
+    await current;
+    requests[0]({ records: [record(1, 100000, { type: 'receivable' })], failed_lines: 1 });
+    await old;
+    assert.equal(component.suggestions[0].id, 2);
+    assert.equal(component.suggestionsWarning, '');
+    assert.equal(component.suggestionsLoading, false);
+});
