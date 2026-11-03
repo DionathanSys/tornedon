@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Services;
 
+use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
+use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\Quotes\QuoteResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Settings\Pages\CompanyPreferences;
@@ -12,6 +14,7 @@ use App\Models\AccountPayableInstallment;
 use App\Models\Company;
 use App\Models\CompanyRole;
 use App\Models\CompanyRoleAssignment;
+use App\Models\Partner;
 use App\Models\Quote;
 use App\Models\QuoteItem;
 use App\Models\Service;
@@ -23,6 +26,7 @@ use App\Services\Access\CompanyTeamService;
 use App\Services\Access\PermissionCatalog;
 use App\Services\Access\UserAccessService;
 use App\Services\AccountPayable\AccountPayableService;
+use App\Services\ServiceOrder\Actions\CreateServiceOrderAction;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -178,6 +182,78 @@ class CompanyAuthorizationTest extends TestCase
         $this->expectException(AuthorizationException::class);
         $assigned->technician_id = $owner->id;
         $assigned->save();
+    }
+
+    public function test_mobile_technician_can_create_order_with_empty_assignees_without_assignment_permission(): void
+    {
+        [$owner, $company, $teams] = $this->company();
+        $technician = User::factory()->create();
+        $customer = Partner::factory()->create();
+        $role = $this->role($owner, $company, [
+            ...PermissionCatalog::templates()['Técnico'],
+            'service_orders.create' => 'company',
+        ]);
+        $teams->assign($owner, $company, $technician, [$role->id]);
+        $this->actingAs($technician);
+        Filament::setCurrentPanel('mobile');
+        Filament::setTenant($company);
+
+        $action = new CreateServiceOrderAction($technician->id);
+        $order = $action->execute([
+            'number' => 'OS-MOBILE-NULL',
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'order_date' => today()->toDateString(),
+            'status' => State::OPEN,
+            'priority' => Priority::NORMAL,
+            'type' => Type::MAINTENANCE,
+            'technician_id' => null,
+            'supervisor_id' => null,
+            'salesperson_id' => null,
+        ]);
+
+        $this->assertNotNull($order, $action->getMessage() ?? 'A ordem de serviço deve ser criada.');
+        $this->assertDatabaseHas('service_orders', [
+            'id' => $order->id,
+            'company_id' => $company->id,
+            'created_by' => $technician->id,
+            'technician_id' => null,
+            'supervisor_id' => null,
+            'salesperson_id' => null,
+        ]);
+    }
+
+    public function test_creating_order_with_an_assignee_still_requires_assignment_permission(): void
+    {
+        [$owner, $company, $teams] = $this->company();
+        $technician = User::factory()->create();
+        $role = $this->role($owner, $company, ['service_orders.create' => 'company']);
+        $teams->assign($owner, $company, $technician, [$role->id]);
+        $this->actingAs($technician);
+
+        $this->expectException(AuthorizationException::class);
+        $this->expectExceptionMessage('Você não pode alterar responsáveis.');
+        ServiceOrder::factory()->create([
+            'company_id' => $company->id,
+            'technician_id' => $technician->id,
+        ]);
+    }
+
+    public function test_removing_order_assignee_still_requires_assignment_permission(): void
+    {
+        [$owner, $company, $teams] = $this->company();
+        $technician = User::factory()->create();
+        $order = ServiceOrder::factory()->create([
+            'company_id' => $company->id,
+            'technician_id' => $technician->id,
+        ]);
+        $role = $this->role($owner, $company, PermissionCatalog::templates()['Técnico']);
+        $teams->assign($owner, $company, $technician, [$role->id]);
+        $this->actingAs($technician);
+
+        $this->expectException(AuthorizationException::class);
+        $this->expectExceptionMessage('Você não pode alterar responsáveis.');
+        $order->update(['technician_id' => null]);
     }
 
     public function test_read_only_user_cannot_save_a_visible_record_and_revocation_changes_queries_immediately(): void

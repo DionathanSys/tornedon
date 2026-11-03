@@ -163,6 +163,11 @@ class RoleAccessEnforcement
     private function validateAssignees(Model $record, array $definition, User $user, Company $company): void
     {
         foreach ($definition['assigned'] as $column) {
+            // An empty assignee on creation does not assign or remove anyone.
+            if (! $record->exists && $record->getAttribute($column) === null) {
+                continue;
+            }
+
             if ($record->isDirty($column)) {
                 throw_unless($this->access->allows($user, $company, $definition['module'].'.assign'), AuthorizationException::class, 'Você não pode alterar responsáveis.');
                 if ($record->getAttribute($column)) {
