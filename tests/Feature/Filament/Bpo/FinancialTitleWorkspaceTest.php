@@ -34,6 +34,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class FinancialTitleWorkspaceTest extends TestCase
@@ -258,6 +259,11 @@ class FinancialTitleWorkspaceTest extends TestCase
                 ->assertSee('Anexos do lançamento')->assertSee('Saldo considerado')->assertSee('DOC-2026')
                 ->assertSeeLivewire(RecordAttachments::class)->assertSeeLivewire($installments)->assertSeeLivewire($payments);
             $response->assertDontSee('relationManagerTabs');
+            $this->get($resource::getUrl('edit', ['record' => $record], panel: 'bpo', tenant: $this->company))
+                ->assertOk()->assertSee('bpo-account-top-grid', false)->assertSee('bpo-account-relationship-grid', false)
+                ->assertSee('bpo-form-content', false)->assertSee('Anexos do lançamento')
+                ->assertSeeLivewire(RecordAttachments::class)->assertSeeLivewire($installments)->assertSeeLivewire($payments)
+                ->assertDontSee('relationManagerTabs')->assertDontSee('Confira antes de salvar');
         }
     }
 
@@ -377,22 +383,28 @@ class FinancialTitleWorkspaceTest extends TestCase
         $relation->call('$refresh')->assertForbidden();
     }
 
-    public function test_receipt_menu_shows_named_actions_and_editing_preserves_money_and_refreshes_relationships(): void
+    public static function paymentTypes(): array
     {
-        $record = $this->title(false);
+        return ['pagamento' => [true], 'recebimento' => [false]];
+    }
+
+    #[DataProvider('paymentTypes')]
+    public function test_payment_menu_shows_named_actions_and_editing_preserves_money_and_refreshes_relationships(bool $payable): void
+    {
+        $record = $this->title($payable);
         $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa dos recebimentos', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
         $this->authenticate();
-        $service = app(AccountReceivableService::class);
+        $service = app($payable ? AccountPayableService::class : AccountReceivableService::class);
         $payment = $service->registerInstallmentPayment($record->installments()->firstOrFail(), 40, today()->toDateString(), ['financial_account_id' => $account->id]);
         $this->assertNotNull($payment, $service->getMessage());
-        $page = Livewire::test(ReceivablePayments::class, ['ownerRecord' => $record, 'pageClass' => ViewReceivable::class]);
+        $page = Livewire::test($payable ? PayablePayments::class : ReceivablePayments::class, ['ownerRecord' => $record, 'pageClass' => $payable ? ViewPayable::class : ViewReceivable::class]);
         $group = $page->instance()->getTable()->getRecordActions()[0];
         $this->assertSame(Heroicon::Bars3, $group->getIcon());
         foreach ($group->getFlatActions() as $action) {
             $this->assertFalse($action->isIconButton());
             $this->assertFalse($action->isLabelHidden());
         }
-        $page->assertSee('Editar recebimento')->assertSee('Excluir recebimento')
+        $page->assertSee($payable ? 'Editar pagamento' : 'Editar recebimento')->assertSee($payable ? 'Excluir pagamento' : 'Excluir recebimento')
             ->mountAction(TestAction::make('edit_payment')->table($payment))
             ->assertActionDataSet(['amount' => '40,00', 'financial_account_id' => $account->id]);
         $modal = $page->getMountedActionModalHtml();

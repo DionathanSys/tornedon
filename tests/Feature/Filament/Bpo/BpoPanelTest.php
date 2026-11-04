@@ -176,7 +176,7 @@ class BpoPanelTest extends TestCase
                 ->assertSee('bpo-list-workbench', false)->assertSee('bpo-workbench-page-heading', false)->assertDontSee('operation-ui', false);
         }
         foreach ([AccountPayableResource::class, AccountReceivableResource::class, CashMovementResource::class] as $resource) {
-            $this->get($resource::getUrl('create', panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('Confira antes de salvar');
+            $this->get($resource::getUrl('create', panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-form-content', false)->assertDontSee('Confira antes de salvar');
         }
         $this->get(AccountPayableResource::getUrl('edit', ['record' => $record], panel: 'bpo', tenant: $this->company))->assertOk();
         $this->get(AccountPayableResource::getUrl('view', ['record' => $record], panel: 'bpo', tenant: $this->company))->assertOk();
