@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Filament\Bpo;
 
+use App\Filament\Bpo\Resources\AccountPayableInstallmentResource;
+use App\Filament\Bpo\Resources\AccountPayableInstallments\Pages\ListInstallments;
 use App\Filament\Bpo\Resources\AccountPayableResource;
 use App\Filament\Bpo\Resources\AccountPayables\Pages\ListAccounts as ListPayables;
 use App\Filament\Bpo\Resources\AccountPayables\Pages\ViewAccount as ViewPayable;
@@ -17,6 +19,7 @@ use App\Models\AccountPayable;
 use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
+use App\Models\FinancialCategory;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
 use App\Services\Access\PermissionCatalog;
@@ -126,6 +129,122 @@ class FinancialTitleWorkspaceTest extends TestCase
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
         $this->assertLessThan(500, count($queries), 'Consultas na listagem: '.count($queries));
+    }
+
+    public function test_payable_workspace_lists_and_ignores_individual_installments(): void
+    {
+        $title = $this->title();
+        [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
+        $this->authenticate();
+
+        $page = Livewire::test(ListInstallments::class)
+            ->assertCountTableRecords(2)->assertCanSeeTableRecords([$first, $second])
+            ->assertTableColumnExists('due_date')->assertTableColumnExists('balance_amount')
+            ->assertSee('Parcelas a Pagar')
+            ->callAction(TestAction::make('ignore_financial')->table($first), data: ['reason' => 'Revisar somente a primeira parcela'])
+            ->assertHasNoActionErrors();
+
+        $this->assertNotNull($first->fresh()->ignored_at);
+        $this->assertNull($second->fresh()->ignored_at);
+        $page->assertCanSeeTableRecords([$second])->assertCanNotSeeTableRecords([$first])
+            ->set('activeTab', 'ignored')->assertCanSeeTableRecords([$first])->assertCanNotSeeTableRecords([$second])
+            ->callAction(TestAction::make('restore_consideration')->table($first), data: ['reason' => 'Parcela revisada e considerada novamente'])
+            ->assertHasNoActionErrors();
+
+        $this->assertNull($first->fresh()->ignored_at);
+        $group = $page->instance()->getTable()->getRecordActions()[0];
+        $this->assertSame(Heroicon::Bars3, $group->getIcon());
+        $this->assertSame('Ações da parcela', $group->getTooltip());
+        foreach ($group->getFlatActions() as $action) {
+            $this->assertSame($action->getLabel(), $action->getTooltip());
+        }
+
+        $this->get(AccountPayableInstallmentResource::getUrl(panel: 'bpo', tenant: $this->company))
+            ->assertOk()->assertSee('Parcelas a Pagar');
+    }
+
+    public function test_installment_listing_queries_do_not_grow_per_row_or_action(): void
+    {
+        $parent = FinancialCategory::create(['company_id' => $this->company->id, 'name' => 'Despesas', 'is_active' => true]);
+        for ($i = 0; $i < 25; $i++) {
+            $category = FinancialCategory::create(['company_id' => $this->company->id, 'parent_id' => $parent->id, 'name' => 'Categoria '.$i, 'is_active' => true]);
+            $this->title()->installments()->update(['financial_category_id' => $category->id]);
+        }
+        $this->authenticate();
+        $page = Livewire::test(ListInstallments::class);
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $page->set('tableRecordsPerPage', 50)->assertCountTableRecords(50);
+        $queries = DB::getQueryLog();
+        DB::flushQueryLog();
+        $page->set('tableRecordsPerPage', 15);
+        $smallPageQueries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertLessThan(250, count($queries), json_encode([
+            'total' => count($queries),
+            'small_page' => $smallPageQueries,
+            'repeated' => collect($queries)->countBy('query')->sortDesc()->take(8)->all(),
+        ], JSON_PRETTY_PRINT));
+        $this->assertLessThanOrEqual(20, count($queries) - $smallPageQueries, 'As consultas não devem crescer por parcela ou ação.');
+    }
+
+    public function test_installment_tab_counts_follow_due_dates_search_and_status_filters(): void
+    {
+        $title = $this->title();
+        [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
+        $first->update(['due_date' => today()->subDay()]);
+        $second->update(['due_date' => today()]);
+        $this->authenticate();
+
+        $page = Livewire::test(ListInstallments::class);
+        $tabs = $page->instance()->getTabs();
+        $this->assertSame('2', $tabs['pending']->getBadge());
+        $this->assertSame('1', $tabs['overdue']->getBadge());
+        $this->assertSame('1', $tabs['today']->getBadge());
+        $this->assertSame('2', $tabs['all']->getBadge());
+        $page->set('activeTab', 'today')->assertCanSeeTableRecords([$second])->assertCanNotSeeTableRecords([$first]);
+        $page->searchTable('sem correspondencia')->assertCountTableRecords(0);
+        foreach ($page->instance()->getTabs() as $tab) {
+            $this->assertSame('0', $tab->getBadge());
+        }
+        $page->searchTable('')->filterTable('status', ['cancelled'])->assertCountTableRecords(0);
+        $this->assertSame('0', $page->instance()->getTabs()['all']->getBadge());
+    }
+
+    public function test_installment_listing_registers_payment_only_for_the_selected_installment(): void
+    {
+        $title = $this->title();
+        [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
+        $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
+        $this->authenticate();
+
+        Livewire::test(ListInstallments::class)
+            ->callAction(TestAction::make('register_payment')->table($first), data: [
+                'payment_date' => today()->toDateString(), 'amount' => '40,00', 'interest_amount' => '0,00',
+                'fine_amount' => '0,00', 'discount_amount' => '0,00', 'financial_account_id' => $account->id,
+            ])->assertHasNoActionErrors();
+
+        $this->assertSame(40.0, (float) $first->fresh()->paid_amount);
+        $this->assertSame(0.0, (float) $second->fresh()->paid_amount);
+        $this->assertDatabaseCount('cash_movements', 1);
+    }
+
+    public function test_installment_listing_preserves_parent_ownership_and_rechecks_revoked_access(): void
+    {
+        $own = $this->title();
+        $other = $this->title();
+        $other->update(['created_by' => $this->owner->id]);
+        $role = $this->teams->saveRole($this->owner, $this->company, ['name' => 'Parcelas próprias', 'panels' => ['bpo'], 'permissions' => ['account_payables.view' => 'own']]);
+        $this->teams->assign($this->owner, $this->company, $this->user, [$role->id], $this->engagementId);
+        $this->authenticate();
+
+        $page = Livewire::test(ListInstallments::class)->assertCanSeeTableRecords($own->installments)
+            ->assertCanNotSeeTableRecords($other->installments)
+            ->assertActionHidden(TestAction::make('register_payment')->table($own->installments->first()))
+            ->assertActionHidden(TestAction::make('edit_installment')->table($own->installments->first()));
+        $this->teams->endBpo($this->owner, $this->company, $this->engagementId);
+        $page->call('$refresh')->assertForbidden();
     }
 
     public function test_both_account_types_render_the_custom_header_attachments_and_two_managers_without_tabs(): void

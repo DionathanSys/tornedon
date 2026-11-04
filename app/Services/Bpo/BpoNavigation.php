@@ -21,7 +21,7 @@ class BpoNavigation
             ['cash_flow', 'Previsão de caixa', 'heroicon-o-presentation-chart-line', null, route('filament.bpo.cash-flow', ['company' => $company->id])],
             ['sales', 'Vendas e faturamento', 'heroicon-o-shopping-cart', 'bpo_sales.view', Pages\Sales::getUrl(panel: 'bpo', tenant: $company)],
             ['sale_templates', 'Modelos de venda', 'heroicon-o-document-duplicate', 'sale_templates.view', Pages\SaleTemplates::getUrl(panel: 'bpo', tenant: $company)],
-            ['payables', 'Contas a pagar', 'heroicon-o-arrow-up-right', 'account_payables.view', Resources\AccountPayableResource::getUrl(panel: 'bpo', tenant: $company)],
+            ['payables', 'Parcelas a Pagar', 'heroicon-o-arrow-up-right', 'account_payables.view', Resources\AccountPayableInstallmentResource::getUrl(panel: 'bpo', tenant: $company)],
             ['receivables', 'Contas a receber', 'heroicon-o-arrow-down-left', 'account_receivables.view', Resources\AccountReceivableResource::getUrl(panel: 'bpo', tenant: $company)],
             ['cash', 'Movimentações', 'heroicon-o-arrows-right-left', 'cash_movements.view', Resources\CashMovementResource::getUrl(panel: 'bpo', tenant: $company)],
             ['reconciliation', 'Conciliação bancária', 'heroicon-o-building-library', 'bank_statements.view', Resources\BankStatementImportResource::getUrl(panel: 'bpo', tenant: $company)],
