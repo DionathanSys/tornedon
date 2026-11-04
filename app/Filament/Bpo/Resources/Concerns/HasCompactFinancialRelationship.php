@@ -7,6 +7,7 @@ use App\Services\Access\CompanyAuthorization;
 use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +30,7 @@ trait HasCompactFinancialRelationship
             }
         }
         $actions = $table->getRecordActions();
+        $paymentActions = [];
         foreach ($actions as $item) {
             foreach ($item instanceof ActionGroup ? $item->getFlatActions() : [$item] as $action) {
                 $name = $action->getName();
@@ -41,10 +43,13 @@ trait HasCompactFinancialRelationship
                 };
                 $action->authorize(fn () => app(CompanyAuthorization::class)->allowsRecord(Filament::auth()->user(), Filament::getTenant(),
                     ($this->getOwnerRecord() instanceof AccountPayable ? 'account_payables' : 'account_receivables').'.'.$permission, $this->getOwnerRecord()));
+                if ($payments) {
+                    $paymentActions[] = $action->grouped()->hiddenLabel(false);
+                }
             }
         }
         if ($payments) {
-            $table->recordActions([ActionGroup::make($actions)->icon('heroicon-o-ellipsis-horizontal')->tooltip('Ações da baixa')]);
+            $table->recordActions([ActionGroup::make($paymentActions)->icon(Heroicon::Bars3)->tooltip('Ações da baixa')->iconButton()]);
         }
 
         return $table->heading($payments ? ($this->getOwnerRecord() instanceof AccountPayable ? 'Pagamentos' : 'Recebimentos') : 'Parcelas')

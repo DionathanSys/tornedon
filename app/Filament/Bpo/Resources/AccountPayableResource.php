@@ -3,9 +3,9 @@
 namespace App\Filament\Bpo\Resources;
 
 use App\Filament\Bpo\Resources\AccountPayables\Pages;
+use App\Filament\Bpo\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Filament\Clusters\Financial\RelationManagers\AccountAttachmentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager;
-use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Models\AccountPayable;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;

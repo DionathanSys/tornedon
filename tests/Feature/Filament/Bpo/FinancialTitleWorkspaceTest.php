@@ -9,11 +9,14 @@ use App\Filament\Bpo\Resources\AccountPayables\Pages\ListAccounts as ListPayable
 use App\Filament\Bpo\Resources\AccountPayables\Pages\ViewAccount as ViewPayable;
 use App\Filament\Bpo\Resources\AccountPayables\RelationManagers\InstallmentsRelationManager as PayableInstallments;
 use App\Filament\Bpo\Resources\AccountPayables\RelationManagers\PaymentsRelationManager as PayablePayments;
+use App\Filament\Bpo\Resources\AccountReceivableInstallmentResource;
+use App\Filament\Bpo\Resources\AccountReceivableInstallments\Pages\ListInstallments as ListReceivableInstallments;
 use App\Filament\Bpo\Resources\AccountReceivableResource;
 use App\Filament\Bpo\Resources\AccountReceivables\Pages\ListAccounts as ListReceivables;
 use App\Filament\Bpo\Resources\AccountReceivables\Pages\ViewAccount as ViewReceivable;
 use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager as ReceivableInstallments;
 use App\Filament\Bpo\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager as ReceivablePayments;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\PaymentsRelationManager;
 use App\Livewire\Bpo\RecordAttachments;
 use App\Models\AccountPayable;
 use App\Models\CashMovement;
@@ -26,6 +29,7 @@ use App\Services\Access\PermissionCatalog;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Attachments\AttachmentService;
+use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
@@ -132,16 +136,18 @@ class FinancialTitleWorkspaceTest extends TestCase
         $this->assertLessThan(500, count($queries), 'Consultas na listagem: '.count($queries));
     }
 
-    public function test_payable_workspace_lists_and_ignores_individual_installments(): void
+    #[DataProvider('paymentTypes')]
+    public function test_workspace_lists_individual_installments_as_accounts(bool $payable): void
     {
-        $title = $this->title();
+        $title = $this->title($payable);
         [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
         $this->authenticate();
 
-        $page = Livewire::test(ListInstallments::class)
+        $page = Livewire::test($payable ? ListInstallments::class : ListReceivableInstallments::class)
             ->assertCountTableRecords(2)->assertCanSeeTableRecords([$first, $second])
             ->assertTableColumnExists('due_date')->assertTableColumnExists('balance_amount')
-            ->assertSee('Parcelas a Pagar')
+            ->assertSee($payable ? 'Contas a Pagar' : 'Contas a Receber')
+            ->assertSee('Editar conta')->assertSee('Excluir conta')
             ->callAction(TestAction::make('ignore_financial')->table($first), data: ['reason' => 'Revisar somente a primeira parcela'])
             ->assertHasNoActionErrors();
 
@@ -155,24 +161,27 @@ class FinancialTitleWorkspaceTest extends TestCase
         $this->assertNull($first->fresh()->ignored_at);
         $group = $page->instance()->getTable()->getRecordActions()[0];
         $this->assertSame(Heroicon::Bars3, $group->getIcon());
-        $this->assertSame('Ações da parcela', $group->getTooltip());
+        $this->assertSame('Ações da conta', $group->getTooltip());
+        $this->assertArrayHasKey('id', $page->instance()->getTable()->getColumns());
+        $this->assertArrayNotHasKey('sequence_number', $page->instance()->getTable()->getColumns());
         foreach ($group->getFlatActions() as $action) {
             $this->assertSame($action->getLabel(), $action->getTooltip());
         }
 
-        $this->get(AccountPayableInstallmentResource::getUrl(panel: 'bpo', tenant: $this->company))
-            ->assertOk()->assertSee('Parcelas a Pagar');
+        $this->get(($payable ? AccountPayableInstallmentResource::class : AccountReceivableInstallmentResource::class)::getUrl(panel: 'bpo', tenant: $this->company))
+            ->assertOk()->assertSee($payable ? 'Contas a Pagar' : 'Contas a Receber')->assertDontSee('Nenhuma parcela encontrada');
     }
 
-    public function test_installment_listing_queries_do_not_grow_per_row_or_action(): void
+    #[DataProvider('paymentTypes')]
+    public function test_installment_listing_queries_do_not_grow_per_row_or_action(bool $payable): void
     {
         $parent = FinancialCategory::create(['company_id' => $this->company->id, 'name' => 'Despesas', 'is_active' => true]);
         for ($i = 0; $i < 25; $i++) {
             $category = FinancialCategory::create(['company_id' => $this->company->id, 'parent_id' => $parent->id, 'name' => 'Categoria '.$i, 'is_active' => true]);
-            $this->title()->installments()->update(['financial_category_id' => $category->id]);
+            $this->title($payable)->installments()->update(['financial_category_id' => $category->id]);
         }
         $this->authenticate();
-        $page = Livewire::test(ListInstallments::class);
+        $page = Livewire::test($payable ? ListInstallments::class : ListReceivableInstallments::class);
         DB::enableQueryLog();
         DB::flushQueryLog();
         $page->set('tableRecordsPerPage', 50)->assertCountTableRecords(50);
@@ -190,15 +199,16 @@ class FinancialTitleWorkspaceTest extends TestCase
         $this->assertLessThanOrEqual(20, count($queries) - $smallPageQueries, 'As consultas não devem crescer por parcela ou ação.');
     }
 
-    public function test_installment_tab_counts_follow_due_dates_search_and_status_filters(): void
+    #[DataProvider('paymentTypes')]
+    public function test_installment_tab_counts_follow_due_dates_search_and_status_filters(bool $payable): void
     {
-        $title = $this->title();
+        $title = $this->title($payable);
         [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
         $first->update(['due_date' => today()->subDay()]);
         $second->update(['due_date' => today()]);
         $this->authenticate();
 
-        $page = Livewire::test(ListInstallments::class);
+        $page = Livewire::test($payable ? ListInstallments::class : ListReceivableInstallments::class);
         $tabs = $page->instance()->getTabs();
         $this->assertSame('2', $tabs['pending']->getBadge());
         $this->assertSame('1', $tabs['overdue']->getBadge());
@@ -213,34 +223,62 @@ class FinancialTitleWorkspaceTest extends TestCase
         $this->assertSame('0', $page->instance()->getTabs()['all']->getBadge());
     }
 
-    public function test_installment_listing_registers_payment_only_for_the_selected_installment(): void
+    #[DataProvider('paymentTypes')]
+    public function test_installment_listing_registers_payment_only_for_the_selected_installment(bool $payable): void
     {
-        $title = $this->title();
+        $title = $this->title($payable);
         [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
         $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
         $this->authenticate();
 
-        Livewire::test(ListInstallments::class)
+        Livewire::test($payable ? ListInstallments::class : ListReceivableInstallments::class)
             ->callAction(TestAction::make('register_payment')->table($first), data: [
                 'payment_date' => today()->toDateString(), 'amount' => '40,00', 'interest_amount' => '0,00',
                 'fine_amount' => '0,00', 'discount_amount' => '0,00', 'financial_account_id' => $account->id,
             ])->assertHasNoActionErrors();
 
-        $this->assertSame(40.0, (float) $first->fresh()->paid_amount);
-        $this->assertSame(0.0, (float) $second->fresh()->paid_amount);
+        $amountColumn = $payable ? 'paid_amount' : 'received_amount';
+        $this->assertSame(40.0, (float) $first->fresh()->{$amountColumn});
+        $this->assertSame(0.0, (float) $second->fresh()->{$amountColumn});
         $this->assertDatabaseCount('cash_movements', 1);
     }
 
-    public function test_installment_listing_preserves_parent_ownership_and_rechecks_revoked_access(): void
+    #[DataProvider('paymentTypes')]
+    public function test_editing_and_deleting_a_listed_account_only_changes_its_installment(bool $payable): void
     {
-        $own = $this->title();
-        $other = $this->title();
+        $title = $this->title($payable);
+        [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
+        $this->authenticate();
+
+        $page = Livewire::test($payable ? ListInstallments::class : ListReceivableInstallments::class)
+            ->mountAction(TestAction::make('edit_installment')->table($first));
+        $modal = $page->getMountedActionModalHtml();
+        $this->assertStringContainsString('Editar conta #'.$first->id, $modal);
+        $this->assertStringContainsString('Valor da conta', $modal);
+        $this->assertStringNotContainsString('Valor da parcela', $modal);
+        $page->setActionData(['original_amount' => '125,50', 'description' => 'Conta revisada'])->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(125.5, (float) $first->fresh()->original_amount);
+        $this->assertSame(100.0, (float) $second->fresh()->original_amount);
+        $page->callAction(TestAction::make('delete_installment')->table($first))->assertHasNoActionErrors();
+        $this->assertDatabaseMissing($first->getTable(), ['id' => $first->id]);
+        $this->assertDatabaseHas($second->getTable(), ['id' => $second->id]);
+        $this->assertDatabaseHas($title->getTable(), ['id' => $title->id]);
+    }
+
+    #[DataProvider('paymentTypes')]
+    public function test_installment_listing_preserves_parent_ownership_and_rechecks_revoked_access(bool $payable): void
+    {
+        $own = $this->title($payable);
+        $other = $this->title($payable);
         $other->update(['created_by' => $this->owner->id]);
-        $role = $this->teams->saveRole($this->owner, $this->company, ['name' => 'Parcelas próprias', 'panels' => ['bpo'], 'permissions' => ['account_payables.view' => 'own']]);
+        $module = $payable ? 'account_payables' : 'account_receivables';
+        $role = $this->teams->saveRole($this->owner, $this->company, ['name' => 'Contas próprias', 'panels' => ['bpo'], 'permissions' => [$module.'.view' => 'own']]);
         $this->teams->assign($this->owner, $this->company, $this->user, [$role->id], $this->engagementId);
         $this->authenticate();
 
-        $page = Livewire::test(ListInstallments::class)->assertCanSeeTableRecords($own->installments)
+        $page = Livewire::test($payable ? ListInstallments::class : ListReceivableInstallments::class)->assertCanSeeTableRecords($own->installments)
             ->assertCanNotSeeTableRecords($other->installments)
             ->assertActionHidden(TestAction::make('register_payment')->table($own->installments->first()))
             ->assertActionHidden(TestAction::make('edit_installment')->table($own->installments->first()));
@@ -397,9 +435,24 @@ class FinancialTitleWorkspaceTest extends TestCase
         $service = app($payable ? AccountPayableService::class : AccountReceivableService::class);
         $payment = $service->registerInstallmentPayment($record->installments()->firstOrFail(), 40, today()->toDateString(), ['financial_account_id' => $account->id]);
         $this->assertNotNull($payment, $service->getMessage());
+        $baseManager = $payable
+            ? PaymentsRelationManager::class
+            : \App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\PaymentsRelationManager::class;
+        $basePage = Livewire::test($baseManager, ['ownerRecord' => $record, 'pageClass' => $payable ? ViewPayable::class : ViewReceivable::class]);
+        $baseGroup = $basePage->instance()->getTable()->getRecordActions()[0];
+        $this->assertSame(Heroicon::Bars3, $baseGroup->getIcon());
+        foreach ($baseGroup->getActions() as $action) {
+            $this->assertInstanceOf(Action::class, $action);
+            $this->assertFalse($action->isIconButton());
+            $this->assertFalse($action->isLabelHidden());
+        }
         $page = Livewire::test($payable ? PayablePayments::class : ReceivablePayments::class, ['ownerRecord' => $record, 'pageClass' => $payable ? ViewPayable::class : ViewReceivable::class]);
         $group = $page->instance()->getTable()->getRecordActions()[0];
         $this->assertSame(Heroicon::Bars3, $group->getIcon());
+        $this->assertCount(2, $group->getActions());
+        foreach ($group->getActions() as $action) {
+            $this->assertInstanceOf(Action::class, $action);
+        }
         foreach ($group->getFlatActions() as $action) {
             $this->assertFalse($action->isIconButton());
             $this->assertFalse($action->isLabelHidden());

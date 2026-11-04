@@ -6,6 +6,7 @@ use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\A
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditPaymentAction;
 use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -85,18 +86,20 @@ class PaymentsRelationManager extends RelationManager
             ->defaultSort('payment_date', 'desc')
             ->headerActions([])
             ->recordActions([
-                EditPaymentAction::make()
-                    ->iconButton()
-                    ->after(function (PaymentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-payments');
-                        $livewire->dispatch('refresh-installments');
-                    }),
-                DeletePaymentAction::make()
-                    ->iconButton()
-                    ->after(function (PaymentsRelationManager $livewire) {
-                        $livewire->dispatch('refresh-payments');
-                        $livewire->dispatch('refresh-installments');
-                    }),
+                ActionGroup::make([
+                    EditPaymentAction::make()
+                        ->grouped()->hiddenLabel(false)
+                        ->after(function (PaymentsRelationManager $livewire) {
+                            $livewire->dispatch('refresh-payments');
+                            $livewire->dispatch('refresh-installments');
+                        }),
+                    DeletePaymentAction::make()
+                        ->grouped()->hiddenLabel(false)
+                        ->after(function (PaymentsRelationManager $livewire) {
+                            $livewire->dispatch('refresh-payments');
+                            $livewire->dispatch('refresh-installments');
+                        }),
+                ])->icon(Heroicon::Bars3)->label('Ações do pagamento')->tooltip('Ações do pagamento')->iconButton(),
             ])
             ->toolbarActions([])
             ->tap(fn (Table $table) => FinancialTableColumns::configure($table))

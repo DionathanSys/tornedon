@@ -13,7 +13,7 @@ use Leandrocfe\FilamentPtbrFormFields\Money;
 
 final class InstallmentEditForm
 {
-    public static function components(string $scope): array
+    public static function components(string $scope, bool $asAccount = false): array
     {
         return [
             Section::make('Valor e datas')
@@ -23,7 +23,7 @@ final class InstallmentEditForm
                 ->columns(['default' => 1, 'md' => 3])
                 ->schema([
                     Money::make('original_amount')
-                        ->label('Valor da parcela')
+                        ->label($asAccount ? 'Valor da conta' : 'Valor da parcela')
                         ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
                         ->required(),
                     DatePicker::make('due_date')
@@ -63,7 +63,7 @@ final class InstallmentEditForm
                 ->columns(['default' => 1, 'md' => 2])
                 ->schema([
                     Textarea::make('description')
-                        ->label('Descrição da parcela')
+                        ->label($asAccount ? 'Descrição da conta' : 'Descrição da parcela')
                         ->rows(3)
                         ->maxLength(255),
                     Textarea::make('notes')
