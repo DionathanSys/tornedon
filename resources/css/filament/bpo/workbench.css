@@ -21,6 +21,7 @@
 .bpo-form-guide .bpo-account-fields { grid-template-columns:1fr; padding:20px; gap:20px; }
 .bpo-form-guide .bpo-account-fields dd { font-size:11px; font-weight:400; }
 .bpo-form-content .fi-sc-form { gap:22px; }
+.bpo-account-edit .bpo-account-top-grid { grid-template-columns:minmax(0,1fr); }
 .bpo-shell .ctw-intro { padding:20px 24px; border:1px solid var(--bpo-border); border-radius:12px; background:var(--bpo-surface); }
 .bpo-shell .ctw-list,.bpo-shell .ctw-detail { border-radius:12px; box-shadow:none; }
 
@@ -33,6 +34,9 @@
 .bpo-shell .dre-report-table tbody tr:hover { background:var(--bpo-hover); }
 .bpo-shell .dre-report-table tbody .dre-summary-row { background:var(--bpo-icon-bg); color:var(--bpo-info-text); }
 
+@media (min-width:1600px) {
+    .bpo-account-edit .bpo-account-top-grid { grid-template-columns:minmax(0,1fr) 320px; }
+}
 @media (max-width:1400px) {
     .bpo-form-grid { grid-template-columns:minmax(0,1fr); }
     .bpo-form-guide { position:static; }

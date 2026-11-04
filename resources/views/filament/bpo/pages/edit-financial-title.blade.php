@@ -1,4 +1,4 @@
-<x-filament-panels::page class="bpo-workbench-page bpo-account-detail">
+<x-filament-panels::page class="bpo-workbench-page bpo-account-detail bpo-account-edit">
     @php($account = $this->relationshipDetails())
 
     <div class="bpo-account-top-grid">
