@@ -201,7 +201,9 @@ class ImportBankStatementService
                     $status = $line->reconciliation_status;
                     $currentPayloadHash = $line->source_payload_hash
                         ?? data_get($line->metadata, 'line_hash');
-                    $hasChanged = ! hash_equals((string) $currentPayloadHash, $sourcePayloadHash);
+                    // Compare NAME separately to preserve hashes and fallback identities from earlier imports.
+                    $nameHasChanged = (data_get($line->metadata, 'raw.name') ?? '') !== ($transaction->raw['name'] ?? '');
+                    $hasChanged = ! hash_equals((string) $currentPayloadHash, $sourcePayloadHash) || $nameHasChanged;
 
                     if (! $hasChanged) {
                         $line->update([

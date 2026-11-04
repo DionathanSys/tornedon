@@ -2526,6 +2526,148 @@ OFX;
         return $lines;
     }
 
+    public static function nameOnlyTransactionIdentities(): array
+    {
+        return ['com FITID' => ['NAME-ONLY'], 'sem FITID' => ['']];
+    }
+
+    #[DataProvider('nameOnlyTransactionIdentities')]
+    public function test_reimport_updates_a_name_only_change_and_refreshes_pending_suggestions_without_changing_identity(string $fitid): void
+    {
+        $first = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['manual_counterparty_name' => 'José da Silva']);
+        $second = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['manual_counterparty_name' => 'Maria Pereira']);
+        $original = $this->buildNamedOfx('JOSE DA SILVA', $fitid);
+        $import = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $original, 'nome-original.ofx', $this->user->id);
+        $this->assertNotNull($import, $this->importService->getMessageUser());
+        $line = $import->lines()->sole();
+        $this->assertSame($first->id, $line->suggestions()[0]['origin_id']);
+        $identity = [$line->id, $line->external_id, $line->transaction_key, $line->source_payload_hash];
+
+        $corrected = $this->buildNamedOfx('MARIA PEREIRA', $fitid);
+        $reimport = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $corrected, 'nome-corrigido.ofx', $this->user->id);
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $updated = $reimport->lines()->sole();
+        $this->assertSame($identity, [$updated->id, $updated->external_id, $updated->transaction_key, $updated->source_payload_hash]);
+        $this->assertSame('MARIA PEREIRA', data_get($updated->metadata, 'raw.name'));
+        $this->assertSame('PIX RECEBIDO', $updated->description);
+        $this->assertSame('pending', $updated->reconciliation_status->value);
+        $this->assertSame($second->id, $updated->suggestions()[0]['origin_id']);
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()->summary['updated']);
+        $this->assertDatabaseCount('cash_movements', 2);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $this->assertNull($this->importService->importFromString($this->company->id, $this->financialAccount->id, $corrected, 'arquivo-renomeado.ofx', $this->user->id));
+        $this->assertStringContainsString('já foi processado', $this->importService->getMessageUser());
+    }
+
+    public static function reconciledNameOnlyFlows(): array
+    {
+        return ['vínculo individual' => [false], 'conciliação em grupo' => [true]];
+    }
+
+    #[DataProvider('reconciledNameOnlyFlows')]
+    public function test_reimport_name_only_changes_require_review_and_preserve_financial_links_and_decision_history(bool $group): void
+    {
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100, ['manual_counterparty_name' => 'José da Silva']);
+        $import = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildNamedOfx('JOSE DA SILVA'), 'original.ofx', $this->user->id);
+        $line = $import->lines()->sole();
+        if ($group) {
+            app(ReconcileBankStatementGroupService::class)->reconcile($this->company->id, [$line->id], 'cash_movement', [['id' => $movement->id]], $this->user->id);
+        } else {
+            $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+        }
+        $line->refresh();
+        $links = [$line->cash_movement_id, $line->bank_reconciliation_group_id, $line->reconciled_at->toDateTimeString()];
+        $decision = BankReconciliationDecision::query()->sole()->getRawOriginal();
+        $movementData = $movement->fresh()->getRawOriginal();
+        // Older records may rely on metadata.line_hash instead of source_payload_hash.
+        $line->update(['source_payload_hash' => null]);
+
+        $reimport = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildNamedOfx('MARIA PEREIRA'), 'corrigido.ofx', $this->user->id);
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $updated = $reimport->lines()->sole();
+        $this->assertSame($line->id, $updated->id);
+        $this->assertSame('needs_review', $updated->reconciliation_status->value);
+        $this->assertSame('MARIA PEREIRA', data_get($updated->metadata, 'raw.name'));
+        $this->assertSame($links, [$updated->cash_movement_id, $updated->bank_reconciliation_group_id, $updated->reconciled_at->toDateTimeString()]);
+        $this->assertSame($movementData, $movement->fresh()->getRawOriginal());
+        $this->assertSame($decision, BankReconciliationDecision::query()->sole()->getRawOriginal());
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()->summary['needs_review']);
+        $this->assertDatabaseCount('cash_movements', 1);
+        $this->assertSame($group ? 1 : 0, DB::table('bank_statement_allocations')->count());
+    }
+
+    public static function unchangedLegacyNameCases(): array
+    {
+        return ['hash existente' => [false, false], 'hash legado' => [true, false], 'nome ausente no legado' => [true, true]];
+    }
+
+    #[DataProvider('unchangedLegacyNameCases')]
+    public function test_reimport_preserves_unchanged_names_in_current_and_legacy_reconciled_records(bool $legacyHash, bool $withoutName): void
+    {
+        $ofx = $this->buildNamedOfx($withoutName ? null : 'JOSE DA SILVA');
+        $import = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $ofx, 'original.ofx', $this->user->id);
+        $line = $import->lines()->sole();
+        $movement = $this->createCashMovement(CashMovementDirection::INFLOW, 100);
+        $this->assertNotNull($this->resolveService->reconcileWithCashMovement($line, $movement->id, $this->user->id));
+        $line->refresh();
+        if ($legacyHash) {
+            $line->update(['source_payload_hash' => null]);
+        }
+        if ($withoutName) {
+            $metadata = $line->metadata;
+            $metadata['raw']['name'] = '';
+            $line->update(['metadata' => $metadata]);
+        }
+
+        $reimport = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $ofx."\n", 'reimportado.ofx', $this->user->id);
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $updated = $reimport->lines()->sole();
+        $this->assertSame('reconciled', $updated->reconciliation_status->value);
+        $this->assertNull($updated->needs_review_at);
+        $this->assertSame($line->id, $updated->id);
+        $this->assertSame($movement->id, $updated->cash_movement_id);
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()->summary['preserved']);
+        $this->assertSame(0, $reimport->runs()->latest('id')->first()->summary['needs_review']);
+    }
+
+    public static function addedAndRemovedNames(): array
+    {
+        return ['nome acrescentado' => [null, 'MARIA PEREIRA'], 'nome removido' => ['JOSE DA SILVA', null]];
+    }
+
+    #[DataProvider('addedAndRemovedNames')]
+    public function test_reimport_detects_added_and_removed_names(?string $originalName, ?string $newName): void
+    {
+        $import = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildNamedOfx($originalName), 'original.ofx', $this->user->id);
+        $id = $import->lines()->sole()->id;
+        $reimport = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildNamedOfx($newName), 'atualizado.ofx', $this->user->id);
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $this->assertSame($id, $reimport->lines()->sole()->id);
+        $this->assertSame($newName, data_get($reimport->lines()->sole()->metadata, 'raw.name'));
+        $this->assertSame(1, $reimport->runs()->latest('id')->first()->summary['updated']);
+    }
+
+    public function test_reimport_name_only_changes_on_an_ignored_line_request_review_without_creating_movements(): void
+    {
+        $import = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildNamedOfx('JOSE DA SILVA'), 'original.ofx', $this->user->id);
+        $line = $import->lines()->sole();
+        $this->assertNotNull($this->resolveService->ignore($line, $this->user->id, 'Lançamento desconsiderado após conferência.'));
+        $reimport = $this->importService->importFromString($this->company->id, $this->financialAccount->id, $this->buildNamedOfx('MARIA PEREIRA'), 'atualizado.ofx', $this->user->id);
+        $this->assertNotNull($reimport, $this->importService->getMessageUser());
+        $this->assertSame('needs_review', $line->fresh()->reconciliation_status->value);
+        $this->assertSame('MARIA PEREIRA', data_get($line->fresh()->metadata, 'raw.name'));
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    private function buildNamedOfx(?string $name, string $fitid = 'NAME-ONLY'): string
+    {
+        $ofx = $this->buildOfx('237', [[
+            'type' => 'CREDIT', 'date' => '20260411', 'amount' => '100.00', 'fitid' => $fitid, 'memo' => 'PIX RECEBIDO',
+        ]]);
+
+        return $name === null ? $ofx : str_replace('<MEMO>', '<NAME>'.htmlspecialchars($name, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</NAME>'."\n".'<MEMO>', $ofx);
+    }
+
     private function importLine(string $type, string $amount, string $fitid): BankStatementLine
     {
         $import = $this->importService->importFromString(
