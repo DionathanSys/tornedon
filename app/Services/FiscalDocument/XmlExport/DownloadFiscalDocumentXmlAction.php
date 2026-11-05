@@ -29,6 +29,16 @@ class DownloadFiscalDocumentXmlAction
                 return null;
             }
 
+            $xml = $this->extractXml($fiscalDocument->isNfse()
+                ? $fiscalDocument->nfse_payload
+                : $fiscalDocument->nfe_payload);
+
+            if ($xml !== null) {
+                $this->setSuccess();
+
+                return $xml;
+            }
+
             if (blank($fiscalDocument->document_key)) {
                 $this->setError('Chave de acesso não encontrada no documento fiscal.');
 
@@ -70,9 +80,9 @@ class DownloadFiscalDocumentXmlAction
 
         return $this->rateLimiter->run(
             token: $token,
-            bucket: 'default',
-            key: null,
-            callback: fn (): object => $sdk->download(['chave' => $fiscalDocument->document_key]),
+            bucket: 'key',
+            key: (string) $fiscalDocument->document_key,
+            callback: fn (): object => $sdk->consulta(['chave' => $fiscalDocument->document_key]),
         );
     }
 
