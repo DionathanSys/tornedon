@@ -53,6 +53,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -104,6 +105,16 @@ class QuickSalesTest extends TestCase
     private function payment(string $policy = 'create_receivable'): array
     {
         return ['financial_policy' => $policy, 'payment_method' => Method::PIX->value, 'payment_condition' => Condition::DAYS_30_60_90->value];
+    }
+
+    private function fillSaleWizard(Testable $page, array $data): Testable
+    {
+        foreach (array_diff_key($data, ['items' => true]) as $field => $value) {
+            $page->set('mountedActions.0.data.'.$field, $value);
+        }
+        $key = array_key_first($page->get('mountedActions.0.data.items'));
+
+        return $page->set("mountedActions.0.data.items.{$key}", $data['items'][0]);
     }
 
     private function reportSale(float $price, bool $finalize = true, ?string $date = null, float $travel = 0): BpoSale
@@ -319,6 +330,85 @@ class QuickSalesTest extends TestCase
 
         $sale = BpoSale::sole();
         $this->assertSame($this->service->id, $sale->source()->items()->sole()->service_id);
+    }
+
+    public function test_new_sale_can_be_finalized_in_the_same_wizard(): void
+    {
+        $page = Livewire::test(Sales::class)->mountAction('newSale');
+        $this->assertTrue($page->instance()->getMountedAction()->isWizard());
+        $this->fillSaleWizard($page, $this->payload() + $this->payment() + ['finalize_now' => true])
+            ->callMountedAction()->assertHasNoActionErrors()->assertNotified('Venda finalizada');
+
+        $sale = BpoSale::sole();
+        $this->assertNotNull($sale->finalized_at);
+        $this->assertSame(190.0, (float) $sale->invoice->netValue);
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertDatabaseCount('account_receivables', 1);
+        $this->assertDatabaseCount('account_receivable_installments', 3);
+    }
+
+    public function test_existing_draft_can_be_edited_and_finalized_in_the_same_wizard(): void
+    {
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $data = $this->payload() + $this->payment('fiscal_only') + ['finalize_now' => true];
+        $data['items'][0]['quantity'] = 3;
+
+        $page = Livewire::test(Sales::class)->mountAction(TestAction::make('editSale')->table($sale));
+        $this->fillSaleWizard($page, $data)->callMountedAction()->assertHasNoActionErrors()->assertNotified('Venda finalizada');
+
+        $this->assertNotNull($sale->fresh()->finalized_at);
+        $this->assertSame(290.0, (float) $sale->fresh()->invoice->netValue);
+        $this->assertDatabaseCount('bpo_sales', 1);
+        $this->assertDatabaseCount('account_receivables', 0);
+    }
+
+    public function test_inline_finalization_failure_preserves_form_and_rolls_back_the_new_sale(): void
+    {
+        $target = app(AccountReceivableService::class)->create(['company_id' => $this->company->id, 'customer_id' => $this->customer->id,
+            'description' => 'Recebível com valor incompatível', 'due_date' => today()->addDays(30), 'due_amount' => 10, 'payment_method' => 'pix', 'installment_count' => 1], $this->bpo->id);
+        $page = Livewire::test(Sales::class)->mountAction('newSale');
+        $this->fillSaleWizard($page, $this->payload() + $this->payment('link_existing') + ['finalize_now' => true,
+            'financial_target_id' => $target->id]);
+        $page->callMountedAction()->assertHasActionErrors(['items'])->assertActionMounted('newSale')
+            ->assertNotified('Não foi possível finalizar a venda');
+        $this->assertDatabaseCount('bpo_sales', 0);
+        $this->assertDatabaseCount('service_orders', 0);
+        $this->assertDatabaseCount('invoices', 0);
+        $this->assertDatabaseCount('account_receivables', 1);
+
+        $page->set('mountedActions.0.data.financial_policy', 'create_receivable')->callMountedAction()->assertHasNoActionErrors();
+        $this->assertNotNull(BpoSale::sole()->finalized_at);
+    }
+
+    public function test_inline_finalization_can_request_emission_without_leaving_the_modal(): void
+    {
+        $this->mock(NfseDocumentService::class, function ($mock): void {
+            $mock->shouldReceive('emitir')->once()->andReturn(true);
+            $mock->shouldReceive('hasError')->andReturn(false);
+        });
+
+        $page = Livewire::test(Sales::class)->mountAction('newSale');
+        $this->fillSaleWizard($page, $this->payload() + $this->payment() + ['finalize_now' => true, 'request_emission' => true])
+            ->callMountedAction()->assertHasNoActionErrors()->assertNotified('Emissão solicitada');
+
+        $this->assertNotNull(BpoSale::sole()->finalized_at);
+        $this->assertDatabaseCount('invoices', 1);
+    }
+
+    public function test_emission_failure_keeps_inline_sale_finalized_and_closes_the_wizard(): void
+    {
+        $this->mock(NfseDocumentService::class, function ($mock): void {
+            $mock->shouldReceive('emitir')->once()->andThrow(ValidationException::withMessages(['emission' => 'Emissão indisponível.']));
+        });
+
+        $page = Livewire::test(Sales::class)->mountAction('newSale');
+        $this->fillSaleWizard($page, $this->payload() + $this->payment() + ['finalize_now' => true, 'request_emission' => true])
+            ->callMountedAction()->assertHasNoActionErrors()->assertActionNotMounted('newSale')
+            ->assertNotified('Venda finalizada, mas a emissão não foi solicitada');
+
+        $this->assertNotNull(BpoSale::sole()->finalized_at);
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertDatabaseCount('account_receivables', 1);
     }
 
     public function test_nfe_draft_with_multiple_products_is_saved_and_can_be_edited(): void

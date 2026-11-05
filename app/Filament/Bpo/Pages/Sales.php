@@ -44,6 +44,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -53,6 +54,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -167,7 +169,8 @@ class Sales extends Page implements HasTable
     private function saleAction(string $name, bool $editing = false): Action
     {
         return Action::make($name)->label($editing ? 'Continuar rascunho' : 'Nova venda')->icon('heroicon-o-shopping-cart')
-            ->modalHeading($editing ? 'Continuar venda' : 'Nova venda')->modalWidth('5xl')->modalSubmitActionLabel('Salvar rascunho')
+            ->modalHeading($editing ? 'Continuar venda' : 'Nova venda')->modalWidth('5xl')->stickyModalFooter()
+            ->modalSubmitActionLabel(fn () => ($this->mountedActions[array_key_last($this->mountedActions)]['data']['finalize_now'] ?? false) && $this->allows('bpo_sales.approve') ? 'Finalizar venda' : 'Salvar rascunho')
             ->visible(fn (?BpoSale $record) => ! $record?->finalized_at && $this->allows('bpo_sales.'.($editing ? 'update' : 'create')))
             ->fillForm(function (?BpoSale $record): array {
                 if (! $record) {
@@ -178,44 +181,76 @@ class Sales extends Page implements HasTable
 
                 return ['revision' => $sale->revision, 'document_type' => $sale->template_snapshot['document_type'], 'sale_template_id' => $sale->sale_template_id, 'customer_id' => $source->customer_id,
                     'sale_date' => ($source instanceof ServiceOrder ? $source->order_date : $source->sale_date)->toDateString(),
+                    'payment_date' => ($source instanceof ServiceOrder ? $source->order_date : $source->sale_date)->toDateString(),
                     'description' => $sale->payment_settings['description'] ?? null,
                     'items' => $source->items->map(fn ($item) => ['catalog_id' => $item->service_id ?? $item->product_id, 'quantity' => $item->quantity,
-                        'unit_price' => $item->unit_price, 'discount_amount' => $item->discount_amount])->all()];
-            })->schema([
-                Hidden::make('revision')->default(0),
-                Hidden::make('document_type'),
-                Select::make('sale_template_id')->label('Modelo de venda')->options(fn () => SaleTemplate::where('company_id', Filament::getTenant()->id)->where('is_active', true)->pluck('name', 'id'))
-                    ->required()->searchable()->live()->disabled($editing)->dehydrated()->afterStateUpdated(function ($state, Set $set): void {
-                        $template = SaleTemplate::where('company_id', Filament::getTenant()->id)->find($state);
-                        $set('document_type', $template?->document_type?->value);
-                        // Replacing hydrated rows must preserve UUID keys and initialize every
-                        // field, including null values required by Livewire's Alpine entanglement.
-                        $set('items', [(string) Str::uuid() => [
-                            'catalog_id' => null, 'quantity' => 1, 'unit_price' => null, 'discount_amount' => 0,
-                        ]]);
-                    }),
-                Select::make('customer_id')->label('Cliente')->options(fn () => $this->customerOptions())->searchable()
-                    ->getSearchResultsUsing(fn (string $search) => $this->customerOptions($search))->getOptionLabelUsing(fn ($value) => $this->customerLabel($value))->required(),
-                DatePicker::make('sale_date')->label('Data da venda')->required(),
-                Textarea::make('description')->label('Descrição do serviço / observações')->maxLength(1000),
-                Repeater::make('items')->label('Itens da venda')->minItems(1)->maxItems(100)->columns(4)->schema([
-                    Select::make('catalog_id')->label('Serviço ou produto')->required()->searchable()->live()->options(fn (Get $get) => $this->catalogResults($get))
-                        ->getSearchResultsUsing(fn (Get $get, string $search) => $this->catalogResults($get, $search))
-                        ->getOptionLabelUsing(fn (Get $get, $value) => $this->catalogLabel($get, $value))
-                        ->afterStateUpdated(function ($state, Get $get, Set $set): void {
-                            $catalog = (($get('../../document_type') ?: $this->templateType($get('../../sale_template_id'))) === 'nfse' ? Service::query() : Product::query())
-                                ->where('company_id', Filament::getTenant()->id)->find($state);
-                            $set('unit_price', $catalog instanceof Service ? $catalog->price : $catalog?->sale_price_value);
+                        'unit_price' => $item->unit_price, 'discount_amount' => $item->discount_amount])->all()] + ($sale->payment_settings ?? []);
+            })->steps([
+                Step::make('Dados da venda')->icon('heroicon-o-document-text')->schema([
+                    Hidden::make('revision')->default(0),
+                    Hidden::make('document_type'),
+                    Select::make('sale_template_id')->label('Modelo de venda')->options(fn () => SaleTemplate::where('company_id', Filament::getTenant()->id)->where('is_active', true)->pluck('name', 'id'))
+                        ->required()->searchable()->live()->disabled($editing)->dehydrated()->afterStateUpdated(function ($state, Set $set): void {
+                            $template = SaleTemplate::where('company_id', Filament::getTenant()->id)->find($state);
+                            $set('document_type', $template?->document_type?->value);
+                            // Replacing hydrated rows must preserve UUID keys and initialize every
+                            // field, including null values required by Livewire's Alpine entanglement.
+                            $set('items', [(string) Str::uuid() => [
+                                'catalog_id' => null, 'quantity' => 1, 'unit_price' => null, 'discount_amount' => 0,
+                            ]]);
                         }),
-                    TextInput::make('quantity')->label('Quantidade')->numeric()->minValue(0.001)->required()->default(1),
-                    TextInput::make('unit_price')->label('Preço unitário (R$)')->numeric()->minValue(0.01)->required(),
-                    TextInput::make('discount_amount')->label('Desconto (R$)')->numeric()->minValue(0)->default(0),
-                ])->helperText('NFS-e: um serviço por venda. NF-e: múltiplos produtos. Os valores são recalculados no servidor.'),
+                    Select::make('customer_id')->label('Cliente')->options(fn () => $this->customerOptions())->searchable()
+                        ->getSearchResultsUsing(fn (string $search) => $this->customerOptions($search))->getOptionLabelUsing(fn ($value) => $this->customerLabel($value))->required(),
+                    DatePicker::make('sale_date')->label('Data da venda')->required(),
+                    Textarea::make('description')->label('Descrição do serviço / observações')->maxLength(1000),
+                ]),
+                Step::make('Itens')->icon('heroicon-o-shopping-cart')->schema([
+                    Repeater::make('items')->label('Itens da venda')->minItems(1)->maxItems(100)->columns(4)->schema([
+                        Select::make('catalog_id')->label('Serviço ou produto')->required()->searchable()->live()->options(fn (Get $get) => $this->catalogResults($get))
+                            ->getSearchResultsUsing(fn (Get $get, string $search) => $this->catalogResults($get, $search))
+                            ->getOptionLabelUsing(fn (Get $get, $value) => $this->catalogLabel($get, $value))
+                            ->afterStateUpdated(function ($state, Get $get, Set $set): void {
+                                $catalog = (($get('../../document_type') ?: $this->templateType($get('../../sale_template_id'))) === 'nfse' ? Service::query() : Product::query())
+                                    ->where('company_id', Filament::getTenant()->id)->find($state);
+                                $set('unit_price', $catalog instanceof Service ? $catalog->price : $catalog?->sale_price_value);
+                            }),
+                        TextInput::make('quantity')->label('Quantidade')->numeric()->minValue(0.001)->required()->default(1),
+                        TextInput::make('unit_price')->label('Preço unitário (R$)')->numeric()->minValue(0.01)->required(),
+                        TextInput::make('discount_amount')->label('Desconto (R$)')->numeric()->minValue(0)->default(0),
+                    ])->helperText('NFS-e: um serviço por venda. NF-e: múltiplos produtos. Os valores são recalculados no servidor.'),
+                ]),
+                Step::make('Conclusão')->icon('heroicon-o-check-circle')->schema([
+                    Toggle::make('finalize_now')->label('Finalizar venda agora')->default(false)->live()
+                        ->visible(fn () => $this->allows('bpo_sales.approve'))
+                        ->helperText('Ative para revisar o pagamento e gerar a fatura. Desativado, a venda será salva como rascunho.'),
+                    Grid::make(['default' => 1, 'md' => 2])->schema($this->paymentSchema(inline: true))
+                        ->visible(fn (Get $get) => (bool) $get('finalize_now') && $this->allows('bpo_sales.approve')),
+                ]),
             ])->action(function (array $data, ?BpoSale $record) use ($editing): void {
-                $this->executeWorkflow(fn () => app(QuickSaleWorkflow::class)->save(Filament::auth()->user(), Filament::getTenant(), $data, $this->requestId,
-                    $editing ? $record->id : null, (int) ($data['revision'] ?? 0)), 'Não foi possível salvar o rascunho');
+                $finalize = (bool) ($data['finalize_now'] ?? false);
+                $workflow = app(QuickSaleWorkflow::class);
+                $sale = $this->executeWorkflow(fn () => DB::transaction(function () use ($workflow, $data, $record, $editing, $finalize): BpoSale {
+                    $sale = $workflow->save(Filament::auth()->user(), Filament::getTenant(), $data, $this->requestId,
+                        $editing ? $record->id : null, (int) ($data['revision'] ?? 0));
+
+                    return $finalize ? $workflow->finalize(Filament::auth()->user(), Filament::getTenant(), $sale->id, $sale->revision, $data) : $sale;
+                }), $finalize ? 'Não foi possível finalizar a venda' : 'Não foi possível salvar o rascunho');
                 $this->requestId = (string) Str::uuid();
-                Notification::make()->title('Rascunho salvo')->body('Use Finalizar para revisar o pagamento e gerar a fatura.')->success()->send();
+                if (! $finalize) {
+                    Notification::make()->title('Rascunho salvo')->body('Continue a venda para revisar o pagamento e finalizar.')->success()->send();
+
+                    return;
+                }
+                Notification::make()->title('Venda finalizada')->body('Fatura criada. O tratamento financeiro foi registrado.')->success()->send();
+                if ($data['request_emission'] ?? false) {
+                    try {
+                        $workflow->requestEmission(Filament::auth()->user(), Filament::getTenant(), $sale->id);
+                        Notification::make()->title('Emissão solicitada')->success()->send();
+                    } catch (ValidationException $exception) {
+                        Notification::make()->title('Venda finalizada, mas a emissão não foi solicitada')
+                            ->body(e(collect($exception->errors())->flatten()->unique()->implode("\n")))->danger()->send();
+                    }
+                }
             });
     }
 
@@ -257,20 +292,22 @@ class Sales extends Page implements HasTable
         }
     }
 
-    private function paymentSchema(): array
+    private function paymentSchema(bool $inline = false): array
     {
         return [
-            Hidden::make('revision'),
-            TextEntry::make('review_total')->label('Total da venda')->state(fn (BpoSale $record) => 'R$ '.number_format($record->source()->total_amount, 2, ',', '.'))->columnSpanFull(),
+            ...($inline ? [] : [Hidden::make('revision')]),
+            TextEntry::make('review_total')->label('Total da venda')->state(fn (Get $get, ?BpoSale $record) => 'R$ '.number_format($inline
+                ? collect($get('items') ?? [])->sum(fn (array $item) => round(round((float) ($item['quantity'] ?? 0), 3) * round((float) ($item['unit_price'] ?? 0), 2), 2) - round((float) ($item['discount_amount'] ?? 0), 2))
+                : $record->source()->total_amount, 2, ',', '.'))->columnSpanFull(),
             Select::make('financial_policy')->label('Tratamento financeiro')->options(['create_receivable' => 'Gerar contas a receber', 'link_existing' => 'Vincular recebível existente', 'fiscal_only' => 'Somente emitir nota'])->default('create_receivable')->required()->live()
                 ->columnSpanFull()->afterStateUpdated(function (Set $set): void {
                     $set('mark_as_received', false);
                     $set('auto_bank_slip_issuance', false);
                     $set('auto_pix_charge_issuance', false);
                 }),
-            Select::make('financial_target_id')->label('Recebível existente')->searchable()->options(fn (BpoSale $record) => AccountReceivable::where('company_id', Filament::getTenant()->id)
-                ->where('customer_id', $record->source()->customer_id)->whereNull('invoice_id')->whereNull('fiscal_document_id')->limit(50)->get()->mapWithKeys(fn ($title) => [$title->id => '#'.$title->id.' · '.$title->description.' · R$ '.number_format($title->due_amount, 2, ',', '.')]))
-                ->getSearchResultsUsing(fn (BpoSale $record, string $search) => AccountReceivable::where('company_id', Filament::getTenant()->id)->where('customer_id', $record->source()->customer_id)
+            Select::make('financial_target_id')->label('Recebível existente')->searchable()->options(fn (Get $get, ?BpoSale $record) => AccountReceivable::where('company_id', Filament::getTenant()->id)
+                ->where('customer_id', $inline ? $get('customer_id') : $record->source()->customer_id)->whereNull('invoice_id')->whereNull('fiscal_document_id')->limit(50)->get()->mapWithKeys(fn ($title) => [$title->id => '#'.$title->id.' · '.$title->description.' · R$ '.number_format($title->due_amount, 2, ',', '.')]))
+                ->getSearchResultsUsing(fn (Get $get, ?BpoSale $record, string $search) => AccountReceivable::where('company_id', Filament::getTenant()->id)->where('customer_id', $inline ? $get('customer_id') : $record->source()->customer_id)
                     ->whereNull('invoice_id')->whereNull('fiscal_document_id')->where(fn ($query) => $query->where('description', 'like', '%'.$search.'%')->orWhere('document_number', 'like', '%'.$search.'%'))
                     ->limit(50)->get()->mapWithKeys(fn ($title) => [$title->id => '#'.$title->id.' · '.$title->description]))
                 ->getOptionLabelUsing(fn ($value) => AccountReceivable::where('company_id', Filament::getTenant()->id)->find($value)?->description)
