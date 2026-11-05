@@ -32,22 +32,29 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
 use Filament\Support\Enums\Size;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class ServiceOrdersTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['items', 'requisition.items']))
             ->columns([
                 TextColumn::make('number')
                     ->label('Número')
@@ -169,7 +176,6 @@ class ServiceOrdersTable
                 SelectFilter::make('customer_id')
                     ->label('Cliente')
                     ->searchable()
-                    ->preload()
                     ->getSearchResultsUsing(
                         fn (string $search): array => (new PartnerService)
                             ->searchForSelect($search, Filament::getTenant()->id, 'customer', 20, ['document_number' => false])
@@ -182,7 +188,6 @@ class ServiceOrdersTable
                 SelectFilter::make('equipment_id')
                     ->label('Equipamento')
                     ->searchable()
-                    ->preload()
                     ->getSearchResultsUsing(
                         fn (string $search): array => (new EquipmentService)
                             ->searchForSelect($search, Filament::getTenant()->id, null, 20, ['owner' => false])
@@ -202,18 +207,37 @@ class ServiceOrdersTable
                     ->options(State::toSelectArray())
                     ->native(false)
                     ->multiple(),
-                DateRangeFilter::make('order_date')
+                Filter::make('order_date')
                     ->label('Data da Ordem')
-                    ->autoApply()
-                    ->firstDayOfWeek(0)
-                    ->icon('heroicon-o-x-mark')
-                    ->alwaysShowCalendar(),
+                    ->schema([
+                        DatePicker::make('from')->label('Data da ordem: de'),
+                        DatePicker::make('until')->label('Data da ordem: até')->afterOrEqual('from'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'] ?? null, fn (Builder $query, string $date): Builder => $query->where('order_date', '>=', $date))
+                        ->when($data['until'] ?? null, fn (Builder $query, string $date): Builder => $query->where('order_date', '<', Carbon::parse($date)->addDay()->startOfDay())))
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if ($data['from'] ?? null) {
+                            $indicators[] = Indicator::make('Data da ordem: de '.Carbon::parse($data['from'])->format('d/m/Y'))->removeField('from');
+                        }
+
+                        if ($data['until'] ?? null) {
+                            $indicators[] = Indicator::make('Data da ordem: até '.Carbon::parse($data['until'])->format('d/m/Y'))->removeField('until');
+                        }
+
+                        return $indicators;
+                    }),
                 SelectFilter::make('type')
                     ->label('Tipo')
                     ->options(Type::toSelectArray())
                     ->native(false)
                     ->multiple(),
-            ])
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(['default' => 1, 'md' => 2])
+            ->filtersFormWidth(Width::ThreeExtraLarge)
+            ->filtersTriggerAction(fn (Action $action): Action => $action->stickyModalHeader()->stickyModalFooter())
             ->persistFiltersInSession()
             ->defaultSort('order_date', 'desc')
             ->recordActions([
@@ -234,7 +258,7 @@ class ServiceOrdersTable
                     DeleteAction::make()
                         ->hiddenLabel()
                         ->icon(Heroicon::Trash)
-                        ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
+                        ->visible(fn (Model $record): bool => blank($record->invoice_id) && $record->requisition === null)
                         ->using(function (Model $record): bool {
                             Log::debug('EditServiceOrder: Iniciando exclusão de ordem de serviço', [
                                 'metodo' => __METHOD__.'@'.__LINE__,
