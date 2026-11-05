@@ -184,6 +184,9 @@ class ServiceOrdersTable
                         fn ($value): ?string => (new PartnerService)
                             ->getLabelForSelect((int) $value, ['document_number' => false])
                     )
+                    ->indicateUsing(fn (SelectFilter $filter, array $state): ?string => filled($state['value'] ?? null)
+                        ? 'Cliente: '.($filter->evaluate($filter->getOptionLabelUsingCallback(), ['value' => $state['value']]) ?? $state['value'])
+                        : null)
                     ->native(false),
                 SelectFilter::make('equipment_id')
                     ->label('Equipamento')
@@ -196,6 +199,9 @@ class ServiceOrdersTable
                         fn ($value): ?string => (new EquipmentService)
                             ->getLabelForSelect((int) $value)
                     )
+                    ->indicateUsing(fn (SelectFilter $filter, array $state): ?string => filled($state['value'] ?? null)
+                        ? 'Equipamento: '.($filter->evaluate($filter->getOptionLabelUsingCallback(), ['value' => $state['value']]) ?? $state['value'])
+                        : null)
                     ->native(false),
                 SelectFilter::make('priority')
                     ->label('Prioridade')
@@ -237,7 +243,10 @@ class ServiceOrdersTable
             ], layout: FiltersLayout::Modal)
             ->filtersFormColumns(['default' => 1, 'md' => 2])
             ->filtersFormWidth(Width::ThreeExtraLarge)
-            ->filtersTriggerAction(fn (Action $action): Action => $action->stickyModalHeader()->stickyModalFooter())
+            ->filtersTriggerAction(fn (Action $action): Action => $action
+                ->stickyModalHeader()
+                ->stickyModalFooter()
+                ->extraModalWindowAttributes(['style' => 'grid-row: 1 / -1; align-self: center;']))
             ->persistFiltersInSession()
             ->defaultSort('order_date', 'desc')
             ->recordActions([

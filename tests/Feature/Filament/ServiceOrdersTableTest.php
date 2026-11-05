@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Enum\Equipment\Type as EquipmentType;
 use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\ListServiceOrders;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\Company;
+use App\Models\Equipment;
 use App\Models\Partner;
 use App\Models\Product;
 use App\Models\Requisition;
@@ -124,6 +126,44 @@ class ServiceOrdersTableTest extends TestCase
             ->filterTable('order_date', ['from' => null, 'until' => '2026-10-02'])
             ->assertCanSeeTableRecords([$before, $start])
             ->assertCanNotSeeTableRecords([$end, $after, $otherTenant]);
+    }
+
+    public function test_applied_filters_display_indicators_and_can_be_removed(): void
+    {
+        $equipment = Equipment::query()->create([
+            'name' => 'Caminhão de teste',
+            'type' => EquipmentType::TRUCK,
+            'placa' => 'ABC1D23',
+            'company_id' => $this->company->id,
+            'owner_id' => $this->customer->id,
+            'created_by' => $this->user->id,
+        ]);
+        $order = $this->createOrder(['equipment_id' => $equipment->id, 'order_date' => '2026-10-02']);
+
+        Livewire::test(ListServiceOrders::class)
+            ->filterTable('customer_id', $this->customer->id)
+            ->assertSee('Cliente: '.$this->customer->name)
+            ->filterTable('equipment_id', $equipment->id)
+            ->assertSee('Equipamento: Caminhão de teste — ABC1D23')
+            ->filterTable('priority', ['normal'])
+            ->assertSee('Prioridade: Normal')
+            ->filterTable('status', ['aberta'])
+            ->assertSee('Status: Aberta')
+            ->filterTable('type', ['manutencao'])
+            ->assertSee('Tipo: Manutenção')
+            ->filterTable('order_date', ['from' => '2026-10-01', 'until' => '2026-10-03'])
+            ->assertSee('Data da ordem: de 01/10/2026')
+            ->assertSee('Data da ordem: até 03/10/2026')
+            ->assertCanSeeTableRecords([$order])
+            ->removeTableFilter('customer_id')
+            ->assertDontSee('Cliente: '.$this->customer->name)
+            ->assertSee('Equipamento: Caminhão de teste — ABC1D23')
+            ->removeTableFilter('equipment_id')
+            ->assertDontSee('Equipamento: Caminhão de teste — ABC1D23')
+            ->removeTableFilter('order_date', 'from')
+            ->assertDontSee('Data da ordem: de 01/10/2026')
+            ->assertSee('Data da ordem: até 03/10/2026')
+            ->assertCanSeeTableRecords([$order]);
     }
 
     private function createOrder(array $attributes = []): ServiceOrder
