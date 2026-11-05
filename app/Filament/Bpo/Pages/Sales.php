@@ -64,6 +64,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use Livewire\Attributes\Locked;
+use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 
 class Sales extends Page implements HasTable
 {
@@ -396,39 +397,8 @@ class Sales extends Page implements HasTable
     private function saleFilters(): array
     {
         return [
-            Filter::make('period')->label('Período')->columnSpanFull()->columns(3)->schema([
-                Select::make('date_basis')->label('Filtrar por')->options(['sale_date' => 'Data da venda', 'finalized_at' => 'Data da finalização'])->default('sale_date')->selectablePlaceholder(false),
-                DatePicker::make('from')->label('Data inicial')->default(today()->startOfMonth()),
-                DatePicker::make('until')->label('Data final')->default(today()->endOfMonth())->afterOrEqual('from'),
-            ])->query(function (Builder $query, array $data): Builder {
-                $from = $this->filterDate($data['from'] ?? null);
-                $until = $this->filterDate($data['until'] ?? null);
-                if ((filled($data['from'] ?? null) && ! $from) || (filled($data['until'] ?? null) && ! $until) || ($from && $until && $from > $until)) {
-                    return $query->whereRaw('1 = 0');
-                }
-                if (! $from && ! $until) {
-                    return $query;
-                }
-                $apply = fn (Builder $source, string $column): Builder => $source
-                    ->when($from, fn (Builder $q) => $q->where($column, '>=', $from))
-                    ->when($until, fn (Builder $q) => $q->where($column, '<', CarbonImmutable::parse($until)->addDay()->toDateString()));
-                if (($data['date_basis'] ?? 'sale_date') === 'finalized_at') {
-                    return $apply($query, 'bpo_sales.finalized_at');
-                }
-
-                return $query->where(fn (Builder $q) => $q->whereHas('serviceOrder', fn (Builder $source) => $apply($source, 'order_date'))
-                    ->orWhereHas('requisition', fn (Builder $source) => $apply($source, 'sale_date')));
-            })->indicateUsing(function (array $data): ?string {
-                $from = $this->filterDate($data['from'] ?? null);
-                $until = $this->filterDate($data['until'] ?? null);
-                if (! $from && ! $until) {
-                    return null;
-                }
-
-                return (($data['date_basis'] ?? 'sale_date') === 'finalized_at' ? 'Finalização: ' : 'Venda: ')
-                    .($from ? CarbonImmutable::parse($from)->format('d/m/Y') : 'início').' até '
-                    .($until ? CarbonImmutable::parse($until)->format('d/m/Y') : 'hoje em diante');
-            }),
+            $this->saleDateFilter('sale_date', 'Data da venda', defaultMonth: true),
+            $this->saleDateFilter('finalized_at', 'Data da finalização'),
             SelectFilter::make('commercial_status')->label('Situação da venda')->options(['draft' => 'Rascunho', 'finalized' => 'Finalizada', 'cancelled' => 'Cancelada'])
                 ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
                     'draft' => $query->whereNull('finalized_at'),
@@ -461,17 +431,52 @@ class Sales extends Page implements HasTable
         ];
     }
 
-    private function filterDate(mixed $value): ?string
+    private function saleDateFilter(string $name, string $label, bool $defaultMonth = false): Filter
     {
-        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-            return null;
+        return Filter::make($name)->label($label)->schema([
+            DateRangePicker::make('date_range')->label($label)->format('d/m/Y')
+                ->default(fn () => $defaultMonth ? today()->startOfMonth()->format('d/m/Y').' - '.today()->endOfMonth()->format('d/m/Y') : null)
+                ->firstDayOfWeek(0)->alwaysShowCalendar()->autoApply(),
+        ])->query(function (Builder $query, array $data) use ($name): Builder {
+            [$from, $until] = $this->filterDateRange($data['date_range'] ?? null);
+            if (filled($data['date_range'] ?? null) && (! $from || ! $until)) {
+                return $query->whereRaw('1 = 0');
+            }
+            if (! $from || ! $until) {
+                return $query;
+            }
+            $apply = fn (Builder $source, string $column): Builder => $source
+                ->where($column, '>=', $from)
+                ->where($column, '<', CarbonImmutable::parse($until)->addDay()->toDateString());
+            if ($name === 'finalized_at') {
+                return $apply($query, 'bpo_sales.finalized_at');
+            }
+
+            return $query->where(fn (Builder $q) => $q->whereHas('serviceOrder', fn (Builder $source) => $apply($source, 'order_date'))
+                ->orWhereHas('requisition', fn (Builder $source) => $apply($source, 'sale_date')));
+        })->indicateUsing(function (array $data) use ($label): ?string {
+            [$from, $until] = $this->filterDateRange($data['date_range'] ?? null);
+
+            return $from && $until ? $label.': '.CarbonImmutable::parse($from)->format('d/m/Y').' até '.CarbonImmutable::parse($until)->format('d/m/Y') : null;
+        });
+    }
+
+    private function filterDateRange(mixed $value): array
+    {
+        if (! is_string($value) || ! preg_match('/^\d{2}\/\d{2}\/\d{4} - \d{2}\/\d{2}\/\d{4}$/', $value)) {
+            return [null, null];
         }
         try {
-            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
+            [$start, $end] = explode(' - ', $value);
+            $from = CarbonImmutable::createFromFormat('!d/m/Y', $start);
+            $until = CarbonImmutable::createFromFormat('!d/m/Y', $end);
+            if ($from->format('d/m/Y') !== $start || $until->format('d/m/Y') !== $end || $from->gt($until)) {
+                return [null, null];
+            }
 
-            return $date->format('Y-m-d') === $value ? $value : null;
+            return [$from->toDateString(), $until->toDateString()];
         } catch (\Exception) {
-            return null;
+            return [null, null];
         }
     }
 

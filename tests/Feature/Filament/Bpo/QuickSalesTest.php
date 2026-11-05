@@ -168,18 +168,29 @@ class QuickSalesTest extends TestCase
         $first = $this->reportSale(100, date: '2026-02-01');
         $last = $this->reportSale(200, date: '2026-02-28');
         $outside = $this->reportSale(900, date: '2026-03-01');
-        $page = Livewire::test(Sales::class)->filterTable('period', ['date_basis' => 'sale_date', 'from' => '2026-02-01', 'until' => '2026-02-28'])
+        $page = Livewire::test(Sales::class)->filterTable('sale_date', ['date_range' => '01/02/2026 - 28/02/2026'])
             ->assertCanSeeTableRecords([$first, $last])->assertCanNotSeeTableRecords([$outside]);
         $this->assertSame(300.0, $page->instance()->salesSummary()['billed_amount']);
 
         $page->searchTable($first->invoice->invoice_number)->assertCanSeeTableRecords([$first]);
         $this->assertSame(100.0, $page->instance()->salesSummary()['billed_amount']);
-        $page->searchTable('')->filterTable('period', ['date_basis' => 'finalized_at', 'from' => today()->toDateString(), 'until' => today()->toDateString()])
+        $page->searchTable('')->filterTable('finalized_at', ['date_range' => today()->format('d/m/Y').' - '.today()->format('d/m/Y')])
+            ->assertCanSeeTableRecords([$first, $last])->assertCanNotSeeTableRecords([$outside]);
+        $this->assertSame(300.0, $page->instance()->salesSummary()['billed_amount']);
+
+        $page->filterTable('sale_date', ['date_range' => null])
             ->assertCanSeeTableRecords([$first, $last, $outside]);
         $this->assertSame(1200.0, $page->instance()->salesSummary()['billed_amount']);
 
-        $page->filterTable('period', ['date_basis' => 'sale_date', 'from' => '2026-02-31', 'until' => '2026-03-01'])->assertCountTableRecords(0);
+        $page->filterTable('sale_date', ['date_range' => '31/02/2026 - 01/03/2026'])->assertCountTableRecords(0);
         $this->assertSame(0.0, $page->instance()->salesSummary()['billed_amount']);
+
+        $page->filterTable('sale_date', ['date_range' => '28/02/2026 - 01/02/2026'])->assertCountTableRecords(0);
+        $page->filterTable('sale_date', ['date_range' => null])
+            ->assertCanSeeTableRecords([$first, $last, $outside]);
+
+        $page->filterTable('finalized_at', ['date_range' => '31/02/2026 - 01/03/2026'])->assertCountTableRecords(0);
+        $page->filterTable('finalized_at', ['date_range' => null])->assertCanSeeTableRecords([$first, $last, $outside]);
     }
 
     public function test_customer_model_fiscal_and_financial_filters_share_the_same_summary_query(): void
