@@ -376,8 +376,8 @@ class Sales extends Page implements HasTable
                     return $query;
                 }
                 $apply = fn (Builder $source, string $column): Builder => $source
-                    ->when($from, fn (Builder $q) => $q->whereDate($column, '>=', $from))
-                    ->when($until, fn (Builder $q) => $q->whereDate($column, '<=', $until));
+                    ->when($from, fn (Builder $q) => $q->where($column, '>=', $from))
+                    ->when($until, fn (Builder $q) => $q->where($column, '<', CarbonImmutable::parse($until)->addDay()->toDateString()));
                 if (($data['date_basis'] ?? 'sale_date') === 'finalized_at') {
                     return $apply($query, 'bpo_sales.finalized_at');
                 }
@@ -444,8 +444,9 @@ class Sales extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table->query(app(SalesReportingService::class)->query(Filament::auth()->user(), Filament::getTenant())
-            ->with(['serviceOrder.customer', 'serviceOrder.items', 'requisition.customer', 'requisition.items',
-                'invoice.fiscalDocuments' => fn ($query) => $query->select(['id', 'company_id', 'invoice_id', 'document_type', 'nfe_status', 'nfse_status', 'emission_requested_at']), 'invoice.accountReceivables']))->columns([
+            ->with(['serviceOrder' => fn ($query) => $query->with('customer')->withSum('items as listing_items_amount', 'total_amount'),
+                'requisition' => fn ($query) => $query->with('customer')->withSum('items as listing_items_amount', 'total_amount'),
+                'invoice.fiscalDocuments' => fn ($query) => $query->select(['id', 'company_id', 'invoice_id', 'document_type', 'nfe_status', 'nfse_status', 'emission_requested_at'])]))->columns([
                     TextColumn::make('id')->label('Venda')->sortable()->searchable(),
                     TextColumn::make('template_snapshot.name')->label('Modelo')->searchable(query: fn (Builder $query, string $search) => $query->where('template_snapshot->name', 'like', '%'.$search.'%')),
                     TextColumn::make('customer')->label('Cliente')->state(fn (BpoSale $record) => $record->serviceOrder?->customer?->name ?? $record->requisition?->customer?->name)
@@ -453,7 +454,11 @@ class Sales extends Page implements HasTable
                             ->whereHas('serviceOrder.customer', fn (Builder $q) => $q->where('name', 'like', '%'.$search.'%'))
                             ->orWhereHas('requisition.customer', fn (Builder $q) => $q->where('name', 'like', '%'.$search.'%')))),
                     TextColumn::make('sale_date')->label('Data da venda')->state(fn (BpoSale $record) => $record->serviceOrder?->order_date ?? $record->requisition?->sale_date)->date('d/m/Y'),
-                    TextColumn::make('amount')->label('Valor líquido')->state(fn (BpoSale $record) => $record->serviceOrder?->total_amount ?? $record->requisition?->total_amount)->money('BRL'),
+                    TextColumn::make('amount')->label('Valor líquido')->state(function (BpoSale $record): float {
+                        $source = $record->serviceOrder ?? $record->requisition;
+
+                        return round((float) ($source?->listing_items_amount ?? 0) / 100 + (float) ($source instanceof ServiceOrder ? $source->travel_value : 0), 2);
+                    })->money('BRL'),
                     TextColumn::make('invoice.invoice_number')->label('Fatura')->placeholder('Rascunho')->searchable(),
                     TextColumn::make('commercial_status')->label('Venda')->state(fn (BpoSale $record) => ($record->invoice?->canceled || $record->invoice?->status === InvoiceStatus::CANCELLED) ? 'Cancelada' : ($record->finalized_at ? 'Finalizada' : 'Rascunho'))->badge(),
                     TextColumn::make('finalized_at')->label('Finalizada em')->dateTime('d/m/Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),

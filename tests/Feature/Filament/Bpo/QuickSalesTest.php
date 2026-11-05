@@ -234,6 +234,64 @@ class QuickSalesTest extends TestCase
         $this->assertSame(160.0, $summary['draft_amount']);
     }
 
+    public function test_sales_listing_keeps_queries_bounded_and_aggregates_summary_in_two_queries(): void
+    {
+        $sale = $this->reportSale(100, travel: 12.34);
+        foreach (range(1, 15) as $index) {
+            $this->reportSale(10, false);
+        }
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        try {
+            $page = Livewire::test(Sales::class);
+            $queries = DB::getQueryLog();
+            DB::flushQueryLog();
+            $page->set('tableRecordsPerPage', 5);
+            $smallPageQueries = count(DB::getQueryLog());
+            DB::flushQueryLog();
+            $summary = $page->instance()->salesSummary();
+            $aggregates = collect(DB::getQueryLog())->filter(fn (array $query) => str_contains(strtolower($query['query']), ' aggregate'));
+        } finally {
+            DB::disableQueryLog();
+        }
+
+        $this->assertSame(112.34, $summary['billed_amount']);
+        $this->assertSame(150.0, $summary['draft_amount']);
+        $page->assertTableColumnStateSet('amount', 112.34, $sale);
+        $this->assertLessThan(250, count($queries), json_encode(['total' => count($queries), 'repeated' => collect($queries)->countBy('query')->sortDesc()->take(8)->all()], JSON_PRETTY_PRINT));
+        $this->assertLessThanOrEqual(20, count($queries) - $smallPageQueries);
+        $this->assertCount(2, $aggregates);
+    }
+
+    public function test_sales_summary_applies_source_and_invoice_scopes_without_a_session_actor(): void
+    {
+        $visible = $this->reportSale(100, travel: 12.34);
+        $hiddenSource = $this->reportSale(900);
+        $hiddenInvoice = $this->reportSale(500);
+        $other = User::factory()->create();
+        DB::table('service_orders')->where('id', $hiddenSource->service_order_id)->update(['created_by' => $other->id]);
+        DB::table('invoices')->where('id', $hiddenInvoice->invoice_id)->update(['created_by' => $other->id]);
+        $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
+        $permissions = $role->permissions;
+        $permissions['service_orders.view'] = 'own';
+        $permissions['invoices.view'] = 'own';
+        $role->update(['permissions' => $permissions]);
+        Auth::logout();
+
+        $reporting = app(SalesReportingService::class);
+        $summary = $reporting->summary($this->bpo, $this->company, BpoSale::query());
+        $this->assertSame(112.34, $summary['billed_amount']);
+        $this->assertSame(1, $summary['billed_count']);
+        $this->assertEqualsCanonicalizing([$visible->id, $hiddenInvoice->id], $reporting->query($this->bpo, $this->company)->pluck('id')->all());
+
+        unset($permissions['service_orders.view']);
+        $role->update(['permissions' => $permissions]);
+        $summary = $reporting->summary($this->bpo, $this->company, BpoSale::query());
+        $this->assertSame(0.0, $summary['billed_amount']);
+        $this->assertSame(0, $summary['billed_count']);
+    }
+
     public function test_service_sale_uses_real_os_and_finalizes_once_without_requesting_emission(): void
     {
         $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
