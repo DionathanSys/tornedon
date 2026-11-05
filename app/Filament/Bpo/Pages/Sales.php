@@ -429,7 +429,7 @@ class Sales extends Page implements HasTable
 
                         return $document ? (($document->isNfse() ? $document->nfse_status : $document->nfe_status)?->description() ?? 'Emissão não solicitada') : 'Em preparação';
                     }),
-                ])->filters($this->saleFilters(), layout: FiltersLayout::Dropdown)->filtersFormColumns(3)->deferFilters(false)->recordActions([ActionGroup::make([
+                ])->filters($this->saleFilters(), layout: FiltersLayout::Modal)->filtersFormColumns(3)->deferFilters(false)->recordActions([ActionGroup::make([
                     $this->saleAction('editSale', true),
                     Action::make('finalize')->label('Finalizar')->modalHeading('Revisar e finalizar venda')->modalWidth('4xl')->stickyModalFooter()->modalSubmitActionLabel('Finalizar venda')->modalCancelActionLabel('Voltar')
                         ->visible(fn (BpoSale $record) => ! $record->finalized_at && $this->allows('bpo_sales.approve'))
