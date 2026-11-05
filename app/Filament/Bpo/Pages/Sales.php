@@ -9,6 +9,8 @@ use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
 use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
 use App\Filament\Bpo\Resources\InvoiceResource;
+use App\Filament\Bpo\Resources\ProductResource;
+use App\Filament\Bpo\Resources\ServiceResource;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Forms\Components\PaymentConditionFields;
 use App\Jobs\SendInvoiceEmailJob;
@@ -41,6 +43,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -59,6 +62,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 use Livewire\Attributes\Locked;
 
 class Sales extends Page implements HasTable
@@ -170,7 +174,8 @@ class Sales extends Page implements HasTable
     {
         return Action::make($name)->label($editing ? 'Continuar rascunho' : 'Nova venda')->icon('heroicon-o-shopping-cart')
             ->modalHeading($editing ? 'Continuar venda' : 'Nova venda')->modalWidth('5xl')->stickyModalFooter()
-            ->modalSubmitActionLabel(fn () => ($this->mountedActions[array_key_last($this->mountedActions)]['data']['finalize_now'] ?? false) && $this->allows('bpo_sales.approve') ? 'Finalizar venda' : 'Salvar rascunho')
+            ->modalSubmitActionLabel('Finalizar venda')
+            ->modalSubmitAction(fn (Action $action) => $action->visible(fn () => $this->allows('bpo_sales.approve')))
             ->visible(fn (?BpoSale $record) => ! $record?->finalized_at && $this->allows('bpo_sales.'.($editing ? 'update' : 'create')))
             ->fillForm(function (?BpoSale $record): array {
                 if (! $record) {
@@ -205,42 +210,55 @@ class Sales extends Page implements HasTable
                     Textarea::make('description')->label('Descrição do serviço / observações')->maxLength(1000),
                 ]),
                 Step::make('Itens')->icon('heroicon-o-shopping-cart')->schema([
-                    Repeater::make('items')->label('Itens da venda')->minItems(1)->maxItems(100)->columns(4)->schema([
-                        Select::make('catalog_id')->label('Serviço ou produto')->required()->searchable()->live()->options(fn (Get $get) => $this->catalogResults($get))
+                    Actions::make([
+                        Action::make('catalog')->label(fn (Get $get) => $get('document_type') === 'nfse' ? 'Cadastrar serviço' : 'Cadastrar produto')
+                            ->icon('heroicon-o-plus')->color('gray')->openUrlInNewTab()
+                            ->visible(fn (Get $get) => $get('document_type') === 'nfse' ? ServiceResource::canCreate() : ProductResource::canCreate())
+                            ->url(fn (Get $get) => ($get('document_type') === 'nfse' ? ServiceResource::class : ProductResource::class)::getUrl('create')),
+                    ])->key('saleCatalogActions'),
+                    Repeater::make('items')->label('Itens da venda')->minItems(1)->maxItems(100)->columns(3)->schema([
+                        Select::make('catalog_id')->label('Serviço ou produto')->columnSpanFull()->required()->searchable()->live()->options(fn (Get $get) => $this->catalogResults($get))
                             ->getSearchResultsUsing(fn (Get $get, string $search) => $this->catalogResults($get, $search))
                             ->getOptionLabelUsing(fn (Get $get, $value) => $this->catalogLabel($get, $value))
                             ->afterStateUpdated(function ($state, Get $get, Set $set): void {
                                 $catalog = (($get('../../document_type') ?: $this->templateType($get('../../sale_template_id'))) === 'nfse' ? Service::query() : Product::query())
                                     ->where('company_id', Filament::getTenant()->id)->find($state);
-                                $set('unit_price', $catalog instanceof Service ? $catalog->price : $catalog?->sale_price_value);
+                                $price = $catalog instanceof Service ? $catalog->price : $catalog?->sale_price_value;
+                                $set('unit_price', $price === null ? null : number_format((float) $price, 2, ',', '.'));
                             }),
                         TextInput::make('quantity')->label('Quantidade')->numeric()->minValue(0.001)->required()->default(1),
-                        TextInput::make('unit_price')->label('Preço unitário (R$)')->numeric()->minValue(0.01)->required(),
-                        TextInput::make('discount_amount')->label('Desconto (R$)')->numeric()->minValue(0)->default(0),
+                        $this->saleMoneyField('unit_price')->label('Preço unitário')->minValue(0.01)->required(),
+                        $this->saleMoneyField('discount_amount')->label('Desconto')->minValue(0)->default(0),
                     ])->helperText('NFS-e: um serviço por venda. NF-e: múltiplos produtos. Os valores são recalculados no servidor.'),
+                    Actions::make([
+                        Action::make('saveDraft')->label('Salvar rascunho')->color('gray')->icon('heroicon-o-document-arrow-down')
+                            ->action(function (Action $action, ?BpoSale $record) use ($editing): void {
+                                $this->resetErrorBag();
+                                $schema = $this->getMountedActionSchema(0);
+                                foreach (collect($schema->getFlatComponents(withActions: false))->filter(fn ($component) => $component instanceof Step)->take(2) as $step) {
+                                    $step->getChildSchema()->validate();
+                                }
+                                $data = $schema->getStateSnapshot();
+                                $this->executeWorkflow(fn () => app(QuickSaleWorkflow::class)->save(Filament::auth()->user(), Filament::getTenant(), $data,
+                                    $this->requestId, $editing ? $record->id : null, (int) ($data['revision'] ?? 0)), 'Não foi possível salvar o rascunho', 0);
+                                $this->requestId = (string) Str::uuid();
+                                Notification::make()->title('Rascunho salvo')->body('Continue a venda para revisar o pagamento e finalizar.')->success()->send();
+                                $action->cancelParentActions();
+                            }),
+                    ])->key('saleDraftActions'),
                 ]),
-                Step::make('Conclusão')->icon('heroicon-o-check-circle')->schema([
-                    Toggle::make('finalize_now')->label('Finalizar venda agora')->default(false)->live()
-                        ->visible(fn () => $this->allows('bpo_sales.approve'))
-                        ->helperText('Ative para revisar o pagamento e gerar a fatura. Desativado, a venda será salva como rascunho.'),
-                    Grid::make(['default' => 1, 'md' => 2])->schema($this->paymentSchema(inline: true))
-                        ->visible(fn (Get $get) => (bool) $get('finalize_now') && $this->allows('bpo_sales.approve')),
+                Step::make('Conclusão')->icon('heroicon-o-check-circle')->visible(fn () => $this->allows('bpo_sales.approve'))->schema([
+                    Grid::make(['default' => 1, 'md' => 2])->schema($this->paymentSchema(inline: true)),
                 ]),
             ])->action(function (array $data, ?BpoSale $record) use ($editing): void {
-                $finalize = (bool) ($data['finalize_now'] ?? false);
                 $workflow = app(QuickSaleWorkflow::class);
-                $sale = $this->executeWorkflow(fn () => DB::transaction(function () use ($workflow, $data, $record, $editing, $finalize): BpoSale {
+                $sale = $this->executeWorkflow(fn () => DB::transaction(function () use ($workflow, $data, $record, $editing): BpoSale {
                     $sale = $workflow->save(Filament::auth()->user(), Filament::getTenant(), $data, $this->requestId,
                         $editing ? $record->id : null, (int) ($data['revision'] ?? 0));
 
-                    return $finalize ? $workflow->finalize(Filament::auth()->user(), Filament::getTenant(), $sale->id, $sale->revision, $data) : $sale;
-                }), $finalize ? 'Não foi possível finalizar a venda' : 'Não foi possível salvar o rascunho');
+                    return $workflow->finalize(Filament::auth()->user(), Filament::getTenant(), $sale->id, $sale->revision, $data);
+                }), 'Não foi possível finalizar a venda');
                 $this->requestId = (string) Str::uuid();
-                if (! $finalize) {
-                    Notification::make()->title('Rascunho salvo')->body('Continue a venda para revisar o pagamento e finalizar.')->success()->send();
-
-                    return;
-                }
                 Notification::make()->title('Venda finalizada')->body('Fatura criada. O tratamento financeiro foi registrado.')->success()->send();
                 if ($data['request_emission'] ?? false) {
                     try {
@@ -260,14 +278,14 @@ class Sales extends Page implements HasTable
             Action::make('invoices')->label('Faturas e exportações')->url(InvoiceResource::getUrl())->visible(fn () => $this->allows('invoices.view'))];
     }
 
-    private function executeWorkflow(callable $operation, string $failureTitle): mixed
+    private function executeWorkflow(callable $operation, string $failureTitle, ?int $actionNestingIndex = null): mixed
     {
         try {
             return $operation();
         } catch (ValidationException $exception) {
             Notification::make()->title($failureTitle)->body(e(collect($exception->errors())->flatten()->unique()->implode("\n")))->danger()->send();
 
-            $schema = $this->getMountedActionSchema();
+            $schema = $this->getMountedActionSchema($actionNestingIndex);
             if (! $schema) {
                 throw $exception;
             }
@@ -292,12 +310,28 @@ class Sales extends Page implements HasTable
         }
     }
 
+    private function saleMoneyValue(mixed $value): float
+    {
+        return (float) (is_string($value) && str_contains($value, ',')
+            ? str_replace(',', '.', str_replace('.', '', $value))
+            : $value);
+    }
+
+    private function saleMoneyField(string $name): Money
+    {
+        return Money::make($name)
+            ->formatStateUsing(fn ($state) => $state === null ? null : number_format($this->saleMoneyValue($state), 2, ',', '.'))
+            ->mutateStateForValidationUsing(fn ($state) => filled($state) ? $this->saleMoneyValue($state) : $state)
+            ->dehydrateStateUsing(fn ($state) => $this->saleMoneyValue($state))
+            ->rules(['numeric']);
+    }
+
     private function paymentSchema(bool $inline = false): array
     {
         return [
             ...($inline ? [] : [Hidden::make('revision')]),
             TextEntry::make('review_total')->label('Total da venda')->state(fn (Get $get, ?BpoSale $record) => 'R$ '.number_format($inline
-                ? collect($get('items') ?? [])->sum(fn (array $item) => round(round((float) ($item['quantity'] ?? 0), 3) * round((float) ($item['unit_price'] ?? 0), 2), 2) - round((float) ($item['discount_amount'] ?? 0), 2))
+                ? collect($get('items') ?? [])->sum(fn (array $item) => round(round((float) ($item['quantity'] ?? 0), 3) * round($this->saleMoneyValue($item['unit_price'] ?? 0), 2), 2) - round($this->saleMoneyValue($item['discount_amount'] ?? 0), 2))
                 : $record->source()->total_amount, 2, ',', '.'))->columnSpanFull(),
             Select::make('financial_policy')->label('Tratamento financeiro')->options(['create_receivable' => 'Gerar contas a receber', 'link_existing' => 'Vincular recebível existente', 'fiscal_only' => 'Somente emitir nota'])->default('create_receivable')->required()->live()
                 ->columnSpanFull()->afterStateUpdated(function (Set $set): void {
