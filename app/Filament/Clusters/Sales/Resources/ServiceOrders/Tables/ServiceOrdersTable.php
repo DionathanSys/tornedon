@@ -96,7 +96,8 @@ class ServiceOrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('equipment.name')
                     ->label('Equipamento')
-                    ->searchable()
+                    ->description(fn (ServiceOrder $record): ?string => $record->equipment?->identifier)
+                    ->searchable(['name', 'placa', 'serial_number'])
                     ->placeholder('Sem equipamento')
                     ->sortable()
                     ->limit(25)
