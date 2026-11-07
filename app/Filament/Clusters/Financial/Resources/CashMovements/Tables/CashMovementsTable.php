@@ -140,9 +140,9 @@ class CashMovementsTable
                     ->icon('heroicon-o-backspace')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar()
-                    ->defaultThisMonth(),
+                    ->alwaysShowCalendar(),
             ])
+            ->persistFiltersInSession()
             ->groups([
                 Group::make('transaction_date')
                     ->label('Data')

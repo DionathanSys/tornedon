@@ -56,7 +56,9 @@ final class PreviewServiceOrderPdfAction
                     return new HtmlString(
                         '<iframe src="'.e($previewUrl).'" width="100%" height="600px" style="border:none;"></iframe>'
                     );
-                })->columnSpanFull(),
+                })
+                    ->extraAttributes(['class' => 'w-full'])
+                    ->columnSpanFull(),
             ])
             ->modalWidth('6xl');
     }
