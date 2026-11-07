@@ -193,6 +193,7 @@ class FiscalDocumentForm
                                     ->visibleOn('edit')
                                     ->key('items-relation-manager')
                                     ->columnSpanFull(),
+                                LinkedAccountPayablesSection::make(),
                                 Hidden::make('company_id'),
                                 Hidden::make('operation_type')->default(OperationType::ENTRADA->value),
                             ]),

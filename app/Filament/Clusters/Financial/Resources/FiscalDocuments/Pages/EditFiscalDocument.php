@@ -10,6 +10,7 @@ use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\CreateServ
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
+use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use Filament\Actions\Action;
@@ -93,7 +94,7 @@ class EditFiscalDocument extends EditRecord
 
     private function payloadJson(Model $record): string
     {
-        if (! $record instanceof \App\Models\FiscalDocument) {
+        if (! $record instanceof FiscalDocument) {
             return '{}';
         }
 
