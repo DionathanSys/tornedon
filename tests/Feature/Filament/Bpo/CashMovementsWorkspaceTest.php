@@ -3,6 +3,8 @@
 namespace Tests\Feature\Filament\Bpo;
 
 use App\Filament\Bpo\Resources\CashMovementResource;
+use App\Filament\Bpo\Resources\CashMovements\Pages\CreateMovement;
+use App\Filament\Bpo\Resources\CashMovements\Pages\EditMovement;
 use App\Filament\Bpo\Resources\CashMovements\Pages\ListMovements;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Pages\ListCashMovements;
 use App\Models\BankStatementImport;
@@ -91,6 +93,29 @@ class CashMovementsWorkspaceTest extends TestCase
     {
         return CashMovement::create(['company_id' => $this->company->id, 'financial_account_id' => $this->source->id, 'financial_category_id' => $this->category->id,
             'direction' => 'inflow', 'origin_type' => 'manual', 'transaction_date' => today()->toDateString(), 'amount' => 75, 'description' => 'Entrada avulsa', 'created_by' => $this->user->id, ...$changes]);
+    }
+
+    public function test_manual_movement_saves_a_single_brazilian_date_and_displays_it_on_edit(): void
+    {
+        $this->authenticate();
+
+        Livewire::test(CreateMovement::class)
+            ->fillForm([
+                'transaction_date' => '23/11/2026',
+                'direction' => 'inflow',
+                'financial_account_id' => $this->source->id,
+                'financial_category_id' => $this->category->id,
+                'amount' => '75,00',
+                'description' => 'Entrada manual com data única',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $movement = CashMovement::where('description', 'Entrada manual com data única')->sole();
+        $this->assertSame('2026-11-23', $movement->transaction_date->toDateString());
+
+        Livewire::test(EditMovement::class, ['record' => $movement->getRouteKey()])
+            ->assertFormSet(['transaction_date' => '23/11/2026']);
     }
 
     public function test_listing_exposes_admin_columns_filters_and_groups_inside_bpo(): void

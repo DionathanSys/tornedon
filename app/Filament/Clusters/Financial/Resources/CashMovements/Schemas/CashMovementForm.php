@@ -8,6 +8,7 @@ use App\Filament\Clusters\Sales\Resources\Components\SelectPartner;
 use App\Models\CostCenter;
 use App\Models\FinancialAccount;
 use App\Models\ResultCenter;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -21,10 +22,11 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Leandrocfe\FilamentPtbrFormFields\Money;
+use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 
 class CashMovementForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $bpoLayout = false): Schema
     {
         return $schema
             ->columns([
@@ -68,18 +70,27 @@ class CashMovementForm
                             ->label('Nome da Contraparte')
                             ->maxLength(255)
                             ->hidden(fn (Get $get): bool => ! (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(['md' => 2]),
+                            ->columnSpan($bpoLayout ? ['default' => 1, 'md' => 3] : ['md' => 2]),
                         SelectPartner::make('counterparty_partner_id', 'all')
                             ->label('Parceiro Contraparte')
                             ->required(false)
                             ->native(false)
                             ->hidden(fn (Get $get): bool => (bool) ($get('is_manual_counterparty') ?? false))
-                            ->columnSpan(2),
-                        DatePicker::make('transaction_date')
+                            ->columnSpan($bpoLayout ? ['default' => 1, 'md' => 3] : 2),
+                        ($bpoLayout
+                            ? DateRangePicker::make('transaction_date')
+                                ->singleCalendar()
+                                ->disableRanges()
+                                ->autoApply()
+                                ->format('d/m/Y')
+                                ->formatStateUsing(fn ($state) => filled($state) ? Carbon::parse($state)->format('d/m/Y') : null)
+                                ->dehydrateStateUsing(fn ($state) => filled($state) ? Carbon::createFromFormat('d/m/Y', $state)->toDateString() : null)
+                                ->rules(['date_format:d/m/Y'])
+                            : DatePicker::make('transaction_date'))
                             ->label('Data')
                             ->default(now())
                             ->required()
-                            ->columnSpan(['md' => 1]),
+                            ->columnSpan(['md' => $bpoLayout ? 2 : 1]),
                         ToggleButtons::make('direction')
                             ->label('Direção')
                             ->options(CashMovementDirection::toSelectArray())
@@ -132,12 +143,12 @@ class CashMovementForm
                             ->prefix('R$')
                             ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                             ->required()
-                            ->columnSpan(['md' => 1]),
+                            ->columnSpan(['md' => $bpoLayout ? 2 : 1]),
                         TextInput::make('description')
                             ->label('Descrição')
                             ->required()
                             ->maxLength(255)
-                            ->columnSpan(['md' => 2]),
+                            ->columnSpan($bpoLayout ? ['md' => 4] : ['md' => 2]),
                         Textarea::make('notes')
                             ->label('Observações')
                             ->rows(3)
