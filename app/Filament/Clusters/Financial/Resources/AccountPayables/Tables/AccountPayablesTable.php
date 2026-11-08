@@ -3,7 +3,6 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountPayables\Tables;
 
 use App\Enum\AccountPayable\Status;
-use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Clusters\Financial\Resources\Components\AccountSummary;
 use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
@@ -125,8 +124,6 @@ class AccountPayablesTable
                 EditAction::make()
                     ->iconButton(),
                 ViewAction::make()->iconButton(),
-                IgnoreFinancialAction::make(),
-                IgnoreFinancialAction::make(restore: true),
                 DeleteAction::make()
                     ->iconButton(),
             ])

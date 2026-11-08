@@ -246,13 +246,59 @@ class FinancialAccountWorkflowTest extends TestCase
         $this->assertSame(50.0, $installment->fresh()->balance_amount);
     }
 
-    #[DataProvider('domains')]
-    public function test_account_view_can_ignore_and_restore_all_open_installments(string $domain): void
+    public function test_payable_account_actions_are_only_available_on_installments(): void
     {
         $this->grantConsideration();
-        [, $account] = $this->account($domain);
-        $pageClass = $domain === 'payable' ? ViewAccountPayable::class : ViewAccountReceivable::class;
-        $page = Livewire::test($pageClass, ['record' => $account->id]);
+        [, $account] = $this->account('payable');
+        Livewire::test(ViewAccountPayable::class, ['record' => $account->id])
+            ->assertActionDoesNotExist('ignore_financial')
+            ->assertActionDoesNotExist('restore_consideration');
+        Livewire::test(AccountPayableResource::getPages()['index']->getPage())
+            ->assertCanSeeTableRecords([$account])
+            ->assertTableActionDoesNotExist('ignore_financial')
+            ->assertTableActionDoesNotExist('restore_consideration');
+
+        $installments = $account->installments()->orderBy('id')->get();
+        $page = Livewire::test(InstallmentsRelationManager::class, [
+            'ownerRecord' => $account, 'pageClass' => ViewAccountPayable::class,
+        ]);
+        $page->assertTableActionVisible('ignore_financial', $installments[0])
+            ->assertTableActionHidden('restore_consideration', $installments[0])
+            ->callTableAction('ignore_financial', $installments[0], ['reason' => 'Implantação do módulo'])
+            ->assertHasNoTableActionErrors();
+        $this->assertNotNull($installments[0]->fresh()->ignored_at);
+        $this->assertNull($installments[1]->fresh()->ignored_at);
+        $page->assertTableActionHidden('ignore_financial', $installments[0])
+            ->assertTableActionVisible('restore_consideration', $installments[0])
+            ->callTableAction('restore_consideration', $installments[0], ['reason' => 'Revisão da implantação'])
+            ->assertHasNoTableActionErrors();
+        $this->assertNull($installments[0]->fresh()->ignored_at);
+        $page->assertTableActionVisible('ignore_financial', $installments[0])
+            ->assertTableActionHidden('restore_consideration', $installments[0]);
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    #[DataProvider('domains')]
+    public function test_ignore_action_is_hidden_for_settled_and_cancelled_installments(string $domain): void
+    {
+        $this->grantConsideration();
+        [$service, $account] = $this->account($domain);
+        $installments = $account->installments()->orderBy('id')->get();
+        $this->assertNotNull($service->registerInstallmentPayment($installments[0], 50, today()->toDateString(), ['financial_account_id' => $this->bank->id]));
+        $installments[1]->update(['status' => 'cancelled']);
+        $pageClass = $domain === 'payable' ? ListAccountPayableInstallments::class : ListAccountReceivableInstallments::class;
+        $page = Livewire::test($pageClass)->removeTableFilters()->set('activeTab', 'all');
+        foreach ($installments as $installment) {
+            $page->assertTableActionHidden('ignore_financial', $installment->fresh())
+                ->assertTableActionHidden('restore_consideration', $installment->fresh());
+        }
+    }
+
+    public function test_receivable_account_view_can_ignore_and_restore_all_open_installments(): void
+    {
+        $this->grantConsideration();
+        [, $account] = $this->account('receivable');
+        $page = Livewire::test(ViewAccountReceivable::class, ['record' => $account->id]);
         $page->callAction('ignore_financial', ['reason' => 'Implantação do módulo'])->assertHasNoActionErrors();
         $this->assertSame(0, $account->installments()->open()->count());
         $this->assertSame(2, $account->installments()->whereNotNull('ignored_at')->count());

@@ -42,7 +42,16 @@ final class IgnoreFinancialAction
                     : [AccountPayableInstallment::class, AccountReceivableInstallment::class];
                 $allowed = collect($models)->contains(fn ($model) => app(ChangeInstallmentStatusService::class)->allows($user, $company, $model, Filament::getCurrentPanel()?->getId()));
 
-                return $allowed && (! $record || ! ($record instanceof AccountPayableInstallment || $record instanceof AccountReceivableInstallment) || (bool) $record->ignored_at === $restore);
+                if (! $allowed) {
+                    return false;
+                }
+                if ($record instanceof AccountPayableInstallment || $record instanceof AccountReceivableInstallment) {
+                    return $restore
+                        ? $record->ignored_at !== null
+                        : $record->ignored_at === null && $record->status->value !== 'cancelled' && (float) $record->balance_amount > 0;
+                }
+
+                return true;
             })
             ->requiresConfirmation()
             ->modalDescription('Preserva valores e histórico. Ignorar retira o saldo das pendências e automações, sem registrar baixa. Em uma conta, afeta suas parcelas em aberto. Restaurar não registra baixa nem emite cobrança nesta ação; as automações configuradas voltam a considerar a parcela.')
