@@ -4,11 +4,12 @@ namespace App\Filament\Bpo\Resources\CashMovements\Pages;
 
 use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
 use App\Filament\Bpo\Resources\CashMovementResource;
+use App\Filament\Bpo\Resources\CashMovements\Actions\MovementActions;
 use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
 use App\Services\Access\CompanyAuthorization;
-use Filament\Actions\CreateAction;
+use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\Gate;
@@ -87,6 +88,6 @@ class ListMovements extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label('Novo movimento manual')];
+        return [ActionGroup::make(MovementActions::header())->label('Ações')->button()];
     }
 }

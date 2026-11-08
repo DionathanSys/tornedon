@@ -146,7 +146,7 @@ class CashMovementsWorkspaceTest extends TestCase
     public function test_transfer_modal_creates_both_sides_and_keeps_the_tenant_server_owned(): void
     {
         $this->authenticate();
-        Livewire::test(ListMovements::class)->callAction(TestAction::make('create_transfer')->table(), data: $this->transferData(['company_id' => 999999]))->assertHasNoActionErrors();
+        Livewire::test(ListMovements::class)->callAction(TestAction::make('create_transfer'), data: $this->transferData(['company_id' => 999999]))->assertHasNoActionErrors();
         $movements = CashMovement::query()->get();
         $this->assertCount(2, $movements);
         $this->assertSame(0.0, (float) $movements->sum('signed_amount'));
@@ -157,9 +157,9 @@ class CashMovementsWorkspaceTest extends TestCase
     {
         $foreign = FinancialAccount::create(['company_id' => Company::factory()->create()->id, 'name' => 'Conta de outra empresa', 'type' => 'bank', 'is_active' => true]);
         $this->authenticate();
-        Livewire::test(ListMovements::class)->callAction(TestAction::make('create_transfer')->table(), data: $this->transferData(['destination_financial_account_id' => $this->source->id]))
+        Livewire::test(ListMovements::class)->callAction(TestAction::make('create_transfer'), data: $this->transferData(['destination_financial_account_id' => $this->source->id]))
             ->assertHasActionErrors(['destination_financial_account_id']);
-        Livewire::test(ListMovements::class)->callAction(TestAction::make('create_transfer')->table(), data: $this->transferData(['destination_financial_account_id' => $foreign->id]))
+        Livewire::test(ListMovements::class)->callAction(TestAction::make('create_transfer'), data: $this->transferData(['destination_financial_account_id' => $foreign->id]))
             ->assertHasActionErrors(['destination_financial_account_id']);
         $this->assertDatabaseCount('cash_movements', 0);
     }
@@ -204,7 +204,7 @@ class CashMovementsWorkspaceTest extends TestCase
         $record = $this->transfer();
         $this->permissions(['cash_movements.view' => 'company', 'financial_accounts.view' => 'company', 'financial_categories.view' => 'company']);
         $this->authenticate();
-        $page = Livewire::test(ListMovements::class)->assertActionHidden(TestAction::make('create_transfer')->table())
+        $page = Livewire::test(ListMovements::class)->assertActionHidden(TestAction::make('create_transfer'))
             ->assertActionHidden(TestAction::make('edit_transfer')->table($record))->assertActionHidden(TestAction::make('reverse_transfer')->table($record))
             ->assertActionHidden(TestAction::make('delete_safely')->table($record));
         app(CompanyTeamService::class)->endBpo($this->owner, $this->company, $this->engagementId);

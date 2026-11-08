@@ -13,6 +13,7 @@ use App\Models\CashMovement;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Financial\CashMovementService;
 use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Infolists\Components\TextEntry;
@@ -79,14 +80,23 @@ final class MovementActions
         ];
     }
 
-    public static function toolbar(): array
+    public static function header(): array
     {
         return [
+            CreateAction::make()->label('Novo movimento manual')
+                ->authorize(fn (ListMovements $livewire) => $livewire->canOperateMovement('create'))
+                ->before(fn () => Gate::authorize('create', CashMovement::class)),
             CreateTransferAction::make()->label('Nova transferência')->modalHeading('Transferir entre contas')
                 ->modalDescription('Selecione contas diferentes da empresa. Será registrada uma saída na origem e uma entrada de mesmo valor no destino.')
                 ->modalSubmitActionLabel('Criar transferência')->modalCancelActionLabel('Voltar')->stickyModalFooter()
                 ->authorize(fn (ListMovements $livewire) => $livewire->canOperateMovement('create'))
                 ->before(fn () => Gate::authorize('create', CashMovement::class)),
+        ];
+    }
+
+    public static function toolbar(): array
+    {
+        return [
             RefreshChartAccountFromCategoryBulkAction::make()->modalSubmitActionLabel('Atualizar selecionados')->modalCancelActionLabel('Voltar')
                 ->authorize(fn (ListMovements $livewire) => $livewire->canOperateMovement('update'))
                 ->before(function (Collection $records): void {
