@@ -2,10 +2,7 @@
 
 namespace App\Services\Invoice\Support;
 
-use App\Enum\Payment\Condition;
-use App\Enum\Payment\Method;
 use App\Models\Invoice;
-use App\Support\Financial\PaymentTerms;
 use Illuminate\Support\Facades\Storage;
 
 class InvoicePdfDataFormatter
@@ -19,8 +16,6 @@ class InvoicePdfDataFormatter
             ['label' => 'Empresa', 'value' => $invoice->company?->name ?? '-', 'class' => 'muted'],
             ['label' => 'Cliente', 'value' => $invoice->customer?->name ?? '-'],
         ];
-
-        $paymentMode = ($invoice->payment_method?->description() ?? 'N/A').' - '.PaymentTerms::description($invoice->payment_condition, $invoice->payment_condition_details);
 
         $summaryLines = collect([
             $invoice->discount_amount > 0
@@ -90,6 +85,19 @@ class InvoicePdfDataFormatter
             ];
         })->all();
 
+        $installments = $invoice->installments
+            ->sortBy([['due_date', 'asc'], ['sequence_number', 'asc']])
+            ->map(function ($installment) {
+                return [
+                    'number' => $installment->sequence_number,
+                    'status' => $installment->status?->description() ?? '-',
+                    'due_date' => $this->formatDate($installment->due_date),
+                    'amount' => $this->formatMoney($installment->due_amount),
+                    'received_amount' => $this->formatMoney($installment->received_amount),
+                    'balance' => $this->formatMoney($installment->balance_amount),
+                ];
+            })->values()->all();
+
         if ($confirmation = $invoice->confirmedComposition()) {
             $groups = ['service_order' => [], 'requisition' => [], 'production_order' => []];
             foreach ($confirmation->sources as $source) {
@@ -109,11 +117,6 @@ class InvoicePdfDataFormatter
                 ['label' => 'Empresa', 'value' => $terms['company_name'] ?? '-', 'class' => 'muted'],
                 ['label' => 'Cliente', 'value' => $terms['customer_name'] ?? '-'],
             ];
-            if (! empty($terms['payment_method'])) {
-                $method = Method::tryFrom($terms['payment_method']);
-                $condition = Condition::tryFrom($terms['payment_condition'] ?? '');
-                $paymentMode = ($method?->description() ?? 'N/A').' - '.PaymentTerms::description($condition, $terms['payment_condition_details'] ?? null);
-            }
         }
 
         return [
@@ -121,7 +124,7 @@ class InvoicePdfDataFormatter
             'status' => $invoice->statusLabel(),
             'invoice_date' => $this->formatDate($invoice->invoice_date),
             'header_lines' => $headerLines,
-            'payment_mode' => $paymentMode,
+            'installments' => $installments,
             'fiscal_documents' => $fiscalDocuments,
             'service_order_count' => count($serviceOrders),
             'requisition_count' => count($requisitions),

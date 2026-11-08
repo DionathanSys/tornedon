@@ -372,15 +372,39 @@
                 <td>{{ $line['value'] }}</td>
             </tr>
             @endforeach
-            @if (! empty($pdfData['payment_mode']))
-            <tr>
-                <td class="meta-label">Forma de pagamento</td>
-                <td>{{ $pdfData['payment_mode'] }}</td>
-            </tr>
-            @endif
         </tbody>
     </table>
     </div>
+
+    @if (! empty($pdfData['installments']))
+    <div class="relation-section">
+        <div class="relation-title">Parcelas vinculadas ({{ count($pdfData['installments']) }})</div>
+        <table class="relation-table">
+            <thead>
+                <tr>
+                    <th>Parcela</th>
+                    <th>Status</th>
+                    <th>Vencimento</th>
+                    <th>Valor</th>
+                    <th>Recebido</th>
+                    <th>Saldo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($pdfData['installments'] as $installment)
+                <tr>
+                    <td class="relation-code">{{ $installment['number'] }}</td>
+                    <td class="relation-status">{{ $installment['status'] }}</td>
+                    <td class="relation-date">{{ $installment['due_date'] }}</td>
+                    <td>{{ $installment['amount'] }}</td>
+                    <td>{{ $installment['received_amount'] }}</td>
+                    <td>{{ $installment['balance'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
 
     <div class="pdf-footer">Gerado em: {{ $pdfData['generated_at'] }}</div>
 </body>

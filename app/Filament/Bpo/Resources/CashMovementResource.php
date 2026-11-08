@@ -11,6 +11,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,10 @@ class CashMovementResource extends \App\Filament\Clusters\Financial\Resources\Ca
             ->columnManagerColumns(['default' => 1, 'md' => 3])
             ->columnManagerWidth(Width::FiveExtraLarge)
             ->columnManagerTriggerAction(fn (Action $action) => $action->slideOver(false))
+            ->filtersLayout(FiltersLayout::Modal)
+            ->filtersFormColumns(['default' => 1, 'md' => 3])
+            ->filtersFormWidth(Width::FiveExtraLarge)
+            ->filtersTriggerAction(fn (Action $action) => $action->slideOver(false))
             ->defaultPaginationPageOption(15)->paginated([15, 30, 50]);
     }
 
