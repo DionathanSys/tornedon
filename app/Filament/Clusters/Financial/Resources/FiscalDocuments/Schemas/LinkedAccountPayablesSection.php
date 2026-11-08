@@ -24,7 +24,7 @@ final class LinkedAccountPayablesSection
             ->schema([
                 RepeatableEntry::make('linked_account_payables')
                     ->hiddenLabel()
-                    ->state(fn (FiscalDocument $record) => $record->accountPayables()
+                    ->state(fn (?FiscalDocument $record) => $record?->accountPayables()
                         ->where('company_id', Filament::getTenant()->id)
                         ->with(['installments' => fn (HasMany $query) => $query
                             ->where('company_id', Filament::getTenant()->id)
@@ -32,7 +32,7 @@ final class LinkedAccountPayablesSection
                         ->orderBy('id')
                         ->get()
                         ->filter(fn (AccountPayable $account): bool => AccountPayableResource::canView($account))
-                        ->values())
+                        ->values() ?? collect())
                     ->placeholder('Nenhuma conta a pagar vinculada a esta nota.')
                     ->columns(['sm' => 2, 'lg' => 4])
                     ->schema([

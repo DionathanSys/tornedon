@@ -381,6 +381,10 @@ class InvoiceService
                     throw ValidationException::withMessages(['invoice' => 'A fatura está cancelada ou possui uma operação em andamento.']);
                 }
                 $documentType = ($fiscalData['document_type'] ?? DocumentModel::NFE->value);
+                $documentType = $documentType instanceof DocumentModel ? $documentType->value : $documentType;
+                if (app(InvoiceFiscalDocumentEligibilityService::class)->hasBlockingDocument($invoice, DocumentModel::from($documentType))) {
+                    throw ValidationException::withMessages(['invoice' => 'Já existe uma nota deste tipo ativa ou com pendência fiscal nesta fatura. Cancele-a pela ação fiscal antes de gerar outra.']);
+                }
 
                 $invoice->loadMissing([
                     'requisitions.items.product.tax',

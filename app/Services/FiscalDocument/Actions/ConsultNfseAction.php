@@ -11,6 +11,7 @@ use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\IntegranotasRateLimiter;
 use App\Services\Fiscal\NfseConfigService;
+use App\Services\FiscalDocument\FiscalDocumentIssueService;
 use App\Traits\HandlesActionResponse;
 use CloudDfe\SdkPHP\Nfse;
 use Illuminate\Support\Carbon;
@@ -120,7 +121,7 @@ class ConsultNfseAction
                 $updates['nfse_status'] = NfeStatus::AUTHORIZED->value;
                 $updates['nfse_protocol'] = $resp->protocolo ?? null;
                 $updates['status'] = Status::CONFIRMED->value;
-                $updates['authorized_at'] = now();
+                $updates['authorized_at'] = $fiscalDocument->authorized_at ?? now();
 
                 if (! empty($resp->numero)) {
                     $updates['document_number'] = $resp->numero;
@@ -198,6 +199,7 @@ class ConsultNfseAction
                 app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, $payloadUpdates);
             }
             $fiscalDocument->refresh();
+            app(FiscalDocumentIssueService::class)->reconcileAuthorizedConsultation($fiscalDocument);
 
             if (($updates['nfse_status'] ?? null) === NfeStatus::AUTHORIZED->value) {
                 $audit->recordModelEvent(

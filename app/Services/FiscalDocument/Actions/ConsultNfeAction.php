@@ -10,6 +10,8 @@ use App\Services\AccountReceivable\AccountReceivableGenerationService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\IntegranotasRateLimiter;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\FiscalDocument\FiscalAuthorizationTime;
+use App\Services\FiscalDocument\FiscalDocumentIssueService;
 use App\Traits\HandlesActionResponse;
 use CloudDfe\SdkPHP\Nfe;
 use Illuminate\Support\Facades\Log;
@@ -103,7 +105,7 @@ class ConsultNfeAction
                 $updates['nfe_status'] = NfeStatus::AUTHORIZED->value;
                 $updates['nfe_protocolo'] = $resp->protocolo ?? null;
                 $updates['status'] = Status::CONFIRMED->value;
-                $updates['authorized_at'] = now();
+                $updates['authorized_at'] = app(FiscalAuthorizationTime::class)->resolve($fiscalDocument, $resp);
                 $payloadUpdates['nfe_payload'] = $payload;
 
                 if (! empty($resp->numero)) {
@@ -145,6 +147,7 @@ class ConsultNfeAction
                 app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, $payloadUpdates);
             }
             $fiscalDocument->refresh();
+            app(FiscalDocumentIssueService::class)->reconcileAuthorizedConsultation($fiscalDocument);
 
             if (($updates['nfe_status'] ?? null) === NfeStatus::CANCELED->value
                 && $fiscalDocument->isPurchaseReturn()) {

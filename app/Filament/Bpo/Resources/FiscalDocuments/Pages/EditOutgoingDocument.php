@@ -50,7 +50,7 @@ class EditOutgoingDocument extends EditFiscalDocument
         foreach (FiscalDocumentRecordActions::make() as $action) {
             $ability = match ($action->getName()) {
                 'emitir', 'emitir_nfse' => 'issue', 'cancelar_nfe', 'cancelar_nfse' => 'cancel',
-                'consultar', 'consultar_nfse', 'corrigir_nfe' => 'update', default => 'view',
+                'consultar', 'consultar_nfse', 'corrigir_nfe', 'tratar_pendencia_fiscal' => 'update', default => 'view',
             };
             if (in_array($action->getName(), ['preview', 'preview_nfse'], true)) {
                 $action->modalSubmitAction(false)->action(null);

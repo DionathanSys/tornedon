@@ -8,6 +8,9 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\FiscalDocument\FiscalAuthorizationTime;
+use App\Services\FiscalDocument\FiscalCancellationPolicy;
+use App\Services\FiscalDocument\FiscalDocumentIssueService;
 use App\Traits\HandlesActionResponse;
 use CloudDfe\SdkPHP\Nfe;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +25,7 @@ class CancelNfeAction
         ?int $userId = null,
     ): bool {
         try {
+            $fiscalDocument->refresh();
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($fiscalDocument);
             $justificativa = trim($justificativa);
@@ -40,6 +44,18 @@ class CancelNfeAction
 
             if (mb_strlen($justificativa) < 15 || mb_strlen($justificativa) > 255) {
                 $this->setError('A justificativa do cancelamento deve ter entre 15 e 255 caracteres.');
+
+                return false;
+            }
+
+            $authorizationTime = app(FiscalAuthorizationTime::class)->resolve($fiscalDocument, []);
+            if ($authorizationTime && (! $fiscalDocument->authorized_at || ! $authorizationTime->equalTo($fiscalDocument->authorized_at))) {
+                $fiscalDocument->update(['authorized_at' => $authorizationTime]);
+            }
+            $eligibility = app(FiscalCancellationPolicy::class)->evaluate($fiscalDocument);
+            if (! $eligibility['allowed']) {
+                app(FiscalDocumentIssueService::class)->open($fiscalDocument, $eligibility['reason'], $eligibility['message'], $userId);
+                $this->setError($eligibility['message']);
 
                 return false;
             }
@@ -72,6 +88,10 @@ class CancelNfeAction
                     'nfe_protocolo' => $resp->protocolo ?? $fiscalDocument->nfe_protocolo,
                     'status' => Status::CANCELLED->value,
                     'canceled_at' => now(),
+                    'canceled' => true,
+                    'pending' => false,
+                    'confirmed' => false,
+                    'canceled_by' => $userId,
                 ]);
 
                 app(UpsertFiscalDocumentPayloadAction::class)->execute($fiscalDocument, [
@@ -141,11 +161,13 @@ class CancelNfeAction
                 'justificativa' => $justificativa,
             ];
             $fiscalDocument->update(['errors_messages' => $errors]);
+            app(FiscalDocumentIssueService::class)->open($fiscalDocument, 'cancellation_refused', $resp->mensagem ?? 'Cancelamento recusado pela SEFAZ.', $userId);
 
             $this->setError($resp->mensagem ?? 'Erro ao cancelar NF-e', (array) ($resp->erros ?? []));
 
             return false;
         } catch (\Exception $e) {
+            app(FiscalDocumentIssueService::class)->open($fiscalDocument, 'cancellation_uncertain', 'Falha durante a solicitação de cancelamento. Consulte a SEFAZ antes de repetir. '.$e->getMessage(), $userId);
             $this->setError('Erro ao cancelar NF-e: '.$e->getMessage());
 
             Log::error('CancelNfeAction: exceção', [

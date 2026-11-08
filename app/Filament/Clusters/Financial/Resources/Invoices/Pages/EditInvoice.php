@@ -28,6 +28,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\On;
 
 class EditInvoice extends EditRecord
 {
@@ -50,6 +51,7 @@ class EditInvoice extends EditRecord
         return $this->getRecord()->hasProcessingFiscalDocuments();
     }
 
+    #[On('invoice-fiscal-state-changed')]
     public function refreshInvoiceState(): void
     {
         $this->getRecord()->refresh();
@@ -87,10 +89,8 @@ class EditInvoice extends EditRecord
                 ReturnInvoiceToPendingAction::make()
                     ->size(Size::Small),
                 GenerateFiscalDocumentAction::make(DocumentModel::NFE)
-                    ->visible(fn (): bool => $this->record->confirmed && ! $this->record->canceled)
                     ->size(Size::Small),
                 GenerateFiscalDocumentAction::make(DocumentModel::NFSE)
-                    ->visible(fn (): bool => $this->record->confirmed && ! $this->record->canceled)
                     ->size(Size::Small),
                 GenerateAccountReceivablesAction::make()
                     ->size(Size::Small),

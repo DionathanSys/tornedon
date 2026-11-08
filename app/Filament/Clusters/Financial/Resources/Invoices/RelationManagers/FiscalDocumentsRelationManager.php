@@ -5,15 +5,19 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
+use App\Filament\Bpo\Resources\OutgoingFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Filament\Support\Actions\FiscalDocumentRecordActions;
+use App\Services\Access\UserAccessService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Facades\Filament;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\On;
 
 class FiscalDocumentsRelationManager extends RelationManager
@@ -27,6 +31,12 @@ class FiscalDocumentsRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'Documentos Fiscais';
 
     protected static string|BackedEnum|null $icon = Heroicon::DocumentText;
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return (int) $ownerRecord->company_id === (int) Filament::getTenant()?->id
+            && app(UserAccessService::class)->allows(Filament::auth()->user(), Filament::getTenant(), 'fiscal_documents.view');
+    }
 
     #[On('invoice-confirmed')]
     #[On('invoice-fiscal-documents-refresh')]
@@ -92,6 +102,9 @@ class FiscalDocumentsRelationManager extends RelationManager
                     ->formatStateUsing(fn (?Status $state) => $state?->description() ?? '-')
                     ->color(fn (?Status $state) => $state?->color() ?? 'gray')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('fiscal_issue')->label('Tratamento fiscal')
+                    ->state(fn ($record): string => $record->hasOpenFiscalIssue() ? 'Pendente' : '—')
+                    ->badge()->color(fn ($state): string => $state === 'Pendente' ? 'warning' : 'gray'),
                 TextColumn::make('document_key')
                     ->label('Chave')
                     ->copyable()
@@ -108,10 +121,12 @@ class FiscalDocumentsRelationManager extends RelationManager
                     ->icon(Heroicon::ArrowTopRightOnSquare)
                     ->color('gray')
                     ->url(
-                        fn ($record): string => SalesFiscalDocumentResource::getUrl('edit', ['record' => $record]),
+                        fn ($record): string => Filament::getCurrentPanel()?->getId() === 'bpo'
+                            ? OutgoingFiscalDocumentResource::getUrl('edit', ['record' => $record])
+                            : SalesFiscalDocumentResource::getUrl('edit', ['record' => $record]),
                         shouldOpenInNewTab: true
                     ),
-                ActionGroup::make(FiscalDocumentRecordActions::make()),
+                ActionGroup::make(FiscalDocumentRecordActions::make(includeManagementActions: true)),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhum documento fiscal vinculado');

@@ -4,12 +4,16 @@ namespace App\Observers;
 
 use App\Models\FiscalDocument;
 use App\Services\Email\DocumentNotificationService;
+use App\Services\FiscalDocument\FiscalDocumentIssueService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 
 class FiscalDocumentObserver
 {
     public function updated(FiscalDocument $fiscalDocument): void
     {
+        if ($fiscalDocument->wasChanged(['status', 'nfe_status', 'nfse_status'])) {
+            app(FiscalDocumentIssueService::class)->reconcileCancellation($fiscalDocument);
+        }
         if (! $fiscalDocument->wasChanged('status')) {
             return;
         }

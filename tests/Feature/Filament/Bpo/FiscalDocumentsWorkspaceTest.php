@@ -13,6 +13,8 @@ use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditIncomingDocument;
 use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditOutgoingDocument;
 use App\Filament\Bpo\Resources\FiscalDocuments\RelationManagers\OutgoingItemsRelationManager;
 use App\Filament\Bpo\Resources\IncomingFiscalDocumentResource;
+use App\Filament\Bpo\Resources\Invoices\Pages\ViewInvoice;
+use App\Filament\Bpo\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager as InvoiceFiscalDocuments;
 use App\Filament\Bpo\Resources\OutgoingFiscalDocumentResource;
 use App\Filament\Bpo\Resources\PurchaseClosingResource;
 use App\Filament\Bpo\Resources\PurchaseClosings\Pages\EditPurchaseClosing;
@@ -21,6 +23,7 @@ use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentPayload;
 use App\Models\FiscalDocumentXmlExport;
+use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\PurchaseClosing;
 use App\Models\User;
@@ -109,6 +112,23 @@ class FiscalDocumentsWorkspaceTest extends TestCase
         $this->get(OutgoingFiscalDocumentResource::getUrl('create'))->assertOk();
         $this->get(OutgoingFiscalDocumentResource::getUrl('edit', ['record' => $incoming]))->assertNotFound();
         $this->get(OutgoingFiscalDocumentResource::getUrl('edit', ['record' => $foreign]))->assertNotFound();
+    }
+
+    public function test_company_administrator_can_treat_fiscal_issue_inside_bpo_invoice_without_opening_commercial_editing(): void
+    {
+        $document = $this->document(['nfe_status' => NfeStatus::AUTHORIZED, 'status' => Status::CONFIRMED, 'authorized_at' => now()->subDays(2)]);
+        $invoice = Invoice::create(['company_id' => $this->company->id, 'customer_id' => $document->customer_id, 'invoice_number' => 'BPO-FISCAL-001', 'invoice_date' => today(), 'status' => \App\Enum\Invoice\Status::CONFIRMED, 'created_by' => $this->user->id]);
+        $document->update(['invoice_id' => $invoice->id]);
+        $this->permissions(PermissionCatalog::templates()['Administrador da empresa']);
+        $this->authenticate();
+        Livewire::test(ViewInvoice::class, ['record' => $invoice->id])->assertSuccessful();
+        Livewire::test(InvoiceFiscalDocuments::class, ['ownerRecord' => $invoice, 'pageClass' => ViewInvoice::class])
+            ->call('loadTable')
+            ->assertTableActionVisible('tratar_pendencia_fiscal', $document)
+            ->callTableAction('tratar_pendencia_fiscal', $document, ['resolution' => 'follow_up', 'notes' => 'Administrador da empresa encaminhou a pendência para a contabilidade.'])
+            ->assertHasNoActionErrors();
+        $this->assertSame('open', $document->fiscalIssues()->sole()->status);
+        $this->assertSame(\App\Enum\Invoice\Status::CONFIRMED, $invoice->fresh()->status);
     }
 
     public function test_entry_confirmation_reuses_the_stock_workflow_and_marks_the_record_once(): void

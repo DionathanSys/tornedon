@@ -105,6 +105,7 @@ class FiscalDocuments extends Page implements HasTable
                 'authorized_at', 'created_at', 'operational_reset_at', 'confirmed', 'movement_at'])
             ->where('company_id', Filament::getTenant()->id)->with('customer:id,name')
             ->withSum('items as items_total', 'total_price')
+            ->withExists(['fiscalIssues as has_open_fiscal_issue' => fn (Builder $query) => $query->where('active_slot', 1)])
             ->withExists(['payload as has_corrections' => fn (Builder $query) => $query->whereJsonLength('nfe_payload->correcoes', '>', 0)]))->columns([
                 TextColumn::make('document_number')->label('Número')->searchable()->placeholder('Em preparação'),
                 TextColumn::make('operation_type')->label('Operação')->badge()
@@ -206,6 +207,11 @@ class FiscalDocuments extends Page implements HasTable
         return ($this->fiscalPermissions[$permission] ?? []) !== [];
     }
 
+    public function canManageFiscalIssues(): bool
+    {
+        return $this->canUsePermission('team.manage');
+    }
+
     private function authorizeOperation(FiscalDocument $record, string $ability): void
     {
         abort_unless((int) $record->company_id === (int) Filament::getTenant()?->id, 403);
@@ -225,7 +231,7 @@ class FiscalDocuments extends Page implements HasTable
             $ability = match ($action->getName()) {
                 'emitir', 'emitir_nfse' => 'issue',
                 'cancelar_nfe', 'cancelar_nfse' => 'cancel',
-                'corrigir_nfe', 'consultar', 'consultar_nfse' => 'update',
+                'corrigir_nfe', 'consultar', 'consultar_nfse', 'tratar_pendencia_fiscal' => 'update',
                 'preview', 'preview_nfse', 'danfe', 'pdf_nfse', 'download_xml', 'baixar_carta_correcao_nfe' => 'view',
                 default => null,
             };

@@ -9,12 +9,12 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\NfseModel;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
-use App\Enum\FiscalDocument\Status;
 use App\Enum\FiscalDocument\VolumeSpecies;
+use App\Filament\Bpo\Resources\OutgoingFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
-use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Models\Invoice;
 use App\Notification\NotifyService as notify;
+use App\Services\Invoice\InvoiceFiscalDocumentEligibilityService;
 use App\Services\Invoice\InvoiceService;
 use App\Services\Partner\PartnerService;
 use Filament\Actions\Action;
@@ -24,11 +24,11 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 final class GenerateFiscalDocumentAction
@@ -177,11 +177,11 @@ final class GenerateFiscalDocumentAction
                                 ->label('Transportador')
                                 ->searchable()
                                 ->getSearchResultsUsing(
-                                    fn (string $search): array => (new PartnerService())
+                                    fn (string $search): array => (new PartnerService)
                                         ->searchForSelect($search, Filament::getTenant()->id, 'carrier')
                                 )
                                 ->getOptionLabelUsing(
-                                    fn ($value): ?string => (new PartnerService())
+                                    fn ($value): ?string => (new PartnerService)
                                         ->getLabelForSelect((int) $value)
                                 )
                                 ->columnSpanFull(),
@@ -236,9 +236,19 @@ final class GenerateFiscalDocumentAction
                         ])->columns(2),
                 ];
             })
-            ->action(function (Invoice $record, array $data, EditInvoice $livewire) use ($documentType, $isNfse): void {
+            ->action(function (Invoice $record, array $data, $livewire) use ($documentType, $isNfse): void {
+                abort_unless((int) $record->company_id === (int) Filament::getTenant()?->id, 403);
+                Gate::authorize('update', $record);
+                $record->refresh();
+                $eligibility = app(InvoiceFiscalDocumentEligibilityService::class)->evaluate($record, $documentType);
+                if (! $eligibility['allowed']) {
+                    notify::warning($eligibility['message']);
+
+                    return;
+                }
                 if (self::hasBlockingDocument($record, $documentType)) {
                     notify::warning('Já existe um documento deste tipo para esta fatura.');
+
                     return;
                 }
 
@@ -301,7 +311,7 @@ final class GenerateFiscalDocumentAction
 
                 if ($service->hasError() || $fiscalDocument === null) {
                     Log::error('GenerateFiscalDocumentAction: Erro ao gerar documento fiscal', [
-                        'metodo' => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'error_code' => $service->getErrorCode(),
                         'message' => $service->getMessage(),
                         'invoice_id' => $record->id,
@@ -311,11 +321,12 @@ final class GenerateFiscalDocumentAction
                         message: $service->getMessageUser(),
                         errorCode: $service->getErrorCode()
                     );
+
                     return;
                 }
 
                 Log::info('GenerateFiscalDocumentAction: Documento fiscal gerado com sucesso', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'invoice_id' => $record->id,
                     'fiscal_document_id' => $fiscalDocument->id,
                 ]);
@@ -323,21 +334,23 @@ final class GenerateFiscalDocumentAction
                 notify::success('Documento fiscal gerado com sucesso.');
 
                 if (($data['open_document_after_confirm'] ?? false) === true) {
-                    redirect(FiscalDocumentResource::getUrl('edit', ['record' => $fiscalDocument]));
+                    $resource = Filament::getCurrentPanel()?->getId() === 'bpo'
+                        ? OutgoingFiscalDocumentResource::class : FiscalDocumentResource::class;
+                    redirect($resource::getUrl('edit', ['record' => $fiscalDocument]));
+
                     return;
                 }
 
-                $livewire->refreshInvoiceState();
+                if (method_exists($livewire, 'refreshInvoiceState')) {
+                    $livewire->refreshInvoiceState();
+                }
+                $livewire->dispatch('invoice-fiscal-documents-refresh');
             });
     }
 
     private static function canGenerateDocument(Invoice $record, DocumentModel $documentType): bool
     {
-        if ($record->canceled || ! $record->confirmed) {
-            return false;
-        }
-
-        if (self::hasBlockingDocument($record, $documentType)) {
+        if (! app(InvoiceFiscalDocumentEligibilityService::class)->evaluate($record, $documentType)['allowed']) {
             return false;
         }
 
@@ -353,9 +366,6 @@ final class GenerateFiscalDocumentAction
 
     private static function hasBlockingDocument(Invoice $record, DocumentModel $documentType): bool
     {
-        return $record->fiscalDocuments()
-            ->where('document_type', $documentType->value)
-            ->where('status', '!=', Status::CANCELLED->value)
-            ->exists();
+        return app(InvoiceFiscalDocumentEligibilityService::class)->hasBlockingDocument($record, $documentType);
     }
 }

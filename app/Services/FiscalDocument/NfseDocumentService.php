@@ -280,7 +280,7 @@ class NfseDocumentService
 
         try {
             $action = new CancelNfseAction;
-            $result = $action->execute($doc, $codigoCancelamento, $motivoCancelamento);
+            $result = $action->execute($doc, $codigoCancelamento, $motivoCancelamento, $userId);
 
             if (! $result || $action->hasError()) {
                 $this->setError($action->getMessage(), $action->getErrors());

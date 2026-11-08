@@ -15,6 +15,7 @@ use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
 use App\Services\FiscalDocument\Actions\ReversePurchaseReturnFinancialImpactAction;
 use App\Services\FiscalDocument\Actions\ReversePurchaseReturnStockAction;
+use App\Services\FiscalDocument\FiscalAuthorizationTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -124,7 +125,9 @@ class NfeWebhookController extends Controller
             $updates[$statusField] = NfeStatus::AUTHORIZED->value;
             $updates[$protocoloField] = $payload['protocolo'] ?? null;
             $updates['status'] = Status::CONFIRMED->value;
-            $updates['authorized_at'] = now();
+            $updates['authorized_at'] = $isNfse
+                ? ($doc->authorized_at ?? now())
+                : app(FiscalAuthorizationTime::class)->resolve($doc, $payload);
 
             if (! empty($payload['numero'])) {
                 $updates['document_number'] = $payload['numero'];

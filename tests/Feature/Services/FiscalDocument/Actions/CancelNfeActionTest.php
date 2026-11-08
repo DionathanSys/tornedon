@@ -56,6 +56,7 @@ class CancelNfeActionTest extends TestCase
             'document_number' => '1',
             'document_series' => '1',
             'nfe_status' => NfeStatus::AUTHORIZED->value,
+            'authorized_at' => now(),
             'created_by' => $user->id,
         ]);
         FiscalDocumentPayload::query()->create([

@@ -2,13 +2,22 @@
 
 namespace App\Filament\Support\Actions;
 
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Actions\ConfigurePurchaseReturnSettlementAction;
 use App\Models\FiscalDocument;
+use App\Models\User;
 use App\Notification\NotifyService as notify;
+use App\Services\Access\CompanyAuthorization;
+use App\Services\Access\UserAccessService;
+use App\Services\FiscalDocument\Actions\ReconcileNfseRpsSequenceAction;
+use App\Services\FiscalDocument\FiscalCancellationPolicy;
+use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\FiscalDocument\XmlExport\DownloadFiscalDocumentXmlAction;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -23,7 +32,7 @@ final class FiscalDocumentRecordActions
     /**
      * @return array<int, Action|EditAction>
      */
-    public static function make(bool $includeEditAction = false): array
+    public static function make(bool $includeEditAction = false, bool $includeManagementActions = false): array
     {
         $actions = [
             Action::make('emitir')
@@ -51,7 +60,7 @@ final class FiscalDocumentRecordActions
                 ->label('Consultar SEFAZ')
                 ->icon(Heroicon::MagnifyingGlass)
                 ->color('warning')
-                ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeInProcessing())
+                ->visible(fn (FiscalDocument $record) => $record->isNfe() && ($record->isNfeInProcessing() || $record->hasOpenFiscalIssue() || (($user = Auth::user()) instanceof User && $user->canManageFiscalOperations())))
                 ->action(function (FiscalDocument $record): void {
                     $record = self::resolveFullRecord($record);
 
@@ -69,7 +78,7 @@ final class FiscalDocumentRecordActions
                 ->label('Preview')
                 ->icon(Heroicon::Eye)
                 ->color('gray')
-                ->visible(fn (FiscalDocument $record) => $record->isNfe())
+                ->visible(fn (FiscalDocument $record) => $record->isNfe() && ! $record->isNfeAuthorized() && ! $record->isNfeCanceled())
                 ->modalHeading('Preview da NF-e')
                 ->modalContent(function (FiscalDocument $record): Htmlable {
                     $record = self::resolveFullRecord($record);
@@ -78,9 +87,7 @@ final class FiscalDocumentRecordActions
                     $data = $service->preview($record, Auth::id());
 
                     if (! $data || ! $data['pdf']) {
-                        return new HtmlString(
-                            '<p class="text-red-500">'.($service->getMessage() ?: 'Não foi possível gerar o preview.').'</p>'
-                        );
+                        return self::previewError($record, $service->getMessage() ?: 'Não foi possível gerar o preview.');
                     }
 
                     return new HtmlString(
@@ -137,6 +144,7 @@ final class FiscalDocumentRecordActions
                 ->requiresConfirmation()
                 ->modalHeading('Cancelar NF-e')
                 ->modalDescription('Esta ação não pode ser desfeita. A NF-e será cancelada na SEFAZ.')
+                ->tooltip(fn (FiscalDocument $record): ?string => app(FiscalCancellationPolicy::class)->evaluate($record)['message'])
                 ->visible(fn (FiscalDocument $record) => $record->isNfe() && $record->isNfeAuthorized())
                 ->schema([
                     Textarea::make('justificativa')
@@ -266,7 +274,7 @@ final class FiscalDocumentRecordActions
                 ->label('Consultar NFS-e')
                 ->icon(Heroicon::MagnifyingGlass)
                 ->color('warning')
-                ->visible(fn (FiscalDocument $record) => $record->isNfse())
+                ->visible(fn (FiscalDocument $record) => $record->isNfse() && ($record->isNfseInProcessing() || $record->hasOpenFiscalIssue()))
                 ->action(function (FiscalDocument $record): void {
                     $record = self::resolveFullRecord($record);
 
@@ -293,15 +301,14 @@ final class FiscalDocumentRecordActions
                     $data = $service->preview($record, Auth::id());
 
                     if (! $data || ! $data['pdf']) {
-                        return new HtmlString(
-                            '<p class="text-red-500">'.($service->getMessage() ?: 'Não foi possível gerar o preview.').'</p>'
-                        );
+                        return self::previewError($record, $service->getMessage() ?: 'Não foi possível gerar o preview.');
                     }
 
                     return new HtmlString(
                         '<iframe src="data:application/pdf;base64,'.$data['pdf'].'" width="100%" height="600px" style="border:none;"></iframe>'
                     );
                 })
+                ->modalSubmitAction(false)
                 ->modalWidth('6xl'),
 
             Action::make('pdf_nfse')
@@ -386,8 +393,54 @@ final class FiscalDocumentRecordActions
                 }),
         ];
 
+        $actions[] = ManageFiscalDocumentIssueAction::make();
+
+        if ($includeManagementActions) {
+            array_unshift($actions, ConfigurePurchaseReturnSettlementAction::make());
+            $actions[] = self::reconcileRpsAction();
+            $actions[] = DeleteAction::make()
+                ->label('Excluir Documento')->icon(Heroicon::Trash)->requiresConfirmation()
+                ->visible(fn (FiscalDocument $record): bool => ! $record->isNfeSent() && ! $record->isNfseSent() && ! $record->isNfeQueued() && ! $record->isNfseQueued() && ! $record->hasOpenFiscalIssue())
+                ->using(function (FiscalDocument $record): bool {
+                    $record = self::resolveFullRecord($record);
+                    $fiscalService = app($record->isNfse() ? NfseDocumentService::class : NfeDocumentService::class);
+                    if (! $fiscalService->canDelete($record)) {
+                        notify::error($fiscalService->getMessage());
+
+                        return false;
+                    }
+                    $service = app(FiscalDocumentService::class);
+                    $result = $service->delete($record);
+                    if (! $result || $service->hasError()) {
+                        notify::error($service->getMessageUser() ?: 'Não foi possível excluir o documento fiscal.');
+                    }
+
+                    return (bool) $result;
+                });
+        }
+
         if ($includeEditAction) {
             $actions[] = EditAction::make();
+        }
+
+        foreach ($actions as $action) {
+            $ability = match ($action->getName()) {
+                'emitir', 'emitir_nfse' => 'issue',
+                'cancelar_nfe', 'cancelar_nfse' => 'cancel',
+                'consultar', 'consultar_nfse', 'corrigir_nfe', 'reconciliar_rps_nfse', 'tratar_pendencia_fiscal', 'configurePurchaseReturnSettlement', 'edit' => 'update',
+                'delete' => 'delete',
+                default => 'view',
+            };
+            $action->authorize(fn (FiscalDocument $record): bool => self::canUse($record, $ability))
+                ->beforeFormFilled(fn (FiscalDocument $record) => abort_unless(self::canUse($record, $ability), 403))
+                ->before(fn (FiscalDocument $record) => abort_unless(self::canUse($record, $ability), 403))
+                ->after(function ($livewire) use ($action): void {
+                    if ($action->getName() !== 'delete' && method_exists($livewire, 'refreshFiscalDocumentState')) {
+                        $livewire->refreshFiscalDocumentState();
+                    }
+                    $livewire->dispatch('invoice-fiscal-state-changed');
+                    $livewire->dispatch('invoice-fiscal-documents-refresh');
+                });
         }
 
         return $actions;
@@ -437,7 +490,50 @@ final class FiscalDocumentRecordActions
 
     private static function resolveFullRecord(FiscalDocument $record): FiscalDocument
     {
-        return $record->fresh() ?? FiscalDocument::query()->findOrFail($record->getKey());
+        $record = FiscalDocument::query()->where('company_id', Filament::getTenant()?->id)->findOrFail($record->getKey());
+
+        return $record;
+    }
+
+    private static function canUse(FiscalDocument $record, string $ability): bool
+    {
+        $user = Filament::auth()->user();
+        $company = Filament::getTenant();
+        if (! $user || ! $company || (int) $record->company_id !== (int) $company->id) {
+            return false;
+        }
+        $access = app(CompanyAuthorization::class);
+
+        return app(UserAccessService::class)->allows($user, $company, 'fiscal_documents.'.$ability)
+            && (! $access->requiresRoleAuthorization($user, $company, Filament::getCurrentPanel()?->getId()) || $access->allowsRecord($user, $company, 'fiscal_documents.'.$ability, $record));
+    }
+
+    private static function reconcileRpsAction(): Action
+    {
+        return Action::make('reconciliar_rps_nfse')->label('Conciliar RPS')->icon(Heroicon::WrenchScrewdriver)->color('warning')
+            ->visible(fn (FiscalDocument $record): bool => $record->isNfse() && $record->isNfsePendingReconciliation())
+            ->schema([
+                Textarea::make('reason')->label('Justificativa')->required()->minLength(15)->rows(4),
+                Select::make('resolution')->label('Destino do documento')->options(['keep' => 'Manter em conciliação com o RPS atual', 'clear' => 'Limpar RPS do documento para novo envio'])->default('clear')->required()->native(false),
+            ])->action(function (FiscalDocument $record, array $data): void {
+                $action = app(ReconcileNfseRpsSequenceAction::class);
+                $action->execute(self::resolveFullRecord($record), $data['reason'], $data['resolution'] === 'clear');
+                if ($action->isSuccess()) {
+                    notify::success('Conciliação de RPS registrada com sucesso.');
+                } else {
+                    notify::error($action->getMessage() ?: 'Não foi possível conciliar o RPS.');
+                }
+            });
+    }
+
+    private static function previewError(FiscalDocument $record, string $message): HtmlString
+    {
+        $record->refresh();
+        $latest = collect($record->errors_messages ?? [])->last();
+        $detail = is_array($latest) ? ($latest['mensagem'] ?? null) : null;
+
+        return new HtmlString('<div class="space-y-4"><p class="text-danger-600">'.e($message).'</p>'
+            .($detail ? '<p>Erro atual</p><pre class="whitespace-pre-wrap">'.e(preg_replace('/<br\s*\/?\>/i', PHP_EOL, $detail)).'</pre>' : '').'</div>');
     }
 
     /**

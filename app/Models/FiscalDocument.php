@@ -145,6 +145,24 @@ class FiscalDocument extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+    public function fiscalIssues(): HasMany
+    {
+        return $this->hasMany(FiscalDocumentIssue::class);
+    }
+
+    public function hasOpenFiscalIssue(): bool
+    {
+        return array_key_exists('has_open_fiscal_issue', $this->attributes)
+            ? (bool) $this->attributes['has_open_fiscal_issue']
+            : $this->fiscalIssues()->where('active_slot', 1)->exists();
+    }
+
+    public function isFiscalCancellationConfirmed(): bool
+    {
+        return $this->status === Status::CANCELLED
+            && ($this->isNfse() ? $this->isNfseCanceled() : $this->isNfeCanceled());
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
