@@ -383,22 +383,16 @@
             <thead>
                 <tr>
                     <th>Parcela</th>
-                    <th>Status</th>
                     <th>Vencimento</th>
                     <th>Valor</th>
-                    <th>Recebido</th>
-                    <th>Saldo</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($pdfData['installments'] as $installment)
                 <tr>
                     <td class="relation-code">{{ $installment['number'] }}</td>
-                    <td class="relation-status">{{ $installment['status'] }}</td>
                     <td class="relation-date">{{ $installment['due_date'] }}</td>
                     <td>{{ $installment['amount'] }}</td>
-                    <td>{{ $installment['received_amount'] }}</td>
-                    <td>{{ $installment['balance'] }}</td>
                 </tr>
                 @endforeach
             </tbody>

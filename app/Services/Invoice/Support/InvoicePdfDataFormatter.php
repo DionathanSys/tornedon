@@ -90,11 +90,8 @@ class InvoicePdfDataFormatter
             ->map(function ($installment) {
                 return [
                     'number' => $installment->sequence_number,
-                    'status' => $installment->status?->description() ?? '-',
                     'due_date' => $this->formatDate($installment->due_date),
                     'amount' => $this->formatMoney($installment->due_amount),
-                    'received_amount' => $this->formatMoney($installment->received_amount),
-                    'balance' => $this->formatMoney($installment->balance_amount),
                 ];
             })->values()->all();
 
